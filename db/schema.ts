@@ -19,14 +19,37 @@ export const verifications = pgTable("verifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  senderId: serial("sender_id").references(() => users.id),
+  receiverId: serial("receiver_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const userRelations = relations(users, ({ many }) => ({
   verifications: many(verifications),
+  sentMessages: many(messages, { relationName: "sender" }),
+  receivedMessages: many(messages, { relationName: "receiver" }),
 }));
 
 export const verificationRelations = relations(verifications, ({ one }) => ({
   user: one(users, {
     fields: [verifications.userId],
     references: [users.id],
+  }),
+}));
+
+export const messageRelations = relations(messages, ({ one }) => ({
+  sender: one(users, {
+    fields: [messages.senderId],
+    references: [users.id],
+    relationName: "sender",
+  }),
+  receiver: one(users, {
+    fields: [messages.receiverId],
+    references: [users.id],
+    relationName: "receiver",
   }),
 }));
 
@@ -39,3 +62,8 @@ export const insertVerificationSchema = createInsertSchema(verifications);
 export const selectVerificationSchema = createSelectSchema(verifications);
 export type InsertVerification = typeof verifications.$inferInsert;
 export type SelectVerification = typeof verifications.$inferSelect;
+
+export const insertMessageSchema = createInsertSchema(messages);
+export const selectMessageSchema = createSelectSchema(messages);
+export type InsertMessage = typeof messages.$inferInsert;
+export type SelectMessage = typeof messages.$inferSelect;

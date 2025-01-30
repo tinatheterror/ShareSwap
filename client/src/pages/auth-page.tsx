@@ -151,7 +151,7 @@ export default function AuthPage() {
         <div className="h-full w-full bg-primary/90 p-12 flex items-center">
           <div className="max-w-md">
             <h1 className="text-4xl font-bold text-white mb-6">
-              Welcome to ShareChest
+              Welcome to ShareSwap
             </h1>
             <p className="text-primary-foreground">
               Join our trusted community marketplace where you can safely lend,

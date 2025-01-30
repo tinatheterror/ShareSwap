@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
 import VerificationPage from "@/pages/verification-page";
+import ChatPage from "@/pages/chat-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/verify" component={VerificationPage} />
+      <ProtectedRoute path="/chat" component={ChatPage} />
       <Route component={NotFound} />
     </Switch>
   );

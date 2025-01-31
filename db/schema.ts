@@ -2,12 +2,37 @@ import { pgTable, text, serial, boolean, timestamp, integer, decimal } from "dri
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
+// Add reputationPoints to users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   isVerified: boolean("is_verified").default(false),
   shareCoins: decimal("share_coins", { precision: 10, scale: 2 }).default("0.00"),
+  reputationScore: integer("reputation_score").default(0),
+  reputationLevel: text("reputation_level").default("Newcomer"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// New table for reputation activities
+export const reputationActivities = pgTable("reputation_activities", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  activityType: text("activity_type").notNull(), // LEND_ITEM, BORROW_ITEM, RECEIVE_REVIEW, etc.
+  points: integer("points").notNull(),
+  itemId: integer("item_id").references(() => items.id),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// New table for user reviews
+export const userReviews = pgTable("user_reviews", {
+  id: serial("id").primaryKey(),
+  reviewerId: integer("reviewer_id").references(() => users.id),
+  reviewedUserId: integer("reviewed_user_id").references(() => users.id),
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  transactionId: integer("transaction_id").references(() => itemRequests.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -145,6 +170,9 @@ export const userRelations = relations(users, ({ many }) => ({
   itemVerifications: many(itemConditionVerifications, { relationName: "verifier" }),
   transactions: many(shareCoinsTransactions),
   challengeParticipations: many(challengeParticipants),
+  reputationActivities: many(reputationActivities),
+  receivedReviews: many(userReviews, { relationName: "reviewedUser" }),
+  givenReviews: many(userReviews, { relationName: "reviewer" }),
 }));
 
 export const verificationRelations = relations(verifications, ({ one }) => ({
@@ -244,6 +272,32 @@ export const deliveryArrangementRelations = relations(deliveryArrangements, ({ o
   }),
 }));
 
+export const reputationActivityRelations = relations(reputationActivities, ({ one }) => ({
+  user: one(users, {
+    fields: [reputationActivities.userId],
+    references: [users.id],
+  }),
+  item: one(items, {
+    fields: [reputationActivities.itemId],
+    references: [items.id],
+  }),
+}));
+
+export const userReviewRelations = relations(userReviews, ({ one }) => ({
+  reviewer: one(users, {
+    fields: [userReviews.reviewerId],
+    references: [users.id],
+  }),
+  reviewedUser: one(users, {
+    fields: [userReviews.reviewedUserId],
+    references: [users.id],
+  }),
+  transaction: one(itemRequests, {
+    fields: [userReviews.transactionId],
+    references: [itemRequests.id],
+  }),
+}));
+
 
 // Schemas
 export const insertUserSchema = createInsertSchema(users);
@@ -305,3 +359,13 @@ export const insertDeliveryArrangementSchema = createInsertSchema(deliveryArrang
 export const selectDeliveryArrangementSchema = createSelectSchema(deliveryArrangements);
 export type InsertDeliveryArrangement = typeof deliveryArrangements.$inferInsert;
 export type SelectDeliveryArrangement = typeof deliveryArrangements.$inferSelect;
+
+export const insertReputationActivitySchema = createInsertSchema(reputationActivities);
+export const selectReputationActivitySchema = createSelectSchema(reputationActivities);
+export type InsertReputationActivity = typeof reputationActivities.$inferInsert;
+export type SelectReputationActivity = typeof reputationActivities.$inferSelect;
+
+export const insertUserReviewSchema = createInsertSchema(userReviews);
+export const selectUserReviewSchema = createSelectSchema(userReviews);
+export type InsertUserReview = typeof userReviews.$inferInsert;
+export type SelectUserReview = typeof userReviews.$inferSelect;

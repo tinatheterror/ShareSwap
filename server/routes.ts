@@ -13,6 +13,7 @@ import { itemConditionVerifications } from "@db/schema";
 import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
+import { reputationActivities, userReviews } from "@db/schema";
 
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
@@ -670,6 +671,155 @@ export function registerRoutes(app: Express): Server {
       .returning();
 
     res.status(201).json(arrangement);
+  });
+
+  // Get user reputation
+  app.get("/api/users/:userId/reputation", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const userId = parseInt(req.params.userId);
+    const [user] = await db
+      .select({
+        reputationScore: users.reputationScore,
+        reputationLevel: users.reputationLevel,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).send("User not found");
+    }
+
+    // Get recent reputation activities
+    const activities = await db
+      .select()
+      .from(reputationActivities)
+      .where(eq(reputationActivities.userId, userId))
+      .orderBy(desc(reputationActivities.createdAt))
+      .limit(10);
+
+    // Get user reviews
+    const reviews = await db
+      .select({
+        id: userReviews.id,
+        rating: userReviews.rating,
+        comment: userReviews.comment,
+        createdAt: userReviews.createdAt,
+        reviewer: {
+          id: users.id,
+          username: users.username,
+        },
+      })
+      .from(userReviews)
+      .innerJoin(users, eq(users.id, userReviews.reviewerId))
+      .where(eq(userReviews.reviewedUserId, userId))
+      .orderBy(desc(userReviews.createdAt))
+      .limit(5);
+
+    res.json({
+      ...user,
+      recentActivities: activities,
+      reviews,
+    });
+  });
+
+  // Submit a review for a user
+  app.post("/api/users/:userId/reviews", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const reviewedUserId = parseInt(req.params.userId);
+    const { rating, comment, transactionId } = req.body;
+
+    // Verify the transaction exists and involves both users
+    const [transaction] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(
+        and(
+          eq(itemRequests.id, transactionId),
+          or(
+            and(
+              eq(itemRequests.requesterId, req.user.id),
+              eq(items.ownerId, reviewedUserId)
+            ),
+            and(
+              eq(itemRequests.requesterId, reviewedUserId),
+              eq(items.ownerId, req.user.id)
+            )
+          )
+        )
+      )
+      .limit(1);
+
+    if (!transaction) {
+      return res.status(400).send("Invalid transaction");
+    }
+
+    // Check if user has already reviewed this transaction
+    const [existingReview] = await db
+      .select()
+      .from(userReviews)
+      .where(
+        and(
+          eq(userReviews.reviewerId, req.user.id),
+          eq(userReviews.transactionId, transactionId)
+        )
+      )
+      .limit(1);
+
+    if (existingReview) {
+      return res.status(400).send("You have already reviewed this transaction");
+    }
+
+    // Create the review
+    const [review] = await db
+      .insert(userReviews)
+      .values({
+        reviewerId: req.user.id,
+        reviewedUserId,
+        rating,
+        comment,
+        transactionId,
+      })
+      .returning();
+
+    // Calculate reputation points based on rating
+    const reputationPoints = Math.max(rating - 3, 0) * 10; // 0 points for 3 stars or less, 10 for 4 stars, 20 for 5 stars
+
+    // Record reputation activity if positive points
+    if (reputationPoints > 0) {
+      await db
+        .insert(reputationActivities)
+        .values({
+          userId: reviewedUserId,
+          activityType: "RECEIVE_REVIEW",
+          points: reputationPoints,
+          itemId: transaction.itemId,
+          description: `Received a ${rating}-star review`,
+        });
+
+      // Update user's reputation score
+      await db
+        .update(users)
+        .set({
+          reputationScore: sql`reputation_score + ${reputationPoints}`,
+          reputationLevel: sql`CASE 
+            WHEN reputation_score + ${reputationPoints} >= 500 THEN 'Expert'
+            WHEN reputation_score + ${reputationPoints} >= 200 THEN 'Trusted'
+            WHEN reputation_score + ${reputationPoints} >= 50 THEN 'Regular'
+            ELSE 'Newcomer'
+          END`,
+        })
+        .where(eq(users.id, reviewedUserId));
+    }
+
+    res.status(201).json(review);
   });
 
   const httpServer = createServer(app);

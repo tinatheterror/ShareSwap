@@ -8,7 +8,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState, useEffect, useRef } from "react";
-import { Send } from "lucide-react";
+import { Send, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Message = {
   id: number;
@@ -24,25 +25,52 @@ export default function ChatPage() {
   const { toast } = useToast();
   const wsRef = useRef<WebSocket | null>(null);
   const [receiverId, setReceiverId] = useState<number | null>(null);
+  const [wsError, setWsError] = useState<string | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(`ws://${window.location.host}/ws/chat`);
-    wsRef.current = ws;
+    const connectWebSocket = () => {
+      try {
+        // Determine WebSocket protocol based on page protocol
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
+        wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.receiverId === user?.id || message.senderId === user?.id) {
-        queryClient.invalidateQueries(["/api/messages", receiverId]);
+        ws.onopen = () => {
+          setWsError(null);
+          console.log("WebSocket connection established");
+        };
+
+        ws.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          if (message.receiverId === user?.id || message.senderId === user?.id) {
+            queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          setWsError("Unable to connect to chat. Please try refreshing the page.");
+        };
+
+        ws.onclose = () => {
+          console.log("WebSocket connection closed. Attempting to reconnect...");
+          setTimeout(connectWebSocket, 3000);
+        };
+
+        return () => {
+          ws.close();
+        };
+      } catch (error) {
+        console.error("Error setting up WebSocket:", error);
+        setWsError("Chat connection failed. Please try again later.");
       }
     };
 
-    return () => {
-      ws.close();
-    };
+    connectWebSocket();
   }, [user?.id, receiverId]);
 
   const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/messages", receiverId],
+    queryKey: ['/api/messages', receiverId],
     enabled: !!receiverId,
   });
 
@@ -53,17 +81,24 @@ export default function ChatPage() {
         receiverId,
         content,
       });
-      wsRef.current?.send(
-        JSON.stringify({
-          senderId: user?.id,
-          receiverId,
-          content,
-        })
-      );
+      try {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current?.send(
+            JSON.stringify({
+              senderId: user?.id,
+              receiverId,
+              content,
+            })
+          );
+        }
+      } catch (error) {
+        console.error("Error sending WebSocket message:", error);
+        // Still allow the message to be sent via HTTP even if WebSocket fails
+      }
     },
     onSuccess: () => {
       setMessage("");
-      queryClient.invalidateQueries(["/api/messages", receiverId]);
+      queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
     },
     onError: (error: Error) => {
       toast({
@@ -78,6 +113,12 @@ export default function ChatPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="max-w-4xl mx-auto px-4 py-8">
+        {wsError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{wsError}</AlertDescription>
+          </Alert>
+        )}
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col h-[600px]">

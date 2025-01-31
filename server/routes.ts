@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
 import { verifications, messages, items, users, shareCoinsTransactions } from "@db/schema";
-import { eq, and, or, sql, desc } from "drizzle-orm";
+import { eq, and, or, desc, sql } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -632,14 +632,14 @@ export function registerRoutes(app: Express): Server {
     } = req.body;
 
     // Calculate delivery fee for in-app service
-    const deliveryFee = deliveryType === "IN_APP_SERVICE" ? 10.00 : 0;
+    const deliveryFee = deliveryType === "IN_APP_SERVICE" ? "10.00" : "0.00";
 
     const [arrangement] = await db
       .insert(deliveryArrangements)
       .values({
         requestId,
         deliveryType,
-        deliveryFee: deliveryFee.toString(),
+        deliveryFee,
         deliveryAddress,
         deliveryDate: new Date(deliveryDate),
         securityDeposit,

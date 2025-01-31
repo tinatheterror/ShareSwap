@@ -27,8 +27,14 @@ export const items = pgTable("items", {
   description: text("description").notNull(),
   conditionRating: integer("condition_rating").notNull(),
   photos: text("photos").array().notNull(),
-  securityDeposit: decimal("security_deposit").notNull(),
-  lendingDuration: integer("lending_duration").notNull(), // in days
+  // Sharing mode flags
+  isLendable: boolean("is_lendable").default(false),
+  isSwappable: boolean("is_swappable").default(false),
+  isRentable: boolean("is_rentable").default(false),
+  // Lending-specific fields
+  securityDeposit: decimal("security_deposit"),
+  lendingDuration: integer("lending_duration"), // in days
+  // Shared fields
   shareCoinsReward: decimal("share_coins_reward").notNull(),
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),

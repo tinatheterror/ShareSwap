@@ -69,10 +69,36 @@ export function registerRoutes(app: Express): Server {
     const files = req.files as Express.Multer.File[];
     const photoUrls = files.map(file => `/uploads/${file.filename}`);
 
-    // Calculate ShareCoins reward based on item value and duration
-    const securityDeposit = parseFloat(req.body.securityDeposit);
-    const lendingDuration = parseInt(req.body.lendingDuration);
-    const shareCoinsReward = Math.floor(securityDeposit * lendingDuration / 100); // Example calculation
+    // Parse boolean flags
+    const isLendable = req.body.isLendable === 'true';
+    const isSwappable = req.body.isSwappable === 'true';
+    const isRentable = req.body.isRentable === 'true';
+
+    // Calculate ShareCoins reward based on sharing modes
+    let shareCoinsReward = 0;
+
+    // Base reward for listing an item
+    const baseReward = 5;
+    shareCoinsReward += baseReward;
+
+    // Additional rewards based on sharing modes
+    if (isLendable) {
+      const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+      const lendingDuration = parseInt(req.body.lendingDuration || "0");
+      // 1% of security deposit per day of lending duration
+      const lendingReward = Math.floor(securityDeposit * lendingDuration / 100);
+      shareCoinsReward += lendingReward;
+    }
+
+    if (isSwappable) {
+      // Fixed reward for making item available for swaps
+      shareCoinsReward += 10;
+    }
+
+    if (isRentable) {
+      // Additional reward for rental option
+      shareCoinsReward += 15;
+    }
 
     // First insert the item
     const [item] = await db
@@ -83,15 +109,34 @@ export function registerRoutes(app: Express): Server {
         description: req.body.description,
         condition_rating: parseInt(req.body.conditionRating),
         photos: photoUrls,
-        security_deposit: securityDeposit.toString(),
-        lending_duration: lendingDuration,
+        is_lendable: isLendable,
+        is_swappable: isSwappable,
+        is_rentable: isRentable,
+        security_deposit: req.body.securityDeposit || null,
+        lending_duration: req.body.lendingDuration || null,
         share_coins_reward: shareCoinsReward.toString(),
         is_available: true,
-        is_condition_verified: false // Added field
+        is_condition_verified: false
       })
       .returning();
 
-    // Update user's ShareCoins using SQL expression
+    // Record the ShareCoins transaction
+    await db
+      .insert(shareCoinsTransactions)
+      .values({
+        userId: req.user.id,
+        amount: shareCoinsReward.toString(),
+        description: `Earned for listing ${item.name} (${
+          [
+            isLendable && 'Lending',
+            isSwappable && 'Swapping',
+            isRentable && 'Renting'
+          ].filter(Boolean).join(', ')
+        })`,
+        transactionType: "EARNED"
+      });
+
+    // Update user's ShareCoins
     await db
       .update(users)
       .set({

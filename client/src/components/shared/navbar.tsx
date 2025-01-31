@@ -28,7 +28,7 @@ export function Navbar() {
                     <Link href="/wallet">
                       <Button variant="outline" className="flex items-center gap-2">
                         <Coins className="h-5 w-5 text-yellow-500" />
-                        <span>{Number(user.shareCoins).toFixed(2)} ShareCoins</span>
+                        <span>0 ShareCoins</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

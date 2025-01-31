@@ -114,7 +114,29 @@ export const challengeParticipants = pgTable("challenge_participants", {
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
-// Relations
+export const itemRequests = pgTable("item_requests", {
+  id: serial("id").primaryKey(),
+  itemId: serial("item_id").references(() => items.id),
+  requesterId: serial("requester_id").references(() => users.id),
+  requestType: text("request_type").notNull(),
+  status: text("status").default("PENDING").notNull(),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const deliveryArrangements = pgTable("delivery_arrangements", {
+  id: serial("id").primaryKey(),
+  requestId: serial("request_id").references(() => itemRequests.id),
+  deliveryType: text("delivery_type").notNull(),
+  deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }),
+  deliveryAddress: text("delivery_address"),
+  deliveryDate: timestamp("delivery_date"),
+  securityDeposit: decimal("security_deposit", { precision: 10, scale: 2 }),
+  depositPaid: boolean("deposit_paid").default(false),
+  status: text("status").default("PENDING").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const userRelations = relations(users, ({ many }) => ({
   verifications: many(verifications),
   sentMessages: many(messages, { relationName: "sender" }),
@@ -151,6 +173,7 @@ export const itemRelations = relations(items, ({ one, many }) => ({
     references: [users.id],
   }),
   conditionVerifications: many(itemConditionVerifications),
+  requests: many(itemRequests)
 }));
 
 export const itemConditionVerificationRelations = relations(itemConditionVerifications, ({ one }) => ({
@@ -196,6 +219,28 @@ export const challengeParticipantRelations = relations(challengeParticipants, ({
   challenge: one(communityChallenges, {
     fields: [challengeParticipants.challengeId],
     references: [communityChallenges.id],
+  }),
+}));
+
+export const itemRequestRelations = relations(itemRequests, ({ one }) => ({
+  item: one(items, {
+    fields: [itemRequests.itemId],
+    references: [items.id],
+  }),
+  requester: one(users, {
+    fields: [itemRequests.requesterId],
+    references: [users.id],
+  }),
+  deliveryArrangement: one(deliveryArrangements, {
+    fields: [itemRequests.id],
+    references: [deliveryArrangements.requestId],
+  }),
+}));
+
+export const deliveryArrangementRelations = relations(deliveryArrangements, ({ one }) => ({
+  request: one(itemRequests, {
+    fields: [deliveryArrangements.requestId],
+    references: [itemRequests.id],
   }),
 }));
 
@@ -250,3 +295,13 @@ export const insertChallengeParticipantSchema = createInsertSchema(challengePart
 export const selectChallengeParticipantSchema = createSelectSchema(challengeParticipants);
 export type InsertChallengeParticipant = typeof challengeParticipants.$inferInsert;
 export type SelectChallengeParticipant = typeof challengeParticipants.$inferSelect;
+
+export const insertItemRequestSchema = createInsertSchema(itemRequests);
+export const selectItemRequestSchema = createSelectSchema(itemRequests);
+export type InsertItemRequest = typeof itemRequests.$inferInsert;
+export type SelectItemRequest = typeof itemRequests.$inferSelect;
+
+export const insertDeliveryArrangementSchema = createInsertSchema(deliveryArrangements);
+export const selectDeliveryArrangementSchema = createSelectSchema(deliveryArrangements);
+export type InsertDeliveryArrangement = typeof deliveryArrangements.$inferInsert;
+export type SelectDeliveryArrangement = typeof deliveryArrangements.$inferSelect;

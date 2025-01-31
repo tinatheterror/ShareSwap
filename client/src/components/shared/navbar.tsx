@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { MessageCircle, Coins, Gamepad2, PlayCircle } from "lucide-react";
+import { MessageCircle, Coins, Gamepad2, PlayCircle, InboxIcon } from "lucide-react";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -69,6 +69,14 @@ export function Navbar() {
                       <Button variant="outline" className="flex items-center gap-2">
                         <MessageCircle className="h-5 w-5" />
                         <span>Messages</span>
+                      </Button>
+                    </Link>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <Link href="/requests">
+                      <Button variant="outline" className="flex items-center gap-2">
+                        <InboxIcon className="h-5 w-5" />
+                        <span>Requests</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

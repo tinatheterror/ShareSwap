@@ -12,6 +12,7 @@ import * as express from 'express';
 import { itemConditionVerifications } from "@db/schema";
 import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
+import { itemRequests, deliveryArrangements } from "@db/schema";
 
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
@@ -502,6 +503,152 @@ export function registerRoutes(app: Express): Server {
     res.status(201).json(participant);
   });
 
+
+  // Create item request
+  app.post("/api/items/:itemId/request", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const itemId = parseInt(req.params.itemId);
+    const { requestType, message } = req.body;
+
+    // Check if item exists and is available
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(
+        and(
+          eq(items.id, itemId),
+          eq(items.isAvailable, true),
+          // Check if the requested type is available
+          or(
+            and(eq(items.isLendable, true), eq(requestType, "BORROW")),
+            and(eq(items.isRentable, true), eq(requestType, "RENT")),
+            and(eq(items.isSwappable, true), eq(requestType, "SWAP"))
+          )
+        )
+      )
+      .limit(1);
+
+    if (!item) {
+      return res.status(404).send("Item not found or not available for this type of request");
+    }
+
+    // Create the request
+    const [request] = await db
+      .insert(itemRequests)
+      .values({
+        itemId,
+        requesterId: req.user.id,
+        requestType,
+        message,
+        status: "PENDING",
+      })
+      .returning();
+
+    res.status(201).json(request);
+  });
+
+  // Get item requests for a user (both as requester and owner)
+  app.get("/api/requests", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requests = await db
+      .select({
+        request: itemRequests,
+        item: {
+          id: items.id,
+          name: items.name,
+          photos: items.photos,
+        },
+        requester: {
+          id: users.id,
+          username: users.username,
+        },
+      })
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .innerJoin(users, eq(users.id, itemRequests.requesterId))
+      .where(
+        or(
+          eq(items.ownerId, req.user.id),
+          eq(itemRequests.requesterId, req.user.id)
+        )
+      )
+      .orderBy(desc(itemRequests.createdAt));
+
+    res.json(requests);
+  });
+
+  // Update request status (accept/decline)
+  app.patch("/api/requests/:requestId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const { status } = req.body;
+
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(
+        and(
+          eq(itemRequests.id, requestId),
+          eq(items.ownerId, req.user.id)
+        )
+      )
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).send("Request not found");
+    }
+
+    const [updatedRequest] = await db
+      .update(itemRequests)
+      .set({ status })
+      .where(eq(itemRequests.id, requestId))
+      .returning();
+
+    res.json(updatedRequest);
+  });
+
+  // Create delivery arrangement
+  app.post("/api/requests/:requestId/delivery", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const {
+      deliveryType,
+      deliveryAddress,
+      deliveryDate,
+      securityDeposit,
+    } = req.body;
+
+    // Calculate delivery fee for in-app service
+    const deliveryFee = deliveryType === "IN_APP_SERVICE" ? 10.00 : 0;
+
+    const [arrangement] = await db
+      .insert(deliveryArrangements)
+      .values({
+        requestId,
+        deliveryType,
+        deliveryFee: deliveryFee.toString(),
+        deliveryAddress,
+        deliveryDate: new Date(deliveryDate),
+        securityDeposit,
+        status: "PENDING",
+      })
+      .returning();
+
+    res.status(201).json(arrangement);
+  });
 
   const httpServer = createServer(app);
 

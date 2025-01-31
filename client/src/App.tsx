@@ -12,6 +12,7 @@ import ShareOptionsPage from "@/pages/share-options";
 import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
+import WalletPage from "@/pages/wallet-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -25,6 +26,7 @@ function Router() {
       <ProtectedRoute path="/borrow" component={BorrowPage} />
       <ProtectedRoute path="/lend" component={LendPage} />
       <ProtectedRoute path="/admin/verify-items" component={VerifyItemsPage} />
+      <ProtectedRoute path="/wallet" component={WalletPage} />
       <Route component={NotFound} />
     </Switch>
   );

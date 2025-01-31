@@ -54,6 +54,15 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const shareCoinsTransactions = pgTable("share_coins_transactions", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  amount: decimal("amount").notNull(),
+  description: text("description").notNull(),
+  transactionType: text("transaction_type").notNull(), // "EARNED" or "SPENT"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const userRelations = relations(users, ({ many }) => ({
   verifications: many(verifications),
@@ -61,6 +70,7 @@ export const userRelations = relations(users, ({ many }) => ({
   receivedMessages: many(messages, { relationName: "receiver" }),
   items: many(items),
   itemVerifications: many(itemConditionVerifications, { relationName: "verifier" }),
+  transactions: many(shareCoinsTransactions),
 }));
 
 export const verificationRelations = relations(verifications, ({ one }) => ({
@@ -128,3 +138,8 @@ export const insertItemConditionVerificationSchema = createInsertSchema(itemCond
 export const selectItemConditionVerificationSchema = createSelectSchema(itemConditionVerifications);
 export type InsertItemConditionVerification = typeof itemConditionVerifications.$inferInsert;
 export type SelectItemConditionVerification = typeof itemConditionVerifications.$inferSelect;
+
+export const insertShareCoinsTransactionSchema = createInsertSchema(shareCoinsTransactions);
+export const selectShareCoinsTransactionSchema = createSelectSchema(shareCoinsTransactions);
+export type InsertShareCoinsTransaction = typeof shareCoinsTransactions.$inferInsert;
+export type SelectShareCoinsTransaction = typeof shareCoinsTransactions.$inferSelect;

@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Coins } from "lucide-react";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -24,6 +24,14 @@ export function Navbar() {
             <NavigationMenuList className="space-x-4">
               {user ? (
                 <>
+                  <NavigationMenuItem>
+                    <Link href="/wallet">
+                      <Button variant="outline" className="flex items-center gap-2">
+                        <Coins className="h-5 w-5 text-yellow-500" />
+                        <span>{Number(user.shareCoins).toFixed(2)} ShareCoins</span>
+                      </Button>
+                    </Link>
+                  </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="/chat">
                       <Button variant="outline" className="flex items-center gap-2">

@@ -2,8 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { verifications, messages, items, users } from "@db/schema";
-import { eq, and, or, sql } from "drizzle-orm";
+import { verifications, messages, items, users, shareCoinsTransactions } from "@db/schema";
+import { eq, and, or, sql, desc } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -221,6 +221,21 @@ export function registerRoutes(app: Express): Server {
       .orderBy(messages.createdAt);
 
     res.json(chatMessages);
+  });
+
+  // ShareCoins transaction endpoints
+  app.get("/api/transactions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const transactions = await db
+      .select()
+      .from(shareCoinsTransactions)
+      .where(eq(shareCoinsTransactions.userId, req.user.id))
+      .orderBy(desc(shareCoinsTransactions.createdAt));
+
+    res.json(transactions);
   });
 
   const httpServer = createServer(app);

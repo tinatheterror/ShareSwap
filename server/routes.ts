@@ -9,6 +9,7 @@ import { log } from "./vite";
 import multer from "multer";
 import path from "path";
 import * as express from 'express';
+import { itemConditionVerifications } from "@db/schema";
 
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
@@ -86,6 +87,7 @@ export function registerRoutes(app: Express): Server {
         lending_duration: lendingDuration,
         share_coins_reward: shareCoinsReward.toString(),
         is_available: true,
+        is_condition_verified: false // Added field
       })
       .returning();
 
@@ -114,6 +116,67 @@ export function registerRoutes(app: Express): Server {
       .where(eq(items.isAvailable, true));
 
     res.json(availableItems);
+  });
+
+
+  // Item condition verification endpoints
+  app.post("/api/items/:itemId/verify-condition", upload.array('photos'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    // TODO: Add admin check here
+    const itemId = parseInt(req.params.itemId);
+    const files = req.files as Express.Multer.File[];
+    const photoUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
+
+    const [verification] = await db
+      .insert(itemConditionVerifications)
+      .values({
+        item_id: itemId,
+        verifier_id: req.user.id,
+        actual_condition_rating: parseInt(req.body.actualConditionRating),
+        notes: req.body.notes,
+        photos: photoUrls,
+        status: req.body.status,
+      })
+      .returning();
+
+    if (req.body.status === 'approved') {
+      await db
+        .update(items)
+        .set({
+          is_condition_verified: true,
+          condition_rating: parseInt(req.body.actualConditionRating),
+        })
+        .where(eq(items.id, itemId));
+    }
+
+    res.status(201).json(verification);
+  });
+
+  app.get("/api/items/:itemId/verifications", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const itemId = parseInt(req.params.itemId);
+    const verifications = await db
+      .select({
+        id: itemConditionVerifications.id,
+        actualConditionRating: itemConditionVerifications.actualConditionRating,
+        notes: itemConditionVerifications.notes,
+        photos: itemConditionVerifications.photos,
+        status: itemConditionVerifications.status,
+        createdAt: itemConditionVerifications.createdAt,
+        verifierName: users.username,
+      })
+      .from(itemConditionVerifications)
+      .innerJoin(users, eq(users.id, itemConditionVerifications.verifierId))
+      .where(eq(itemConditionVerifications.itemId, itemId))
+      .orderBy(itemConditionVerifications.createdAt);
+
+    res.json(verifications);
   });
 
   // Chat API endpoints
@@ -163,7 +226,7 @@ export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
 
   // Set up WebSocket server for real-time chat
-  const wss = new WebSocketServer({ 
+  const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/chat",
     // Allow both secure and non-secure connections

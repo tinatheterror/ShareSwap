@@ -2,14 +2,15 @@ import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, CheckCircle, AlertCircle } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState } from "react";
 
 export default function BorrowPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const { data: items = [] } = useQuery<SelectItem[]>({
     queryKey: ['/api/items'],
   });
@@ -55,7 +56,20 @@ export default function BorrowPage() {
                     className="w-full h-48 object-cover rounded-md mb-4"
                   />
                 )}
-                <h3 className="text-xl font-semibold mb-2">{item.name}</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-semibold">{item.name}</h3>
+                  {item.isConditionVerified ? (
+                    <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      Pending
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground mb-4">
                   {item.description}
                 </p>
@@ -75,7 +89,12 @@ export default function BorrowPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full">Request to Borrow</Button>
+                <Button 
+                  className="w-full" 
+                  disabled={!item.isConditionVerified}
+                >
+                  {item.isConditionVerified ? "Request to Borrow" : "Pending Verification"}
+                </Button>
               </CardFooter>
             </Card>
           ))}

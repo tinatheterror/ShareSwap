@@ -31,6 +31,18 @@ export const items = pgTable("items", {
   lendingDuration: integer("lending_duration").notNull(), // in days
   shareCoinsReward: decimal("share_coins_reward").notNull(),
   isAvailable: boolean("is_available").default(true),
+  isConditionVerified: boolean("is_condition_verified").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const itemConditionVerifications = pgTable("item_condition_verifications", {
+  id: serial("id").primaryKey(),
+  itemId: serial("item_id").references(() => items.id),
+  verifierId: serial("verifier_id").references(() => users.id),
+  actualConditionRating: integer("actual_condition_rating").notNull(),
+  notes: text("notes"),
+  photos: text("photos").array(),
+  status: text("status").default("pending"), // pending, approved, rejected
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -48,6 +60,7 @@ export const userRelations = relations(users, ({ many }) => ({
   sentMessages: many(messages, { relationName: "sender" }),
   receivedMessages: many(messages, { relationName: "receiver" }),
   items: many(items),
+  itemVerifications: many(itemConditionVerifications, { relationName: "verifier" }),
 }));
 
 export const verificationRelations = relations(verifications, ({ one }) => ({
@@ -70,10 +83,23 @@ export const messageRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
-export const itemRelations = relations(items, ({ one }) => ({
+export const itemRelations = relations(items, ({ one, many }) => ({
   owner: one(users, {
     fields: [items.ownerId],
     references: [users.id],
+  }),
+  conditionVerifications: many(itemConditionVerifications),
+}));
+
+export const itemConditionVerificationRelations = relations(itemConditionVerifications, ({ one }) => ({
+  item: one(items, {
+    fields: [itemConditionVerifications.itemId],
+    references: [items.id],
+  }),
+  verifier: one(users, {
+    fields: [itemConditionVerifications.verifierId],
+    references: [users.id],
+    relationName: "verifier",
   }),
 }));
 
@@ -97,3 +123,8 @@ export const insertItemSchema = createInsertSchema(items);
 export const selectItemSchema = createSelectSchema(items);
 export type InsertItem = typeof items.$inferInsert;
 export type SelectItem = typeof items.$inferSelect;
+
+export const insertItemConditionVerificationSchema = createInsertSchema(itemConditionVerifications);
+export const selectItemConditionVerificationSchema = createSelectSchema(itemConditionVerifications);
+export type InsertItemConditionVerification = typeof itemConditionVerifications.$inferInsert;
+export type SelectItemConditionVerification = typeof itemConditionVerifications.$inferSelect;

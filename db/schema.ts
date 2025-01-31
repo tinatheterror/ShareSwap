@@ -7,7 +7,7 @@ export const users = pgTable("users", {
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   isVerified: boolean("is_verified").default(false),
-  shareCoins: decimal("share_coins").default("0"),
+  shareCoins: decimal("share_coins", { precision: 10, scale: 2 }).default("0.00"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

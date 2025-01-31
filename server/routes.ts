@@ -10,6 +10,7 @@ import multer from "multer";
 import path from "path";
 import * as express from 'express';
 import { itemConditionVerifications } from "@db/schema";
+import { sponsoredGames, gameSessions } from "@db/schema";
 
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
@@ -324,29 +325,12 @@ export function registerRoutes(app: Express): Server {
       return res.sendStatus(401);
     }
 
-    // TODO: Replace with actual database query once sponsor table is added
-    const sampleGames = [
-      {
-        id: "1",
-        name: "Puzzle Master",
-        description: "Complete challenging puzzles and earn rewards",
-        imageUrl: "/game-thumbnails/puzzle.jpg",
-        rewardAmount: 5,
-        sponsorName: "GameCo",
-        gameUrl: "https://sponsor1.example.com/game1"
-      },
-      {
-        id: "2",
-        name: "Speed Runner",
-        description: "Race against time to collect coins",
-        imageUrl: "/game-thumbnails/racing.jpg",
-        rewardAmount: 10,
-        sponsorName: "RacingInc",
-        gameUrl: "https://sponsor2.example.com/game2"
-      }
-    ];
+    const games = await db
+      .select()
+      .from(sponsoredGames)
+      .where(eq(sponsoredGames.isActive, true));
 
-    res.json(sampleGames);
+    res.json(games);
   });
 
   app.post("/api/games/:gameId/start-session", async (req, res) => {
@@ -354,15 +338,27 @@ export function registerRoutes(app: Express): Server {
       return res.sendStatus(401);
     }
 
-    const { gameId } = req.params;
+    const gameId = parseInt(req.params.gameId);
+    const [game] = await db
+      .select()
+      .from(sponsoredGames)
+      .where(eq(sponsoredGames.id, gameId))
+      .limit(1);
 
-    // TODO: Implement actual game session tracking
-    // For now, just return success
-    res.status(201).json({
-      sessionId: `${gameId}-${Date.now()}`,
-      userId: req.user.id,
-      startedAt: new Date().toISOString()
-    });
+    if (!game) {
+      return res.status(404).send("Game not found");
+    }
+
+    const [session] = await db
+      .insert(gameSessions)
+      .values({
+        userId: req.user.id,
+        gameId: gameId,
+        status: "started",
+      })
+      .returning();
+
+    res.status(201).json(session);
   });
 
   app.post("/api/games/:gameId/complete-session", async (req, res) => {
@@ -370,25 +366,40 @@ export function registerRoutes(app: Express): Server {
       return res.sendStatus(401);
     }
 
-    const { gameId } = req.params;
+    const gameId = parseInt(req.params.gameId);
     const { score, sessionId } = req.body;
 
-    // TODO: Validate session ID and game completion
-    // For now, just award the coins
+    // Find the game and validate
+    const [game] = await db
+      .select()
+      .from(sponsoredGames)
+      .where(eq(sponsoredGames.id, gameId))
+      .limit(1);
 
-    const game = sampleGames.find(g => g.id === gameId);
     if (!game) {
       return res.status(404).send("Game not found");
     }
 
-    // Award ShareCoins
+    // Update session status and award coins
+    const [session] = await db
+      .update(gameSessions)
+      .set({
+        status: "completed",
+        completedAt: new Date(),
+        score,
+        rewardAmount: game.rewardAmount,
+      })
+      .where(eq(gameSessions.id, parseInt(sessionId)))
+      .returning();
+
+    // Record ShareCoins transaction
     await db
       .insert(shareCoinsTransactions)
       .values({
         userId: req.user.id,
         amount: game.rewardAmount.toString(),
         description: `Earned from completing ${game.name}`,
-        transactionType: "EARNED"
+        transactionType: "EARNED",
       });
 
     // Update user's ShareCoins balance

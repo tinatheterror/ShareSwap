@@ -55,10 +55,12 @@ export function Navbar() {
                           <PlayCircle className="mr-2 h-4 w-4" />
                           <span>Watch Advertisements</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <Gamepad2 className="mr-2 h-4 w-4" />
-                          <span>Play Games</span>
-                        </DropdownMenuItem>
+                        <Link href="/games">
+                          <DropdownMenuItem className="cursor-pointer">
+                            <Gamepad2 className="mr-2 h-4 w-4" />
+                            <span>Play Games</span>
+                          </DropdownMenuItem>
+                        </Link>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </NavigationMenuItem>

@@ -289,6 +289,35 @@ export function registerRoutes(app: Express): Server {
     res.json(transactions);
   });
 
+  // Game reward endpoint
+  app.post("/api/transactions/game-reward", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const { amount, gameType } = req.body;
+
+    // Insert the ShareCoins transaction
+    await db
+      .insert(shareCoinsTransactions)
+      .values({
+        user_id: req.user.id,
+        amount: amount.toString(),
+        description: `Earned from playing ${gameType} game`,
+        transaction_type: "EARNED"
+      });
+
+    // Update user's ShareCoins balance
+    await db
+      .update(users)
+      .set({
+        share_coins: sql`share_coins + ${amount}`,
+      })
+      .where(eq(users.id, req.user.id));
+
+    res.status(201).json({ success: true });
+  });
+
   const httpServer = createServer(app);
 
   // Set up WebSocket server for real-time chat

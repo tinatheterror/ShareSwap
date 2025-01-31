@@ -113,19 +113,19 @@ export function registerRoutes(app: Express): Server {
     const [item] = await db
       .insert(items)
       .values({
-        owner_id: req.user.id,
+        ownerId: req.user.id,
         name: req.body.name,
         description: req.body.description,
-        condition_rating: parseInt(req.body.conditionRating),
+        conditionRating: parseInt(req.body.conditionRating),
         photos: photoUrls,
-        is_lendable: isLendable,
-        is_swappable: isSwappable,
-        is_rentable: isRentable,
-        security_deposit: req.body.securityDeposit || null,
-        lending_duration: req.body.lendingDuration || null,
-        share_coins_reward: shareCoinsReward.toString(),
-        is_available: true,
-        is_condition_verified: false
+        isLendable: isLendable,
+        isSwappable: isSwappable,
+        isRentable: isRentable,
+        securityDeposit: req.body.securityDeposit || null,
+        lendingDuration: req.body.lendingDuration || null,
+        shareCoinsReward: shareCoinsReward.toString(),
+        isAvailable: true,
+        isConditionVerified: false
       })
       .returning();
 
@@ -133,7 +133,7 @@ export function registerRoutes(app: Express): Server {
     await db
       .insert(shareCoinsTransactions)
       .values({
-        user_id: req.user.id,
+        userId: req.user.id,
         amount: shareCoinsReward.toString(),
         description: `Earned for listing ${item.name} (${
           [
@@ -142,14 +142,14 @@ export function registerRoutes(app: Express): Server {
             isRentable && 'Renting'
           ].filter(Boolean).join(', ')
         })`,
-        transaction_type: "EARNED"
+        transactionType: "EARNED"
       });
 
     // Update user's ShareCoins
     await db
       .update(users)
       .set({
-        share_coins: sql`share_coins + ${shareCoinsReward}`,
+        shareCoins: sql`share_coins + ${shareCoinsReward}`,
       })
       .where(eq(users.id, req.user.id));
 
@@ -167,9 +167,29 @@ export function registerRoutes(app: Express): Server {
     const availableItems = await db
       .select()
       .from(items)
-      .where(eq(items.is_available, true));
+      .where(eq(items.isAvailable, true));
 
     res.json(availableItems);
+  });
+
+  // Add GET route for single item
+  app.get("/api/items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const itemId = parseInt(req.params.id);
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(eq(items.id, itemId))
+      .limit(1);
+
+    if (!item) {
+      return res.status(404).send("Item not found");
+    }
+
+    res.json(item);
   });
 
 
@@ -200,8 +220,8 @@ export function registerRoutes(app: Express): Server {
       await db
         .update(items)
         .set({
-          is_condition_verified: true,
-          condition_rating: parseInt(req.body.actualConditionRating),
+          isConditionVerified: true,
+          conditionRating: parseInt(req.body.actualConditionRating),
         })
         .where(eq(items.id, itemId));
     }
@@ -304,17 +324,17 @@ export function registerRoutes(app: Express): Server {
     await db
       .insert(shareCoinsTransactions)
       .values({
-        user_id: req.user.id,
+        userId: req.user.id,
         amount: amount.toString(),
         description: `Earned from playing ${gameType} game`,
-        transaction_type: "EARNED"
+        transactionType: "EARNED"
       });
 
     // Update user's ShareCoins balance
     await db
       .update(users)
       .set({
-        share_coins: sql`share_coins + ${amount}`,
+        shareCoins: sql`share_coins + ${amount}`,
       })
       .where(eq(users.id, req.user.id));
 
@@ -363,6 +383,7 @@ export function registerRoutes(app: Express): Server {
     res.status(201).json(session);
   });
 
+  // Game session completion endpoint
   app.post("/api/games/:gameId/complete-session", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

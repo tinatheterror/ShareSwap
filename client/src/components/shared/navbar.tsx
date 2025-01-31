@@ -38,7 +38,7 @@ export function Navbar() {
                           <Coins className="h-5 w-5 text-yellow-500" />
                           <div className="flex flex-col items-start">
                             <span className="text-xs text-muted-foreground">Total Balance</span>
-                            <span>{Number(user?.shareCoins).toFixed(2)} ShareCoins</span>
+                            <span>{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
                           </div>
                         </Button>
                       </DropdownMenuTrigger>

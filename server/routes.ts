@@ -67,7 +67,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const files = req.files as Express.Multer.File[];
-    const photoUrls = files.map(file => `/uploads/${file.filename}`);
+    const photoUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
 
     // Parse boolean flags
     const isLendable = req.body.isLendable === 'true';
@@ -85,38 +85,44 @@ export function registerRoutes(app: Express): Server {
     if (isLendable) {
       const securityDeposit = parseFloat(req.body.securityDeposit || "0");
       const lendingDuration = parseInt(req.body.lendingDuration || "0");
-      // 1% of security deposit per day of lending duration
-      const lendingReward = Math.floor(securityDeposit * lendingDuration / 100);
+
+      // Calculate lending reward: 1% of security deposit per day
+      const lendingReward = Math.max(
+        10, // Minimum lending reward
+        Math.floor((securityDeposit * lendingDuration * 0.01)) // 1% per day
+      );
       shareCoinsReward += lendingReward;
     }
 
     if (isSwappable) {
       // Fixed reward for making item available for swaps
-      shareCoinsReward += 10;
+      shareCoinsReward += 20;
     }
 
     if (isRentable) {
-      // Additional reward for rental option
-      shareCoinsReward += 15;
+      const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+      // Base rental reward plus 5% of security deposit
+      const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
+      shareCoinsReward += rentalReward;
     }
 
     // First insert the item
     const [item] = await db
       .insert(items)
       .values({
-        owner_id: req.user.id,
+        ownerId: req.user.id,
         name: req.body.name,
         description: req.body.description,
-        condition_rating: parseInt(req.body.conditionRating),
+        conditionRating: parseInt(req.body.conditionRating),
         photos: photoUrls,
-        is_lendable: isLendable,
-        is_swappable: isSwappable,
-        is_rentable: isRentable,
-        security_deposit: req.body.securityDeposit || null,
-        lending_duration: req.body.lendingDuration || null,
-        share_coins_reward: shareCoinsReward.toString(),
-        is_available: true,
-        is_condition_verified: false
+        isLendable,
+        isSwappable,
+        isRentable,
+        securityDeposit: req.body.securityDeposit || null,
+        lendingDuration: req.body.lendingDuration || null,
+        shareCoinsReward: shareCoinsReward.toString(),
+        isAvailable: true,
+        isConditionVerified: false
       })
       .returning();
 
@@ -140,7 +146,7 @@ export function registerRoutes(app: Express): Server {
     await db
       .update(users)
       .set({
-        share_coins: sql`share_coins + ${shareCoinsReward}`,
+        shareCoins: sql`share_coins + ${shareCoinsReward}`,
       })
       .where(eq(users.id, req.user.id));
 
@@ -178,9 +184,9 @@ export function registerRoutes(app: Express): Server {
     const [verification] = await db
       .insert(itemConditionVerifications)
       .values({
-        item_id: itemId,
-        verifier_id: req.user.id,
-        actual_condition_rating: parseInt(req.body.actualConditionRating),
+        itemId: itemId,
+        verifierId: req.user.id,
+        actualConditionRating: parseInt(req.body.actualConditionRating),
         notes: req.body.notes,
         photos: photoUrls,
         status: req.body.status,
@@ -191,8 +197,8 @@ export function registerRoutes(app: Express): Server {
       await db
         .update(items)
         .set({
-          is_condition_verified: true,
-          condition_rating: parseInt(req.body.actualConditionRating),
+          isConditionVerified: true,
+          conditionRating: parseInt(req.body.actualConditionRating),
         })
         .where(eq(items.id, itemId));
     }

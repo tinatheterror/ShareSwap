@@ -24,7 +24,7 @@ export default function HomePage() {
             title="Lend & Borrow"
             description="Share items with trusted community members"
             icon={<HandshakeIcon className="w-8 h-8 text-primary" />}
-            onClick={() => navigate("/verify")}
+            onClick={() => navigate("/share-options")}
           />
           <MarketplaceCard
             title="Rent It"

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   isVerified: boolean("is_verified").default(false),
+  shareCoins: decimal("share_coins").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -19,6 +20,20 @@ export const verifications = pgTable("verifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const items = pgTable("items", {
+  id: serial("id").primaryKey(),
+  ownerId: serial("owner_id").references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  conditionRating: integer("condition_rating").notNull(),
+  photos: text("photos").array().notNull(),
+  securityDeposit: decimal("security_deposit").notNull(),
+  lendingDuration: integer("lending_duration").notNull(), // in days
+  shareCoinsReward: decimal("share_coins_reward").notNull(),
+  isAvailable: boolean("is_available").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
@@ -27,10 +42,12 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Relations
 export const userRelations = relations(users, ({ many }) => ({
   verifications: many(verifications),
   sentMessages: many(messages, { relationName: "sender" }),
   receivedMessages: many(messages, { relationName: "receiver" }),
+  items: many(items),
 }));
 
 export const verificationRelations = relations(verifications, ({ one }) => ({
@@ -53,6 +70,14 @@ export const messageRelations = relations(messages, ({ one }) => ({
   }),
 }));
 
+export const itemRelations = relations(items, ({ one }) => ({
+  owner: one(users, {
+    fields: [items.ownerId],
+    references: [users.id],
+  }),
+}));
+
+// Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export type InsertUser = typeof users.$inferInsert;
@@ -67,3 +92,8 @@ export const insertMessageSchema = createInsertSchema(messages);
 export const selectMessageSchema = createSelectSchema(messages);
 export type InsertMessage = typeof messages.$inferInsert;
 export type SelectMessage = typeof messages.$inferSelect;
+
+export const insertItemSchema = createInsertSchema(items);
+export const selectItemSchema = createSelectSchema(items);
+export type InsertItem = typeof items.$inferInsert;
+export type SelectItem = typeof items.$inferSelect;

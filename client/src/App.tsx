@@ -8,6 +8,9 @@ import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
 import VerificationPage from "@/pages/verification-page";
 import ChatPage from "@/pages/chat-page";
+import ShareOptionsPage from "@/pages/share-options";
+import BorrowPage from "@/pages/borrow-page";
+import LendPage from "@/pages/lend-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -17,6 +20,9 @@ function Router() {
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/verify" component={VerificationPage} />
       <ProtectedRoute path="/chat" component={ChatPage} />
+      <ProtectedRoute path="/share-options" component={ShareOptionsPage} />
+      <ProtectedRoute path="/borrow" component={BorrowPage} />
+      <ProtectedRoute path="/lend" component={LendPage} />
       <Route component={NotFound} />
     </Switch>
   );

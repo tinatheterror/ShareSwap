@@ -110,19 +110,19 @@ export function registerRoutes(app: Express): Server {
     const [item] = await db
       .insert(items)
       .values({
-        ownerId: req.user.id,
+        owner_id: req.user.id,
         name: req.body.name,
         description: req.body.description,
-        conditionRating: parseInt(req.body.conditionRating),
+        condition_rating: parseInt(req.body.conditionRating),
         photos: photoUrls,
-        isLendable,
-        isSwappable,
-        isRentable,
-        securityDeposit: req.body.securityDeposit || null,
-        lendingDuration: req.body.lendingDuration || null,
-        shareCoinsReward: shareCoinsReward.toString(),
-        isAvailable: true,
-        isConditionVerified: false
+        is_lendable: isLendable,
+        is_swappable: isSwappable,
+        is_rentable: isRentable,
+        security_deposit: req.body.securityDeposit || null,
+        lending_duration: req.body.lendingDuration || null,
+        share_coins_reward: shareCoinsReward.toString(),
+        is_available: true,
+        is_condition_verified: false
       })
       .returning();
 
@@ -130,7 +130,7 @@ export function registerRoutes(app: Express): Server {
     await db
       .insert(shareCoinsTransactions)
       .values({
-        userId: req.user.id,
+        user_id: req.user.id,
         amount: shareCoinsReward.toString(),
         description: `Earned for listing ${item.name} (${
           [
@@ -139,14 +139,14 @@ export function registerRoutes(app: Express): Server {
             isRentable && 'Renting'
           ].filter(Boolean).join(', ')
         })`,
-        transactionType: "EARNED"
+        transaction_type: "EARNED"
       });
 
     // Update user's ShareCoins
     await db
       .update(users)
       .set({
-        shareCoins: sql`share_coins + ${shareCoinsReward}`,
+        share_coins: sql`share_coins + ${shareCoinsReward}`,
       })
       .where(eq(users.id, req.user.id));
 
@@ -164,7 +164,7 @@ export function registerRoutes(app: Express): Server {
     const availableItems = await db
       .select()
       .from(items)
-      .where(eq(items.isAvailable, true));
+      .where(eq(items.is_available, true));
 
     res.json(availableItems);
   });
@@ -197,8 +197,8 @@ export function registerRoutes(app: Express): Server {
       await db
         .update(items)
         .set({
-          isConditionVerified: true,
-          conditionRating: parseInt(req.body.actualConditionRating),
+          is_condition_verified: true,
+          condition_rating: parseInt(req.body.actualConditionRating),
         })
         .where(eq(items.id, itemId));
     }

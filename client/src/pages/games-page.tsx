@@ -1,184 +1,133 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Trophy } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
-type Card = {
-  id: number;
-  value: string;
-  isFlipped: boolean;
-  isMatched: boolean;
+type SponsoredGame = {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  rewardAmount: number;
+  sponsorName: string;
+  gameUrl: string;
 };
 
 export default function GamesPage() {
   const { toast } = useToast();
-  const [cards, setCards] = useState<Card[]>([]);
-  const [flippedCards, setFlippedCards] = useState<Card[]>([]);
-  const [matchedPairs, setMatchedPairs] = useState(0);
-  const [isGameStarted, setIsGameStarted] = useState(false);
-  const [moves, setMoves] = useState(0);
+  const [activeGame, setActiveGame] = useState<SponsoredGame | null>(null);
 
-  const earnShareCoinsMutation = useMutation({
-    mutationFn: async (earnedCoins: number) => {
-      const res = await apiRequest("POST", "/api/transactions/game-reward", {
-        amount: earnedCoins,
-        gameType: "memory",
-      });
+  // Fetch available sponsored games
+  const { data: games = [] } = useQuery<SponsoredGame[]>({
+    queryKey: ['/api/games/sponsored'],
+  });
+
+  // Example games data while endpoint is being set up
+  const sampleGames: SponsoredGame[] = [
+    {
+      id: "1",
+      name: "Puzzle Master",
+      description: "Complete challenging puzzles and earn rewards",
+      imageUrl: "/game-thumbnails/puzzle.jpg",
+      rewardAmount: 5,
+      sponsorName: "GameCo",
+      gameUrl: "https://sponsor1.example.com/game1"
+    },
+    {
+      id: "2",
+      name: "Speed Runner",
+      description: "Race against time to collect coins",
+      imageUrl: "/game-thumbnails/racing.jpg",
+      rewardAmount: 10,
+      sponsorName: "RacingInc",
+      gameUrl: "https://sponsor2.example.com/game2"
+    }
+  ];
+
+  const startGameSession = useMutation({
+    mutationFn: async (gameId: string) => {
+      const res = await apiRequest("POST", `/api/games/${gameId}/start-session`);
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
-        title: "Congratulations! 🎉",
-        description: "You've earned ShareCoins for completing the memory game!",
+        title: "Game Session Started",
+        description: "Complete the game to earn ShareCoins!",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to award ShareCoins",
+        title: "Failed to start game",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const initializeGame = () => {
-    const emojis = ["🎮", "🎲", "🎯", "🎪", "🎨", "🎭", "🎪", "🎯"];
-    const gameCards = [...emojis, ...emojis]
-      .sort(() => Math.random() - 0.5)
-      .map((value, index) => ({
-        id: index,
-        value,
-        isFlipped: false,
-        isMatched: false,
-      }));
-    setCards(gameCards);
-    setFlippedCards([]);
-    setMatchedPairs(0);
-    setMoves(0);
-    setIsGameStarted(true);
-  };
-
-  const handleCardClick = (clickedCard: Card) => {
-    if (
-      flippedCards.length === 2 ||
-      clickedCard.isFlipped ||
-      clickedCard.isMatched
-    )
-      return;
-
-    const newCards = cards.map((card) =>
-      card.id === clickedCard.id ? { ...card, isFlipped: true } : card
-    );
-    setCards(newCards);
-
-    const newFlippedCards = [...flippedCards, clickedCard];
-    setFlippedCards(newFlippedCards);
-
-    if (newFlippedCards.length === 2) {
-      setMoves((prev) => prev + 1);
-      if (newFlippedCards[0].value === newFlippedCards[1].value) {
-        setMatchedPairs((prev) => prev + 1);
-        setCards((prevCards) =>
-          prevCards.map((card) =>
-            card.id === newFlippedCards[0].id || card.id === newFlippedCards[1].id
-              ? { ...card, isMatched: true }
-              : card
-          )
-        );
-        setFlippedCards([]);
-      } else {
-        setTimeout(() => {
-          setCards((prevCards) =>
-            prevCards.map((card) =>
-              card.id === newFlippedCards[0].id ||
-              card.id === newFlippedCards[1].id
-                ? { ...card, isFlipped: false }
-                : card
-            )
-          );
-          setFlippedCards([]);
-        }, 1000);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (matchedPairs === 8) {
-      const baseReward = 10;
-      const movesBonus = Math.max(0, 20 - moves); // Bonus for completing in fewer moves
-      const totalReward = baseReward + movesBonus;
-      earnShareCoinsMutation.mutate(totalReward);
-    }
-  }, [matchedPairs]);
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Memory Game</h1>
+          <h1 className="text-3xl font-bold mb-2">Sponsored Games</h1>
           <p className="text-muted-foreground">
-            Match pairs of cards to earn ShareCoins!
+            Play sponsored games to earn ShareCoins
           </p>
         </div>
 
-        <Card>
-          <CardContent className="p-6">
-            {!isGameStarted ? (
-              <div className="text-center">
-                <h2 className="text-xl font-semibold mb-4">How to Play</h2>
-                <ul className="text-left space-y-2 mb-6">
-                  <li>• Find matching pairs of cards</li>
-                  <li>• Complete the game in fewer moves for bonus rewards</li>
-                  <li>• Earn up to 30 ShareCoins per game</li>
-                </ul>
-                <Button onClick={initializeGame} className="w-full md:w-auto">
-                  Start Game
+        {activeGame ? (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">{activeGame.name}</h2>
+                <Button 
+                  variant="outline"
+                  onClick={() => setActiveGame(null)}
+                >
+                  Exit Game
                 </Button>
               </div>
-            ) : (
-              <>
-                <div className="flex justify-between mb-4">
-                  <span>Moves: {moves}</span>
-                  <span>Matches: {matchedPairs}/8</span>
-                </div>
-                <div className="grid grid-cols-4 gap-4">
-                  {cards.map((card) => (
-                    <button
-                      key={card.id}
-                      onClick={() => handleCardClick(card)}
-                      className={`h-24 rounded-lg text-3xl flex items-center justify-center transition-all duration-300 ${
-                        card.isFlipped || card.isMatched
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      }`}
-                      disabled={card.isMatched}
-                    >
-                      {(card.isFlipped || card.isMatched) && card.value}
-                    </button>
-                  ))}
-                </div>
-                {matchedPairs === 8 && (
-                  <div className="mt-6 text-center">
-                    <div className="flex items-center justify-center gap-2 text-xl font-semibold text-green-600 mb-4">
-                      <Trophy className="h-6 w-6" />
-                      <span>Congratulations!</span>
-                    </div>
-                    <p className="mb-4">
-                      You completed the game in {moves} moves!
-                    </p>
-                    <Button onClick={initializeGame}>Play Again</Button>
+              <div className="aspect-video w-full bg-muted rounded-lg">
+                {/* This will be replaced with actual game integration */}
+                <iframe src={activeGame.gameUrl} title={activeGame.name} className="w-full h-full" />
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(games.length > 0 ? games : sampleGames).map((game) => (
+              <Card key={game.id}>
+                <CardContent className="p-6">
+                  <div className="aspect-video w-full bg-muted rounded-lg mb-4">
+                    {/* Game thumbnail will be displayed here */}
+                    <img src={game.imageUrl} alt={game.name} className="w-full h-full object-cover rounded-lg" />
                   </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+                  <h3 className="text-lg font-semibold mb-2">{game.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {game.description}
+                  </p>
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm">
+                      <p className="font-medium">Reward: {game.rewardAmount} ShareCoins</p>
+                      <p className="text-muted-foreground">by {game.sponsorName}</p>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        startGameSession.mutate(game.id);
+                        setActiveGame(game);
+                      }}
+                    >
+                      Play Now
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );

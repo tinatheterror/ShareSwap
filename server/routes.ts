@@ -318,6 +318,90 @@ export function registerRoutes(app: Express): Server {
     res.status(201).json({ success: true });
   });
 
+  // Sponsored Games endpoints
+  app.get("/api/games/sponsored", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    // TODO: Replace with actual database query once sponsor table is added
+    const sampleGames = [
+      {
+        id: "1",
+        name: "Puzzle Master",
+        description: "Complete challenging puzzles and earn rewards",
+        imageUrl: "/game-thumbnails/puzzle.jpg",
+        rewardAmount: 5,
+        sponsorName: "GameCo",
+        gameUrl: "https://sponsor1.example.com/game1"
+      },
+      {
+        id: "2",
+        name: "Speed Runner",
+        description: "Race against time to collect coins",
+        imageUrl: "/game-thumbnails/racing.jpg",
+        rewardAmount: 10,
+        sponsorName: "RacingInc",
+        gameUrl: "https://sponsor2.example.com/game2"
+      }
+    ];
+
+    res.json(sampleGames);
+  });
+
+  app.post("/api/games/:gameId/start-session", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const { gameId } = req.params;
+
+    // TODO: Implement actual game session tracking
+    // For now, just return success
+    res.status(201).json({
+      sessionId: `${gameId}-${Date.now()}`,
+      userId: req.user.id,
+      startedAt: new Date().toISOString()
+    });
+  });
+
+  app.post("/api/games/:gameId/complete-session", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const { gameId } = req.params;
+    const { score, sessionId } = req.body;
+
+    // TODO: Validate session ID and game completion
+    // For now, just award the coins
+
+    const game = sampleGames.find(g => g.id === gameId);
+    if (!game) {
+      return res.status(404).send("Game not found");
+    }
+
+    // Award ShareCoins
+    await db
+      .insert(shareCoinsTransactions)
+      .values({
+        userId: req.user.id,
+        amount: game.rewardAmount.toString(),
+        description: `Earned from completing ${game.name}`,
+        transactionType: "EARNED"
+      });
+
+    // Update user's ShareCoins balance
+    await db
+      .update(users)
+      .set({
+        shareCoins: sql`share_coins + ${game.rewardAmount}`,
+      })
+      .where(eq(users.id, req.user.id));
+
+    res.json({ success: true, reward: game.rewardAmount });
+  });
+
   const httpServer = createServer(app);
 
   // Set up WebSocket server for real-time chat

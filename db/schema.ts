@@ -149,3 +149,53 @@ export const insertShareCoinsTransactionSchema = createInsertSchema(shareCoinsTr
 export const selectShareCoinsTransactionSchema = createSelectSchema(shareCoinsTransactions);
 export type InsertShareCoinsTransaction = typeof shareCoinsTransactions.$inferInsert;
 export type SelectShareCoinsTransaction = typeof shareCoinsTransactions.$inferSelect;
+
+export const sponsoredGames = pgTable("sponsored_games", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  imageUrl: text("image_url").notNull(),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }).notNull(),
+  sponsorName: text("sponsor_name").notNull(),
+  gameUrl: text("game_url").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const gameSessions = pgTable("game_sessions", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  gameId: serial("game_id").references(() => sponsoredGames.id),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  score: integer("score"),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }),
+  status: text("status").default("started"), // started, completed, abandoned
+});
+
+// Relations
+export const sponsoredGameRelations = relations(sponsoredGames, ({ many }) => ({
+  sessions: many(gameSessions),
+}));
+
+export const gameSessionRelations = relations(gameSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [gameSessions.userId],
+    references: [users.id],
+  }),
+  game: one(sponsoredGames, {
+    fields: [gameSessions.gameId],
+    references: [sponsoredGames.id],
+  }),
+}));
+
+// Schemas
+export const insertSponsoredGameSchema = createInsertSchema(sponsoredGames);
+export const selectSponsoredGameSchema = createSelectSchema(sponsoredGames);
+export type InsertSponsoredGame = typeof sponsoredGames.$inferInsert;
+export type SelectSponsoredGame = typeof sponsoredGames.$inferSelect;
+
+export const insertGameSessionSchema = createInsertSchema(gameSessions);
+export const selectGameSessionSchema = createSelectSchema(gameSessions);
+export type InsertGameSession = typeof gameSessions.$inferInsert;
+export type SelectGameSession = typeof gameSessions.$inferSelect;

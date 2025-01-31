@@ -11,6 +11,7 @@ import path from "path";
 import * as express from 'express';
 import { itemConditionVerifications } from "@db/schema";
 import { sponsoredGames, gameSessions } from "@db/schema";
+import { communityChallenges, challengeParticipants } from "@db/schema";
 
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
@@ -412,6 +413,95 @@ export function registerRoutes(app: Express): Server {
 
     res.json({ success: true, reward: game.rewardAmount });
   });
+
+  // Get all challenges
+  app.get("/api/challenges", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const challenges = await db
+      .select()
+      .from(communityChallenges)
+      .orderBy(desc(communityChallenges.startDate));
+
+    res.json(challenges);
+  });
+
+  // Get participants for a challenge
+  app.get("/api/challenges/participants/:challengeId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const challengeId = parseInt(req.params.challengeId);
+
+    const participants = await db
+      .select({
+        userId: challengeParticipants.userId,
+        username: users.username,
+        currentScore: challengeParticipants.currentScore,
+        currentRank: challengeParticipants.currentRank,
+      })
+      .from(challengeParticipants)
+      .innerJoin(users, eq(users.id, challengeParticipants.userId))
+      .where(eq(challengeParticipants.challengeId, challengeId))
+      .orderBy(desc(challengeParticipants.currentScore));
+
+    res.json(participants);
+  });
+
+  // Join a challenge
+  app.post("/api/challenges/:challengeId/join", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const challengeId = parseInt(req.params.challengeId);
+
+    // Check if challenge exists and is active
+    const [challenge] = await db
+      .select()
+      .from(communityChallenges)
+      .where(and(
+        eq(communityChallenges.id, challengeId),
+        eq(communityChallenges.status, "active")
+      ))
+      .limit(1);
+
+    if (!challenge) {
+      return res.status(404).send("Challenge not found or not active");
+    }
+
+    // Check if user is already participating
+    const [existing] = await db
+      .select()
+      .from(challengeParticipants)
+      .where(and(
+        eq(challengeParticipants.challengeId, challengeId),
+        eq(challengeParticipants.userId, req.user.id)
+      ))
+      .limit(1);
+
+    if (existing) {
+      return res.status(400).send("Already participating in this challenge");
+    }
+
+    // Join the challenge
+    const [participant] = await db
+      .insert(challengeParticipants)
+      .values({
+        userId: req.user.id,
+        challengeId: challengeId,
+        currentScore: 0,
+        currentRank: 0,
+        rewardClaimed: false,
+      })
+      .returning();
+
+    res.status(201).json(participant);
+  });
+
 
   const httpServer = createServer(app);
 

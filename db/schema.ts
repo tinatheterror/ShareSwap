@@ -69,6 +69,51 @@ export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const sponsoredGames = pgTable("sponsored_games", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  imageUrl: text("image_url").notNull(),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }).notNull(),
+  sponsorName: text("sponsor_name").notNull(),
+  gameUrl: text("game_url").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const gameSessions = pgTable("game_sessions", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  gameId: serial("game_id").references(() => sponsoredGames.id),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  score: integer("score"),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }),
+  status: text("status").default("started"), // started, completed, abandoned
+});
+
+export const communityChallenges = pgTable("community_challenges", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  challengeType: text("challenge_type").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").default("upcoming"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const challengeParticipants = pgTable("challenge_participants", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  challengeId: serial("challenge_id").references(() => communityChallenges.id),
+  currentScore: integer("current_score").default(0),
+  currentRank: integer("current_rank"),
+  rewardClaimed: boolean("reward_claimed").default(false),
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
 // Relations
 export const userRelations = relations(users, ({ many }) => ({
   verifications: many(verifications),
@@ -77,6 +122,7 @@ export const userRelations = relations(users, ({ many }) => ({
   items: many(items),
   itemVerifications: many(itemConditionVerifications, { relationName: "verifier" }),
   transactions: many(shareCoinsTransactions),
+  challengeParticipations: many(challengeParticipants),
 }));
 
 export const verificationRelations = relations(verifications, ({ one }) => ({
@@ -119,6 +165,41 @@ export const itemConditionVerificationRelations = relations(itemConditionVerific
   }),
 }));
 
+export const sponsoredGameRelations = relations(sponsoredGames, ({ many }) => ({
+  sessions: many(gameSessions),
+}));
+
+export const gameSessionRelations = relations(gameSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [gameSessions.userId],
+    references: [users.id],
+  }),
+  game: one(sponsoredGames, {
+    fields: [gameSessions.gameId],
+    references: [sponsoredGames.id],
+  }),
+}));
+
+export const userChallengeRelations = relations(users, ({ many }) => ({
+  challengeParticipations: many(challengeParticipants),
+}));
+
+export const challengeRelations = relations(communityChallenges, ({ many }) => ({
+  participants: many(challengeParticipants),
+}));
+
+export const challengeParticipantRelations = relations(challengeParticipants, ({ one }) => ({
+  user: one(users, {
+    fields: [challengeParticipants.userId],
+    references: [users.id],
+  }),
+  challenge: one(communityChallenges, {
+    fields: [challengeParticipants.challengeId],
+    references: [communityChallenges.id],
+  }),
+}));
+
+
 // Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -150,46 +231,6 @@ export const selectShareCoinsTransactionSchema = createSelectSchema(shareCoinsTr
 export type InsertShareCoinsTransaction = typeof shareCoinsTransactions.$inferInsert;
 export type SelectShareCoinsTransaction = typeof shareCoinsTransactions.$inferSelect;
 
-export const sponsoredGames = pgTable("sponsored_games", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description").notNull(),
-  imageUrl: text("image_url").notNull(),
-  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }).notNull(),
-  sponsorName: text("sponsor_name").notNull(),
-  gameUrl: text("game_url").notNull(),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const gameSessions = pgTable("game_sessions", {
-  id: serial("id").primaryKey(),
-  userId: serial("user_id").references(() => users.id),
-  gameId: serial("game_id").references(() => sponsoredGames.id),
-  startedAt: timestamp("started_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
-  score: integer("score"),
-  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }),
-  status: text("status").default("started"), // started, completed, abandoned
-});
-
-// Relations
-export const sponsoredGameRelations = relations(sponsoredGames, ({ many }) => ({
-  sessions: many(gameSessions),
-}));
-
-export const gameSessionRelations = relations(gameSessions, ({ one }) => ({
-  user: one(users, {
-    fields: [gameSessions.userId],
-    references: [users.id],
-  }),
-  game: one(sponsoredGames, {
-    fields: [gameSessions.gameId],
-    references: [sponsoredGames.id],
-  }),
-}));
-
-// Schemas
 export const insertSponsoredGameSchema = createInsertSchema(sponsoredGames);
 export const selectSponsoredGameSchema = createSelectSchema(sponsoredGames);
 export type InsertSponsoredGame = typeof sponsoredGames.$inferInsert;
@@ -199,3 +240,13 @@ export const insertGameSessionSchema = createInsertSchema(gameSessions);
 export const selectGameSessionSchema = createSelectSchema(gameSessions);
 export type InsertGameSession = typeof gameSessions.$inferInsert;
 export type SelectGameSession = typeof gameSessions.$inferSelect;
+
+export const insertCommunityChallengechema = createInsertSchema(communityChallenges);
+export const selectCommunityChallengechema = createSelectSchema(communityChallenges);
+export type InsertCommunityChallenge = typeof communityChallenges.$inferInsert;
+export type SelectCommunityChallenge = typeof communityChallenges.$inferSelect;
+
+export const insertChallengeParticipantSchema = createInsertSchema(challengeParticipants);
+export const selectChallengeParticipantSchema = createSelectSchema(challengeParticipants);
+export type InsertChallengeParticipant = typeof challengeParticipants.$inferInsert;
+export type SelectChallengeParticipant = typeof challengeParticipants.$inferSelect;

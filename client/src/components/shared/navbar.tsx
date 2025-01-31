@@ -5,9 +5,16 @@ import {
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { MessageCircle, Coins } from "lucide-react";
+import { MessageCircle, Coins, Gamepad2, PlayCircle } from "lucide-react";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -25,12 +32,35 @@ export function Navbar() {
               {user ? (
                 <>
                   <NavigationMenuItem>
-                    <Link href="/wallet">
-                      <Button variant="outline" className="flex items-center gap-2">
-                        <Coins className="h-5 w-5 text-yellow-500" />
-                        <span>0 ShareCoins</span>
-                      </Button>
-                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <Coins className="h-5 w-5 text-yellow-500" />
+                          <div className="flex flex-col items-start">
+                            <span className="text-xs text-muted-foreground">Total Balance</span>
+                            <span>{Number(user?.shareCoins).toFixed(2)} ShareCoins</span>
+                          </div>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        <Link href="/wallet">
+                          <DropdownMenuItem className="cursor-pointer">
+                            <Coins className="mr-2 h-4 w-4" />
+                            <span>View Transactions</span>
+                          </DropdownMenuItem>
+                        </Link>
+                        <DropdownMenuSeparator />
+                        <h6 className="px-2 py-1.5 text-sm font-semibold">Earn More ShareCoins</h6>
+                        <DropdownMenuItem className="cursor-pointer">
+                          <PlayCircle className="mr-2 h-4 w-4" />
+                          <span>Watch Advertisements</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="cursor-pointer">
+                          <Gamepad2 className="mr-2 h-4 w-4" />
+                          <span>Play Games</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="/chat">

@@ -17,6 +17,7 @@ import GamesPage from "@/pages/games-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import ChallengesPage from "@/pages/challenges-page";
 import RequestsPage from "@/pages/requests-page";
+import ItemDetailsPage from "@/pages/item-details-page";
 
 function Router() {
   return (
@@ -33,6 +34,7 @@ function Router() {
       <ProtectedRoute path="/games" component={GamesPage} />
       <ProtectedRoute path="/challenges" component={ChallengesPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />
+      <ProtectedRoute path="/items/:id" component={ItemDetailsPage} />
       <Route component={NotFound} />
     </Switch>
   );

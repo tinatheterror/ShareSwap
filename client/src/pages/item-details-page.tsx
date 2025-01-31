@@ -6,16 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import type { SelectItem } from "@db/schema";
 
 type RequestType = "BORROW" | "RENT" | "SWAP";
 
 export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
+  const [location] = useLocation();
   const { toast } = useToast();
 
+  // Extract item ID from URL
+  const itemId = location.split('/').pop();
+
   const { data: item } = useQuery<SelectItem>({
-    queryKey: ['/api/items/:id'],
+    queryKey: [`/api/items/${itemId}`],
+    enabled: !!itemId,
   });
 
   if (!item) return null;
@@ -65,7 +71,7 @@ export default function ItemDetailsPage() {
 
                 <div className="space-y-4">
                   <h3 className="font-medium">Available Options</h3>
-                  
+
                   {item.isLendable && (
                     <div className="flex justify-between items-center">
                       <div>

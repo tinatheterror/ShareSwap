@@ -407,10 +407,10 @@ export function registerRoutes(app: Express): Server {
     const [session] = await db
       .update(gameSessions)
       .set({
-        status: "completed",
         completedAt: new Date(),
         score,
         rewardAmount: game.rewardAmount,
+        status: "completed",
       })
       .where(eq(gameSessions.id, parseInt(sessionId)))
       .returning();
@@ -664,6 +664,7 @@ export function registerRoutes(app: Express): Server {
         deliveryAddress,
         deliveryDate: new Date(deliveryDate),
         securityDeposit,
+        depositPaid: false,
         status: "PENDING",
       })
       .returning();

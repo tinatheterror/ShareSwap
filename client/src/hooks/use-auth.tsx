@@ -12,9 +12,9 @@ type AuthContextType = {
   user: SelectUser | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<void, Error, LoginData>;
+  loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<void, Error, InsertUser>;
+  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
 };
 
 type LoginData = Pick<SelectUser, "username" | "password">;
@@ -49,8 +49,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: SelectUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
+    mutationFn: async (newUser: InsertUser) => {
+      const res = await apiRequest("POST", "/api/register", newUser);
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {

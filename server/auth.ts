@@ -36,12 +36,21 @@ async function getUserByUsername(username: string) {
   return db.select().from(users).where(eq(users.username, username)).limit(1);
 }
 
+// Export session settings for reuse
+export const sessionSettings: session.SessionOptions = {
+  secret: process.env.REPL_ID!,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  }
+};
+
 export function setupAuth(app: Express) {
   const store = new PostgresSessionStore({ pool, createTableIfMissing: true });
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID!,
-    resave: false,
-    saveUninitialized: false,
+  const settings = {
+    ...sessionSettings,
     store,
   };
 
@@ -49,63 +58,91 @@ export function setupAuth(app: Express) {
     app.set("trust proxy", 1);
   }
 
-  app.use(session(sessionSettings));
+  app.use(session(settings));
   app.use(passport.initialize());
   app.use(passport.session());
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
-      const [user] = await getUserByUsername(username);
-      if (!user || !(await comparePasswords(password, user.password))) {
-        return done(null, false);
-      } else {
+      try {
+        const [user] = await getUserByUsername(username);
+        if (!user || !(await comparePasswords(password, user.password))) {
+          return done(null, false, { message: "Invalid username or password" });
+        }
         return done(null, user);
+      } catch (error) {
+        return done(error);
       }
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
+  passport.serializeUser((user, done) => {
+    if (!user) return done(new Error("No user to serialize"));
+    done(null, user.id);
+  });
 
-    done(null, user);
+  passport.deserializeUser(async (id: number, done) => {
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) return done(new Error("User not found"));
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
   });
 
   app.post("/api/register", async (req, res, next) => {
-    const result = insertUserSchema.safeParse(req.body);
-    if (!result.success) {
-      const error = fromZodError(result.error);
-      return res.status(400).send(error.toString());
+    try {
+      const result = insertUserSchema.safeParse(req.body);
+      if (!result.success) {
+        const error = fromZodError(result.error);
+        return res.status(400).json({ message: error.toString() });
+      }
+
+      const [existingUser] = await getUserByUsername(result.data.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      const [user] = await db
+        .insert(users)
+        .values({
+          ...result.data,
+          password: await hashPassword(result.data.password),
+        })
+        .returning();
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(201).json(user);
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const [existingUser] = await getUserByUsername(result.data.username);
-    if (existingUser) {
-      return res.status(400).send("Username already exists");
-    }
-
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...result.data,
-        password: await hashPassword(result.data.password),
-      })
-      .returning();
-
-    req.login(user, (err) => {
-      if (err) return next(err);
-      res.status(201).json(user);
-    });
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json({ id: req.user.id, username: req.user.username });
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Authentication failed" });
+      }
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not logged in" });
+    }
     req.logout((err) => {
       if (err) return next(err);
       res.sendStatus(200);
@@ -113,7 +150,9 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json({ id: req.user.id, username: req.user.username });
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    res.json(req.user);
   });
 }

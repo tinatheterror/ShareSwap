@@ -14,6 +14,8 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
+import session from "express-session";
+import { sessionSettings } from "./auth";
 
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
@@ -828,31 +830,43 @@ export function registerRoutes(app: Express): Server {
   const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/chat",
-    // Allow both secure and non-secure connections
-    perMessageDeflate: true,
+    verifyClient: (info, callback) => {
+      const parser = session(sessionSettings);
+      parser(info.req as any, {} as any, () => {
+        const user = (info.req as any).session?.passport?.user;
+        if (!user) {
+          callback(false, 401, "Unauthorized");
+        } else {
+          callback(true);
+        }
+      });
+    },
   });
 
   wss.on("connection", (ws: WebSocket) => {
     log("New WebSocket connection established");
 
-    ws.on("message", (message: string) => {
+    ws.on("message", async (message: string) => {
       try {
+        const data = JSON.parse(message.toString());
         // Broadcast the message to all connected clients
         wss.clients.forEach((client) => {
           if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(message);
+            client.send(JSON.stringify(data));
           }
         });
       } catch (error) {
-        console.error("Error broadcasting message:", error);
+        if (error instanceof Error) {
+          log("Error broadcasting message:", error.message);
+        }
+        ws.send(JSON.stringify({ error: "Invalid message format" }));
       }
     });
 
-    ws.on("error", (error) => {
-      console.error("WebSocket error:", error);
+    ws.on("error", (error: Error) => {
+      log("WebSocket error:", error.message);
     });
 
-    // Handle client disconnection
     ws.on("close", () => {
       log("Client disconnected from chat");
     });

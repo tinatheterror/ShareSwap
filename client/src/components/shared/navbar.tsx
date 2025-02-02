@@ -28,7 +28,7 @@ export function Navbar() {
               <img 
                 src="/logo-square.png" 
                 alt="ShareSwap Logo" 
-                className="h-8 w-8 object-contain"
+                className="h-10 w-10 object-contain"
               />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 ShareSwap

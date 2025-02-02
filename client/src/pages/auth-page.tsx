@@ -39,12 +39,12 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="flex items-center justify-center p-8">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md border-primary/20">
           <CardContent className="pt-6">
             <Tabs defaultValue="login">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+                <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Login</TabsTrigger>
+                <TabsTrigger value="register" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Register</TabsTrigger>
               </TabsList>
 
               <TabsContent value="login">
@@ -62,7 +62,7 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Username</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input {...field} className="focus-visible:ring-primary" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -75,7 +75,7 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} />
+                            <Input type="password" {...field} className="focus-visible:ring-primary" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -83,7 +83,7 @@ export default function AuthPage() {
                     />
                     <Button
                       type="submit"
-                      className="w-full"
+                      className="w-full bg-primary hover:bg-primary/90"
                       disabled={loginMutation.isPending}
                     >
                       Login
@@ -107,7 +107,7 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Username</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input {...field} className="focus-visible:ring-primary" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -120,7 +120,7 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Password</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} />
+                            <Input type="password" {...field} className="focus-visible:ring-primary" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -128,7 +128,7 @@ export default function AuthPage() {
                     />
                     <Button
                       type="submit"
-                      className="w-full"
+                      className="w-full bg-primary hover:bg-primary/90"
                       disabled={registerMutation.isPending}
                     >
                       Register
@@ -142,18 +142,14 @@ export default function AuthPage() {
       </div>
 
       <div
-        className="hidden md:block bg-cover bg-center"
-        style={{
-          backgroundImage:
-            'url("https://images.unsplash.com/photo-1507679799987-c73779587ccf")',
-        }}
+        className="hidden md:block bg-primary"
       >
-        <div className="h-full w-full bg-primary/90 p-12 flex items-center">
+        <div className="h-full w-full p-12 flex items-center">
           <div className="max-w-md">
             <h1 className="text-4xl font-bold text-white mb-6">
               Welcome to ShareSwap
             </h1>
-            <p className="text-primary-foreground">
+            <p className="text-primary-foreground/90">
               Join our trusted community marketplace where you can safely lend,
               borrow, rent, and swap items with verified users.
             </p>

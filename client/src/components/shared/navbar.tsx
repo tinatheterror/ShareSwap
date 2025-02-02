@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { MessageCircle, Coins, Gamepad2, PlayCircle, InboxIcon } from "lucide-react";
+import { MessageCircle, Coins, Gamepad2, InboxIcon } from "lucide-react";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -26,7 +26,7 @@ export function Navbar() {
           <Link href="/">
             <div className="flex items-center gap-2">
               <img src="/logo.png" alt="ShareSwap Logo" className="h-8 w-8" />
-              <span className="text-xl font-bold text-foreground">
+              <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 ShareSwap
               </span>
             </div>
@@ -39,8 +39,8 @@ export function Navbar() {
                   <NavigationMenuItem>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          <Coins className="h-5 w-5" />
+                        <Button variant="outline" className="flex items-center gap-2 hover:text-primary hover:border-primary">
+                          <Coins className="h-5 w-5 text-primary" />
                           <div className="flex flex-col items-start">
                             <span className="text-xs text-muted-foreground">Total Balance</span>
                             <span>{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
@@ -49,15 +49,15 @@ export function Navbar() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <Link href="/wallet">
-                          <DropdownMenuItem className="cursor-pointer">
+                          <DropdownMenuItem className="cursor-pointer hover:text-primary">
                             <Coins className="mr-2 h-4 w-4" />
                             <span>View Transactions</span>
                           </DropdownMenuItem>
                         </Link>
                         <DropdownMenuSeparator />
-                        <h6 className="px-2 py-1.5 text-sm font-semibold">Earn More ShareCoins</h6>
+                        <h6 className="px-2 py-1.5 text-sm font-semibold text-primary">Earn More ShareCoins</h6>
                         <Link href="/games">
-                          <DropdownMenuItem className="cursor-pointer">
+                          <DropdownMenuItem className="cursor-pointer hover:text-primary">
                             <Gamepad2 className="mr-2 h-4 w-4" />
                             <span>Play Games</span>
                           </DropdownMenuItem>
@@ -67,7 +67,7 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="/chat">
-                      <Button variant="ghost" className="flex items-center gap-2">
+                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
                         <MessageCircle className="h-5 w-5" />
                         <span>Messages</span>
                       </Button>
@@ -75,7 +75,7 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="/requests">
-                      <Button variant="ghost" className="flex items-center gap-2">
+                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
                         <InboxIcon className="h-5 w-5" />
                         <span>Requests</span>
                       </Button>
@@ -83,14 +83,15 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarFallback>
+                      <Avatar className="border-2 border-primary">
+                        <AvatarFallback className="bg-primary/10 text-primary">
                           {user.username.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <Button
                         variant="ghost"
                         onClick={() => logoutMutation.mutate()}
+                        className="hover:text-primary"
                       >
                         Logout
                       </Button>
@@ -100,7 +101,9 @@ export function Navbar() {
               ) : (
                 <NavigationMenuItem>
                   <Link href="/auth">
-                    <Button variant="outline">Login</Button>
+                    <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
+                      Login
+                    </Button>
                   </Link>
                 </NavigationMenuItem>
               )}

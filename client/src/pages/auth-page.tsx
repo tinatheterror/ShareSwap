@@ -146,6 +146,13 @@ export default function AuthPage() {
       >
         <div className="h-full w-full p-12 flex items-center">
           <div className="max-w-md">
+            <div className="mb-8">
+              <img 
+                src="/logo-square.png" 
+                alt="ShareSwap Logo" 
+                className="h-16 w-16 object-contain"
+              />
+            </div>
             <h1 className="text-4xl font-bold text-white mb-6">
               Welcome to ShareSwap
             </h1>

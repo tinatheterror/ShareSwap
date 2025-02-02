@@ -18,7 +18,7 @@ export function MarketplaceCard({
   className,
 }: MarketplaceCardProps) {
   return (
-    <Card className={cn("w-full", className)}>
+    <Card className={cn("w-full bg-primary/5 border-primary/20 hover:border-primary/40 transition-colors", className)}>
       <CardContent className="pt-6">
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="p-3 bg-primary/10 rounded-full">
@@ -29,7 +29,7 @@ export function MarketplaceCard({
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={onClick} className="w-full">
+        <Button onClick={onClick} className="w-full bg-primary hover:bg-primary/90">
           Get Started
         </Button>
       </CardFooter>

@@ -18,10 +18,10 @@ export function MarketplaceCard({
   className,
 }: MarketplaceCardProps) {
   return (
-    <Card className={cn("w-full bg-primary/5 border-primary/20 hover:border-primary/40 transition-colors", className)}>
+    <Card className={cn("w-full bg-primary/10 border-primary/20 hover:border-primary/40 transition-colors", className)}>
       <CardContent className="pt-6">
         <div className="flex flex-col items-center text-center space-y-4">
-          <div className="p-3 bg-primary/10 rounded-full">
+          <div className="p-3 bg-primary/20 rounded-full">
             {icon}
           </div>
           <h3 className="text-xl font-semibold">{title}</h3>

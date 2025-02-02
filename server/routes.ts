@@ -17,6 +17,18 @@ import { reputationActivities, userReviews } from "@db/schema";
 import session from "express-session";
 import { sessionSettings } from "./auth";
 
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
   destination: './uploads/',
@@ -75,6 +87,10 @@ export function registerRoutes(app: Express): Server {
     const files = req.files as Express.Multer.File[];
     const photoUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
 
+    // Parse location data
+    const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
+    const longitude = req.body.longitude ? parseFloat(req.body.longitude) : null;
+
     // Parse boolean flags
     const isLendable = req.body.isLendable === 'true';
     const isSwappable = req.body.isSwappable === 'true';
@@ -121,6 +137,13 @@ export function registerRoutes(app: Express): Server {
         description: req.body.description,
         conditionRating: parseInt(req.body.conditionRating),
         photos: photoUrls,
+        // Add location data
+        latitude: latitude,
+        longitude: longitude,
+        address: req.body.address,
+        city: req.body.city,
+        state: req.body.state,
+        country: req.body.country,
         isLendable: isLendable,
         isSwappable: isSwappable,
         isRentable: isRentable,
@@ -193,6 +216,44 @@ export function registerRoutes(app: Express): Server {
     }
 
     res.json(item);
+  });
+
+  // Add new endpoint for finding nearby items
+  app.get("/api/items/nearby", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const { latitude, longitude, radius = 10 } = req.query; // radius in kilometers, default 10km
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({ message: "Latitude and longitude are required" });
+    }
+
+    const userLat = parseFloat(latitude as string);
+    const userLon = parseFloat(longitude as string);
+
+    const allItems = await db
+      .select()
+      .from(items)
+      .where(eq(items.isAvailable, true));
+
+    // Filter items within radius
+    const nearbyItems = allItems
+      .filter(item => item.latitude && item.longitude)
+      .map(item => ({
+        ...item,
+        distance: calculateDistance(
+          userLat,
+          userLon,
+          Number(item.latitude),
+          Number(item.longitude)
+        )
+      }))
+      .filter(item => item.distance <= Number(radius))
+      .sort((a, b) => a.distance - b.distance);
+
+    res.json(nearbyItems);
   });
 
 
@@ -802,7 +863,7 @@ export function registerRoutes(app: Express): Server {
           userId: reviewedUserId,
           activityType: "RECEIVE_REVIEW",
           points: reputationPoints,
-          itemId: transaction.itemId,
+          itemId: transaction.items.id,
           description: `Received a ${rating}-star review`,
         });
 

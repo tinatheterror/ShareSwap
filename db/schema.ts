@@ -1,8 +1,7 @@
-import { pgTable, text, serial, boolean, timestamp, integer, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
-// Add reputationPoints to users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
@@ -14,23 +13,21 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// New table for reputation activities
 export const reputationActivities = pgTable("reputation_activities", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
-  activityType: text("activity_type").notNull(), // LEND_ITEM, BORROW_ITEM, RECEIVE_REVIEW, etc.
+  activityType: text("activity_type").notNull(),
   points: integer("points").notNull(),
   itemId: integer("item_id").references(() => items.id),
   description: text("description").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// New table for user reviews
 export const userReviews = pgTable("user_reviews", {
   id: serial("id").primaryKey(),
   reviewerId: integer("reviewer_id").references(() => users.id),
   reviewedUserId: integer("reviewed_user_id").references(() => users.id),
-  rating: integer("rating").notNull(), // 1-5 stars
+  rating: integer("rating").notNull(),
   comment: text("comment"),
   transactionId: integer("transaction_id").references(() => itemRequests.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -47,19 +44,22 @@ export const verifications = pgTable("verifications", {
 
 export const items = pgTable("items", {
   id: serial("id").primaryKey(),
-  ownerId: serial("owner_id").references(() => users.id),
+  ownerId: integer("owner_id").references(() => users.id),
   name: text("name").notNull(),
   description: text("description").notNull(),
   conditionRating: integer("condition_rating").notNull(),
   photos: text("photos").array().notNull(),
-  // Sharing mode flags
+  latitude: numeric("latitude", { precision: 10, scale: 8 }),
+  longitude: numeric("longitude", { precision: 11, scale: 8 }),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
   isLendable: boolean("is_lendable").default(false),
   isSwappable: boolean("is_swappable").default(false),
   isRentable: boolean("is_rentable").default(false),
-  // Lending-specific fields
   securityDeposit: decimal("security_deposit"),
-  lendingDuration: integer("lending_duration"), // in days
-  // Shared fields
+  lendingDuration: integer("lending_duration"),
   shareCoinsReward: decimal("share_coins_reward").notNull(),
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),
@@ -73,7 +73,7 @@ export const itemConditionVerifications = pgTable("item_condition_verifications"
   actualConditionRating: integer("actual_condition_rating").notNull(),
   notes: text("notes"),
   photos: text("photos").array(),
-  status: text("status").default("pending"), // pending, approved, rejected
+  status: text("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -90,7 +90,7 @@ export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   userId: serial("user_id").references(() => users.id),
   amount: decimal("amount").notNull(),
   description: text("description").notNull(),
-  transactionType: text("transaction_type").notNull(), // "EARNED" or "SPENT"
+  transactionType: text("transaction_type").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -114,7 +114,7 @@ export const gameSessions = pgTable("game_sessions", {
   completedAt: timestamp("completed_at"),
   score: integer("score"),
   rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }),
-  status: text("status").default("started"), // started, completed, abandoned
+  status: text("status").default("started"),
 });
 
 export const communityChallenges = pgTable("community_challenges", {
@@ -299,7 +299,6 @@ export const userReviewRelations = relations(userReviews, ({ one }) => ({
 }));
 
 
-// Schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export type InsertUser = typeof users.$inferInsert;

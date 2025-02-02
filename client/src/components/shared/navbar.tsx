@@ -25,7 +25,7 @@ export function Navbar() {
         <div className="flex justify-between h-16 items-center">
           <Link href="/">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" alt="ShareSwap Logo" className="h-8 w-8" />
+              <img src="/logo-square.png" alt="ShareSwap Logo" className="h-8 w-8" />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 ShareSwap
               </span>

@@ -150,7 +150,7 @@ export default function AuthPage() {
               <img 
                 src="/logo-square.png" 
                 alt="ShareSwap Logo" 
-                className="h-16 w-16 object-contain"
+                className="h-24 w-24 object-contain"
               />
             </div>
             <h1 className="text-4xl font-bold text-white mb-6">

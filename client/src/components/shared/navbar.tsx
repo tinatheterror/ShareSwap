@@ -24,8 +24,12 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <Link href="/">
-            <div className="flex items-center gap-2">
-              <img src="/logo-square.png" alt="ShareSwap Logo" className="h-8 w-8" />
+            <div className="flex items-center gap-2 cursor-pointer">
+              <img 
+                src="/logo-square.png" 
+                alt="ShareSwap Logo" 
+                className="h-8 w-8 object-contain"
+              />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 ShareSwap
               </span>

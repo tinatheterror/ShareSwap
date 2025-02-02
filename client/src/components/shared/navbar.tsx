@@ -20,13 +20,13 @@ export function Navbar() {
   const { user, logoutMutation } = useAuth();
 
   return (
-    <nav className="border-b">
+    <nav className="border-b bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <Link href="/">
             <div className="flex items-center gap-2">
               <img src="/logo.png" alt="ShareSwap Logo" className="h-8 w-8" />
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+              <span className="text-xl font-bold text-foreground">
                 ShareSwap
               </span>
             </div>
@@ -40,7 +40,7 @@ export function Navbar() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="flex items-center gap-2">
-                          <Coins className="h-5 w-5 text-yellow-500" />
+                          <Coins className="h-5 w-5" />
                           <div className="flex flex-col items-start">
                             <span className="text-xs text-muted-foreground">Total Balance</span>
                             <span>{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
@@ -56,10 +56,6 @@ export function Navbar() {
                         </Link>
                         <DropdownMenuSeparator />
                         <h6 className="px-2 py-1.5 text-sm font-semibold">Earn More ShareCoins</h6>
-                        <DropdownMenuItem className="cursor-pointer">
-                          <PlayCircle className="mr-2 h-4 w-4" />
-                          <span>Watch Advertisements</span>
-                        </DropdownMenuItem>
                         <Link href="/games">
                           <DropdownMenuItem className="cursor-pointer">
                             <Gamepad2 className="mr-2 h-4 w-4" />
@@ -71,7 +67,7 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="/chat">
-                      <Button variant="outline" className="flex items-center gap-2">
+                      <Button variant="ghost" className="flex items-center gap-2">
                         <MessageCircle className="h-5 w-5" />
                         <span>Messages</span>
                       </Button>
@@ -79,7 +75,7 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="/requests">
-                      <Button variant="outline" className="flex items-center gap-2">
+                      <Button variant="ghost" className="flex items-center gap-2">
                         <InboxIcon className="h-5 w-5" />
                         <span>Requests</span>
                       </Button>
@@ -93,7 +89,7 @@ export function Navbar() {
                         </AvatarFallback>
                       </Avatar>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => logoutMutation.mutate()}
                       >
                         Logout
@@ -104,7 +100,7 @@ export function Navbar() {
               ) : (
                 <NavigationMenuItem>
                   <Link href="/auth">
-                    <Button>Login</Button>
+                    <Button variant="outline">Login</Button>
                   </Link>
                 </NavigationMenuItem>
               )}

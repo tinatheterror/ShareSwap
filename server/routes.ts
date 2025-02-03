@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
-import { db } from "@db";
+import { db, pool } from "@db";
 import { verifications, messages, items, users, shareCoinsTransactions } from "@db/schema";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
@@ -15,8 +15,9 @@ import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
 import session from "express-session";
-import { sessionSettings } from "./auth";
-import { itemRecommendations } from "@db/schema";
+import { sessionSettings, store } from "./auth";
+import type { InsertItem } from "@db/schema";
+import connectPgSimple from "connect-pg-simple";
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in kilometers
@@ -104,55 +105,49 @@ export function registerRoutes(app: Express): Server {
     const baseReward = 5;
     shareCoinsReward += baseReward;
 
-    // Additional rewards based on sharing modes
     if (isLendable) {
       const securityDeposit = parseFloat(req.body.securityDeposit || "0");
       const lendingDuration = parseInt(req.body.lendingDuration || "0");
-
-      // Calculate lending reward: 1% of security deposit per day
-      const lendingReward = Math.max(
-        10, // Minimum lending reward
-        Math.floor((securityDeposit * lendingDuration * 0.01)) // 1% per day
-      );
+      const lendingReward = Math.max(10, Math.floor((securityDeposit * lendingDuration * 0.01)));
       shareCoinsReward += lendingReward;
     }
 
     if (isSwappable) {
-      // Fixed reward for making item available for swaps
       shareCoinsReward += 20;
     }
 
     if (isRentable) {
       const securityDeposit = parseFloat(req.body.securityDeposit || "0");
-      // Base rental reward plus 5% of security deposit
       const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
       shareCoinsReward += rentalReward;
     }
 
+    const itemData: InsertItem = {
+      name: req.body.name,
+      description: req.body.description,
+      conditionRating: parseInt(req.body.conditionRating) || 0,
+      photos: photoUrls,
+      latitude: latitude,
+      longitude: longitude,
+      address: req.body.address,
+      city: req.body.city,
+      state: req.body.state,
+      country: req.body.country,
+      isLendable,
+      isSwappable,
+      isRentable,
+      securityDeposit: req.body.securityDeposit || "0",
+      lendingDuration: parseInt(req.body.lendingDuration) || 0,
+      shareCoinsReward: shareCoinsReward.toString(),
+      isAvailable: true,
+      isConditionVerified: false,
+      ownerId: req.user.id
+    };
+
     // First insert the item
     const [item] = await db
       .insert(items)
-      .values({
-        name: req.body.name,
-        description: req.body.description,
-        conditionRating: parseInt(req.body.conditionRating) || 0,
-        photos: photoUrls,
-        latitude: latitude || null,
-        longitude: longitude || null,
-        address: req.body.address,
-        city: req.body.city,
-        state: req.body.state,
-        country: req.body.country,
-        isLendable: isLendable,
-        isSwappable: isSwappable,
-        isRentable: isRentable,
-        securityDeposit: req.body.securityDeposit || "0",
-        lendingDuration: parseInt(req.body.lendingDuration) || 0,
-        shareCoinsReward: shareCoinsReward.toString(),
-        isAvailable: true,
-        isConditionVerified: false,
-        ownerId: req.user.id
-      })
+      .values(itemData)
       .returning();
 
     // Record the ShareCoins transaction
@@ -933,49 +928,93 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
 
-  // Set up WebSocket server for real-time chat
   const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/chat",
-    verifyClient: (info, callback) => {
-      const parser = session(sessionSettings);
-      parser(info.req as any, {} as any, () => {
+    verifyClient: async (info, callback) => {
+      try {
+        const settings = {
+          ...sessionSettings,
+          store
+        };
+
+        const sessionParser = session(settings);
+
+        await new Promise((resolve) => {
+          sessionParser(info.req as any, {} as any, resolve);
+        });
+
         const user = (info.req as any).session?.passport?.user;
         if (!user) {
+          console.log("WebSocket auth failed: No user in session");
           callback(false, 401, "Unauthorized");
-        } else {
-          callback(true);
+          return;
         }
-      });
+
+        // Fetch user details if needed
+        const [userDetails] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, user))
+          .limit(1);
+
+        if (!userDetails) {
+          console.log("WebSocket auth failed: User not found in database");
+          callback(false, 401, "User not found");
+          return;
+        }
+
+        (info.req as any).user = userDetails;
+        callback(true);
+      } catch (error) {
+        console.error("WebSocket verification error:", error);
+        callback(false, 500, "Internal Server Error");
+      }
     },
   });
 
-  wss.on("connection", (ws: WebSocket) => {
-    log("New WebSocket connection established");
+  wss.on("connection", (ws: WebSocket, req: any) => {
+    const userId = req.user?.id;
+    log("New WebSocket connection established for user:", userId);
 
     ws.on("message", async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
-        // Broadcast the message to all connected clients
+
+        // Store the message in the database
+        const [storedMessage] = await db
+          .insert(messages)
+          .values({
+            content: data.content,
+            senderId: userId,
+            receiverId: data.receiverId,
+          })
+          .returning();
+
+        // Broadcast to all connected clients
         wss.clients.forEach((client) => {
           if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
+            client.send(JSON```
+.stringify({
+              ...data,
+              messageId: storedMessage.id,
+              senderId: userId,
+              timestamp: new Date().toISOString()
+            }));
           }
         });
       } catch (error) {
-        if (error instanceof Error) {
-          log("Error broadcasting message:", error.message);
-        }
+        console.error("Error handling message:", error);
         ws.send(JSON.stringify({ error: "Invalid message format" }));
       }
     });
 
-    ws.on("error", (error: Error) => {
-      log("WebSocket error:", error.message);
+    ws.on("error", (error) => {
+      console.error("WebSocket error for user", userId, ":", error);
     });
 
     ws.on("close", () => {
-      log("Client disconnected from chat");
+      log("Client disconnected from chat, user:", userId);
     });
   });
 

@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import connectPg from "connect-pg-simple";
+import connectPgSimple from "connect-pg-simple";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, insertUserSchema, type SelectUser } from "@db/schema";
@@ -17,7 +17,7 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
-const PostgresSessionStore = connectPg(session);
+const PostgresStore = connectPgSimple(session);
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -36,19 +36,25 @@ async function getUserByUsername(username: string) {
   return db.select().from(users).where(eq(users.username, username)).limit(1);
 }
 
-// Export session settings for reuse
 export const sessionSettings: session.SessionOptions = {
   secret: process.env.REPL_ID!,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: false,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+    httpOnly: true
   }
 };
 
+export const store = new PostgresStore({
+  pool,
+  createTableIfMissing: true,
+  tableName: 'session'
+});
+
 export function setupAuth(app: Express) {
-  const store = new PostgresSessionStore({ pool, createTableIfMissing: true });
   const settings = {
     ...sessionSettings,
     store,
@@ -56,6 +62,7 @@ export function setupAuth(app: Express) {
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
+    settings.cookie!.secure = true;
   }
 
   app.use(session(settings));
@@ -71,6 +78,7 @@ export function setupAuth(app: Express) {
         }
         return done(null, user);
       } catch (error) {
+        console.error("Authentication error:", error);
         return done(error);
       }
     }),
@@ -89,9 +97,10 @@ export function setupAuth(app: Express) {
         .where(eq(users.id, id))
         .limit(1);
 
-      if (!user) return done(new Error("User not found"));
+      if (!user) return done(null, false);
       done(null, user);
     } catch (error) {
+      console.error("Deserialization error:", error);
       done(error);
     }
   });

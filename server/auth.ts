@@ -39,7 +39,7 @@ async function getUserByUsername(username: string) {
 export const sessionSettings: session.SessionOptions = {
   secret: process.env.REPL_ID!,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   cookie: {
     secure: false,
     maxAge: 24 * 60 * 60 * 1000,
@@ -57,17 +57,11 @@ export const store = new PostgresStore({
 });
 
 export function setupAuth(app: Express) {
-  const settings = {
+  app.use(session({
     ...sessionSettings,
     store,
-  };
+  }));
 
-  if (app.get("env") === "production") {
-    app.set("trust proxy", 1);
-    settings.cookie!.secure = true;
-  }
-
-  app.use(session(settings));
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -83,7 +77,7 @@ export function setupAuth(app: Express) {
         console.error("Authentication error:", error);
         return done(error);
       }
-    }),
+    })
   );
 
   passport.serializeUser((user, done) => {
@@ -108,7 +102,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
+    passport.authenticate("local", (err: any, user: SelectUser | false, info: any) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ message: info?.message || "Authentication failed" });

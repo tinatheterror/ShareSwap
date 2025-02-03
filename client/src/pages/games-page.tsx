@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,18 +82,17 @@ export default function GamesPage() {
     },
   });
 
-  // Handle messages from the game iframe
-  const handleGameMessage = (event: MessageEvent) => {
-    if (activeGame && event.data.type === "GAME_COMPLETE") {
-      completeGameSession.mutate({
-        gameId: activeGame.id,
-        score: event.data.score,
-      });
-    }
-  };
+  // Add event listener effect
+  useEffect(() => {
+    const handleGameMessage = (event: MessageEvent) => {
+      if (activeGame && event.data.type === "GAME_COMPLETE") {
+        completeGameSession.mutate({
+          gameId: activeGame.id,
+          score: event.data.score,
+        });
+      }
+    };
 
-  // Add/remove message listener
-  useState(() => {
     window.addEventListener("message", handleGameMessage);
     return () => window.removeEventListener("message", handleGameMessage);
   }, [activeGame]);

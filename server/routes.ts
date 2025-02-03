@@ -979,7 +979,7 @@ app.get("/api/recommendations", async (req, res) => {
     // Novelty score (newer items get higher score)
     const itemAge = Date.now() - new Date(item.createdAt).getTime();
     const daysOld = itemAge / (1000 * 60 * 60 * 24);
-    score += Math.max(0, 20 - daysOld); // Up to 20 points for newness
+    score += Math.max(0, 20 - daysOld); // Up to 20 pointsfor newness
 
     // Previous interaction penalty
     if (requestedItemIds.has(item.id)) {
@@ -1039,6 +1039,46 @@ app.get("/api/recommendations", async (req, res) => {
     .limit(10);
 
   res.json(recommendedItems);
+});
+// Add this endpoint after the existing routes
+app.get("/api/delivery-arrangements", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.sendStatus(401);
+  }
+
+  const arrangements = await db
+    .select({
+      id: deliveryArrangements.id,
+      requestId: deliveryArrangements.requestId,
+      deliveryType: deliveryArrangements.deliveryType,
+      deliveryFee: deliveryArrangements.deliveryFee,
+      deliveryAddress: deliveryArrangements.deliveryAddress,
+      deliveryDate: deliveryArrangements.deliveryDate,
+      securityDeposit: deliveryArrangements.securityDeposit,
+      depositPaid: deliveryArrangements.depositPaid,
+      status: deliveryArrangements.status,
+      createdAt: deliveryArrangements.createdAt,
+      request: {
+        id: itemRequests.id,
+        item: {
+          id: items.id,
+          name: items.name,
+          photos: items.photos,
+        },
+      },
+    })
+    .from(deliveryArrangements)
+    .innerJoin(itemRequests, eq(itemRequests.id, deliveryArrangements.requestId))
+    .innerJoin(items, eq(items.id, itemRequests.itemId))
+    .where(
+      or(
+        eq(items.ownerId, req.user.id),
+        eq(itemRequests.requesterId, req.user.id)
+      )
+    )
+    .orderBy(deliveryArrangements.deliveryDate);
+
+  res.json(arrangements);
 });
 
   const httpServer = createServer(app);

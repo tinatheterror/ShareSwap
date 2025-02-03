@@ -19,6 +19,7 @@ import ChallengesPage from "@/pages/challenges-page";
 import RequestsPage from "@/pages/requests-page";
 import ItemDetailsPage from "@/pages/item-details-page";
 import RecommendationsPage from "@/pages/recommendations-page";
+import DeliveryArrangementsPage from "@/pages/delivery-arrangements";
 
 function Router() {
   return (
@@ -37,6 +38,7 @@ function Router() {
       <ProtectedRoute path="/requests" component={RequestsPage} />
       <ProtectedRoute path="/items/:id" component={ItemDetailsPage} />
       <ProtectedRoute path="/recommendations" component={RecommendationsPage} />
+      <ProtectedRoute path="/delivery" component={DeliveryArrangementsPage} />
       <Route component={NotFound} />
     </Switch>
   );

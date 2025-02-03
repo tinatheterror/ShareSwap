@@ -12,8 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Upload, MapPin, X } from "lucide-react";
+import { useState } from "react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -24,10 +24,7 @@ const formSchema = z.object({
   lendingDuration: z.coerce.number().min(1, "Minimum lending duration is 1 day").optional(),
   securityDeposit: z.coerce.number().min(0, "Security deposit must be positive").optional(),
   conditionRating: z.coerce.number().min(1).max(10, "Rating must be between 1 and 10"),
-  address: z.string().min(1, "Address is required"),
-  city: z.string().min(1, "City is required"),
-  state: z.string().min(1, "State is required"),
-  country: z.string().min(1, "Country is required"),
+  postalCode: z.string().min(1, "Postal code is required"),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
 });
@@ -37,6 +34,7 @@ export default function LendPage() {
   const [, navigate] = useLocation();
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -49,10 +47,7 @@ export default function LendPage() {
       lendingDuration: undefined,
       securityDeposit: undefined,
       conditionRating: 10,
-      address: "",
-      city: "",
-      state: "",
-      country: "",
+      postalCode: "",
       latitude: undefined,
       longitude: undefined,
     },
@@ -70,28 +65,38 @@ export default function LendPage() {
         form.setValue("latitude", latitude);
         form.setValue("longitude", longitude);
 
-        // Use reverse geocoding to get address details
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-        );
-        const data = await response.json();
-
-        if (data.address) {
-          form.setValue("address", [data.address.road, data.address.house_number].filter(Boolean).join(" "));
-          form.setValue("city", data.address.city || data.address.town || data.address.village || "");
-          form.setValue("state", data.address.state || "");
-          form.setValue("country", data.address.country || "");
+        // Get postal code from coordinates
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+          const data = await response.json();
+          if (data.address?.postcode) {
+            form.setValue("postalCode", data.address.postcode);
+            toast({
+              title: "Location Updated",
+              description: "Your postal code has been automatically filled.",
+            });
+          } else {
+            toast({
+              title: "Location Error",
+              description: "Could not get your postal code. Please enter it manually.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error("Error getting postal code:", error);
+          toast({
+            title: "Location Error",
+            description: "Could not get your postal code. Please enter it manually.",
+            variant: "destructive",
+          });
         }
-
-        toast({
-          title: "Location Updated",
-          description: "Your current location has been added successfully.",
-        });
       } catch (error) {
         console.error("Error getting location:", error);
         toast({
           title: "Location Error",
-          description: "Could not get your location. Please enter address manually.",
+          description: "Could not get your location. Please enter postal code manually.",
           variant: "destructive",
         });
       } finally {
@@ -138,9 +143,10 @@ export default function LendPage() {
   };
 
   const watchIsLendable = form.watch("isLendable");
+  const watchPostalCode = form.watch("postalCode");
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
@@ -186,80 +192,21 @@ export default function LendPage() {
                   )}
                 />
 
-                {/* Location fields */}
+                {/* Location field */}
                 <div className="space-y-4 border-t pt-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Location Details</h3>
+                    <h3 className="font-medium">Location</h3>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={getCurrentLocation}
-                      disabled={isLoadingLocation}
+                      onClick={() => setShowLocationModal(true)}
                       className="flex items-center gap-2"
                     >
                       <MapPin className="h-4 w-4" />
-                      {isLoadingLocation ? "Getting Location..." : "Use Current Location"}
+                      {watchPostalCode ? watchPostalCode : "Set Location"}
                     </Button>
                   </div>
-
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Street Address</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 {/* Sharing options */}
@@ -401,6 +348,54 @@ export default function LendPage() {
             </Form>
           </CardContent>
         </Card>
+
+        {showLocationModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg w-full max-w-md">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Change location</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowLocationModal(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Search by city, neighborhood or ZIP code.
+                    </label>
+                    <Input
+                      value={form.getValues("postalCode")}
+                      onChange={(e) => form.setValue("postalCode", e.target.value)}
+                      placeholder="Enter location"
+                      className="mt-1"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={getCurrentLocation}
+                    disabled={isLoadingLocation}
+                    className="w-full"
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    {isLoadingLocation ? "Getting Location..." : "Use Current Location"}
+                  </Button>
+                </div>
+                <Button
+                  className="w-full mt-6"
+                  onClick={() => setShowLocationModal(false)}
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CheckCircle, AlertCircle, MapPin } from "lucide-react";
+import { Search, CheckCircle, AlertCircle, MapPin, X } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,12 +12,15 @@ import { useLocation } from "wouter";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
+  postalCode?: string;
 }
 
 export default function BorrowPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [radius, setRadius] = useState(10); // Default 10km radius
+  const [radius, setRadius] = useState(72); // Default 72km radius
+  const [userPostalCode, setUserPostalCode] = useState<string>("");
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
@@ -25,11 +28,25 @@ export default function BorrowPage() {
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
+          const { latitude, longitude } = position.coords;
           setUserLocation({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
+            lat: latitude,
+            lon: longitude,
           });
+
+          // Get postal code from coordinates
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            const data = await response.json();
+            if (data.address?.postcode) {
+              setUserPostalCode(data.address.postcode);
+            }
+          } catch (error) {
+            console.error("Error getting postal code:", error);
+          }
         },
         (error) => {
           console.error("Error getting location:", error);
@@ -71,6 +88,7 @@ export default function BorrowPage() {
             <h1 className="text-3xl font-bold mb-2">Available Items</h1>
             <p className="text-muted-foreground">
               Browse items available for borrowing
+              {userPostalCode && ` near ${userPostalCode}`}
             </p>
           </div>
           <div className="w-full md:w-96 space-y-2">
@@ -83,18 +101,14 @@ export default function BorrowPage() {
                 className="pl-9"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <Input
-                type="number"
-                min="1"
-                max="100"
-                value={radius}
-                onChange={(e) => setRadius(Number(e.target.value))}
-                className="w-24"
-              />
-              <span className="text-sm text-muted-foreground">km radius</span>
-            </div>
+            <Button
+              variant="outline"
+              className="w-full flex items-center gap-2"
+              onClick={() => setShowLocationModal(true)}
+            >
+              <MapPin className="h-4 w-4" />
+              {userPostalCode ? `${userPostalCode} (${radius}km radius)` : "Set Location"}
+            </Button>
           </div>
         </div>
 
@@ -163,6 +177,58 @@ export default function BorrowPage() {
             </Card>
           ))}
         </div>
+
+        {showLocationModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg w-full max-w-md">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Change location</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowLocationModal(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Search by city, neighborhood or ZIP code.
+                    </label>
+                    <Input
+                      value={userPostalCode}
+                      onChange={(e) => setUserPostalCode(e.target.value)}
+                      placeholder="Enter location"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Radius</label>
+                    <select
+                      value={radius}
+                      onChange={(e) => setRadius(Number(e.target.value))}
+                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
+                    >
+                      <option value={8}>8 kilometers</option>
+                      <option value={24}>24 kilometers</option>
+                      <option value={40}>40 kilometers</option>
+                      <option value={72}>72 kilometers</option>
+                      <option value={100}>100 kilometers</option>
+                    </select>
+                  </div>
+                </div>
+                <Button
+                  className="w-full mt-6"
+                  onClick={() => setShowLocationModal(false)}
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

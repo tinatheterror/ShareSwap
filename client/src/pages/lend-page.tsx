@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload } from "lucide-react";
+import { Upload, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const formSchema = z.object({
@@ -58,28 +58,47 @@ export default function LendPage() {
     },
   });
 
-  useEffect(() => {
-    // Get user's location when the component mounts
+  const getCurrentLocation = async () => {
     if ("geolocation" in navigator) {
       setIsLoadingLocation(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          form.setValue("latitude", position.coords.latitude);
-          form.setValue("longitude", position.coords.longitude);
-          setIsLoadingLocation(false);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          setIsLoadingLocation(false);
-          toast({
-            title: "Location Error",
-            description: "Could not get your location. Please enter address manually.",
-            variant: "destructive",
-          });
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+
+        const { latitude, longitude } = position.coords;
+        form.setValue("latitude", latitude);
+        form.setValue("longitude", longitude);
+
+        // Use reverse geocoding to get address details
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+        );
+        const data = await response.json();
+
+        if (data.address) {
+          form.setValue("address", [data.address.road, data.address.house_number].filter(Boolean).join(" "));
+          form.setValue("city", data.address.city || data.address.town || data.address.village || "");
+          form.setValue("state", data.address.state || "");
+          form.setValue("country", data.address.country || "");
         }
-      );
+
+        toast({
+          title: "Location Updated",
+          description: "Your current location has been added successfully.",
+        });
+      } catch (error) {
+        console.error("Error getting location:", error);
+        toast({
+          title: "Location Error",
+          description: "Could not get your location. Please enter address manually.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingLocation(false);
+      }
     }
-  }, []);
+  };
 
   const createItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
@@ -169,7 +188,21 @@ export default function LendPage() {
 
                 {/* Location fields */}
                 <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-medium">Location Details</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Location Details</h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={getCurrentLocation}
+                      disabled={isLoadingLocation}
+                      className="flex items-center gap-2"
+                    >
+                      <MapPin className="h-4 w-4" />
+                      {isLoadingLocation ? "Getting Location..." : "Use Current Location"}
+                    </Button>
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="address"
@@ -360,9 +393,9 @@ export default function LendPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={createItemMutation.isPending || isLoadingLocation}
+                  disabled={createItemMutation.isPending}
                 >
-                  {isLoadingLocation ? "Getting Location..." : "List Item"}
+                  List Item
                 </Button>
               </form>
             </Form>

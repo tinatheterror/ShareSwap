@@ -928,6 +928,7 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
 
+  // Update WebSocket server configuration
   const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/chat",
@@ -935,36 +936,35 @@ export function registerRoutes(app: Express): Server {
       try {
         const settings = {
           ...sessionSettings,
-          store
+          store,
         };
 
         const sessionParser = session(settings);
-
         await new Promise((resolve) => {
           sessionParser(info.req as any, {} as any, resolve);
         });
 
-        const user = (info.req as any).session?.passport?.user;
-        if (!user) {
-          console.log("WebSocket auth failed: No user in session");
+        const userId = (info.req as any).session?.passport?.user;
+        if (!userId) {
+          console.log("WebSocket auth failed: No user ID in session");
           callback(false, 401, "Unauthorized");
           return;
         }
 
-        // Fetch user details if needed
-        const [userDetails] = await db
+        const [user] = await db
           .select()
           .from(users)
-          .where(eq(users.id, user))
+          .where(eq(users.id, userId))
           .limit(1);
 
-        if (!userDetails) {
-          console.log("WebSocket auth failed: User not found in database");
-          callback(false, 401, "User not found");
+        if (!user) {
+          console.log("WebSocket auth failed: User not found", userId);
+          callback(false, 404, "User not found");
           return;
         }
 
-        (info.req as any).user = userDetails;
+        (info.req as any).user = user;
+        console.log("WebSocket auth successful for user:", userId);
         callback(true);
       } catch (error) {
         console.error("WebSocket verification error:", error);
@@ -973,15 +973,16 @@ export function registerRoutes(app: Express): Server {
     },
   });
 
+  // Improve WebSocket message handling
   wss.on("connection", (ws: WebSocket, req: any) => {
     const userId = req.user?.id;
-    log("New WebSocket connection established for user:", userId);
+    console.log("New WebSocket connection established for user:", userId);
 
     ws.on("message", async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
+        console.log("Received message from user:", userId, "data:", data);
 
-        // Store the message in the database
         const [storedMessage] = await db
           .insert(messages)
           .values({
@@ -991,30 +992,36 @@ export function registerRoutes(app: Express): Server {
           })
           .returning();
 
-        // Broadcast to all connected clients
+        const response = {
+          type: "message",
+          messageId: storedMessage.id,
+          content: data.content,
+          senderId: userId,
+          receiverId: data.receiverId,
+          timestamp: new Date().toISOString()
+        };
+
+        // Broadcast to relevant clients
         wss.clients.forEach((client) => {
           if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON```
-.stringify({
-              ...data,
-              messageId: storedMessage.id,
-              senderId: userId,
-              timestamp: new Date().toISOString()
-            }));
+            client.send(JSON.stringify(response));
           }
         });
       } catch (error) {
         console.error("Error handling message:", error);
-        ws.send(JSON.stringify({ error: "Invalid message format" }));
+        ws.send(JSON.stringify({ 
+          type: "error", 
+          message: "Failed to process message"
+        }));
       }
     });
 
     ws.on("error", (error) => {
-      console.error("WebSocket error for user", userId, ":", error);
+      console.error("WebSocket error for user:", userId, "error:", error);
     });
 
     ws.on("close", () => {
-      log("Client disconnected from chat, user:", userId);
+      console.log("WebSocket connection closed for user:", userId);
     });
   });
 

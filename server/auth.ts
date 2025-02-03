@@ -39,19 +39,21 @@ async function getUserByUsername(username: string) {
 export const sessionSettings: session.SessionOptions = {
   secret: process.env.REPL_ID!,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true,
   cookie: {
     secure: false,
     maxAge: 24 * 60 * 60 * 1000,
     sameSite: 'lax',
     httpOnly: true
-  }
+  },
+  name: 'shareswap.sid'
 };
 
 export const store = new PostgresStore({
   pool,
   createTableIfMissing: true,
-  tableName: 'session'
+  tableName: 'session',
+  pruneSessionInterval: 60
 });
 
 export function setupAuth(app: Express) {
@@ -105,6 +107,19 @@ export function setupAuth(app: Express) {
     }
   });
 
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Authentication failed" });
+      }
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.json(user);
+      });
+    })(req, res, next);
+  });
+
   app.post("/api/register", async (req, res, next) => {
     try {
       const result = insertUserSchema.safeParse(req.body);
@@ -133,19 +148,6 @@ export function setupAuth(app: Express) {
     } catch (error) {
       next(error);
     }
-  });
-
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return next(err);
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
-      }
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.json(user);
-      });
-    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {

@@ -35,6 +35,7 @@ interface DeliveryArrangement {
 export default function DeliveryArrangementsPage() {
   const { toast } = useToast();
   const [qrCodes, setQrCodes] = useState<Record<number, string>>({});
+  const [loadingQR, setLoadingQR] = useState<Record<number, boolean>>({});
 
   const { data: arrangements, isLoading } = useQuery<DeliveryArrangement[]>({
     queryKey: ['/api/delivery-arrangements'],
@@ -42,6 +43,7 @@ export default function DeliveryArrangementsPage() {
 
   const generateQRCode = async (arrangement: DeliveryArrangement) => {
     try {
+      setLoadingQR(prev => ({ ...prev, [arrangement.id]: true }));
       const qrData = JSON.stringify({
         arrangementId: arrangement.id,
         itemName: arrangement.request.item.name,
@@ -54,11 +56,22 @@ export default function DeliveryArrangementsPage() {
         ...prev,
         [arrangement.id]: qrDataUrl
       }));
+
+      toast({
+        title: "QR Code Generated",
+        description: "Show this QR code to verify the delivery.",
+      });
     } catch (err) {
       toast({
         title: "Error",
         description: "Failed to generate QR code",
         variant: "destructive",
+      });
+    } finally {
+      setLoadingQR(prev => {
+        const newLoading = { ...prev };
+        delete newLoading[arrangement.id];
+        return newLoading;
       });
     }
   };
@@ -148,8 +161,11 @@ export default function DeliveryArrangementsPage() {
                         variant="outline"
                         size="icon"
                         onClick={() => qrCodes[arr.id] ? hideQRCode(arr.id) : generateQRCode(arr)}
+                        disabled={loadingQR[arr.id]}
                       >
-                        {qrCodes[arr.id] ? (
+                        {loadingQR[arr.id] ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : qrCodes[arr.id] ? (
                           <X className="h-4 w-4" />
                         ) : (
                           <QrCode className="h-4 w-4" />
@@ -157,13 +173,13 @@ export default function DeliveryArrangementsPage() {
                       </Button>
                     </div>
                     {qrCodes[arr.id] && (
-                      <div className="mt-4 flex flex-col items-center">
+                      <div className="mt-4 flex flex-col items-center space-y-4">
                         <img
                           src={qrCodes[arr.id]}
                           alt="QR Code"
                           className="w-32 h-32"
                         />
-                        <p className="text-sm text-muted-foreground mt-2">
+                        <p className="text-sm text-muted-foreground">
                           Show this QR code during delivery
                         </p>
                       </div>

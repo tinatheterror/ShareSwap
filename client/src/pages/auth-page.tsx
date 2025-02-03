@@ -39,6 +39,13 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="flex flex-col items-center justify-center p-8">
+          <div className="w-full max-w-md mb-8">
+            <img 
+              src="/attached_assets/Artboard 1 copy 6.png"
+              alt="SwapShare Logo"
+              className="w-full h-auto"
+            />
+          </div>
           <Card className="w-full max-w-md border-primary/20">
           <CardContent className="pt-6">
             <Tabs defaultValue="login">

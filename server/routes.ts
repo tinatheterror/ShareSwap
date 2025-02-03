@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./auth";
+import { setupAuth, sessionSettings, store, authenticationMiddleware } from "./auth";
 import { db, pool } from "@db";
 import { verifications, messages, items, users, shareCoinsTransactions } from "@db/schema";
 import { eq, and, or, desc, sql } from "drizzle-orm";
@@ -15,7 +15,6 @@ import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
 import session from "express-session";
-import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
 import connectPgSimple from "connect-pg-simple";
 
@@ -42,7 +41,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 export function registerRoutes(app: Express): Server {
-  setupAuth(app);
+  const sessionMiddleware = setupAuth(app);
+  const httpServer = createServer(app);
 
   // Serve uploaded files
   app.use('/uploads', express.static('uploads'));
@@ -926,31 +926,28 @@ export function registerRoutes(app: Express): Server {
     res.json(arrangements);
   });
 
-  const httpServer = createServer(app);
 
-  // Update WebSocket server configuration
+  // WebSocket server configuration
   const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/chat",
     verifyClient: async (info, callback) => {
       try {
-        const settings = {
-          ...sessionSettings,
-          store,
-        };
-
-        const sessionParser = session(settings);
+        // Parse session from the upgrade request
         await new Promise((resolve) => {
-          sessionParser(info.req as any, {} as any, resolve);
+          sessionMiddleware(info.req as any, {} as any, () => {
+            resolve(true);
+          });
         });
 
-        const userId = (info.req as any).session?.passport?.user;
-        if (!userId) {
+        const session = (info.req as any).session;
+        if (!session?.passport?.user) {
           console.log("WebSocket auth failed: No user ID in session");
           callback(false, 401, "Unauthorized");
           return;
         }
 
+        const userId = session.passport.user;
         const [user] = await db
           .select()
           .from(users)
@@ -970,7 +967,7 @@ export function registerRoutes(app: Express): Server {
         console.error("WebSocket verification error:", error);
         callback(false, 500, "Internal Server Error");
       }
-    },
+    }
   });
 
   // Improve WebSocket message handling
@@ -978,52 +975,63 @@ export function registerRoutes(app: Express): Server {
     const userId = req.user?.id;
     console.log("New WebSocket connection established for user:", userId);
 
+    // Send authentication success message
+    ws.send(JSON.stringify({
+      type: 'auth_success',
+      payload: { userId }
+    }));
+
+    // Store user ID on WebSocket instance for routing
+    (ws as any)._userId = userId;
+
     ws.on("message", async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
         console.log("Received message from user:", userId, "data:", data);
 
-        const [storedMessage] = await db
-          .insert(messages)
-          .values({
-            content: data.content,
-            senderId: userId,
-            receiverId: data.receiverId,
-          })
-          .returning();
-
-        const response = {
-          type: "message",
-          messageId: storedMessage.id,
-          content: data.content,
-          senderId: userId,
-          receiverId: data.receiverId,
-          timestamp: new Date().toISOString()
-        };
-
-        // Broadcast to relevant clients
-        wss.clients.forEach((client) => {
-          if (client !== ws && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(response));
+        if (data.type === 'new_message') {
+          const { senderId, receiverId, content } = data.payload;
+          if (senderId !== userId) {
+            console.error("Message sender ID mismatch:", { userId, senderId });
+            return;
           }
-        });
+
+          const [storedMessage] = await db
+            .insert(messages)
+            .values({
+              content,
+              senderId: userId,
+              receiverId,
+            })
+            .returning();
+
+          // Broadcast message to connected clients
+          wss.clients.forEach((client: any) => {
+            if (client.readyState === WebSocket.OPEN && 
+                (client._userId === receiverId || client._userId === userId)) {
+              client.send(JSON.stringify({
+                type: 'new_message',
+                payload: storedMessage
+              }));
+            }
+          });
+        }
       } catch (error) {
-        console.error("Error handling message:", error);
-        ws.send(JSON.stringify({ 
-          type: "error", 
-          message: "Failed to process message"
+        console.error("Error processing WebSocket message:", error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          payload: { message: 'Failed to process message' }
         }));
       }
-    });
-
-    ws.on("error", (error) => {
-      console.error("WebSocket error for user:", userId, "error:", error);
     });
 
     ws.on("close", () => {
       console.log("WebSocket connection closed for user:", userId);
     });
-  });
 
+    ws.on("error", (error) => {
+      console.error("WebSocket error for user:", userId, error);
+    });
+  });
   return httpServer;
 }

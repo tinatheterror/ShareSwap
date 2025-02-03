@@ -41,8 +41,8 @@ export const sessionSettings: session.SessionOptions = {
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: false,
+    maxAge: 24 * 60 * 60 * 1000,
     sameSite: 'lax',
     httpOnly: true
   },
@@ -53,7 +53,7 @@ export const store = new PostgresStore({
   pool,
   createTableIfMissing: true,
   tableName: 'session',
-  pruneSessionInterval: 60 // Clean up expired sessions every minute
+  pruneSessionInterval: 60
 });
 
 export function setupAuth(app: Express) {
@@ -81,7 +81,6 @@ export function setupAuth(app: Express) {
   );
 
   passport.serializeUser((user, done) => {
-    if (!user) return done(new Error("No user to serialize"));
     done(null, user.id);
   });
 

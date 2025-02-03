@@ -1,46 +1,34 @@
-type WebSocketListener = (data: any) => void;
-
-interface WebSocketOptions {
+interface WebSocketConfig {
   url: string;
-  initialRetryDelayMs?: number;
-  maxRetryDelayMs?: number;
+  initialDelay?: number;
+  maxDelay?: number;
   maxRetries?: number;
+  onMessage?: (data: any) => void;
+  onClose?: () => void;
+  onOpen?: () => void;
+  onError?: (error: Event) => void;
 }
 
 export class WebSocketService {
   private ws: WebSocket | null = null;
-  private readonly url: string;
+  private readonly config: WebSocketConfig;
   private retryCount = 0;
-  private readonly initialRetryDelay: number;
-  private readonly maxRetryDelay: number;
-  private readonly maxRetries: number;
   private retryTimeout: number | null = null;
-  private isIntentionallyClosed = false;
-  private listeners: {
-    connected: Array<() => void>;
-    disconnected: Array<() => void>;
-    message: Array<WebSocketListener>;
-    error: Array<(error: any) => void>;
-  };
+  private shouldReconnect = true;
 
-  constructor(options: WebSocketOptions) {
-    this.url = options.url;
-    this.initialRetryDelay = options.initialRetryDelayMs || 1000;
-    this.maxRetryDelay = options.maxRetryDelayMs || 30000;
-    this.maxRetries = options.maxRetries || Infinity;
-    this.listeners = {
-      connected: [],
-      disconnected: [],
-      message: [],
-      error: [],
+  constructor(config: WebSocketConfig) {
+    this.config = {
+      initialDelay: 1000,
+      maxDelay: 30000,
+      maxRetries: Infinity,
+      ...config,
     };
   }
 
-  private calculateRetryDelay(): number {
-    // Exponential backoff: delay = min(initialDelay * 2^retryCount, maxDelay)
+  private getRetryDelay(): number {
     const delay = Math.min(
-      this.initialRetryDelay * Math.pow(2, this.retryCount),
-      this.maxRetryDelay
+      this.config.initialDelay! * Math.pow(2, this.retryCount),
+      this.config.maxDelay!
     );
     return delay;
   }
@@ -48,31 +36,32 @@ export class WebSocketService {
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
-    this.isIntentionallyClosed = false;
-    this.ws = new WebSocket(this.url);
+    this.ws = new WebSocket(this.config.url);
+    this.shouldReconnect = true;
 
     this.ws.addEventListener('open', () => {
-      console.log('WebSocket connected successfully');
+      console.log('WebSocket connected');
       this.retryCount = 0;
-      this.listeners.connected.forEach(listener => listener());
+      this.config.onOpen?.();
     });
 
     this.ws.addEventListener('message', (event) => {
       try {
         const data = JSON.parse(event.data);
-        this.listeners.message.forEach(listener => listener(data));
+        this.config.onMessage?.(data);
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-        this.listeners.error.forEach(listener => listener(error));
+        console.error('Failed to parse WebSocket message:', error);
       }
     });
 
     this.ws.addEventListener('close', () => {
-      console.log('WebSocket connection closed. Attempting to reconnect...');
-      this.listeners.disconnected.forEach(listener => listener());
+      this.ws = null;
+      this.config.onClose?.();
 
-      if (!this.isIntentionallyClosed && this.retryCount < this.maxRetries) {
-        const delay = this.calculateRetryDelay();
+      if (this.shouldReconnect && this.retryCount < this.config.maxRetries!) {
+        const delay = this.getRetryDelay();
+        console.log(`WebSocket reconnecting in ${delay}ms (attempt ${this.retryCount + 1})`);
+
         this.retryTimeout = window.setTimeout(() => {
           this.retryCount++;
           this.connect();
@@ -82,14 +71,14 @@ export class WebSocketService {
 
     this.ws.addEventListener('error', (error) => {
       console.error('WebSocket error:', error);
-      this.listeners.error.forEach(listener => listener(error));
+      this.config.onError?.(error);
     });
   }
 
   disconnect(): void {
-    this.isIntentionallyClosed = true;
-    if (this.retryTimeout !== null) {
-      clearTimeout(this.retryTimeout);
+    this.shouldReconnect = false;
+    if (this.retryTimeout) {
+      window.clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
     }
     if (this.ws) {
@@ -107,27 +96,5 @@ export class WebSocketService {
 
   isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
-  }
-
-  on(event: 'connected' | 'disconnected', listener: () => void): void;
-  on(event: 'message', listener: WebSocketListener): void;
-  on(event: 'error', listener: (error: any) => void): void;
-  on(event: string, listener: any): void {
-    if (event in this.listeners) {
-      this.listeners[event as keyof typeof this.listeners].push(listener);
-    }
-  }
-
-  off(event: 'connected' | 'disconnected', listener: () => void): void;
-  off(event: 'message', listener: WebSocketListener): void;
-  off(event: 'error', listener: (error: any) => void): void;
-  off(event: string, listener: any): void {
-    if (event in this.listeners) {
-      const listeners = this.listeners[event as keyof typeof this.listeners];
-      const index = listeners.indexOf(listener);
-      if (index !== -1) {
-        listeners.splice(index, 1);
-      }
-    }
   }
 }

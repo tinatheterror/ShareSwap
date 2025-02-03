@@ -26,9 +26,9 @@ export default function ChatPage() {
   const { toast } = useToast();
   const [receiverId, setReceiverId] = useState<number | null>(null);
 
-  // Determine WebSocket protocol based on page protocol
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
+  // Only set up WebSocket after authentication is confirmed
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = user ? `${wsProtocol}//${window.location.host}/ws/chat?userId=${user.id}` : '';
 
   const { isConnected, send } = useWebSocket({
     url: wsUrl,
@@ -52,6 +52,8 @@ export default function ChatPage() {
         variant: "destructive",
       });
     },
+    // Only attempt connection if user is authenticated
+    autoConnect: !!user,
     // Configure reconnection parameters
     initialRetryDelayMs: 1000,
     maxRetryDelayMs: 30000,
@@ -60,27 +62,28 @@ export default function ChatPage() {
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ['/api/messages', receiverId],
-    enabled: !!receiverId,
+    enabled: !!receiverId && !!user,
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      if (!receiverId) throw new Error("No recipient selected");
+      if (!receiverId || !user) throw new Error("No recipient selected or not authenticated");
       await apiRequest("POST", "/api/messages", {
         receiverId,
         content,
       });
-      try {
-        if (isConnected) {
+      if (isConnected) {
+        try {
           send({
-            senderId: user?.id,
+            type: 'new_message',
+            senderId: user.id,
             receiverId,
             content,
           });
+        } catch (error) {
+          console.error("Error sending WebSocket message:", error);
+          // Continue with HTTP message sending even if WebSocket fails
         }
-      } catch (error) {
-        console.error("Error sending WebSocket message:", error);
-        // Still allow the message to be sent via HTTP even if WebSocket fails
       }
     },
     onSuccess: () => {
@@ -95,6 +98,22 @@ export default function ChatPage() {
       });
     },
   });
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Please log in to access the chat functionality.
+            </AlertDescription>
+          </Alert>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,12 +135,12 @@ export default function ChatPage() {
                   <div
                     key={msg.id}
                     className={`mb-4 flex ${
-                      msg.senderId === user?.id ? "justify-end" : "justify-start"
+                      msg.senderId === user.id ? "justify-end" : "justify-start"
                     }`}
                   >
                     <div
                       className={`rounded-lg px-4 py-2 max-w-[70%] ${
-                        msg.senderId === user?.id
+                        msg.senderId === user.id
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted"
                       }`}

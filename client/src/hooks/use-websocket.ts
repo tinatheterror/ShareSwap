@@ -6,7 +6,7 @@ interface UseWebSocketOptions {
   onMessage?: (data: any) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
-  onError?: (error: Error) => void;
+  onError?: (error: Event) => void;
   autoConnect?: boolean;
   initialRetryDelayMs?: number;
   maxRetryDelayMs?: number;
@@ -20,9 +20,9 @@ export function useWebSocket({
   onDisconnect,
   onError,
   autoConnect = true,
-  initialRetryDelayMs,
-  maxRetryDelayMs,
-  maxRetries,
+  initialRetryDelayMs = 1000,
+  maxRetryDelayMs = 30000,
+  maxRetries = Infinity,
 }: UseWebSocketOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocketService | null>(null);
@@ -30,37 +30,27 @@ export function useWebSocket({
   useEffect(() => {
     wsRef.current = new WebSocketService({
       url,
-      initialRetryDelayMs,
-      maxRetryDelayMs,
+      initialDelay: initialRetryDelayMs,
+      maxDelay: maxRetryDelayMs,
       maxRetries,
-    });
-
-    const ws = wsRef.current;
-
-    ws.on('connected', () => {
-      setIsConnected(true);
-      onConnect?.();
-    });
-
-    ws.on('disconnected', () => {
-      setIsConnected(false);
-      onDisconnect?.();
-    });
-
-    ws.on('message', (data) => {
-      onMessage?.(data);
-    });
-
-    ws.on('error', (error) => {
-      onError?.(error);
+      onMessage,
+      onOpen: () => {
+        setIsConnected(true);
+        onConnect?.();
+      },
+      onClose: () => {
+        setIsConnected(false);
+        onDisconnect?.();
+      },
+      onError,
     });
 
     if (autoConnect) {
-      ws.connect();
+      wsRef.current.connect();
     }
 
     return () => {
-      ws.disconnect();
+      wsRef.current?.disconnect();
     };
   }, [url]);
 

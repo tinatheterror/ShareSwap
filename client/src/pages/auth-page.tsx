@@ -41,7 +41,7 @@ export default function AuthPage() {
       <div className="flex flex-col items-center justify-center p-8">
           <div className="w-full max-w-md mb-8">
             <img 
-              src="/attached_assets/Artboard 1 copy 6.png"
+              src="/logo.png"
               alt="SwapShare Logo"
               className="w-full h-auto"
             />

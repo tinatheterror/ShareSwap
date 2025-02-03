@@ -133,14 +133,12 @@ export function registerRoutes(app: Express): Server {
     const [item] = await db
       .insert(items)
       .values({
-        ownerId: req.user.id,
         name: req.body.name,
         description: req.body.description,
-        conditionRating: parseInt(req.body.conditionRating),
+        conditionRating: parseInt(req.body.conditionRating) || 0,
         photos: photoUrls,
-        // Add location data
-        latitude: latitude,
-        longitude: longitude,
+        latitude: latitude || null,
+        longitude: longitude || null,
         address: req.body.address,
         city: req.body.city,
         state: req.body.state,
@@ -148,11 +146,12 @@ export function registerRoutes(app: Express): Server {
         isLendable: isLendable,
         isSwappable: isSwappable,
         isRentable: isRentable,
-        securityDeposit: req.body.securityDeposit || null,
-        lendingDuration: req.body.lendingDuration || null,
+        securityDeposit: req.body.securityDeposit || "0",
+        lendingDuration: parseInt(req.body.lendingDuration) || 0,
         shareCoinsReward: shareCoinsReward.toString(),
         isAvailable: true,
-        isConditionVerified: false
+        isConditionVerified: false,
+        ownerId: req.user.id
       })
       .returning();
 
@@ -1042,44 +1041,50 @@ app.get("/api/recommendations", async (req, res) => {
 });
 // Add this endpoint after the existing routes
 app.get("/api/delivery-arrangements", async (req, res) => {
-  if (!req.isAuthenticated()) {
-    return res.sendStatus(401);
-  }
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
 
-  const arrangements = await db
-    .select({
-      id: deliveryArrangements.id,
-      requestId: deliveryArrangements.requestId,
-      deliveryType: deliveryArrangements.deliveryType,
-      deliveryFee: deliveryArrangements.deliveryFee,
-      deliveryAddress: deliveryArrangements.deliveryAddress,
-      deliveryDate: deliveryArrangements.deliveryDate,
-      securityDeposit: deliveryArrangements.securityDeposit,
-      depositPaid: deliveryArrangements.depositPaid,
-      status: deliveryArrangements.status,
-      createdAt: deliveryArrangements.createdAt,
-      request: {
-        id: itemRequests.id,
-        item: {
-          id: items.id,
-          name: items.name,
-          photos: items.photos,
-        },
-      },
-    })
-    .from(deliveryArrangements)
-    .innerJoin(itemRequests, eq(itemRequests.id, deliveryArrangements.requestId))
-    .innerJoin(items, eq(items.id, itemRequests.itemId))
-    .where(
-      or(
-        eq(items.ownerId, req.user.id),
-        eq(itemRequests.requesterId, req.user.id)
+    const arrangements = await db
+      .select({
+        id: deliveryArrangements.id,
+        requestId: deliveryArrangements.requestId,
+        deliveryType: deliveryArrangements.deliveryType,
+        deliveryFee: deliveryArrangements.deliveryFee,
+        deliveryAddress: deliveryArrangements.deliveryAddress,
+        deliveryDate: deliveryArrangements.deliveryDate,
+        securityDeposit: deliveryArrangements.securityDeposit,
+        depositPaid: deliveryArrangements.depositPaid,
+        status: deliveryArrangements.status,
+        createdAt: deliveryArrangements.createdAt,
+        request: {
+          id: itemRequests.id,
+          item: {
+            id: items.id,
+            name: items.name,
+            photos: items.photos,
+          }
+        }
+      })
+      .from(deliveryArrangements)
+      .innerJoin(
+        itemRequests, 
+        eq(itemRequests.id, deliveryArrangements.requestId)
       )
-    )
-    .orderBy(deliveryArrangements.deliveryDate);
+      .innerJoin(
+        items,
+        eq(items.id, itemRequests.itemId)
+      )
+      .where(
+        or(
+          eq(items.ownerId, req.user.id),
+          eq(itemRequests.requesterId, req.user.id)
+        )
+      )
+      .orderBy(desc(deliveryArrangements.deliveryDate));
 
-  res.json(arrangements);
-});
+    res.json(arrangements);
+  });
 
   const httpServer = createServer(app);
 

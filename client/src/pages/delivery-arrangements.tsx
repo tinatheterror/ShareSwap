@@ -8,7 +8,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import QRCode from 'qrcode';
 import { useState } from 'react';
-import { Loader2, Truck, QrCode, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Truck, QrCode, Calendar as CalendarIcon, X } from 'lucide-react';
 import type { EventClickArg } from '@fullcalendar/core';
 
 interface DeliveryArrangement {
@@ -34,7 +34,7 @@ interface DeliveryArrangement {
 
 export default function DeliveryArrangementsPage() {
   const { toast } = useToast();
-  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrCodes, setQrCodes] = useState<Record<number, string>>({});
 
   const { data: arrangements, isLoading } = useQuery<DeliveryArrangement[]>({
     queryKey: ['/api/delivery-arrangements'],
@@ -50,7 +50,10 @@ export default function DeliveryArrangementsPage() {
       });
 
       const qrDataUrl = await QRCode.toDataURL(qrData);
-      setQrCode(qrDataUrl);
+      setQrCodes(prev => ({
+        ...prev,
+        [arrangement.id]: qrDataUrl
+      }));
     } catch (err) {
       toast({
         title: "Error",
@@ -58,6 +61,14 @@ export default function DeliveryArrangementsPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const hideQRCode = (arrangementId: number) => {
+    setQrCodes(prev => {
+      const newCodes = { ...prev };
+      delete newCodes[arrangementId];
+      return newCodes;
+    });
   };
 
   const calendarEvents = arrangements?.map(arr => ({
@@ -136,18 +147,25 @@ export default function DeliveryArrangementsPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => generateQRCode(arr)}
+                        onClick={() => qrCodes[arr.id] ? hideQRCode(arr.id) : generateQRCode(arr)}
                       >
-                        <QrCode className="h-4 w-4" />
+                        {qrCodes[arr.id] ? (
+                          <X className="h-4 w-4" />
+                        ) : (
+                          <QrCode className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
-                    {qrCode && (
-                      <div className="mt-4 flex justify-center">
+                    {qrCodes[arr.id] && (
+                      <div className="mt-4 flex flex-col items-center">
                         <img
-                          src={qrCode}
+                          src={qrCodes[arr.id]}
                           alt="QR Code"
                           className="w-32 h-32"
                         />
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Show this QR code during delivery
+                        </p>
                       </div>
                     )}
                   </div>

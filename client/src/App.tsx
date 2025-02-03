@@ -18,7 +18,6 @@ import { ProtectedRoute } from "./lib/protected-route";
 import ChallengesPage from "@/pages/challenges-page";
 import RequestsPage from "@/pages/requests-page";
 import ItemDetailsPage from "@/pages/item-details-page";
-import RecommendationsPage from "@/pages/recommendations-page";
 import DeliveryArrangementsPage from "@/pages/delivery-arrangements";
 
 function Router() {
@@ -37,7 +36,6 @@ function Router() {
       <ProtectedRoute path="/challenges" component={ChallengesPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />
       <ProtectedRoute path="/items/:id" component={ItemDetailsPage} />
-      <ProtectedRoute path="/recommendations" component={RecommendationsPage} />
       <ProtectedRoute path="/delivery" component={DeliveryArrangementsPage} />
       <Route component={NotFound} />
     </Switch>

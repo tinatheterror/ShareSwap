@@ -1,6 +1,6 @@
 import { MarketplaceCard } from "@/components/shared/marketplace-card";
 import { Navbar } from "@/components/shared/navbar";
-import { HandshakeIcon, Banknote, ArrowLeftRight, Sparkles } from "lucide-react";
+import { HandshakeIcon, Banknote, ArrowLeftRight } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function HomePage() {
@@ -19,7 +19,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
           <MarketplaceCard
             title="Lend & Borrow"
             description="Share items with trusted community members"
@@ -37,12 +37,6 @@ export default function HomePage() {
             description="Exchange items with other verified users"
             icon={<ArrowLeftRight className="w-8 h-8 text-primary" />}
             onClick={() => navigate("/verify")}
-          />
-          <MarketplaceCard
-            title="Recommendations"
-            description="Discover items tailored for you"
-            icon={<Sparkles className="w-8 h-8 text-primary" />}
-            onClick={() => navigate("/recommendations")}
           />
         </div>
       </main>

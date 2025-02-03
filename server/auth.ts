@@ -41,8 +41,8 @@ export const sessionSettings: session.SessionOptions = {
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
-    maxAge: 24 * 60 * 60 * 1000,
+    secure: false, // Set to true in production with HTTPS
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
     sameSite: 'lax',
     httpOnly: true
   },
@@ -53,13 +53,13 @@ export const store = new PostgresStore({
   pool,
   createTableIfMissing: true,
   tableName: 'session',
-  pruneSessionInterval: 60
+  pruneSessionInterval: 60 // Clean up expired sessions every minute
 });
 
 export function setupAuth(app: Express) {
   app.use(session({
     ...sessionSettings,
-    store,
+    store
   }));
 
   app.use(passport.initialize());

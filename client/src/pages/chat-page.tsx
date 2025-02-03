@@ -7,9 +7,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Send, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 type Message = {
   id: number;
@@ -23,51 +24,39 @@ export default function ChatPage() {
   const { user } = useAuth();
   const [message, setMessage] = useState("");
   const { toast } = useToast();
-  const wsRef = useRef<WebSocket | null>(null);
   const [receiverId, setReceiverId] = useState<number | null>(null);
-  const [wsError, setWsError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const connectWebSocket = () => {
-      try {
-        // Determine WebSocket protocol based on page protocol
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
-        wsRef.current = ws;
+  // Determine WebSocket protocol based on page protocol
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
 
-        ws.onopen = () => {
-          setWsError(null);
-          console.log("WebSocket connection established");
-        };
-
-        ws.onmessage = (event) => {
-          const message = JSON.parse(event.data);
-          if (message.receiverId === user?.id || message.senderId === user?.id) {
-            queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error("WebSocket error:", error);
-          setWsError("Unable to connect to chat. Please try refreshing the page.");
-        };
-
-        ws.onclose = () => {
-          console.log("WebSocket connection closed. Attempting to reconnect...");
-          setTimeout(connectWebSocket, 3000);
-        };
-
-        return () => {
-          ws.close();
-        };
-      } catch (error) {
-        console.error("Error setting up WebSocket:", error);
-        setWsError("Chat connection failed. Please try again later.");
+  const { isConnected, send } = useWebSocket({
+    url: wsUrl,
+    onMessage: (data) => {
+      const message = JSON.parse(data);
+      if (message.receiverId === user?.id || message.senderId === user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
       }
-    };
-
-    connectWebSocket();
-  }, [user?.id, receiverId]);
+    },
+    onConnect: () => {
+      console.log("WebSocket connection established");
+    },
+    onDisconnect: () => {
+      console.log("WebSocket disconnected. Attempting to reconnect...");
+    },
+    onError: (error) => {
+      console.error("WebSocket error:", error);
+      toast({
+        title: "Connection Error",
+        description: "Chat connection interrupted. Attempting to reconnect...",
+        variant: "destructive",
+      });
+    },
+    // Configure reconnection parameters
+    initialRetryDelayMs: 1000,
+    maxRetryDelayMs: 30000,
+    maxRetries: Infinity,
+  });
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ['/api/messages', receiverId],
@@ -82,14 +71,12 @@ export default function ChatPage() {
         content,
       });
       try {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current?.send(
-            JSON.stringify({
-              senderId: user?.id,
-              receiverId,
-              content,
-            })
-          );
+        if (isConnected) {
+          send({
+            senderId: user?.id,
+            receiverId,
+            content,
+          });
         }
       } catch (error) {
         console.error("Error sending WebSocket message:", error);
@@ -113,10 +100,12 @@ export default function ChatPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {wsError && (
+        {!isConnected && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{wsError}</AlertDescription>
+            <AlertDescription>
+              Chat connection lost. Attempting to reconnect...
+            </AlertDescription>
           </Alert>
         )}
         <Card>

@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Upload } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -21,27 +21,22 @@ const formSchema = z.object({
   isLendable: z.boolean().default(false),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
-  // Lending fields
-  lendingDuration: z.coerce
-    .number()
-    .min(1, "Minimum lending duration is 1 day")
-    .optional()
-    .nullable(),
-  securityDeposit: z.coerce
-    .number()
-    .min(0, "Security deposit must be positive")
-    .optional()
-    .nullable(),
-  conditionRating: z.coerce
-    .number()
-    .min(1)
-    .max(10, "Rating must be between 1 and 10"),
+  lendingDuration: z.coerce.number().min(1, "Minimum lending duration is 1 day").optional(),
+  securityDeposit: z.coerce.number().min(0, "Security deposit must be positive").optional(),
+  conditionRating: z.coerce.number().min(1).max(10, "Rating must be between 1 and 10"),
+  address: z.string().min(1, "Address is required"),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  country: z.string().min(1, "Country is required"),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export default function LendPage() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -51,11 +46,40 @@ export default function LendPage() {
       isLendable: false,
       isSwappable: false,
       isRentable: false,
-      lendingDuration: null,
-      securityDeposit: null,
+      lendingDuration: undefined,
+      securityDeposit: undefined,
       conditionRating: 10,
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      latitude: undefined,
+      longitude: undefined,
     },
   });
+
+  useEffect(() => {
+    // Get user's location when the component mounts
+    if ("geolocation" in navigator) {
+      setIsLoadingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          form.setValue("latitude", position.coords.latitude);
+          form.setValue("longitude", position.coords.longitude);
+          setIsLoadingLocation(false);
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          setIsLoadingLocation(false);
+          toast({
+            title: "Location Error",
+            description: "Could not get your location. Please enter address manually.",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  }, []);
 
   const createItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
@@ -64,7 +88,7 @@ export default function LendPage() {
         formData.append("photos", photo);
       });
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== null) {
+        if (value !== null && value !== undefined) {
           formData.append(key, String(value));
         }
       });
@@ -114,6 +138,7 @@ export default function LendPage() {
                 onSubmit={form.handleSubmit((data) => createItemMutation.mutate(data))}
                 className="space-y-6"
               >
+                {/* Basic item details */}
                 <FormField
                   control={form.control}
                   name="name"
@@ -142,6 +167,69 @@ export default function LendPage() {
                   )}
                 />
 
+                {/* Location fields */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-medium">Location Details</h3>
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Street Address</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Sharing options */}
                 <div className="space-y-4">
                   <FormLabel>Sharing Options</FormLabel>
                   <div className="space-y-4">
@@ -205,7 +293,7 @@ export default function LendPage() {
                         <FormItem>
                           <FormLabel>Lending Duration (days)</FormLabel>
                           <FormControl>
-                            <Input type="number" min="1" {...field} />
+                            <Input type="number" min="1" {...field} value={field.value || ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -219,7 +307,7 @@ export default function LendPage() {
                         <FormItem>
                           <FormLabel>Security Deposit ($)</FormLabel>
                           <FormControl>
-                            <Input type="number" min="0" step="0.01" {...field} />
+                            <Input type="number" min="0" step="0.01" {...field} value={field.value || ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -272,9 +360,9 @@ export default function LendPage() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={createItemMutation.isPending}
+                  disabled={createItemMutation.isPending || isLoadingLocation}
                 >
-                  List Item
+                  {isLoadingLocation ? "Getting Location..." : "List Item"}
                 </Button>
               </form>
             </Form>

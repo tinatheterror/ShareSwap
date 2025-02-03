@@ -162,6 +162,16 @@ export const deliveryArrangements = pgTable("delivery_arrangements", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const itemRecommendations = pgTable("item_recommendations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  itemId: integer("item_id").references(() => items.id),
+  score: decimal("score", { precision: 5, scale: 2 }).notNull(),
+  reason: text("reason").notNull(),
+  isViewed: boolean("is_viewed").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const userRelations = relations(users, ({ many }) => ({
   verifications: many(verifications),
   sentMessages: many(messages, { relationName: "sender" }),
@@ -173,6 +183,7 @@ export const userRelations = relations(users, ({ many }) => ({
   reputationActivities: many(reputationActivities),
   receivedReviews: many(userReviews, { relationName: "reviewedUser" }),
   givenReviews: many(userReviews, { relationName: "reviewer" }),
+  recommendations: many(itemRecommendations),
 }));
 
 export const verificationRelations = relations(verifications, ({ one }) => ({
@@ -298,6 +309,16 @@ export const userReviewRelations = relations(userReviews, ({ one }) => ({
   }),
 }));
 
+export const itemRecommendationRelations = relations(itemRecommendations, ({ one }) => ({
+  user: one(users, {
+    fields: [itemRecommendations.userId],
+    references: [users.id],
+  }),
+  item: one(items, {
+    fields: [itemRecommendations.itemId],
+    references: [items.id],
+  }),
+}));
 
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -368,3 +389,8 @@ export const insertUserReviewSchema = createInsertSchema(userReviews);
 export const selectUserReviewSchema = createSelectSchema(userReviews);
 export type InsertUserReview = typeof userReviews.$inferInsert;
 export type SelectUserReview = typeof userReviews.$inferSelect;
+
+export const insertItemRecommendationSchema = createInsertSchema(itemRecommendations);
+export const selectItemRecommendationSchema = createSelectSchema(itemRecommendations);
+export type InsertItemRecommendation = typeof itemRecommendations.$inferInsert;
+export type SelectItemRecommendation = typeof itemRecommendations.$inferSelect;

@@ -932,6 +932,7 @@ export function registerRoutes(app: Express): Server {
     path: "/ws/chat",
     verifyClient: async (info, callback) => {
       try {
+        console.log("WebSocket connection attempt - Headers:", info.req.headers);
         // Parse session from the upgrade request
         await new Promise((resolve) => {
           sessionMiddleware(info.req as any, {} as any, () => {
@@ -940,14 +941,21 @@ export function registerRoutes(app: Express): Server {
         });
 
         // Verify authentication
-        if (!(info.req as any).session?.passport?.user) {
-          console.log("WebSocket auth failed: No user ID in session");
+        const session = (info.req as any).session;
+        console.log("WebSocket auth - Session:", {
+          id: session?.id,
+          hasPassport: !!session?.passport,
+          userId: session?.passport?.user
+        });
+
+        if (!session?.passport?.user) {
+          console.log("WebSocket auth failed: No session or user");
           callback(false, 401, "Unauthorized");
           return;
         }
 
         // Get user details
-        const userId = (info.req as any).session.passport.user;
+        const userId = session.passport.user;
         const [user] = await db
           .select()
           .from(users)
@@ -984,6 +992,7 @@ export function registerRoutes(app: Express): Server {
     // Store user ID on WebSocket instance for routing
     (ws as any)._userId = userId;
 
+    // Handle WebSocket messages
     ws.on("message", async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
@@ -1006,18 +1015,22 @@ export function registerRoutes(app: Express): Server {
             })
             .returning();
 
-          // Send to receiver if online
+          // Broadcast to connected clients
           wss.clients.forEach((client: WebSocket) => {
             if ((client as any)._userId === receiverId && client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({
                 type: 'new_message',
-                payload: storedMessage
+                payload: storedMessage,
               }));
             }
           });
         }
       } catch (error) {
         console.error("Failed to process WebSocket message:", error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          payload: { message: 'Failed to process message' }
+        }));
       }
     });
 

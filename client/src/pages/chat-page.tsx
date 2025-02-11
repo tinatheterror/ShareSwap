@@ -29,10 +29,12 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messageQueueRef = useRef<any[]>([]);
 
+  // Redirect if not authenticated
   if (!user) {
     return <Redirect to="/auth" />;
   }
 
+  // Setup WebSocket connection
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat`;
 
@@ -43,12 +45,13 @@ export default function ChatPage() {
         const message = JSON.parse(data);
         if (message.type === 'auth_success') {
           console.log('WebSocket authenticated');
-          // Send any queued messages
+          // Send any queued messages after authentication
           while (messageQueueRef.current.length > 0) {
             const queuedMsg = messageQueueRef.current.shift();
             send(queuedMsg);
           }
         } else if (message.type === 'new_message') {
+          // Invalidate and refetch messages when new message arrives
           queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
         }
       } catch (error) {
@@ -56,21 +59,26 @@ export default function ChatPage() {
       }
     },
     onConnect: () => {
-      console.log("WebSocket connection established");
-      // Send authentication message
+      console.log("WebSocket connected, sending authentication");
+      // Send authentication message immediately after connection
       send({
         type: 'authenticate',
         payload: { userId: user.id }
       });
     },
     onDisconnect: () => {
-      console.log("WebSocket disconnected. Attempting to reconnect...");
+      console.log("WebSocket disconnected, will attempt reconnection");
+      toast({
+        title: "Connection Lost",
+        description: "Chat connection interrupted. Attempting to reconnect...",
+        variant: "destructive",
+      });
     },
     onError: (error) => {
       console.error("WebSocket error:", error);
       toast({
         title: "Connection Error",
-        description: "Chat connection interrupted. Attempting to reconnect...",
+        description: "Failed to establish chat connection. Retrying...",
         variant: "destructive",
       });
     },
@@ -80,17 +88,20 @@ export default function ChatPage() {
     maxRetries: Infinity,
   });
 
+  // Fetch messages
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ['/api/messages', receiverId],
     enabled: !!receiverId && !!user,
   });
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
+  // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!receiverId || !user) throw new Error("No recipient selected or not authenticated");

@@ -31,9 +31,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/user"],
     queryFn: async ({ signal }) => {
       try {
-        const res = await fetch("/api/user", { signal });
+        const res = await fetch("/api/user", {
+          signal,
+          credentials: 'include' // Important for cookie handling
+        });
         if (res.status === 401) return null;
-        if (!res.ok) throw new Error("Failed to fetch user");
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to fetch user");
+        }
         return res.json();
       } catch (error) {
         if (error instanceof Error) throw error;
@@ -41,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     retry: false,
+    staleTime: 30000, // Cache valid for 30 seconds
   });
 
   const loginMutation = useMutation({
@@ -54,6 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${user.username}!`,
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -75,6 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Registration successful",
+        description: `Welcome to ShareSwap, ${user.username}!`,
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -95,6 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
     },
     onError: (error: Error) => {
       toast({

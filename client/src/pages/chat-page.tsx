@@ -27,32 +27,21 @@ export default function ChatPage() {
   const { toast } = useToast();
   const [receiverId, setReceiverId] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const messageQueueRef = useRef<any[]>([]);
 
   if (!user) {
     return <Redirect to="/auth" />;
   }
 
+  // Only set up WebSocket after authentication is confirmed
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat`;
 
   const { isConnected, send } = useWebSocket({
     url: wsUrl,
     onMessage: (data) => {
-      try {
-        const message = JSON.parse(data);
-        if (message.type === 'auth_success') {
-          console.log('WebSocket authenticated');
-          // Send any queued messages
-          while (messageQueueRef.current.length > 0) {
-            const queuedMsg = messageQueueRef.current.shift();
-            send(queuedMsg);
-          }
-        } else if (message.type === 'new_message') {
-          queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
-        }
-      } catch (error) {
-        console.error('Failed to process WebSocket message:', error);
+      const message = JSON.parse(data);
+      if (message.receiverId === user?.id || message.senderId === user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
       }
     },
     onConnect: () => {
@@ -85,6 +74,7 @@ export default function ChatPage() {
     enabled: !!receiverId && !!user,
   });
 
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -94,35 +84,31 @@ export default function ChatPage() {
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!receiverId || !user) throw new Error("No recipient selected or not authenticated");
-
       const res = await apiRequest("POST", "/api/messages", {
         receiverId,
         content,
       });
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Failed to send message");
       }
-
       return res.json();
     },
     onSuccess: () => {
       setMessage("");
-      if (user) {
-        const wsMessage = {
-          type: 'new_message',
-          payload: {
-            senderId: user.id,
-            receiverId,
-            content: message,
-          }
-        };
-
-        if (isConnected) {
-          send(wsMessage);
-        } else {
-          messageQueueRef.current.push(wsMessage);
+      if (isConnected && user) {
+        try {
+          send({
+            type: 'new_message',
+            payload: {
+              senderId: user.id,
+              receiverId,
+              content: message,
+            }
+          });
+        } catch (error) {
+          console.error("Error sending WebSocket message:", error);
+          // Continue with HTTP message sending even if WebSocket fails
         }
       }
       queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });

@@ -38,17 +38,15 @@ async function getUserByUsername(username: string) {
 
 export const sessionSettings: session.SessionOptions = {
   secret: process.env.REPL_ID!,
-  resave: true,
-  saveUninitialized: true,
+  resave: false,
+  saveUninitialized: false,
   cookie: {
     secure: false,
     maxAge: 24 * 60 * 60 * 1000,
     sameSite: 'lax',
-    httpOnly: true,
-    path: '/'
+    httpOnly: true
   },
-  name: 'shareswap.sid',
-  rolling: true
+  name: 'shareswap.sid'
 };
 
 export const store = new PostgresStore({
@@ -59,28 +57,11 @@ export const store = new PostgresStore({
 });
 
 export function setupAuth(app: Express) {
-  // Enable trust proxy if we're behind a reverse proxy
-  app.set('trust proxy', 1);
-
-  // Set appropriate headers for WebSocket
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
-
-  // Session middleware configuration
-  const sessionMiddleware = session({
+  app.use(session({
     ...sessionSettings,
     store
-  });
+  }));
 
-  app.use(sessionMiddleware);
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -111,10 +92,7 @@ export function setupAuth(app: Express) {
         .where(eq(users.id, id))
         .limit(1);
 
-      if (!user) {
-        console.warn(`User ${id} not found during deserialization`);
-        return done(null, false);
-      }
+      if (!user) return done(null, false);
       done(null, user);
     } catch (error) {
       console.error("Deserialization error:", error);
@@ -122,21 +100,14 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Authentication routes
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err: any, user: SelectUser | false, info: any) => {
-      if (err) {
-        console.error("Login error:", err);
-        return next(err);
-      }
+      if (err) return next(err);
       if (!user) {
         return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
       req.login(user, (err) => {
-        if (err) {
-          console.error("Session creation error:", err);
-          return next(err);
-        }
+        if (err) return next(err);
         res.json(user);
       });
     })(req, res, next);
@@ -168,7 +139,6 @@ export function setupAuth(app: Express) {
         res.status(201).json(user);
       });
     } catch (error) {
-      console.error("Registration error:", error);
       next(error);
     }
   });
@@ -189,14 +159,4 @@ export function setupAuth(app: Express) {
     }
     res.json(req.user);
   });
-
-  // Export sessionMiddleware for WebSocket usage
-  return sessionMiddleware;
-}
-
-export function authenticationMiddleware(req: any, res: any, next: any) {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.status(401).json({ message: "Not authenticated" });
 }

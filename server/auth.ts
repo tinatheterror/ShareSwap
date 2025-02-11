@@ -36,21 +36,6 @@ async function getUserByUsername(username: string) {
   return db.select().from(users).where(eq(users.username, username)).limit(1);
 }
 
-export const sessionSettings: session.SessionOptions = {
-  secret: process.env.REPL_ID!,
-  resave: true,
-  saveUninitialized: true,
-  cookie: {
-    secure: false,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'lax',
-    httpOnly: true,
-    path: '/'
-  },
-  name: 'shareswap.sid',
-  rolling: true
-};
-
 export const store = new PostgresStore({
   pool,
   createTableIfMissing: true,
@@ -58,28 +43,29 @@ export const store = new PostgresStore({
   pruneSessionInterval: 60
 });
 
+export const sessionSettings = {
+  secret: process.env.REPL_ID!,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' as const,
+    httpOnly: true,
+    path: '/'
+  },
+  store,
+  name: 'shareswap.sid'
+};
+
 export function setupAuth(app: Express) {
   // Enable trust proxy if we're behind a reverse proxy
   app.set('trust proxy', 1);
 
-  // Set appropriate headers for WebSocket
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
+  // Create session middleware
+  const sessionMiddleware = session(sessionSettings);
 
-  // Session middleware configuration
-  const sessionMiddleware = session({
-    ...sessionSettings,
-    store
-  });
-
+  // Use session middleware
   app.use(sessionMiddleware);
   app.use(passport.initialize());
   app.use(passport.session());
@@ -112,7 +98,6 @@ export function setupAuth(app: Express) {
         .limit(1);
 
       if (!user) {
-        console.warn(`User ${id} not found during deserialization`);
         return done(null, false);
       }
       done(null, user);
@@ -174,8 +159,8 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "Not logged in" });
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Not authenticated" });
     }
     req.logout((err) => {
       if (err) return next(err);
@@ -184,13 +169,12 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated() || !req.user) {
+    if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
     res.json(req.user);
   });
 
-  // Export sessionMiddleware for WebSocket usage
   return sessionMiddleware;
 }
 

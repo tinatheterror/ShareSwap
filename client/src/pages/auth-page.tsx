@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -23,6 +23,8 @@ const formSchema = z.object({
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
+  const [location] = useLocation();
+  const action = new URLSearchParams(location.split('?')[1]).get('action');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -33,6 +35,12 @@ export default function AuthPage() {
   });
 
   if (user) {
+    // Redirect based on the action parameter
+    if (action === 'share') {
+      return <Redirect to="/lend" />;
+    } else if (action === 'browse') {
+      return <Redirect to="/borrow" />;
+    }
     return <Redirect to="/" />;
   }
 

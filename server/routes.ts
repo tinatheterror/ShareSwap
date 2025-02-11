@@ -22,11 +22,11 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371; // Earth's radius in kilometers
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
 
@@ -879,7 +879,7 @@ export function registerRoutes(app: Express): Server {
 
     res.status(201).json(review);
   });
-
+  
   app.get("/api/delivery-arrangements", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -908,7 +908,7 @@ export function registerRoutes(app: Express): Server {
       })
       .from(deliveryArrangements)
       .innerJoin(
-        itemRequests,
+        itemRequests, 
         eq(itemRequests.id, deliveryArrangements.requestId)
       )
       .innerJoin(
@@ -926,13 +926,13 @@ export function registerRoutes(app: Express): Server {
     res.json(arrangements);
   });
 
+
   // WebSocket server configuration
   const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/chat",
     verifyClient: async (info, callback) => {
       try {
-        console.log("WebSocket connection attempt - Headers:", info.req.headers);
         // Parse session from the upgrade request
         await new Promise((resolve) => {
           sessionMiddleware(info.req as any, {} as any, () => {
@@ -940,21 +940,13 @@ export function registerRoutes(app: Express): Server {
           });
         });
 
-        // Verify authentication
         const session = (info.req as any).session;
-        console.log("WebSocket auth - Session:", {
-          id: session?.id,
-          hasPassport: !!session?.passport,
-          userId: session?.passport?.user
-        });
-
         if (!session?.passport?.user) {
-          console.log("WebSocket auth failed: No session or user");
+          console.log("WebSocket auth failed: No user ID in session");
           callback(false, 401, "Unauthorized");
           return;
         }
 
-        // Get user details
         const userId = session.passport.user;
         const [user] = await db
           .select()
@@ -968,7 +960,6 @@ export function registerRoutes(app: Express): Server {
           return;
         }
 
-        // Store user in request for later use
         (info.req as any).user = user;
         console.log("WebSocket auth successful for user:", userId);
         callback(true);
@@ -979,6 +970,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Improve WebSocket message handling
   wss.on("connection", (ws: WebSocket, req: any) => {
     const userId = req.user?.id;
     console.log("New WebSocket connection established for user:", userId);
@@ -992,41 +984,40 @@ export function registerRoutes(app: Express): Server {
     // Store user ID on WebSocket instance for routing
     (ws as any)._userId = userId;
 
-    // Handle WebSocket messages
     ws.on("message", async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
         console.log("Received message from user:", userId, "data:", data);
 
         if (data.type === 'new_message') {
-          const { receiverId, content } = data.payload;
-          if (!userId) {
-            console.error("Message sender ID missing");
+          const { senderId, receiverId, content } = data.payload;
+          if (senderId !== userId) {
+            console.error("Message sender ID mismatch:", { userId, senderId });
             return;
           }
 
-          // Store message in database
           const [storedMessage] = await db
             .insert(messages)
             .values({
+              content,
               senderId: userId,
               receiverId,
-              content,
             })
             .returning();
 
-          // Broadcast to connected clients
-          wss.clients.forEach((client: WebSocket) => {
-            if ((client as any)._userId === receiverId && client.readyState === WebSocket.OPEN) {
+          // Broadcast message to connected clients
+          wss.clients.forEach((client: any) => {
+            if (client.readyState === WebSocket.OPEN && 
+                (client._userId === receiverId || client._userId === userId)) {
               client.send(JSON.stringify({
                 type: 'new_message',
-                payload: storedMessage,
+                payload: storedMessage
               }));
             }
           });
         }
       } catch (error) {
-        console.error("Failed to process WebSocket message:", error);
+        console.error("Error processing WebSocket message:", error);
         ws.send(JSON.stringify({
           type: 'error',
           payload: { message: 'Failed to process message' }
@@ -1042,6 +1033,5 @@ export function registerRoutes(app: Express): Server {
       console.error("WebSocket error for user:", userId, error);
     });
   });
-
   return httpServer;
 }

@@ -1,15 +1,17 @@
-import { queryClient } from "./queryClient";
-
 interface WebSocketConfig {
   url: string;
-  onMessage?: (data: any) => void;
-  onConnect?: () => void;
-  onDisconnect?: () => void;
-  onError?: (error: Event) => void;
-  autoConnect?: boolean;
-  initialRetryDelayMs?: number;
-  maxRetryDelayMs?: number;
+  initialDelay?: number;
+  maxDelay?: number;
   maxRetries?: number;
+  onMessage?: (data: any) => void;
+  onClose?: () => void;
+  onOpen?: () => void;
+  onError?: (error: Event) => void;
+}
+
+interface WebSocketMessage {
+  type: string;
+  payload: any;
 }
 
 export class WebSocketService {
@@ -19,26 +21,20 @@ export class WebSocketService {
   private retryTimeout: number | null = null;
   private shouldReconnect = true;
   private messageQueue: any[] = [];
-  private authenticated = false;
 
   constructor(config: WebSocketConfig) {
     this.config = {
-      initialRetryDelayMs: 1000,
-      maxRetryDelayMs: 30000,
+      initialDelay: 1000,
+      maxDelay: 30000,
       maxRetries: Infinity,
-      autoConnect: true,
       ...config,
     };
-
-    if (this.config.autoConnect) {
-      this.connect();
-    }
   }
 
   private getRetryDelay(): number {
     return Math.min(
-      this.config.initialRetryDelayMs! * Math.pow(1.5, this.retryCount),
-      this.config.maxRetryDelayMs!
+      this.config.initialDelay! * Math.pow(1.5, this.retryCount),
+      this.config.maxDelay!
     );
   }
 
@@ -51,26 +47,20 @@ export class WebSocketService {
 
       this.ws.addEventListener('open', () => {
         console.log('WebSocket connected');
-        this.config.onConnect?.();
+        this.retryCount = 0;
+
+        // Send any queued messages
+        while (this.messageQueue.length > 0) {
+          const msg = this.messageQueue.shift();
+          this.send(msg);
+        }
+
+        this.config.onOpen?.();
       });
 
       this.ws.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(event.data);
-
-          // Handle authentication success
-          if (data.type === 'auth_success') {
-            console.log('WebSocket authenticated');
-            this.authenticated = true;
-            this.retryCount = 0;
-
-            // Send any queued messages
-            while (this.messageQueue.length > 0) {
-              const msg = this.messageQueue.shift();
-              this.send(msg);
-            }
-          }
-
           this.config.onMessage?.(data);
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
@@ -79,8 +69,7 @@ export class WebSocketService {
 
       this.ws.addEventListener('close', () => {
         this.ws = null;
-        this.authenticated = false;
-        this.config.onDisconnect?.();
+        this.config.onClose?.();
 
         if (this.shouldReconnect && this.retryCount < this.config.maxRetries!) {
           const delay = this.getRetryDelay();
@@ -126,12 +115,11 @@ export class WebSocketService {
   }
 
   send(data: unknown): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.authenticated) {
-      // Queue message if not connected or not authenticated
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      // Queue message if not connected
       this.messageQueue.push(data);
       return;
     }
-
     try {
       this.ws.send(JSON.stringify(data));
     } catch (error) {
@@ -141,6 +129,6 @@ export class WebSocketService {
   }
 
   isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN && this.authenticated;
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 }

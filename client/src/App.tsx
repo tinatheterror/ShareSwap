@@ -19,17 +19,12 @@ import ChallengesPage from "@/pages/challenges-page";
 import RequestsPage from "@/pages/requests-page";
 import ItemDetailsPage from "@/pages/item-details-page";
 import DeliveryArrangementsPage from "@/pages/delivery-arrangements";
-import LandingPage from "@/pages/landing-page";
 
 function Router() {
   return (
     <Switch>
-      {/* Make landing page the default route */}
-      <Route path="/" component={LandingPage} />
       <Route path="/auth" component={AuthPage} />
-
-      {/* Protected routes that require authentication */}
-      <ProtectedRoute path="/home" component={HomePage} />
+      <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/verify" component={VerificationPage} />
       <ProtectedRoute path="/chat" component={ChatPage} />
       <ProtectedRoute path="/share-options" component={ShareOptionsPage} />

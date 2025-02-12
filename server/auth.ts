@@ -41,10 +41,11 @@ export const sessionSettings: session.SessionOptions = {
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: false, // Disabled for development
     maxAge: 24 * 60 * 60 * 1000,
     sameSite: 'lax',
-    httpOnly: true
+    httpOnly: true,
+    path: '/'
   },
   name: 'shareswap.sid'
 };
@@ -57,6 +58,9 @@ export const store = new PostgresStore({
 });
 
 export function setupAuth(app: Express) {
+  // Enable trust proxy for secure cookies behind reverse proxy
+  app.set('trust proxy', 1);
+
   app.use(session({
     ...sessionSettings,
     store

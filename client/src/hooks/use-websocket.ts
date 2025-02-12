@@ -28,6 +28,8 @@ export function useWebSocket({
   const wsRef = useRef<WebSocketService | null>(null);
 
   useEffect(() => {
+    if (!url) return; // Don't create WebSocket if URL is empty
+
     wsRef.current = new WebSocketService({
       url,
       initialDelay: initialRetryDelayMs,
@@ -51,15 +53,15 @@ export function useWebSocket({
 
     return () => {
       wsRef.current?.disconnect();
+      wsRef.current = null;
     };
-  }, [url]);
+  }, [url]); // Only recreate when URL changes
 
   const send = useCallback((data: unknown) => {
     if (!wsRef.current?.isConnected()) {
-      console.warn('WebSocket is not connected. Message not sent.');
-      return;
+      console.warn('WebSocket is not connected. Message will be queued.');
     }
-    wsRef.current.send(data);
+    wsRef.current?.send(data);
   }, []);
 
   const connect = useCallback(() => {

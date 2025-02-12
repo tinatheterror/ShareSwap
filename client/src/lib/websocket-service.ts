@@ -42,6 +42,7 @@ export class WebSocketService {
     if (this.ws?.readyState === WebSocket.OPEN) return;
 
     try {
+      // Create WebSocket with proper options
       this.ws = new WebSocket(this.config.url);
       this.shouldReconnect = true;
 
@@ -67,7 +68,8 @@ export class WebSocketService {
         }
       });
 
-      this.ws.addEventListener('close', () => {
+      this.ws.addEventListener('close', (event) => {
+        console.log('WebSocket closed with code:', event.code);
         this.ws = null;
         this.config.onClose?.();
 

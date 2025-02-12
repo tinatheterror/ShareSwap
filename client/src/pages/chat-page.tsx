@@ -34,7 +34,7 @@ export default function ChatPage() {
 
   // Only set up WebSocket after authentication is confirmed
   const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat`;
+  const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat?userId=${user.id}`;
 
   const { isConnected, send } = useWebSocket({
     url: wsUrl,
@@ -97,19 +97,14 @@ export default function ChatPage() {
     onSuccess: () => {
       setMessage("");
       if (isConnected && user) {
-        try {
-          send({
-            type: 'new_message',
-            payload: {
-              senderId: user.id,
-              receiverId,
-              content: message,
-            }
-          });
-        } catch (error) {
-          console.error("Error sending WebSocket message:", error);
-          // Continue with HTTP message sending even if WebSocket fails
-        }
+        send({
+          type: 'new_message',
+          payload: {
+            senderId: user.id,
+            receiverId,
+            content: message,
+          }
+        });
       }
       queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
     },

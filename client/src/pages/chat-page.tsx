@@ -32,24 +32,29 @@ export default function ChatPage() {
     return <Redirect to="/auth" />;
   }
 
-  // Only set up WebSocket after authentication is confirmed
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat?userId=${user.id}`;
+  // Fix WebSocket URL construction
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.hostname;
+  const port = window.location.port || "5000"; // Use actual port if available, fallback to 5000
+  const wsUrl = `${protocol}//${host}${port ? `:${port}` : ""}/ws/chat?userId=${user.id}`;
+  console.log("Connecting to WebSocket URL:", wsUrl); // Debug log
 
   const { isConnected, send } = useWebSocket({
     url: wsUrl,
     onMessage: (data) => {
       const message = JSON.parse(data);
       if (message.receiverId === user?.id || message.senderId === user?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
+        queryClient.invalidateQueries({
+          queryKey: ["/api/messages", receiverId],
+        });
       }
     },
     onConnect: () => {
       console.log("WebSocket connection established");
       // Send authentication message
       send({
-        type: 'authenticate',
-        payload: { userId: user.id }
+        type: "authenticate",
+        payload: { userId: user.id },
       });
     },
     onDisconnect: () => {
@@ -70,7 +75,7 @@ export default function ChatPage() {
   });
 
   const { data: messages = [], isLoading } = useQuery<Message[]>({
-    queryKey: ['/api/messages', receiverId],
+    queryKey: ["/api/messages", receiverId],
     enabled: !!receiverId && !!user,
   });
 
@@ -83,7 +88,8 @@ export default function ChatPage() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      if (!receiverId || !user) throw new Error("No recipient selected or not authenticated");
+      if (!receiverId || !user)
+        throw new Error("No recipient selected or not authenticated");
       const res = await apiRequest("POST", "/api/messages", {
         receiverId,
         content,
@@ -98,15 +104,17 @@ export default function ChatPage() {
       setMessage("");
       if (isConnected && user) {
         send({
-          type: 'new_message',
+          type: "new_message",
           payload: {
             senderId: user.id,
             receiverId,
             content: message,
-          }
+          },
         });
       }
-      queryClient.invalidateQueries({ queryKey: ['/api/messages', receiverId] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/messages", receiverId],
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -142,7 +150,9 @@ export default function ChatPage() {
                     <div
                       key={msg.id}
                       className={`mb-4 flex ${
-                        msg.senderId === user.id ? "justify-end" : "justify-start"
+                        msg.senderId === user.id
+                          ? "justify-end"
+                          : "justify-start"
                       }`}
                     >
                       <div

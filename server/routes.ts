@@ -2,13 +2,19 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db, pool } from "@db";
-import { verifications, messages, items, users, shareCoinsTransactions } from "@db/schema";
+import {
+  verifications,
+  messages,
+  items,
+  users,
+  shareCoinsTransactions,
+} from "@db/schema";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
 import path from "path";
-import * as express from 'express';
+import * as express from "express";
 import { itemConditionVerifications } from "@db/schema";
 import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
@@ -19,24 +25,31 @@ import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
 import connectPgSimple from "connect-pg-simple";
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
   const R = 6371; // Earth's radius in kilometers
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
 // Configure multer for handling file uploads
 const storage = multer.diskStorage({
-  destination: './uploads/',
+  destination: "./uploads/",
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname));
-  }
+  },
 });
 
 const upload = multer({ storage: storage });
@@ -45,7 +58,7 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   // Serve uploaded files
-  app.use('/uploads', express.static('uploads'));
+  app.use("/uploads", express.static("uploads"));
 
   app.post("/api/verify", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -81,22 +94,26 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Item endpoints
-  app.post("/api/items", upload.array('photos'), async (req, res) => {
+  app.post("/api/items", upload.array("photos"), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
 
     const files = req.files as Express.Multer.File[];
-    const photoUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
+    const photoUrls = files
+      ? files.map((file) => `/uploads/${file.filename}`)
+      : [];
 
     // Parse location data
     const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
-    const longitude = req.body.longitude ? parseFloat(req.body.longitude) : null;
+    const longitude = req.body.longitude
+      ? parseFloat(req.body.longitude)
+      : null;
 
     // Parse boolean flags
-    const isLendable = req.body.isLendable === 'true';
-    const isSwappable = req.body.isSwappable === 'true';
-    const isRentable = req.body.isRentable === 'true';
+    const isLendable = req.body.isLendable === "true";
+    const isSwappable = req.body.isSwappable === "true";
+    const isRentable = req.body.isRentable === "true";
 
     // Calculate ShareCoins reward based on sharing modes
     let shareCoinsReward = 0;
@@ -108,7 +125,10 @@ export function registerRoutes(app: Express): Server {
     if (isLendable) {
       const securityDeposit = parseFloat(req.body.securityDeposit || "0");
       const lendingDuration = parseInt(req.body.lendingDuration || "0");
-      const lendingReward = Math.max(10, Math.floor((securityDeposit * lendingDuration * 0.01)));
+      const lendingReward = Math.max(
+        10,
+        Math.floor(securityDeposit * lendingDuration * 0.01),
+      );
       shareCoinsReward += lendingReward;
     }
 
@@ -141,30 +161,25 @@ export function registerRoutes(app: Express): Server {
       shareCoinsReward: shareCoinsReward.toString(),
       isAvailable: true,
       isConditionVerified: false,
-      ownerId: req.user.id
+      ownerId: req.user.id,
     };
 
     // First insert the item
-    const [item] = await db
-      .insert(items)
-      .values(itemData)
-      .returning();
+    const [item] = await db.insert(items).values(itemData).returning();
 
     // Record the ShareCoins transaction
-    await db
-      .insert(shareCoinsTransactions)
-      .values({
-        userId: req.user.id,
-        amount: shareCoinsReward.toString(),
-        description: `Earned for listing ${item.name} (${
-          [
-            isLendable && 'Lending',
-            isSwappable && 'Swapping',
-            isRentable && 'Renting'
-          ].filter(Boolean).join(', ')
-        })`,
-        transactionType: "EARNED"
-      });
+    await db.insert(shareCoinsTransactions).values({
+      userId: req.user.id,
+      amount: shareCoinsReward.toString(),
+      description: `Earned for listing ${item.name} (${[
+        isLendable && "Lending",
+        isSwappable && "Swapping",
+        isRentable && "Renting",
+      ]
+        .filter(Boolean)
+        .join(", ")})`,
+      transactionType: "EARNED",
+    });
 
     // Update user's ShareCoins
     await db
@@ -222,7 +237,9 @@ export function registerRoutes(app: Express): Server {
     const { latitude, longitude, radius = 10 } = req.query; // radius in kilometers, default 10km
 
     if (!latitude || !longitude) {
-      return res.status(400).json({ message: "Latitude and longitude are required" });
+      return res
+        .status(400)
+        .json({ message: "Latitude and longitude are required" });
     }
 
     const userLat = parseFloat(latitude as string);
@@ -235,58 +252,63 @@ export function registerRoutes(app: Express): Server {
 
     // Filter items within radius
     const nearbyItems = allItems
-      .filter(item => item.latitude && item.longitude)
-      .map(item => ({
+      .filter((item) => item.latitude && item.longitude)
+      .map((item) => ({
         ...item,
         distance: calculateDistance(
           userLat,
           userLon,
           Number(item.latitude),
-          Number(item.longitude)
-        )
+          Number(item.longitude),
+        ),
       }))
-      .filter(item => item.distance <= Number(radius))
+      .filter((item) => item.distance <= Number(radius))
       .sort((a, b) => a.distance - b.distance);
 
     res.json(nearbyItems);
   });
 
-
   // Item condition verification endpoints
-  app.post("/api/items/:itemId/verify-condition", upload.array('photos'), async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
+  app.post(
+    "/api/items/:itemId/verify-condition",
+    upload.array("photos"),
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+      }
 
-    // TODO: Add admin check here
-    const itemId = parseInt(req.params.itemId);
-    const files = req.files as Express.Multer.File[];
-    const photoUrls = files ? files.map(file => `/uploads/${file.filename}`) : [];
+      // TODO: Add admin check here
+      const itemId = parseInt(req.params.itemId);
+      const files = req.files as Express.Multer.File[];
+      const photoUrls = files
+        ? files.map((file) => `/uploads/${file.filename}`)
+        : [];
 
-    const [verification] = await db
-      .insert(itemConditionVerifications)
-      .values({
-        itemId: itemId,
-        verifierId: req.user.id,
-        actualConditionRating: parseInt(req.body.actualConditionRating),
-        notes: req.body.notes,
-        photos: photoUrls,
-        status: req.body.status,
-      })
-      .returning();
-
-    if (req.body.status === 'approved') {
-      await db
-        .update(items)
-        .set({
-          isConditionVerified: true,
-          conditionRating: parseInt(req.body.actualConditionRating),
+      const [verification] = await db
+        .insert(itemConditionVerifications)
+        .values({
+          itemId: itemId,
+          verifierId: req.user.id,
+          actualConditionRating: parseInt(req.body.actualConditionRating),
+          notes: req.body.notes,
+          photos: photoUrls,
+          status: req.body.status,
         })
-        .where(eq(items.id, itemId));
-    }
+        .returning();
 
-    res.status(201).json(verification);
-  });
+      if (req.body.status === "approved") {
+        await db
+          .update(items)
+          .set({
+            isConditionVerified: true,
+            conditionRating: parseInt(req.body.actualConditionRating),
+          })
+          .where(eq(items.id, itemId));
+      }
+
+      res.status(201).json(verification);
+    },
+  );
 
   app.get("/api/items/:itemId/verifications", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -343,13 +365,13 @@ export function registerRoutes(app: Express): Server {
         or(
           and(
             eq(messages.senderId, req.user.id),
-            eq(messages.receiverId, parseInt(req.params.userId))
+            eq(messages.receiverId, parseInt(req.params.userId)),
           ),
           and(
             eq(messages.senderId, parseInt(req.params.userId)),
-            eq(messages.receiverId, req.user.id)
-          )
-        )
+            eq(messages.receiverId, req.user.id),
+          ),
+        ),
       )
       .orderBy(messages.createdAt);
 
@@ -380,14 +402,12 @@ export function registerRoutes(app: Express): Server {
     const { amount, gameType } = req.body;
 
     // Insert the ShareCoins transaction
-    await db
-      .insert(shareCoinsTransactions)
-      .values({
-        userId: req.user.id,
-        amount: amount.toString(),
-        description: `Earned from playing ${gameType} game`,
-        transactionType: "EARNED"
-      });
+    await db.insert(shareCoinsTransactions).values({
+      userId: req.user.id,
+      amount: amount.toString(),
+      description: `Earned from playing ${gameType} game`,
+      transactionType: "EARNED",
+    });
 
     // Update user's ShareCoins balance
     await db
@@ -475,14 +495,12 @@ export function registerRoutes(app: Express): Server {
       .returning();
 
     // Record ShareCoins transaction
-    await db
-      .insert(shareCoinsTransactions)
-      .values({
-        userId: req.user.id,
-        amount: game.rewardAmount.toString(),
-        description: `Earned from completing ${game.name}`,
-        transactionType: "EARNED",
-      });
+    await db.insert(shareCoinsTransactions).values({
+      userId: req.user.id,
+      amount: game.rewardAmount.toString(),
+      description: `Earned from completing ${game.name}`,
+      transactionType: "EARNED",
+    });
 
     // Update user's ShareCoins balance
     await db
@@ -544,10 +562,12 @@ export function registerRoutes(app: Express): Server {
     const [challenge] = await db
       .select()
       .from(communityChallenges)
-      .where(and(
-        eq(communityChallenges.id, challengeId),
-        eq(communityChallenges.status, "active")
-      ))
+      .where(
+        and(
+          eq(communityChallenges.id, challengeId),
+          eq(communityChallenges.status, "active"),
+        ),
+      )
       .limit(1);
 
     if (!challenge) {
@@ -558,10 +578,12 @@ export function registerRoutes(app: Express): Server {
     const [existing] = await db
       .select()
       .from(challengeParticipants)
-      .where(and(
-        eq(challengeParticipants.challengeId, challengeId),
-        eq(challengeParticipants.userId, req.user.id)
-      ))
+      .where(
+        and(
+          eq(challengeParticipants.challengeId, challengeId),
+          eq(challengeParticipants.userId, req.user.id),
+        ),
+      )
       .limit(1);
 
     if (existing) {
@@ -582,7 +604,6 @@ export function registerRoutes(app: Express): Server {
 
     res.status(201).json(participant);
   });
-
 
   // Create item request
   app.post("/api/items/:itemId/request", async (req, res) => {
@@ -605,14 +626,16 @@ export function registerRoutes(app: Express): Server {
           or(
             and(eq(items.isLendable, true), eq(requestType, "BORROW")),
             and(eq(items.isRentable, true), eq(requestType, "RENT")),
-            and(eq(items.isSwappable, true), eq(requestType, "SWAP"))
-          )
-        )
+            and(eq(items.isSwappable, true), eq(requestType, "SWAP")),
+          ),
+        ),
       )
       .limit(1);
 
     if (!item) {
-      return res.status(404).send("Item not found or not available for this type of request");
+      return res
+        .status(404)
+        .send("Item not found or not available for this type of request");
     }
 
     // Create the request
@@ -655,8 +678,8 @@ export function registerRoutes(app: Express): Server {
       .where(
         or(
           eq(items.ownerId, req.user.id),
-          eq(itemRequests.requesterId, req.user.id)
-        )
+          eq(itemRequests.requesterId, req.user.id),
+        ),
       )
       .orderBy(desc(itemRequests.createdAt));
 
@@ -677,10 +700,7 @@ export function registerRoutes(app: Express): Server {
       .from(itemRequests)
       .innerJoin(items, eq(items.id, itemRequests.itemId))
       .where(
-        and(
-          eq(itemRequests.id, requestId),
-          eq(items.ownerId, req.user.id)
-        )
+        and(eq(itemRequests.id, requestId), eq(items.ownerId, req.user.id)),
       )
       .limit(1);
 
@@ -704,12 +724,8 @@ export function registerRoutes(app: Express): Server {
     }
 
     const requestId = parseInt(req.params.requestId);
-    const {
-      deliveryType,
-      deliveryAddress,
-      deliveryDate,
-      securityDeposit,
-    } = req.body;
+    const { deliveryType, deliveryAddress, deliveryDate, securityDeposit } =
+      req.body;
 
     // Calculate delivery fee for in-app service
     const deliveryFee = deliveryType === "IN_APP_SERVICE" ? "10.00" : "0.00";
@@ -804,14 +820,14 @@ export function registerRoutes(app: Express): Server {
           or(
             and(
               eq(itemRequests.requesterId, req.user.id),
-              eq(items.ownerId, reviewedUserId)
+              eq(items.ownerId, reviewedUserId),
             ),
             and(
               eq(itemRequests.requesterId, reviewedUserId),
-              eq(items.ownerId, req.user.id)
-            )
-          )
-        )
+              eq(items.ownerId, req.user.id),
+            ),
+          ),
+        ),
       )
       .limit(1);
 
@@ -826,8 +842,8 @@ export function registerRoutes(app: Express): Server {
       .where(
         and(
           eq(userReviews.reviewerId, req.user.id),
-          eq(userReviews.transactionId, transactionId)
-        )
+          eq(userReviews.transactionId, transactionId),
+        ),
       )
       .limit(1);
 
@@ -852,15 +868,13 @@ export function registerRoutes(app: Express): Server {
 
     // Record reputation activity if positive points
     if (reputationPoints > 0) {
-      await db
-        .insert(reputationActivities)
-        .values({
-          userId: reviewedUserId,
-          activityType: "RECEIVE_REVIEW",
-          points: reputationPoints,
-          itemId: transaction.items.id,
-          description: `Received a ${rating}-star review`,
-        });
+      await db.insert(reputationActivities).values({
+        userId: reviewedUserId,
+        activityType: "RECEIVE_REVIEW",
+        points: reputationPoints,
+        itemId: transaction.items.id,
+        description: `Received a ${rating}-star review`,
+      });
 
       // Update user's reputation score
       await db
@@ -903,23 +917,20 @@ export function registerRoutes(app: Express): Server {
             id: items.id,
             name: items.name,
             photos: items.photos,
-          }
-        }
+          },
+        },
       })
       .from(deliveryArrangements)
       .innerJoin(
         itemRequests,
-        eq(itemRequests.id, deliveryArrangements.requestId)
+        eq(itemRequests.id, deliveryArrangements.requestId),
       )
-      .innerJoin(
-        items,
-        eq(items.id, itemRequests.itemId)
-      )
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
       .where(
         or(
           eq(items.ownerId, req.user.id),
-          eq(itemRequests.requesterId, req.user.id)
-        )
+          eq(itemRequests.requesterId, req.user.id),
+        ),
       )
       .orderBy(desc(deliveryArrangements.deliveryDate));
 
@@ -933,19 +944,20 @@ export function registerRoutes(app: Express): Server {
     server: httpServer,
     path: "/ws/chat",
     verifyClient: async (info, callback) => {
+      console.log("WebSocket connection testing");
+      console.log("Websocket verifyClient");
       // Skip verification for Vite HMR
-      if (info.req.headers['sec-websocket-protocol'] === 'vite-hmr') {
+      if (info.req.headers["sec-websocket-protocol"] === "vite-hmr") {
         console.log("Allowing Vite HMR WebSocket connection");
         return callback(true);
       }
 
       console.log("WebSocket connection attempt - Headers:", info.req.headers);
       console.log("Cookie header:", info.req.headers.cookie);
-
       try {
         const sessionParser = session({
           ...sessionSettings,
-          store
+          store,
         });
 
         await new Promise((resolve) => {
@@ -999,7 +1011,7 @@ export function registerRoutes(app: Express): Server {
         const data = JSON.parse(message.toString());
         console.log("Received message from user:", userId, "data:", data);
 
-        if (data.type === 'authenticate') {
+        if (data.type === "authenticate") {
           console.log("User authenticated via WebSocket:", data.payload.userId);
           return;
         }
@@ -1010,7 +1022,7 @@ export function registerRoutes(app: Express): Server {
         }
 
         // Handle new message
-        if (data.type === 'new_message') {
+        if (data.type === "new_message") {
           const { receiverId, content } = data.payload;
 
           // Store message in database
@@ -1026,10 +1038,12 @@ export function registerRoutes(app: Express): Server {
           // Send to receiver if online
           const receiverWs = connectedClients.get(receiverId);
           if (receiverWs?.readyState === WebSocket.OPEN) {
-            receiverWs.send(JSON.stringify({
-              type: "new_message",
-              message: storedMessage
-            }));
+            receiverWs.send(
+              JSON.stringify({
+                type: "new_message",
+                message: storedMessage,
+              }),
+            );
           }
         }
       } catch (error) {

@@ -34,7 +34,7 @@ export class WebSocketService {
   private getRetryDelay(): number {
     return Math.min(
       this.config.initialDelay! * Math.pow(1.5, this.retryCount),
-      this.config.maxDelay!
+      this.config.maxDelay!,
     );
   }
 
@@ -43,11 +43,12 @@ export class WebSocketService {
 
     try {
       // Create WebSocket with proper options
+      console.log("config url", this.config.url);
       this.ws = new WebSocket(this.config.url);
       this.shouldReconnect = true;
 
-      this.ws.addEventListener('open', () => {
-        console.log('WebSocket connected');
+      this.ws.addEventListener("open", () => {
+        console.log("WebSocket connected");
         this.retryCount = 0;
 
         // Send any queued messages
@@ -59,23 +60,25 @@ export class WebSocketService {
         this.config.onOpen?.();
       });
 
-      this.ws.addEventListener('message', (event) => {
+      this.ws.addEventListener("message", (event) => {
         try {
           const data = JSON.parse(event.data);
           this.config.onMessage?.(data);
         } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          console.error("Failed to parse WebSocket message:", error);
         }
       });
 
-      this.ws.addEventListener('close', (event) => {
-        console.log('WebSocket closed with code:', event.code);
+      this.ws.addEventListener("close", (event) => {
+        console.log("WebSocket closed with code:", event.code);
         this.ws = null;
         this.config.onClose?.();
 
         if (this.shouldReconnect && this.retryCount < this.config.maxRetries!) {
           const delay = this.getRetryDelay();
-          console.log(`WebSocket reconnecting in ${delay}ms (attempt ${this.retryCount + 1})`);
+          console.log(
+            `WebSocket reconnecting in ${delay}ms (attempt ${this.retryCount + 1})`,
+          );
 
           this.retryTimeout = window.setTimeout(() => {
             this.retryCount++;
@@ -84,12 +87,12 @@ export class WebSocketService {
         }
       });
 
-      this.ws.addEventListener('error', (error) => {
-        console.error('WebSocket error:', error);
+      this.ws.addEventListener("error", (error) => {
+        console.error("WebSocket error:", error);
         this.config.onError?.(error);
       });
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
+      console.error("Failed to create WebSocket connection:", error);
       this.scheduleReconnect();
     }
   }
@@ -125,7 +128,7 @@ export class WebSocketService {
     try {
       this.ws.send(JSON.stringify(data));
     } catch (error) {
-      console.error('Failed to send WebSocket message:', error);
+      console.error("Failed to send WebSocket message:", error);
       this.messageQueue.push(data);
     }
   }

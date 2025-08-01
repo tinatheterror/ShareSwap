@@ -23,6 +23,9 @@ import { apiRequest } from "@/lib/queryClient";
 const formSchema = z.object({
   fullName: z.string().min(3),
   idNumber: z.string().min(6),
+  cardNumber: z.string().min(16).max(16),
+  expiry: z.string().regex(/^(0[1-9]|1[0-2])\/([0-9]{2})$/),
+  cvv: z.string().length(3),
 });
 
 export default function VerificationPage() {
@@ -34,6 +37,9 @@ export default function VerificationPage() {
     defaultValues: {
       fullName: "",
       idNumber: "",
+      cardNumber: "",
+      expiry: "",
+      cvv: "",
     },
   });
 
@@ -47,6 +53,9 @@ export default function VerificationPage() {
       formData.append("idDocument", selectedIdFile);
       formData.append("fullName", data.fullName);
       formData.append("idNumber", data.idNumber);
+      formData.append("cardNumber", data.cardNumber);
+      formData.append("expiry", data.expiry);
+      formData.append("cvv", data.cvv);
 
       const res = await apiRequest("POST", "/api/verify", formData);
       return res.json();
@@ -153,6 +162,47 @@ export default function VerificationPage() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="cardNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Card Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="expiry"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Expiry (MM/YY)</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="MM/YY" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="cvv"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CVV</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <Button type="submit" className="w-full" disabled={verificationMutation.isPending}>
                     {verificationMutation.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

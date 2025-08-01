@@ -265,6 +265,10 @@ export function registerRoutes(app: Express): Server {
     }
 
     const itemId = parseInt(req.params.id);
+    if (isNaN(itemId)) {
+      return res.status(400).json({ error: "Invalid item ID" });
+    }
+
     const [item] = await db
       .select()
       .from(items)

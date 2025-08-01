@@ -138,11 +138,17 @@ export function registerRoutes(app: Express): Server {
     if (isLendable) {
       const securityDeposit = parseFloat(req.body.securityDeposit || "0");
       const lendingDuration = parseInt(req.body.lendingDuration || "0");
-      const lendingReward = Math.max(
-        10,
-        Math.floor(securityDeposit * lendingDuration * 0.01),
-      );
-      shareCoinsReward += lendingReward;
+      
+      // Ensure values are valid numbers
+      if (!isNaN(securityDeposit) && !isNaN(lendingDuration)) {
+        const lendingReward = Math.max(
+          10,
+          Math.floor(securityDeposit * lendingDuration * 0.01),
+        );
+        shareCoinsReward += lendingReward;
+      } else {
+        shareCoinsReward += 10; // Default lending reward
+      }
     }
 
     if (isSwappable) {
@@ -151,8 +157,17 @@ export function registerRoutes(app: Express): Server {
 
     if (isRentable) {
       const securityDeposit = parseFloat(req.body.securityDeposit || "0");
-      const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
-      shareCoinsReward += rentalReward;
+      if (!isNaN(securityDeposit)) {
+        const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
+        shareCoinsReward += rentalReward;
+      } else {
+        shareCoinsReward += 25; // Default rental reward
+      }
+    }
+
+    // Ensure shareCoinsReward is a valid number
+    if (isNaN(shareCoinsReward)) {
+      shareCoinsReward = 5; // Fallback to base reward
     }
 
     const itemData: InsertItem = {
@@ -170,7 +185,7 @@ export function registerRoutes(app: Express): Server {
       isSwappable,
       isRentable,
       securityDeposit: req.body.securityDeposit || "0",
-      lendingDuration: parseInt(req.body.lendingDuration) || 0,
+      lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
       shareCoinsReward: shareCoinsReward.toString(),
       isAvailable: true,
       isConditionVerified: false,

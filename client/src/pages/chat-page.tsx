@@ -35,13 +35,18 @@ export default function ChatPage() {
   // Fix WebSocket URL construction
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.hostname;
-  const port = window.location.port || "5000"; // Use actual port if available, fallback to 5000
-  const wsUrl = `${protocol}//${host}${port ? `:${port}` : ""}/ws/chat?userId=${user.id}`;
-  console.log("Connecting to WebSocket URL:", wsUrl); // Debug log
+  const port = window.location.port;
+  const authToken = localStorage.getItem("authToken");
+  const wsUrl = `${protocol}//${host}/ws/chat?token=${authToken}`;
+  console.log("WebSocket Setup - URL:", wsUrl);
+  console.log("WebSocket Setup - Protocol:", protocol);
+  console.log("WebSocket Setup - Host:", host);
+  console.log("WebSocket Setup - Port:", port);
 
   const { isConnected, send } = useWebSocket({
     url: wsUrl,
     onMessage: (data) => {
+      console.log("WebSocket Message Received:", data);
       const message = JSON.parse(data);
       if (message.receiverId === user?.id || message.senderId === user?.id) {
         queryClient.invalidateQueries({
@@ -50,7 +55,11 @@ export default function ChatPage() {
       }
     },
     onConnect: () => {
-      console.log("WebSocket connection established");
+      console.log("WebSocket Connected Successfully");
+      toast({
+        title: "Connected",
+        description: "Chat connection established",
+      });
       // Send authentication message
       send({
         type: "authenticate",
@@ -58,10 +67,19 @@ export default function ChatPage() {
       });
     },
     onDisconnect: () => {
-      console.log("WebSocket disconnected. Attempting to reconnect...");
+      console.log("WebSocket Disconnected - Details:", {
+        isConnected,
+        userId: user.id,
+        url: wsUrl,
+      });
     },
     onError: (error) => {
-      console.error("WebSocket error:", error);
+      console.error("WebSocket Error Details:", {
+        error,
+        isConnected,
+        userId: user.id,
+        url: wsUrl,
+      });
       toast({
         title: "Connection Error",
         description: "Chat connection interrupted. Attempting to reconnect...",

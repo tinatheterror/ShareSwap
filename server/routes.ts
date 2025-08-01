@@ -998,13 +998,11 @@ export function registerRoutes(app: Express): Server {
   const connectedClients = new Map<number, WebSocket>();
 
   wss.on("connection", (ws: WebSocket, req: any) => {
-    const userId = req.user?.id;
+    const userId = req.user.id;
     console.log("New WebSocket connection established for user:", userId);
 
     // Store the connection
-    if (userId) {
-      connectedClients.set(userId, ws);
-    }
+    connectedClients.set(userId, ws);
 
     ws.on("message", async (message: string) => {
       try {
@@ -1053,13 +1051,12 @@ export function registerRoutes(app: Express): Server {
 
     ws.on("close", () => {
       console.log("WebSocket connection closed for user:", userId);
-      if (userId) {
-        connectedClients.delete(userId);
-      }
+      connectedClients.delete(userId);
     });
 
     ws.on("error", (error) => {
       console.error("WebSocket error for user:", userId, error);
+      connectedClients.delete(userId);
     });
   });
 

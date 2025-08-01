@@ -1,3 +1,5 @@
+import { WebSocketService } from '@/lib/websocket-service';
+
 interface WebSocketConfig {
   url: string;
   initialDelay?: number;

@@ -60,22 +60,40 @@ export function registerRoutes(app: Express): Server {
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
 
-  app.post("/api/verify", async (req, res) => {
+  app.post("/api/verify", upload.single("idDocument"), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
 
-    const verification = await db
-      .insert(verifications)
-      .values({
-        userId: req.user.id,
-        fullName: req.body.fullName,
-        idNumber: req.body.idNumber,
-        status: "pending",
-      })
-      .returning();
+    try {
+      // Validate required fields
+      if (!req.body.fullName || req.body.fullName.trim() === "") {
+        return res.status(400).json({ error: "Full name is required" });
+      }
 
-    res.status(201).json(verification[0]);
+      if (!req.body.idNumber || req.body.idNumber.trim() === "") {
+        return res.status(400).json({ error: "ID number is required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "ID document is required" });
+      }
+
+      const verification = await db
+        .insert(verifications)
+        .values({
+          userId: req.user.id,
+          fullName: req.body.fullName,
+          idNumber: req.body.idNumber,
+          status: "pending",
+        })
+        .returning();
+
+      res.status(201).json(verification[0]);
+    } catch (error) {
+      console.error("Error creating verification:", error);
+      res.status(500).json({ error: "Failed to submit verification. Please try again." });
+    }
   });
 
   app.get("/api/verification-status", async (req, res) => {

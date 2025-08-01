@@ -15,7 +15,7 @@ export default function HomePage() {
             Choose Your Sharing Option
           </h1>
           <p className="text-lg text-muted-foreground">
-            Securely share items within our verified community
+            Share more, own less. Connect with your neighbours and discover a world of shared resources
           </p>
         </div>
 

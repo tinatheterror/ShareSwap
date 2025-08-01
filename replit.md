@@ -12,9 +12,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - **File Uploads**: Multer for image handling
 - **Security**: Advanced location matching and item verification
 
-## Recent Issues
-- Application failing to start with WebSocket-related errors in the database connection
-- Need to debug and fix the startup process
+## Recent Changes
+- Updated brand slogan to: "Share more, own less. Connect with your neighbours and discover a world of shared resources"
+- Applied new slogan consistently across home page and auth page
+- Date: August 1, 2025
 
 ## Architecture
 - Full-stack JavaScript application following modern patterns

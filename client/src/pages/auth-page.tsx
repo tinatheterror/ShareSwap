@@ -157,8 +157,7 @@ export default function AuthPage() {
               Welcome to ShareSwap
             </h1>
             <p className="text-primary-foreground/90">
-              Join our trusted community marketplace where you can safely lend,
-              borrow, rent, and swap items with verified users.
+              Share more, own less. Connect with your neighbours and discover a world of shared resources.
             </p>
           </div>
         </div>

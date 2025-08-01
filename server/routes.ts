@@ -147,8 +147,8 @@ export function registerRoutes(app: Express): Server {
       description: req.body.description,
       conditionRating: parseInt(req.body.conditionRating) || 0,
       photos: photoUrls,
-      latitude: latitude,
-      longitude: longitude,
+      latitude: latitude?.toString() || null,
+      longitude: longitude?.toString() || null,
       address: req.body.address,
       city: req.body.city,
       state: req.body.state,
@@ -911,14 +911,9 @@ export function registerRoutes(app: Express): Server {
         depositPaid: deliveryArrangements.depositPaid,
         status: deliveryArrangements.status,
         createdAt: deliveryArrangements.createdAt,
-        request: {
-          id: itemRequests.id,
-          item: {
-            id: items.id,
-            name: items.name,
-            photos: items.photos,
-          },
-        },
+        itemId: items.id,
+        itemName: items.name,
+        itemPhotos: items.photos,
       })
       .from(deliveryArrangements)
       .innerJoin(

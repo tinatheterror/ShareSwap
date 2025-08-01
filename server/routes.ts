@@ -60,6 +60,45 @@ export function registerRoutes(app: Express): Server {
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
 
+  // Get community stats endpoint
+  app.get("/api/community-stats", async (req, res) => {
+    try {
+      // Base community count starts at 348,293,427,342
+      const baseCount = 348293427342;
+      
+      // Count total items shared in our platform
+      const [itemsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(items);
+      
+      // Count total transactions
+      const [transactionsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(shareCoinsTransactions);
+      
+      // Count successful item requests
+      const [requestsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(eq(itemRequests.status, 'APPROVED'));
+      
+      // Calculate additional items from platform activity
+      const platformItems = itemsResult.count + transactionsResult.count + requestsResult.count;
+      
+      // Total community items
+      const totalItemsShared = baseCount + platformItems;
+      
+      res.json({
+        totalItemsShared,
+        platformItems,
+        baseCount
+      });
+    } catch (error) {
+      console.error("Error fetching community stats:", error);
+      res.status(500).json({ error: "Failed to fetch community stats" });
+    }
+  });
+
   app.post("/api/verify", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -188,6 +227,9 @@ export function registerRoutes(app: Express): Server {
         shareCoins: sql`share_coins + ${shareCoinsReward}`,
       })
       .where(eq(users.id, req.user.id));
+
+    // Broadcast community stats update
+    setTimeout(() => broadcastCommunityStats(), 100);
 
     res.status(201).json({
       ...item,
@@ -714,6 +756,11 @@ export function registerRoutes(app: Express): Server {
       .where(eq(itemRequests.id, requestId))
       .returning();
 
+    // Broadcast community stats update when request is approved
+    if (status === 'APPROVED') {
+      setTimeout(() => broadcastCommunityStats(), 100);
+    }
+
     res.json(updatedRequest);
   });
 
@@ -956,6 +1003,47 @@ export function registerRoutes(app: Express): Server {
 
   // Improve WebSocket message handling
   const connectedClients = new Map<number, WebSocket>();
+
+  // Function to broadcast community stats updates
+  async function broadcastCommunityStats() {
+    try {
+      const baseCount = 348293427342;
+      
+      const [itemsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(items);
+      
+      const [transactionsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(shareCoinsTransactions);
+      
+      const [requestsResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(eq(itemRequests.status, 'APPROVED'));
+      
+      const platformItems = itemsResult.count + transactionsResult.count + requestsResult.count;
+      const totalItemsShared = baseCount + platformItems;
+      
+      const statsUpdate = JSON.stringify({
+        type: "community_stats_update",
+        payload: {
+          totalItemsShared,
+          platformItems,
+          baseCount
+        }
+      });
+      
+      // Broadcast to all connected clients
+      connectedClients.forEach((ws) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(statsUpdate);
+        }
+      });
+    } catch (error) {
+      console.error("Error broadcasting community stats:", error);
+    }
+  }
 
   wss.on("connection", (ws: WebSocket, req: any) => {
     console.log("New WebSocket connection established");

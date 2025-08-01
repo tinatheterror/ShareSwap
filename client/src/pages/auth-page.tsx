@@ -165,7 +165,7 @@ export default function AuthPage() {
       >
         <div className="h-full w-full p-12 flex items-center">
           <div className="max-w-lg">
-            <h1 className="text-5xl font-bold text-white mb-8">
+            <h1 className="text-3xl font-bold text-white mb-8">
               Welcome to ShareSwap
             </h1>
             <p className="text-lg text-primary-foreground/90 mb-12">
@@ -183,8 +183,8 @@ export default function AuthPage() {
                   />
                 )}
               </span>
-              <span className="text-xl text-primary-foreground/90">
-                items shared within our community
+              <span className="text-xl text-primary-foreground/90 font-bold italic tracking-wide">
+                items shared within our community.
               </span>
             </div>
           </div>

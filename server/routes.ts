@@ -99,21 +99,34 @@ export function registerRoutes(app: Express): Server {
       return res.sendStatus(401);
     }
 
-    const files = req.files as Express.Multer.File[];
-    const photoUrls = files
-      ? files.map((file) => `/uploads/${file.filename}`)
-      : [];
+    try {
+      // Log the received data for debugging
+      console.log("Received request body:", req.body);
 
-    // Parse location data
-    const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
-    const longitude = req.body.longitude
-      ? parseFloat(req.body.longitude)
-      : null;
+      // Validate required fields
+      if (!req.body.name || req.body.name.trim() === "") {
+        return res.status(400).json({ error: "Item name is required" });
+      }
 
-    // Parse boolean flags
-    const isLendable = req.body.isLendable === "true";
-    const isSwappable = req.body.isSwappable === "true";
-    const isRentable = req.body.isRentable === "true";
+      if (!req.body.description || req.body.description.trim() === "") {
+        return res.status(400).json({ error: "Item description is required" });
+      }
+
+      const files = req.files as Express.Multer.File[];
+      const photoUrls = files
+        ? files.map((file) => `/uploads/${file.filename}`)
+        : [];
+
+      // Parse location data
+      const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
+      const longitude = req.body.longitude
+        ? parseFloat(req.body.longitude)
+        : null;
+
+      // Parse boolean flags
+      const isLendable = req.body.isLendable === "true";
+      const isSwappable = req.body.isSwappable === "true";
+      const isRentable = req.body.isRentable === "true";
 
     // Calculate ShareCoins reward based on sharing modes
     let shareCoinsReward = 0;
@@ -193,6 +206,10 @@ export function registerRoutes(app: Express): Server {
       ...item,
       shareCoinsReward,
     });
+    } catch (error) {
+      console.error("Error creating item:", error);
+      res.status(500).json({ error: "Failed to create item. Please try again." });
+    }
   });
 
   app.get("/api/items", async (req, res) => {

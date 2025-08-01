@@ -89,9 +89,27 @@ export default function VerificationPage() {
       <main className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Verify Your Identity</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-6">
             We need to verify your identity to ensure a safe marketplace
           </p>
+          
+          {/* Security Disclaimer */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-left max-w-2xl mx-auto">
+            <h3 className="font-semibold text-blue-900 mb-3">Why We Need This Information</h3>
+            <div className="space-y-2 text-sm text-blue-800">
+              <p><strong>Government ID:</strong> Verifies your identity to ensure only real people use our platform and helps prevent fraud.</p>
+              <p><strong>Credit Card Information:</strong> Enables secure transactions and protects all users by allowing us to:</p>
+              <ul className="ml-4 space-y-1 list-disc">
+                <li><strong>Security Deposits:</strong> Charge a refundable deposit when you borrow valuable items</li>
+                <li><strong>Damage Protection:</strong> Cover repair costs if borrowed items are returned damaged</li>
+                <li><strong>Non-Return Protection:</strong> Charge replacement cost if items aren't returned</li>
+                <li><strong>Trust & Accountability:</strong> Create a responsible community where users are accountable for borrowed items</li>
+              </ul>
+              <p className="mt-3 text-xs text-blue-600">
+                <strong>Security:</strong> All payment information is encrypted and stored securely. We only charge your card when necessary for deposits or damages as outlined in our terms of service.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">

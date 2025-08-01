@@ -79,6 +79,18 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "ID document is required" });
       }
 
+      if (!req.body.cardNumber || req.body.cardNumber.trim().length !== 16) {
+        return res.status(400).json({ error: "Valid 16-digit card number is required" });
+      }
+
+      if (!req.body.expiry || !/^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(req.body.expiry)) {
+        return res.status(400).json({ error: "Valid expiry date (MM/YY) is required" });
+      }
+
+      if (!req.body.cvv || req.body.cvv.trim().length !== 3) {
+        return res.status(400).json({ error: "Valid 3-digit CVV is required" });
+      }
+
       const verification = await db
         .insert(verifications)
         .values({

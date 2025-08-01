@@ -13,6 +13,9 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - **Security**: Advanced location matching and item verification
 
 ## Recent Changes
+- Fixed item upload form data handling and database validation errors
+- Implemented functional ID document upload with credit card verification
+- Added comprehensive verification system requiring both identity and payment methods
 - Updated brand slogan to: "Share more, own less. Connect with your neighbours and discover a world of shared resources"
 - Applied new slogan consistently across home page and auth page
 - Date: August 1, 2025
@@ -23,6 +26,13 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Real-time messaging through WebSocket server
 - Comprehensive authentication and authorization system
 - Advanced verification system for items and users
+
+## Security & Payment System
+- **Dual Verification**: Users must verify both identity (government ID) and payment method (credit card)
+- **Security Deposits**: Credit card information enables charging deposits for borrowed items
+- **Damage Protection**: Ability to charge for item repairs or replacements
+- **Non-Return Protection**: Charge full replacement cost if items aren't returned
+- **Trust & Accountability**: Payment verification creates responsible user behavior
 
 ## User Preferences
 - Keep original design (not the fresh green design)

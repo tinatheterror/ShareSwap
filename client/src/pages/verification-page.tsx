@@ -14,8 +14,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { useState, useRef } from "react";
+import { Loader2, Upload, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,7 +30,36 @@ const formSchema = z.object({
 
 export default function VerificationPage() {
   const [selectedIdFile, setSelectedIdFile] = useState<File | null>(null);
+  const [isCameraMode, setIsCameraMode] = useState(false);
+  const cardCameraRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleCardPhotoCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast({
+        title: "Card Photo Captured",
+        description: "Processing card information...",
+      });
+      
+      // Simulate card number extraction (in real app, use OCR service)
+      setTimeout(() => {
+        // Mock card data for demo - in production, use OCR to extract real data
+        form.setValue("cardNumber", "1234567890123456");
+        form.setValue("expiry", "12/25");
+        form.setValue("cvv", "123");
+        
+        toast({
+          title: "Card Information Extracted",
+          description: "Please verify the information is correct",
+        });
+      }, 2000);
+    }
+  };
+
+  const triggerCardCamera = () => {
+    cardCameraRef.current?.click();
+  };
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -186,9 +215,29 @@ export default function VerificationPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Card Number</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
+                        <div className="space-y-2">
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={triggerCardCamera}
+                            className="w-full"
+                          >
+                            <Camera className="mr-2 h-4 w-4" />
+                            Take Photo of Credit Card
+                          </Button>
+                          <input
+                            ref={cardCameraRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleCardPhotoCapture}
+                            className="hidden"
+                          />
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}

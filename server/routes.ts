@@ -939,9 +939,7 @@ export function registerRoutes(app: Express): Server {
     server: httpServer,
     path: "/ws/chat",
     verifyClient: (info, callback) => {
-      console.log("WebSocket connection attempt from:", info.origin);
-      console.log("WebSocket headers:", info.req.headers);
-      
+      console.log("WebSocket connection attempt");
       // Skip verification for Vite HMR
       if (info.req.headers["sec-websocket-protocol"] === "vite-hmr") {
         console.log("Allowing Vite HMR WebSocket connection");
@@ -971,7 +969,7 @@ export function registerRoutes(app: Express): Server {
           console.log("User authenticated via WebSocket:", userId);
           
           // Store the authenticated connection
-          if (userId) connectedClients.set(userId, ws);
+          connectedClients.set(userId, ws);
           
           // Send confirmation
           ws.send(JSON.stringify({
@@ -1018,12 +1016,12 @@ export function registerRoutes(app: Express): Server {
 
     ws.on("close", () => {
       console.log("WebSocket connection closed for user:", userId);
-      if (userId) connectedClients.delete(userId);
+      connectedClients.delete(userId);
     });
 
     ws.on("error", (error) => {
       console.error("WebSocket error for user:", userId, error);
-      if (userId) connectedClients.delete(userId);
+      connectedClients.delete(userId);
     });
   });
 

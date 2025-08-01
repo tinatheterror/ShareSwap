@@ -57,12 +57,9 @@ app.use((req, res, next) => {
   }
 
   // ALWAYS serve the app on port 5000
-  // Use the HTTP server returned by registerRoutes instead of app.listen
+  // this serves both the API and the client
   const PORT = 5000;
-  server.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
   });
-  
-  // Log WebSocket server setup
-  log(`WebSocket server configured at /ws/chat`);
 })();

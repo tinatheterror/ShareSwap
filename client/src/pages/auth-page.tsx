@@ -15,6 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Users, Package, Handshake } from "lucide-react";
 
 const formSchema = z.object({
   username: z.string().min(3).max(20),
@@ -30,6 +32,16 @@ export default function AuthPage() {
       username: "",
       password: "",
     },
+  });
+
+  // Fetch platform statistics
+  const { data: stats, isLoading: statsLoading } = useQuery<{
+    itemsShared: number;
+    totalUsers: number;
+    successfulTransactions: number;
+  }>({
+    queryKey: ['/api/stats'],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   if (user) {
@@ -156,9 +168,43 @@ export default function AuthPage() {
             <h1 className="text-4xl font-bold text-white mb-6">
               Welcome to ShareSwap
             </h1>
-            <p className="text-primary-foreground/90">
+            <p className="text-primary-foreground/90 mb-8">
               Share more, own less. Connect with your neighbours and discover a world of shared resources.
             </p>
+            
+            {/* Platform Statistics */}
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-white mb-4">Join Our Growing Community</h2>
+              
+              <div className="grid gap-4">
+                <div className="flex items-center gap-3 text-primary-foreground/90">
+                  <Package className="w-5 h-5" />
+                  <span className="text-lg">
+                    {statsLoading ? "Loading..." : (
+                      <><strong className="text-white">{stats?.itemsShared?.toLocaleString() || "0"}</strong> items shared</>
+                    )}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 text-primary-foreground/90">
+                  <Users className="w-5 h-5" />
+                  <span className="text-lg">
+                    {statsLoading ? "Loading..." : (
+                      <><strong className="text-white">{stats?.totalUsers?.toLocaleString() || "0"}</strong> community members</>
+                    )}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 text-primary-foreground/90">
+                  <Handshake className="w-5 h-5" />
+                  <span className="text-lg">
+                    {statsLoading ? "Loading..." : (
+                      <><strong className="text-white">{stats?.successfulTransactions?.toLocaleString() || "0"}</strong> successful exchanges</>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -174,7 +174,7 @@ export default function AuthPage() {
             
             {/* Platform Statistics */}
             <div className="flex items-baseline gap-3">
-              <span className="text-6xl font-extrabold text-white tracking-tight">
+              <span className="text-xl font-bold text-white">
                 {statsLoading ? "Loading..." : (
                   <RollingCounter 
                     target={stats?.itemsShared || 0} 

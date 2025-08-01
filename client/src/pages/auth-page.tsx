@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Package, Handshake } from "lucide-react";
+import { RollingCounter } from "@/components/rolling-counter";
 
 const formSchema = z.object({
   username: z.string().min(3).max(20),
@@ -174,35 +174,19 @@ export default function AuthPage() {
             
             {/* Platform Statistics */}
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Join Our Growing Community</h2>
-              
-              <div className="grid gap-4">
-                <div className="flex items-center gap-3 text-primary-foreground/90">
-                  <Package className="w-5 h-5" />
-                  <span className="text-lg">
-                    {statsLoading ? "Loading..." : (
-                      <><strong className="text-white">{stats?.itemsShared?.toLocaleString() || "0"}</strong> items shared</>
-                    )}
-                  </span>
+              <div className="text-center">
+                <div className="text-6xl font-bold text-white mb-2">
+                  {statsLoading ? "Loading..." : (
+                    <RollingCounter 
+                      target={stats?.itemsShared || 0} 
+                      duration={3000}
+                      className="text-white"
+                    />
+                  )}
                 </div>
-                
-                <div className="flex items-center gap-3 text-primary-foreground/90">
-                  <Users className="w-5 h-5" />
-                  <span className="text-lg">
-                    {statsLoading ? "Loading..." : (
-                      <><strong className="text-white">{stats?.totalUsers?.toLocaleString() || "0"}</strong> community members</>
-                    )}
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-3 text-primary-foreground/90">
-                  <Handshake className="w-5 h-5" />
-                  <span className="text-lg">
-                    {statsLoading ? "Loading..." : (
-                      <><strong className="text-white">{stats?.successfulTransactions?.toLocaleString() || "0"}</strong> successful exchanges</>
-                    )}
-                  </span>
-                </div>
+                <p className="text-xl text-primary-foreground/90">
+                  items shared within our community
+                </p>
               </div>
             </div>
           </div>

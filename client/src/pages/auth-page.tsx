@@ -163,8 +163,8 @@ export default function AuthPage() {
       <div
         className="hidden md:block bg-primary"
       >
-        <div className="h-full w-full p-12 flex items-center justify-center">
-          <div className="max-w-lg text-center">
+        <div className="h-full w-full p-12 flex items-center">
+          <div className="max-w-lg">
             <h1 className="text-5xl font-bold text-white mb-8">
               Welcome to ShareSwap
             </h1>
@@ -173,21 +173,19 @@ export default function AuthPage() {
             </p>
             
             {/* Platform Statistics */}
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="text-6xl font-extrabold text-white mb-2 tracking-tight">
-                  {statsLoading ? "Loading..." : (
-                    <RollingCounter 
-                      target={stats?.itemsShared || 0} 
-                      duration={3000}
-                      className="text-white"
-                    />
-                  )}
-                </div>
-                <p className="text-xl text-primary-foreground/90">
-                  items shared within our community
-                </p>
-              </div>
+            <div className="flex items-baseline gap-3">
+              <span className="text-6xl font-extrabold text-white tracking-tight">
+                {statsLoading ? "Loading..." : (
+                  <RollingCounter 
+                    target={stats?.itemsShared || 0} 
+                    duration={3000}
+                    className="text-white"
+                  />
+                )}
+              </span>
+              <span className="text-xl text-primary-foreground/90">
+                items shared within our community
+              </span>
             </div>
           </div>
         </div>

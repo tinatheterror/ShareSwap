@@ -165,22 +165,17 @@ export default function AuthPage() {
       >
         <div className="h-full w-full p-12 flex items-center justify-center">
           <div className="max-w-lg text-center">
-            <h1 className="text-5xl font-bold text-white mb-6">
+            <h1 className="text-5xl font-bold text-white mb-8">
               Welcome to ShareSwap
             </h1>
-            <div className="mb-8">
-              <p className="text-4xl font-bold text-black mb-4">
-                Share more, Own less.
-              </p>
-              <p className="text-xl text-primary-foreground/90">
-                Connect with your neighbours and discover a world of shared resources.
-              </p>
-            </div>
+            <p className="text-lg text-primary-foreground/90 mb-12">
+              Share more, own less. Connect with your neighbours and discover a world of shared resources.
+            </p>
             
             {/* Platform Statistics */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="text-center">
-                <div className="text-7xl font-extrabold text-white mb-4 tracking-tight">
+                <div className="text-6xl font-extrabold text-white mb-2 tracking-tight">
                   {statsLoading ? "Loading..." : (
                     <RollingCounter 
                       target={stats?.itemsShared || 0} 
@@ -189,7 +184,7 @@ export default function AuthPage() {
                     />
                   )}
                 </div>
-                <p className="text-2xl font-semibold text-primary-foreground/90 tracking-wide uppercase">
+                <p className="text-xl text-primary-foreground/90">
                   items shared within our community
                 </p>
               </div>

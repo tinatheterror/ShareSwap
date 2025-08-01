@@ -24,7 +24,8 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Advanced verification system for items and users
 
 ## User Preferences
-None recorded yet.
+- Keep original design (not the fresh green design)
+- Prefer the professional teal color scheme over vibrant alternatives
 
 ## Development Guidelines
 - Follow full-stack JavaScript best practices

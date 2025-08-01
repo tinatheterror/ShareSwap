@@ -61,16 +61,21 @@ export default function BorrowPage() {
   }, []);
 
   const { data: items = [] } = useQuery<ItemWithDistance[]>({
-    queryKey: ['/api/items/nearby', userLocation?.lat, userLocation?.lon, radius],
+    queryKey: userLocation ? ['/api/items/nearby', userLocation.lat, userLocation.lon, radius] : ['/api/items'],
     queryFn: async () => {
-      if (!userLocation) return [];
-      const response = await fetch(
-        `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}`
-      );
-      if (!response.ok) throw new Error('Failed to fetch nearby items');
-      return response.json();
+      if (userLocation) {
+        const response = await fetch(
+          `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}`
+        );
+        if (!response.ok) throw new Error('Failed to fetch nearby items');
+        return response.json();
+      } else {
+        // Fallback to all items if no location
+        const response = await fetch('/api/items');
+        if (!response.ok) throw new Error('Failed to fetch items');
+        return response.json();
+      }
     },
-    enabled: !!userLocation,
   });
 
   const filteredItems = items.filter(

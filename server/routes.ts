@@ -300,38 +300,69 @@ export function registerRoutes(app: Express): Server {
       return res.sendStatus(401);
     }
 
-    const { latitude, longitude, radius = 10 } = req.query; // radius in kilometers, default 10km
+    try {
+      const { latitude, longitude, radius = 10 } = req.query; // radius in kilometers, default 10km
 
-    if (!latitude || !longitude) {
-      return res
-        .status(400)
-        .json({ message: "Latitude and longitude are required" });
+      if (!latitude || !longitude) {
+        return res
+          .status(400)
+          .json({ error: "Latitude and longitude are required" });
+      }
+
+      const userLat = parseFloat(latitude as string);
+      const userLon = parseFloat(longitude as string);
+
+      if (isNaN(userLat) || isNaN(userLon)) {
+        return res
+          .status(400)
+          .json({ error: "Invalid latitude or longitude values" });
+      }
+
+      const allItems = await db
+        .select()
+        .from(items)
+        .where(eq(items.isAvailable, true));
+
+      // Filter items within radius
+      const nearbyItems = allItems
+        .filter((item) => item.latitude && item.longitude)
+        .map((item) => ({
+          ...item,
+          distance: calculateDistance(
+            userLat,
+            userLon,
+            Number(item.latitude),
+            Number(item.longitude),
+          ),
+        }))
+        .filter((item) => item.distance <= Number(radius))
+        .sort((a, b) => a.distance - b.distance);
+
+      res.json(nearbyItems);
+    } catch (error) {
+      console.error("Error fetching nearby items:", error);
+      res.status(500).json({ error: "Failed to fetch nearby items" });
+    }
+  });
+
+  // Get all available items (fallback if no location)
+  app.get("/api/items", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
     }
 
-    const userLat = parseFloat(latitude as string);
-    const userLon = parseFloat(longitude as string);
+    try {
+      const allItems = await db
+        .select()
+        .from(items)
+        .where(eq(items.isAvailable, true))
+        .orderBy(desc(items.createdAt));
 
-    const allItems = await db
-      .select()
-      .from(items)
-      .where(eq(items.isAvailable, true));
-
-    // Filter items within radius
-    const nearbyItems = allItems
-      .filter((item) => item.latitude && item.longitude)
-      .map((item) => ({
-        ...item,
-        distance: calculateDistance(
-          userLat,
-          userLon,
-          Number(item.latitude),
-          Number(item.longitude),
-        ),
-      }))
-      .filter((item) => item.distance <= Number(radius))
-      .sort((a, b) => a.distance - b.distance);
-
-    res.json(nearbyItems);
+      res.json(allItems);
+    } catch (error) {
+      console.error("Error fetching items:", error);
+      res.status(500).json({ error: "Failed to fetch items" });
+    }
   });
 
   // Item condition verification endpoints

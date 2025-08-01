@@ -15,8 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
-import { RollingCounter } from "@/components/rolling-counter";
 
 const formSchema = z.object({
   username: z.string().min(3).max(20),
@@ -32,16 +30,6 @@ export default function AuthPage() {
       username: "",
       password: "",
     },
-  });
-
-  // Fetch platform statistics
-  const { data: stats, isLoading: statsLoading } = useQuery<{
-    itemsShared: number;
-    totalUsers: number;
-    successfulTransactions: number;
-  }>({
-    queryKey: ['/api/stats'],
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   if (user) {
@@ -163,37 +151,14 @@ export default function AuthPage() {
       <div
         className="hidden md:block bg-primary"
       >
-        <div className="h-full w-full p-12 flex items-center justify-center">
-          <div className="max-w-lg text-center">
-            <h1 className="text-5xl font-bold text-white mb-6">
+        <div className="h-full w-full p-12 flex items-center">
+          <div className="max-w-md">
+            <h1 className="text-4xl font-bold text-white mb-6">
               Welcome to ShareSwap
             </h1>
-            <div className="mb-8">
-              <p className="text-4xl font-bold text-black mb-4">
-                Share more, Own less.
-              </p>
-              <p className="text-xl text-primary-foreground/90">
-                Connect with your neighbours and discover a world of shared resources.
-              </p>
-            </div>
-            
-            {/* Platform Statistics */}
-            <div className="space-y-6">
-              <div className="text-center">
-                <div className="text-7xl font-extrabold text-white mb-4 tracking-tight">
-                  {statsLoading ? "Loading..." : (
-                    <RollingCounter 
-                      target={stats?.itemsShared || 0} 
-                      duration={3000}
-                      className="text-white"
-                    />
-                  )}
-                </div>
-                <p className="text-2xl font-semibold text-primary-foreground/90 tracking-wide uppercase">
-                  items shared within our community
-                </p>
-              </div>
-            </div>
+            <p className="text-primary-foreground/90">
+              Share more, own less. Connect with your neighbours and discover a world of shared resources.
+            </p>
           </div>
         </div>
       </div>

@@ -717,36 +717,6 @@ export function registerRoutes(app: Express): Server {
     res.json(updatedRequest);
   });
 
-  // Get statistics for public display
-  app.get("/api/stats", async (req, res) => {
-    try {
-      // Get total count of shared items
-      const [itemsCount] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(items);
-
-      // Get total users count
-      const [usersCount] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(users);
-
-      // Get total successful transactions (accepted requests)
-      const [transactionsCount] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(itemRequests)
-        .where(eq(itemRequests.status, "ACCEPTED"));
-
-      res.json({
-        itemsShared: itemsCount.count,
-        totalUsers: usersCount.count,
-        successfulTransactions: transactionsCount.count,
-      });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      res.status(500).send("Error fetching platform statistics");
-    }
-  });
-
   // Create delivery arrangement
   app.post("/api/requests/:requestId/delivery", async (req, res) => {
     if (!req.isAuthenticated()) {

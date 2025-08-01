@@ -1,4 +1,4 @@
-import { WebSocketService } from '@/lib/websocket-service';
+// WebSocket service implementation
 
 interface WebSocketConfig {
   url: string;

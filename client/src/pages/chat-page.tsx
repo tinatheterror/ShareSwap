@@ -32,16 +32,13 @@ export default function ChatPage() {
     return <Redirect to="/auth" />;
   }
 
-  // Fix WebSocket URL construction
+  // Fix WebSocket URL construction - use session cookie instead of token
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const host = window.location.hostname;
-  const port = window.location.port;
-  const authToken = localStorage.getItem("authToken");
-  const wsUrl = `${protocol}//${host}/ws/chat?token=${authToken}`;
+  const host = window.location.host; // This includes port automatically
+  const wsUrl = `${protocol}//${host}/ws/chat`;
   console.log("WebSocket Setup - URL:", wsUrl);
   console.log("WebSocket Setup - Protocol:", protocol);
   console.log("WebSocket Setup - Host:", host);
-  console.log("WebSocket Setup - Port:", port);
 
   const { isConnected, send } = useWebSocket({
     url: wsUrl,

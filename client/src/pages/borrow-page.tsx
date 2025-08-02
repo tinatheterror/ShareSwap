@@ -117,6 +117,14 @@ export default function BorrowPage() {
           </div>
         </div>
 
+        {/* Debug info */}
+        <div className="mb-4 p-4 bg-yellow-50 rounded-lg">
+          <p className="text-sm">Debug: Found {items.length} items, filtered to {filteredItems.length}</p>
+          {items.length > 0 && (
+            <p className="text-xs text-gray-600">Items: {items.map(i => i.name).join(', ')}</p>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {filteredItems.map((item) => (
             <Card key={item.id} className="hover:shadow-lg transition-shadow">

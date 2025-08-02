@@ -257,44 +257,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/items", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    const availableItems = await db
-      .select()
-      .from(items)
-      .where(eq(items.isAvailable, true));
-
-    res.json(availableItems);
-  });
-
-  // Add GET route for single item
-  app.get("/api/items/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    const itemId = parseInt(req.params.id);
-    if (isNaN(itemId)) {
-      return res.status(400).json({ error: "Invalid item ID" });
-    }
-
-    const [item] = await db
-      .select()
-      .from(items)
-      .where(eq(items.id, itemId))
-      .limit(1);
-
-    if (!item) {
-      return res.status(404).send("Item not found");
-    }
-
-    res.json(item);
-  });
-
-  // Add new endpoint for finding nearby items
+  // Add new endpoint for finding nearby items (MUST come before /api/items/:id)
   app.get("/api/items/nearby", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -363,6 +326,30 @@ export function registerRoutes(app: Express): Server {
       console.error("Error fetching items:", error);
       res.status(500).json({ error: "Failed to fetch items" });
     }
+  });
+
+  // Add GET route for single item (MUST come after specific routes)
+  app.get("/api/items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const itemId = parseInt(req.params.id);
+    if (isNaN(itemId)) {
+      return res.status(400).json({ error: "Invalid item ID" });
+    }
+
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(eq(items.id, itemId))
+      .limit(1);
+
+    if (!item) {
+      return res.status(404).send("Item not found");
+    }
+
+    res.json(item);
   });
 
   // Item condition verification endpoints

@@ -60,14 +60,20 @@ export default function BorrowPage() {
     }
   }, []);
 
-  const { data: items = [] } = useQuery<ItemWithDistance[]>({
+  const { data: items = [], error, isLoading } = useQuery<ItemWithDistance[]>({
     queryKey: userLocation ? ['/api/items/nearby', userLocation.lat, userLocation.lon, radius] : ['/api/items'],
     queryFn: async () => {
       if (userLocation) {
         const response = await fetch(
           `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}`
         );
-        if (!response.ok) throw new Error('Failed to fetch nearby items');
+        if (!response.ok) {
+          console.error('Nearby items API failed, falling back to all items');
+          // Fall back to all items if nearby fails
+          const fallbackResponse = await fetch('/api/items');
+          if (!fallbackResponse.ok) throw new Error('Failed to fetch items');
+          return fallbackResponse.json();
+        }
         return response.json();
       } else {
         // Fallback to all items if no location
@@ -76,6 +82,7 @@ export default function BorrowPage() {
         return response.json();
       }
     },
+    retry: 1,
   });
 
   const filteredItems = items.filter(
@@ -120,9 +127,12 @@ export default function BorrowPage() {
         {/* Debug info */}
         <div className="mb-4 p-4 bg-yellow-50 rounded-lg">
           <p className="text-sm">Debug: Found {items.length} items, filtered to {filteredItems.length}</p>
+          {isLoading && <p className="text-xs text-blue-600">Loading...</p>}
+          {error && <p className="text-xs text-red-600">Error: {error.message}</p>}
           {items.length > 0 && (
             <p className="text-xs text-gray-600">Items: {items.map(i => i.name).join(', ')}</p>
           )}
+          <p className="text-xs text-gray-500">User location: {userLocation ? `${userLocation.lat}, ${userLocation.lon}` : 'Not available'}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

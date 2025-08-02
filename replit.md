@@ -13,9 +13,11 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - **Security**: Advanced location matching and item verification
 
 ## Recent Changes
-- Fixed item upload form data handling and database validation errors
+- Fixed critical item browsing issues caused by Express route conflicts
 - Implemented functional ID document upload with credit card verification
 - Added comprehensive verification system requiring both identity and payment methods
+- Fixed item upload form data handling and database validation errors
+- Added camera scanning functionality for credit card verification
 - Updated brand slogan to: "Share more, own less. Connect with your neighbours and discover a world of shared resources"
 - Applied new slogan consistently across home page and auth page
 - Date: August 1, 2025

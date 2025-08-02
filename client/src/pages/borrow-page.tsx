@@ -1,10 +1,10 @@
 import { Navbar } from "@/components/shared/navbar";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CheckCircle, AlertCircle, MapPin, X } from "lucide-react";
+import { Search, CheckCircle, AlertCircle, MapPin, X, Camera } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -126,68 +126,42 @@ export default function BorrowPage() {
 
 
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filteredItems.map((item) => (
-            <Card key={item.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="pt-6">
-                {item.photos && item.photos[0] && (
-                  <img
-                    src={item.photos[0]}
-                    alt={item.name}
-                    className="w-full h-48 object-cover rounded-md mb-4"
-                  />
-                )}
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-semibold">{item.name}</h3>
-                  {item.isConditionVerified ? (
-                    <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Verified
-                    </Badge>
+            <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
+              <CardContent className="p-4">
+                <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                  {item.photos && item.photos[0] ? (
+                    <img
+                      src={item.photos[0]}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Pending
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {item.description}
-                </p>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Condition:</span>
-                    <span className="font-medium">{item.conditionRating}/10</span>
-                  </div>
-                  {item.lendingDuration && (
-                    <div className="flex justify-between text-sm">
-                      <span>Duration:</span>
-                      <span className="font-medium">{item.lendingDuration} days</span>
-                    </div>
-                  )}
-                  {item.securityDeposit && (
-                    <div className="flex justify-between text-sm">
-                      <span>Deposit:</span>
-                      <span className="font-medium">${item.securityDeposit}</span>
-                    </div>
-                  )}
-                  {item.distance && (
-                    <div className="flex justify-between text-sm">
-                      <span>Distance:</span>
-                      <span className="font-medium">{item.distance.toFixed(1)} km</span>
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <Camera className="h-8 w-8 text-gray-400" />
                     </div>
                   )}
                 </div>
-              </CardContent>
-              <CardFooter>
+                
+                <div className="text-center mb-3">
+                  <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
+                  <p className="text-xs text-gray-500 mb-1">
+                    {item.isConditionVerified ? "Verificato" : "Reserveret"}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {item.distance ? `${item.distance.toFixed(1)}km` : "Nearby"}
+                  </p>
+                </div>
+                
                 <Button 
-                  className="w-full" 
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
                   disabled={!item.isConditionVerified}
                   onClick={() => navigate(`/items/${item.id}`)}
                 >
-                  {item.isConditionVerified ? "View Details" : "Pending Verification"}
+                  {item.isConditionVerified ? "Share" : "Pending"}
                 </Button>
-              </CardFooter>
+              </CardContent>
             </Card>
           ))}
         </div>

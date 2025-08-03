@@ -1,4 +1,4 @@
-import React from "react";
+import { createContext, useContext } from "react";
 import {
   useQuery,
   useMutation,
@@ -19,7 +19,7 @@ type AuthContextType = {
 
 type LoginData = Pick<SelectUser, "username" | "password">;
 
-export const AuthContext = React.createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useAuth() {
-  const context = React.useContext(AuthContext);
+  const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }

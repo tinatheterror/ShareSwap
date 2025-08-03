@@ -41,6 +41,9 @@ const deliveryFormSchema = z.object({
   securityDeposit: z.string().min(1, "Security deposit amount is required"),
 });
 
+import { CelebrationAnimation } from "@/components/celebration-animation";
+import { DeliveryScheduling } from "@/components/delivery-scheduling";
+
 export default function RequestsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -49,6 +52,9 @@ export default function RequestsPage() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [cardOffsetX, setCardOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [showScheduling, setShowScheduling] = useState(false);
+  const [acceptedRequest, setAcceptedRequest] = useState<Request | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
 
@@ -101,7 +107,9 @@ export default function RequestsPage() {
     
     if (Math.abs(cardOffsetX) > threshold && currentRequest) {
       if (cardOffsetX > 0) {
-        // Swipe right - Accept
+        // Swipe right - Accept with celebration
+        setAcceptedRequest(currentRequest);
+        setShowCelebration(true);
         updateRequestMutation.mutate({
           requestId: currentRequest.request.id,
           status: "ACCEPTED"
@@ -112,13 +120,12 @@ export default function RequestsPage() {
           requestId: currentRequest.request.id,
           status: "DECLINED"
         });
+        // Move to next card
+        setTimeout(() => {
+          setCurrentCardIndex(prev => prev + 1);
+          setCardOffsetX(0);
+        }, 300);
       }
-      
-      // Move to next card
-      setTimeout(() => {
-        setCurrentCardIndex(prev => prev + 1);
-        setCardOffsetX(0);
-      }, 300);
     } else {
       // Snap back
       setCardOffsetX(0);
@@ -130,8 +137,12 @@ export default function RequestsPage() {
       const res = await apiRequest("PATCH", `/api/requests/${requestId}`, { status });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/requests'] });
+      if (variables.status === "ACCEPTED") {
+        // Don't show toast for accepted - celebration handles it
+        return;
+      }
       toast({
         title: "Request updated",
         description: "The request status has been updated successfully.",
@@ -484,6 +495,43 @@ export default function RequestsPage() {
                 </div>
               </form>
             </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Celebration Animation */}
+        <CelebrationAnimation
+          isVisible={showCelebration}
+          onComplete={() => {
+            setShowCelebration(false);
+            setShowScheduling(true);
+            setCurrentCardIndex(prev => prev + 1);
+            setCardOffsetX(0);
+          }}
+          message={`Great! You accepted ${acceptedRequest?.requester.username}'s request!`}
+        />
+
+        {/* Delivery Scheduling */}
+        <Dialog open={showScheduling} onOpenChange={setShowScheduling}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Schedule Pickup/Delivery</DialogTitle>
+              <DialogDescription>
+                Let's arrange how to get {acceptedRequest?.item.name} to {acceptedRequest?.requester.username}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {acceptedRequest && (
+              <DeliveryScheduling
+                itemId={acceptedRequest.item.id}
+                itemName={acceptedRequest.item.name}
+                itemValue={500} // You can calculate this from item data
+                ownerName={acceptedRequest.requester.username}
+                onComplete={() => {
+                  setShowScheduling(false);
+                  setAcceptedRequest(null);
+                }}
+              />
+            )}
           </DialogContent>
         </Dialog>
       </main>

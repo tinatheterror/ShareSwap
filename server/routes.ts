@@ -435,6 +435,58 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Enhanced delivery arrangements with security deposit options
+  app.post("/api/delivery-arrangements", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const {
+        itemId,
+        deliveryMethod,
+        depositMethod,
+        scheduledDate,
+        scheduledTime,
+        pickupLocation,
+        deliveryAddress,
+        deliveryService,
+        specialInstructions,
+        suggestedDepositAmount
+      } = req.body;
+
+      if (!itemId || !deliveryMethod || !depositMethod || !scheduledDate || !scheduledTime) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Validate item exists and user can access it
+      const [item] = await db
+        .select()
+        .from(items)
+        .where(eq(items.id, itemId))
+        .limit(1);
+
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+
+      const [arrangement] = await db
+        .insert(deliveryArrangements)
+        .values({
+          deliveryType: deliveryMethod,
+          deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress : pickupLocation,
+          deliveryDate: new Date(`${scheduledDate}T${scheduledTime}`),
+          status: 'pending',
+        })
+        .returning();
+
+      res.status(201).json(arrangement);
+    } catch (error) {
+      console.error("Error creating delivery arrangement:", error);
+      res.status(500).json({ error: "Failed to create delivery arrangement" });
+    }
+  });
+
   // Add GET route for single item (MUST come after specific routes)
   app.get("/api/items/:id", async (req, res) => {
     if (!req.isAuthenticated()) {

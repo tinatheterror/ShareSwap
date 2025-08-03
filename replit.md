@@ -36,6 +36,11 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Added camera scanning functionality for credit card verification
 - Updated brand slogan to: "Share more, own less. Connect with your neighbours and discover a world of shared resources"
 - Applied new slogan consistently across home page and auth page
+- Added in-app scheduling for pickup/delivery after accepting requests
+- Implemented celebration animation with satisfying sound effects for transaction acceptance
+- Created security deposit options: credit card processing vs self-facilitated with risk warnings
+- Enhanced swipe-right functionality to trigger celebration then scheduling flow
+- Added delivery service integration with commission structure for Uber, DoorDash, etc.
 - Date: August 3, 2025
 
 ## Architecture

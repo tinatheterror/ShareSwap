@@ -14,13 +14,17 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 
 ## Recent Changes
 - Fixed critical item browsing issues caused by Express route conflicts
+- Implemented swipeable card interface for Item Requests page with intuitive left/right swipe actions
+- Added clever copy: "Not today!" for reject (left swipe) and "Let's share!" for accept (right swipe)
+- Created first-time user tutorial showing swipe functionality with visual indicators
+- Added stacked card UI with smooth animations and swipe feedback
 - Implemented functional ID document upload with credit card verification
 - Added comprehensive verification system requiring both identity and payment methods
 - Fixed item upload form data handling and database validation errors
 - Added camera scanning functionality for credit card verification
 - Updated brand slogan to: "Share more, own less. Connect with your neighbours and discover a world of shared resources"
 - Applied new slogan consistently across home page and auth page
-- Date: August 1, 2025
+- Date: August 3, 2025
 
 ## Architecture
 - Full-stack JavaScript application following modern patterns

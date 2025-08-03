@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Recommendations } from "@/components/recommendations";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -135,9 +136,12 @@ export default function BorrowPage() {
           </div>
         </div>
 
+        {/* AI Recommendations Section */}
+        <Recommendations limit={6} />
 
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">All Available Items</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filteredItems.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
               <CardContent className="p-4">
@@ -175,6 +179,7 @@ export default function BorrowPage() {
               </CardContent>
             </Card>
           ))}
+          </div>
         </div>
 
         {/* ShareCoins Prompt */}

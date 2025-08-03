@@ -24,6 +24,7 @@ import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
 import connectPgSimple from "connect-pg-simple";
+import { recommendationEngine } from "./recommendation-engine";
 
 function calculateDistance(
   lat1: number,
@@ -325,6 +326,22 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching items:", error);
       res.status(500).json({ error: "Failed to fetch items" });
+    }
+  });
+
+  // Add recommendations endpoint
+  app.get("/api/recommendations", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const recommendations = await recommendationEngine.getRecommendations(req.user.id, limit);
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error getting recommendations:", error);
+      res.status(500).json({ error: "Failed to get recommendations" });
     }
   });
 

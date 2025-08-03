@@ -10,6 +10,7 @@ import type { SelectItem } from "@db/schema";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Recommendations } from "@/components/recommendations";
 
 interface SwappableItem extends SelectItem {
   distance?: number;
@@ -94,6 +95,15 @@ export default function SwapPage() {
           <Button variant="outline" size="icon">
             <Filter className="h-4 w-4" />
           </Button>
+        </div>
+
+        {/* AI Recommendations Section */}
+        <div className="mb-8">
+          <Recommendations limit={6} />
+        </div>
+
+        <div>
+          <h2 className="text-xl font-bold mb-4">All Swappable Items</h2>
         </div>
 
         {/* Items Grid */}

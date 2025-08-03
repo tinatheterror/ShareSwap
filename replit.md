@@ -21,6 +21,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Added prompts for users with 0 ShareCoins when accessing borrow functionality
 - Added prompts for users with 0 items in ShareChest when accessing swap functionality
 - Both prompts redirect users to item upload screen to encourage participation
+- Implemented AI-powered item recommendations based on past behavior
+- Added intelligent recommendation engine that analyzes user patterns, categories, and similarity
+- Integrated recommendations section into borrow and swap pages with engaging yellow theme
+- Recommendations show AI reasoning with badges like "Matches your interests" and "Similar to recent activity"
 - Implemented functional ID document upload with credit card verification
 - Added comprehensive verification system requiring both identity and payment methods
 - Fixed item upload form data handling and database validation errors

@@ -177,9 +177,13 @@ export const deliveryArrangements = pgTable("delivery_arrangements", {
   deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }),
   deliveryAddress: text("delivery_address"),
   deliveryDate: timestamp("delivery_date"),
+  returnDate: timestamp("return_date"),
   securityDeposit: decimal("security_deposit", { precision: 10, scale: 2 }),
   depositPaid: boolean("deposit_paid").default(false),
   status: text("status").default("PENDING").notNull(),
+  qrCodeData: text("qr_code_data"),
+  specialInstructions: text("special_instructions"),
+  riskAccepted: boolean("risk_accepted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

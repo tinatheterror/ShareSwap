@@ -448,11 +448,13 @@ export function registerRoutes(app: Express): Server {
         depositMethod,
         scheduledDate,
         scheduledTime,
+        returnDate,
         pickupLocation,
         deliveryAddress,
         deliveryService,
         specialInstructions,
-        suggestedDepositAmount
+        suggestedDepositAmount,
+        riskAccepted
       } = req.body;
 
       if (!itemId || !deliveryMethod || !depositMethod || !scheduledDate || !scheduledTime) {
@@ -470,12 +472,36 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Item not found" });
       }
 
+      // Generate QR code data for handover verification
+      const qrCodeData = JSON.stringify({
+        itemId,
+        itemName: item.name,
+        deliveryMethod,
+        scheduledDate,
+        scheduledTime,
+        deliveryAddress: deliveryMethod === 'pickup' ? pickupLocation : deliveryAddress,
+        timestamp: new Date().toISOString(),
+        verificationCode: Math.random().toString(36).substring(2, 15)
+      });
+
+      const deliveryFee = deliveryMethod === 'delivery' ? 
+        (deliveryService === 'uber' ? '15.00' : 
+         deliveryService === 'doordash' ? '12.00' : 
+         deliveryService === 'postmates' ? '18.00' : 
+         deliveryService === 'local_courier' ? '25.00' : '0.00') : '0.00';
+
       const [arrangement] = await db
         .insert(deliveryArrangements)
         .values({
           deliveryType: deliveryMethod,
-          deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress : pickupLocation,
+          deliveryFee,
+          deliveryAddress: deliveryMethod === 'pickup' ? pickupLocation : deliveryAddress,
           deliveryDate: new Date(`${scheduledDate}T${scheduledTime}`),
+          returnDate: returnDate ? new Date(`${returnDate}T23:59:59`) : null,
+          securityDeposit: suggestedDepositAmount.toString(),
+          specialInstructions,
+          qrCodeData,
+          riskAccepted: deliveryMethod === 'self_delivery' ? riskAccepted : false,
           status: 'pending',
         })
         .returning();
@@ -1180,9 +1206,13 @@ export function registerRoutes(app: Express): Server {
         deliveryFee: deliveryArrangements.deliveryFee,
         deliveryAddress: deliveryArrangements.deliveryAddress,
         deliveryDate: deliveryArrangements.deliveryDate,
+        returnDate: deliveryArrangements.returnDate,
         securityDeposit: deliveryArrangements.securityDeposit,
         depositPaid: deliveryArrangements.depositPaid,
         status: deliveryArrangements.status,
+        qrCodeData: deliveryArrangements.qrCodeData,
+        specialInstructions: deliveryArrangements.specialInstructions,
+        riskAccepted: deliveryArrangements.riskAccepted,
         createdAt: deliveryArrangements.createdAt,
         itemId: items.id,
         itemName: items.name,
@@ -1202,7 +1232,33 @@ export function registerRoutes(app: Express): Server {
       )
       .orderBy(desc(deliveryArrangements.deliveryDate));
 
-    res.json(arrangements);
+    // Transform the data to match the expected frontend interface
+    const transformedArrangements = arrangements.map(arr => ({
+      id: arr.id,
+      requestId: arr.requestId,
+      deliveryType: arr.deliveryType,
+      deliveryFee: arr.deliveryFee,
+      deliveryAddress: arr.deliveryAddress,
+      deliveryDate: arr.deliveryDate,
+      returnDate: arr.returnDate,
+      securityDeposit: arr.securityDeposit,
+      depositPaid: arr.depositPaid,
+      status: arr.status,
+      qrCodeData: arr.qrCodeData,
+      specialInstructions: arr.specialInstructions,
+      riskAccepted: arr.riskAccepted,
+      createdAt: arr.createdAt,
+      request: {
+        id: arr.requestId,
+        item: {
+          id: arr.itemId,
+          name: arr.itemName,
+          photos: arr.itemPhotos,
+        }
+      }
+    }));
+
+    res.json(transformedArrangements);
   });
 
   const httpServer = createServer(app);

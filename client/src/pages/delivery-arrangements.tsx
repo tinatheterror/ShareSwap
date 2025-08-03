@@ -18,9 +18,13 @@ interface DeliveryArrangement {
   deliveryFee: string;
   deliveryAddress: string;
   deliveryDate: string;
+  returnDate?: string;
   securityDeposit: string;
   depositPaid: boolean;
   status: string;
+  qrCodeData?: string;
+  specialInstructions?: string;
+  riskAccepted: boolean;
   createdAt: string;
   request: {
     id: number;
@@ -44,14 +48,28 @@ export default function DeliveryArrangementsPage() {
   const generateQRCode = async (arrangement: DeliveryArrangement) => {
     try {
       setLoadingQR(prev => ({ ...prev, [arrangement.id]: true }));
-      const qrData = JSON.stringify({
+      
+      // Use server-generated QR data if available, otherwise create our own
+      const qrData = arrangement.qrCodeData || JSON.stringify({
         arrangementId: arrangement.id,
         itemName: arrangement.request.item.name,
+        deliveryType: arrangement.deliveryType,
         deliveryDate: arrangement.deliveryDate,
+        returnDate: arrangement.returnDate,
         address: arrangement.deliveryAddress,
+        verificationCode: Math.random().toString(36).substring(2, 15),
+        timestamp: new Date().toISOString()
       });
 
-      const qrDataUrl = await QRCode.toDataURL(qrData);
+      const qrDataUrl = await QRCode.toDataURL(qrData, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      
       setQrCodes(prev => ({
         ...prev,
         [arrangement.id]: qrDataUrl
@@ -59,7 +77,7 @@ export default function DeliveryArrangementsPage() {
 
       toast({
         title: "QR Code Generated",
-        description: "Show this QR code to verify the delivery.",
+        description: "Show this QR code for easy item handover verification.",
       });
     } catch (err) {
       toast({
@@ -84,13 +102,81 @@ export default function DeliveryArrangementsPage() {
     });
   };
 
-  const calendarEvents = arrangements?.map(arr => ({
-    title: `Delivery: ${arr.request.item.name}`,
-    start: new Date(arr.deliveryDate),
-    extendedProps: {
-      arrangement: arr,
-    },
-  })) || [];
+  const generateCalendarEvents = (arrangements: DeliveryArrangement[]) => {
+    const events: any[] = [];
+    
+    arrangements?.forEach(arr => {
+      // Delivery/Pickup event
+      events.push({
+        title: `${arr.deliveryType === 'pickup' ? 'Pickup' : arr.deliveryType === 'self_delivery' ? 'Self-Delivery' : 'Delivery'}: ${arr.request.item.name}`,
+        start: new Date(arr.deliveryDate),
+        color: arr.deliveryType === 'self_delivery' ? '#f59e0b' : '#3b82f6',
+        extendedProps: {
+          arrangement: arr,
+          eventType: 'delivery'
+        },
+      });
+      
+      // Return event if return date is specified
+      if (arr.returnDate) {
+        events.push({
+          title: `Return: ${arr.request.item.name}`,
+          start: new Date(arr.returnDate),
+          color: '#10b981',
+          extendedProps: {
+            arrangement: arr,
+            eventType: 'return'
+          },
+        });
+      }
+    });
+    
+    return events;
+  };
+
+  const calendarEvents = generateCalendarEvents(arrangements || []);
+
+  const exportToCalendar = (arrangement: DeliveryArrangement) => {
+    const startDate = new Date(arrangement.deliveryDate);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour duration
+    
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+    
+    const title = `${arrangement.deliveryType === 'pickup' ? 'Pickup' : 'Delivery'}: ${arrangement.request.item.name}`;
+    const description = `Item: ${arrangement.request.item.name}%0AAddress: ${arrangement.deliveryAddress}%0AType: ${arrangement.deliveryType}${arrangement.specialInstructions ? '%0AInstructions: ' + arrangement.specialInstructions : ''}`;
+    
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ShareSpace//EN',
+      'BEGIN:VEVENT',
+      `DTSTART:${formatDate(startDate)}`,
+      `DTEND:${formatDate(endDate)}`,
+      `SUMMARY:${title}`,
+      `DESCRIPTION:${description}`,
+      `LOCATION:${arrangement.deliveryAddress}`,
+      `UID:delivery-${arrangement.id}@sharespace.com`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+    
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `delivery-${arrangement.id}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Calendar Event Exported",
+      description: "The delivery appointment has been saved to your calendar.",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -147,41 +233,75 @@ export default function DeliveryArrangementsPage() {
                     key={arr.id}
                     className="p-4 rounded-lg border hover:border-primary/50 transition-colors"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium">{arr.request.item.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(arr.deliveryDate).toLocaleDateString()}
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium">{arr.request.item.name}</h3>
+                          {arr.deliveryType === 'self_delivery' && arr.riskAccepted && (
+                            <div className="flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3 text-orange-500" />
+                              <span className="text-xs text-orange-600">Self-Delivery</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {new Date(arr.deliveryDate).toLocaleDateString()} at {new Date(arr.deliveryDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
+                        {arr.returnDate && (
+                          <p className="text-sm text-green-600 mb-1">
+                            Return by: {new Date(arr.returnDate).toLocaleDateString()}
+                          </p>
+                        )}
                         <p className="text-sm text-muted-foreground">
                           {arr.deliveryAddress}
                         </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => qrCodes[arr.id] ? hideQRCode(arr.id) : generateQRCode(arr)}
-                        disabled={loadingQR[arr.id]}
-                      >
-                        {loadingQR[arr.id] ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : qrCodes[arr.id] ? (
-                          <X className="h-4 w-4" />
-                        ) : (
-                          <QrCode className="h-4 w-4" />
+                        {arr.specialInstructions && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">
+                            "{arr.specialInstructions}"
+                          </p>
                         )}
-                      </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => exportToCalendar(arr)}
+                          title="Export to Calendar"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => qrCodes[arr.id] ? hideQRCode(arr.id) : generateQRCode(arr)}
+                          disabled={loadingQR[arr.id]}
+                          title="Generate QR Code"
+                        >
+                          {loadingQR[arr.id] ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : qrCodes[arr.id] ? (
+                            <X className="h-4 w-4" />
+                          ) : (
+                            <QrCode className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     {qrCodes[arr.id] && (
-                      <div className="mt-4 flex flex-col items-center space-y-4">
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg flex flex-col items-center space-y-4">
                         <img
                           src={qrCodes[arr.id]}
-                          alt="QR Code"
-                          className="w-32 h-32"
+                          alt="QR Code for Item Handover"
+                          className="w-40 h-40 border border-gray-200 rounded"
                         />
-                        <p className="text-sm text-muted-foreground">
-                          Show this QR code during delivery
-                        </p>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-gray-900 mb-1">
+                            QR Code for Easy Handover
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Show this code to verify the {arr.deliveryType === 'pickup' ? 'pickup' : 'delivery'} of {arr.request.item.name}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>

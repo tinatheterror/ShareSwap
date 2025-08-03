@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, CreditCard, Truck, AlertTriangle, Shield, MapPin } from "lucide-react";
+import { Calendar, Clock, CreditCard, Truck, Car, AlertTriangle, Shield, MapPin, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -23,14 +23,16 @@ interface DeliverySchedulingProps {
 }
 
 export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onComplete }: DeliverySchedulingProps) {
-  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery'>('pickup');
+  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery' | 'self_delivery'>('pickup');
   const [depositMethod, setDepositMethod] = useState<'credit_card' | 'self_facilitated'>('credit_card');
   const [scheduledDate, setScheduledDate] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
   const [scheduledTime, setScheduledTime] = useState('');
+  const [returnDate, setReturnDate] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
   const [pickupLocation, setPickupLocation] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [selfFacilitatedAgreement, setSelfFacilitatedAgreement] = useState(false);
+  const [selfDeliveryRiskAccepted, setSelfDeliveryRiskAccepted] = useState(false);
   const [deliveryService, setDeliveryService] = useState('');
   
   const { toast } = useToast();
@@ -94,6 +96,15 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
       return;
     }
 
+    if (deliveryMethod === 'self_delivery' && (!deliveryAddress || !selfDeliveryRiskAccepted)) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide delivery address and accept the risk disclaimer for self-delivery.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (depositMethod === 'self_facilitated' && !selfFacilitatedAgreement) {
       toast({
         title: "Agreement Required",
@@ -109,11 +120,13 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
       depositMethod,
       scheduledDate,
       scheduledTime,
+      returnDate,
       pickupLocation: deliveryMethod === 'pickup' ? pickupLocation : null,
-      deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress : null,
+      deliveryAddress: deliveryMethod === 'delivery' || deliveryMethod === 'self_delivery' ? deliveryAddress : null,
       deliveryService: deliveryMethod === 'delivery' ? deliveryService : null,
       specialInstructions,
       suggestedDepositAmount,
+      riskAccepted: deliveryMethod === 'self_delivery' ? selfDeliveryRiskAccepted : false,
     };
 
     createArrangementMutation.mutate(arrangementData);
@@ -154,13 +167,20 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                   Delivery Service (Additional fees apply)
                 </Label>
               </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="self_delivery" id="self_delivery" />
+                <Label htmlFor="self_delivery" className="flex items-center gap-2">
+                  <Car className="h-4 w-4" />
+                  Self Delivery (I'll handle delivery myself)
+                </Label>
+              </div>
             </RadioGroup>
           </div>
 
           {/* Date and Time */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="date">Date</Label>
+              <Label htmlFor="date">Pickup/Delivery Date</Label>
               <Input
                 id="date"
                 type="date"
@@ -180,6 +200,24 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
             </div>
           </div>
 
+          {/* Return Date for Lending */}
+          <div>
+            <Label htmlFor="return-date" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Expected Return Date
+            </Label>
+            <Input
+              id="return-date"
+              type="date"
+              value={returnDate}
+              onChange={(e) => setReturnDate(e.target.value)}
+              min={scheduledDate}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              This helps both parties plan the lending duration and enables calendar sync
+            </p>
+          </div>
+
           {/* Location Details */}
           {deliveryMethod === 'pickup' ? (
             <div>
@@ -191,7 +229,7 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                 onChange={(e) => setPickupLocation(e.target.value)}
               />
             </div>
-          ) : (
+          ) : deliveryMethod === 'delivery' ? (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="delivery-address">Delivery Address</Label>
@@ -216,6 +254,44 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="self-delivery-address">Delivery Address</Label>
+                <Input
+                  id="self-delivery-address"
+                  placeholder="Enter delivery address"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                />
+              </div>
+              
+              {/* Risk Warning for Self Delivery */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-orange-900">Self-Delivery Risk Warning</h4>
+                    <div className="text-sm text-orange-800 space-y-1">
+                      <p>• You are responsible for safe transportation and delivery</p>
+                      <p>• No platform protection for loss or damage during transit</p>
+                      <p>• Consider insurance and proper packaging</p>
+                      <p>• QR code verification required upon delivery</p>
+                    </div>
+                    <div className="flex items-center space-x-2 mt-3">
+                      <Checkbox
+                        id="self-delivery-risk"
+                        checked={selfDeliveryRiskAccepted}
+                        onCheckedChange={(checked) => setSelfDeliveryRiskAccepted(!!checked)}
+                      />
+                      <Label htmlFor="self-delivery-risk" className="text-sm font-medium text-orange-900">
+                        I understand and accept the risks of self-delivery
+                      </Label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

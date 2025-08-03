@@ -41,6 +41,12 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Created security deposit options: credit card processing vs self-facilitated with risk warnings
 - Enhanced swipe-right functionality to trigger celebration then scheduling flow
 - Added delivery service integration with commission structure for Uber, DoorDash, etc.
+- Implemented self-delivery option with comprehensive risk warnings and user acknowledgments
+- Added calendar sync functionality for lending durations with return date tracking
+- Enhanced QR code generation for easy item handover verification with detailed metadata
+- Created calendar export functionality (.ics format) for delivery appointments
+- Extended delivery arrangements with return dates, special instructions, and risk acceptance tracking
+- Improved delivery arrangements page with better QR codes, calendar integration, and visual indicators
 - Date: August 3, 2025
 
 ## Architecture

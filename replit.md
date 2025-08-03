@@ -18,6 +18,9 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Added clever copy: "Not today!" for reject (left swipe) and "Let's share!" for accept (right swipe)
 - Created first-time user tutorial showing swipe functionality with visual indicators
 - Added stacked card UI with smooth animations and swipe feedback
+- Added prompts for users with 0 ShareCoins when accessing borrow functionality
+- Added prompts for users with 0 items in ShareChest when accessing swap functionality
+- Both prompts redirect users to item upload screen to encourage participation
 - Implemented functional ID document upload with credit card verification
 - Added comprehensive verification system requiring both identity and payment methods
 - Fixed item upload form data handling and database validation errors

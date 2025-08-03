@@ -9,6 +9,8 @@ import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -21,8 +23,10 @@ export default function BorrowPage() {
   const [radius, setRadius] = useState(72); // Default 72km radius
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showShareCoinsPrompt, setShowShareCoinsPrompt] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { user } = useAuth();
 
   // Get user's location when the component mounts
   useEffect(() => {
@@ -90,6 +94,13 @@ export default function BorrowPage() {
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Check ShareCoins when component mounts
+  useEffect(() => {
+    if (user && Number(user.shareCoins) === 0) {
+      setShowShareCoinsPrompt(true);
+    }
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,6 +176,33 @@ export default function BorrowPage() {
             </Card>
           ))}
         </div>
+
+        {/* ShareCoins Prompt */}
+        <Dialog open={showShareCoinsPrompt} onOpenChange={setShowShareCoinsPrompt}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>💰 Need ShareCoins to Borrow</DialogTitle>
+              <DialogDescription>
+                You have 0 ShareCoins to borrow items. Would you like to lend something out to earn ShareCoins?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowShareCoinsPrompt(false)}
+                className="flex-1"
+              >
+                Browse Anyway
+              </Button>
+              <Button
+                onClick={() => navigate("/lend")}
+                className="flex-1"
+              >
+                Lend an Item
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {showLocationModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">

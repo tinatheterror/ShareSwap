@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { ArrowLeftRight, Search, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { SelectItem } from "@db/schema";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface SwappableItem extends SelectItem {
   distance?: number;
@@ -16,10 +18,24 @@ interface SwappableItem extends SelectItem {
 
 export default function SwapPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showInventoryPrompt, setShowInventoryPrompt] = useState(false);
   const [, navigate] = useLocation();
+  const { user } = useAuth();
 
   const { data: items = [], isLoading } = useQuery<SwappableItem[]>({
     queryKey: ['/api/items'],
+  });
+
+  // Check user's inventory (items they own)
+  const { data: userItems = [] } = useQuery<SelectItem[]>({
+    queryKey: ['/api/user-items'],
+    queryFn: async () => {
+      const response = await fetch('/api/items');
+      if (!response.ok) throw new Error('Failed to fetch items');
+      const allItems = await response.json();
+      return allItems.filter((item: SelectItem) => item.ownerId === user?.id);
+    },
+    enabled: !!user?.id,
   });
 
   // Filter for swappable items only
@@ -29,6 +45,13 @@ export default function SwapPage() {
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Check user's inventory when component mounts
+  useEffect(() => {
+    if (user && userItems.length === 0 && !isLoading) {
+      setShowInventoryPrompt(true);
+    }
+  }, [user, userItems.length, isLoading]);
 
   if (isLoading) {
     return (
@@ -128,6 +151,33 @@ export default function SwapPage() {
             ))}
           </div>
         )}
+
+        {/* Inventory Prompt */}
+        <Dialog open={showInventoryPrompt} onOpenChange={setShowInventoryPrompt}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>📦 Empty ShareChest</DialogTitle>
+              <DialogDescription>
+                You have 0 items in your ShareChest to swap. Would you like to add an item?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowInventoryPrompt(false)}
+                className="flex-1"
+              >
+                Browse Anyway
+              </Button>
+              <Button
+                onClick={() => navigate("/lend")}
+                className="flex-1"
+              >
+                Add an Item
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

@@ -20,6 +20,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
+import { locationAlerts, swapMatches } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
@@ -342,6 +343,95 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error getting recommendations:", error);
       res.status(500).json({ error: "Failed to get recommendations" });
+    }
+  });
+
+  // Get seasonal recommendations
+  app.get("/api/recommendations/seasonal", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const limit = parseInt(req.query.limit as string) || 8;
+      const seasonalRecs = await recommendationEngine.getSeasonalRecommendations(req.user.id, limit);
+      res.json(seasonalRecs);
+    } catch (error) {
+      console.error("Error getting seasonal recommendations:", error);
+      res.status(500).json({ error: "Failed to get seasonal recommendations" });
+    }
+  });
+
+  // Smart swap matching
+  app.get("/api/swap-matches/:requestId/:userItemId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const userItemId = parseInt(req.params.userItemId);
+      
+      if (isNaN(requestId) || isNaN(userItemId)) {
+        return res.status(400).json({ error: "Invalid request or item ID" });
+      }
+
+      const matches = await recommendationEngine.findSwapMatches(requestId, userItemId);
+      res.json(matches);
+    } catch (error) {
+      console.error("Error finding swap matches:", error);
+      res.status(500).json({ error: "Failed to find swap matches" });
+    }
+  });
+
+  // Location alerts management
+  app.post("/api/location-alerts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { keywords, latitude, longitude, radius } = req.body;
+      
+      if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+        return res.status(400).json({ error: "Keywords are required" });
+      }
+
+      const [alert] = await db
+        .insert(locationAlerts)
+        .values({
+          userId: req.user.id,
+          keywords,
+          latitude: latitude ? String(latitude) : null,
+          longitude: longitude ? String(longitude) : null,
+          radius: radius || 10,
+          isActive: true,
+        })
+        .returning();
+
+      res.status(201).json(alert);
+    } catch (error) {
+      console.error("Error creating location alert:", error);
+      res.status(500).json({ error: "Failed to create location alert" });
+    }
+  });
+
+  app.get("/api/location-alerts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const alerts = await db
+        .select()
+        .from(locationAlerts)
+        .where(eq(locationAlerts.userId, req.user.id))
+        .orderBy(desc(locationAlerts.createdAt));
+
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching location alerts:", error);
+      res.status(500).json({ error: "Failed to fetch location alerts" });
     }
   });
 

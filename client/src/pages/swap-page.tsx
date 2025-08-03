@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Recommendations } from "@/components/recommendations";
+import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 
 interface SwappableItem extends SelectItem {
   distance?: number;
@@ -100,6 +101,11 @@ export default function SwapPage() {
         {/* AI Recommendations Section */}
         <div className="mb-8">
           <Recommendations limit={6} />
+        </div>
+
+        {/* Seasonal Recommendations */}
+        <div className="mb-8">
+          <SeasonalRecommendations limit={6} />
         </div>
 
         <div>

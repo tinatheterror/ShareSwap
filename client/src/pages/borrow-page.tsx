@@ -12,6 +12,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Recommendations } from "@/components/recommendations";
+import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -138,6 +139,11 @@ export default function BorrowPage() {
 
         {/* AI Recommendations Section */}
         <Recommendations limit={6} />
+
+        {/* Seasonal Recommendations */}
+        <div className="mt-8">
+          <SeasonalRecommendations limit={6} />
+        </div>
 
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">All Available Items</h2>

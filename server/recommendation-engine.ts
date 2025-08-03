@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { users, items, itemRequests, shareCoinsTransactions } from "@db/schema";
+import { users, items, itemRequests, shareCoinsTransactions, swapMatches, locationAlerts } from "@db/schema";
 import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
 
 interface RecommendationScore {
@@ -16,6 +16,37 @@ interface UserBehaviorProfile {
 }
 
 export class RecommendationEngine {
+  private getSeasonalCategories(): { season: string; categories: string[]; keywords: string[] } {
+    const now = new Date();
+    const month = now.getMonth(); // 0-11
+    
+    if (month >= 2 && month <= 4) { // March-May (Spring)
+      return {
+        season: 'Spring',
+        categories: ['outdoor', 'sports', 'tools'],
+        keywords: ['garden', 'bike', 'hiking', 'cleaning', 'repair', 'lawn', 'planting']
+      };
+    } else if (month >= 5 && month <= 7) { // June-August (Summer)
+      return {
+        season: 'Summer',
+        categories: ['outdoor', 'sports', 'vehicles'],
+        keywords: ['camping', 'beach', 'bbq', 'grill', 'pool', 'bike', 'kayak', 'cooler']
+      };
+    } else if (month >= 8 && month <= 10) { // September-November (Fall)
+      return {
+        season: 'Fall',
+        categories: ['tools', 'outdoor', 'electronics'],
+        keywords: ['leaf', 'rake', 'ladder', 'heater', 'blanket', 'harvest', 'decoration']
+      };
+    } else { // December-February (Winter)
+      return {
+        season: 'Winter',
+        categories: ['electronics', 'indoor', 'clothing'],
+        keywords: ['heater', 'blanket', 'indoor', 'warm', 'holiday', 'decoration', 'skiing']
+      };
+    }
+  }
+
   private async getUserBehaviorProfile(userId: number): Promise<UserBehaviorProfile> {
     // Get user's request history
     const requests = await db
@@ -151,6 +182,21 @@ export class RecommendationEngine {
         reasons.push('Excellent condition');
       }
 
+      // Seasonal relevance bonus (10% weight)
+      const seasonal = this.getSeasonalCategories();
+      const itemText = `${item.name} ${item.description}`.toLowerCase();
+      const seasonalMatch = seasonal.keywords.some(keyword => itemText.includes(keyword));
+      if (seasonalMatch) {
+        score += 10;
+        reasons.push(`Perfect for ${seasonal.season}`);
+      }
+
+      // Location proximity bonus (if available - 5% weight)
+      if (item.latitude && item.longitude) {
+        score += 5;
+        reasons.push('Near your location');
+      }
+
       // Add some randomness to prevent always showing the same items
       score += Math.random() * 5;
 
@@ -185,6 +231,179 @@ export class RecommendationEngine {
         recommendationReasons: recommendation?.reasons || []
       };
     });
+  }
+
+  // Smart matching for swap requests
+  async findSwapMatches(requestId: number, userItemId: number): Promise<any[]> {
+    // Get the swap request details
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+
+    if (!request) return [];
+
+    // Get user's item that they want to swap
+    const [userItem] = await db
+      .select()
+      .from(items)
+      .where(eq(items.id, userItemId))
+      .limit(1);
+
+    if (!userItem) return [];
+
+    // Find potential matches based on category, value, and condition
+    const potentialMatches = await db
+      .select()
+      .from(items)
+      .where(
+        and(
+          eq(items.isSwappable, true),
+          eq(items.isAvailable, true),
+          sql`${items.ownerId} = ${request.item_requests.requesterId}` // Items owned by the requester
+        )
+      );
+
+    const matches = [];
+    for (const match of potentialMatches) {
+      let matchScore = 0;
+      const compatibility: any = {
+        categoryMatch: false,
+        valueMatch: false,
+        conditionMatch: false,
+        reasons: []
+      };
+
+      // Category similarity
+      const requestedCategories = this.extractCategories([`${request.items.name} ${request.items.description}`]);
+      const userCategories = this.extractCategories([`${userItem.name} ${userItem.description}`]);
+      const matchCategories = this.extractCategories([`${match.name} ${match.description}`]);
+
+      if (requestedCategories.some(cat => matchCategories.includes(cat))) {
+        matchScore += 40;
+        compatibility.categoryMatch = true;
+        compatibility.reasons.push('Category match');
+      }
+
+      // Condition similarity (items should have similar condition ratings)
+      const conditionDiff = Math.abs(userItem.conditionRating - match.conditionRating);
+      if (conditionDiff <= 2) {
+        matchScore += 30;
+        compatibility.conditionMatch = true;
+        compatibility.reasons.push('Similar condition');
+      }
+
+      // Value estimation (based on condition and other factors)
+      const userValue = userItem.conditionRating * 10;
+      const matchValue = match.conditionRating * 10;
+      const valueDiff = Math.abs(userValue - matchValue);
+      if (valueDiff <= 20) {
+        matchScore += 20;
+        compatibility.valueMatch = true;
+        compatibility.reasons.push('Fair value exchange');
+      }
+
+      // Distance factor
+      if (userItem.latitude && userItem.longitude && match.latitude && match.longitude) {
+        // Calculate distance using a simple method
+        const latDiff = Math.abs(Number(userItem.latitude) - Number(match.latitude));
+        const lonDiff = Math.abs(Number(userItem.longitude) - Number(match.longitude));
+        const distance = Math.sqrt(latDiff * latDiff + lonDiff * lonDiff) * 111; // Rough km conversion
+
+        if (distance <= 25) {
+          matchScore += 10;
+          compatibility.reasons.push('Nearby location');
+        }
+      }
+
+      if (matchScore >= 50) { // Only include good matches
+        matches.push({
+          ...match,
+          matchScore,
+          compatibility: JSON.stringify(compatibility)
+        });
+      }
+    }
+
+    // Sort by match score
+    matches.sort((a, b) => b.matchScore - a.matchScore);
+    return matches.slice(0, 5); // Return top 5 matches
+  }
+
+  // Location-based item alerts
+  async checkLocationAlerts(itemId: number): Promise<void> {
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(eq(items.id, itemId))
+      .limit(1);
+
+    if (!item || !item.latitude || !item.longitude) return;
+
+    // Get all active location alerts
+    const alerts = await db
+      .select()
+      .from(locationAlerts)
+      .where(eq(locationAlerts.isActive, true));
+
+    for (const alert of alerts) {
+      if (!alert.latitude || !alert.longitude) continue;
+
+      // Calculate distance
+      const latDiff = Math.abs(Number(item.latitude) - Number(alert.latitude));
+      const lonDiff = Math.abs(Number(item.longitude) - Number(alert.longitude));
+      const distance = Math.sqrt(latDiff * latDiff + lonDiff * lonDiff) * 111;
+
+      if (distance <= alert.radius!) {
+        // Check if item matches keywords
+        const itemText = `${item.name} ${item.description}`.toLowerCase();
+        const keywordMatch = alert.keywords?.some(keyword => 
+          itemText.includes(keyword.toLowerCase())
+        );
+
+        if (keywordMatch) {
+          // Trigger notification (in a real app, this would send push notification or email)
+          console.log(`Location alert triggered for user ${alert.userId}: ${item.name} is available nearby`);
+          
+          // You could add notification logic here
+          // await this.sendNotification(alert.userId, item);
+        }
+      }
+    }
+  }
+
+  // Get seasonal recommendations
+  async getSeasonalRecommendations(userId: number, limit: number = 8): Promise<any[]> {
+    const seasonal = this.getSeasonalCategories();
+    
+    const seasonalItems = await db
+      .select()
+      .from(items)
+      .where(
+        and(
+          eq(items.isAvailable, true),
+          sql`${items.ownerId} != ${userId}`
+        )
+      );
+
+    const recommendations = [];
+    
+    for (const item of seasonalItems) {
+      const itemText = `${item.name} ${item.description}`.toLowerCase();
+      const seasonalMatch = seasonal.keywords.some(keyword => itemText.includes(keyword));
+      
+      if (seasonalMatch) {
+        recommendations.push({
+          ...item,
+          seasonalRelevance: seasonal.season,
+          recommendationReasons: [`Perfect for ${seasonal.season}`, 'Seasonal trending']
+        });
+      }
+    }
+
+    return recommendations.slice(0, limit);
   }
 }
 

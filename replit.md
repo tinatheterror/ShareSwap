@@ -25,6 +25,11 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Added intelligent recommendation engine that analyzes user patterns, categories, and similarity
 - Integrated recommendations section into borrow and swap pages with engaging yellow theme
 - Recommendations show AI reasoning with badges like "Matches your interests" and "Similar to recent activity"
+- Added smart matching for swap requests with compatibility scoring based on category, value, and condition
+- Implemented location-based item alerts system allowing users to set keyword alerts for nearby items
+- Created seasonal item recommendations that adapt to current season (Winter, Spring, Summer, Fall)
+- Built comprehensive profile page with location alerts management and personalized recommendations
+- Enhanced matching algorithm considers item condition, category similarity, value fairness, and distance
 - Implemented functional ID document upload with credit card verification
 - Added comprehensive verification system requiring both identity and payment methods
 - Fixed item upload form data handling and database validation errors

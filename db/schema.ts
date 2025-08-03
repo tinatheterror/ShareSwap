@@ -146,6 +146,27 @@ export const itemRequests = pgTable("item_requests", {
   requestType: text("request_type").notNull(),
   status: text("status").default("PENDING").notNull(),
   message: text("message"),
+  matchScore: integer("match_score"), // AI matching score for swap requests
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const locationAlerts = pgTable("location_alerts", {
+  id: serial("id").primaryKey(),
+  userId: serial("user_id").references(() => users.id),
+  keywords: text("keywords").array().notNull(),
+  latitude: numeric("latitude", { precision: 10, scale: 8 }),
+  longitude: numeric("longitude", { precision: 11, scale: 8 }),
+  radius: integer("radius").default(10), // in kilometers
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const swapMatches = pgTable("swap_matches", {
+  id: serial("id").primaryKey(),
+  requestId: serial("request_id").references(() => itemRequests.id),
+  matchedItemId: serial("matched_item_id").references(() => items.id),
+  matchScore: integer("match_score").notNull(),
+  compatibility: text("compatibility").notNull(), // JSON string with matching details
   createdAt: timestamp("created_at").defaultNow(),
 });
 

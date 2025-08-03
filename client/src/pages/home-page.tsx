@@ -36,7 +36,7 @@ export default function HomePage() {
             title="Swap It"
             description="Exchange items with other verified users"
             icon={<ArrowLeftRight className="w-8 h-8 text-primary" />}
-            onClick={() => navigate("/verify")}
+            onClick={() => navigate("/swap")}
           />
         </div>
       </main>

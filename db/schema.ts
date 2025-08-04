@@ -10,6 +10,10 @@ export const users = pgTable("users", {
   shareCoins: decimal("share_coins", { precision: 10, scale: 2 }).default("0.00"),
   reputationScore: integer("reputation_score").default(0),
   reputationLevel: text("reputation_level").default("Newcomer"),
+  isPremium: boolean("is_premium").default(false),
+  premiumExpiresAt: timestamp("premium_expires_at"),
+  referralCode: text("referral_code").unique(),
+  referredBy: integer("referred_by"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -61,6 +65,8 @@ export const items = pgTable("items", {
   securityDeposit: decimal("security_deposit"),
   lendingDuration: integer("lending_duration"),
   shareCoinsReward: decimal("share_coins_reward").notNull(),
+  shareCoinPrice: decimal("share_coin_price", { precision: 10, scale: 2 }),
+  dollarsPrice: decimal("dollars_price", { precision: 10, scale: 2 }),
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -184,6 +190,82 @@ export const deliveryArrangements = pgTable("delivery_arrangements", {
   qrCodeData: text("qr_code_data"),
   specialInstructions: text("special_instructions"),
   riskAccepted: boolean("risk_accepted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Achievement System
+export const achievements = pgTable("achievements", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull(),
+  badgeIcon: text("badge_icon").notNull(),
+  badgeColor: text("badge_color").notNull(),
+  pointsRequired: integer("points_required"),
+  category: text("category").notNull(), // 'lending', 'borrowing', 'social', 'milestone'
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  achievementId: integer("achievement_id").references(() => achievements.id),
+  earnedAt: timestamp("earned_at").defaultNow(),
+  progress: integer("progress").default(0),
+  isCompleted: boolean("is_completed").default(false),
+});
+
+// Item Wishlists
+export const wishlists = pgTable("wishlists", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  itemName: text("item_name").notNull(),
+  description: text("description"),
+  category: text("category"),
+  maxShareCoinPrice: decimal("max_share_coin_price", { precision: 10, scale: 2 }),
+  maxDollarPrice: decimal("max_dollar_price", { precision: 10, scale: 2 }),
+  preferredLocation: text("preferred_location"),
+  urgency: text("urgency").default("normal"), // 'low', 'normal', 'high', 'urgent'
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Referral System
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: integer("referrer_id").references(() => users.id),
+  referredUserId: integer("referred_user_id").references(() => users.id),
+  referralCode: text("referral_code").notNull(),
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }).default("10.00"),
+  isRewardClaimed: boolean("is_reward_claimed").default(false),
+  completedFirstTransaction: boolean("completed_first_transaction").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Premium Subscriptions
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
+  annualPrice: decimal("annual_price", { precision: 10, scale: 2 }),
+  features: text("features").array().notNull(),
+  discountPercentage: integer("discount_percentage").default(10),
+  priorityAccess: boolean("priority_access").default(true),
+  lowerFees: boolean("lower_fees").default(true),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  planId: integer("plan_id").references(() => subscriptionPlans.id),
+  startDate: timestamp("start_date").defaultNow(),
+  endDate: timestamp("end_date").notNull(),
+  paymentMethod: text("payment_method"), // 'card', 'paypal', etc.
+  status: text("status").default("active"), // 'active', 'cancelled', 'expired'
+  autoRenew: boolean("auto_renew").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -26,6 +26,7 @@ import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
 import connectPgSimple from "connect-pg-simple";
 import { recommendationEngine } from "./recommendation-engine";
+import { addSimplifiedRoutes } from "./simplified-routes";
 
 function calculateDistance(
   lat1: number,
@@ -1439,6 +1440,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // New features routes handled by simplified routes
+
   const httpServer = createServer(app);
 
   // Simplified WebSocket server configuration
@@ -1533,6 +1536,11 @@ export function registerRoutes(app: Express): Server {
       if (userId) connectedClients.delete(userId);
     });
   });
+
+  setupAuth(app);
+  
+  // Add simplified routes for new features
+  addSimplifiedRoutes(app);
 
   return httpServer;
 }

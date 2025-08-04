@@ -21,6 +21,10 @@ import DeliveryArrangementsPage from "@/pages/delivery-arrangements";
 import GamesPage from "@/pages/games-page";
 import SwapPage from "@/pages/swap-page";
 import ProfilePage from "@/pages/profile-page";
+import AchievementsPage from "@/pages/achievements-page";
+import WishlistsPage from "@/pages/wishlists-page";
+import PremiumPage from "@/pages/premium-page";
+import ReferralsPage from "@/pages/referrals-page";
 
 function Router() {
   return (
@@ -41,6 +45,10 @@ function Router() {
       <ProtectedRoute path="/delivery" component={DeliveryArrangementsPage} />
       <ProtectedRoute path="/swap" component={SwapPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
+      <ProtectedRoute path="/achievements" component={AchievementsPage} />
+      <ProtectedRoute path="/wishlists" component={WishlistsPage} />
+      <ProtectedRoute path="/premium" component={PremiumPage} />
+      <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <Route component={NotFound} />
     </Switch>
   );

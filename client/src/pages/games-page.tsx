@@ -1,12 +1,15 @@
-import { useState, useEffect } from "react";
-import { Navbar } from "@/components/shared/navbar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { Navbar } from "@/components/shared/navbar";
+import { Gamepad2, Coins, Trophy, Play, Clock, Users } from "lucide-react";
+import { useState } from "react";
 
-type SponsoredGame = {
+interface SponsoredGame {
   id: number;
   name: string;
   description: string;
@@ -14,185 +17,278 @@ type SponsoredGame = {
   rewardAmount: string;
   sponsorName: string;
   gameUrl: string;
-};
+  isActive: boolean;
+  createdAt: string;
+}
 
-type GameSession = {
+interface GameSession {
   id: number;
-  userId: number;
   gameId: number;
   startedAt: string;
+  completedAt?: string;
+  score?: number;
+  rewardAmount?: string;
   status: string;
-};
+  game: SponsoredGame;
+}
 
 export default function GamesPage() {
   const { toast } = useToast();
-  const [activeGame, setActiveGame] = useState<SponsoredGame | null>(null);
-  const [activeSession, setActiveSession] = useState<GameSession | null>(null);
   const queryClient = useQueryClient();
+  const [activeGameId, setActiveGameId] = useState<number | null>(null);
 
-  const { data: games = [] } = useQuery<SponsoredGame[]>({
-    queryKey: ['/api/games/sponsored'],
+  const { data: games, isLoading: gamesLoading } = useQuery<SponsoredGame[]>({
+    queryKey: ['/api/games'],
   });
 
-  const startGameSession = useMutation({
+  const { data: sessions, isLoading: sessionsLoading } = useQuery<GameSession[]>({
+    queryKey: ['/api/game-sessions'],
+  });
+
+  const startGameMutation = useMutation({
     mutationFn: async (gameId: number) => {
-      const res = await apiRequest("POST", `/api/games/${gameId}/start-session`);
-      return res.json();
+      return apiRequest("POST", "/api/game-sessions", { gameId });
     },
-    onSuccess: (session: GameSession) => {
-      setActiveSession(session);
+    onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/game-sessions'] });
+      setActiveGameId(session.gameId);
+      
+      // Open game in new window/tab
+      const game = games?.find(g => g.id === session.gameId);
+      if (game) {
+        window.open(game.gameUrl, '_blank', 'width=800,height=600');
+      }
+      
       toast({
-        title: "Game Session Started",
+        title: "Game Started!",
         description: "Complete the game to earn ShareCoins!",
       });
     },
-    onError: (error: Error) => {
+    onError: () => {
       toast({
-        title: "Failed to start game",
-        description: error.message,
+        title: "Error",
+        description: "Failed to start game. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const completeGameSession = useMutation({
-    mutationFn: async ({ gameId, score }: { gameId: number; score: number }) => {
-      if (!activeSession) throw new Error("No active session");
-      const res = await apiRequest("POST", `/api/games/${gameId}/complete-session`, {
-        sessionId: activeSession.id,
+  const completeGameMutation = useMutation({
+    mutationFn: async ({ sessionId, score }: { sessionId: number; score: number }) => {
+      return apiRequest("PATCH", `/api/game-sessions/${sessionId}`, { 
+        status: 'completed',
         score,
+        completedAt: new Date().toISOString()
       });
-      return res.json();
     },
-    onSuccess: (data: {reward: number}) => {
+    onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/game-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      setActiveGameId(null);
+      
       toast({
-        title: "Game Completed!",
-        description: `You earned ${data.reward} ShareCoins!`,
-      });
-      setActiveGame(null);
-      setActiveSession(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to complete game",
-        description: error.message,
-        variant: "destructive",
+        title: "Congratulations!",
+        description: `You earned ${session.rewardAmount} ShareCoins!`,
       });
     },
   });
 
-  // Add event listener effect
-  useEffect(() => {
-    const handleGameMessage = (event: MessageEvent) => {
-      if (activeGame && event.data.type === "GAME_COMPLETE") {
-        completeGameSession.mutate({
-          gameId: activeGame.id,
-          score: event.data.score,
-        });
-      }
-    };
+  // Calculate total earnings
+  const totalEarnings = sessions?.reduce((sum, session) => {
+    return sum + (session.rewardAmount ? parseFloat(session.rewardAmount) : 0);
+  }, 0) || 0;
 
-    window.addEventListener("message", handleGameMessage);
-    return () => window.removeEventListener("message", handleGameMessage);
-  }, [activeGame]);
+  const completedGames = sessions?.filter(s => s.status === 'completed').length || 0;
 
-  // Example games data while endpoint is being set up
-  const sampleGames: SponsoredGame[] = [
-    {
-      id: 1,
-      name: "Puzzle Master",
-      description: "Complete challenging puzzles and earn rewards",
-      imageUrl: "/game-thumbnails/puzzle.jpg",
-      rewardAmount: "5.00",
-      sponsorName: "GameCo",
-      gameUrl: "https://sponsor1.example.com/game1"
-    },
-    {
-      id: 2,
-      name: "Speed Runner",
-      description: "Race against time to collect coins",
-      imageUrl: "/game-thumbnails/racing.jpg",
-      rewardAmount: "10.00",
-      sponsorName: "RacingInc",
-      gameUrl: "https://sponsor2.example.com/game2"
-    }
-  ];
-
+  if (gamesLoading || sessionsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-7xl mx-auto px-4 py-12">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Sponsored Games</h1>
+          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
+            <Gamepad2 className="h-8 w-8 text-primary" />
+            Play Games & Earn ShareCoins
+          </h1>
           <p className="text-muted-foreground">
-            Play sponsored games to earn ShareCoins
+            Complete sponsored games to earn ShareCoins for borrowing items
           </p>
         </div>
 
-        {activeGame ? (
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">{activeGame.name}</h2>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setActiveGame(null);
-                    setActiveSession(null);
-                  }}
-                >
-                  Exit Game
-                </Button>
-              </div>
-              <div className="aspect-video w-full bg-muted rounded-lg">
-                <iframe
-                  src={activeGame.gameUrl}
-                  title={activeGame.name}
-                  className="w-full h-full border-0 rounded-lg"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                />
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-green-600">{totalEarnings.toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground">Total ShareCoins Earned</p>
+                </div>
+                <Coins className="h-8 w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {games.map((game) => (
-              <Card key={game.id}>
-                <CardContent className="p-6">
-                  <div className="aspect-video w-full bg-muted rounded-lg mb-4">
-                    <img 
-                      src={game.imageUrl} 
-                      alt={game.name} 
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">{game.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    {game.description}
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm">
-                      <p className="font-medium">
-                        Reward: {Number(game.rewardAmount).toFixed(2)} ShareCoins
-                      </p>
-                      <p className="text-muted-foreground">by {game.sponsorName}</p>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-blue-600">{completedGames}</p>
+                  <p className="text-sm text-muted-foreground">Games Completed</p>
+                </div>
+                <Trophy className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-purple-600">{games?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">Available Games</p>
+                </div>
+                <Users className="h-8 w-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Available Games */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Play className="h-5 w-5" />
+                Available Games
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {games?.map((game) => (
+                  <div
+                    key={game.id}
+                    className="p-4 rounded-lg border hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={game.imageUrl}
+                        alt={game.name}
+                        className="w-16 h-16 rounded-lg object-cover"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="font-semibold">{game.name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Sponsored by {game.sponsorName}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <Coins className="h-3 w-3 mr-1" />
+                            {game.rewardAmount} SC
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {game.description}
+                        </p>
+                        <Button
+                          onClick={() => startGameMutation.mutate(game.id)}
+                          disabled={startGameMutation.isPending || activeGameId === game.id}
+                          className="w-full"
+                        >
+                          {activeGameId === game.id ? (
+                            <>
+                              <Clock className="h-4 w-4 mr-2" />
+                              Playing...
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-4 w-4 mr-2" />
+                              Play Now
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      onClick={() => {
-                        startGameSession.mutate(game.id);
-                        setActiveGame(game);
-                      }}
-                    >
-                      Play Now
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                ))}
+                
+                {!games?.length && (
+                  <div className="text-center py-8">
+                    <Gamepad2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No games available at the moment</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Sessions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Recent Game Sessions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {sessions?.slice(0, 5).map((session) => (
+                  <div
+                    key={session.id}
+                    className="p-3 rounded-lg border"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm">{session.game.name}</h4>
+                      <Badge
+                        variant={session.status === 'completed' ? 'default' : 'secondary'}
+                        className={session.status === 'completed' ? 'bg-green-100 text-green-800' : ''}
+                      >
+                        {session.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{new Date(session.startedAt).toLocaleDateString()}</span>
+                      {session.rewardAmount && (
+                        <span className="text-green-600 font-medium">
+                          +{session.rewardAmount} SC
+                        </span>
+                      )}
+                    </div>
+                    {session.score && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between text-sm mb-1">
+                          <span>Score: {session.score}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {!sessions?.length && (
+                  <div className="text-center py-8">
+                    <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No game sessions yet</p>
+                    <p className="text-sm text-muted-foreground">Start playing to see your history here!</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </main>
     </div>
   );

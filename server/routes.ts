@@ -1261,6 +1261,184 @@ export function registerRoutes(app: Express): Server {
     res.json(transformedArrangements);
   });
 
+  // Games API routes
+  app.get("/api/games", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const games = await db
+        .select()
+        .from(sponsoredGames)
+        .where(eq(sponsoredGames.isActive, true))
+        .orderBy(desc(sponsoredGames.createdAt));
+
+      res.json(games);
+    } catch (error) {
+      console.error("Error fetching games:", error);
+      res.status(500).json({ error: "Failed to fetch games" });
+    }
+  });
+
+  app.get("/api/game-sessions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const sessions = await db
+        .select({
+          id: gameSessions.id,
+          gameId: gameSessions.gameId,
+          startedAt: gameSessions.startedAt,
+          completedAt: gameSessions.completedAt,
+          score: gameSessions.score,
+          rewardAmount: gameSessions.rewardAmount,
+          status: gameSessions.status,
+          gameName: sponsoredGames.name,
+          gameDescription: sponsoredGames.description,
+          gameImageUrl: sponsoredGames.imageUrl,
+          gameSponsorName: sponsoredGames.sponsorName,
+        })
+        .from(gameSessions)
+        .innerJoin(sponsoredGames, eq(sponsoredGames.id, gameSessions.gameId))
+        .where(eq(gameSessions.userId, req.user.id))
+        .orderBy(desc(gameSessions.startedAt));
+
+      // Transform data to match frontend interface
+      const transformedSessions = sessions.map(session => ({
+        id: session.id,
+        gameId: session.gameId,
+        startedAt: session.startedAt,
+        completedAt: session.completedAt,
+        score: session.score,
+        rewardAmount: session.rewardAmount,
+        status: session.status,
+        game: {
+          id: session.gameId,
+          name: session.gameName,
+          description: session.gameDescription,
+          imageUrl: session.gameImageUrl,
+          sponsorName: session.gameSponsorName,
+        }
+      }));
+
+      res.json(transformedSessions);
+    } catch (error) {
+      console.error("Error fetching game sessions:", error);
+      res.status(500).json({ error: "Failed to fetch game sessions" });
+    }
+  });
+
+  app.post("/api/game-sessions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { gameId } = req.body;
+
+      if (!gameId) {
+        return res.status(400).json({ error: "Game ID is required" });
+      }
+
+      // Verify game exists and is active
+      const [game] = await db
+        .select()
+        .from(sponsoredGames)
+        .where(and(eq(sponsoredGames.id, gameId), eq(sponsoredGames.isActive, true)))
+        .limit(1);
+
+      if (!game) {
+        return res.status(404).json({ error: "Game not found or inactive" });
+      }
+
+      const [session] = await db
+        .insert(gameSessions)
+        .values({
+          userId: req.user.id,
+          gameId,
+          status: 'started',
+        })
+        .returning();
+
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Error creating game session:", error);
+      res.status(500).json({ error: "Failed to create game session" });
+    }
+  });
+
+  app.patch("/api/game-sessions/:sessionId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const sessionId = parseInt(req.params.sessionId);
+      const { status, score, completedAt } = req.body;
+
+      // Verify session belongs to user
+      const [existingSession] = await db
+        .select()
+        .from(gameSessions)
+        .where(and(eq(gameSessions.id, sessionId), eq(gameSessions.userId, req.user.id)))
+        .limit(1);
+
+      if (!existingSession) {
+        return res.status(404).json({ error: "Game session not found" });
+      }
+
+      // Get game details for reward calculation
+      const [game] = await db
+        .select()
+        .from(sponsoredGames)
+        .where(eq(sponsoredGames.id, existingSession.gameId))
+        .limit(1);
+
+      let rewardAmount = "0.00";
+      
+      if (status === 'completed' && game) {
+        rewardAmount = game.rewardAmount;
+        
+        // Award ShareCoins to user
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`${users.shareCoins} + ${rewardAmount}`
+          })
+          .where(eq(users.id, req.user.id));
+
+        // Record transaction
+        await db
+          .insert(shareCoinsTransactions)
+          .values({
+            userId: req.user.id,
+            amount: rewardAmount,
+            description: `Game reward: ${game.name}`,
+            transactionType: 'game_reward',
+          });
+      }
+
+      const [updatedSession] = await db
+        .update(gameSessions)
+        .set({
+          status,
+          score,
+          completedAt: completedAt ? new Date(completedAt) : null,
+          rewardAmount: status === 'completed' ? rewardAmount : null,
+        })
+        .where(eq(gameSessions.id, sessionId))
+        .returning();
+
+      res.json(updatedSession);
+    } catch (error) {
+      console.error("Error updating game session:", error);
+      res.status(500).json({ error: "Failed to update game session" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Simplified WebSocket server configuration

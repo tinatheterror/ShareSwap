@@ -13,12 +13,12 @@ import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
 import WalletPage from "@/pages/wallet-page";
-import GamesPage from "@/pages/games-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import ChallengesPage from "@/pages/challenges-page";
 import RequestsPage from "@/pages/requests-page";
 import ItemDetailsPage from "@/pages/item-details-page";
 import DeliveryArrangementsPage from "@/pages/delivery-arrangements";
+import GamesPage from "@/pages/games-page";
 import SwapPage from "@/pages/swap-page";
 import ProfilePage from "@/pages/profile-page";
 

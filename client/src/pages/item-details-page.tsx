@@ -42,7 +42,7 @@ export default function ItemDetailsPage() {
 
   // Create ordered sharing options based on context
   const getSharingOptions = () => {
-    const borrowOption = item.isLendable && (
+    const borrowOption = item.isLendable ? (
       <div key="borrow" className="flex justify-between items-center">
         <div>
           <p className="font-medium">Borrow</p>
@@ -60,9 +60,9 @@ export default function ItemDetailsPage() {
           Request to Borrow
         </Button>
       </div>
-    );
+    ) : null;
 
-    const rentOption = item.isRentable && (
+    const rentOption = item.isRentable ? (
       <div key="rent" className="flex justify-between items-center">
         <div>
           <p className="font-medium">Rent</p>
@@ -79,9 +79,9 @@ export default function ItemDetailsPage() {
           Request to Rent
         </Button>
       </div>
-    );
+    ) : null;
 
-    const swapOption = item.isSwappable && (
+    const swapOption = item.isSwappable ? (
       <div key="swap" className="flex justify-between items-center">
         <div>
           <p className="font-medium">Swap</p>
@@ -99,20 +99,26 @@ export default function ItemDetailsPage() {
           Request to Swap
         </Button>
       </div>
-    );
+    ) : null;
 
     // Order options based on context
-    const allOptions = [borrowOption, rentOption, swapOption].filter(Boolean);
+    const options: JSX.Element[] = [];
     
-    if (prioritizedContext === 'swap' && swapOption) {
-      return [swapOption, ...allOptions.filter(opt => opt.key !== 'swap')];
-    } else if (prioritizedContext === 'rent' && rentOption) {
-      return [rentOption, ...allOptions.filter(opt => opt.key !== 'rent')];
-    } else if (prioritizedContext === 'borrow' && borrowOption) {
-      return [borrowOption, ...allOptions.filter(opt => opt.key !== 'borrow')];
+    if (prioritizedContext === 'swap') {
+      if (swapOption) options.push(swapOption);
+      if (borrowOption) options.push(borrowOption);
+      if (rentOption) options.push(rentOption);
+    } else if (prioritizedContext === 'rent') {
+      if (rentOption) options.push(rentOption);
+      if (borrowOption) options.push(borrowOption);
+      if (swapOption) options.push(swapOption);
+    } else { // 'borrow' or default
+      if (borrowOption) options.push(borrowOption);
+      if (rentOption) options.push(rentOption);
+      if (swapOption) options.push(swapOption);
     }
     
-    return allOptions;
+    return options;
   };
 
   return (

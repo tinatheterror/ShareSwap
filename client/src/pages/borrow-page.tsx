@@ -13,6 +13,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
+import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
+import { Coins } from "lucide-react";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -26,6 +28,7 @@ export default function BorrowPage() {
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showShareCoinsPrompt, setShowShareCoinsPrompt] = useState(false);
+  const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -266,6 +269,30 @@ export default function BorrowPage() {
             </div>
           </div>
         )}
+
+        {/* ShareCoin earning opportunity */}
+        <div className="mt-8 bg-gradient-to-r from-yellow-50 to-green-50 p-6 rounded-lg border border-yellow-200">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-green-800 mb-2">
+              Can't find what you need?
+            </h3>
+            <p className="text-green-700 mb-4">
+              Help your neighbors and earn ShareCoins by fulfilling their urgent requests!
+            </p>
+            <Button 
+              onClick={() => setShowWishlistPopup(true)}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              <Coins className="h-4 w-4 mr-2" />
+              Earn ShareCoins Now
+            </Button>
+          </div>
+        </div>
+
+        <WishlistFulfillmentPopup
+          isOpen={showWishlistPopup}
+          onClose={() => setShowWishlistPopup(false)}
+        />
       </main>
     </div>
   );

@@ -48,6 +48,8 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Extended delivery arrangements with return dates, special instructions, and risk acceptance tracking
 - Improved delivery arrangements page with better QR codes, calendar integration, and visual indicators
 - Updated subscription plans branding from "ShareSpace" to "ShareSwap" to align with platform identity
+- Clarified ShareCoin earning model: coins earned only after successful lending/delivery completion, not for posting items
+- Added wishlist fulfillment popup to encourage immediate ShareCoin earning by helping neighbors
 - Date: August 5, 2025
 
 ## Architecture

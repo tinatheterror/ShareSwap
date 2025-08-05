@@ -1,10 +1,23 @@
 import { MarketplaceCard } from "@/components/shared/marketplace-card";
 import { Navbar } from "@/components/shared/navbar";
-import { HandshakeIcon, Banknote, ArrowLeftRight } from "lucide-react";
+import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
+import { HandshakeIcon, Banknote, ArrowLeftRight, Coins } from "lucide-react";
 import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
+  const [showWishlistPopup, setShowWishlistPopup] = useState(false);
+
+  // Show popup after 3 seconds for demonstration
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowWishlistPopup(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -39,6 +52,22 @@ export default function HomePage() {
             onClick={() => navigate("/swap")}
           />
         </div>
+
+        {/* Quick access to wishlist fulfillment */}
+        <div className="mt-12 text-center">
+          <Button 
+            onClick={() => setShowWishlistPopup(true)}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+          >
+            <Coins className="h-4 w-4 mr-2" />
+            Earn ShareCoins by Helping Neighbors
+          </Button>
+        </div>
+
+        <WishlistFulfillmentPopup
+          isOpen={showWishlistPopup}
+          onClose={() => setShowWishlistPopup(false)}
+        />
       </main>
     </div>
   );

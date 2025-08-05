@@ -83,6 +83,83 @@ export function addSimplifiedRoutes(app: Express) {
     }
   });
 
+  // All wishlists for fulfillment popup
+  app.get("/api/all-wishlists", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Mock sample wishlists from other users
+      const sampleWishlists = [
+        {
+          id: 1,
+          userId: 2,
+          itemName: "Power Drill",
+          description: "Need a power drill for a quick home repair project",
+          category: "tools",
+          needType: "borrow",
+          preferredLocation: "Downtown area",
+          urgency: "high",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          username: "Sarah M.",
+          distance: "0.8 miles away"
+        },
+        {
+          id: 2,
+          userId: 3,
+          itemName: "Camping Tent",
+          description: "Looking for a 4-person tent for weekend camping trip",
+          category: "outdoor",
+          needType: "rent",
+          preferredLocation: "North side",
+          urgency: "urgent",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          username: "Mike R.",
+          distance: "1.2 miles away"
+        },
+        {
+          id: 3,
+          userId: 4,
+          itemName: "Stand Mixer",
+          description: "Baking for a family event, need mixer for the weekend",
+          category: "kitchen",
+          needType: "borrow",
+          preferredLocation: "Central area",
+          urgency: "high",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          username: "Emma L.",
+          distance: "0.5 miles away"
+        },
+        {
+          id: 4,
+          userId: 5,
+          itemName: "Lawn Mower",
+          description: "Spring cleaning - need to mow overgrown yard",
+          category: "garden",
+          needType: "borrow",
+          preferredLocation: "Suburban area",
+          urgency: "normal",
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          username: "David K.",
+          distance: "2.1 miles away"
+        }
+      ];
+
+      // Filter out current user's own wishlists
+      const otherUsersWishlists = sampleWishlists.filter(w => w.userId !== req.user.id);
+      
+      res.json(otherUsersWishlists);
+    } catch (error) {
+      console.error("Error fetching all wishlists:", error);
+      res.status(500).json({ error: "Failed to fetch wishlists" });
+    }
+  });
+
   app.post("/api/wishlists", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

@@ -199,6 +199,9 @@ export default function LendPage() {
 
   const watchIsLendable = form.watch("isLendable");
   const watchPostalCode = form.watch("postalCode");
+  
+  // Debug logging
+  console.log("watchIsLendable:", watchIsLendable);
 
   return (
     <div className="min-h-screen">
@@ -318,66 +321,73 @@ export default function LendPage() {
                   </div>
                 </div>
 
-                {/* Availability Period - Always show when lending is enabled */}
+                {/* Availability Period - Show when lending is enabled */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-medium">Availability Period</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Set specific dates when your item is available for lending
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="availableFromDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Available From</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              value={field.value || ''}
+                              placeholder="Select start date"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="availableToDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Available Until</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              value={field.value || ''}
+                              placeholder="Select end date"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {selectedWishlistMatch && (
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <span className="text-green-800 font-medium">
+                          Dates automatically matched to {selectedWishlistMatch.username}'s request
+                        </span>
+                      </div>
+                      <p className="text-green-700 text-sm mt-1">
+                        Needed: {selectedWishlistMatch.neededDate ? new Date(selectedWishlistMatch.neededDate).toLocaleDateString() : 'Not specified'} - 
+                        Return: {selectedWishlistMatch.returnDate ? new Date(selectedWishlistMatch.returnDate).toLocaleDateString() : 'Not specified'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Security Deposit */}
                 {watchIsLendable && (
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Availability Period</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="availableFromDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Available From</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="date" 
-                                {...field} 
-                                value={field.value || ''}
-                                placeholder="Select start date"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="availableToDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Available Until</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="date" 
-                                {...field} 
-                                value={field.value || ''}
-                                placeholder="Select end date"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {selectedWishlistMatch && (
-                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                          <span className="text-green-800 font-medium">
-                            Dates automatically matched to {selectedWishlistMatch.username}'s request
-                          </span>
-                        </div>
-                        <p className="text-green-700 text-sm mt-1">
-                          Needed: {selectedWishlistMatch.neededDate ? new Date(selectedWishlistMatch.neededDate).toLocaleDateString() : 'Not specified'} - 
-                          Return: {selectedWishlistMatch.returnDate ? new Date(selectedWishlistMatch.returnDate).toLocaleDateString() : 'Not specified'}
-                        </p>
-                      </div>
-                    )}
-                    
+                    <h3 className="font-medium">Lending Options</h3>
                     <FormField
                       control={form.control}
                       name="securityDeposit"

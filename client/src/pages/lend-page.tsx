@@ -22,7 +22,8 @@ const formSchema = z.object({
   isLendable: z.boolean().default(false),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
-  lendingDuration: z.coerce.number().min(1, "Minimum lending duration is 1 day").optional(),
+  availableFromDate: z.string().optional(),
+  availableToDate: z.string().optional(),
   securityDeposit: z.coerce.number().min(0, "Security deposit must be positive").optional(),
   conditionRating: z.coerce.number().min(1).max(10, "Rating must be between 1 and 10"),
   postalCode: z.string().min(1, "Postal code is required"),
@@ -48,7 +49,8 @@ export default function LendPage() {
       isLendable: false,
       isSwappable: false,
       isRentable: false,
-      lendingDuration: undefined,
+      availableFromDate: undefined,
+      availableToDate: undefined,
       securityDeposit: undefined,
       conditionRating: 10,
       postalCode: "",
@@ -74,6 +76,13 @@ export default function LendPage() {
       
       if (matches.length > 0 && !showMatchingModal) {
         setShowMatchingModal(true);
+        
+        // Auto-fill dates from the first matching wishlist
+        const firstMatch = matches[0];
+        if (firstMatch.neededDate && firstMatch.returnDate) {
+          form.setValue("availableFromDate", firstMatch.neededDate.split('T')[0]); // Format for date input
+          form.setValue("availableToDate", firstMatch.returnDate.split('T')[0]); // Format for date input
+        }
       }
     } else {
       setMatchedWishlists([]);
@@ -311,21 +320,53 @@ export default function LendPage() {
 
                 {watchIsLendable && (
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Lending Details</h3>
-                    <FormField
-                      control={form.control}
-                      name="lendingDuration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Lending Duration (days)</FormLabel>
-                          <FormControl>
-                            <Input type="number" min="1" {...field} value={field.value || ''} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <h3 className="font-medium">Availability Period</h3>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="availableFromDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Available From</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="availableToDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Available Until</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
+                    {selectedWishlistMatch && (
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <span className="text-green-800 font-medium">
+                            Dates automatically matched to {selectedWishlistMatch.username}'s request
+                          </span>
+                        </div>
+                        <p className="text-green-700 text-sm mt-1">
+                          Needed: {selectedWishlistMatch.neededDate ? new Date(selectedWishlistMatch.neededDate).toLocaleDateString() : 'Not specified'} - 
+                          Return: {selectedWishlistMatch.returnDate ? new Date(selectedWishlistMatch.returnDate).toLocaleDateString() : 'Not specified'}
+                        </p>
+                      </div>
+                    )}
+                    
                     <FormField
                       control={form.control}
                       name="securityDeposit"
@@ -491,7 +532,7 @@ export default function LendPage() {
                           
                           <p className="text-gray-600 mb-3">{wishlist.description}</p>
                           
-                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
                             <span className="flex items-center gap-1">
                               <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
                                 <span className="text-teal-700 font-bold text-xs">{wishlist.username?.charAt(0)}</span>
@@ -502,12 +543,27 @@ export default function LendPage() {
                               <MapPin className="h-4 w-4" />
                               {wishlist.distance}
                             </span>
-                            {wishlist.neededDate && (
-                              <span className="text-green-600 font-medium">
-                                Needed: {new Date(wishlist.neededDate).toLocaleDateString()}
-                              </span>
-                            )}
                           </div>
+                          
+                          {wishlist.neededDate && wishlist.returnDate && (
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-2">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-blue-500" />
+                                <span className="text-blue-800 font-medium text-sm">
+                                  Perfect Date Match Available
+                                </span>
+                              </div>
+                              <div className="text-blue-700 text-sm mt-1">
+                                <div className="flex justify-between">
+                                  <span>Needed: {new Date(wishlist.neededDate).toLocaleDateString()}</span>
+                                  <span>Return: {new Date(wishlist.returnDate).toLocaleDateString()}</span>
+                                </div>
+                                <div className="text-xs text-blue-600 mt-1">
+                                  Duration: {Math.ceil((new Date(wishlist.returnDate) - new Date(wishlist.neededDate)) / (1000 * 60 * 60 * 24))} days
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -537,11 +593,19 @@ export default function LendPage() {
                     Skip Matching
                   </Button>
                   <Button
-                    onClick={() => setShowMatchingModal(false)}
+                    onClick={() => {
+                      setShowMatchingModal(false);
+                      // Auto-fill dates when a match is selected
+                      if (selectedWishlistMatch?.neededDate && selectedWishlistMatch?.returnDate) {
+                        form.setValue("availableFromDate", selectedWishlistMatch.neededDate.split('T')[0]);
+                        form.setValue("availableToDate", selectedWishlistMatch.returnDate.split('T')[0]);
+                        form.setValue("isLendable", true); // Ensure lending is enabled
+                      }
+                    }}
                     disabled={!selectedWishlistMatch}
                     className="flex-1 bg-teal-600 hover:bg-teal-700"
                   >
-                    {selectedWishlistMatch ? 'Match & Continue' : 'Select a Match'}
+                    {selectedWishlistMatch ? 'Match & Auto-Fill Dates' : 'Select a Match'}
                   </Button>
                 </div>
               </div>

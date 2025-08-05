@@ -59,6 +59,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Added intelligent matching modal that appears when uploading items that fulfill wishlist requests
 - Created auto-match API endpoint that connects lenders and borrowers automatically
 - Enhanced lend page with real-time wishlist matching and ShareCoin earning incentives
+- Replaced lending duration with calendar-specific availability dates (Available From/Until)
+- Added automatic date matching that fills availability dates from wishlist request dates
+- Enhanced matching modal to display perfect date alignments with duration calculations
+- Added visual indicators showing matched dates and automatic form population
 - Date: August 5, 2025
 
 ## Architecture

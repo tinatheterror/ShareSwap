@@ -140,13 +140,7 @@ export default function BorrowPage() {
           </div>
         </div>
 
-        {/* AI Recommendations Section */}
-        <Recommendations limit={6} />
 
-        {/* Seasonal Recommendations */}
-        <div className="mt-8">
-          <SeasonalRecommendations limit={6} />
-        </div>
 
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">All Available Items</h2>
@@ -189,6 +183,16 @@ export default function BorrowPage() {
             </Card>
           ))}
           </div>
+        </div>
+
+        {/* AI Recommendations - Less prominent positioning */}
+        <div className="mt-12 opacity-80">
+          <Recommendations limit={4} />
+        </div>
+
+        {/* Seasonal Recommendations - Less prominent positioning */}
+        <div className="mt-8 opacity-80">
+          <SeasonalRecommendations limit={4} />
         </div>
 
         {/* ShareCoins Prompt */}

@@ -61,15 +61,15 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
     <div className="space-y-4">
       {showTitle && (
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-yellow-500" />
-          <h2 className="text-xl font-bold">Recommended for You</h2>
+          <Sparkles className="h-4 w-4 text-yellow-500" />
+          <h3 className="text-lg font-medium text-gray-700">Suggested for You</h3>
         </div>
       )}
       
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
         {recommendations.map((item) => (
-          <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden border border-yellow-200">
-            <CardContent className="p-4">
+          <Card key={item.id} className="hover:shadow-sm transition-shadow bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+            <CardContent className="p-3">
               <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
                 {item.photos && item.photos.length > 0 ? (
                   <img

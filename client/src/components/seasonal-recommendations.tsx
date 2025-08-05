@@ -53,10 +53,10 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Sun className="h-5 w-5 text-orange-500" />
-          <h2 className="text-xl font-bold">Seasonal Picks</h2>
+          <Sun className="h-4 w-4 text-orange-500" />
+          <h3 className="text-lg font-medium text-gray-700">Seasonal Picks</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-4">
@@ -80,15 +80,15 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         {getSeasonIcon(seasonalItems[0]?.seasonalRelevance || 'summer')}
-        <h2 className="text-xl font-bold">
-          {seasonalItems[0]?.seasonalRelevance} Essentials
-        </h2>
+        <h3 className="text-lg font-medium text-gray-700">
+          {seasonalItems[0]?.seasonalRelevance} Picks
+        </h3>
       </div>
       
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
         {seasonalItems.map((item) => (
-          <Card key={item.id} className={`hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden border ${getSeasonColor(item.seasonalRelevance)}`}>
-            <CardContent className="p-4">
+          <Card key={item.id} className="hover:shadow-sm transition-shadow bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+            <CardContent className="p-3">
               <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
                 {item.photos && item.photos.length > 0 ? (
                   <img
@@ -121,16 +121,11 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
               </div>
               
               <Button 
-                className="w-full text-white text-sm py-2 rounded-lg"
+                className="w-full bg-gray-600 hover:bg-gray-700 text-white text-xs py-2 rounded"
                 disabled={!item.isConditionVerified}
                 onClick={() => navigate(`/items/${item.id}`)}
-                style={{
-                  backgroundColor: item.seasonalRelevance.toLowerCase() === 'winter' ? '#3b82f6' :
-                                   item.seasonalRelevance.toLowerCase() === 'summer' ? '#f97316' :
-                                   item.seasonalRelevance.toLowerCase() === 'fall' ? '#f59e0b' : '#10b981'
-                }}
               >
-                {item.isConditionVerified ? "View Details" : "Pending"}
+                {item.isConditionVerified ? "View" : "Pending"}
               </Button>
             </CardContent>
           </Card>

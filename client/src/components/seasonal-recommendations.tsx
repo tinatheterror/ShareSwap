@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Snowflake, Sun, Leaf, Flower, Camera } from "lucide-react";
+import { Snowflake, Sun, Leaf, Flower, Camera, Coins } from "lucide-react";
 import { useLocation } from "wouter";
 import type { SelectItem } from "@db/schema";
 
@@ -123,6 +123,12 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                       {reason}
                     </Badge>
                   ))}
+                </div>
+                <div className="flex items-center justify-center gap-1">
+                  <Coins className="h-3 w-3 text-orange-600" />
+                  <span className="text-sm font-semibold text-orange-700">
+                    {item.shareCoinPrice || 5} coins
+                  </span>
                 </div>
               </div>
               

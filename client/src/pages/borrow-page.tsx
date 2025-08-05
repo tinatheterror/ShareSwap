@@ -167,6 +167,12 @@ export default function BorrowPage() {
                   <p className="text-xs text-gray-500 mb-1">
                     {item.isConditionVerified ? "Verificato" : "Reserveret"}
                   </p>
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <Coins className="h-3 w-3 text-teal-600" />
+                    <span className="text-xs font-semibold text-teal-700">
+                      {item.shareCoinPrice || 5} coins
+                    </span>
+                  </div>
                   <p className="text-xs text-gray-600">
                     {item.distance ? `${item.distance.toFixed(1)}km` : "Nearby"}
                   </p>

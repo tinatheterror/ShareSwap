@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, Camera } from "lucide-react";
+import { Sparkles, Camera, Coins } from "lucide-react";
 import { useLocation } from "wouter";
 import type { SelectItem } from "@db/schema";
 
@@ -107,11 +107,11 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                     </Badge>
                   ))}
                 </div>
-                <div className="flex justify-center">
-                  <Badge variant="secondary" className="text-xs bg-teal-50 text-teal-700 border-teal-200">
-                    {item.recommendationScore >= 50 ? "Perfect Match" : 
-                     item.recommendationScore >= 30 ? "Great Match" : "Good Match"}
-                  </Badge>
+                <div className="flex items-center justify-center gap-1">
+                  <Coins className="h-3 w-3 text-teal-600" />
+                  <span className="text-sm font-semibold text-teal-700">
+                    {item.shareCoinPrice || 5} coins
+                  </span>
                 </div>
               </div>
               

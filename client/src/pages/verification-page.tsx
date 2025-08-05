@@ -19,6 +19,7 @@ import { Loader2, Upload, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 const formSchema = z.object({
   fullName: z.string().min(3),
@@ -31,7 +32,9 @@ const formSchema = z.object({
 export default function VerificationPage() {
   const [selectedIdFile, setSelectedIdFile] = useState<File | null>(null);
   const [isCameraMode, setIsCameraMode] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const cardCameraRef = useRef<HTMLInputElement>(null);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
 
   const handleCardPhotoCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,9 +94,10 @@ export default function VerificationPage() {
     },
     onSuccess: () => {
       toast({
-        title: "Verification Submitted",
-        description: "We'll review your information and get back to you soon.",
+        title: "Verification Submitted Successfully!",
+        description: "Your account is now verified. You can now rent items securely.",
       });
+      setIsVerified(true);
       form.reset();
       setSelectedIdFile(null);
     },
@@ -111,6 +115,44 @@ export default function VerificationPage() {
       setSelectedIdFile(e.target.files[0]);
     }
   };
+
+  if (isVerified) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-2xl mx-auto px-4 py-12">
+          <div className="text-center">
+            <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold mb-2 text-green-800">Verification Complete!</h1>
+            <p className="text-muted-foreground mb-8">
+              Your identity has been verified successfully. You can now rent and borrow items with confidence.
+            </p>
+            <div className="space-y-4">
+              <Button 
+                onClick={() => setLocation("/borrow")} 
+                className="w-full max-w-md"
+                size="lg"
+              >
+                Continue to Browse Items
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setLocation("/")} 
+                className="w-full max-w-md"
+                size="lg"
+              >
+                Return to Home
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

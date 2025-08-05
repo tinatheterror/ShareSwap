@@ -107,9 +107,12 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                     </Badge>
                   ))}
                 </div>
-                <p className="text-xs text-gray-600">
-                  Score: {Math.round(item.recommendationScore)}
-                </p>
+                <div className="flex justify-center">
+                  <Badge variant="secondary" className="text-xs bg-teal-50 text-teal-700 border-teal-200">
+                    {item.recommendationScore >= 50 ? "Perfect Match" : 
+                     item.recommendationScore >= 30 ? "Great Match" : "Good Match"}
+                  </Badge>
+                </div>
               </div>
               
               <Button 

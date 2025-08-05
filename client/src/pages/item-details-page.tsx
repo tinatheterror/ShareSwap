@@ -71,7 +71,7 @@ export default function ItemDetailsPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="font-medium">Available Options</h3>
+                  <h3 className="font-medium">Sharing Options</h3>
 
                   {item.isLendable && (
                     <div className="flex justify-between items-center">

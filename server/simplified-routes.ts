@@ -469,4 +469,39 @@ export function addSimplifiedRoutes(app: Express) {
       res.status(500).json({ error: "Failed to generate referral code" });
     }
   });
+
+  // Auto-match endpoint for connecting lenders and borrowers
+  app.post("/api/auto-match", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { itemId, wishlistId, lenderUserId, borrowerUserId } = req.body;
+
+      // Mock successful auto-match creation
+      const autoMatch = {
+        id: Date.now(),
+        itemId,
+        wishlistId,
+        lenderUserId,
+        borrowerUserId,
+        status: "matched",
+        matchedAt: new Date().toISOString(),
+        shareCoinsEarned: Math.floor(Math.random() * 11) + 10, // 10-20 ShareCoins
+      };
+
+      // In a real app, this would:
+      // 1. Create a match record in the database
+      // 2. Update wishlist status to "fulfilled"
+      // 3. Send notifications to both users
+      // 4. Award ShareCoins to the lender
+      // 5. Create a lending request/arrangement
+
+      res.json(autoMatch);
+    } catch (error) {
+      console.error("Error creating auto-match:", error);
+      res.status(500).json({ error: "Failed to create auto-match" });
+    }
+  });
 }

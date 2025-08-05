@@ -12,8 +12,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X } from "lucide-react";
-import { useState } from "react";
+import { Upload, MapPin, X, Heart, CheckCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -35,6 +36,9 @@ export default function LendPage() {
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [matchedWishlists, setMatchedWishlists] = useState<any[]>([]);
+  const [showMatchingModal, setShowMatchingModal] = useState(false);
+  const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -52,6 +56,29 @@ export default function LendPage() {
       longitude: undefined,
     },
   });
+
+  // Get all community wishlists for matching
+  const { data: allWishlists = [] } = useQuery({
+    queryKey: ['/api/all-wishlists'],
+  });
+
+  // Check for wishlist matches when item name changes
+  useEffect(() => {
+    const itemName = form.watch("name");
+    if (itemName && itemName.length > 2 && Array.isArray(allWishlists)) {
+      const matches = allWishlists.filter((wishlist: any) => 
+        wishlist.itemName.toLowerCase().includes(itemName.toLowerCase()) ||
+        itemName.toLowerCase().includes(wishlist.itemName.toLowerCase())
+      );
+      setMatchedWishlists(matches);
+      
+      if (matches.length > 0 && !showMatchingModal) {
+        setShowMatchingModal(true);
+      }
+    } else {
+      setMatchedWishlists([]);
+    }
+  }, [form.watch("name"), allWishlists, showMatchingModal]);
 
   const getCurrentLocation = async () => {
     if ("geolocation" in navigator) {
@@ -118,13 +145,32 @@ export default function LendPage() {
       });
 
       const res = await apiRequest("POST", "/api/items", formData);
-      return res.json();
+      const result = await res.json();
+      
+      // If there's a selected wishlist match, create automatic connection
+      if (selectedWishlistMatch) {
+        await apiRequest("POST", "/api/auto-match", {
+          itemId: result.id,
+          wishlistId: selectedWishlistMatch.id,
+          lenderUserId: result.userId,
+          borrowerUserId: selectedWishlistMatch.userId
+        });
+      }
+      
+      return result;
     },
     onSuccess: (data) => {
-      toast({
-        title: "Successfully Listed!",
-        description: `Your item has been added to ShareChest. You'll earn ${data.shareCoinsReward} ShareCoins for this listing.`,
-      });
+      if (selectedWishlistMatch) {
+        toast({
+          title: "Item matched successfully!",
+          description: `Your ${form.getValues("name")} has been automatically matched with ${selectedWishlistMatch.username}'s request!`,
+        });
+      } else {
+        toast({
+          title: "Successfully Listed!",
+          description: `Your item has been added to ShareChest. You'll earn ${data.shareCoinsReward} ShareCoins for this listing.`,
+        });
+      }
       navigate("/borrow");
     },
     onError: (error: Error) => {
@@ -392,6 +438,112 @@ export default function LendPage() {
                 >
                   Apply
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Wishlist Matching Modal */}
+        {showMatchingModal && matchedWishlists.length > 0 && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-blue-500 rounded-full flex items-center justify-center">
+                      <Heart className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">Perfect Match Found!</h3>
+                      <p className="text-gray-600">Someone in your community is looking for this item</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowMatchingModal(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="space-y-4">
+                  {matchedWishlists.map((wishlist: any) => (
+                    <div
+                      key={wishlist.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                        selectedWishlistMatch?.id === wishlist.id
+                          ? 'border-teal-500 bg-teal-50'
+                          : 'border-gray-200 hover:border-teal-300'
+                      }`}
+                      onClick={() => setSelectedWishlistMatch(wishlist)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-semibold text-lg">{wishlist.itemName}</h4>
+                            {selectedWishlistMatch?.id === wishlist.id && (
+                              <CheckCircle className="h-5 w-5 text-teal-500" />
+                            )}
+                          </div>
+                          
+                          <p className="text-gray-600 mb-3">{wishlist.description}</p>
+                          
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
+                                <span className="text-teal-700 font-bold text-xs">{wishlist.username?.charAt(0)}</span>
+                              </div>
+                              {wishlist.username}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              {wishlist.distance}
+                            </span>
+                            {wishlist.neededDate && (
+                              <span className="text-green-600 font-medium">
+                                Needed: {new Date(wishlist.neededDate).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">🪙</span>
+                          </div>
+                          <span className="text-yellow-800 font-semibold">
+                            Earn 10-20 ShareCoins for helping this neighbor!
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedWishlistMatch(null);
+                      setShowMatchingModal(false);
+                    }}
+                    className="flex-1"
+                  >
+                    Skip Matching
+                  </Button>
+                  <Button
+                    onClick={() => setShowMatchingModal(false)}
+                    disabled={!selectedWishlistMatch}
+                    className="flex-1 bg-teal-600 hover:bg-teal-700"
+                  >
+                    {selectedWishlistMatch ? 'Match & Continue' : 'Select a Match'}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

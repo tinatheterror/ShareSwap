@@ -170,7 +170,7 @@ export default function BorrowPage() {
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <Coins className="h-3 w-3 text-teal-600" />
                     <span className="text-xs font-semibold text-teal-700">
-                      {item.shareCoinPrice || 5} coins
+                      {item.shareCoinPrice || 5} ShareCoins
                     </span>
                   </div>
                   <p className="text-xs text-gray-600">

@@ -127,7 +127,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 <div className="flex items-center justify-center gap-1">
                   <Coins className="h-3 w-3 text-orange-600" />
                   <span className="text-sm font-semibold text-orange-700">
-                    {item.shareCoinPrice || 5} coins
+                    {item.shareCoinPrice || 5} ShareCoins
                   </span>
                 </div>
               </div>

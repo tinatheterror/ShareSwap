@@ -110,7 +110,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                 <div className="flex items-center justify-center gap-1">
                   <Coins className="h-3 w-3 text-teal-600" />
                   <span className="text-sm font-semibold text-teal-700">
-                    {item.shareCoinPrice || 5} coins
+                    {item.shareCoinPrice || 5} ShareCoins
                   </span>
                 </div>
               </div>

@@ -160,6 +160,110 @@ export function addSimplifiedRoutes(app: Express) {
     }
   });
 
+  // User profile endpoint
+  app.get("/api/user-profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Mock user profile data
+      const profile = {
+        id: req.user.id,
+        username: req.user.username,
+        email: `${req.user.username}@example.com`,
+        fullName: req.user.username === "harrisonma" ? "Harrison Ma" : `${req.user.username.charAt(0).toUpperCase()}${req.user.username.slice(1)} User`,
+        bio: "Passionate about sharing and connecting with my community through sustainable resource exchange.",
+        location: "Downtown Toronto, ON",
+        phone: "+1 (555) 123-4567",
+        joinedDate: "2024-01-15T00:00:00.000Z",
+        shareCoins: req.user.shareCoins || 0,
+        itemsShared: 12,
+        itemsBorrowed: 8,
+        rating: 4.8,
+        totalTransactions: 20,
+        isVerified: true,
+        subscription: "ShareSwap Premium"
+      };
+
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      res.status(500).json({ error: "Failed to fetch user profile" });
+    }
+  });
+
+  // Update user profile endpoint
+  app.patch("/api/user-profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { fullName, bio, location, phone } = req.body;
+
+      // Mock successful update
+      const updatedProfile = {
+        id: req.user.id,
+        username: req.user.username,
+        email: `${req.user.username}@example.com`,
+        fullName: fullName || req.user.username,
+        bio: bio || "",
+        location: location || "",
+        phone: phone || "",
+        joinedDate: "2024-01-15T00:00:00.000Z",
+        shareCoins: req.user.shareCoins || 0,
+        itemsShared: 12,
+        itemsBorrowed: 8,
+        rating: 4.8,
+        totalTransactions: 20,
+        isVerified: true,
+        subscription: "ShareSwap Premium"
+      };
+
+      res.json(updatedProfile);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ error: "Failed to update user profile" });
+    }
+  });
+
+  // Location alerts endpoint
+  app.get("/api/location-alerts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Mock location alerts data
+      const alerts = [
+        {
+          id: 1,
+          keyword: "power drill",
+          location: "Within 5km",
+          isActive: true
+        },
+        {
+          id: 2,
+          keyword: "camping gear",
+          location: "Downtown area",
+          isActive: true
+        },
+        {
+          id: 3,
+          keyword: "kitchen mixer",
+          location: "North side",
+          isActive: false
+        }
+      ];
+
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching location alerts:", error);
+      res.status(500).json({ error: "Failed to fetch location alerts" });
+    }
+  });
+
   app.post("/api/wishlists", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

@@ -108,11 +108,13 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <div className="flex items-center gap-4">
-                      <Avatar className="border-2 border-primary">
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {user.username.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Link href="/profile">
+                        <Avatar className="border-2 border-primary cursor-pointer hover:border-primary/80 transition-colors">
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {user.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <Button
                         variant="ghost"
                         onClick={() => logoutMutation.mutate()}

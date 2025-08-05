@@ -181,7 +181,7 @@ export default function BorrowPage() {
                 <Button 
                   className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
                   disabled={!item.isConditionVerified}
-                  onClick={() => navigate(`/items/${item.id}?source=borrow`)}
+                  onClick={() => navigate(`/items/${item.id}`)}
                 >
                   {item.isConditionVerified ? "Share" : "Pending"}
                 </Button>

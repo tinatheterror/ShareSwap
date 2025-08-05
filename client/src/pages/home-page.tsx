@@ -41,7 +41,7 @@ export default function HomePage() {
           />
           <MarketplaceCard
             title="Rent It"
-            description="Earn by renting out your items securely"
+            description="Earn real money by renting out your items securely"
             icon={<Banknote className="w-8 h-8 text-primary" />}
             onClick={() => navigate("/verify")}
           />

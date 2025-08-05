@@ -67,14 +67,6 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
             </DialogTitle>
             <p className="text-slate-600 text-lg">Help your neighbors and get rewarded immediately</p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute right-0 top-0 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-            onClick={onClose}
-          >
-            <X className="h-5 w-5" />
-          </Button>
         </DialogHeader>
 
         <div className="space-y-6">

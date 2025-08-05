@@ -86,7 +86,7 @@ export const initializeSubscriptionPlans = async () => {
     if (existingPlans.length === 0) {
       await db.insert(subscriptionPlans).values([
         {
-          name: "ShareSpace Premium",
+          name: "ShareSwap Premium",
           description: "Unlock priority access, lower fees, and exclusive features",
           monthlyPrice: "9.99",
           annualPrice: "99.99",
@@ -104,7 +104,7 @@ export const initializeSubscriptionPlans = async () => {
           lowerFees: true,
         },
         {
-          name: "ShareSpace Pro",
+          name: "ShareSwap Pro",
           description: "Perfect for active community members",
           monthlyPrice: "4.99",
           annualPrice: "49.99",

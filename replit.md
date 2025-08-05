@@ -47,7 +47,8 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Created calendar export functionality (.ics format) for delivery appointments
 - Extended delivery arrangements with return dates, special instructions, and risk acceptance tracking
 - Improved delivery arrangements page with better QR codes, calendar integration, and visual indicators
-- Date: August 3, 2025
+- Updated subscription plans branding from "ShareSpace" to "ShareSwap" to align with platform identity
+- Date: August 5, 2025
 
 ## Architecture
 - Full-stack JavaScript application following modern patterns

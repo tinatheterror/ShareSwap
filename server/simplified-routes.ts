@@ -127,7 +127,7 @@ export function addSimplifiedRoutes(app: Express) {
       const plans = [
         {
           id: 1,
-          name: "ShareSpace Premium",
+          name: "ShareSwap Premium",
           description: "Unlock priority access, lower fees, and exclusive features",
           monthlyPrice: "9.99",
           annualPrice: "99.99",
@@ -147,7 +147,7 @@ export function addSimplifiedRoutes(app: Express) {
         },
         {
           id: 2,
-          name: "ShareSpace Pro",
+          name: "ShareSwap Pro",
           description: "Perfect for active community members",
           monthlyPrice: "4.99",
           annualPrice: "49.99",

@@ -331,6 +331,25 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/my-items", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const userItems = await db
+        .select()
+        .from(items)
+        .where(eq(items.ownerId, req.user.id))
+        .orderBy(desc(items.createdAt));
+
+      res.json(userItems);
+    } catch (error) {
+      console.error("Error fetching user items:", error);
+      res.status(500).json({ error: "Failed to fetch your items" });
+    }
+  });
+
   // Add recommendations endpoint
   app.get("/api/recommendations", async (req, res) => {
     if (!req.isAuthenticated()) {

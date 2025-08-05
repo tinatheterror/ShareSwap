@@ -25,6 +25,7 @@ import AchievementsPage from "@/pages/achievements-page";
 import WishlistsPage from "@/pages/wishlists-page";
 import PremiumPage from "@/pages/premium-page";
 import ReferralsPage from "@/pages/referrals-page";
+import MyItemsPage from "@/pages/my-items-page";
 
 function Router() {
   return (
@@ -49,6 +50,7 @@ function Router() {
       <ProtectedRoute path="/wishlists" component={WishlistsPage} />
       <ProtectedRoute path="/premium" component={PremiumPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
+      <ProtectedRoute path="/my-items" component={MyItemsPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1,0 +1,191 @@
+import { useState } from "react";
+import { Navbar } from "@/components/shared/navbar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
+import { Edit, Trash2, Eye, Plus, Package } from "lucide-react";
+import type { SelectItem } from "@db/schema";
+
+export default function MyItemsPage() {
+  const { user } = useAuth();
+  const [filter, setFilter] = useState<"all" | "available" | "unavailable">("all");
+
+  const { data: items = [], isLoading } = useQuery<SelectItem[]>({
+    queryKey: ['/api/my-items'],
+    enabled: !!user,
+  });
+
+  const filteredItems = items.filter(item => {
+    if (filter === "available") return item.isAvailable;
+    if (filter === "unavailable") return !item.isAvailable;
+    return true;
+  });
+
+  const getItemCapabilities = (item: SelectItem) => {
+    const capabilities = [];
+    if (item.isLendable) capabilities.push("Borrow");
+    if (item.isRentable) capabilities.push("Rent");
+    if (item.isSwappable) capabilities.push("Swap");
+    return capabilities;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-6xl mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-64 bg-gray-200 rounded-lg"></div>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Package className="h-8 w-8 text-primary" />
+              My ShareChest
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Manage your uploaded items and track their availability
+            </p>
+          </div>
+          <Link href="/lend">
+            <Button className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add New Item
+            </Button>
+          </Link>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            onClick={() => setFilter("all")}
+            size="sm"
+          >
+            All Items ({items.length})
+          </Button>
+          <Button
+            variant={filter === "available" ? "default" : "outline"}
+            onClick={() => setFilter("available")}
+            size="sm"
+          >
+            Available ({items.filter(i => i.isAvailable).length})
+          </Button>
+          <Button
+            variant={filter === "unavailable" ? "default" : "outline"}
+            onClick={() => setFilter("unavailable")}
+            size="sm"
+          >
+            Unavailable ({items.filter(i => !i.isAvailable).length})
+          </Button>
+        </div>
+
+        {/* Items Grid */}
+        {filteredItems.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+              {filter === "all" ? "No items in your ShareChest yet" : `No ${filter} items`}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {filter === "all" 
+                ? "Start sharing by adding your first item to the marketplace"
+                : `You don't have any ${filter} items at the moment`
+              }
+            </p>
+            {filter === "all" && (
+              <Link href="/lend">
+                <Button className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Your First Item
+                </Button>
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredItems.map((item) => (
+              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="aspect-video bg-muted relative">
+                  {item.photos[0] ? (
+                    <img
+                      src={item.photos[0]}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Package className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="absolute top-2 right-2">
+                    <Badge variant={item.isAvailable ? "default" : "secondary"}>
+                      {item.isAvailable ? "Available" : "Unavailable"}
+                    </Badge>
+                  </div>
+                </div>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                    {item.description}
+                  </p>
+                  
+                  {/* Capabilities */}
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {getItemCapabilities(item).map((capability) => (
+                      <Badge key={capability} variant="outline" className="text-xs">
+                        {capability}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* Condition */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm text-muted-foreground">Condition:</span>
+                    <Badge variant={item.isConditionVerified ? "default" : "secondary"} className="text-xs">
+                      {item.conditionRating}/10 {item.isConditionVerified && "✓"}
+                    </Badge>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <Link href={`/items/${item.id}`}>
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <Eye className="h-3 w-3 mr-1" />
+                        View
+                      </Button>
+                    </Link>
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

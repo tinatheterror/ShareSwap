@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { MessageCircle, Coins, Gamepad2, InboxIcon, Trophy, Heart, Crown, Users } from "lucide-react";
+import { MessageCircle, Coins, Gamepad2, InboxIcon, Trophy, Heart, Crown, Users, Package } from "lucide-react";
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -81,6 +81,14 @@ export function Navbar() {
                         </Link>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <Link href="/my-items">
+                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
+                        <Package className="h-5 w-5" />
+                        <span>My ShareChest</span>
+                      </Button>
+                    </Link>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <Link href="/chat">

@@ -89,7 +89,7 @@ export function addSimplifiedRoutes(app: Express) {
     }
 
     try {
-      const { itemName, description, category, maxShareCoinPrice, maxDollarPrice, preferredLocation, urgency } = req.body;
+      const { itemName, description, category, needType, preferredLocation, urgency } = req.body;
 
       if (!itemName) {
         return res.status(400).json({ error: "Item name is required" });
@@ -102,8 +102,7 @@ export function addSimplifiedRoutes(app: Express) {
         itemName,
         description,
         category,
-        maxShareCoinPrice,
-        maxDollarPrice,
+        needType: needType || 'borrow',
         preferredLocation,
         urgency: urgency || 'normal',
         isActive: true,

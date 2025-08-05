@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, Plus, MapPin, DollarSign, Coins, Clock } from "lucide-react";
+import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat } from "lucide-react";
 import { useState } from "react";
 
 interface Wishlist {
@@ -17,8 +17,7 @@ interface Wishlist {
   itemName: string;
   description?: string;
   category?: string;
-  maxShareCoinPrice?: string;
-  maxDollarPrice?: string;
+  needType: string;
   preferredLocation?: string;
   urgency: string;
   isActive: boolean;
@@ -33,8 +32,7 @@ export default function WishlistsPage() {
     itemName: '',
     description: '',
     category: '',
-    maxShareCoinPrice: '',
-    maxDollarPrice: '',
+    needType: 'borrow',
     preferredLocation: '',
     urgency: 'normal'
   });
@@ -54,8 +52,7 @@ export default function WishlistsPage() {
         itemName: '',
         description: '',
         category: '',
-        maxShareCoinPrice: '',
-        maxDollarPrice: '',
+        needType: 'borrow',
         preferredLocation: '',
         urgency: 'normal'
       });
@@ -181,35 +178,19 @@ export default function WishlistsPage() {
                   />
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Max ShareCoin Price</label>
-                    <div className="relative">
-                      <Coins className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-600" />
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={formData.maxShareCoinPrice}
-                        onChange={(e) => setFormData({...formData, maxShareCoinPrice: e.target.value})}
-                        placeholder="0.00"
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Max Dollar Price</label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={formData.maxDollarPrice}
-                        onChange={(e) => setFormData({...formData, maxDollarPrice: e.target.value})}
-                        placeholder="0.00"
-                        className="pl-10"
-                      />
-                    </div>
+                    <label className="block text-sm font-medium mb-2">Need Type</label>
+                    <Select value={formData.needType} onValueChange={(value) => setFormData({...formData, needType: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="borrow">Borrow - Use temporarily</SelectItem>
+                        <SelectItem value="rent">Rent - Pay for usage</SelectItem>
+                        <SelectItem value="swap">Swap - Exchange items</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -287,25 +268,19 @@ export default function WishlistsPage() {
                     </div>
                   )}
 
-                  {(item.maxShareCoinPrice || item.maxDollarPrice) && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Max Price:</span>
-                      <div className="flex gap-2">
-                        {item.maxShareCoinPrice && (
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            <Coins className="h-3 w-3 mr-1" />
-                            {item.maxShareCoinPrice} SC
-                          </Badge>
-                        )}
-                        {item.maxDollarPrice && (
-                          <Badge variant="secondary">
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            ${item.maxDollarPrice}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Need Type:</span>
+                    <Badge variant="secondary" className={
+                      item.needType === 'borrow' ? 'bg-blue-100 text-blue-800' :
+                      item.needType === 'rent' ? 'bg-purple-100 text-purple-800' :
+                      'bg-orange-100 text-orange-800'
+                    }>
+                      {item.needType === 'borrow' && <ShoppingCart className="h-3 w-3 mr-1" />}
+                      {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
+                      {item.needType === 'swap' && <Repeat className="h-3 w-3 mr-1" />}
+                      {item.needType.charAt(0).toUpperCase() + item.needType.slice(1)}
+                    </Badge>
+                  </div>
 
                   {item.preferredLocation && (
                     <div className="flex items-center gap-2">

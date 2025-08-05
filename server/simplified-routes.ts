@@ -101,6 +101,8 @@ export function addSimplifiedRoutes(app: Express) {
           needType: "borrow",
           preferredLocation: "Downtown area",
           urgency: "high",
+          neededDate: "2025-08-07",
+          returnDate: "2025-08-09",
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "Sarah M.",
@@ -115,6 +117,7 @@ export function addSimplifiedRoutes(app: Express) {
           needType: "rent",
           preferredLocation: "North side",
           urgency: "urgent",
+          neededDate: "2025-08-09",
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "Mike R.",
@@ -129,6 +132,8 @@ export function addSimplifiedRoutes(app: Express) {
           needType: "borrow",
           preferredLocation: "Central area",
           urgency: "high",
+          neededDate: "2025-08-08",
+          returnDate: "2025-08-10",
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "Emma L.",
@@ -143,6 +148,8 @@ export function addSimplifiedRoutes(app: Express) {
           needType: "borrow",
           preferredLocation: "Suburban area",
           urgency: "normal",
+          neededDate: "2025-08-12",
+          returnDate: "2025-08-14",
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "David K.",
@@ -270,7 +277,7 @@ export function addSimplifiedRoutes(app: Express) {
     }
 
     try {
-      const { itemName, description, category, needType, preferredLocation, urgency } = req.body;
+      const { itemName, description, category, needType, preferredLocation, urgency, neededDate, returnDate } = req.body;
 
       if (!itemName) {
         return res.status(400).json({ error: "Item name is required" });
@@ -286,6 +293,8 @@ export function addSimplifiedRoutes(app: Express) {
         needType: needType || 'borrow',
         preferredLocation,
         urgency: urgency || 'normal',
+        neededDate,
+        returnDate,
         isActive: true,
         createdAt: new Date().toISOString(),
       };

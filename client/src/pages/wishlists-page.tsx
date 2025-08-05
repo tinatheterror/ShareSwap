@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat } from "lucide-react";
+import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar } from "lucide-react";
 import { useState } from "react";
 
 interface Wishlist {
@@ -20,6 +20,8 @@ interface Wishlist {
   needType: string;
   preferredLocation?: string;
   urgency: string;
+  neededDate?: string;
+  returnDate?: string;
   isActive: boolean;
   createdAt: string;
 }
@@ -34,7 +36,9 @@ export default function WishlistsPage() {
     category: '',
     needType: 'borrow',
     preferredLocation: '',
-    urgency: 'normal'
+    urgency: 'normal',
+    neededDate: '',
+    returnDate: ''
   });
 
   const { data: wishlists, isLoading } = useQuery<Wishlist[]>({
@@ -54,7 +58,9 @@ export default function WishlistsPage() {
         category: '',
         needType: 'borrow',
         preferredLocation: '',
-        urgency: 'normal'
+        urgency: 'normal',
+        neededDate: '',
+        returnDate: ''
       });
       toast({
         title: "Wishlist item added!",
@@ -209,6 +215,30 @@ export default function WishlistsPage() {
                   </div>
                 </div>
 
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Date Needed</label>
+                    <Input
+                      type="date"
+                      value={formData.neededDate}
+                      onChange={(e) => setFormData({...formData, neededDate: e.target.value})}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+
+                  {formData.needType === 'borrow' && (
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Return Date</label>
+                      <Input
+                        type="date"
+                        value={formData.returnDate}
+                        onChange={(e) => setFormData({...formData, returnDate: e.target.value})}
+                        min={formData.neededDate || new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium mb-2">Preferred Location</label>
                   <div className="relative">
@@ -281,6 +311,26 @@ export default function WishlistsPage() {
                       {item.needType.charAt(0).toUpperCase() + item.needType.slice(1)}
                     </Badge>
                   </div>
+
+                  {item.neededDate && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Date Needed:</span>
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {new Date(item.neededDate).toLocaleDateString()}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {item.returnDate && item.needType === 'borrow' && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Return Date:</span>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {new Date(item.returnDate).toLocaleDateString()}
+                      </Badge>
+                    </div>
+                  )}
 
                   {item.preferredLocation && (
                     <div className="flex items-center gap-2">

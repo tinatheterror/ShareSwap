@@ -16,6 +16,8 @@ interface Wishlist {
   needType: string;
   preferredLocation?: string;
   urgency: string;
+  neededDate?: string;
+  returnDate?: string;
   isActive: boolean;
   createdAt: string;
   username?: string;
@@ -132,6 +134,20 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
                             <span className="text-teal-700 font-bold text-sm">{wishlist.username.charAt(0)}</span>
                           </div>
                           <span className="text-slate-600 font-medium">{wishlist.username}</span>
+                        </div>
+                      )}
+
+                      {wishlist.neededDate && (
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <span className="text-green-700 font-bold text-xs">📅</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-600 font-medium">Needed: {new Date(wishlist.neededDate).toLocaleDateString()}</span>
+                            {wishlist.returnDate && wishlist.needType === 'borrow' && (
+                              <div className="text-xs text-slate-500">Return: {new Date(wishlist.returnDate).toLocaleDateString()}</div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

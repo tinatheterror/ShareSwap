@@ -32,19 +32,22 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
     return (
       <div className="space-y-4">
         {showTitle && (
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-yellow-500" />
-            <h2 className="text-xl font-bold">Recommended for You</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg animate-pulse">
+              <Sparkles className="h-4 w-4 text-teal-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-800">Suggested for You</h3>
+            <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
           </div>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-teal-100">
               <CardContent className="p-4">
-                <div className="aspect-square bg-gray-200 rounded-lg mb-3"></div>
-                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded mb-3"></div>
-                <div className="h-8 bg-gray-200 rounded"></div>
+                <div className="aspect-square bg-teal-100 rounded-lg mb-3"></div>
+                <div className="h-4 bg-teal-100 rounded mb-2"></div>
+                <div className="h-3 bg-teal-100 rounded mb-3"></div>
+                <div className="h-8 bg-teal-100 rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -60,16 +63,19 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
   return (
     <div className="space-y-4">
       {showTitle && (
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-yellow-500" />
-          <h3 className="text-lg font-medium text-gray-700">Suggested for You</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-2 bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg">
+            <Sparkles className="h-4 w-4 text-teal-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-800">Suggested for You</h3>
+          <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
         </div>
       )}
       
-      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {recommendations.map((item) => (
-          <Card key={item.id} className="hover:shadow-sm transition-shadow bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
-            <CardContent className="p-3">
+          <Card key={item.id} className="group hover:shadow-md transition-all duration-300 bg-white rounded-xl overflow-hidden border border-teal-100 hover:border-teal-200 hover:-translate-y-1">
+            <CardContent className="p-4">
               <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
                 {item.photos && item.photos.length > 0 ? (
                   <img
@@ -84,7 +90,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                 )}
                 {item.recommendationReasons.length > 0 && (
                   <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
+                    <Badge variant="secondary" className="bg-teal-100 text-teal-800 text-xs border-teal-200">
                       <Sparkles className="h-3 w-3 mr-1" />
                       AI Pick
                     </Badge>
@@ -96,7 +102,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                 <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
                 <div className="flex flex-wrap gap-1 justify-center mb-2">
                   {item.recommendationReasons.slice(0, 2).map((reason, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs">
+                    <Badge key={idx} variant="outline" className="text-xs border-teal-200 text-teal-700 hover:bg-teal-50">
                       {reason}
                     </Badge>
                   ))}
@@ -107,7 +113,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
               </div>
               
               <Button 
-                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white text-sm py-2 rounded-lg"
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg group-hover:bg-teal-700 transition-colors"
                 disabled={!item.isConditionVerified}
                 onClick={() => navigate(`/items/${item.id}`)}
               >

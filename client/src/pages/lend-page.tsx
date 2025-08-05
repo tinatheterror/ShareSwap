@@ -318,6 +318,7 @@ export default function LendPage() {
                   </div>
                 </div>
 
+                {/* Availability Period - Always show when lending is enabled */}
                 {watchIsLendable && (
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Availability Period</h3>
@@ -330,7 +331,12 @@ export default function LendPage() {
                           <FormItem>
                             <FormLabel>Available From</FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} />
+                              <Input 
+                                type="date" 
+                                {...field} 
+                                value={field.value || ''}
+                                placeholder="Select start date"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -344,7 +350,12 @@ export default function LendPage() {
                           <FormItem>
                             <FormLabel>Available Until</FormLabel>
                             <FormControl>
-                              <Input type="date" {...field} />
+                              <Input 
+                                type="date" 
+                                {...field} 
+                                value={field.value || ''}
+                                placeholder="Select end date"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -559,7 +570,7 @@ export default function LendPage() {
                                   <span>Return: {new Date(wishlist.returnDate).toLocaleDateString()}</span>
                                 </div>
                                 <div className="text-xs text-blue-600 mt-1">
-                                  Duration: {Math.ceil((new Date(wishlist.returnDate) - new Date(wishlist.neededDate)) / (1000 * 60 * 60 * 24))} days
+                                  Duration: {Math.ceil((new Date(wishlist.returnDate).getTime() - new Date(wishlist.neededDate).getTime()) / (1000 * 60 * 60 * 24))} days
                                 </div>
                               </div>
                             </div>

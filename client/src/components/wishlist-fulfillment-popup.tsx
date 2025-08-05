@@ -162,7 +162,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
                       </div>
                     </div>
 
-                    <Link href="/upload">
+                    <Link href="/lend">
                       <Button size="lg" className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200">
                         I Have This Item!
                       </Button>
@@ -225,7 +225,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
                 Browse All Community Requests
               </Button>
             </Link>
-            <Link href="/upload" className="block">
+            <Link href="/lend" className="block">
               <Button size="lg" className="w-full h-14 bg-teal-600 hover:bg-teal-700 font-semibold shadow-lg">
                 Share an Item Now
               </Button>

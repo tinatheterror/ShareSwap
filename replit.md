@@ -50,6 +50,11 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Updated subscription plans branding from "ShareSpace" to "ShareSwap" to align with platform identity
 - Clarified ShareCoin earning model: coins earned only after successful lending/delivery completion, not for posting items
 - Added wishlist fulfillment popup to encourage immediate ShareCoin earning by helping neighbors
+- Added wishlist expiration system that automatically archives items after their needed date passes
+- Implemented archive toggle to show/hide expired wishlist items with visual indicators
+- Enhanced wishlist interface with expiration status, reasons, and archive management
+- Added database columns for expiration tracking (is_expired, expiration_reason)
+- Created comprehensive archiving system instead of deletion to preserve user history
 - Date: August 5, 2025
 
 ## Architecture

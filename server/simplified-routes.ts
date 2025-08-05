@@ -75,8 +75,74 @@ export function addSimplifiedRoutes(app: Express) {
     }
 
     try {
-      // Mock empty wishlists for now
-      res.json([]);
+      // Helper function to check if wishlist is expired
+      const isWishlistExpired = (wishlist: any) => {
+        if (!wishlist.neededDate) return false;
+        const neededDate = new Date(wishlist.neededDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return neededDate < today;
+      };
+
+      // Mock user wishlist data - includes some expired items for demonstration
+      const rawWishlists = [
+        {
+          id: 101,
+          userId: req.user.id,
+          itemName: "Professional Camera",
+          description: "Need for a wedding photography event",
+          category: "electronics",
+          needType: "borrow",
+          preferredLocation: "Downtown area",
+          urgency: "high",
+          neededDate: "2025-08-03", // Past date - expired
+          returnDate: "2025-08-05",
+          isActive: true,
+          createdAt: "2025-07-28T00:00:00.000Z"
+        },
+        {
+          id: 102,
+          userId: req.user.id,
+          itemName: "Hiking Boots",
+          description: "Size 10, needed for weekend camping trip",
+          category: "outdoor",
+          needType: "borrow",
+          preferredLocation: "North side",
+          urgency: "normal",
+          neededDate: "2025-08-10", // Future date - active
+          returnDate: "2025-08-12",
+          isActive: true,
+          createdAt: "2025-08-01T00:00:00.000Z"
+        },
+        {
+          id: 103,
+          userId: req.user.id,
+          itemName: "Lawn Mower",
+          description: "Spring cleaning project completed",
+          category: "garden",
+          needType: "borrow",
+          preferredLocation: "Suburban area",
+          urgency: "low",
+          neededDate: "2025-08-01", // Past date - expired
+          returnDate: "2025-08-02",
+          isActive: true,
+          createdAt: "2025-07-25T00:00:00.000Z"
+        }
+      ];
+
+      // Process wishlists to mark expired ones
+      const wishlists = rawWishlists.map(wishlist => {
+        const expired = isWishlistExpired(wishlist);
+        return {
+          ...wishlist,
+          isExpired: expired,
+          expirationReason: expired ? 
+            `Needed date ${new Date(wishlist.neededDate).toLocaleDateString()} has passed` : 
+            undefined
+        };
+      });
+
+      res.json(wishlists);
     } catch (error) {
       console.error("Error fetching wishlists:", error);
       res.status(500).json({ error: "Failed to fetch wishlists" });

@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar } from "lucide-react";
+import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar, Archive, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 
 interface Wishlist {
@@ -23,6 +23,8 @@ interface Wishlist {
   neededDate?: string;
   returnDate?: string;
   isActive: boolean;
+  isExpired?: boolean;
+  expirationReason?: string;
   createdAt: string;
 }
 
@@ -30,6 +32,7 @@ export default function WishlistsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [formData, setFormData] = useState({
     itemName: '',
     description: '',
@@ -41,9 +44,13 @@ export default function WishlistsPage() {
     returnDate: ''
   });
 
-  const { data: wishlists, isLoading } = useQuery<Wishlist[]>({
+  const { data: wishlists = [], isLoading } = useQuery<Wishlist[]>({
     queryKey: ['/api/wishlists'],
   });
+
+  // Filter expired and active wishlists
+  const activeWishlists = wishlists.filter((w: Wishlist) => !w.isExpired);
+  const expiredWishlists = wishlists.filter((w: Wishlist) => w.isExpired);
 
   const addWishlistMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -124,6 +131,19 @@ export default function WishlistsPage() {
           <p className="text-muted-foreground">
             Create demand signals for items you need - get notified when they become available
           </p>
+          
+          {expiredWishlists.length > 0 && (
+            <div className="flex justify-center mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowArchived(!showArchived)}
+                className="text-sm"
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                {showArchived ? 'Hide' : 'Show'} Archived ({expiredWishlists.length})
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Add New Wishlist Item */}
@@ -273,9 +293,15 @@ export default function WishlistsPage() {
           )}
         </Card>
 
-        {/* Wishlist Items */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {wishlists?.map((item) => (
+        {/* Active Wishlist Items */}
+        {!showArchived && (
+          <>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Heart className="h-5 w-5 text-primary" />
+              Active Requests ({activeWishlists.length})
+            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {activeWishlists?.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
@@ -347,8 +373,96 @@ export default function WishlistsPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Archived/Expired Wishlist Items */}
+        {showArchived && (
+          <>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Archive className="h-5 w-5 text-gray-600" />
+              Archived Requests ({expiredWishlists.length})
+            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {expiredWishlists?.map((item) => (
+                <Card key={item.id} className="hover:shadow-md transition-shadow opacity-75 border-gray-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <h3 className="font-semibold text-lg text-gray-700">{item.itemName}</h3>
+                      <div className="flex flex-col gap-1">
+                        <Badge className="bg-red-100 text-red-800">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Expired
+                        </Badge>
+                        <Badge className={getUrgencyColor(item.urgency)} variant="outline">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {item.urgency}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {item.description && (
+                      <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
+                    )}
+
+                    <div className="space-y-2 text-sm">
+                      {item.category && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Category:</span>
+                          <Badge variant="outline">{item.category}</Badge>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Need Type:</span>
+                        <Badge variant="secondary" className={
+                          item.needType === 'borrow' ? 'bg-blue-100 text-blue-800' :
+                          item.needType === 'rent' ? 'bg-purple-100 text-purple-800' :
+                          'bg-orange-100 text-orange-800'
+                        }>
+                          {item.needType === 'borrow' && <ShoppingCart className="h-3 w-3 mr-1" />}
+                          {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
+                          {item.needType === 'swap' && <Repeat className="h-3 w-3 mr-1" />}
+                          {item.needType.charAt(0).toUpperCase() + item.needType.slice(1)}
+                        </Badge>
+                      </div>
+
+                      {item.neededDate && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Was Needed:</span>
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {new Date(item.neededDate).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                      )}
+
+                      {item.returnDate && item.needType === 'borrow' && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Return Date:</span>
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {new Date(item.returnDate).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                      )}
+
+                      {item.expirationReason && (
+                        <div className="mt-3 p-2 bg-gray-50 rounded-lg">
+                          <p className="text-xs text-gray-600">
+                            <strong>Archived:</strong> {item.expirationReason}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
 
         {!wishlists?.length && (
           <div className="text-center py-12">

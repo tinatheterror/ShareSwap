@@ -17,8 +17,10 @@ export default function ItemDetailsPage() {
   const [location] = useLocation();
   const { toast } = useToast();
 
-  // Extract item ID from URL
+  // Extract item ID from URL and detect source page
   const itemId = location.split('/').pop();
+  const urlParams = new URLSearchParams(window.location.search);
+  const source = urlParams.get('source'); // 'rent', 'borrow', or 'swap'
 
   const { data: item } = useQuery<SelectItem>({
     queryKey: [`/api/items/${itemId}`],
@@ -26,6 +28,115 @@ export default function ItemDetailsPage() {
   });
 
   if (!item) return null;
+
+  // Define the order and styling based on source
+  const getOptionPriority = () => {
+    if (source === 'rent' && item.isRentable) return 'RENT';
+    if (source === 'borrow' && item.isLendable) return 'BORROW';
+    if (source === 'swap' && item.isSwappable) return 'SWAP';
+    // Default priority: BORROW -> RENT -> SWAP
+    if (item.isLendable) return 'BORROW';
+    if (item.isRentable) return 'RENT';
+    if (item.isSwappable) return 'SWAP';
+    return null;
+  };
+
+  const primaryOption = getOptionPriority();
+
+  const renderOption = (type: 'BORROW' | 'RENT' | 'SWAP', isPrimary: boolean) => {
+    if (type === 'BORROW' && !item.isLendable) return null;
+    if (type === 'RENT' && !item.isRentable) return null;
+    if (type === 'SWAP' && !item.isSwappable) return null;
+
+    const buttonClass = isPrimary 
+      ? "w-32" 
+      : "w-32";
+
+    if (type === 'BORROW') {
+      return (
+        <div className="flex justify-between items-center" key="borrow">
+          <div>
+            <p className={`font-medium ${isPrimary ? 'text-lg' : ''}`}>Borrow</p>
+            <div className="flex items-center gap-2 mb-1">
+              <Coins className="h-4 w-4 text-teal-600" />
+              <span className={`font-bold text-teal-700 ${isPrimary ? 'text-lg' : 'text-sm'}`}>
+                {item.shareCoinPrice || 5} ShareCoins
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {item.lendingDuration} days · ${Number(item.securityDeposit).toFixed(2)} deposit
+            </p>
+          </div>
+          <Button 
+            onClick={() => setRequestType("BORROW")} 
+            className={buttonClass}
+            variant={isPrimary ? "default" : "outline"}
+          >
+            Request to Borrow
+          </Button>
+        </div>
+      );
+    }
+
+    if (type === 'RENT') {
+      return (
+        <div className="flex justify-between items-center" key="rent">
+          <div>
+            <p className={`font-medium ${isPrimary ? 'text-lg' : ''}`}>Rent</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`font-bold text-green-700 ${isPrimary ? 'text-lg' : 'text-sm'}`}>
+                ${Number(item.dollarsPrice || 10).toFixed(2)}/day
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              ${Number(item.securityDeposit).toFixed(2)} deposit required
+            </p>
+          </div>
+          <Button 
+            onClick={() => setRequestType("RENT")} 
+            className={buttonClass}
+            variant={isPrimary ? "default" : "outline"}
+          >
+            Request to Rent
+          </Button>
+        </div>
+      );
+    }
+
+    if (type === 'SWAP') {
+      return (
+        <div className="flex justify-between items-center" key="swap">
+          <div>
+            <p className={`font-medium ${isPrimary ? 'text-lg' : ''}`}>Swap</p>
+            <div className="flex items-center gap-2 mb-1">
+              <Coins className="h-4 w-4 text-green-600" />
+              <span className={`font-bold text-green-700 ${isPrimary ? 'text-lg' : 'text-sm'}`}>
+                No ShareCoins needed
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Exchange with your items
+            </p>
+          </div>
+          <Button 
+            onClick={() => setRequestType("SWAP")} 
+            className={buttonClass}
+            variant={isPrimary ? "default" : "outline"}
+          >
+            Request to Swap
+          </Button>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const allOptions = ['BORROW', 'RENT', 'SWAP'] as const;
+  const sortedOptions = [
+    primaryOption,
+    ...allOptions.filter(opt => opt !== primaryOption)
+  ].filter(Boolean) as ('BORROW' | 'RENT' | 'SWAP')[];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -72,64 +183,9 @@ export default function ItemDetailsPage() {
 
                 <div className="space-y-4">
                   <h3 className="font-medium">Sharing Options</h3>
-
-                  {item.isLendable && (
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Borrow</p>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Coins className="h-4 w-4 text-teal-600" />
-                          <span className="text-lg font-bold text-teal-700">
-                            {item.shareCoinPrice || 5} ShareCoins
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {item.lendingDuration} days · ${Number(item.securityDeposit).toFixed(2)} deposit
-                        </p>
-                      </div>
-                      <Button onClick={() => setRequestType("BORROW")} className="w-32">
-                        Request to Borrow
-                      </Button>
-                    </div>
-                  )}
-
-                  {item.isRentable && (
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Rent</p>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg font-bold text-green-700">
-                            ${Number(item.dollarsPrice || 10).toFixed(2)}/day
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          ${Number(item.securityDeposit).toFixed(2)} deposit required
-                        </p>
-                      </div>
-                      <Button onClick={() => setRequestType("RENT")} className="w-32">
-                        Request to Rent
-                      </Button>
-                    </div>
-                  )}
-
-                  {item.isSwappable && (
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">Swap</p>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Coins className="h-4 w-4 text-green-600" />
-                          <span className="text-lg font-bold text-green-700">
-                            No ShareCoins needed
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Exchange with your items
-                        </p>
-                      </div>
-                      <Button onClick={() => setRequestType("SWAP")} className="w-32">
-                        Request to Swap
-                      </Button>
-                    </div>
+                  
+                  {sortedOptions.map((option, index) => 
+                    renderOption(option, index === 0)
                   )}
                 </div>
               </div>

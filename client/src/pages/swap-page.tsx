@@ -158,7 +158,7 @@ export default function SwapPage() {
                   
                   <Button 
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg"
-                    onClick={() => navigate(`/items/${item.id}`)}
+                    onClick={() => navigate(`/items/${item.id}?source=swap`)}
                   >
                     Propose Swap
                   </Button>

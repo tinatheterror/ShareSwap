@@ -56,128 +56,169 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Coins className="h-6 w-6 text-yellow-600" />
-            Earn ShareCoins Instantly
-          </DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-50 to-teal-50 border-2 border-teal-200 shadow-2xl">
+        <DialogHeader className="relative pb-6">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-600 rounded-full mb-4 shadow-lg">
+              <Coins className="h-8 w-8 text-white" />
+            </div>
+            <DialogTitle className="text-2xl font-bold text-slate-800 mb-2">
+              Earn ShareCoins Instantly
+            </DialogTitle>
+            <p className="text-slate-600 text-lg">Help your neighbors and get rewarded immediately</p>
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            className="absolute right-4 top-4"
+            className="absolute right-0 top-0 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
             onClick={onClose}
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-yellow-50 to-green-50 p-4 rounded-lg border border-yellow-200">
-            <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
-              <Coins className="h-5 w-5 text-yellow-600" />
-              Help Your Neighbors, Earn Immediately
-            </h3>
-            <p className="text-sm text-green-700">
-              These neighbors are looking for items you might have. Fulfill their needs and earn ShareCoins the moment you complete the lending transaction!
-            </p>
+        <div className="space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl border border-teal-100 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Heart className="h-6 w-6 text-teal-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-800 text-lg mb-2">
+                  Transform Your Community
+                </h3>
+                <p className="text-slate-600 leading-relaxed">
+                  Your neighbors are actively searching for items you might have. Every successful lending transaction earns you ShareCoins while building stronger community connections.
+                </p>
+              </div>
+            </div>
           </div>
 
           {urgentWishlists.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-6">
               {urgentWishlists.map((wishlist) => (
-                <Card key={wishlist.id} className="hover:shadow-md transition-shadow border-2 border-dashed border-yellow-300">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <h4 className="font-semibold text-lg">{wishlist.itemName}</h4>
-                      <Badge className={getUrgencyColor(wishlist.urgency)}>
-                        <Clock className="h-3 w-3 mr-1" />
-                        {wishlist.urgency}
-                      </Badge>
+                <Card key={wishlist.id} className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/90 backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden">
+                  <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-2"></div>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-xl text-slate-800 mb-1">{wishlist.itemName}</h4>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`${getUrgencyColor(wishlist.urgency)} font-medium px-3 py-1`}>
+                            <Clock className="h-3 w-3 mr-1" />
+                            {wishlist.urgency.toUpperCase()}
+                          </Badge>
+                          <Badge variant="secondary" className={`${
+                            wishlist.needType === 'borrow' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            wishlist.needType === 'rent' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                            'bg-orange-50 text-orange-700 border-orange-200'
+                          } px-3 py-1 font-medium`}>
+                            {getNeedTypeIcon(wishlist.needType)}
+                            <span className="ml-1">{wishlist.needType.charAt(0).toUpperCase() + wishlist.needType.slice(1)}</span>
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
 
                     {wishlist.description && (
-                      <p className="text-sm text-muted-foreground mb-3">{wishlist.description}</p>
+                      <p className="text-slate-600 mb-4 leading-relaxed">{wishlist.description}</p>
                     )}
 
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Needed for:</span>
-                        <Badge variant="secondary" className={
-                          wishlist.needType === 'borrow' ? 'bg-blue-100 text-blue-800' :
-                          wishlist.needType === 'rent' ? 'bg-purple-100 text-purple-800' :
-                          'bg-orange-100 text-orange-800'
-                        }>
-                          {getNeedTypeIcon(wishlist.needType)}
-                          <span className="ml-1">{wishlist.needType.charAt(0).toUpperCase() + wishlist.needType.slice(1)}</span>
-                        </Badge>
-                      </div>
-
+                    <div className="space-y-3 mb-6">
                       {wishlist.preferredLocation && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-3 w-3 text-gray-500" />
-                          <span className="text-muted-foreground">{wishlist.preferredLocation}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                            <MapPin className="h-4 w-4 text-slate-600" />
+                          </div>
+                          <span className="text-slate-600 font-medium">{wishlist.preferredLocation}</span>
                         </div>
                       )}
 
                       {wishlist.username && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Requested by:</span>
-                          <span className="text-muted-foreground">{wishlist.username}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                            <span className="text-teal-700 font-bold text-sm">{wishlist.username.charAt(0)}</span>
+                          </div>
+                          <span className="text-slate-600 font-medium">{wishlist.username}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="mt-4 pt-3 border-t">
+                    <div className="bg-gradient-to-r from-yellow-50 to-teal-50 p-4 rounded-lg border border-yellow-200/50 mb-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1 text-yellow-600">
-                          <Coins className="h-4 w-4" />
-                          <span className="text-sm font-medium">Earn 5-15 ShareCoins</span>
+                        <div className="flex items-center gap-2">
+                          <Coins className="h-5 w-5 text-yellow-600" />
+                          <span className="font-bold text-teal-800">Earn 5-15 ShareCoins</span>
                         </div>
-                        <Link href="/upload">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                            I Have This!
-                          </Button>
-                        </Link>
+                        <span className="text-xs text-teal-600 font-medium">Upon completion</span>
                       </div>
                     </div>
+
+                    <Link href="/upload">
+                      <Button size="lg" className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200">
+                        I Have This Item!
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No urgent requests right now</h3>
-              <p className="text-muted-foreground mb-4">
-                Check back later or browse all wishlists to find items you can share.
+            <div className="text-center py-12">
+              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Heart className="h-12 w-12 text-slate-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-800 mb-3">All Caught Up!</h3>
+              <p className="text-slate-600 text-lg mb-6 max-w-md mx-auto">
+                No urgent requests at the moment. Check back soon or explore all community wishlists.
               </p>
               <Link href="/wishlists">
-                <Button variant="outline">
-                  View All Wishlists
+                <Button variant="outline" size="lg" className="border-teal-200 text-teal-700 hover:bg-teal-50">
+                  Explore All Wishlists
                 </Button>
               </Link>
             </div>
           )}
 
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h4 className="font-semibold text-blue-800 mb-2">How ShareCoin Earning Works:</h4>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• ShareCoins are earned only after successful lending completion</li>
-              <li>• Amount varies based on item value and lending duration</li>
-              <li>• Bonus ShareCoins for helping urgent requests</li>
-              <li>• Build your reputation while earning rewards</li>
-            </ul>
+          <div className="bg-white/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h4 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
+              <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
+                <Coins className="h-4 w-4 text-teal-600" />
+              </div>
+              How ShareCoin Earning Works
+            </h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-teal-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-slate-700">ShareCoins earned only after successful lending completion</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-teal-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-slate-700">Amount varies based on item value and lending duration</span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-slate-700">Bonus ShareCoins for helping urgent requests</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span className="text-slate-700">Build your reputation while earning rewards</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex gap-4">
-            <Link href="/wishlists" className="flex-1">
-              <Button variant="outline" className="w-full">
-                Browse All Neighbor Requests
+          <div className="grid md:grid-cols-2 gap-4">
+            <Link href="/wishlists" className="block">
+              <Button variant="outline" size="lg" className="w-full h-14 border-2 border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold">
+                Browse All Community Requests
               </Button>
             </Link>
-            <Link href="/upload" className="flex-1">
-              <Button className="w-full">
+            <Link href="/upload" className="block">
+              <Button size="lg" className="w-full h-14 bg-teal-600 hover:bg-teal-700 font-semibold shadow-lg">
                 Share an Item Now
               </Button>
             </Link>

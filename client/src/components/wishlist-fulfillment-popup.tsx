@@ -156,7 +156,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Coins className="h-5 w-5 text-yellow-600" />
-                          <span className="font-bold text-teal-800">Earn 5-15 ShareCoins</span>
+                          <span className="font-bold text-teal-800">Earn 10 ShareCoins</span>
                         </div>
                         <span className="text-xs text-teal-600 font-medium">Upon completion</span>
                       </div>

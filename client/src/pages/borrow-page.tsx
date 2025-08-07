@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CheckCircle, AlertCircle, MapPin, X, Camera } from "lucide-react";
+import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Recommendations } from "@/components/recommendations";
@@ -281,21 +281,20 @@ export default function BorrowPage() {
         )}
 
         {/* ShareCoin earning opportunity */}
-        <div className="mt-8 bg-gradient-to-r from-yellow-50 to-green-50 p-6 rounded-lg border border-yellow-200">
+        <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-green-800 mb-2">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">
               Can't find what you need?
             </h3>
-            <p className="text-green-700 mb-4">
-              Help your neighbors and earn ShareCoins by fulfilling their urgent requests!
+            <p className="text-blue-700 mb-4">
+              Add it to your wishlist and we'll notify you when it becomes available!
             </p>
-            <Button 
-              onClick={() => setShowWishlistPopup(true)}
-              className="bg-yellow-600 hover:bg-yellow-700"
-            >
-              <Coins className="h-4 w-4 mr-2" />
-              Earn ShareCoins Now
-            </Button>
+            <Link href="/wishlists">
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Heart className="h-4 w-4 mr-2" />
+                Add to Wishlist
+              </Button>
+            </Link>
           </div>
         </div>
 

@@ -220,7 +220,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <Link href="/wishlists" className="block">
+            <Link href="/requests" className="block">
               <Button variant="outline" size="lg" className="w-full h-14 border-2 border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold">
                 Browse All Community Requests
               </Button>

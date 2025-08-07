@@ -15,7 +15,7 @@ import VerifyItemsPage from "@/pages/admin/verify-items";
 import WalletPage from "@/pages/wallet-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import ChallengesPage from "@/pages/challenges-page";
-import RequestsPage from "@/pages/requests-page";
+
 import ItemDetailsPage from "@/pages/item-details-page";
 import DeliveryArrangementsPage from "@/pages/delivery-arrangements";
 import GamesPage from "@/pages/games-page";
@@ -41,7 +41,7 @@ function Router() {
       <ProtectedRoute path="/wallet" component={WalletPage} />
       <ProtectedRoute path="/games" component={GamesPage} />
       <ProtectedRoute path="/challenges" component={ChallengesPage} />
-      <ProtectedRoute path="/requests" component={RequestsPage} />
+
       <ProtectedRoute path="/items/:id" component={ItemDetailsPage} />
       <ProtectedRoute path="/delivery" component={DeliveryArrangementsPage} />
       <ProtectedRoute path="/swap" component={SwapPage} />

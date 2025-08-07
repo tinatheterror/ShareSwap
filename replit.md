@@ -64,8 +64,9 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Enhanced matching modal to display perfect date alignments with duration calculations
 - Added visual indicators showing matched dates and automatic form population
 - Added "My ShareChest" navigation item for intuitive inventory management with filtering and item actions
-- Fixed navigation confusion: "Browse All Community Requests" now correctly routes to active requests (/requests) instead of wishlists
-- Clarified distinction: Wishlists show what people want, Requests show active transactions happening
+- Removed requests page per user preference - users don't need to see current transactions happening
+- Updated navigation to focus on core sharing actions: browse, lend, borrow, swap
+- Streamlined user experience by removing transactional complexity from main navigation
 - Date: August 7, 2025
 
 ## Architecture

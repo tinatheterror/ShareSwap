@@ -78,6 +78,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Added intelligent detection for suspicious patterns: rapid back-and-forth swaps, reverse swaps, artificial items
 - Created automatic cooldown system (6-48 hours) and transaction blocking for farming attempts
 - Enhanced security with account correlation analysis and earning rate monitoring
+- Implemented 5% rental commission system split: 3% platform sustainability + 2% user reward fund (converted to ShareCoins)
+- Added ShareCoin rewards for rental returns: 1 ShareCoin to both users when items are successfully returned
+- Updated platform messaging: "Only pay when you earn — our platform grows with you"
+- Created rental return tracking system with commission breakdown and reward distribution
 - Date: August 8, 2025
 
 ## Architecture

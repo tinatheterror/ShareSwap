@@ -94,7 +94,7 @@ export const messages = pgTable("messages", {
 
 export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   id: serial("id").primaryKey(),
-  userId: serial("user_id").references(() => users.id),
+  userId: integer("user_id").references(() => users.id),
   amount: decimal("amount").notNull(),
   description: text("description").notNull(),
   transactionType: text("transaction_type").notNull(),
@@ -130,6 +130,19 @@ export const farmingDetections = pgTable("farming_detections", {
   detectionReason: text("detection_reason").notNull(),
   actionTaken: text("action_taken").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const rentalReturns = pgTable("rental_returns", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  itemId: integer("item_id").references(() => items.id),
+  renterId: integer("renter_id").references(() => users.id),
+  ownerId: integer("owner_id").references(() => users.id),
+  returnedAt: timestamp("returned_at").defaultNow(),
+  commissionCharged: decimal("commission_charged", { precision: 10, scale: 2 }),
+  shareCoinsAwarded: integer("share_coins_awarded").default(0),
+  status: text("status").default("RETURNED"), // 'RETURNED', 'DAMAGED', 'LOST'
+  notes: text("notes"),
 });
 
 export const sponsoredGames = pgTable("sponsored_games", {

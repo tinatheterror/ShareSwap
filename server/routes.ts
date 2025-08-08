@@ -20,7 +20,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections } from "@db/schema";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
@@ -1128,18 +1128,30 @@ export function registerRoutes(app: Express): Server {
             .limit(1);
           
           const isPremiumUser = requesterUser?.isPremium || false;
-          const { commissionAmount, rate } = calculateCommission(rentalPrice, 'RENTAL', isPremiumUser);
+          const commissionDetails = calculateCommission(rentalPrice, 'RENTAL', isPremiumUser);
           
-          if (commissionAmount > 0) {
-            // Log platform commission (for tracking revenue)
-            console.log(`Platform commission for rental: $${commissionAmount.toFixed(2)} (${(rate * 100).toFixed(1)}% of $${rentalPrice}) - Premium: ${isPremiumUser}`);
+          if (commissionDetails.commissionAmount > 0) {
+            // Log platform commission with new messaging
+            console.log(`✅ ${platformConfig.messaging.commission}`);
+            console.log(`Commission: $${commissionDetails.commissionAmount.toFixed(2)} (${(commissionDetails.rate * 100).toFixed(1)}% of $${rentalPrice}) - Premium: ${isPremiumUser}`);
+            console.log(`Breakdown: $${commissionDetails.platformAmount.toFixed(2)} platform sustainability, $${commissionDetails.userRewardAmount.toFixed(2)} user reward fund`);
             
-            // Record commission transaction (for tracking, actual payment would be handled by payment processor)
+            // Record commission transaction
             await db.insert(shareCoinsTransactions).values({
               userId: request.item_requests.requesterId,
-              amount: (-commissionAmount).toString(),
+              amount: (-commissionDetails.commissionAmount).toString(),
               description: `Platform commission for renting: ${request.items.name}${isPremiumUser ? ' (Premium Rate)' : ''}`,
               transactionType: "COMMISSION",
+            });
+            
+            // Record commission details in platform_commissions table
+            await db.insert(platformCommissions).values({
+              transactionId: requestId,
+              amount: commissionDetails.commissionAmount.toString(),
+              commissionRate: commissionDetails.rate.toString(),
+              transactionType: "RENTAL",
+              itemId: request.items.id,
+              payerId: request.item_requests.requesterId,
             });
           } else {
             console.log(`No commission charged: amount below minimum ($${platformConfig.minimumCommission})`);
@@ -1195,10 +1207,172 @@ export function registerRoutes(app: Express): Server {
         rentalCommissionRate: platformConfig.rentalCommissionRate,
         minimumCommission: platformConfig.minimumCommission,
         flatFeesEnabled: platformConfig.flatFees.enabled,
+        commissionSplit: platformConfig.commissionSplit,
       },
       options: platformConfig.commissionStructures,
+      messaging: platformConfig.messaging,
       description: "Platform commission configuration options"
     });
+  });
+
+  // Mark rental as returned and award ShareCoins
+  app.post("/api/rentals/:requestId/return", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const { status = "RETURNED", notes = "" } = req.body;
+
+    try {
+      // Get rental request details
+      const [rental] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            eq(itemRequests.id, requestId),
+            eq(itemRequests.requestType, "RENT"),
+            eq(itemRequests.status, "ACCEPTED")
+          )
+        )
+        .limit(1);
+
+      if (!rental) {
+        return res.status(404).json({ error: "Rental not found or not in progress" });
+      }
+
+      // Only owner or renter can mark as returned
+      const isOwner = rental.items.ownerId === req.user.id;
+      const isRenter = rental.item_requests.requesterId === req.user.id;
+
+      if (!isOwner && !isRenter) {
+        return res.status(403).json({ error: "Not authorized to mark this rental as returned" });
+      }
+
+      // Check if already returned
+      const existingReturn = await db
+        .select()
+        .from(rentalReturns)
+        .where(eq(rentalReturns.requestId, requestId))
+        .limit(1);
+
+      if (existingReturn.length > 0) {
+        return res.status(400).json({ error: "Rental already marked as returned" });
+      }
+
+      // Calculate commission details for ShareCoin rewards
+      const rentalPrice = parseFloat(rental.items.dollarsPrice || "0");
+      const commissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
+
+      // Record rental return
+      await db.insert(rentalReturns).values({
+        requestId,
+        itemId: rental.items.id,
+        renterId: rental.item_requests.requesterId,
+        ownerId: rental.items.ownerId,
+        commissionCharged: commissionDetails.commissionAmount.toString(),
+        shareCoinsAwarded: platformConfig.shareCoinsRewards.successfulRental * 2, // Both users get rewards
+        status,
+        notes,
+      });
+
+      // Award ShareCoins to both users for successful rental completion
+      const shareCoinsReward = platformConfig.shareCoinsRewards.successfulRental;
+      const renterId = rental.item_requests.requesterId;
+      const ownerId = rental.items.ownerId;
+
+      if (shareCoinsReward > 0) {
+        // Award to renter
+        await db.insert(shareCoinsTransactions).values({
+          userId: renterId,
+          amount: shareCoinsReward.toString(),
+          description: `Earned ${shareCoinsReward} ShareCoin for completed rental: ${rental.items.name}`,
+          transactionType: "EARNED",
+        });
+
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`share_coins + ${shareCoinsReward}`,
+          })
+          .where(eq(users.id, renterId));
+
+        // Award to owner
+        await db.insert(shareCoinsTransactions).values({
+          userId: ownerId,
+          amount: shareCoinsReward.toString(),
+          description: `Earned ${shareCoinsReward} ShareCoin for completed rental: ${rental.items.name}`,
+          transactionType: "EARNED",
+        });
+
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`share_coins + ${shareCoinsReward}`,
+          })
+          .where(eq(users.id, ownerId));
+
+        console.log(`✅ ${platformConfig.messaging.shareCoinsReward}`);
+        console.log(`Awarded ${shareCoinsReward} ShareCoins to both users for rental completion`);
+      }
+
+      // Award additional ShareCoins from user reward fund
+      if (commissionDetails.shareCoinsFromReward > 0) {
+        const rewardPerUser = Math.floor(commissionDetails.shareCoinsFromReward / 2);
+        
+        if (rewardPerUser > 0) {
+          // Award community reward ShareCoins to both users
+          await db.insert(shareCoinsTransactions).values({
+            userId: renterId,
+            amount: rewardPerUser.toString(),
+            description: `Community reward: ${rewardPerUser} ShareCoins from user reward fund`,
+            transactionType: "EARNED",
+          });
+
+          await db
+            .update(users)
+            .set({
+              shareCoins: sql`share_coins + ${rewardPerUser}`,
+            })
+            .where(eq(users.id, renterId));
+
+          await db.insert(shareCoinsTransactions).values({
+            userId: ownerId,
+            amount: rewardPerUser.toString(),
+            description: `Community reward: ${rewardPerUser} ShareCoins from user reward fund`,
+            transactionType: "EARNED",
+          });
+
+          await db
+            .update(users)
+            .set({
+              shareCoins: sql`share_coins + ${rewardPerUser}`,
+            })
+            .where(eq(users.id, ownerId));
+
+          console.log(`Awarded ${rewardPerUser} bonus ShareCoins to each user from community reward fund`);
+        }
+      }
+
+      // Update request status
+      await db
+        .update(itemRequests)
+        .set({ status: "COMPLETED" })
+        .where(eq(itemRequests.id, requestId));
+
+      res.json({
+        success: true,
+        message: "Rental marked as returned successfully",
+        shareCoinsAwarded: shareCoinsReward,
+        communityBonusAwarded: Math.floor(commissionDetails.shareCoinsFromReward / 2),
+      });
+
+    } catch (error) {
+      console.error("Error processing rental return:", error);
+      res.status(500).json({ error: "Failed to process rental return" });
+    }
   });
 
   // Get farming detection stats (admin endpoint)

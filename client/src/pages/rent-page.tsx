@@ -1,0 +1,312 @@
+import { useState, useEffect } from "react";
+import { Navbar } from "@/components/shared/navbar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Search, Filter, MapPin, Coins, Camera } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { Recommendations } from "@/components/recommendations";
+import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
+import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
+
+type ItemWithDistance = {
+  id: number;
+  name: string;
+  description: string;
+  photos: string[];
+  dollarsPrice?: string;
+  shareCoinPrice?: string;
+  securityDeposit?: string;
+  isConditionVerified: boolean;
+  distance?: number;
+  isRentable: boolean;
+};
+
+export default function RentPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [radius, setRadius] = useState(72); // Default 72km radius
+  const [userPostalCode, setUserPostalCode] = useState<string>("");
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showShareCoinsPrompt, setShowShareCoinsPrompt] = useState(false);
+  const [showWishlistPopup, setShowWishlistPopup] = useState(false);
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
+
+  // Get user's location when the component mounts
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({
+            lat: latitude,
+            lon: longitude,
+          });
+
+          // Get postal code from coordinates
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            const data = await response.json();
+            if (data.address?.postcode) {
+              setUserPostalCode(data.address.postcode);
+            }
+          } catch (error) {
+            console.error("Error getting postal code:", error);
+          }
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          toast({
+            title: "Location Error",
+            description: "Could not get your location. Some features may be limited.",
+            variant: "destructive",
+          });
+        }
+      );
+    }
+  }, []);
+
+  const { data: items = [], error, isLoading } = useQuery<ItemWithDistance[]>({
+    queryKey: userLocation ? ['/api/items/nearby', userLocation.lat, userLocation.lon, radius, 'rent'] : ['/api/items', 'rent'],
+    queryFn: async () => {
+      if (userLocation) {
+        const response = await fetch(
+          `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}&type=rent`
+        );
+        if (!response.ok) {
+          console.error('Nearby items API failed, falling back to all items');
+          // Fall back to all rent items if nearby fails
+          const fallbackResponse = await fetch('/api/items?type=rent');
+          if (!fallbackResponse.ok) throw new Error('Failed to fetch items');
+          return fallbackResponse.json();
+        }
+        return response.json();
+      } else {
+        // Fallback to all rent items if no location
+        const response = await fetch('/api/items?type=rent');
+        if (!response.ok) throw new Error('Failed to fetch items');
+        return response.json();
+      }
+    },
+    retry: 1,
+  });
+
+  const filteredItems = items.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Check if user has sufficient funds for rentals
+  useEffect(() => {
+    if (user && items.length > 0) {
+      // This would normally check if user has sufficient payment method set up
+      // For now, we'll assume they do if they're verified
+    }
+  }, [user, items]);
+
+  const handleLocationChange = () => {
+    setShowLocationModal(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Rent Items</h1>
+            <p className="text-muted-foreground">
+              Browse items available for rental with daily pricing
+              {userPostalCode && ` near ${userPostalCode}`}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleLocationChange}
+            className="mt-4 mr-4"
+          >
+            <MapPin className="h-4 w-4 mr-2" />
+            {userPostalCode ? `Change Location (${userPostalCode})` : "Set Location"}
+          </Button>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="flex gap-4 mb-6 max-w-2xl mx-auto">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search rentable items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button variant="outline" size="icon">
+            <Filter className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* AI Recommendations Section */}
+        <div className="mb-8">
+          <Recommendations limit={6} />
+        </div>
+
+        {/* Seasonal Recommendations */}
+        <div className="mb-8">
+          <SeasonalRecommendations limit={6} />
+        </div>
+
+        {/* Rentable Items Grid */}
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">All Rentable Items ({filteredItems.length})</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {filteredItems.map((item) => (
+            <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
+              <CardContent className="p-4">
+                <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                  {item.photos && item.photos[0] ? (
+                    <img
+                      src={item.photos[0]}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <Camera className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="text-center mb-3">
+                  <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
+                  <p className="text-xs text-gray-500 mb-1">
+                    {item.isConditionVerified ? "Verified" : "Pending"}
+                  </p>
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <span className="text-xs font-semibold text-green-700">
+                      ${Number(item.dollarsPrice || 10).toFixed(2)}/day
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    {item.distance ? `${item.distance.toFixed(1)}km` : "Nearby"}
+                  </p>
+                </div>
+                
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white text-sm py-2 rounded-lg"
+                  disabled={!item.isConditionVerified}
+                  onClick={() => navigate(`/items/${item.id}`)}
+                >
+                  {item.isConditionVerified ? "Rent" : "Pending"}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+          </div>
+        </div>
+
+        {/* Empty state */}
+        {filteredItems.length === 0 && !isLoading && (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">No rentable items found</h3>
+            <p className="text-gray-500 mb-4">
+              {searchQuery ? "Try adjusting your search terms" : "No items are currently available for rent in your area"}
+            </p>
+          </div>
+        )}
+
+        {/* ShareCoins prompt for users who want to rent but don't have payment method */}
+        <Dialog open={showShareCoinsPrompt} onOpenChange={setShowShareCoinsPrompt}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>💳 Payment Method Required</DialogTitle>
+              <DialogDescription>
+                You need a verified payment method to rent items. Complete verification to access rental features.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowShareCoinsPrompt(false)}
+                className="flex-1"
+              >
+                Browse Anyway
+              </Button>
+              <Button
+                onClick={() => navigate("/verify")}
+                className="flex-1"
+              >
+                Complete Verification
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {showLocationModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold mb-4">Change Location</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Search Radius</label>
+                  <select
+                    value={radius}
+                    onChange={(e) => setRadius(Number(e.target.value))}
+                    className="w-full p-2 border rounded-lg"
+                  >
+                    <option value={1}>1 kilometer</option>
+                    <option value={5}>5 kilometers</option>
+                    <option value={10}>10 kilometers</option>
+                    <option value={24}>24 kilometers</option>
+                    <option value={40}>40 kilometers</option>
+                    <option value={72}>72 kilometers</option>
+                    <option value={100}>100 kilometers</option>
+                  </select>
+                </div>
+              </div>
+              <Button
+                className="w-full mt-6"
+                onClick={() => setShowLocationModal(false)}
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Can't find what you need - Rent-specific */}
+        <div className="mt-8 bg-gradient-to-r from-primary/10 to-primary/5 p-6 rounded-lg border border-primary/20">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-primary mb-2">
+              Need something for rent?
+            </h3>
+            <p className="text-primary/80 mb-4">
+              Add it to your wishlist and we'll notify you when it becomes available for rent!
+            </p>
+            <Button
+              onClick={() => navigate("/wishlists")}
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Coins className="h-4 w-4 mr-2" />
+              Add to Wishlist
+            </Button>
+          </div>
+        </div>
+
+        <WishlistFulfillmentPopup
+          isOpen={showWishlistPopup}
+          onClose={() => setShowWishlistPopup(false)}
+        />
+      </main>
+    </div>
+  );
+}

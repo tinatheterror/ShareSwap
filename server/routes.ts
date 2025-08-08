@@ -270,7 +270,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { latitude, longitude, radius = 10 } = req.query; // radius in kilometers, default 10km
+      const { latitude, longitude, radius = 10, type } = req.query; // radius in kilometers, default 10km
 
       if (!latitude || !longitude) {
         return res
@@ -287,10 +287,21 @@ export function registerRoutes(app: Express): Server {
           .json({ error: "Invalid latitude or longitude values" });
       }
 
+      let whereConditions = [eq(items.isAvailable, true)];
+      
+      // Add type-specific filtering
+      if (type === 'rent') {
+        whereConditions.push(eq(items.isRentable, true));
+      } else if (type === 'borrow') {
+        whereConditions.push(eq(items.isLendable, true));
+      } else if (type === 'swap') {
+        whereConditions.push(eq(items.isSwappable, true));
+      }
+
       const allItems = await db
         .select()
         .from(items)
-        .where(eq(items.isAvailable, true));
+        .where(and(...whereConditions));
 
       // Filter items within radius
       const nearbyItems = allItems
@@ -321,10 +332,23 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      const { type } = req.query; // Add type filter (rent, borrow, swap)
+      
+      let whereConditions = [eq(items.isAvailable, true)];
+      
+      // Add type-specific filtering
+      if (type === 'rent') {
+        whereConditions.push(eq(items.isRentable, true));
+      } else if (type === 'borrow') {
+        whereConditions.push(eq(items.isLendable, true));
+      } else if (type === 'swap') {
+        whereConditions.push(eq(items.isSwappable, true));
+      }
+
       const allItems = await db
         .select()
         .from(items)
-        .where(eq(items.isAvailable, true))
+        .where(and(...whereConditions))
         .orderBy(desc(items.createdAt));
 
       res.json(allItems);

@@ -20,6 +20,7 @@ import ItemDetailsPage from "@/pages/item-details-page";
 import DeliveryArrangementsPage from "@/pages/delivery-arrangements";
 import GamesPage from "@/pages/games-page";
 import SwapPage from "@/pages/swap-page";
+import RentPage from "@/pages/rent-page";
 import ProfilePage from "@/pages/profile-page";
 import AchievementsPage from "@/pages/achievements-page";
 import WishlistsPage from "@/pages/wishlists-page";
@@ -45,6 +46,7 @@ function Router() {
       <ProtectedRoute path="/items/:id" component={ItemDetailsPage} />
       <ProtectedRoute path="/delivery" component={DeliveryArrangementsPage} />
       <ProtectedRoute path="/swap" component={SwapPage} />
+      <ProtectedRoute path="/rent" component={RentPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/achievements" component={AchievementsPage} />
       <ProtectedRoute path="/wishlists" component={WishlistsPage} />

@@ -1003,6 +1003,48 @@ export function registerRoutes(app: Express): Server {
       .where(eq(itemRequests.id, requestId))
       .returning();
 
+    // Award ShareCoins for successful swaps
+    if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
+      try {
+        const shareCoinReward = 1;
+        
+        // Award 1 ShareCoin to the item owner (current user)
+        await db.insert(shareCoinsTransactions).values({
+          userId: req.user.id,
+          amount: shareCoinReward.toString(),
+          description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
+          transactionType: "EARNED",
+        });
+        
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`share_coins + ${shareCoinReward}`,
+          })
+          .where(eq(users.id, req.user.id));
+
+        // Award 1 ShareCoin to the requester
+        await db.insert(shareCoinsTransactions).values({
+          userId: request.item_requests.requesterId,
+          amount: shareCoinReward.toString(),
+          description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
+          transactionType: "EARNED",
+        });
+        
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`share_coins + ${shareCoinReward}`,
+          })
+          .where(eq(users.id, request.item_requests.requesterId));
+          
+        console.log(`Awarded ${shareCoinReward} ShareCoins to both users for successful swap`);
+      } catch (error) {
+        console.error("Error awarding ShareCoins for swap:", error);
+        // Don't fail the request acceptance if ShareCoin awarding fails
+      }
+    }
+
     res.json(updatedRequest);
   });
 

@@ -67,7 +67,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Removed requests page per user preference - users don't need to see current transactions happening
 - Updated navigation to focus on core sharing actions: browse, lend, borrow, swap
 - Streamlined user experience by removing transactional complexity from main navigation
-- Date: August 7, 2025
+- Fixed universal messaging on lend page to work for all three modes: lending, renting, and swapping
+- Implemented ShareCoin earning for successful swaps: both users earn 1 ShareCoin when swap requests are accepted
+- Enhanced swap transaction system with automatic ShareCoin rewards and transaction logging
+- Date: August 8, 2025
 
 ## Architecture
 - Full-stack JavaScript application following modern patterns

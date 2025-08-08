@@ -50,14 +50,16 @@ export default function SwapPage() {
   console.log('Swappable items:', swappableItems.length);
   console.log('Search query:', searchQuery);
   
-  const filteredItems = swappableItems.filter(item => {
-    const searchLower = searchQuery.toLowerCase();
-    const nameMatch = item.name?.toLowerCase().includes(searchLower) || false;
-    const descMatch = item.description?.toLowerCase().includes(searchLower) || false;
-    const result = nameMatch || descMatch;
-    console.log(`Filtering "${item.name}": nameMatch=${nameMatch}, descMatch=${descMatch}, result=${result}`);
-    return result;
-  });
+  const filteredItems = searchQuery.trim() === '' 
+    ? swappableItems 
+    : swappableItems.filter(item => {
+        const searchLower = searchQuery.toLowerCase().trim();
+        const nameMatch = (item.name || '').toLowerCase().includes(searchLower);
+        const descMatch = (item.description || '').toLowerCase().includes(searchLower);
+        const result = nameMatch || descMatch;
+        console.log(`Filtering "${item.name}" with "${searchQuery}": nameMatch=${nameMatch}, descMatch=${descMatch}, result=${result}`);
+        return result;
+      });
   
   console.log('Filtered items count:', filteredItems.length);
 
@@ -127,11 +129,9 @@ export default function SwapPage() {
         <div>
           <h2 className="text-xl font-bold mb-4">
             All Swappable Items
-            {searchQuery && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                ({filteredItems.length} of {swappableItems.length} items)
-              </span>
-            )}
+            <span className="text-sm font-normal text-muted-foreground ml-2">
+              (Search: "{searchQuery}" | Showing {filteredItems.length} of {swappableItems.length} items)
+            </span>
           </h2>
         </div>
 

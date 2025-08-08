@@ -210,7 +210,7 @@ export default function LendPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">List Your Item</h1>
           <p className="text-muted-foreground">
-            Share your items with the community and earn ShareCoins
+            Share your items with the community through lending, renting, or swapping
           </p>
         </div>
 

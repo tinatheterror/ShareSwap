@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,16 +50,24 @@ export default function SwapPage() {
   console.log('Swappable items:', swappableItems.length);
   console.log('Search query:', searchQuery);
   
-  const filteredItems = searchQuery.trim() === '' 
-    ? swappableItems 
-    : swappableItems.filter(item => {
-        const searchLower = searchQuery.toLowerCase().trim();
-        const nameMatch = (item.name || '').toLowerCase().includes(searchLower);
-        const descMatch = (item.description || '').toLowerCase().includes(searchLower);
-        const result = nameMatch || descMatch;
-        console.log(`Filtering "${item.name}" with "${searchQuery}": nameMatch=${nameMatch}, descMatch=${descMatch}, result=${result}`);
-        return result;
-      });
+  const filteredItems = useMemo(() => {
+    console.log('Computing filtered items with searchQuery:', searchQuery);
+    if (searchQuery.trim() === '') {
+      return swappableItems;
+    }
+    
+    const searchLower = searchQuery.toLowerCase().trim();
+    const filtered = swappableItems.filter(item => {
+      const nameMatch = (item.name || '').toLowerCase().includes(searchLower);
+      const descMatch = (item.description || '').toLowerCase().includes(searchLower);
+      const result = nameMatch || descMatch;
+      console.log(`Filtering "${item.name}" with "${searchQuery}": nameMatch=${nameMatch}, descMatch=${descMatch}, result=${result}`);
+      return result;
+    });
+    
+    console.log('Filtered results:', filtered.length, 'out of', swappableItems.length);
+    return filtered;
+  }, [swappableItems, searchQuery]);
   
   console.log('Filtered items count:', filteredItems.length);
 

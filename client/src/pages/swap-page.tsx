@@ -43,10 +43,17 @@ export default function SwapPage() {
   // Filter for swappable items only
   const swappableItems = items.filter(item => item.isSwappable);
   
-  const filteredItems = swappableItems.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Debug logging
+  console.log('Total items:', items.length);
+  console.log('Swappable items:', swappableItems.length);
+  console.log('Search query:', searchQuery);
+  
+  const filteredItems = swappableItems.filter(item => {
+    const searchLower = searchQuery.toLowerCase();
+    const nameMatch = item.name?.toLowerCase().includes(searchLower) || false;
+    const descMatch = item.description?.toLowerCase().includes(searchLower) || false;
+    return nameMatch || descMatch;
+  });
 
   // Check user's inventory when component mounts
   useEffect(() => {
@@ -109,7 +116,14 @@ export default function SwapPage() {
         </div>
 
         <div>
-          <h2 className="text-xl font-bold mb-4">All Swappable Items</h2>
+          <h2 className="text-xl font-bold mb-4">
+            All Swappable Items
+            {searchQuery && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({filteredItems.length} of {swappableItems.length} items)
+              </span>
+            )}
+          </h2>
         </div>
 
         {/* Items Grid */}

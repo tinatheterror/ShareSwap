@@ -281,16 +281,16 @@ export default function BorrowPage() {
         )}
 
         {/* ShareCoin earning opportunity */}
-        <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
+        <div className="mt-8 bg-gradient-to-r from-primary/10 to-primary/5 p-6 rounded-lg border border-primary/20">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">
+            <h3 className="text-lg font-semibold text-primary mb-2">
               Can't find what you need?
             </h3>
-            <p className="text-blue-700 mb-4">
+            <p className="text-primary/80 mb-4">
               Add it to your wishlist and we'll notify you when it becomes available!
             </p>
             <Link href="/wishlists">
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button className="bg-primary hover:bg-primary/90">
                 <Heart className="h-4 w-4 mr-2" />
                 Add to Wishlist
               </Button>

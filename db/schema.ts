@@ -67,7 +67,6 @@ export const items = pgTable("items", {
   shareCoinsReward: decimal("share_coins_reward").notNull(),
   shareCoinPrice: decimal("share_coin_price", { precision: 10, scale: 2 }),
   dollarsPrice: decimal("dollars_price", { precision: 10, scale: 2 }),
-  platformCommission: decimal("platform_commission", { precision: 5, scale: 4 }).default("0.05"), // 5% default commission
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),

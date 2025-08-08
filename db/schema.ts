@@ -67,6 +67,7 @@ export const items = pgTable("items", {
   shareCoinsReward: decimal("share_coins_reward").notNull(),
   shareCoinPrice: decimal("share_coin_price", { precision: 10, scale: 2 }),
   dollarsPrice: decimal("dollars_price", { precision: 10, scale: 2 }),
+  platformCommission: decimal("platform_commission", { precision: 5, scale: 4 }).default("0.05"), // 5% default commission
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -97,6 +98,17 @@ export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   amount: decimal("amount").notNull(),
   description: text("description").notNull(),
   transactionType: text("transaction_type").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const platformCommissions = pgTable("platform_commissions", {
+  id: serial("id").primaryKey(),
+  transactionId: integer("transaction_id").references(() => itemRequests.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }).notNull(),
+  transactionType: text("transaction_type").notNull(), // 'RENTAL', 'PURCHASE'
+  itemId: integer("item_id").references(() => items.id),
+  payerId: integer("payer_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

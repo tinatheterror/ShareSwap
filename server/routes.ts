@@ -27,6 +27,7 @@ import type { InsertItem } from "@db/schema";
 import connectPgSimple from "connect-pg-simple";
 import { recommendationEngine } from "./recommendation-engine";
 import { addSimplifiedRoutes } from "./simplified-routes";
+import { platformConfig, calculateCommission } from "./platform-config";
 
 function calculateDistance(
   lat1: number,
@@ -1045,6 +1046,43 @@ export function registerRoutes(app: Express): Server {
       }
     }
 
+    // Handle commission for rental transactions
+    if (status === "ACCEPTED" && request.item_requests.requestType === "RENT") {
+      try {
+        const rentalPrice = parseFloat(request.items.dollarsPrice || "0");
+        
+        if (rentalPrice > 0) {
+          // Check if requester is premium user
+          const [requesterUser] = await db
+            .select({ isPremium: users.isPremium })
+            .from(users)
+            .where(eq(users.id, request.item_requests.requesterId))
+            .limit(1);
+          
+          const isPremiumUser = requesterUser?.isPremium || false;
+          const { commissionAmount, rate } = calculateCommission(rentalPrice, 'RENTAL', isPremiumUser);
+          
+          if (commissionAmount > 0) {
+            // Log platform commission (for tracking revenue)
+            console.log(`Platform commission for rental: $${commissionAmount.toFixed(2)} (${(rate * 100).toFixed(1)}% of $${rentalPrice}) - Premium: ${isPremiumUser}`);
+            
+            // Record commission transaction (for tracking, actual payment would be handled by payment processor)
+            await db.insert(shareCoinsTransactions).values({
+              userId: request.item_requests.requesterId,
+              amount: (-commissionAmount).toString(),
+              description: `Platform commission for renting: ${request.items.name}${isPremiumUser ? ' (Premium Rate)' : ''}`,
+              transactionType: "COMMISSION",
+            });
+          } else {
+            console.log(`No commission charged: amount below minimum ($${platformConfig.minimumCommission})`);
+          }
+        }
+      } catch (error) {
+        console.error("Error processing rental commission:", error);
+        // Don't fail the request acceptance if commission processing fails
+      }
+    }
+
     res.json(updatedRequest);
   });
 
@@ -1076,6 +1114,23 @@ export function registerRoutes(app: Express): Server {
       console.error("Error fetching stats:", error);
       res.status(500).send("Error fetching platform statistics");
     }
+  });
+
+  // Get current platform commission settings
+  app.get("/api/platform/commission-config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    
+    res.json({
+      current: {
+        rentalCommissionRate: platformConfig.rentalCommissionRate,
+        minimumCommission: platformConfig.minimumCommission,
+        flatFeesEnabled: platformConfig.flatFees.enabled,
+      },
+      options: platformConfig.commissionStructures,
+      description: "Platform commission configuration options"
+    });
   });
 
   // Create delivery arrangement

@@ -70,6 +70,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Fixed universal messaging on lend page to work for all three modes: lending, renting, and swapping
 - Implemented ShareCoin earning for successful swaps: both users earn 1 ShareCoin when swap requests are accepted
 - Enhanced swap transaction system with automatic ShareCoin rewards and transaction logging
+- Added configurable commission system for rental transactions with multiple pricing strategies
+- Implemented platform commission tracking with premium user benefits (reduced rates)
+- Created flexible commission structure: 5% standard, 3% low-cost, 8% premium, or flat fees
+- Added minimum commission threshold ($0.50) to avoid micro-charges
 - Date: August 8, 2025
 
 ## Architecture

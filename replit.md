@@ -48,7 +48,8 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Extended delivery arrangements with return dates, special instructions, and risk acceptance tracking
 - Improved delivery arrangements page with better QR codes, calendar integration, and visual indicators
 - Updated subscription plans branding from "ShareSpace" to "ShareSwap" to align with platform identity
-- Clarified ShareCoin earning model: coins earned only after successful lending/delivery completion, not for posting items
+- Clarified ShareCoin earning model: coins earned only after successful transaction completion, not for posting items
+- Enhanced ShareCoin earning structure: 10 ShareCoins for successful lending, 5 ShareCoins for successful swapping
 - Added wishlist fulfillment popup to encourage immediate ShareCoin earning by helping neighbors
 - Added wishlist expiration system that automatically archives items after their needed date passes
 - Implemented archive toggle to show/hide expired wishlist items with visual indicators
@@ -67,7 +68,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Removed requests page per user preference - users don't need to see current transactions happening
 - Updated navigation to focus on core sharing actions: browse, lend, borrow, swap
 - Streamlined user experience by removing transactional complexity from main navigation
-- Date: August 7, 2025
+- Fixed search functionality on swap page using useMemo for proper React re-rendering
+- Updated universal messaging to work for all three sharing modes (lending, renting, swapping)
+- Enhanced gamification with ShareCoin rewards for swapping to encourage more app engagement
+- Date: August 8, 2025
 
 ## Architecture
 - Full-stack JavaScript application following modern patterns

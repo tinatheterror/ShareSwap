@@ -92,7 +92,7 @@ export default function ItemDetailsPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Exchange with your items
+            Exchange with your items and earn 5 ShareCoins
           </p>
         </div>
         <Button onClick={() => setRequestType("SWAP")} className="w-32">

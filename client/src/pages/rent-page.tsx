@@ -9,8 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { Recommendations } from "@/components/recommendations";
-import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
+import { RentRecommendations } from "@/components/rent-recommendations";
+import { RentSeasonalRecommendations } from "@/components/rent-seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 
 type ItemWithDistance = {
@@ -155,14 +155,14 @@ export default function RentPage() {
           </Button>
         </div>
 
-        {/* AI Recommendations Section */}
-        <div className="mb-8">
-          <Recommendations limit={6} />
+        {/* Rent-Specific Recommendations Section */}
+        <div className="mb-6">
+          <RentRecommendations limit={3} />
         </div>
 
-        {/* Seasonal Recommendations */}
-        <div className="mb-8">
-          <SeasonalRecommendations limit={6} />
+        {/* All Rentable Items */}
+        <div className="mb-6">
+          <RentSeasonalRecommendations limit={3} />
         </div>
 
         {/* Rentable Items Grid */}

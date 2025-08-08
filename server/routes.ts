@@ -385,8 +385,20 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const limit = parseInt(req.query.limit as string) || 10;
+      const type = req.query.type as string; // rent, borrow, swap
       const recommendations = await recommendationEngine.getRecommendations(req.user.id, limit);
-      res.json(recommendations);
+      
+      // Filter recommendations by type if specified
+      let filteredRecommendations = recommendations;
+      if (type === 'rent') {
+        filteredRecommendations = recommendations.filter(item => item.isRentable);
+      } else if (type === 'borrow') {
+        filteredRecommendations = recommendations.filter(item => item.isLendable);
+      } else if (type === 'swap') {
+        filteredRecommendations = recommendations.filter(item => item.isSwappable);
+      }
+      
+      res.json(filteredRecommendations);
     } catch (error) {
       console.error("Error getting recommendations:", error);
       res.status(500).json({ error: "Failed to get recommendations" });
@@ -401,8 +413,20 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const limit = parseInt(req.query.limit as string) || 8;
+      const type = req.query.type as string; // rent, borrow, swap
       const seasonalRecs = await recommendationEngine.getSeasonalRecommendations(req.user.id, limit);
-      res.json(seasonalRecs);
+      
+      // Filter seasonal recommendations by type if specified
+      let filteredSeasonalRecs = seasonalRecs;
+      if (type === 'rent') {
+        filteredSeasonalRecs = seasonalRecs.filter(item => item.isRentable);
+      } else if (type === 'borrow') {
+        filteredSeasonalRecs = seasonalRecs.filter(item => item.isLendable);
+      } else if (type === 'swap') {
+        filteredSeasonalRecs = seasonalRecs.filter(item => item.isSwappable);
+      }
+      
+      res.json(filteredSeasonalRecs);
     } catch (error) {
       console.error("Error getting seasonal recommendations:", error);
       res.status(500).json({ error: "Failed to get seasonal recommendations" });

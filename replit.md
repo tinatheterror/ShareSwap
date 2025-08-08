@@ -91,6 +91,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Enhanced API filtering with type parameter (rent/borrow/swap) for both nearby and general item endpoints
 - Created dedicated rent page with proper filtering for rentable items only
 - Updated swap page to use backend filtering instead of frontend filtering for better performance
+- Made recommendation sections less prominent on rent page with smaller grid layout (3 items vs 6)
+- Created rent-specific recommendation components that show only rentable items
+- Updated recommendation titles: "Rentable Items for You" and "All Items Available to Rent"
+- Enhanced backend recommendation filtering to support type parameter (rent/borrow/swap)
 - Date: August 8, 2025
 
 ## Architecture

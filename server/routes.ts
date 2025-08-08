@@ -904,7 +904,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const itemId = parseInt(req.params.itemId);
-    const { requestType, message } = req.body;
+    const { requestType, message, startDate, endDate } = req.body;
 
     // Check if item exists and is available
     const [item] = await db
@@ -938,6 +938,8 @@ export function registerRoutes(app: Express): Server {
         requesterId: req.user.id,
         requestType,
         message,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
         status: "PENDING",
       })
       .returning();

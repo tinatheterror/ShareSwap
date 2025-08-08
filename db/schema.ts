@@ -196,6 +196,8 @@ export const itemRequests = pgTable("item_requests", {
   requestType: text("request_type").notNull(),
   status: text("status").default("PENDING").notNull(),
   message: text("message"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
   matchScore: integer("match_score"), // AI matching score for swap requests
   createdAt: timestamp("created_at").defaultNow(),
 });

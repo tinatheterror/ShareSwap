@@ -82,6 +82,11 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Added ShareCoin rewards for rental returns: 1 ShareCoin to both users when items are successfully returned
 - Updated platform messaging: "Only pay when you earn — our platform grows with you"
 - Created rental return tracking system with commission breakdown and reward distribution
+- Implemented automated messaging system for item requests with template generation
+- Added date range selection (start/end dates) for rental, borrowing, and swap requests
+- Created quick message templates: Quick & Friendly, Polite & Formal, Detailed & Personal
+- Enhanced request form with date picker functionality and automated date range buttons (1 day, 3 days, 1 week, 2 weeks)
+- Messages automatically include owner name, item name, action type, and selected date ranges with emoji support
 - Date: August 8, 2025
 
 ## Architecture

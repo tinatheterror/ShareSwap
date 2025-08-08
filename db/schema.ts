@@ -112,6 +112,26 @@ export const platformCommissions = pgTable("platform_commissions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const swapCooldowns = pgTable("swap_cooldowns", {
+  id: serial("id").primaryKey(),
+  userId1: integer("user_id_1").references(() => users.id),
+  userId2: integer("user_id_2").references(() => users.id),
+  cooldownUntil: timestamp("cooldown_until").notNull(),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const farmingDetections = pgTable("farming_detections", {
+  id: serial("id").primaryKey(),
+  userId1: integer("user_id_1").references(() => users.id),
+  userId2: integer("user_id_2").references(() => users.id),
+  itemId: integer("item_id").references(() => items.id),
+  riskLevel: text("risk_level").notNull(), // 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'
+  detectionReason: text("detection_reason").notNull(),
+  actionTaken: text("action_taken").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const sponsoredGames = pgTable("sponsored_games", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

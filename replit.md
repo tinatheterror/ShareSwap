@@ -74,6 +74,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Implemented platform commission tracking with premium user benefits (reduced rates)
 - Created flexible commission structure: 5% standard, 3% low-cost, 8% premium, or flat fees
 - Added minimum commission threshold ($0.50) to avoid micro-charges
+- Implemented comprehensive anti-farming system to prevent ShareCoin exploitation through coordinated swaps
+- Added intelligent detection for suspicious patterns: rapid back-and-forth swaps, reverse swaps, artificial items
+- Created automatic cooldown system (6-48 hours) and transaction blocking for farming attempts
+- Enhanced security with account correlation analysis and earning rate monitoring
 - Date: August 8, 2025
 
 ## Architecture

@@ -9,7 +9,7 @@ import {
   users,
   shareCoinsTransactions,
 } from "@db/schema";
-import { eq, and, or, desc, sql } from "drizzle-orm";
+import { eq, and, or, desc, sql, gte } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -20,7 +20,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches } from "@db/schema";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
@@ -28,6 +28,8 @@ import connectPgSimple from "connect-pg-simple";
 import { recommendationEngine } from "./recommendation-engine";
 import { addSimplifiedRoutes } from "./simplified-routes";
 import { platformConfig, calculateCommission } from "./platform-config";
+import { AntiFarmingSystem } from "./anti-farming-system";
+import { CooldownChecker } from "./cooldown-checker";
 
 function calculateDistance(
   lat1: number,
@@ -998,51 +1000,117 @@ export function registerRoutes(app: Express): Server {
       return res.status(404).send("Request not found");
     }
 
+    // Check for active cooldowns before accepting swaps
+    if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
+      const cooldownCheck = await CooldownChecker.checkSwapCooldown(
+        request.item_requests.requesterId,
+        req.user.id
+      );
+      
+      if (cooldownCheck.inCooldown) {
+        const timeRemaining = CooldownChecker.getCooldownTimeRemaining(cooldownCheck.cooldownUntil!);
+        return res.status(429).json({
+          error: `Swap cooldown active. Please wait ${timeRemaining} minutes before swapping with this user again.`,
+          cooldownUntil: cooldownCheck.cooldownUntil,
+          reason: cooldownCheck.reason
+        });
+      }
+    }
+
     const [updatedRequest] = await db
       .update(itemRequests)
       .set({ status })
       .where(eq(itemRequests.id, requestId))
       .returning();
 
-    // Award ShareCoins for successful swaps
+    // Award ShareCoins for successful swaps (with anti-farming protection)
     if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
       try {
-        const shareCoinReward = 1;
+        // Run anti-farming detection
+        const farmingDetection = await AntiFarmingSystem.detectSwapFarming(
+          request.item_requests.requesterId,
+          req.user.id,
+          request.items.id
+        );
         
-        // Award 1 ShareCoin to the item owner (current user)
-        await db.insert(shareCoinsTransactions).values({
-          userId: req.user.id,
-          amount: shareCoinReward.toString(),
-          description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
-          transactionType: "EARNED",
+        // Log detection results
+        await db.insert(farmingDetections).values({
+          userId1: request.item_requests.requesterId,
+          userId2: req.user.id,
+          itemId: request.items.id,
+          riskLevel: farmingDetection.riskLevel,
+          detectionReason: farmingDetection.reason || 'Normal transaction',
+          actionTaken: farmingDetection.recommendations.join(', '),
         });
         
-        await db
-          .update(users)
-          .set({
-            shareCoins: sql`share_coins + ${shareCoinReward}`,
-          })
-          .where(eq(users.id, req.user.id));
-
-        // Award 1 ShareCoin to the requester
-        await db.insert(shareCoinsTransactions).values({
-          userId: request.item_requests.requesterId,
-          amount: shareCoinReward.toString(),
-          description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
-          transactionType: "EARNED",
-        });
+        // Apply anti-farming measures
+        const measures = await AntiFarmingSystem.applyAntifarmingMeasures(
+          farmingDetection,
+          request.item_requests.requesterId,
+          req.user.id
+        );
         
-        await db
-          .update(users)
-          .set({
-            shareCoins: sql`share_coins + ${shareCoinReward}`,
-          })
-          .where(eq(users.id, request.item_requests.requesterId));
+        // Block transaction if critical farming detected
+        if (measures.blockTransaction) {
+          return res.status(400).json({ 
+            error: "Transaction blocked due to suspicious activity. Please contact support if you believe this is an error.",
+            riskLevel: farmingDetection.riskLevel
+          });
+        }
+        
+        // Apply cooldown if necessary
+        if (measures.cooldownHours > 0) {
+          const cooldownUntil = new Date(Date.now() + measures.cooldownHours * 60 * 60 * 1000);
+          await db.insert(swapCooldowns).values({
+            userId1: Math.min(request.item_requests.requesterId, req.user.id),
+            userId2: Math.max(request.item_requests.requesterId, req.user.id),
+            cooldownUntil,
+            reason: farmingDetection.reason || 'Automated farming protection',
+          });
+        }
+        
+        // Award ShareCoins only if not flagged as farming
+        if (measures.awardShareCoins) {
+          const shareCoinReward = 1;
           
-        console.log(`Awarded ${shareCoinReward} ShareCoins to both users for successful swap`);
+          // Award 1 ShareCoin to the item owner (current user)
+          await db.insert(shareCoinsTransactions).values({
+            userId: req.user.id,
+            amount: shareCoinReward.toString(),
+            description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
+            transactionType: "EARNED",
+          });
+          
+          await db
+            .update(users)
+            .set({
+              shareCoins: sql`share_coins + ${shareCoinReward}`,
+            })
+            .where(eq(users.id, req.user.id));
+
+          // Award 1 ShareCoin to the requester
+          await db.insert(shareCoinsTransactions).values({
+            userId: request.item_requests.requesterId,
+            amount: shareCoinReward.toString(),
+            description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
+            transactionType: "EARNED",
+          });
+          
+          await db
+            .update(users)
+            .set({
+              shareCoins: sql`share_coins + ${shareCoinReward}`,
+            })
+            .where(eq(users.id, request.item_requests.requesterId));
+            
+          console.log(`✅ Awarded ${shareCoinReward} ShareCoins to both users for legitimate swap`);
+        } else {
+          console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
+        }
+        
       } catch (error) {
-        console.error("Error awarding ShareCoins for swap:", error);
-        // Don't fail the request acceptance if ShareCoin awarding fails
+        console.error("Error in swap processing with anti-farming:", error);
+        // Don't fail the request acceptance if anti-farming processing fails
       }
     }
 
@@ -1131,6 +1199,48 @@ export function registerRoutes(app: Express): Server {
       options: platformConfig.commissionStructures,
       description: "Platform commission configuration options"
     });
+  });
+
+  // Get farming detection stats (admin endpoint)
+  app.get("/api/admin/farming-stats", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    
+    try {
+      // Get recent farming detections
+      const detections = await db
+        .select()
+        .from(farmingDetections)
+        .orderBy(desc(farmingDetections.createdAt))
+        .limit(50);
+      
+      // Get active cooldowns
+      const activeCooldowns = await db
+        .select()
+        .from(swapCooldowns)
+        .where(gte(swapCooldowns.cooldownUntil, new Date()))
+        .orderBy(desc(swapCooldowns.cooldownUntil));
+      
+      // Statistics
+      const riskLevelCounts = detections.reduce((acc, detection) => {
+        acc[detection.riskLevel] = (acc[detection.riskLevel] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      res.json({
+        recentDetections: detections,
+        activeCooldowns: activeCooldowns,
+        statistics: {
+          totalDetections: detections.length,
+          riskLevelBreakdown: riskLevelCounts,
+          activeCooldownCount: activeCooldowns.length
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching farming stats:", error);
+      res.status(500).json({ error: "Failed to fetch farming statistics" });
+    }
   });
 
   // Create delivery arrangement

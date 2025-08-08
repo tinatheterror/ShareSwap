@@ -70,23 +70,23 @@ export default function BorrowPage() {
   }, []);
 
   const { data: items = [], error, isLoading } = useQuery<ItemWithDistance[]>({
-    queryKey: userLocation ? ['/api/items/nearby', userLocation.lat, userLocation.lon, radius] : ['/api/items'],
+    queryKey: userLocation ? ['/api/items/nearby', userLocation.lat, userLocation.lon, radius, 'borrow'] : ['/api/items', 'borrow'],
     queryFn: async () => {
       if (userLocation) {
         const response = await fetch(
-          `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}`
+          `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}&type=borrow`
         );
         if (!response.ok) {
           console.error('Nearby items API failed, falling back to all items');
-          // Fall back to all items if nearby fails
-          const fallbackResponse = await fetch('/api/items');
+          // Fall back to all borrow items if nearby fails
+          const fallbackResponse = await fetch('/api/items?type=borrow');
           if (!fallbackResponse.ok) throw new Error('Failed to fetch items');
           return fallbackResponse.json();
         }
         return response.json();
       } else {
-        // Fallback to all items if no location
-        const response = await fetch('/api/items');
+        // Fallback to all borrow items if no location
+        const response = await fetch('/api/items?type=borrow');
         if (!response.ok) throw new Error('Failed to fetch items');
         return response.json();
       }

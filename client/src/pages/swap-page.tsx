@@ -27,7 +27,12 @@ export default function SwapPage() {
   console.log('SwapPage render - searchQuery:', searchQuery);
 
   const { data: items = [], isLoading } = useQuery<SwappableItem[]>({
-    queryKey: ['/api/items'],
+    queryKey: ['/api/items', 'swap'],
+    queryFn: async () => {
+      const response = await fetch('/api/items?type=swap');
+      if (!response.ok) throw new Error('Failed to fetch swappable items');
+      return response.json();
+    },
   });
 
   // Check user's inventory (items they own)
@@ -42,8 +47,8 @@ export default function SwapPage() {
     enabled: !!user?.id,
   });
 
-  // Filter for swappable items only
-  const swappableItems = items.filter(item => item.isSwappable);
+  // Items are already filtered for swappable on the backend
+  const swappableItems = items;
   
   // Debug logging
   console.log('Total items:', items.length);

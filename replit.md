@@ -87,6 +87,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Created quick message templates: Quick & Friendly, Polite & Formal, Detailed & Personal
 - Enhanced request form with date picker functionality and automated date range buttons (1 day, 3 days, 1 week, 2 weeks)
 - Messages automatically include owner name, item name, action type, and selected date ranges with emoji support
+- Fixed rent and swap browsing to display only items available for those specific actions
+- Enhanced API filtering with type parameter (rent/borrow/swap) for both nearby and general item endpoints
+- Created dedicated rent page with proper filtering for rentable items only
+- Updated swap page to use backend filtering instead of frontend filtering for better performance
 - Date: August 8, 2025
 
 ## Architecture

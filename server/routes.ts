@@ -161,14 +161,47 @@ export function registerRoutes(app: Express): Server {
       const isSwappable = req.body.isSwappable === "true";
       const isRentable = req.body.isRentable === "true";
 
-    // ShareCoins are now earned after successful transactions, not for listing
-    // This is for potential future features or tracking
+    // Calculate ShareCoins reward based on sharing modes
     let shareCoinsReward = 0;
-    
-    // Note: ShareCoins are earned when transactions complete:
-    // - 10 ShareCoins for successful lending/borrowing completion
-    // - 5 ShareCoins for successful swapping completion
-    // - No coins earned just for listing items
+
+    // Base reward for listing an item
+    const baseReward = 5;
+    shareCoinsReward += baseReward;
+
+    if (isLendable) {
+      const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+      const lendingDuration = parseInt(req.body.lendingDuration || "0");
+      
+      // Ensure values are valid numbers
+      if (!isNaN(securityDeposit) && !isNaN(lendingDuration)) {
+        const lendingReward = Math.max(
+          10,
+          Math.floor(securityDeposit * lendingDuration * 0.01),
+        );
+        shareCoinsReward += lendingReward;
+      } else {
+        shareCoinsReward += 10; // Default lending reward
+      }
+    }
+
+    if (isSwappable) {
+      shareCoinsReward += 20;
+    }
+
+    if (isRentable) {
+      const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+      if (!isNaN(securityDeposit)) {
+        const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
+        shareCoinsReward += rentalReward;
+      } else {
+        shareCoinsReward += 25; // Default rental reward
+      }
+    }
+
+    // Ensure shareCoinsReward is a valid number
+    if (isNaN(shareCoinsReward)) {
+      shareCoinsReward = 5; // Fallback to base reward
+    }
 
     const itemData: InsertItem = {
       name: req.body.name,

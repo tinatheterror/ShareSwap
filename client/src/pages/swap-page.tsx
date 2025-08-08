@@ -101,7 +101,7 @@ export default function SwapPage() {
           </div>
           <h1 className="text-3xl font-bold mb-2">Item Swapping</h1>
           <p className="text-muted-foreground">
-            Exchange items with other community members and earn 5 ShareCoins per successful swap
+            Exchange items with other community members
           </p>
         </div>
 

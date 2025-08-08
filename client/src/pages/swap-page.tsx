@@ -23,6 +23,8 @@ export default function SwapPage() {
   const [showInventoryPrompt, setShowInventoryPrompt] = useState(false);
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  
+  console.log('SwapPage render - searchQuery:', searchQuery);
 
   const { data: items = [], isLoading } = useQuery<SwappableItem[]>({
     queryKey: ['/api/items'],
@@ -52,8 +54,12 @@ export default function SwapPage() {
     const searchLower = searchQuery.toLowerCase();
     const nameMatch = item.name?.toLowerCase().includes(searchLower) || false;
     const descMatch = item.description?.toLowerCase().includes(searchLower) || false;
-    return nameMatch || descMatch;
+    const result = nameMatch || descMatch;
+    console.log(`Filtering "${item.name}": nameMatch=${nameMatch}, descMatch=${descMatch}, result=${result}`);
+    return result;
   });
+  
+  console.log('Filtered items count:', filteredItems.length);
 
   // Check user's inventory when component mounts
   useEffect(() => {
@@ -96,7 +102,10 @@ export default function SwapPage() {
             <Input
               placeholder="Search swappable items..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                console.log('Search input changed:', e.target.value);
+                setSearchQuery(e.target.value);
+              }}
               className="pl-10"
             />
           </div>

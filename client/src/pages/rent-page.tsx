@@ -155,19 +155,23 @@ export default function RentPage() {
           </Button>
         </div>
 
-        {/* AI Recommendations Section */}
-        <div className="mb-8">
-          <Recommendations limit={6} />
+        {/* AI Recommendations Section - Less prominent */}
+        <div className="mb-6 opacity-75">
+          <div className="text-sm">
+            <Recommendations limit={4} />
+          </div>
         </div>
 
-        {/* Seasonal Recommendations */}
-        <div className="mb-8">
-          <SeasonalRecommendations limit={6} />
+        {/* Seasonal Recommendations - Less prominent */}
+        <div className="mb-6 opacity-75">
+          <div className="text-sm">
+            <SeasonalRecommendations limit={4} />
+          </div>
         </div>
 
         {/* Rentable Items Grid */}
         <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">All Rentable Items ({filteredItems.length})</h2>
+          <h2 className="text-xl font-bold mb-4">All Items Available to Rent ({filteredItems.length})</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filteredItems.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">

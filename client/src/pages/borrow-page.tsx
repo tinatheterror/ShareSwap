@@ -152,7 +152,7 @@ export default function BorrowPage() {
 
         {/* All Available Items */}
         <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">All Available Items</h2>
+          <h2 className="text-xl font-bold mb-4">All Items Available to Borrow</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filteredItems.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">

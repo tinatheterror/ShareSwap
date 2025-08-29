@@ -284,43 +284,133 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Account Statistics */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-teal-600" />
-                  Account Statistics
+            {/* Account Statistics - Gamified */}
+            <Card className="border-2 border-gradient-to-r from-purple-200 to-blue-200 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-purple-50 via-blue-50 to-teal-50">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                    Account Statistics
+                  </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="grid md:grid-cols-4 gap-6">
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Coins className="h-6 w-6 text-yellow-600" />
+                  {/* ShareCoins - Gold Theme */}
+                  <div className="text-center group hover:scale-105 transition-transform duration-300">
+                    <div className="relative">
+                      <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                        <Coins className="h-8 w-8 text-white drop-shadow-sm" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">💰</span>
+                      </div>
                     </div>
-                    <div className="font-bold text-2xl text-slate-800">{profile?.shareCoins || 0}</div>
-                    <div className="text-sm text-slate-600">ShareCoins</div>
+                    <div className="font-bold text-3xl bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mb-1">
+                      {profile?.shareCoins || 0}
+                    </div>
+                    <div className="text-sm font-medium text-yellow-700 bg-yellow-50 px-2 py-1 rounded-full">
+                      ShareCoins
+                    </div>
+                    <div className="mt-2 w-full bg-yellow-100 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-2 rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min((profile?.shareCoins || 0) / 100 * 100, 100)}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Package className="h-6 w-6 text-green-600" />
+
+                  {/* Items Shared - Green Theme */}
+                  <div className="text-center group hover:scale-105 transition-transform duration-300">
+                    <div className="relative">
+                      <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                        <Package className="h-8 w-8 text-white drop-shadow-sm" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">📦</span>
+                      </div>
                     </div>
-                    <div className="font-bold text-2xl text-slate-800">{profile?.itemsShared || 0}</div>
-                    <div className="text-sm text-slate-600">Items Shared</div>
+                    <div className="font-bold text-3xl bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-1">
+                      {profile?.itemsShared || 0}
+                    </div>
+                    <div className="text-sm font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full">
+                      Items Shared
+                    </div>
+                    <div className="mt-2 w-full bg-green-100 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-green-400 to-emerald-600 h-2 rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min((profile?.itemsShared || 0) / 20 * 100, 100)}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Heart className="h-6 w-6 text-blue-600" />
+
+                  {/* Items Borrowed - Blue Theme */}
+                  <div className="text-center group hover:scale-105 transition-transform duration-300">
+                    <div className="relative">
+                      <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                        <Heart className="h-8 w-8 text-white drop-shadow-sm" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">💙</span>
+                      </div>
                     </div>
-                    <div className="font-bold text-2xl text-slate-800">{profile?.itemsBorrowed || 0}</div>
-                    <div className="text-sm text-slate-600">Items Borrowed</div>
+                    <div className="font-bold text-3xl bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-1">
+                      {profile?.itemsBorrowed || 0}
+                    </div>
+                    <div className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
+                      Items Borrowed
+                    </div>
+                    <div className="mt-2 w-full bg-blue-100 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-blue-400 to-cyan-600 h-2 rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min((profile?.itemsBorrowed || 0) / 15 * 100, 100)}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                      <Star className="h-6 w-6 text-purple-600" />
+
+                  {/* Rating - Purple Theme */}
+                  <div className="text-center group hover:scale-105 transition-transform duration-300">
+                    <div className="relative">
+                      <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                        <Star className="h-8 w-8 text-white drop-shadow-sm fill-current" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-xs text-white font-bold">⭐</span>
+                      </div>
                     </div>
-                    <div className="font-bold text-2xl text-slate-800">{profile?.rating || 0}</div>
-                    <div className="text-sm text-slate-600">Rating</div>
+                    <div className="font-bold text-3xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                      {profile?.rating || 0}
+                    </div>
+                    <div className="text-sm font-medium text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
+                      Rating
+                    </div>
+                    <div className="mt-2 w-full bg-purple-100 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-purple-400 to-pink-600 h-2 rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min((profile?.rating || 0) / 5 * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Achievement Progress Bar */}
+                <div className="mt-8 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-purple-700">Level Progress</span>
+                    <span className="text-xs text-purple-600">Level {Math.floor(((profile?.shareCoins || 0) + (profile?.itemsShared || 0) * 10) / 50) + 1}</span>
+                  </div>
+                  <div className="w-full bg-purple-200 rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-1000 relative overflow-hidden"
+                      style={{ width: `${(((profile?.shareCoins || 0) + (profile?.itemsShared || 0) * 10) % 50) / 50 * 100}%` }}
+                    >
+                      <div className="absolute inset-0 bg-white opacity-30 animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-purple-600 mt-1 text-center">
+                    {50 - (((profile?.shareCoins || 0) + (profile?.itemsShared || 0) * 10) % 50)} XP to next level
                   </div>
                 </div>
               </CardContent>

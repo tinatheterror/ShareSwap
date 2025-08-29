@@ -395,22 +395,48 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Achievement Progress Bar */}
+                {/* Community Impact Level */}
                 <div className="mt-8 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-purple-700">Level Progress</span>
-                    <span className="text-xs text-purple-600">Level {Math.floor(((profile?.shareCoins || 0) + (profile?.itemsShared || 0) * 10) / 50) + 1}</span>
+                    <div>
+                      <span className="text-sm font-medium text-purple-700">Community Impact Level</span>
+                      <div className="text-xs text-purple-600 mt-1">
+                        {(() => {
+                          const totalImpact = (profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0);
+                          const level = Math.floor(totalImpact / 5) + 1;
+                          const levelNames = [
+                            "New Neighbor", "Helpful Friend", "Community Helper", 
+                            "Sharing Champion", "Local Legend", "Neighborhood Hero"
+                          ];
+                          return levelNames[Math.min(level - 1, levelNames.length - 1)] || "Sharing Master";
+                        })()}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-lg font-bold text-purple-600">
+                        Level {Math.floor(((profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0)) / 5) + 1}
+                      </span>
+                      <div className="text-xs text-purple-600">
+                        {((profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0)) % 5}/5 interactions
+                      </div>
+                    </div>
                   </div>
                   <div className="w-full bg-purple-200 rounded-full h-3">
                     <div 
                       className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-1000 relative overflow-hidden"
-                      style={{ width: `${(((profile?.shareCoins || 0) + (profile?.itemsShared || 0) * 10) % 50) / 50 * 100}%` }}
+                      style={{ width: `${(((profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0)) % 5) / 5 * 100}%` }}
                     >
                       <div className="absolute inset-0 bg-white opacity-30 animate-pulse"></div>
                     </div>
                   </div>
-                  <div className="text-xs text-purple-600 mt-1 text-center">
-                    {50 - (((profile?.shareCoins || 0) + (profile?.itemsShared || 0) * 10) % 50)} XP to next level
+                  <div className="text-xs text-purple-600 mt-2">
+                    <div className="font-medium mb-1">Level Benefits:</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>• Higher trust score</div>
+                      <div>• Priority in requests</div>
+                      <div>• Exclusive items access</div>
+                      <div>• Reduced platform fees</div>
+                    </div>
                   </div>
                 </div>
               </CardContent>

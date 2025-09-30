@@ -417,11 +417,7 @@ export default function WishlistsPage() {
 
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Need Type:</span>
-                        <Badge variant="secondary" className={
-                          item.needType === 'borrow' ? 'bg-primary/10 text-primary' :
-                          item.needType === 'rent' ? 'bg-purple-100 text-purple-800' :
-                          'bg-orange-100 text-orange-800'
-                        }>
+                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-200"
                           {item.needType === 'borrow' && <ShoppingCart className="h-3 w-3 mr-1" />}
                           {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
                           {item.needType === 'swap' && <Repeat className="h-3 w-3 mr-1" />}

@@ -131,7 +131,7 @@ export default function WishlistsPage() {
           <p className="text-muted-foreground">
             Create demand signals for items you need - get notified when they become available
           </p>
-          
+
           {expiredWishlists.length > 0 && (
             <div className="flex justify-center mt-4">
               <Button
@@ -161,7 +161,7 @@ export default function WishlistsPage() {
               )}
             </CardTitle>
           </CardHeader>
-          
+
           {showAddForm && (
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -175,7 +175,7 @@ export default function WishlistsPage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium mb-2">Category</label>
                     <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
@@ -273,16 +273,16 @@ export default function WishlistsPage() {
                 </div>
 
                 <div className="flex gap-4">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={addWishlistMutation.isPending}
                     className="flex-1"
                   >
                     {addWishlistMutation.isPending ? 'Adding...' : 'Add to Wishlist'}
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setShowAddForm(false)}
                   >
                     Cancel
@@ -417,7 +417,7 @@ export default function WishlistsPage() {
 
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Need Type:</span>
-                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-200"
+                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-200">
                           {item.needType === 'borrow' && <ShoppingCart className="h-3 w-3 mr-1" />}
                           {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
                           {item.needType === 'swap' && <Repeat className="h-3 w-3 mr-1" />}

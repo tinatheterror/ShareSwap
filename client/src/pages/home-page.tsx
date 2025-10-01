@@ -38,18 +38,21 @@ export default function HomePage() {
             description="Share items with trusted community members"
             icon={<HandshakeIcon className="w-8 h-8 text-primary" />}
             onClick={() => navigate("/share-options")}
+            buttonText="Let's Share"
           />
           <MarketplaceCard
             title="Rent It"
             description="Earn real money by renting out your items securely"
             icon={<Banknote className="w-8 h-8 text-primary" />}
             onClick={() => navigate("/rent")}
+            buttonText="Let's Rent"
           />
           <MarketplaceCard
             title="Swap It"
             description="Exchange items with other verified users"
             icon={<ArrowLeftRight className="w-8 h-8 text-primary" />}
             onClick={() => navigate("/swap")}
+            buttonText="Let's Swap"
           />
         </div>
 

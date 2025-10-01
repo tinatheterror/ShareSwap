@@ -8,6 +8,7 @@ interface MarketplaceCardProps {
   icon: React.ReactNode;
   onClick: () => void;
   className?: string;
+  buttonText?: string;
 }
 
 export function MarketplaceCard({
@@ -16,6 +17,7 @@ export function MarketplaceCard({
   icon,
   onClick,
   className,
+  buttonText = "Get Started",
 }: MarketplaceCardProps) {
   return (
     <Card className={cn("w-full bg-primary/10 border-primary/20 hover:border-primary/40 transition-colors", className)}>
@@ -30,7 +32,7 @@ export function MarketplaceCard({
       </CardContent>
       <CardFooter>
         <Button onClick={onClick} className="w-full bg-primary hover:bg-primary/90">
-          Get Started
+          {buttonText}
         </Button>
       </CardFooter>
     </Card>

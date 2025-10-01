@@ -36,9 +36,9 @@ export function UserReputation({ userId }: Props) {
 
   const levelColors = {
     Newcomer: "bg-gray-500",
-    Regular: "bg-blue-500",
-    Trusted: "bg-green-500",
-    Expert: "bg-purple-500",
+    Regular: "bg-teal-500",
+    Trusted: "bg-teal-500",
+    Expert: "bg-teal-500",
   };
 
   return (
@@ -106,7 +106,7 @@ export function UserReputation({ userId }: Props) {
                   {Array.from({ length: review.rating }).map((_, i) => (
                     <Star
                       key={i}
-                      className="w-4 h-4 text-yellow-500 fill-current"
+                      className="w-4 h-4 text-teal-500 fill-current"
                     />
                   ))}
                 </div>

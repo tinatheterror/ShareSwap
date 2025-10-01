@@ -94,7 +94,7 @@ export function ReviewForm({ userId, transactionId, isOpen, onClose }: Props) {
                               (hoveredStar !== null
                                 ? star <= hoveredStar
                                 : star <= field.value)
-                                ? "text-yellow-500 fill-current"
+                                ? "text-teal-500 fill-current"
                                 : "text-muted-foreground"
                             }`}
                           />

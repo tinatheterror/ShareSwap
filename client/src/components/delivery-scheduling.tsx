@@ -269,12 +269,12 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
               </div>
               
               {/* Risk Warning for Self Delivery */}
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <AlertTriangle className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-orange-900">Self-Delivery Risk Warning</h4>
-                    <div className="text-sm text-orange-800 space-y-1">
+                    <h4 className="font-semibold text-teal-900">Self-Delivery Risk Warning</h4>
+                    <div className="text-sm text-teal-800 space-y-1">
                       <p>• You are responsible for safe transportation and delivery</p>
                       <p>• No platform protection for loss or damage during transit</p>
                       <p>• Consider insurance and proper packaging</p>
@@ -286,7 +286,7 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                         checked={selfDeliveryRiskAccepted}
                         onCheckedChange={(checked) => setSelfDeliveryRiskAccepted(!!checked)}
                       />
-                      <Label htmlFor="self-delivery-risk" className="text-sm font-medium text-orange-900">
+                      <Label htmlFor="self-delivery-risk" className="text-sm font-medium text-teal-900">
                         I understand and accept the risks of self-delivery
                       </Label>
                     </div>
@@ -314,16 +314,16 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-green-600" />
+            <Shield className="h-5 w-5 text-teal-600" />
             Security Deposit Options
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="bg-blue-50 p-4 rounded-lg border">
-            <p className="text-sm font-medium text-blue-900 mb-1">
+          <div className="bg-teal-50 p-4 rounded-lg border">
+            <p className="text-sm font-medium text-teal-900 mb-1">
               Suggested Deposit: ${suggestedDepositAmount}
             </p>
-            <p className="text-xs text-blue-700">
+            <p className="text-xs text-teal-700">
               Based on 20% of item value for protection against damage or non-return
             </p>
           </div>
@@ -348,17 +348,17 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
               <div className="flex items-center space-x-2 mb-2">
                 <RadioGroupItem value="self_facilitated" id="self_facilitated" />
                 <Label htmlFor="self_facilitated" className="flex items-center gap-2 font-semibold">
-                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  <AlertTriangle className="h-4 w-4 text-teal-500" />
                   Self-Facilitated (At Your Own Risk)
                 </Label>
-                <Badge variant="outline" className="text-orange-600 border-orange-600">Higher Risk</Badge>
+                <Badge variant="outline" className="text-teal-600 border-teal-600">Higher Risk</Badge>
               </div>
               <p className="text-sm text-muted-foreground ml-6 mb-3">
                 Handle deposit arrangements privately between yourselves. No fees, but ShareSwap cannot assist with disputes.
               </p>
               
               {depositMethod === 'self_facilitated' && (
-                <div className="ml-6 bg-orange-50 p-3 rounded border-l-4 border-orange-400">
+                <div className="ml-6 bg-teal-50 p-3 rounded border-l-4 border-teal-400">
                   <div className="flex items-start gap-2">
                     <Checkbox
                       id="agreement"

@@ -239,8 +239,8 @@ export default function DeliveryArrangementsPage() {
                           <h3 className="font-medium">{arr.request.item.name}</h3>
                           {arr.deliveryType === 'self_delivery' && arr.riskAccepted && (
                             <div className="flex items-center gap-1">
-                              <AlertTriangle className="h-3 w-3 text-orange-500" />
-                              <span className="text-xs text-orange-600">Self-Delivery</span>
+                              <AlertTriangle className="h-3 w-3 text-teal-500" />
+                              <span className="text-xs text-teal-600">Self-Delivery</span>
                             </div>
                           )}
                         </div>
@@ -248,7 +248,7 @@ export default function DeliveryArrangementsPage() {
                           {new Date(arr.deliveryDate).toLocaleDateString()} at {new Date(arr.deliveryDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                         {arr.returnDate && (
-                          <p className="text-sm text-green-600 mb-1">
+                          <p className="text-sm text-teal-600 mb-1">
                             Return by: {new Date(arr.returnDate).toLocaleDateString()}
                           </p>
                         )}

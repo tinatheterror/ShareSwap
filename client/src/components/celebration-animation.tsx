@@ -78,9 +78,9 @@ export function CelebrationAnimation({ isVisible, onComplete, message = "Great m
     >
       <div
         className={`w-3 h-3 ${
-          i % 4 === 0 ? 'bg-yellow-400' :
-          i % 4 === 1 ? 'bg-pink-400' :
-          i % 4 === 2 ? 'bg-blue-400' : 'bg-green-400'
+          i % 4 === 0 ? 'bg-teal-400' :
+          i % 4 === 1 ? 'bg-teal-400' :
+          i % 4 === 2 ? 'bg-teal-400' : 'bg-teal-400'
         } rounded-full`}
       />
     </motion.div>
@@ -129,8 +129,8 @@ export function CelebrationAnimation({ isVisible, onComplete, message = "Great m
                 repeatDelay: 1
               }}
             >
-              <div className="absolute inset-0 bg-green-100 rounded-full"></div>
-              <CheckCircle className="w-20 h-20 text-green-500" />
+              <div className="absolute inset-0 bg-teal-100 rounded-full"></div>
+              <CheckCircle className="w-20 h-20 text-teal-500" />
               
               {/* Sparkle effects around the icon */}
               <motion.div
@@ -145,7 +145,7 @@ export function CelebrationAnimation({ isVisible, onComplete, message = "Great m
                   delay: 0.3
                 }}
               >
-                <Sparkles className="w-6 h-6 text-yellow-400" />
+                <Sparkles className="w-6 h-6 text-teal-400" />
               </motion.div>
               
               <motion.div
@@ -160,7 +160,7 @@ export function CelebrationAnimation({ isVisible, onComplete, message = "Great m
                   delay: 0.8
                 }}
               >
-                <Star className="w-5 h-5 text-blue-400" />
+                <Star className="w-5 h-5 text-teal-400" />
               </motion.div>
 
               <motion.div
@@ -175,7 +175,7 @@ export function CelebrationAnimation({ isVisible, onComplete, message = "Great m
                   delay: 1.1
                 }}
               >
-                <Heart className="w-4 h-4 text-pink-400" />
+                <Heart className="w-4 h-4 text-teal-400" />
               </motion.div>
             </motion.div>
 
@@ -200,7 +200,7 @@ export function CelebrationAnimation({ isVisible, onComplete, message = "Great m
 
             {/* Animated button */}
             <motion.div
-              className="bg-gradient-to-r from-green-400 to-blue-500 text-white px-6 py-2 rounded-full text-sm font-semibold"
+              className="bg-gradient-to-r from-teal-400 to-teal-500 text-white px-6 py-2 rounded-full text-sm font-semibold"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.7 }}

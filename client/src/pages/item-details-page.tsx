@@ -67,7 +67,7 @@ export default function ItemDetailsPage() {
         <div>
           <p className="font-medium">Rent</p>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg font-bold text-green-700">
+            <span className="text-lg font-bold text-teal-700">
               ${Number(item.dollarsPrice || 10).toFixed(2)}/day
             </span>
           </div>
@@ -86,8 +86,8 @@ export default function ItemDetailsPage() {
         <div>
           <p className="font-medium">Swap</p>
           <div className="flex items-center gap-2 mb-1">
-            <Coins className="h-4 w-4 text-green-600" />
-            <span className="text-lg font-bold text-green-700">
+            <Coins className="h-4 w-4 text-teal-600" />
+            <span className="text-lg font-bold text-teal-700">
               No ShareCoins needed
             </span>
           </div>

@@ -40,11 +40,11 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
 
   const getSeasonColor = (season: string) => {
     switch (season.toLowerCase()) {
-      case 'winter': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'summer': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'winter': return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'summer': return 'bg-teal-100 text-teal-800 border-teal-200';
       case 'fall':
-      case 'autumn': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'spring': return 'bg-green-100 text-green-800 border-green-200';
+      case 'autumn': return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'spring': return 'bg-teal-100 text-teal-800 border-teal-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -53,20 +53,20 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 mb-4">
-          <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg animate-pulse">
-            <Sun className="h-4 w-4 text-orange-600" />
+          <div className="p-2 bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg animate-pulse">
+            <Sun className="h-4 w-4 text-teal-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-800">Seasonal Picks</h3>
-          <div className="flex-1 h-px bg-gradient-to-r from-orange-200 to-transparent"></div>
+          <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-orange-100">
+            <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-teal-100">
               <CardContent className="p-4">
-                <div className="aspect-square bg-orange-100 rounded-lg mb-3"></div>
-                <div className="h-4 bg-orange-100 rounded mb-2"></div>
-                <div className="h-3 bg-orange-100 rounded mb-3"></div>
-                <div className="h-8 bg-orange-100 rounded"></div>
+                <div className="aspect-square bg-teal-100 rounded-lg mb-3"></div>
+                <div className="h-4 bg-teal-100 rounded mb-2"></div>
+                <div className="h-3 bg-teal-100 rounded mb-3"></div>
+                <div className="h-8 bg-teal-100 rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -82,18 +82,18 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg">
+        <div className="p-2 bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg">
           {getSeasonIcon(seasonalItems[0]?.seasonalRelevance || 'summer')}
         </div>
         <h3 className="text-lg font-semibold text-gray-800">
           {seasonalItems[0]?.seasonalRelevance} Picks
         </h3>
-        <div className="flex-1 h-px bg-gradient-to-r from-orange-200 to-transparent"></div>
+        <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {seasonalItems.map((item) => (
-          <Card key={item.id} className="group hover:shadow-md transition-all duration-300 bg-white rounded-xl overflow-hidden border border-orange-100 hover:border-orange-200 hover:-translate-y-1">
+          <Card key={item.id} className="group hover:shadow-md transition-all duration-300 bg-white rounded-xl overflow-hidden border border-teal-100 hover:border-teal-200 hover:-translate-y-1">
             <CardContent className="p-4">
               <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
                 {item.photos && item.photos.length > 0 ? (
@@ -108,7 +108,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                   </div>
                 )}
                 <div className="absolute top-2 right-2">
-                  <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-200">
+                  <Badge className="text-xs bg-teal-100 text-teal-800 border-teal-200">
                     {getSeasonIcon(item.seasonalRelevance)}
                     <span className="ml-1">{item.seasonalRelevance}</span>
                   </Badge>
@@ -119,14 +119,14 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
                 <div className="flex flex-wrap gap-1 justify-center mb-2">
                   {item.recommendationReasons.slice(0, 1).map((reason, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs border-orange-200 text-orange-700 hover:bg-orange-50">
+                    <Badge key={idx} variant="outline" className="text-xs border-teal-200 text-teal-700 hover:bg-teal-50">
                       {reason}
                     </Badge>
                   ))}
                 </div>
                 <div className="flex items-center justify-center gap-1">
-                  <Coins className="h-3 w-3 text-orange-600" />
-                  <span className="text-sm font-semibold text-orange-700">
+                  <Coins className="h-3 w-3 text-teal-600" />
+                  <span className="text-sm font-semibold text-teal-700">
                     {item.shareCoinPrice || 5} ShareCoins
                   </span>
                 </div>

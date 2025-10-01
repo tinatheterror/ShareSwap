@@ -176,7 +176,7 @@ export default function MyItemsPage() {
                       <Edit className="h-3 w-3 mr-1" />
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Button variant="outline" size="sm" className="text-teal-600 hover:text-teal-700">
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>

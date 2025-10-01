@@ -147,7 +147,7 @@ export default function PremiumPage() {
                   
                   <CardHeader className="text-center pb-4">
                     <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
-                      <Crown className={`h-6 w-6 ${isPopular ? 'text-yellow-600' : 'text-gray-400'}`} />
+                      <Crown className={`h-6 w-6 ${isPopular ? 'text-teal-600' : 'text-gray-400'}`} />
                       {plan.name}
                     </CardTitle>
                     <p className="text-muted-foreground">{plan.description}</p>
@@ -159,7 +159,7 @@ export default function PremiumPage() {
                       </div>
                       {plan.annualPrice && (
                         <div className="mt-2">
-                          <Badge variant="outline" className="bg-green-50 text-green-700">
+                          <Badge variant="outline" className="bg-teal-50 text-teal-700">
                             Save ${annualSavings}/year with annual billing
                           </Badge>
                         </div>
@@ -211,8 +211,8 @@ export default function PremiumPage() {
           <CardContent>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Zap className="h-8 w-8 text-yellow-600" />
+                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Zap className="h-8 w-8 text-teal-600" />
                 </div>
                 <h3 className="font-semibold mb-2">Priority Access</h3>
                 <p className="text-sm text-muted-foreground">
@@ -221,8 +221,8 @@ export default function PremiumPage() {
               </div>
               
               <div className="text-center">
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Gift className="h-8 w-8 text-green-600" />
+                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Gift className="h-8 w-8 text-teal-600" />
                 </div>
                 <h3 className="font-semibold mb-2">Lower Fees</h3>
                 <p className="text-sm text-muted-foreground">
@@ -231,8 +231,8 @@ export default function PremiumPage() {
               </div>
               
               <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="h-8 w-8 text-blue-600" />
+                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Shield className="h-8 w-8 text-teal-600" />
                 </div>
                 <h3 className="font-semibold mb-2">Premium Support</h3>
                 <p className="text-sm text-muted-foreground">

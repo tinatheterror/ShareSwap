@@ -37,9 +37,9 @@ export default function RecommendationsPage() {
   });
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "bg-green-500";
-    if (score >= 60) return "bg-yellow-500";
-    return "bg-blue-500";
+    if (score >= 80) return "bg-teal-500";
+    if (score >= 60) return "bg-teal-500";
+    return "bg-teal-500";
   };
 
   if (!user) {

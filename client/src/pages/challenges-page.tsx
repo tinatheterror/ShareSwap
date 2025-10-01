@@ -85,7 +85,7 @@ export default function ChallengesPage() {
                       {challenge.status.charAt(0).toUpperCase() + challenge.status.slice(1)}
                     </Badge>
                   </div>
-                  <div className="flex items-center text-yellow-500">
+                  <div className="flex items-center text-teal-500">
                     <Coins className="h-5 w-5 mr-1" />
                     <span className="font-semibold">
                       {Number(challenge.rewardAmount).toFixed(2)}

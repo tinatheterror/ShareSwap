@@ -98,11 +98,11 @@ export default function WishlistsPage() {
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'urgent': return 'bg-red-100 text-red-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'normal': return 'bg-blue-100 text-blue-800';
+      case 'urgent': return 'bg-teal-100 text-teal-800';
+      case 'high': return 'bg-teal-100 text-teal-800';
+      case 'normal': return 'bg-teal-100 text-teal-800';
       case 'low': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-blue-100 text-blue-800';
+      default: return 'bg-teal-100 text-teal-800';
     }
   };
 
@@ -328,8 +328,8 @@ export default function WishlistsPage() {
                     <span className="font-medium">Need Type:</span>
                     <Badge variant="secondary" className={
                       item.needType === 'borrow' ? 'bg-primary/10 text-primary' :
-                      item.needType === 'rent' ? 'bg-purple-100 text-purple-800' :
-                      'bg-orange-100 text-orange-800'
+                      item.needType === 'rent' ? 'bg-teal-100 text-teal-800' :
+                      'bg-teal-100 text-teal-800'
                     }>
                       {item.needType === 'borrow' && <HandHeart className="h-3 w-3 mr-1" />}
                       {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
@@ -341,7 +341,7 @@ export default function WishlistsPage() {
                   {item.neededDate && (
                     <div className="flex items-center gap-2">
                       <span className="font-medium">Date Needed:</span>
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
                         <Calendar className="h-3 w-3 mr-1" />
                         {new Date(item.neededDate).toLocaleDateString()}
                       </Badge>
@@ -392,7 +392,7 @@ export default function WishlistsPage() {
                     <div className="flex items-start justify-between mb-4">
                       <h3 className="font-semibold text-lg text-gray-700">{item.itemName}</h3>
                       <div className="flex flex-col gap-1">
-                        <Badge className="bg-red-100 text-red-800">
+                        <Badge className="bg-teal-100 text-teal-800">
                           <AlertTriangle className="h-3 w-3 mr-1" />
                           Expired
                         </Badge>
@@ -428,7 +428,7 @@ export default function WishlistsPage() {
                       {item.neededDate && (
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Was Needed:</span>
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                          <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
                             <Calendar className="h-3 w-3 mr-1" />
                             {new Date(item.neededDate).toLocaleDateString()}
                           </Badge>
@@ -438,7 +438,7 @@ export default function WishlistsPage() {
                       {item.returnDate && item.needType === 'borrow' && (
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Return Date:</span>
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                          <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
                             <Calendar className="h-3 w-3 mr-1" />
                             {new Date(item.returnDate).toLocaleDateString()}
                           </Badge>

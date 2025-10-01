@@ -86,7 +86,7 @@ export default function ReferralsPage() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-green-600" />
+              <Gift className="h-5 w-5 text-teal-600" />
               Your Referral Code
             </CardTitle>
           </CardHeader>
@@ -109,9 +109,9 @@ export default function ReferralsPage() {
                   </Button>
                 </div>
                 
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-green-800 mb-2">How it works:</h3>
-                  <ul className="text-sm text-green-700 space-y-1">
+                <div className="bg-teal-50 p-4 rounded-lg">
+                  <h3 className="font-semibold text-teal-800 mb-2">How it works:</h3>
+                  <ul className="text-sm text-teal-700 space-y-1">
                     <li>• Share your code with friends</li>
                     <li>• They sign up using your code</li>
                     <li>• When they complete their first transaction, you both get 10 ShareCoins!</li>
@@ -142,8 +142,8 @@ export default function ReferralsPage() {
           <CardContent>
             <div className="grid md:grid-cols-2 gap-6">
               <div className="text-center">
-                <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Gift className="h-8 w-8 text-green-600" />
+                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Gift className="h-8 w-8 text-teal-600" />
                 </div>
                 <h3 className="font-semibold mb-2">Earn ShareCoins</h3>
                 <p className="text-sm text-muted-foreground">
@@ -152,8 +152,8 @@ export default function ReferralsPage() {
               </div>
               
               <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="h-8 w-8 text-blue-600" />
+                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-teal-600" />
                 </div>
                 <h3 className="font-semibold mb-2">Build Community</h3>
                 <p className="text-sm text-muted-foreground">

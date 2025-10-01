@@ -133,10 +133,10 @@ export default function GamesPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-green-600">{totalEarnings.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-teal-600">{totalEarnings.toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground">Total ShareCoins Earned</p>
                 </div>
-                <Coins className="h-8 w-8 text-green-600" />
+                <Coins className="h-8 w-8 text-teal-600" />
               </div>
             </CardContent>
           </Card>
@@ -145,10 +145,10 @@ export default function GamesPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-blue-600">{completedGames}</p>
+                  <p className="text-2xl font-bold text-teal-600">{completedGames}</p>
                   <p className="text-sm text-muted-foreground">Games Completed</p>
                 </div>
-                <Trophy className="h-8 w-8 text-blue-600" />
+                <Trophy className="h-8 w-8 text-teal-600" />
               </div>
             </CardContent>
           </Card>
@@ -157,10 +157,10 @@ export default function GamesPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-purple-600">{games?.length || 0}</p>
+                  <p className="text-2xl font-bold text-teal-600">{games?.length || 0}</p>
                   <p className="text-sm text-muted-foreground">Available Games</p>
                 </div>
-                <Users className="h-8 w-8 text-purple-600" />
+                <Users className="h-8 w-8 text-teal-600" />
               </div>
             </CardContent>
           </Card>
@@ -196,7 +196,7 @@ export default function GamesPage() {
                               Sponsored by {game.sponsorName}
                             </p>
                           </div>
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                          <Badge variant="secondary" className="bg-teal-100 text-teal-800">
                             <Coins className="h-3 w-3 mr-1" />
                             {game.rewardAmount} SC
                           </Badge>
@@ -255,7 +255,7 @@ export default function GamesPage() {
                       <h4 className="font-medium text-sm">{session.game.name}</h4>
                       <Badge
                         variant={session.status === 'completed' ? 'default' : 'secondary'}
-                        className={session.status === 'completed' ? 'bg-green-100 text-green-800' : ''}
+                        className={session.status === 'completed' ? 'bg-teal-100 text-teal-800' : ''}
                       >
                         {session.status}
                       </Badge>
@@ -263,7 +263,7 @@ export default function GamesPage() {
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <span>{new Date(session.startedAt).toLocaleDateString()}</span>
                       {session.rewardAmount && (
-                        <span className="text-green-600 font-medium">
+                        <span className="text-teal-600 font-medium">
                           +{session.rewardAmount} SC
                         </span>
                       )}

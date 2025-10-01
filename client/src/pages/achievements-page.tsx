@@ -59,10 +59,10 @@ export default function AchievementsPage() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'milestone': return 'text-yellow-600';
-      case 'social': return 'text-blue-600';
-      case 'lending': return 'text-green-600';
-      case 'borrowing': return 'text-purple-600';
+      case 'milestone': return 'text-teal-600';
+      case 'social': return 'text-teal-600';
+      case 'lending': return 'text-teal-600';
+      case 'borrowing': return 'text-teal-600';
       default: return 'text-gray-600';
     }
   };
@@ -100,10 +100,10 @@ export default function AchievementsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-green-600">{completedAchievements.length}</p>
+                  <p className="text-2xl font-bold text-teal-600">{completedAchievements.length}</p>
                   <p className="text-sm text-muted-foreground">Achievements Earned</p>
                 </div>
-                <Trophy className="h-8 w-8 text-green-600" />
+                <Trophy className="h-8 w-8 text-teal-600" />
               </div>
             </CardContent>
           </Card>
@@ -112,10 +112,10 @@ export default function AchievementsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-blue-600">{inProgressAchievements.length}</p>
+                  <p className="text-2xl font-bold text-teal-600">{inProgressAchievements.length}</p>
                   <p className="text-sm text-muted-foreground">In Progress</p>
                 </div>
-                <Award className="h-8 w-8 text-blue-600" />
+                <Award className="h-8 w-8 text-teal-600" />
               </div>
             </CardContent>
           </Card>
@@ -124,10 +124,10 @@ export default function AchievementsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-purple-600">{achievements?.length || 0}</p>
+                  <p className="text-2xl font-bold text-teal-600">{achievements?.length || 0}</p>
                   <p className="text-sm text-muted-foreground">Total Available</p>
                 </div>
-                <Star className="h-8 w-8 text-purple-600" />
+                <Star className="h-8 w-8 text-teal-600" />
               </div>
             </CardContent>
           </Card>
@@ -138,7 +138,7 @@ export default function AchievementsPage() {
           <Card className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-green-600" />
+                <Trophy className="h-5 w-5 text-teal-600" />
                 Completed Achievements
               </CardTitle>
             </CardHeader>
@@ -147,7 +147,7 @@ export default function AchievementsPage() {
                 {completedAchievements.map((userAchievement) => (
                   <div
                     key={userAchievement.id}
-                    className="p-4 rounded-lg border bg-green-50 border-green-200"
+                    className="p-4 rounded-lg border bg-teal-50 border-teal-200"
                   >
                     <div className="flex items-start gap-3">
                       <div 
@@ -157,11 +157,11 @@ export default function AchievementsPage() {
                         {userAchievement.achievement.badgeIcon}
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-green-800">{userAchievement.achievement.name}</h3>
-                        <p className="text-sm text-green-600 mb-2">
+                        <h3 className="font-semibold text-teal-800">{userAchievement.achievement.name}</h3>
+                        <p className="text-sm text-teal-600 mb-2">
                           {userAchievement.achievement.description}
                         </p>
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">
+                        <Badge variant="secondary" className="bg-teal-100 text-teal-800">
                           Completed {new Date(userAchievement.earnedAt).toLocaleDateString()}
                         </Badge>
                       </div>
@@ -197,9 +197,9 @@ export default function AchievementsPage() {
                       key={achievement.id}
                       className={`p-4 rounded-lg border transition-colors ${
                         isCompleted 
-                          ? 'bg-green-50 border-green-200' 
+                          ? 'bg-teal-50 border-teal-200' 
                           : progress > 0 
-                            ? 'bg-yellow-50 border-yellow-200' 
+                            ? 'bg-teal-50/50 border-teal-100' 
                             : 'bg-gray-50 border-gray-200'
                       }`}
                     >
@@ -213,10 +213,10 @@ export default function AchievementsPage() {
                           {achievement.badgeIcon}
                         </div>
                         <div className="flex-1">
-                          <h3 className={`font-semibold ${isCompleted ? 'text-green-800' : 'text-gray-800'}`}>
+                          <h3 className={`font-semibold ${isCompleted ? 'text-teal-800' : 'text-gray-800'}`}>
                             {achievement.name}
                           </h3>
-                          <p className={`text-sm mb-3 ${isCompleted ? 'text-green-600' : 'text-gray-600'}`}>
+                          <p className={`text-sm mb-3 ${isCompleted ? 'text-teal-600' : 'text-gray-600'}`}>
                             {achievement.description}
                           </p>
                           
@@ -231,7 +231,7 @@ export default function AchievementsPage() {
                           )}
                           
                           {isCompleted && (
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            <Badge variant="secondary" className="bg-teal-100 text-teal-800">
                               ✓ Completed
                             </Badge>
                           )}

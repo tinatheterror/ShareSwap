@@ -122,12 +122,12 @@ export default function VerificationPage() {
         <Navbar />
         <main className="max-w-2xl mx-auto px-4 py-12">
           <div className="text-center">
-            <div className="bg-green-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-teal-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold mb-2 text-green-800">Verification Complete!</h1>
+            <h1 className="text-3xl font-bold mb-2 text-teal-800">Verification Complete!</h1>
             <p className="text-muted-foreground mb-8">
               Your identity has been verified successfully. You can now rent and borrow items with confidence.
             </p>
@@ -165,9 +165,9 @@ export default function VerificationPage() {
           </p>
           
           {/* Security Disclaimer */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-left max-w-2xl mx-auto">
-            <h3 className="font-semibold text-blue-900 mb-3">Why We Need This Information</h3>
-            <div className="space-y-2 text-sm text-blue-800">
+          <div className="bg-teal-50 border border-teal-200 rounded-lg p-6 text-left max-w-2xl mx-auto">
+            <h3 className="font-semibold text-teal-900 mb-3">Why We Need This Information</h3>
+            <div className="space-y-2 text-sm text-teal-800">
               <p><strong>Government ID:</strong> Verifies your identity to ensure only real people use our platform and helps prevent fraud.</p>
               <p><strong>Credit Card Information:</strong> Enables secure transactions and protects all users by allowing us to:</p>
               <ul className="ml-4 space-y-1 list-disc">
@@ -176,7 +176,7 @@ export default function VerificationPage() {
                 <li><strong>Non-Return Protection:</strong> Charge replacement cost if items aren't returned</li>
                 <li><strong>Trust & Accountability:</strong> Create a responsible community where users are accountable for borrowed items</li>
               </ul>
-              <p className="mt-3 text-xs text-blue-600">
+              <p className="mt-3 text-xs text-teal-600">
                 <strong>Security:</strong> All payment information is encrypted and stored securely. We only charge your card when necessary for deposits or damages as outlined in our terms of service.
               </p>
             </div>
@@ -207,7 +207,7 @@ export default function VerificationPage() {
                       </div>
                     </label>
                     {selectedIdFile && (
-                      <p className="mt-2 text-sm text-green-600">
+                      <p className="mt-2 text-sm text-teal-600">
                         Selected: {selectedIdFile.name}
                       </p>
                     )}

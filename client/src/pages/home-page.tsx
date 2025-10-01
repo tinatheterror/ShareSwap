@@ -60,7 +60,7 @@ export default function HomePage() {
         <div className="mt-12 text-center">
           <Button 
             onClick={() => setShowWishlistPopup(true)}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white"
+            className="bg-teal-600 hover:bg-teal-700 text-white"
           >
             <Coins className="h-4 w-4 mr-2" />
             Earn ShareCoins by Helping Neighbors

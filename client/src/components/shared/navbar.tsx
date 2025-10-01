@@ -101,7 +101,7 @@ export function Navbar() {
 
                   <NavigationMenuItem>
                     <Link href="/premium">
-                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary text-yellow-600">
+                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary text-teal-600">
                         <Crown className="h-5 w-5" />
                         <span>Premium</span>
                       </Button>

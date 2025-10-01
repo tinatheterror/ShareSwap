@@ -369,14 +369,14 @@ export default function LendPage() {
                   </div>
 
                   {selectedWishlistMatch && (
-                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span className="text-green-800 font-medium">
+                        <CheckCircle className="h-5 w-5 text-teal-500" />
+                        <span className="text-teal-800 font-medium">
                           Dates automatically matched to {selectedWishlistMatch.username}'s request
                         </span>
                       </div>
-                      <p className="text-green-700 text-sm mt-1">
+                      <p className="text-teal-700 text-sm mt-1">
                         Needed: {selectedWishlistMatch.neededDate ? new Date(selectedWishlistMatch.neededDate).toLocaleDateString() : 'Not specified'} - 
                         Return: {selectedWishlistMatch.returnDate ? new Date(selectedWishlistMatch.returnDate).toLocaleDateString() : 'Not specified'}
                       </p>
@@ -512,7 +512,7 @@ export default function LendPage() {
               <div className="p-6 border-b border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-blue-500 rounded-full flex items-center justify-center">
+                    <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
                       <Heart className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -567,19 +567,19 @@ export default function LendPage() {
                           </div>
                           
                           {wishlist.neededDate && wishlist.returnDate && (
-                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-2">
+                            <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mb-2">
                               <div className="flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4 text-blue-500" />
-                                <span className="text-blue-800 font-medium text-sm">
+                                <CheckCircle className="h-4 w-4 text-teal-500" />
+                                <span className="text-teal-800 font-medium text-sm">
                                   Perfect Date Match Available
                                 </span>
                               </div>
-                              <div className="text-blue-700 text-sm mt-1">
+                              <div className="text-teal-700 text-sm mt-1">
                                 <div className="flex justify-between">
                                   <span>Needed: {new Date(wishlist.neededDate).toLocaleDateString()}</span>
                                   <span>Return: {new Date(wishlist.returnDate).toLocaleDateString()}</span>
                                 </div>
-                                <div className="text-xs text-blue-600 mt-1">
+                                <div className="text-xs text-teal-600 mt-1">
                                   Duration: {Math.ceil((new Date(wishlist.returnDate).getTime() - new Date(wishlist.neededDate).getTime()) / (1000 * 60 * 60 * 24))} days
                                 </div>
                               </div>
@@ -588,12 +588,12 @@ export default function LendPage() {
                         </div>
                       </div>
                       
-                      <div className="mt-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-200">
                         <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
                             <span className="text-white text-xs font-bold">🪙</span>
                           </div>
-                          <span className="text-yellow-800 font-semibold">
+                          <span className="text-teal-800 font-semibold">
                             Earn 10-20 ShareCoins for helping this neighbor!
                           </span>
                         </div>

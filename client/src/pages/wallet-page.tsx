@@ -34,9 +34,9 @@ export default function WalletPage() {
                 >
                   <div className="flex items-center gap-3">
                     {transaction.transactionType === "EARNED" ? (
-                      <ArrowUpCircle className="h-8 w-8 text-green-500" />
+                      <ArrowUpCircle className="h-8 w-8 text-teal-500" />
                     ) : (
-                      <ArrowDownCircle className="h-8 w-8 text-red-500" />
+                      <ArrowDownCircle className="h-8 w-8 text-teal-700" />
                     )}
                     <div>
                       <p className="font-medium">{transaction.description}</p>
@@ -47,8 +47,8 @@ export default function WalletPage() {
                   </div>
                   <p className={`text-lg font-semibold ${
                     transaction.transactionType === "EARNED" 
-                      ? "text-green-600" 
-                      : "text-red-600"
+                      ? "text-teal-600" 
+                      : "text-teal-700"
                   }`}>
                     {transaction.transactionType === "EARNED" ? "+" : "-"}
                     {Number(transaction.amount).toFixed(2)}

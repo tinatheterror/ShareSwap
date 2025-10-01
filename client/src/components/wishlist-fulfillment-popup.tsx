@@ -37,11 +37,11 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'urgent': return 'bg-red-100 text-red-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'normal': return 'bg-blue-100 text-blue-800';
+      case 'urgent': return 'bg-teal-200 text-teal-900';
+      case 'high': return 'bg-teal-100 text-teal-800';
+      case 'normal': return 'bg-teal-50 text-teal-700';
       case 'low': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-blue-100 text-blue-800';
+      default: return 'bg-teal-50 text-teal-700';
     }
   };
 
@@ -135,8 +135,8 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
 
                       {wishlist.neededDate && (
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                            <span className="text-green-700 font-bold text-xs">📅</span>
+                          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                            <span className="text-teal-700 font-bold text-xs">📅</span>
                           </div>
                           <div>
                             <span className="text-slate-600 font-medium">Needed: {new Date(wishlist.neededDate).toLocaleDateString()}</span>
@@ -148,10 +148,10 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
                       )}
                     </div>
 
-                    <div className="bg-gradient-to-r from-yellow-50 to-teal-50 p-4 rounded-lg border border-yellow-200/50 mb-4">
+                    <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-4 rounded-lg border border-teal-200/50 mb-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Coins className="h-5 w-5 text-yellow-600" />
+                          <Coins className="h-5 w-5 text-teal-600" />
                           <span className="font-bold text-teal-800">Earn 10 ShareCoins</span>
                         </div>
                         <span className="text-xs text-teal-600 font-medium">Upon completion</span>
@@ -194,7 +194,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
 
             <div className="space-y-6">
               {/* Primary Earning Rules */}
-              <div className="bg-gradient-to-r from-teal-50 to-blue-50 p-5 rounded-xl border border-teal-200">
+              <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-5 rounded-xl border border-teal-200">
                 <h5 className="font-semibold text-teal-800 mb-4 flex items-center gap-2">
                   <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
@@ -220,23 +220,23 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
               </div>
 
               {/* Bonus Opportunities */}
-              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-5 rounded-xl border border-yellow-200">
-                <h5 className="font-semibold text-yellow-800 mb-4 flex items-center gap-2">
-                  <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center">
+              <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-5 rounded-xl border border-teal-200">
+                <h5 className="font-semibold text-teal-800 mb-4 flex items-center gap-2">
+                  <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
                     <span className="text-white text-xs">★</span>
                   </div>
                   Bonus Opportunities
                 </h5>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                    <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
                     <div>
                       <span className="text-slate-700 font-medium">Extra ShareCoins for urgent requests</span>
                       <p className="text-sm text-slate-600 mt-1">Help neighbors in need and earn bonus rewards</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                    <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
                     <div>
                       <span className="text-slate-700 font-medium">Build reputation while earning rewards</span>
                       <p className="text-sm text-slate-600 mt-1">Each successful lending increases your community standing</p>

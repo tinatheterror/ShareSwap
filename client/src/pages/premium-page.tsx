@@ -66,10 +66,10 @@ export default function PremiumPage() {
   });
 
   const getFeatureIcon = (feature: string) => {
-    if (feature.toLowerCase().includes('priority')) return <Zap className="h-4 w-4 text-yellow-600" />;
-    if (feature.toLowerCase().includes('fee')) return <Gift className="h-4 w-4 text-green-600" />;
-    if (feature.toLowerCase().includes('support')) return <Shield className="h-4 w-4 text-blue-600" />;
-    if (feature.toLowerCase().includes('access')) return <Star className="h-4 w-4 text-purple-600" />;
+    if (feature.toLowerCase().includes('priority')) return <Zap className="h-4 w-4 text-teal-600" />;
+    if (feature.toLowerCase().includes('fee')) return <Gift className="h-4 w-4 text-teal-600" />;
+    if (feature.toLowerCase().includes('support')) return <Shield className="h-4 w-4 text-teal-600" />;
+    if (feature.toLowerCase().includes('access')) return <Star className="h-4 w-4 text-teal-600" />;
     return <Check className="h-4 w-4 text-primary" />;
   };
 
@@ -92,7 +92,7 @@ export default function PremiumPage() {
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
-            <Crown className="h-10 w-10 text-yellow-600" />
+            <Crown className="h-10 w-10 text-teal-600" />
             Upgrade to Premium
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -102,19 +102,19 @@ export default function PremiumPage() {
 
         {/* Current Subscription Status */}
         {currentSubscription && (
-          <Card className="mb-8 border-2 border-yellow-200 bg-yellow-50">
+          <Card className="mb-8 border-2 border-teal-200 bg-teal-50">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Crown className="h-6 w-6 text-yellow-600" />
+                  <Crown className="h-6 w-6 text-teal-600" />
                   <div>
-                    <h3 className="font-semibold text-yellow-800">Active Premium Subscription</h3>
-                    <p className="text-sm text-yellow-600">
+                    <h3 className="font-semibold text-teal-800">Active Premium Subscription</h3>
+                    <p className="text-sm text-teal-600">
                       {currentSubscription.planName} - Active until {new Date(currentSubscription.endDate).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-                <Badge className="bg-yellow-100 text-yellow-800">
+                <Badge className="bg-teal-100 text-teal-800">
                   {currentSubscription.status === 'active' ? 'Active' : currentSubscription.status}
                 </Badge>
               </div>

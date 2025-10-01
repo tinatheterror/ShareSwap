@@ -192,7 +192,7 @@ export default function RentPage() {
                     {item.isConditionVerified ? "Verified" : "Pending"}
                   </p>
                   <div className="flex items-center justify-center gap-1 mb-1">
-                    <span className="text-xs font-semibold text-green-700">
+                    <span className="text-xs font-semibold text-teal-700">
                       ${Number(item.dollarsPrice || 10).toFixed(2)}/day
                     </span>
                   </div>
@@ -202,7 +202,7 @@ export default function RentPage() {
                 </div>
                 
                 <Button 
-                  className="w-full bg-green-600 hover:bg-green-700 text-white text-sm py-2 rounded-lg"
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
                   disabled={!item.isConditionVerified}
                   onClick={() => navigate(`/items/${item.id}`)}
                 >

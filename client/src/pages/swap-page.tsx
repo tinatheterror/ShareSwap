@@ -185,7 +185,7 @@ export default function SwapPage() {
                   <div className="text-center mb-3">
                     <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
                     <div className="flex justify-center mb-2">
-                      <Badge className="bg-purple-100 text-purple-800 text-xs">Swappable</Badge>
+                      <Badge className="bg-teal-100 text-teal-800 text-xs">Swappable</Badge>
                     </div>
                     <p className="text-xs text-gray-600">
                       {item.distance ? `${item.distance.toFixed(1)}km away` : "Nearby"}
@@ -193,7 +193,7 @@ export default function SwapPage() {
                   </div>
                   
                   <Button 
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm py-2 rounded-lg"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     Propose Swap

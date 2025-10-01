@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar, Archive, AlertTriangle } from "lucide-react";
+import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar, Archive, AlertTriangle, HandHeart } from "lucide-react";
 import { useState } from "react";
 
 interface Wishlist {
@@ -331,7 +331,7 @@ export default function WishlistsPage() {
                       item.needType === 'rent' ? 'bg-purple-100 text-purple-800' :
                       'bg-orange-100 text-orange-800'
                     }>
-                      {item.needType === 'borrow' && <ShoppingCart className="h-3 w-3 mr-1" />}
+                      {item.needType === 'borrow' && <HandHeart className="h-3 w-3 mr-1" />}
                       {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
                       {item.needType === 'swap' && <Repeat className="h-3 w-3 mr-1" />}
                       {item.needType.charAt(0).toUpperCase() + item.needType.slice(1)}

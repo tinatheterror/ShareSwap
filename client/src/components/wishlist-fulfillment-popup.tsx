@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
-import { Coins, Heart, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, X } from "lucide-react";
+import { Coins, Heart, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, X, HandHeart } from "lucide-react";
 import { Link } from "wouter";
 
 interface Wishlist {
@@ -47,7 +47,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
 
   const getNeedTypeIcon = (needType: string) => {
     switch (needType) {
-      case 'borrow': return <ShoppingCart className="h-3 w-3" />;
+      case 'borrow': return <HandHeart className="h-3 w-3" />;
       case 'rent': return <ArrowRightLeft className="h-3 w-3" />;
       case 'swap': return <Repeat className="h-3 w-3" />;
       default: return <ShoppingCart className="h-3 w-3" />;
@@ -191,7 +191,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
               </div>
               How ShareCoin Earning Works
             </h4>
-            
+
             <div className="space-y-6">
               {/* Primary Earning Rules */}
               <div className="bg-gradient-to-r from-teal-50 to-blue-50 p-5 rounded-xl border border-teal-200">

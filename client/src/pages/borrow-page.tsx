@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart } from "lucide-react";
+import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart, HandHeart } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";

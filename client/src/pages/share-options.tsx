@@ -2,7 +2,7 @@ import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { Upload, Download } from "lucide-react";
+import { Upload, HandHeart } from "lucide-react";
 
 export default function ShareOptionsPage() {
   const [, navigate] = useLocation();
@@ -45,7 +45,7 @@ export default function ShareOptionsPage() {
             <CardContent className="pt-6">
               <div className="text-center mb-4">
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Download className="w-6 h-6 text-primary" />
+                  <HandHeart className="w-6 h-6 text-primary" />
                 </div>
                 <h2 className="text-xl font-semibold">Borrow</h2>
                 <p className="text-sm text-muted-foreground mt-2">

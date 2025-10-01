@@ -285,78 +285,69 @@ export default function ProfilePage() {
             </Card>
 
             {/* Account Statistics - Gamified */}
-            <Card className="border-2 border-gradient-to-r from-teal-200 to-cyan-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-teal-50 via-cyan-50 to-emerald-50">
+            <Card className="border-2 border-gradient-to-r from-teal-200 to-teal-300 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-teal-50 via-teal-100 to-teal-50">
                 <CardTitle className="flex items-center gap-2 text-xl">
-                  <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
                     <TrendingUp className="h-5 w-5 text-white" />
                   </div>
-                  <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-teal-600 to-teal-700 bg-clip-text text-transparent">
                     Account Statistics
                   </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid md:grid-cols-4 gap-6">
-                  {/* ShareCoins - Gold Theme */}
+                  {/* ShareCoins - Light Teal Theme */}
                   <div className="text-center group hover:scale-105 transition-transform duration-300">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-300 to-teal-400 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                         <Coins className="h-8 w-8 text-white drop-shadow-sm" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
-                        <span className="text-xs text-white font-bold">💰</span>
-                      </div>
                     </div>
-                    <div className="font-bold text-3xl bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mb-1">
+                    <div className="font-bold text-3xl bg-gradient-to-r from-teal-600 to-teal-700 bg-clip-text text-transparent mb-1">
                       {profile?.shareCoins || 0}
                     </div>
-                    <div className="text-sm font-medium text-yellow-700 bg-yellow-50 px-2 py-1 rounded-full">
+                    <div className="text-sm font-medium text-teal-700 bg-teal-50 px-2 py-1 rounded-full">
                       ShareCoins
                     </div>
-                    <div className="mt-2 w-full bg-yellow-100 rounded-full h-2">
+                    <div className="mt-2 w-full bg-teal-100 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-yellow-400 to-yellow-600 h-2 rounded-full transition-all duration-1000"
+                        className="bg-gradient-to-r from-teal-300 to-teal-400 h-2 rounded-full transition-all duration-1000"
                         style={{ width: `${Math.min((profile?.shareCoins || 0) / 100 * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {/* Items Shared - Green Theme */}
+                  {/* Items Shared - Medium Teal Theme */}
                   <div className="text-center group hover:scale-105 transition-transform duration-300">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                         <Package className="h-8 w-8 text-white drop-shadow-sm" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
-                        <span className="text-xs text-white font-bold">📦</span>
-                      </div>
                     </div>
-                    <div className="font-bold text-3xl bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-1">
+                    <div className="font-bold text-3xl bg-gradient-to-r from-teal-700 to-teal-800 bg-clip-text text-transparent mb-1">
                       {profile?.itemsShared || 0}
                     </div>
-                    <div className="text-sm font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full">
+                    <div className="text-sm font-medium text-teal-700 bg-teal-50 px-2 py-1 rounded-full">
                       Items Shared
                     </div>
-                    <div className="mt-2 w-full bg-green-100 rounded-full h-2">
+                    <div className="mt-2 w-full bg-teal-100 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-green-400 to-emerald-600 h-2 rounded-full transition-all duration-1000"
+                        className="bg-gradient-to-r from-teal-400 to-teal-500 h-2 rounded-full transition-all duration-1000"
                         style={{ width: `${Math.min((profile?.itemsShared || 0) / 20 * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {/* Items Borrowed - Teal Theme */}
+                  {/* Items Borrowed - Dark Teal Theme */}
                   <div className="text-center group hover:scale-105 transition-transform duration-300">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                         <Heart className="h-8 w-8 text-white drop-shadow-sm" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-teal-600 rounded-full flex items-center justify-center">
-                        <span className="text-xs text-white font-bold">💙</span>
-                      </div>
                     </div>
-                    <div className="font-bold text-3xl bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-1">
+                    <div className="font-bold text-3xl bg-gradient-to-r from-teal-700 to-teal-800 bg-clip-text text-transparent mb-1">
                       {profile?.itemsBorrowed || 0}
                     </div>
                     <div className="text-sm font-medium text-teal-700 bg-teal-50 px-2 py-1 rounded-full">
@@ -364,31 +355,28 @@ export default function ProfilePage() {
                     </div>
                     <div className="mt-2 w-full bg-teal-100 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-teal-400 to-cyan-600 h-2 rounded-full transition-all duration-1000"
+                        className="bg-gradient-to-r from-teal-500 to-teal-600 h-2 rounded-full transition-all duration-1000"
                         style={{ width: `${Math.min((profile?.itemsBorrowed || 0) / 15 * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {/* Rating - Cyan Theme */}
+                  {/* Rating - Darker Teal Theme */}
                   <div className="text-center group hover:scale-105 transition-transform duration-300">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-sky-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-600 to-teal-700 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                         <Star className="h-8 w-8 text-white drop-shadow-sm fill-current" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-cyan-600 rounded-full flex items-center justify-center">
-                        <span className="text-xs text-white font-bold">⭐</span>
-                      </div>
                     </div>
-                    <div className="font-bold text-3xl bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent mb-1">
+                    <div className="font-bold text-3xl bg-gradient-to-r from-teal-700 to-teal-800 bg-clip-text text-transparent mb-1">
                       {profile?.rating || 0}
                     </div>
-                    <div className="text-sm font-medium text-cyan-700 bg-cyan-50 px-2 py-1 rounded-full">
+                    <div className="text-sm font-medium text-teal-700 bg-teal-50 px-2 py-1 rounded-full">
                       Rating
                     </div>
-                    <div className="mt-2 w-full bg-cyan-100 rounded-full h-2">
+                    <div className="mt-2 w-full bg-teal-100 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-cyan-400 to-sky-600 h-2 rounded-full transition-all duration-1000"
+                        className="bg-gradient-to-r from-teal-600 to-teal-700 h-2 rounded-full transition-all duration-1000"
                         style={{ width: `${Math.min((profile?.rating || 0) / 5 * 100, 100)}%` }}
                       ></div>
                     </div>
@@ -396,7 +384,7 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Community Impact Level */}
-                <div className="mt-8 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-100">
+                <div className="mt-8 p-4 bg-gradient-to-r from-teal-50 to-teal-100 rounded-xl border border-teal-100">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <span className="text-sm font-medium text-teal-700">Community Impact Level</span>
@@ -423,7 +411,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="w-full bg-teal-200 rounded-full h-3">
                     <div 
-                      className="bg-gradient-to-r from-teal-500 to-cyan-500 h-3 rounded-full transition-all duration-1000 relative overflow-hidden"
+                      className="bg-gradient-to-r from-teal-500 to-teal-600 h-3 rounded-full transition-all duration-1000 relative overflow-hidden"
                       style={{ width: `${(((profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0)) % 5) / 5 * 100}%` }}
                     >
                       <div className="absolute inset-0 bg-white opacity-30 animate-pulse"></div>

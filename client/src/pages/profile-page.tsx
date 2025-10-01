@@ -285,13 +285,13 @@ export default function ProfilePage() {
             </Card>
 
             {/* Account Statistics - Gamified */}
-            <Card className="border-2 border-gradient-to-r from-purple-200 to-blue-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-purple-50 via-blue-50 to-teal-50">
+            <Card className="border-2 border-gradient-to-r from-teal-200 to-cyan-200 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-teal-50 via-cyan-50 to-emerald-50">
                 <CardTitle className="flex items-center gap-2 text-xl">
-                  <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-cyan-500 rounded-full flex items-center justify-center">
                     <TrendingUp className="h-5 w-5 text-white" />
                   </div>
-                  <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
                     Account Statistics
                   </span>
                 </CardTitle>
@@ -346,49 +346,49 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {/* Items Borrowed - Blue Theme */}
+                  {/* Items Borrowed - Teal Theme */}
                   <div className="text-center group hover:scale-105 transition-transform duration-300">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                         <Heart className="h-8 w-8 text-white drop-shadow-sm" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-teal-600 rounded-full flex items-center justify-center">
                         <span className="text-xs text-white font-bold">💙</span>
                       </div>
                     </div>
-                    <div className="font-bold text-3xl bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-1">
+                    <div className="font-bold text-3xl bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-1">
                       {profile?.itemsBorrowed || 0}
                     </div>
-                    <div className="text-sm font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded-full">
+                    <div className="text-sm font-medium text-teal-700 bg-teal-50 px-2 py-1 rounded-full">
                       Items Borrowed
                     </div>
-                    <div className="mt-2 w-full bg-blue-100 rounded-full h-2">
+                    <div className="mt-2 w-full bg-teal-100 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-blue-400 to-cyan-600 h-2 rounded-full transition-all duration-1000"
+                        className="bg-gradient-to-r from-teal-400 to-cyan-600 h-2 rounded-full transition-all duration-1000"
                         style={{ width: `${Math.min((profile?.itemsBorrowed || 0) / 15 * 100, 100)}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  {/* Rating - Purple Theme */}
+                  {/* Rating - Cyan Theme */}
                   <div className="text-center group hover:scale-105 transition-transform duration-300">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-sky-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                         <Star className="h-8 w-8 text-white drop-shadow-sm fill-current" />
                       </div>
-                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-cyan-600 rounded-full flex items-center justify-center">
                         <span className="text-xs text-white font-bold">⭐</span>
                       </div>
                     </div>
-                    <div className="font-bold text-3xl bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1">
+                    <div className="font-bold text-3xl bg-gradient-to-r from-cyan-600 to-sky-600 bg-clip-text text-transparent mb-1">
                       {profile?.rating || 0}
                     </div>
-                    <div className="text-sm font-medium text-purple-700 bg-purple-50 px-2 py-1 rounded-full">
+                    <div className="text-sm font-medium text-cyan-700 bg-cyan-50 px-2 py-1 rounded-full">
                       Rating
                     </div>
-                    <div className="mt-2 w-full bg-purple-100 rounded-full h-2">
+                    <div className="mt-2 w-full bg-cyan-100 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-purple-400 to-pink-600 h-2 rounded-full transition-all duration-1000"
+                        className="bg-gradient-to-r from-cyan-400 to-sky-600 h-2 rounded-full transition-all duration-1000"
                         style={{ width: `${Math.min((profile?.rating || 0) / 5 * 100, 100)}%` }}
                       ></div>
                     </div>
@@ -396,11 +396,11 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Community Impact Level */}
-                <div className="mt-8 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
+                <div className="mt-8 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-100">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <span className="text-sm font-medium text-purple-700">Community Impact Level</span>
-                      <div className="text-xs text-purple-600 mt-1">
+                      <span className="text-sm font-medium text-teal-700">Community Impact Level</span>
+                      <div className="text-xs text-teal-600 mt-1">
                         {(() => {
                           const totalImpact = (profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0);
                           const level = Math.floor(totalImpact / 5) + 1;
@@ -413,23 +413,23 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-lg font-bold text-purple-600">
+                      <span className="text-lg font-bold text-teal-600">
                         Level {Math.floor(((profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0)) / 5) + 1}
                       </span>
-                      <div className="text-xs text-purple-600">
+                      <div className="text-xs text-teal-600">
                         {((profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0)) % 5}/5 interactions
                       </div>
                     </div>
                   </div>
-                  <div className="w-full bg-purple-200 rounded-full h-3">
+                  <div className="w-full bg-teal-200 rounded-full h-3">
                     <div 
-                      className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-1000 relative overflow-hidden"
+                      className="bg-gradient-to-r from-teal-500 to-cyan-500 h-3 rounded-full transition-all duration-1000 relative overflow-hidden"
                       style={{ width: `${(((profile?.itemsShared || 0) + (profile?.itemsBorrowed || 0)) % 5) / 5 * 100}%` }}
                     >
                       <div className="absolute inset-0 bg-white opacity-30 animate-pulse"></div>
                     </div>
                   </div>
-                  <div className="text-xs text-purple-600 mt-2">
+                  <div className="text-xs text-teal-600 mt-2">
                     <div className="font-medium mb-1">Level Benefits:</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>• Higher trust score</div>

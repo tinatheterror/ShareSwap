@@ -156,7 +156,7 @@ export default function ProfilePage() {
                           {profile?.fullName || user.username}
                         </CardTitle>
                         {profile?.isVerified && (
-                          <Badge className="bg-green-100 text-green-800">
+                          <Badge className="bg-teal-100 text-teal-800">
                             <Shield className="h-3 w-3 mr-1" />
                             Verified
                           </Badge>
@@ -462,14 +462,14 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-yellow-600" />
+                  <Award className="h-5 w-5 text-teal-600" />
                   Recent Achievements
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-2 bg-yellow-50 rounded-lg">
-                    <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                  <div className="flex items-center gap-3 p-2 bg-teal-50 rounded-lg">
+                    <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center">
                       <Star className="h-4 w-4 text-white" />
                     </div>
                     <div>
@@ -477,8 +477,8 @@ export default function ProfilePage() {
                       <div className="text-xs text-slate-600">Helped 5 neighbors</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <div className="flex items-center gap-3 p-2 bg-teal-50 rounded-lg">
+                    <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
                       <Package className="h-4 w-4 text-white" />
                     </div>
                     <div>
@@ -495,14 +495,14 @@ export default function ProfilePage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Bell className="h-5 w-5 text-blue-600" />
+                    <Bell className="h-5 w-5 text-teal-600" />
                     Location Alerts
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     {locationAlerts.slice(0, 3).map((alert) => (
-                      <div key={alert.id} className="flex items-center justify-between p-2 bg-blue-50 rounded">
+                      <div key={alert.id} className="flex items-center justify-between p-2 bg-teal-50 rounded">
                         <div>
                           <div className="font-medium text-sm">{alert.keyword}</div>
                           <div className="text-xs text-slate-600">{alert.location}</div>

@@ -65,29 +65,14 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
               <Coins className="h-8 w-8 text-white" />
             </div>
             <DialogTitle className="text-2xl font-bold text-slate-800 mb-2">
-              Earn ShareCoins Instantly
+              Fulfill a Wishlist & Earn ShareCoins
             </DialogTitle>
-            <p className="text-slate-600 text-lg">Help your neighbors and get rewarded immediately</p>
+            <p className="text-slate-600 text-lg">Neighbours nearby are looking for these items. Have it at home? Lend, Rent, or Swap it out — and help make their day. You’ll earn ShareCoins and build stronger connections.</p>
           </div>
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl border border-teal-100 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <Heart className="h-6 w-6 text-teal-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-slate-800 text-lg mb-2">
-                  Transform Your Community
-                </h3>
-                <p className="text-slate-600 leading-relaxed">
-                  Your neighbors are actively searching for items you might have. Every successful lending transaction earns you ShareCoins while building stronger community connections.
-                </p>
-              </div>
-            </div>
-          </div>
-
+          {/* Two Column Layout */}
           {urgentWishlists.length > 0 ? (
             <div className="grid md:grid-cols-2 gap-6">
               {urgentWishlists.map((wishlist) => (

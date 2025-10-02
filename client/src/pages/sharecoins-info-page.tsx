@@ -104,7 +104,7 @@ export default function ShareCoinsInfoPage() {
               <div>
                 <h3 className="text-xl font-bold text-slate-800 mb-4">Lender Earnings</h3>
                 <p className="text-slate-600 mb-4">
-                  Typically <strong>80%</strong> of borrower's spent ShareCoins (platform may keep a small portion).
+                  <strong>80%</strong> of borrower's spent ShareCoins.
                 </p>
                 <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                   <p className="text-sm text-slate-700">

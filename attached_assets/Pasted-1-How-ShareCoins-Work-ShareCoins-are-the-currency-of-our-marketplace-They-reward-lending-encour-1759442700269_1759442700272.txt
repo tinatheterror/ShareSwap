@@ -1,0 +1,77 @@
+1. How ShareCoins Work
+
+ShareCoins are the currency of our marketplace.
+
+They reward lending, encourage sharing, and help build community reputation.
+
+2. When Coins Are Earned & Charged
+
+Borrowers: Charged upon item pickup.
+
+Example: You borrow a blender → full ShareCoin cost is deducted at pickup.
+
+Lenders: Earn ShareCoins upon delivery to borrower.
+
+Example: You lend a stroller → coins are credited to your account once the borrower receives it.
+
+✅ This ensures commitment from both sides and smooth, trustable transactions.
+
+3. Valuation System
+
+Borrower Cost depends on item value and lending duration.
+
+Low-value items: 5 ShareCoins per borrow
+
+Medium-value items: 10 ShareCoins per borrow
+
+High-value items: 15–20 ShareCoins per borrow
+
+Lender Earnings:
+
+Typically 50–80% of borrower’s spent ShareCoins (platform may keep a small portion).
+
+Example: Borrower pays 10 ShareCoins → lender earns 8 ShareCoins upon delivery.
+
+Bonus Coins:
+
+Urgent requests: +2 coins
+
+Lending to fulfill wishlist items: +1–3 coins
+
+First-time lenders or special promotions: +1 coin
+
+4. Transaction Flow
+
+Borrower picks up item → ShareCoins deducted
+
+Lender delivers item → ShareCoins credited
+
+Optional bonuses applied
+
+Reputation updated: successful transactions increase lender’s standing
+
+5. Additional Rules
+
+Coins are non-transferable outside the app.
+
+Refunds: If the item isn’t delivered or is returned damaged, coins may be refunded or partially refunded per platform rules.
+
+Tracking: All transactions are tracked in-app for transparency.
+
+Reputation: Each successful lending increases lender’s reputation, unlocking future bonuses and privileges.
+
+6. Example
+Item Type	Borrower Pays	Lender Earns	Bonus Coins	Notes
+Blender (Medium)	10 SC	8 SC	2 SC urgent	Coins credited upon delivery
+Stroller (High)	15 SC	12 SC	3 SC wishlist	Coins credited upon delivery
+Board Game (Low)	5 SC	4 SC	0 SC	Coins credited upon delivery
+
+✅ Key Points
+
+Borrowers pay at pickup → commitment ensured
+
+Lenders earn at delivery → safe and fair
+
+Bonuses and reputation reward helpful behavior
+
+Simple, transparent, scalable for multiple item types

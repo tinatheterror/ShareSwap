@@ -65,12 +65,7 @@ export default function ShareCoinsInfoPage() {
               </div>
             </div>
 
-            <div className="mt-6 bg-gradient-to-r from-teal-50 to-teal-100 p-4 rounded-lg border border-teal-200 flex items-center gap-3">
-              <CheckCircle className="h-6 w-6 text-teal-600 flex-shrink-0" />
-              <p className="text-slate-700 font-medium">
-                This ensures commitment from both sides and smooth, trustable transactions.
-              </p>
-            </div>
+            
           </CardContent>
         </Card>
 
@@ -90,17 +85,17 @@ export default function ShareCoinsInfoPage() {
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                     <Badge className="bg-teal-600 text-white mb-2">Low-Value</Badge>
-                    <p className="text-2xl font-bold text-teal-700">5 SC</p>
+                    <p className="text-2xl font-bold text-teal-700">5 ShareCoins</p>
                     <p className="text-sm text-slate-600">per borrow</p>
                   </div>
                   <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                     <Badge className="bg-teal-600 text-white mb-2">Medium-Value</Badge>
-                    <p className="text-2xl font-bold text-teal-700">10 SC</p>
+                    <p className="text-2xl font-bold text-teal-700">10 ShareCoins</p>
                     <p className="text-sm text-slate-600">per borrow</p>
                   </div>
                   <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                     <Badge className="bg-teal-600 text-white mb-2">High-Value</Badge>
-                    <p className="text-2xl font-bold text-teal-700">15-20 SC</p>
+                    <p className="text-2xl font-bold text-teal-700">15-20 ShareCoins</p>
                     <p className="text-sm text-slate-600">per borrow</p>
                   </div>
                 </div>
@@ -236,23 +231,23 @@ export default function ShareCoinsInfoPage() {
                 <tbody>
                   <tr className="border-b border-slate-200">
                     <td className="py-3 px-4 text-slate-700">Blender (Medium)</td>
-                    <td className="py-3 px-4 text-slate-700">10 SC</td>
-                    <td className="py-3 px-4 text-slate-700">8 SC</td>
-                    <td className="py-3 px-4 text-slate-700">2 SC urgent</td>
+                    <td className="py-3 px-4 text-slate-700">10 ShareCoins</td>
+                    <td className="py-3 px-4 text-slate-700">8 ShareCoins</td>
+                    <td className="py-3 px-4 text-slate-700">2 ShareCoins urgent</td>
                     <td className="py-3 px-4 text-slate-600 text-sm">Coins credited upon delivery</td>
                   </tr>
                   <tr className="border-b border-slate-200">
                     <td className="py-3 px-4 text-slate-700">Stroller (High)</td>
-                    <td className="py-3 px-4 text-slate-700">15 SC</td>
-                    <td className="py-3 px-4 text-slate-700">12 SC</td>
-                    <td className="py-3 px-4 text-slate-700">3 SC wishlist</td>
+                    <td className="py-3 px-4 text-slate-700">15 ShareCoins</td>
+                    <td className="py-3 px-4 text-slate-700">12 ShareCoins</td>
+                    <td className="py-3 px-4 text-slate-700">3 ShareCoins wishlist</td>
                     <td className="py-3 px-4 text-slate-600 text-sm">Coins credited upon delivery</td>
                   </tr>
                   <tr>
                     <td className="py-3 px-4 text-slate-700">Board Game (Low)</td>
-                    <td className="py-3 px-4 text-slate-700">5 SC</td>
-                    <td className="py-3 px-4 text-slate-700">4 SC</td>
-                    <td className="py-3 px-4 text-slate-700">0 SC</td>
+                    <td className="py-3 px-4 text-slate-700">5 ShareCoins</td>
+                    <td className="py-3 px-4 text-slate-700">4 ShareCoins</td>
+                    <td className="py-3 px-4 text-slate-700">0 ShareCoins</td>
                     <td className="py-3 px-4 text-slate-600 text-sm">Coins credited upon delivery</td>
                   </tr>
                 </tbody>
@@ -261,33 +256,7 @@ export default function ShareCoinsInfoPage() {
           </CardContent>
         </Card>
 
-        {/* Key Points */}
-        <Card className="border-0 shadow-xl bg-gradient-to-r from-teal-500 to-teal-600 text-white">
-          <CardContent className="p-8">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <CheckCircle className="h-6 w-6" />
-              Key Points
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-3 h-3 bg-white rounded-full mt-1.5 flex-shrink-0"></div>
-                <p className="text-white">Borrowers pay at pickup → commitment ensured</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-3 h-3 bg-white rounded-full mt-1.5 flex-shrink-0"></div>
-                <p className="text-white">Lenders earn at delivery → safe and fair</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-3 h-3 bg-white rounded-full mt-1.5 flex-shrink-0"></div>
-                <p className="text-white">Bonuses and reputation reward helpful behavior</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-3 h-3 bg-white rounded-full mt-1.5 flex-shrink-0"></div>
-                <p className="text-white">Simple, transparent, scalable for multiple item types</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        
       </main>
     </div>
   );

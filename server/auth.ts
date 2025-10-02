@@ -100,8 +100,7 @@ export function setupAuth(app: Express) {
       done(null, user);
     } catch (error) {
       console.error("Deserialization error:", error);
-      // Return false instead of passing error to prevent app crash on DB issues
-      done(null, false);
+      done(error);
     }
   });
 

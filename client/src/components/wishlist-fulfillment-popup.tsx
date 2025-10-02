@@ -193,7 +193,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
                       Learn More →
                     </button>
                   </Link>
-                </div></h5>
+                </div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>

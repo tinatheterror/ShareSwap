@@ -68,7 +68,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
               Fulfill a Wishlist & Earn ShareCoins
             </DialogTitle>
             <p className="text-slate-600 text-lg">Neighbours nearby are looking for these items. Have it at home?</p>
-            <p className="text-slate-600 text-lg">Lend, Rent, or Swap it out — and help make their day. You'll earn ShareCoins and build stronger connections.</p>
+            <p className="text-slate-600 text-lg"><span className="font-bold">Lend, Rent, or Swap it out</span> — and help make their day. You'll earn ShareCoins and build stronger connections.</p>
           </div>
         </DialogHeader>
 

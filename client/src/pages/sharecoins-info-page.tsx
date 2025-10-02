@@ -32,15 +32,15 @@ export default function ShareCoinsInfoPage() {
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                    <span className="text-orange-600 font-bold">B</span>
+                  <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                    <span className="text-teal-600 font-bold">B</span>
                   </div>
                   Borrowers
                 </h3>
                 <p className="text-slate-600">
                   <span className="font-semibold">Charged upon item pickup.</span>
                 </p>
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                   <p className="text-sm text-slate-700">
                     <strong>Example:</strong> You borrow a blender → full ShareCoin cost is deducted at pickup.
                   </p>
@@ -88,19 +88,19 @@ export default function ShareCoinsInfoPage() {
                 <h3 className="text-xl font-bold text-slate-800 mb-4">Borrower Cost</h3>
                 <p className="text-slate-600 mb-4">Depends on item value and lending duration:</p>
                 <div className="grid md:grid-cols-3 gap-4">
-                  <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <Badge className="bg-green-600 text-white mb-2">Low-Value</Badge>
-                    <p className="text-2xl font-bold text-green-700">5 SC</p>
+                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                    <Badge className="bg-teal-600 text-white mb-2">Low-Value</Badge>
+                    <p className="text-2xl font-bold text-teal-700">5 SC</p>
                     <p className="text-sm text-slate-600">per borrow</p>
                   </div>
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <Badge className="bg-blue-600 text-white mb-2">Medium-Value</Badge>
-                    <p className="text-2xl font-bold text-blue-700">10 SC</p>
+                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                    <Badge className="bg-teal-600 text-white mb-2">Medium-Value</Badge>
+                    <p className="text-2xl font-bold text-teal-700">10 SC</p>
                     <p className="text-sm text-slate-600">per borrow</p>
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                    <Badge className="bg-purple-600 text-white mb-2">High-Value</Badge>
-                    <p className="text-2xl font-bold text-purple-700">15-20 SC</p>
+                  <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
+                    <Badge className="bg-teal-600 text-white mb-2">High-Value</Badge>
+                    <p className="text-2xl font-bold text-teal-700">15-20 SC</p>
                     <p className="text-sm text-slate-600">per borrow</p>
                   </div>
                 </div>
@@ -109,7 +109,7 @@ export default function ShareCoinsInfoPage() {
               <div>
                 <h3 className="text-xl font-bold text-slate-800 mb-4">Lender Earnings</h3>
                 <p className="text-slate-600 mb-4">
-                  Typically <strong>50–80%</strong> of borrower's spent ShareCoins (platform may keep a small portion).
+                  Typically <strong>80%</strong> of borrower's spent ShareCoins (platform may keep a small portion).
                 </p>
                 <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                   <p className="text-sm text-slate-700">
@@ -120,7 +120,7 @@ export default function ShareCoinsInfoPage() {
 
               <div>
                 <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                  <Star className="h-6 w-6 text-yellow-500" />
+                  <Star className="h-6 w-6 text-teal-500" />
                   Bonus Coins
                 </h3>
                 <div className="space-y-3">

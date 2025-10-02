@@ -181,12 +181,19 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
             <div className="space-y-6">
               {/* Primary Earning Rules */}
               <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-5 rounded-xl border border-teal-200">
-                <h5 className="font-semibold text-teal-800 mb-4 flex items-center gap-2">
-                  <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  Earning Requirements
-                </h5>
+                <div className="flex items-center justify-between mb-4">
+                  <h5 className="font-semibold text-teal-800 flex items-center gap-2">
+                    <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                    Earning Requirements
+                  </h5>
+                  <Link href="/sharecoins-info">
+                    <button className="text-sm text-teal-700 hover:text-teal-900 font-semibold hover:underline">
+                      Learn More →
+                    </button>
+                  </Link>
+                </div></h5>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>

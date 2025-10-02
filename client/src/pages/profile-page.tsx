@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
 import { 
   User, 
   Mail, 
@@ -26,9 +28,10 @@ import {
   TrendingUp,
   Edit3,
   Save,
-  X
+  X,
+  BookOpen
 } from "lucide-react";
-import { useState } from "react";
+import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 
 interface UserProfile {
   id: number;
@@ -60,6 +63,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: '',
     bio: '',
@@ -121,6 +125,16 @@ export default function ProfilePage() {
       phone: ''
     });
   };
+
+  // Check if the tutorial has been seen before
+  const hasSeenTutorial = typeof window !== 'undefined' ? localStorage.getItem('hasSeenTutorial') === 'true' : false;
+
+  // Automatically show tutorial if not seen and user is logged in
+  useState(() => {
+    if (user && !hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  });
 
   if (!user) {
     return (
@@ -252,7 +266,7 @@ export default function ProfilePage() {
                         <p className="text-slate-600 leading-relaxed">{profile.bio}</p>
                       </div>
                     )}
-                    
+
                     <div className="grid md:grid-cols-2 gap-4">
                       {profile?.email && (
                         <div className="flex items-center gap-3">
@@ -518,6 +532,16 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+
+        {/* Onboarding Tutorial */}
+        {showTutorial && (
+          <OnboardingTutorial
+            onComplete={() => {
+              setShowTutorial(false);
+              localStorage.setItem('hasSeenTutorial', 'true');
+            }}
+          />
+        )}
       </main>
     </div>
   );

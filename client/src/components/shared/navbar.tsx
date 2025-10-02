@@ -38,7 +38,7 @@ export function Navbar() {
                   <NavigationMenuItem>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex items-center gap-2 hover:text-primary hover:border-primary">
+                        <Button variant="outline" className="flex items-center gap-2 hover:text-primary hover:border-primary" data-tutorial="wallet">
                           <Coins className="h-5 w-5 text-primary" />
                           <div className="flex flex-col items-start">
                             <span className="text-xs text-muted-foreground">Total Balance</span>

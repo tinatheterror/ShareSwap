@@ -2,7 +2,7 @@ import { MarketplaceCard } from "@/components/shared/marketplace-card";
 import { Navbar } from "@/components/shared/navbar";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
-import { HandshakeIcon, Banknote, ArrowLeftRight, Coins } from "lucide-react";
+import { HandshakeIcon, Banknote, ArrowLeftRight, Coins, Heart } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -81,13 +81,14 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Quick access to wishlist fulfillment */}
-        <div className="mt-12 text-center" data-tutorial="earn-button">
+        {/* Earn ShareCoins Button */}
+        <div className="mt-8">
           <Button
-            onClick={() => navigate('/sharecoins-info')}
-            className="bg-teal-600 hover:bg-teal-700 text-white px-8"
+            data-tutorial="earn-button"
+            onClick={() => navigate('/wishlists')}
+            className="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
           >
-            <Coins className="h-4 w-4 mr-2" />
+            <Heart className="mr-2 h-5 w-5" />
             Earn ShareCoins by Helping Neighbors
           </Button>
         </div>

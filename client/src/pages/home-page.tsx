@@ -52,7 +52,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div data-tutorial="lend-borrow">
+          <div data-tutorial="lend-borrow" className="flex">
             <MarketplaceCard
               title="Lend & Borrow"
               description="Share items with trusted community members"
@@ -61,7 +61,7 @@ export default function HomePage() {
               buttonText="Let's Share"
             />
           </div>
-          <div data-tutorial="rent">
+          <div data-tutorial="rent" className="flex">
             <MarketplaceCard
               title="Rent It"
               description="Earn real money by renting out your items securely"
@@ -70,7 +70,7 @@ export default function HomePage() {
               buttonText="Let's Rent"
             />
           </div>
-          <div data-tutorial="swap">
+          <div data-tutorial="swap" className="flex">
             <MarketplaceCard
               title="Swap It"
               description="Exchange items with other verified users"

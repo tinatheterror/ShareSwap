@@ -82,7 +82,7 @@ export default function HomePage() {
         </div>
 
         {/* Earn ShareCoins Button */}
-        <div className="mt-8">
+        <div className="mt-8 max-w-5xl mx-auto">
           <Button
             data-tutorial="earn-button"
             onClick={() => navigate('/wishlists')}

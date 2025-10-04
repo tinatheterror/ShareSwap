@@ -165,22 +165,13 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.3 }}
-          style={{
-            position: 'fixed',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            ...(step.position === 'center' && {
-              top: '50%',
-              transform: 'translate(-50%, -50%)'
-            }),
-            ...(step.position === 'top' && {
-              top: '6rem'
-            }),
-            ...(step.position === 'bottom' && {
-              bottom: '6rem'
-            })
-          }}
-          className="z-[9999] pointer-events-auto w-[90%] max-w-md"
+          className={`fixed z-[9999] pointer-events-auto w-[90%] max-w-md left-1/2 -translate-x-1/2 ${
+            step.position === 'center'
+              ? 'top-1/2 -translate-y-1/2'
+              : step.position === 'top'
+              ? 'top-24'
+              : 'bottom-24'
+          }`}
         >
           <Card className="border-2 border-teal-500 shadow-2xl bg-white/95 backdrop-blur-sm">
             <CardContent className="p-6">

@@ -166,12 +166,12 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: -20 }}
           transition={{ duration: 0.3 }}
-          className={`fixed z-[9999] pointer-events-auto left-1/2 -translate-x-1/2 ${
+          className={`fixed z-[9999] pointer-events-auto ${
             step.position === 'center'
-              ? 'top-1/2 -translate-y-1/2'
+              ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
               : step.position === 'top'
-              ? 'top-24'
-              : 'bottom-24'
+              ? 'top-24 left-1/2 -translate-x-1/2'
+              : 'bottom-24 left-1/2 -translate-x-1/2'
           } w-[90%] max-w-md`}
         >
           <Card className="border-2 border-teal-500 shadow-2xl bg-white/95 backdrop-blur-sm">

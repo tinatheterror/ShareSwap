@@ -48,6 +48,14 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 5,
+    title: 'My ShareChest',
+    description: 'Manage all your uploaded items in one place. View, edit, and track the availability of everything you\'re sharing with the community.',
+    icon: <Home className="h-8 w-8 text-teal-600" />,
+    highlightSelector: '[data-tutorial="sharechest"]',
+    position: 'bottom'
+  },
+  {
+    id: 6,
     title: 'Your ShareCoin Wallet',
     description: 'View your ShareCoin balance here. ShareCoins are the currency of our marketplace - use them to borrow items!',
     icon: <Coins className="h-8 w-8 text-teal-600" />,
@@ -55,7 +63,7 @@ const tutorialSteps: TutorialStep[] = [
     position: 'bottom'
   },
   {
-    id: 6,
+    id: 7,
     title: 'Earn More ShareCoins',
     description: 'Click on your wallet to see ways to earn ShareCoins: play games, complete achievements, fulfill wishlists, and invite friends!',
     icon: <Coins className="h-8 w-8 text-teal-600" />,
@@ -63,7 +71,7 @@ const tutorialSteps: TutorialStep[] = [
     position: 'bottom'
   },
   {
-    id: 7,
+    id: 8,
     title: 'Play Games to Earn',
     description: 'Complete sponsored games to earn ShareCoins! It\'s fun and rewarding - find it in the "Earn More ShareCoins" dropdown.',
     icon: <Gamepad2 className="h-8 w-8 text-teal-600" />,
@@ -71,7 +79,7 @@ const tutorialSteps: TutorialStep[] = [
     position: 'bottom'
   },
   {
-    id: 8,
+    id: 9,
     title: 'Fulfill Wishlists',
     description: 'Help neighbors by lending items from their wishlist and earn bonus ShareCoins! Everyone wins when we share.',
     icon: <Heart className="h-8 w-8 text-teal-600" />,
@@ -79,7 +87,7 @@ const tutorialSteps: TutorialStep[] = [
     position: 'top'
   },
   {
-    id: 9,
+    id: 10,
     title: 'You\'re All Set! 🎊',
     description: 'You now know all the key features of ShareSwap. Start sharing, earning, and connecting with your community!',
     icon: <CheckCircle className="h-8 w-8 text-teal-600" />,

@@ -8,6 +8,7 @@ import {
   items,
   users,
   shareCoinsTransactions,
+  notifications,
 } from "@db/schema";
 import { eq, and, or, desc, sql, gte } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
@@ -968,6 +969,24 @@ export function registerRoutes(app: Express): Server {
       })
       .returning();
 
+    // Get requester info for notification
+    const [requester] = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(eq(users.id, req.user.id))
+      .limit(1);
+
+    // Create notification for item owner
+    await db.insert(notifications).values({
+      userId: item.ownerId,
+      type: "item_request",
+      title: "New Item Request",
+      message: `${requester?.username || "Someone"} wants to ${requestType.toLowerCase()} your ${item.name}`,
+      itemId: item.id,
+      requestId: request.id,
+      isRead: false,
+    });
+
     res.status(201).json(request);
   });
 
@@ -1190,6 +1209,106 @@ export function registerRoutes(app: Express): Server {
     }
 
     res.json(updatedRequest);
+  });
+
+  // Get user notifications
+  app.get("/api/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, req.user.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
+
+      res.json(userNotifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Mark notification as read
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const notificationId = parseInt(req.params.id);
+
+    try {
+      const [updated] = await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(notifications.id, notificationId),
+            eq(notifications.userId, req.user.id)
+          )
+        )
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to update notification" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.post("/api/notifications/read-all", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      await db
+        .update(notifications)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.isRead, false)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ error: "Failed to update notifications" });
+    }
+  });
+
+  // Get unread notification count
+  app.get("/api/notifications/unread-count", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const [result] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.userId, req.user.id),
+            eq(notifications.isRead, false)
+          )
+        );
+
+      res.json({ count: result.count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
   });
 
   // Get statistics for public display

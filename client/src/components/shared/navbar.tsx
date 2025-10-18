@@ -14,7 +14,62 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { MessageCircle, Coins, Gamepad2, Trophy, Heart, Crown, Users, Package } from "lucide-react";
+import { MessageCircle, Coins, Gamepad2, Trophy, Heart, Crown, Users, Package, Bell } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+
+// Placeholder for NotificationBell component - actual implementation would fetch and display notifications
+function NotificationBell() {
+  const { user } = useAuth();
+
+  // Fetch unread notifications (replace with actual API call)
+  const { data: notifications } = useQuery({
+    queryKey: ["unreadNotifications", user?.id],
+    queryFn: async () => {
+      // Simulate fetching unread notifications
+      return { count: Math.floor(Math.random() * 5) };
+    },
+    enabled: !!user?.id, // Only run if user is logged in
+  });
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative p-2 hover:text-primary">
+          <Bell className="h-5 w-5" />
+          {notifications?.count > 0 && (
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 p-1 text-xs font-bold flex items-center justify-center">
+              {notifications.count}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <div className="p-2">
+          <h6 className="text-sm font-semibold text-primary mb-2">Notifications</h6>
+          {notifications?.count === 0 ? (
+            <p className="text-sm text-muted-foreground">No new notifications</p>
+          ) : (
+            <>
+              <Link href="/notifications">
+                <DropdownMenuItem className="cursor-pointer hover:text-primary flex flex-col items-start">
+                  <p className="font-medium">New Borrow Request</p>
+                  <p className="text-xs text-muted-foreground">Someone wants to borrow your item!</p>
+                </DropdownMenuItem>
+              </Link>
+              <DropdownMenuSeparator />
+              <Link href="/notifications">
+                <DropdownMenuItem className="cursor-pointer hover:text-primary">
+                  <span>View All Notifications</span>
+                </DropdownMenuItem>
+              </Link>
+            </>
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -109,6 +164,7 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <div className="flex items-center gap-4">
+                      <NotificationBell />
                       <Link href="/profile">
                         <Avatar className="border-2 border-primary cursor-pointer hover:border-primary/80 transition-colors">
                           <AvatarFallback className="bg-primary/10 text-primary">

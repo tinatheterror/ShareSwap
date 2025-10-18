@@ -522,3 +522,19 @@ export const insertUserReviewSchema = createInsertSchema(userReviews);
 export const selectUserReviewSchema = createSelectSchema(userReviews);
 export type InsertUserReview = typeof userReviews.$inferInsert;
 export type SelectUserReview = typeof userReviews.$inferSelect;
+
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: varchar("type", { length: 50 }).notNull(), // 'item_request', 'request_accepted', 'request_declined', etc.
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  itemId: integer("item_id").references(() => items.id),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type InsertNotification = typeof notifications.$inferInsert;
+export type SelectNotification = typeof notifications.$inferSelect;

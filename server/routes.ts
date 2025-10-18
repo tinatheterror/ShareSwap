@@ -1018,15 +1018,17 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     // Create notification for item owner
-    await db.insert(notifications).values({
-      userId: item.ownerId,
-      type: "item_request",
-      title: "New Item Request",
-      message: `${requester?.username || "Someone"} wants to ${requestType.toLowerCase()} your ${item.name}`,
-      itemId: item.id,
-      requestId: request.id,
-      isRead: false,
-    });
+    if (item.ownerId) {
+      await db.insert(notifications).values({
+        userId: item.ownerId,
+        type: "item_request",
+        title: "New Item Request",
+        message: `${requester?.username || "Someone"} wants to ${requestType.toLowerCase()} your ${item.name}`,
+        itemId: item.id,
+        requestId: request.id,
+        isRead: false,
+      });
+    }
 
     res.status(201).json(request);
   });
@@ -1483,7 +1485,7 @@ export function registerRoutes(app: Express): Server {
           .set({
             shareCoins: sql`share_coins + ${shareCoinsReward}`,
           })
-          .where(eq(users.id, renterId));
+          .where(sql`${users.id} = ${renterId}`);
 
         // Award to owner
         await db.insert(shareCoinsTransactions).values({
@@ -1498,7 +1500,7 @@ export function registerRoutes(app: Express): Server {
           .set({
             shareCoins: sql`share_coins + ${shareCoinsReward}`,
           })
-          .where(eq(users.id, ownerId));
+          .where(sql`${users.id} = ${ownerId}`);
 
         console.log(`✅ ${platformConfig.messaging.shareCoinsReward}`);
         console.log(`Awarded ${shareCoinsReward} ShareCoins to both users for rental completion`);
@@ -1522,7 +1524,7 @@ export function registerRoutes(app: Express): Server {
             .set({
               shareCoins: sql`share_coins + ${rewardPerUser}`,
             })
-            .where(eq(users.id, renterId));
+            .where(sql`${users.id} = ${renterId}`);
 
           await db.insert(shareCoinsTransactions).values({
             userId: ownerId,
@@ -1536,7 +1538,7 @@ export function registerRoutes(app: Express): Server {
             .set({
               shareCoins: sql`share_coins + ${rewardPerUser}`,
             })
-            .where(eq(users.id, ownerId));
+            .where(sql`${users.id} = ${ownerId}`);
 
           console.log(`Awarded ${rewardPerUser} bonus ShareCoins to each user from community reward fund`);
         }

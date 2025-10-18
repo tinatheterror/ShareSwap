@@ -3,12 +3,23 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import rateLimit from "express-rate-limit";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db, pool } from "@db";
 import { eq } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
+
+// Security: Rate limiter for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 attempts per windowMs
+  message: 'Too many authentication attempts, please try again later.',
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 declare global {
   namespace Express {
@@ -36,14 +47,21 @@ async function getUserByUsername(username: string) {
   return db.select().from(users).where(eq(users.username, username)).limit(1);
 }
 
+// Use a strong session secret from environment, fallback to REPL_ID only in development
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.REPL_ID || randomBytes(32).toString('hex');
+
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn('WARNING: SESSION_SECRET not set in production! Using fallback which is insecure.');
+}
+
 export const sessionSettings: session.SessionOptions = {
-  secret: process.env.REPL_ID!,
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Disabled for development
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production', // Enable secure cookies in production
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'strict', // Stricter CSRF protection
     httpOnly: true,
     path: '/'
   },
@@ -104,7 +122,8 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
+  // Security: Apply rate limiting to login endpoint
+  app.post("/api/login", authLimiter, (req, res, next) => {
     passport.authenticate("local", (err: any, user: SelectUser | false, info: any) => {
       if (err) return next(err);
       if (!user) {
@@ -117,7 +136,8 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  // Security: Apply rate limiting to register endpoint
+  app.post("/api/register", authLimiter, async (req, res, next) => {
     try {
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {

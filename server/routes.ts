@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomBytes } from "crypto";
 import { setupAuth } from "./auth";
 import { db, pool } from "@db";
 import {
@@ -51,15 +52,39 @@ function calculateDistance(
   return R * c;
 }
 
-// Configure multer for handling file uploads
+// Security: Configure multer for secure file uploads
 const storage = multer.diskStorage({
   destination: "./uploads/",
   filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
+    // Sanitize filename to prevent directory traversal attacks
+    const sanitizedOriginalName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.-]/g, '_');
+    const randomPrefix = randomBytes(16).toString('hex');
+    cb(null, `${randomPrefix}-${Date.now()}${path.extname(sanitizedOriginalName)}`);
   },
 });
 
-const upload = multer({ storage: storage });
+// Security: File upload validation and limits
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+    files: 10, // Max 10 files per request
+  },
+  fileFilter: function (req, file, cb) {
+    // Only allow image files
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    
+    const ext = path.extname(file.originalname).toLowerCase();
+    const mimeType = file.mimetype.toLowerCase();
+    
+    if (allowedMimeTypes.includes(mimeType) && allowedExtensions.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'));
+    }
+  },
+});
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -86,6 +111,19 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "ID document is required" });
       }
 
+      // CRITICAL SECURITY WARNING: PCI COMPLIANCE VIOLATION!
+      // This code accepts raw credit card data (card number, CVV, expiry) directly.
+      // This is NOT PCI-DSS compliant and creates severe legal and security risks.
+      // 
+      // REQUIRED BEFORE PRODUCTION:
+      // 1. Integrate with a PCI-compliant payment gateway (Stripe, Square, Braintree)
+      // 2. Use tokenization - never handle raw card data
+      // 3. Replace this entire section with payment gateway integration
+      // 4. Store only the payment method token, never raw card data
+      // 5. Remove all credit card data from request logs
+      //
+      // Current risk level: CRITICAL - DO NOT DEPLOY WITHOUT FIXING
+      
       if (!req.body.cardNumber || req.body.cardNumber.trim().length !== 16) {
         return res.status(400).json({ error: "Valid 16-digit card number is required" });
       }
@@ -97,6 +135,9 @@ export function registerRoutes(app: Express): Server {
       if (!req.body.cvv || req.body.cvv.trim().length !== 3) {
         return res.status(400).json({ error: "Valid 3-digit CVV is required" });
       }
+      
+      // NOTE: At least this data is NOT being stored in the database (verified below)
+      // But handling it at all is still a violation
 
       const verification = await db
         .insert(verifications)
@@ -2022,8 +2063,16 @@ export function registerRoutes(app: Express): Server {
         console.log("Received message from user:", userId, "data:", data);
 
         if (data.type === "authenticate") {
+          // SECURITY WARNING: This authentication is NOT SECURE for production!
+          // The client can claim to be any userId without verification.
+          // TODO: Implement proper session-based authentication:
+          // 1. Parse session cookie from WebSocket upgrade request
+          // 2. Validate session against the session store
+          // 3. Extract userId from validated session
+          // 4. Reject connection if session is invalid
           userId = data.payload.userId;
           console.log("User authenticated via WebSocket:", userId);
+          console.warn("WARNING: WebSocket authentication is not secure - client can spoof userId");
           
           // Store the authenticated connection
           if (userId) connectedClients.set(userId, ws);

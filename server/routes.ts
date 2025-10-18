@@ -2032,22 +2032,62 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
 
+  // Security: Helper function to parse and validate session from WebSocket request
+  async function validateWebSocketSession(req: any): Promise<number | null> {
+    return new Promise((resolve) => {
+      // Parse cookies manually from the request
+      const cookieHeader = req.headers.cookie;
+      if (!cookieHeader) {
+        console.log("No cookie header found in WebSocket request");
+        return resolve(null);
+      }
+
+      // Extract session ID from cookie
+      const cookies = cookieHeader.split(';').reduce((acc: any, cookie: string) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+
+      const sessionId = cookies['shareswap.sid'];
+      if (!sessionId) {
+        console.log("No session cookie found");
+        return resolve(null);
+      }
+
+      // Decode session ID (remove 's:' prefix and signature)
+      const decodedSessionId = decodeURIComponent(sessionId).split('.')[0].substring(2);
+      
+      // Validate session in the store
+      store.get(decodedSessionId, (err, session) => {
+        if (err) {
+          console.error("Error validating WebSocket session:", err);
+          return resolve(null);
+        }
+        
+        if (!session || !session.passport || !session.passport.user) {
+          console.log("Invalid or expired session");
+          return resolve(null);
+        }
+        
+        const userId = session.passport.user;
+        console.log("WebSocket session validated for user:", userId);
+        resolve(userId);
+      });
+    });
+  }
+
   // Simplified WebSocket server configuration
   const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/chat",
     verifyClient: (info, callback) => {
-      console.log("WebSocket connection attempt from:", info.origin);
-      console.log("WebSocket headers:", info.req.headers);
-      
       // Skip verification for Vite HMR
       if (info.req.headers["sec-websocket-protocol"] === "vite-hmr") {
-        console.log("Allowing Vite HMR WebSocket connection");
         return callback(true);
       }
       
-      // Allow connection and authenticate later during the handshake
-      console.log("Allowing WebSocket connection for later authentication");
+      // Allow connection - we'll authenticate during the connection handler
       callback(true);
     },
   });
@@ -2055,40 +2095,44 @@ export function registerRoutes(app: Express): Server {
   // Improve WebSocket message handling
   const connectedClients = new Map<number, WebSocket>();
 
-  wss.on("connection", (ws: WebSocket, req: any) => {
+  wss.on("connection", async (ws: WebSocket, req: any) => {
     console.log("New WebSocket connection established");
-    let userId: number | null = null;
+    
+    // Security: Validate session immediately on connection
+    const userId = await validateWebSocketSession(req);
+    
+    if (!userId) {
+      console.log("WebSocket connection rejected: Invalid or missing session");
+      ws.send(JSON.stringify({
+        type: "auth_error",
+        message: "Authentication failed - please log in"
+      }));
+      ws.close(1008, "Unauthorized");
+      return;
+    }
+    
+    console.log(`✅ WebSocket authenticated for user ${userId}`);
+    connectedClients.set(userId, ws);
+    
+    // Send authentication success
+    ws.send(JSON.stringify({
+      type: "auth_success",
+      message: "Authenticated successfully",
+      userId
+    }));
 
     ws.on("message", async (message: string) => {
       try {
         const data = JSON.parse(message.toString());
         console.log("Received message from user:", userId, "data:", data);
 
+        // No need for authenticate message type anymore - authentication happens on connection
         if (data.type === "authenticate") {
-          // SECURITY WARNING: This authentication is NOT SECURE for production!
-          // The client can claim to be any userId without verification.
-          // TODO: Implement proper session-based authentication:
-          // 1. Parse session cookie from WebSocket upgrade request
-          // 2. Validate session against the session store
-          // 3. Extract userId from validated session
-          // 4. Reject connection if session is invalid
-          userId = data.payload.userId;
-          console.log("User authenticated via WebSocket:", userId);
-          console.warn("WARNING: WebSocket authentication is not secure - client can spoof userId");
-          
-          // Store the authenticated connection
-          if (userId) connectedClients.set(userId, ws);
-          
-          // Send confirmation
           ws.send(JSON.stringify({
             type: "auth_success",
-            message: "Authentication successful"
+            message: "Already authenticated",
+            userId
           }));
-          return;
-        }
-
-        if (!userId) {
-          console.error("Unauthenticated message received");
           return;
         }
 

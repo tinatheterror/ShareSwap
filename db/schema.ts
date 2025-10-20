@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -70,7 +70,15 @@ export const items = pgTable("items", {
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  ownerIdx: index("items_owner_id_idx").on(table.ownerId),
+  availableIdx: index("items_is_available_idx").on(table.isAvailable),
+  availableCreatedIdx: index("items_available_created_idx").on(table.isAvailable, table.createdAt),
+  availableRentableIdx: index("items_available_rentable_idx").on(table.isAvailable, table.isRentable),
+  availableLendableIdx: index("items_available_lendable_idx").on(table.isAvailable, table.isLendable),
+  availableSwappableIdx: index("items_available_swappable_idx").on(table.isAvailable, table.isSwappable),
+  locationIdx: index("items_location_idx").on(table.latitude, table.longitude),
+}));
 
 export const itemConditionVerifications = pgTable("item_condition_verifications", {
   id: serial("id").primaryKey(),
@@ -89,7 +97,11 @@ export const messages = pgTable("messages", {
   senderId: serial("sender_id").references(() => users.id),
   receiverId: serial("receiver_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  senderIdx: index("messages_sender_id_idx").on(table.senderId),
+  receiverIdx: index("messages_receiver_id_idx").on(table.receiverId),
+  createdIdx: index("messages_created_at_idx").on(table.createdAt),
+}));
 
 export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   id: serial("id").primaryKey(),
@@ -98,7 +110,10 @@ export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   description: text("description").notNull(),
   transactionType: text("transaction_type").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  userIdx: index("share_coins_transactions_user_id_idx").on(table.userId),
+  createdIdx: index("share_coins_transactions_created_at_idx").on(table.createdAt),
+}));
 
 export const platformCommissions = pgTable("platform_commissions", {
   id: serial("id").primaryKey(),
@@ -200,7 +215,12 @@ export const itemRequests = pgTable("item_requests", {
   endDate: timestamp("end_date"),
   matchScore: integer("match_score"), // AI matching score for swap requests
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  itemIdx: index("item_requests_item_id_idx").on(table.itemId),
+  requesterIdx: index("item_requests_requester_id_idx").on(table.requesterId),
+  statusIdx: index("item_requests_status_idx").on(table.status),
+  createdIdx: index("item_requests_created_at_idx").on(table.createdAt),
+}));
 
 export const locationAlerts = pgTable("location_alerts", {
   id: serial("id").primaryKey(),
@@ -534,7 +554,11 @@ export const notifications = pgTable("notifications", {
   requestId: integer("request_id").references(() => itemRequests.id),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  userIdx: index("notifications_user_id_idx").on(table.userId),
+  userReadIdx: index("notifications_user_read_idx").on(table.userId, table.isRead),
+  createdIdx: index("notifications_created_at_idx").on(table.createdAt),
+}));
 
 export type InsertNotification = typeof notifications.$inferInsert;
 export type SelectNotification = typeof notifications.$inferSelect;

@@ -52,6 +52,23 @@ function calculateDistance(
   return R * c;
 }
 
+function calculateBoundingBox(lat: number, lon: number, radiusKm: number) {
+  const R = 6371; // Earth's radius in kilometers
+  const latRad = (lat * Math.PI) / 180;
+  
+  // Calculate latitude bounds
+  const latDelta = (radiusKm / R) * (180 / Math.PI);
+  const minLat = lat - latDelta;
+  const maxLat = lat + latDelta;
+  
+  // Calculate longitude bounds (adjusted for latitude)
+  const lonDelta = (radiusKm / (R * Math.cos(latRad))) * (180 / Math.PI);
+  const minLon = lon - lonDelta;
+  const maxLon = lon + lonDelta;
+  
+  return { minLat, maxLat, minLon, maxLon };
+}
+
 // Security: Configure multer for secure file uploads
 const storage = multer.diskStorage({
   destination: "./uploads/",
@@ -329,7 +346,20 @@ export function registerRoutes(app: Express): Server {
           .json({ error: "Invalid latitude or longitude values" });
       }
 
-      let whereConditions = [eq(items.isAvailable, true)];
+      const radiusKm = Number(radius);
+      
+      // Calculate bounding box for efficient database filtering
+      const bbox = calculateBoundingBox(userLat, userLon, radiusKm);
+
+      let whereConditions = [
+        eq(items.isAvailable, true),
+        sql`${items.latitude} IS NOT NULL`,
+        sql`${items.longitude} IS NOT NULL`,
+        sql`${items.latitude}::numeric >= ${bbox.minLat}`,
+        sql`${items.latitude}::numeric <= ${bbox.maxLat}`,
+        sql`${items.longitude}::numeric >= ${bbox.minLon}`,
+        sql`${items.longitude}::numeric <= ${bbox.maxLon}`,
+      ];
       
       // Add type-specific filtering
       if (type === 'rent') {
@@ -340,14 +370,14 @@ export function registerRoutes(app: Express): Server {
         whereConditions.push(eq(items.isSwappable, true));
       }
 
-      const allItems = await db
+      // Query only items within the bounding box (dramatically reduces data)
+      const boundedItems = await db
         .select()
         .from(items)
         .where(and(...whereConditions));
 
-      // Filter items within radius
-      const nearbyItems = allItems
-        .filter((item) => item.latitude && item.longitude)
+      // Calculate exact distance and filter by radius
+      const nearbyItems = boundedItems
         .map((item) => ({
           ...item,
           distance: calculateDistance(
@@ -357,7 +387,7 @@ export function registerRoutes(app: Express): Server {
             Number(item.longitude),
           ),
         }))
-        .filter((item) => item.distance <= Number(radius))
+        .filter((item) => item.distance <= radiusKm)
         .sort((a, b) => a.distance - b.distance);
 
       res.json(nearbyItems);

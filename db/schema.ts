@@ -71,8 +71,7 @@ export const items = pgTable("items", {
   isConditionVerified: boolean("is_condition_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  ownerIdx: index("items_owner_id_idx").on(table.ownerId),
-  availableIdx: index("items_is_available_idx").on(table.isAvailable),
+  ownerCreatedIdx: index("items_owner_created_idx").on(table.ownerId, table.createdAt),
   availableCreatedIdx: index("items_available_created_idx").on(table.isAvailable, table.createdAt),
   availableRentableIdx: index("items_available_rentable_idx").on(table.isAvailable, table.isRentable),
   availableLendableIdx: index("items_available_lendable_idx").on(table.isAvailable, table.isLendable),
@@ -98,9 +97,8 @@ export const messages = pgTable("messages", {
   receiverId: serial("receiver_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  senderIdx: index("messages_sender_id_idx").on(table.senderId),
-  receiverIdx: index("messages_receiver_id_idx").on(table.receiverId),
-  createdIdx: index("messages_created_at_idx").on(table.createdAt),
+  senderCreatedIdx: index("messages_sender_created_idx").on(table.senderId, table.createdAt),
+  receiverCreatedIdx: index("messages_receiver_created_idx").on(table.receiverId, table.createdAt),
 }));
 
 export const shareCoinsTransactions = pgTable("share_coins_transactions", {
@@ -111,8 +109,7 @@ export const shareCoinsTransactions = pgTable("share_coins_transactions", {
   transactionType: text("transaction_type").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
-  userIdx: index("share_coins_transactions_user_id_idx").on(table.userId),
-  createdIdx: index("share_coins_transactions_created_at_idx").on(table.createdAt),
+  userCreatedIdx: index("share_coins_transactions_user_created_idx").on(table.userId, table.createdAt),
 }));
 
 export const platformCommissions = pgTable("platform_commissions", {

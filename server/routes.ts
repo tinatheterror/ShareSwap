@@ -58,15 +58,31 @@ function calculateBoundingBox(lat: number, lon: number, radiusKm: number) {
   
   // Calculate latitude bounds
   const latDelta = (radiusKm / R) * (180 / Math.PI);
-  const minLat = lat - latDelta;
-  const maxLat = lat + latDelta;
+  let minLat = Math.max(-90, lat - latDelta);  // Clamp to valid latitude range
+  let maxLat = Math.min(90, lat + latDelta);
   
   // Calculate longitude bounds (adjusted for latitude)
-  const lonDelta = (radiusKm / (R * Math.cos(latRad))) * (180 / Math.PI);
-  const minLon = lon - lonDelta;
-  const maxLon = lon + lonDelta;
+  // Handle extreme latitudes where cos(lat) approaches 0
+  const cosLat = Math.cos(latRad);
+  const lonDelta = cosLat > 0.001 
+    ? (radiusKm / (R * cosLat)) * (180 / Math.PI) 
+    : 180; // At poles, search all longitudes
   
-  return { minLat, maxLat, minLon, maxLon };
+  let minLon = lon - lonDelta;
+  let maxLon = lon + lonDelta;
+  
+  // Handle antimeridian crossing (longitude wrap around ±180)
+  let crossesAntimeridian = false;
+  if (minLon < -180) {
+    minLon += 360;
+    crossesAntimeridian = true;
+  }
+  if (maxLon > 180) {
+    maxLon -= 360;
+    crossesAntimeridian = true;
+  }
+  
+  return { minLat, maxLat, minLon, maxLon, crossesAntimeridian };
 }
 
 // Security: Configure multer for secure file uploads
@@ -357,9 +373,22 @@ export function registerRoutes(app: Express): Server {
         sql`${items.longitude} IS NOT NULL`,
         sql`${items.latitude}::numeric >= ${bbox.minLat}`,
         sql`${items.latitude}::numeric <= ${bbox.maxLat}`,
-        sql`${items.longitude}::numeric >= ${bbox.minLon}`,
-        sql`${items.longitude}::numeric <= ${bbox.maxLon}`,
       ];
+      
+      // Handle antimeridian crossing with OR condition for longitude
+      if (bbox.crossesAntimeridian) {
+        whereConditions.push(
+          or(
+            sql`${items.longitude}::numeric >= ${bbox.minLon}`,
+            sql`${items.longitude}::numeric <= ${bbox.maxLon}`
+          )!
+        );
+      } else {
+        whereConditions.push(
+          sql`${items.longitude}::numeric >= ${bbox.minLon}`,
+          sql`${items.longitude}::numeric <= ${bbox.maxLon}`
+        );
+      }
       
       // Add type-specific filtering
       if (type === 'rent') {

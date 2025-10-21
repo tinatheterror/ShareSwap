@@ -55,6 +55,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "connect-pg-simple": "^10.0.0",
+    "csrf-csrf": "^4.0.3",
     "csurf": "^1.11.0",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.38.4",

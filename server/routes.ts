@@ -32,6 +32,7 @@ import { addSimplifiedRoutes } from "./simplified-routes";
 import { platformConfig, calculateCommission } from "./platform-config";
 import { AntiFarmingSystem } from "./anti-farming-system";
 import { CooldownChecker } from "./cooldown-checker";
+import { csrfProtection } from "./csrf";
 
 // Type extension for Passport.js session data
 declare module 'express-session' {
@@ -133,6 +134,24 @@ export function registerRoutes(app: Express): Server {
 
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
+
+  // Security: Apply CSRF protection to all routes except login/register
+  // CSRF protection automatically applies to POST, PUT, DELETE, PATCH (not GET, HEAD, OPTIONS)
+  app.use((req, res, next) => {
+    // Skip CSRF for login and register (they need to work before CSRF token is obtained)
+    if (req.path === '/api/login' || req.path === '/api/register') {
+      return next();
+    }
+    // Apply CSRF protection to all other routes
+    csrfProtection(req, res, next);
+  });
+
+  // Security: CSRF token endpoint - call this before making mutating requests
+  app.get("/api/csrf-token", (req, res) => {
+    res.json({ 
+      message: "CSRF token set in cookie and ready for use",
+    });
+  });
 
   app.post("/api/verify", upload.single("idDocument"), async (req, res) => {
     if (!req.isAuthenticated()) {

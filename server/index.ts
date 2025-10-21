@@ -5,6 +5,7 @@ import { registerRoutes } from "./routes";
 import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
 import { setupVite, serveStatic, log } from "./vite";
+import { attachCsrfToken } from "./csrf";
 
 const app = express();
 

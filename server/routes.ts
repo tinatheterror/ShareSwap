@@ -33,6 +33,15 @@ import { platformConfig, calculateCommission } from "./platform-config";
 import { AntiFarmingSystem } from "./anti-farming-system";
 import { CooldownChecker } from "./cooldown-checker";
 
+// Type extension for Passport.js session data
+declare module 'express-session' {
+  interface SessionData {
+    passport?: {
+      user: number;
+    };
+  }
+}
+
 function calculateDistance(
   lat1: number,
   lon1: number,

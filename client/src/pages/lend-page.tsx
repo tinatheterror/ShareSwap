@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -15,6 +15,8 @@ import * as z from "zod";
 import { Upload, MapPin, X, Heart, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { SmartScan } from "@/components/smartscan";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -40,6 +42,8 @@ export default function LendPage() {
   const [matchedWishlists, setMatchedWishlists] = useState<any[]>([]);
   const [showMatchingModal, setShowMatchingModal] = useState(false);
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
+  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">("smartscan");
+  const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -88,6 +92,22 @@ export default function LendPage() {
       setMatchedWishlists([]);
     }
   }, [form.watch("name"), allWishlists, showMatchingModal]);
+
+  const [smartScanAnalysis, setSmartScanAnalysis] = useState<any>(null);
+
+  const handleSmartScanComplete = (analysis: any, photos: string[]) => {
+    // Auto-fill form with AI-detected values
+    form.setValue("name", analysis.name);
+    form.setValue("description", analysis.description);
+    form.setValue("conditionRating", analysis.conditionRating);
+    setSmartScanPhotos(photos);
+    setSmartScanAnalysis(analysis); // Store full analysis for submission
+    
+    toast({
+      title: "✨ Form Auto-Filled!",
+      description: "Review and adjust the AI-detected details as needed.",
+    });
+  };
 
   const getCurrentLocation = async () => {
     if ("geolocation" in navigator) {
@@ -141,12 +161,34 @@ export default function LendPage() {
     }
   };
 
+  const queryClient = useQueryClient();
+
   const createItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const formData = new FormData();
-      selectedPhotos.forEach((photo) => {
-        formData.append("photos", photo);
-      });
+      
+      // Use SmartScan photos or manual uploads
+      if (smartScanPhotos.length > 0 && smartScanAnalysis) {
+        // SmartScan photos are already uploaded, pass their URLs
+        formData.append("smartScanPhotos", JSON.stringify(smartScanPhotos));
+        formData.append("wasSmartScanned", "true");
+        
+        // Include SmartScan analysis data
+        if (smartScanAnalysis.category) {
+          formData.append("category", smartScanAnalysis.category);
+        }
+        if (smartScanAnalysis.brand) {
+          formData.append("brand", smartScanAnalysis.brand);
+        }
+        if (smartScanAnalysis.estimatedValue) {
+          formData.append("estimatedValue", smartScanAnalysis.estimatedValue);
+        }
+      } else {
+        selectedPhotos.forEach((photo) => {
+          formData.append("photos", photo);
+        });
+      }
+      
       Object.entries(data).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
           formData.append(key, String(value));
@@ -169,6 +211,11 @@ export default function LendPage() {
       return result;
     },
     onSuccess: (data) => {
+      // Invalidate item queries to refresh lists
+      queryClient.invalidateQueries({ queryKey: ['/api/items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/nearby-items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-items'] });
+      
       if (selectedWishlistMatch) {
         toast({
           title: "Item matched successfully!",
@@ -406,29 +453,54 @@ export default function LendPage() {
 
                 <div className="space-y-4">
                   <FormLabel>Photos</FormLabel>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      id="photos"
-                      onChange={handlePhotoChange}
-                    />
-                    <label htmlFor="photos">
-                      <div className="cursor-pointer">
-                        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload photos
-                        </p>
+                  <Tabs value={uploadMethod} onValueChange={(v) => setUploadMethod(v as "smartscan" | "manual")}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="smartscan">
+                        ✨ SmartScan
+                      </TabsTrigger>
+                      <TabsTrigger value="manual">
+                        Manual Upload
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="smartscan" className="mt-4">
+                      <SmartScan onAnalysisComplete={handleSmartScanComplete} />
+                    </TabsContent>
+                    
+                    <TabsContent value="manual" className="mt-4">
+                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          id="photos"
+                          onChange={handlePhotoChange}
+                        />
+                        <label htmlFor="photos">
+                          <div className="cursor-pointer">
+                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              Click to upload photos
+                            </p>
+                          </div>
+                        </label>
+                        {selectedPhotos.length > 0 && (
+                          <p className="mt-2 text-sm">
+                            {selectedPhotos.length} photos selected
+                          </p>
+                        )}
                       </div>
-                    </label>
-                    {selectedPhotos.length > 0 && (
-                      <p className="mt-2 text-sm">
-                        {selectedPhotos.length} photos selected
+                    </TabsContent>
+                  </Tabs>
+                  
+                  {smartScanPhotos.length > 0 && (
+                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
+                      <p className="text-sm text-teal-700">
+                        ✨ SmartScan detected {smartScanPhotos.length} photos - form auto-filled!
                       </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 <FormField

@@ -14,6 +14,8 @@ export const users = pgTable("users", {
   premiumExpiresAt: timestamp("premium_expires_at"),
   referralCode: text("referral_code").unique(),
   referredBy: integer("referred_by"),
+  smartScansUsed: integer("smart_scans_used").default(0),
+  smartScansResetDate: timestamp("smart_scans_reset_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -51,6 +53,8 @@ export const items = pgTable("items", {
   ownerId: integer("owner_id").references(() => users.id),
   name: text("name").notNull(),
   description: text("description").notNull(),
+  category: text("category"),
+  brand: text("brand"),
   conditionRating: integer("condition_rating").notNull(),
   photos: text("photos").array().notNull(),
   latitude: numeric("latitude", { precision: 10, scale: 8 }),
@@ -67,8 +71,10 @@ export const items = pgTable("items", {
   shareCoinsReward: decimal("share_coins_reward").notNull(),
   shareCoinPrice: decimal("share_coin_price", { precision: 10, scale: 2 }),
   dollarsPrice: decimal("dollars_price", { precision: 10, scale: 2 }),
+  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),
+  wasSmartScanned: boolean("was_smart_scanned").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   ownerCreatedIdx: index("items_owner_created_idx").on(table.ownerId, table.createdAt),

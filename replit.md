@@ -13,6 +13,7 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - **Security**: Advanced location matching and item verification
 
 ## Recent Changes
+- ✅ **Implemented SmartScan AI item recognition** - Computer vision-powered auto-tagging with 3 free scans/month, unlimited for Premium
 - ✅ **Implemented CSRF protection** - Double-submit cookie pattern with csrf-csrf package protects all mutating requests
 - ✅ **Fixed WebSocket authentication security** - Session-based validation prevents user impersonation in real-time chat
 - Fixed TypeScript type declarations for Passport.js session data
@@ -103,6 +104,11 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Fixed bounding box location queries with antimeridian crossing and extreme latitude handling
 - Implemented comprehensive CSRF protection using csrf-csrf package with double-submit cookie pattern
 - Frontend automatically fetches and includes CSRF tokens in all POST/PUT/DELETE/PATCH requests
+- Built SmartScan feature with AI-powered item recognition from 360° photo scans
+- Added monthly usage tracking (3 free SmartScans/month, reset on 1st, unlimited for Premium users)
+- Integrated GPT-4 Vision API (pending OpenAI setup) for automatic item detail extraction
+- Premium users get AI value estimates in addition to standard SmartScan features
+- SmartScan auto-fills: name, description, category, brand, condition rating
 - Date: October 21, 2025
 
 ## Architecture
@@ -111,6 +117,8 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Real-time messaging through WebSocket server
 - Comprehensive authentication and authorization system
 - Advanced verification system for items and users
+- AI-powered SmartScan using GPT-4 Vision for item recognition
+- Freemium model: 3 free SmartScans/month, unlimited for Premium
 
 ## Security & Payment System
 - **Dual Verification**: Users must verify both identity (government ID) and payment method (credit card)

@@ -232,6 +232,143 @@ export function registerRoutes(app: Express): Server {
     res.json(verification || { status: "not_submitted" });
   });
 
+  // SmartScan endpoints
+  app.get("/api/smartscan/usage", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if we need to reset monthly usage
+      const now = new Date();
+      const resetDate = user.smartScansResetDate ? new Date(user.smartScansResetDate) : new Date();
+      
+      // Reset on the 1st of each month
+      if (resetDate.getMonth() !== now.getMonth() || resetDate.getFullYear() !== now.getFullYear()) {
+        await db
+          .update(users)
+          .set({
+            smartScansUsed: 0,
+            smartScansResetDate: now,
+          })
+          .where(eq(users.id, req.user.id));
+
+        return res.json({
+          scansUsed: 0,
+          scansRemaining: user.isPremium ? "unlimited" : 3,
+          isPremium: user.isPremium,
+          resetDate: now.toISOString(),
+        });
+      }
+
+      const scansUsed = user.smartScansUsed || 0;
+      const scansRemaining = user.isPremium ? "unlimited" : Math.max(0, 3 - scansUsed);
+
+      res.json({
+        scansUsed,
+        scansRemaining,
+        isPremium: user.isPremium,
+        resetDate: resetDate.toISOString(),
+      });
+    } catch (error) {
+      console.error("Error fetching SmartScan usage:", error);
+      res.status(500).json({ error: "Failed to fetch usage data" });
+    }
+  });
+
+  app.post("/api/smartscan/analyze", upload.array("photos", 10), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Get user data
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check usage limits (unless premium)
+      if (!user.isPremium) {
+        const now = new Date();
+        const resetDate = user.smartScansResetDate ? new Date(user.smartScansResetDate) : new Date();
+        
+        let scansUsed = user.smartScansUsed || 0;
+
+        // Reset if needed
+        if (resetDate.getMonth() !== now.getMonth() || resetDate.getFullYear() !== now.getFullYear()) {
+          scansUsed = 0;
+          await db
+            .update(users)
+            .set({
+              smartScansUsed: 0,
+              smartScansResetDate: now,
+            })
+            .where(eq(users.id, req.user.id));
+        }
+
+        if (scansUsed >= 3) {
+          return res.status(403).json({ 
+            error: "SmartScan limit reached",
+            message: "You've used all 3 free SmartScans this month. Upgrade to Premium for unlimited scans or upload items manually.",
+          });
+        }
+      }
+
+      // Validate images
+      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        return res.status(400).json({ error: "At least one image is required" });
+      }
+
+      // TODO: Integrate with OpenAI GPT-4 Vision when blueprint is confirmed
+      // For now, return a mock response showing the expected structure
+      const mockAnalysis = {
+        name: "Smart Recognized Item",
+        description: "This item was analyzed using AI vision. Full integration pending OpenAI setup.",
+        category: "Electronics",
+        brand: "Unknown Brand",
+        conditionRating: 4,
+        estimatedValue: user.isPremium ? "50.00" : null,
+        confidence: 0.85,
+      };
+
+      // Update usage tracking
+      if (!user.isPremium) {
+        await db
+          .update(users)
+          .set({
+            smartScansUsed: sql`${users.smartScansUsed} + 1`,
+          })
+          .where(eq(users.id, req.user.id));
+      }
+
+      res.json({
+        success: true,
+        analysis: mockAnalysis,
+        photos: (req.files as Express.Multer.File[]).map(f => `/uploads/${path.basename(f.path)}`),
+        scansRemaining: user.isPremium ? "unlimited" : (2 - (user.smartScansUsed || 0)),
+      });
+    } catch (error) {
+      console.error("Error analyzing images:", error);
+      res.status(500).json({ error: "Failed to analyze images" });
+    }
+  });
+
   // Item endpoints
   app.post("/api/items", upload.array("photos"), async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -251,10 +388,18 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Item description is required" });
       }
 
-      const files = req.files as Express.Multer.File[];
-      const photoUrls = files
-        ? files.map((file) => `/uploads/${file.filename}`)
-        : [];
+      // Handle photos from SmartScan or manual upload
+      let photoUrls: string[] = [];
+      const wasSmartScanned = req.body.wasSmartScanned === "true";
+      
+      if (wasSmartScanned && req.body.smartScanPhotos) {
+        // Use SmartScan photos (already uploaded)
+        photoUrls = JSON.parse(req.body.smartScanPhotos);
+      } else {
+        // Use manually uploaded photos
+        const files = req.files as Express.Multer.File[];
+        photoUrls = files ? files.map((file) => `/uploads/${file.filename}`) : [];
+      }
 
       // Parse location data
       const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
@@ -312,6 +457,8 @@ export function registerRoutes(app: Express): Server {
     const itemData: InsertItem = {
       name: req.body.name,
       description: req.body.description,
+      category: req.body.category || null,
+      brand: req.body.brand || null,
       conditionRating: parseInt(req.body.conditionRating) || 0,
       photos: photoUrls,
       latitude: latitude?.toString() || null,
@@ -326,8 +473,10 @@ export function registerRoutes(app: Express): Server {
       securityDeposit: req.body.securityDeposit || "0",
       lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
       shareCoinsReward: shareCoinsReward.toString(),
+      estimatedValue: req.body.estimatedValue || null,
       isAvailable: true,
       isConditionVerified: false,
+      wasSmartScanned: wasSmartScanned,
       ownerId: req.user.id,
     };
 

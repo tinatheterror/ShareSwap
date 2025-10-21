@@ -8,7 +8,7 @@ const csrfConfig = doubleCsrf({
   cookieOptions: {
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
+    httpOnly: false, // Must be false so frontend can read the token to send in header
     path: "/",
   },
   size: 64,

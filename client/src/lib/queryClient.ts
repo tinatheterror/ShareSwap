@@ -7,17 +7,92 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Security: CSRF Token Manager
+class CsrfTokenManager {
+  private token: string | null = null;
+  private fetching: Promise<void> | null = null;
+
+  async ensureToken(): Promise<void> {
+    // If already have a token, return
+    if (this.token) return;
+
+    // If already fetching, wait for that to complete
+    if (this.fetching) return this.fetching;
+
+    // Fetch the token
+    this.fetching = this.fetchToken();
+    await this.fetching;
+    this.fetching = null;
+  }
+
+  private async fetchToken(): Promise<void> {
+    try {
+      // Call the CSRF token endpoint to set the cookie
+      await fetch('/api/csrf-token', {
+        credentials: 'include',
+      });
+      // Read the token from the cookie
+      this.token = this.getTokenFromCookie();
+    } catch (error) {
+      console.error('Failed to fetch CSRF token:', error);
+      throw error;
+    }
+  }
+
+  private getTokenFromCookie(): string | null {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name === 'x-csrf-token') {
+        return decodeURIComponent(value);
+      }
+    }
+    return null;
+  }
+
+  getToken(): string | null {
+    // Try to get from memory first, then from cookie
+    return this.token || this.getTokenFromCookie();
+  }
+
+  clearToken(): void {
+    this.token = null;
+  }
+}
+
+const csrfTokenManager = new CsrfTokenManager();
+
+// Initialize CSRF token when the module loads
+csrfTokenManager.ensureToken().catch(err => {
+  console.error('Failed to initialize CSRF token:', err);
+});
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Security: Ensure CSRF token is available for mutating requests
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    await csrfTokenManager.ensureToken();
+  }
+
   // Check if data is FormData - if so, let browser set Content-Type automatically
   const isFormData = data instanceof FormData;
   
+  const headers: HeadersInit = data && !isFormData ? { "Content-Type": "application/json" } : {};
+  
+  // Security: Include CSRF token in header for mutating requests
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    const token = csrfTokenManager.getToken();
+    if (token) {
+      headers['x-csrf-token'] = token;
+    }
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data && !isFormData ? { "Content-Type": "application/json" } : {},
+    headers,
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
     credentials: "include",
   });

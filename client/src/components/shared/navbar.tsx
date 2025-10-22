@@ -108,18 +108,18 @@ export function Navbar() {
                             <span>View Transactions</span>
                           </DropdownMenuItem>
                         </Link>
+                        <Link href="/achievements">
+                          <DropdownMenuItem className="cursor-pointer hover:text-primary">
+                            <Trophy className="mr-2 h-4 w-4" />
+                            <span>Achievements</span>
+                          </DropdownMenuItem>
+                        </Link>
                         <DropdownMenuSeparator />
                         <h6 className="px-2 py-1.5 text-sm font-semibold text-primary">Earn More ShareCoins</h6>
                         <Link href="/games">
                           <DropdownMenuItem className="cursor-pointer hover:text-primary">
                             <Gamepad2 className="mr-2 h-4 w-4" />
                             <span>Play Games</span>
-                          </DropdownMenuItem>
-                        </Link>
-                        <Link href="/achievements">
-                          <DropdownMenuItem className="cursor-pointer hover:text-primary">
-                            <Trophy className="mr-2 h-4 w-4" />
-                            <span>Achievements</span>
                           </DropdownMenuItem>
                         </Link>
                         <Link href="/wishlists">

@@ -126,7 +126,7 @@ export default function WishlistsPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
             <Heart className="h-8 w-8 text-primary" />
-            Your Wishlist
+            My Wishlist
           </h1>
           <p className="text-muted-foreground">
             Create demand signals for items you need - get notified when they become available

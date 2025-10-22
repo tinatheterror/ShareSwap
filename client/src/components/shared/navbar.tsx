@@ -122,12 +122,6 @@ export function Navbar() {
                             <span>Play Games</span>
                           </DropdownMenuItem>
                         </Link>
-                        <Link href="/wishlists">
-                          <DropdownMenuItem className="cursor-pointer hover:text-primary">
-                            <Heart className="mr-2 h-4 w-4" />
-                            <span>My Wishlist</span>
-                          </DropdownMenuItem>
-                        </Link>
                         <Link href="/referrals">
                           <DropdownMenuItem className="cursor-pointer hover:text-primary">
                             <Users className="mr-2 h-4 w-4" />
@@ -142,6 +136,14 @@ export function Navbar() {
                       <Button variant="ghost" className="flex items-center gap-2 hover:text-primary" data-tutorial="sharechest">
                         <Package className="h-5 w-5" />
                         <span>My ShareChest</span>
+                      </Button>
+                    </Link>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <Link href="/wishlists">
+                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
+                        <Heart className="h-5 w-5" />
+                        <span>My Wishlist</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

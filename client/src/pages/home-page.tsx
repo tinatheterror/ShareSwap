@@ -6,7 +6,6 @@ import { HandshakeIcon, Banknote, ArrowLeftRight, Coins, Heart } from "lucide-re
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
@@ -84,12 +83,14 @@ export default function HomePage() {
 
         {/* Earn ShareCoins Button */}
         <div className="mt-8 max-w-5xl mx-auto">
-          <Link href="/lend">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all">
-              <Coins className="h-6 w-6 mr-2" />
-              Earn ShareCoins by Helping Neighbours
-            </Button>
-          </Link>
+          <Button 
+            size="lg" 
+            onClick={() => navigate("/lend")}
+            className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
+          >
+            <Coins className="h-6 w-6 mr-2" />
+            Earn ShareCoins by Helping Neighbours
+          </Button>
         </div>
 
         <WishlistFulfillmentPopup

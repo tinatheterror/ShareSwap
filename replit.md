@@ -106,10 +106,12 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Frontend automatically fetches and includes CSRF tokens in all POST/PUT/DELETE/PATCH requests
 - Built SmartScan feature with AI-powered item recognition from 360° photo scans
 - Added monthly usage tracking (3 free SmartScans/month, reset on 1st, unlimited for Premium users)
-- Integrated GPT-4 Vision API (pending OpenAI setup) for automatic item detail extraction
+- ✅ **Activated GPT-4 Vision API integration** - Real AI-powered item analysis now live via Replit AI Integrations
 - Premium users get AI value estimates in addition to standard SmartScan features
 - SmartScan auto-fills: name, description, category, brand, condition rating
-- Date: October 21, 2025
+- OpenAI Vision API analyzes multiple images simultaneously for comprehensive item recognition
+- Graceful fallback system if AI analysis fails (photos still uploaded, user fills details manually)
+- Date: October 22, 2025
 
 ## Architecture
 - Full-stack JavaScript application following modern patterns
@@ -117,8 +119,9 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Real-time messaging through WebSocket server
 - Comprehensive authentication and authorization system
 - Advanced verification system for items and users
-- AI-powered SmartScan using GPT-4 Vision for item recognition
+- AI-powered SmartScan using GPT-4o Vision for item recognition (active)
 - Freemium model: 3 free SmartScans/month, unlimited for Premium
+- Replit AI Integrations provides OpenAI access (billed to user credits)
 
 ## Security & Payment System
 - **Dual Verification**: Users must verify both identity (government ID) and payment method (credit card)

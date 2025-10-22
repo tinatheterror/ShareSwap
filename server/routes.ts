@@ -33,6 +33,7 @@ import { platformConfig, calculateCommission } from "./platform-config";
 import { AntiFarmingSystem } from "./anti-farming-system";
 import { CooldownChecker } from "./cooldown-checker";
 import { csrfProtection } from "./csrf";
+import OpenAI from "openai";
 
 // Type extension for Passport.js session data
 declare module 'express-session' {
@@ -335,17 +336,79 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "At least one image is required" });
       }
 
-      // TODO: Integrate with OpenAI GPT-4 Vision when blueprint is confirmed
-      // For now, return a mock response showing the expected structure
-      const mockAnalysis = {
-        name: "Smart Recognized Item",
-        description: "This item was analyzed using AI vision. Full integration pending OpenAI setup.",
-        category: "Electronics",
-        brand: "Unknown Brand",
-        conditionRating: 4,
-        estimatedValue: user.isPremium ? "50.00" : null,
-        confidence: 0.85,
-      };
+      const files = req.files as Express.Multer.File[];
+      const photoUrls = files.map(f => `/uploads/${path.basename(f.path)}`);
+
+      // Initialize OpenAI client with Replit AI Integrations
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      // Prepare images for OpenAI Vision API
+      const fs = await import('fs/promises');
+      const imageContents = await Promise.all(
+        files.map(async (file) => {
+          const buffer = await fs.readFile(file.path);
+          const base64 = buffer.toString('base64');
+          return {
+            type: "image_url" as const,
+            image_url: {
+              url: `data:${file.mimetype};base64,${base64}`,
+            },
+          };
+        })
+      );
+
+      // Call GPT-4 Vision API
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `You are an expert at identifying and analyzing items from photos for a peer-to-peer sharing marketplace. Analyze these images and extract the following information in JSON format:
+
+{
+  "name": "Short, descriptive name of the item (max 50 chars)",
+  "description": "Detailed description including notable features, condition details, and any visible wear or damage (100-300 chars)",
+  "category": "One of: Electronics, Tools, Sports, Home & Garden, Books & Media, Clothing, Toys & Games, Kitchen, Outdoor, Other",
+  "brand": "Brand name if visible, otherwise 'Unknown'",
+  "conditionRating": "Integer 1-5 where 1=Poor, 2=Fair, 3=Good, 4=Very Good, 5=Excellent",
+  ${user.isPremium ? '"estimatedValue": "Estimated market value in USD (just the number, e.g., \'25.00\')",' : ''}
+  "confidence": "Float 0-1 indicating how confident you are in this analysis"
+}
+
+Be specific and honest about condition. Look for signs of wear, damage, or quality issues.`,
+              },
+              ...imageContents,
+            ],
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0.3,
+      });
+
+      // Parse AI response
+      const aiResponse = completion.choices[0]?.message?.content;
+      if (!aiResponse) {
+        throw new Error("No response from AI");
+      }
+
+      // Extract JSON from response (handle markdown code blocks)
+      let analysisData;
+      try {
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error("No JSON found in response");
+        }
+        analysisData = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error("Failed to parse AI response:", aiResponse);
+        throw new Error("Invalid AI response format");
+      }
 
       // Update usage tracking
       if (!user.isPremium) {
@@ -359,13 +422,38 @@ export function registerRoutes(app: Express): Server {
 
       res.json({
         success: true,
-        analysis: mockAnalysis,
-        photos: (req.files as Express.Multer.File[]).map(f => `/uploads/${path.basename(f.path)}`),
+        analysis: {
+          name: analysisData.name || "Unidentified Item",
+          description: analysisData.description || "AI analysis completed.",
+          category: analysisData.category || "Other",
+          brand: analysisData.brand || "Unknown",
+          conditionRating: Math.min(5, Math.max(1, parseInt(analysisData.conditionRating) || 3)),
+          estimatedValue: user.isPremium && analysisData.estimatedValue ? analysisData.estimatedValue : null,
+          confidence: parseFloat(analysisData.confidence) || 0.5,
+        },
+        photos: photoUrls,
         scansRemaining: user.isPremium ? "unlimited" : (2 - (user.smartScansUsed || 0)),
       });
     } catch (error) {
       console.error("Error analyzing images:", error);
-      res.status(500).json({ error: "Failed to analyze images" });
+      
+      // Fallback to basic response if AI fails (don't charge the user)
+      const files = req.files as Express.Multer.File[];
+      const photoUrls = files ? files.map(f => `/uploads/${path.basename(f.path)}`) : [];
+      
+      res.json({
+        success: true,
+        analysis: {
+          name: "Item",
+          description: "AI analysis temporarily unavailable. Please fill in details manually.",
+          category: "Other",
+          brand: "Unknown",
+          conditionRating: 3,
+          estimatedValue: null,
+          confidence: 0.1,
+        },
+        photos: photoUrls,
+      });
     }
   });
 

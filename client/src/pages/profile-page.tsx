@@ -81,6 +81,14 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
+  const { data: connections } = useQuery<{
+    followerCount: number;
+    followingCount: number;
+  }>({
+    queryKey: ['/api/users', user?.id, 'connections'],
+    enabled: !!user,
+  });
+
   const updateProfileMutation = useMutation({
     mutationFn: (data: any) => apiRequest('/api/user-profile', 'PATCH', data),
     onSuccess: () => {
@@ -438,6 +446,51 @@ export default function ProfilePage() {
                       <div>• Priority in requests</div>
                       <div>• Exclusive items access</div>
                       <div>• Reduced platform fees</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Community Connections */}
+            <Card className="border-2 border-teal-100">
+              <CardHeader className="bg-gradient-to-r from-teal-50 to-slate-50">
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-primary" />
+                  Community Connections
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-center gap-8">
+                  <div className="text-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Heart className="h-5 w-5 text-teal-600" />
+                      <div>
+                        <div className="text-2xl font-bold text-teal-700">
+                          {connections?.followerCount || 0}
+                        </div>
+                        <p className="text-sm text-slate-600">
+                          {connections?.followerCount === 1 
+                            ? 'Trusted by 1 neighbor' 
+                            : `Trusted by ${connections?.followerCount || 0} neighbors`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="h-12 w-px bg-slate-200"></div>
+                  <div className="text-center">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Package className="h-5 w-5 text-teal-600" />
+                      <div>
+                        <div className="text-2xl font-bold text-teal-700">
+                          {connections?.followingCount || 0}
+                        </div>
+                        <p className="text-sm text-slate-600">
+                          {connections?.followingCount === 1 
+                            ? 'Supporting 1 neighbor' 
+                            : `Supporting ${connections?.followingCount || 0} neighbors`}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

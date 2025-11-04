@@ -111,7 +111,15 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - SmartScan auto-fills: name, description, category, brand, condition rating
 - OpenAI Vision API analyzes multiple images simultaneously for comprehensive item recognition
 - Graceful fallback system if AI analysis fails (photos still uploaded, user fills details manually)
-- Date: October 22, 2025
+- ✅ **Implemented Follow System** - Users can follow neighbors to see their items in a personalized feed
+- Added friendly connection displays showing "Trusted by X neighbors" instead of competitive follower counts
+- Created "From People You Follow" feed section on borrow page showing recent items from followed users
+- Implemented transactional follow/unfollow operations with unique constraints to prevent duplicates
+- Added optimistic UI updates with proper cache invalidation for instant feedback
+- Built reusable FollowButton component with loading states and error handling
+- Follow counts displayed on profile page in supportive, community-focused language
+- Database includes follower/following counts for efficient queries without expensive joins
+- Date: November 4, 2025
 
 ## Architecture
 - Full-stack JavaScript application following modern patterns

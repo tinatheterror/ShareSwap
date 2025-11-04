@@ -100,6 +100,12 @@ export default function BorrowPage() {
       item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Get items from followed users
+  const { data: followingItems = [] } = useQuery<ItemWithDistance[]>({
+    queryKey: ['/api/feed/following-items'],
+    enabled: !!user,
+  });
+
   // Check ShareCoins when component mounts
   useEffect(() => {
     if (user && Number(user.shareCoins) === 0) {
@@ -139,6 +145,72 @@ export default function BorrowPage() {
             </Button>
           </div>
         </div>
+
+        {/* From People You Follow Section */}
+        {user && followingItems.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Heart className="h-5 w-5 text-primary" />
+              <h2 className="text-xl font-bold">From People You Follow</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {followingItems.slice(0, 8).map((item) => (
+                <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                      {item.photos && item.photos[0] ? (
+                        <img
+                          src={item.photos[0]}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                          <Camera className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="text-center mb-3">
+                      <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                        {item.description}
+                      </p>
+                      {(item as any).owner && (
+                        <p className="text-xs text-primary font-medium mb-2">
+                          by @{(item as any).owner.username}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                        <CheckCircle className="h-3 w-3" />
+                        Condition: {item.conditionRating}/10
+                      </div>
+                    </div>
+
+                    <Link href={`/item/${item.id}/borrow`}>
+                      <Button size="sm" className="w-full bg-primary hover:bg-primary/90">
+                        Borrow
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state for no followed users */}
+        {user && followingItems.length === 0 && (
+          <div className="mb-8 p-6 bg-teal-50 border-2 border-teal-200 rounded-lg text-center">
+            <Heart className="h-12 w-12 text-teal-600 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-teal-900 mb-2">
+              Follow neighbors to see their items here
+            </h3>
+            <p className="text-sm text-teal-700">
+              When you follow other users, their newly posted items will appear in this feed
+            </p>
+          </div>
+        )}
 
         {/* AI Recommendations Section */}
         <div className="mb-8">

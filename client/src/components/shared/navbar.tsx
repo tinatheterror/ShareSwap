@@ -135,7 +135,7 @@ export function Navbar() {
                     <Link href="/my-items">
                       <Button variant="ghost" className="flex items-center gap-2 hover:text-primary" data-tutorial="sharechest">
                         <Package className="h-5 w-5" />
-                        <span>My ShareChest</span>
+                        <span>My Shares</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

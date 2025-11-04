@@ -271,6 +271,18 @@ export const deliveryArrangements = pgTable("delivery_arrangements", {
   qrCodeData: text("qr_code_data"),
   specialInstructions: text("special_instructions"),
   riskAccepted: boolean("risk_accepted").default(false),
+  // New fields for delivery and deposit method choices
+  deliveryMethod: text("delivery_method"), // 'self_arrange' or 'shareswap_delivery'
+  depositMethod: text("deposit_method"), // 'self_arrange' or 'shareswap_deposit'
+  uberDeliveryId: text("uber_delivery_id"), // Uber Direct delivery ID
+  uberQuoteId: text("uber_quote_id"), // Uber Direct quote ID
+  uberTrackingUrl: text("uber_tracking_url"), // Tracking URL from Uber
+  stripePaymentIntentId: text("stripe_payment_intent_id"), // Stripe payment hold ID
+  stripeDepositStatus: text("stripe_deposit_status"), // 'authorized', 'captured', 'refunded', 'failed'
+  deliveryMargin: decimal("delivery_margin", { precision: 10, scale: 2 }), // $2 margin for ShareSwap Delivery
+  depositProcessingFee: decimal("deposit_processing_fee", { precision: 10, scale: 2 }), // 5% fee for ShareSwap Deposit
+  uberDeliveryFee: decimal("uber_delivery_fee", { precision: 10, scale: 2 }), // Actual Uber charge
+  totalDeliveryFee: decimal("total_delivery_fee", { precision: 10, scale: 2 }), // Uber fee + margin
   createdAt: timestamp("created_at").defaultNow(),
 });
 

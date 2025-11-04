@@ -35,6 +35,15 @@ import { AntiFarmingSystem } from "./anti-farming-system";
 import { CooldownChecker } from "./cooldown-checker";
 import { csrfProtection } from "./csrf";
 import OpenAI from "openai";
+import Stripe from "stripe";
+
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2025-07-30.basil",
+});
 
 // Type extension for Passport.js session data
 declare module 'express-session' {
@@ -1577,6 +1586,203 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
     }
 
     res.json(updatedRequest);
+  });
+
+  // Create Stripe payment authorization hold for security deposit
+  app.post("/api/stripe/create-deposit-hold", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { depositAmount, requestId } = req.body;
+
+      if (!depositAmount || depositAmount <= 0) {
+        return res.status(400).json({ error: "Invalid deposit amount" });
+      }
+
+      // Calculate 5% processing fee
+      const processingFee = depositAmount * 0.05;
+      const totalAmount = depositAmount + processingFee;
+
+      // Create payment intent with manual capture (authorization hold)
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(totalAmount * 100), // Convert to cents
+        currency: "usd",
+        capture_method: "manual", // Hold funds, don't capture immediately
+        metadata: {
+          type: "security_deposit",
+          request_id: requestId.toString(),
+          user_id: req.user.id.toString(),
+          deposit_amount: depositAmount.toString(),
+          processing_fee: processingFee.toString(),
+        },
+        description: `Security deposit hold for ShareSwap request #${requestId}`,
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        depositAmount,
+        processingFee,
+        totalAmount,
+      });
+    } catch (error: any) {
+      console.error("Error creating deposit hold:", error);
+      res.status(500).json({ error: "Failed to create deposit hold: " + error.message });
+    }
+  });
+
+  // Capture deposit (charge for damage/non-return)
+  app.post("/api/stripe/capture-deposit", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { paymentIntentId, reason, amount } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: "Payment intent ID required" });
+      }
+
+      // Capture the payment (charge the customer)
+      const capturedPayment = await stripe.paymentIntents.capture(paymentIntentId, {
+        amount_to_capture: amount ? Math.round(amount * 100) : undefined,
+      });
+
+      res.json({
+        success: true,
+        captured: capturedPayment.status === "succeeded",
+        amount: capturedPayment.amount_received / 100,
+        reason,
+      });
+    } catch (error: any) {
+      console.error("Error capturing deposit:", error);
+      res.status(500).json({ error: "Failed to capture deposit: " + error.message });
+    }
+  });
+
+  // Cancel deposit hold (refund on safe return)
+  app.post("/api/stripe/cancel-deposit", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { paymentIntentId } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: "Payment intent ID required" });
+      }
+
+      // Cancel the payment intent (release the hold)
+      const canceledPayment = await stripe.paymentIntents.cancel(paymentIntentId);
+
+      res.json({
+        success: true,
+        canceled: canceledPayment.status === "canceled",
+        message: "Deposit hold released successfully",
+      });
+    } catch (error: any) {
+      console.error("Error canceling deposit:", error);
+      res.status(500).json({ error: "Failed to cancel deposit: " + error.message });
+    }
+  });
+
+  // Create or update delivery arrangement with delivery/deposit method choices
+  app.post("/api/delivery-arrangements", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const {
+        requestId,
+        deliveryMethod,
+        depositMethod,
+        uberQuoteFee,
+        depositAmount,
+        stripePaymentIntentId,
+      } = req.body;
+
+      // Verify the request belongs to the user
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Check if user is either owner or requester
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+
+      if (!isOwner && !isRequester) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Calculate fees
+      const deliveryMargin = deliveryMethod === 'shareswap_delivery' && uberQuoteFee ? 2.00 : null;
+      const totalDeliveryFee = uberQuoteFee && deliveryMargin ? uberQuoteFee + deliveryMargin : null;
+      const depositProcessingFee = depositMethod === 'shareswap_deposit' && depositAmount ? depositAmount * 0.05 : null;
+
+      // Check if arrangement already exists
+      const [existingArrangement] = await db
+        .select()
+        .from(deliveryArrangements)
+        .where(eq(deliveryArrangements.requestId, requestId))
+        .limit(1);
+
+      if (existingArrangement) {
+        // Update existing arrangement
+        const [updated] = await db
+          .update(deliveryArrangements)
+          .set({
+            deliveryMethod,
+            depositMethod,
+            deliveryMargin: deliveryMargin?.toString(),
+            totalDeliveryFee: totalDeliveryFee?.toString(),
+            uberDeliveryFee: uberQuoteFee?.toString(),
+            depositProcessingFee: depositProcessingFee?.toString(),
+            securityDeposit: depositAmount?.toString(),
+            stripePaymentIntentId,
+            stripeDepositStatus: stripePaymentIntentId ? 'authorized' : null,
+          })
+          .where(eq(deliveryArrangements.id, existingArrangement.id))
+          .returning();
+
+        res.json(updated);
+      } else {
+        // Create new arrangement
+        const [newArrangement] = await db
+          .insert(deliveryArrangements)
+          .values({
+            requestId,
+            deliveryType: deliveryMethod === 'shareswap_delivery' ? 'UBER_DIRECT' : 'SELF_ARRANGE',
+            deliveryMethod,
+            depositMethod,
+            deliveryMargin: deliveryMargin?.toString(),
+            totalDeliveryFee: totalDeliveryFee?.toString(),
+            uberDeliveryFee: uberQuoteFee?.toString(),
+            depositProcessingFee: depositProcessingFee?.toString(),
+            securityDeposit: depositAmount?.toString(),
+            stripePaymentIntentId,
+            stripeDepositStatus: stripePaymentIntentId ? 'authorized' : null,
+            status: "PENDING",
+          })
+          .returning();
+
+        res.json(newArrangement);
+      }
+    } catch (error: any) {
+      console.error("Error creating delivery arrangement:", error);
+      res.status(500).json({ error: "Failed to create delivery arrangement: " + error.message });
+    }
   });
 
   // Get user notifications

@@ -82,12 +82,13 @@ export default function HomePage() {
         </div>
 
         {/* Earn ShareCoins Button */}
-        <div className="mt-8 max-w-5xl mx-auto">
+        <div className="mt-8 max-w-5xl mx-auto flex justify-center">
           <Button 
-            onClick={() => navigate("/lend")}
-            className="bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all"
+            size="lg"
+            onClick={() => setShowWishlistPopup(true)}
+            className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
           >
-            <Coins className="h-4 w-4 mr-2" />
+            <Coins className="h-6 w-6 mr-2" />
             Earn ShareCoins by Helping Neighbours
           </Button>
         </div>

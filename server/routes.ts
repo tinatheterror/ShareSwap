@@ -1703,6 +1703,7 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
         depositMethod,
         uberQuoteFee,
         depositAmount,
+        depositProcessingFee,
         stripePaymentIntentId,
       } = req.body;
 
@@ -1726,10 +1727,10 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      // Calculate fees
+      // Calculate fees (frontend already calculated depositProcessingFee, so we use it directly)
       const deliveryMargin = deliveryMethod === 'shareswap_delivery' && uberQuoteFee ? 2.00 : null;
       const totalDeliveryFee = uberQuoteFee && deliveryMargin ? uberQuoteFee + deliveryMargin : null;
-      const depositProcessingFee = depositMethod === 'shareswap_deposit' && depositAmount ? depositAmount * 0.05 : null;
+      const finalDepositProcessingFee = depositProcessingFee || (depositMethod === 'shareswap_deposit' && depositAmount ? depositAmount * 0.05 : null);
 
       // Check if arrangement already exists
       const [existingArrangement] = await db
@@ -1748,7 +1749,7 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
             deliveryMargin: deliveryMargin?.toString(),
             totalDeliveryFee: totalDeliveryFee?.toString(),
             uberDeliveryFee: uberQuoteFee?.toString(),
-            depositProcessingFee: depositProcessingFee?.toString(),
+            depositProcessingFee: finalDepositProcessingFee?.toString(),
             securityDeposit: depositAmount?.toString(),
             stripePaymentIntentId,
             stripeDepositStatus: stripePaymentIntentId ? 'authorized' : null,
@@ -1769,7 +1770,7 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
             deliveryMargin: deliveryMargin?.toString(),
             totalDeliveryFee: totalDeliveryFee?.toString(),
             uberDeliveryFee: uberQuoteFee?.toString(),
-            depositProcessingFee: depositProcessingFee?.toString(),
+            depositProcessingFee: finalDepositProcessingFee?.toString(),
             securityDeposit: depositAmount?.toString(),
             stripePaymentIntentId,
             stripeDepositStatus: stripePaymentIntentId ? 'authorized' : null,

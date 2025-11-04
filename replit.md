@@ -119,6 +119,15 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - Built reusable FollowButton component with loading states and error handling
 - Follow counts displayed on profile page in supportive, community-focused language
 - Database includes follower/following counts for efficient queries without expensive joins
+- ✅ **Implemented Two-Step Delivery & Deposit Selection Flow** - Post-request acceptance modal for choosing delivery and deposit methods
+- Added DeliveryDepositModal: Step 1 selects delivery method (self-arrange free vs ShareSwap Delivery with Uber), Step 2 selects security deposit (self-arrange vs ShareSwap Deposit with Stripe hold)
+- Integrated Stripe payment authorization holds (not charges) with 5% processing fee for ShareSwap Deposit option
+- Created /requests page for viewing and managing incoming item requests with accept/decline functionality
+- Added fee tracking system: $2 margin for Uber Direct delivery (placeholder), 5% for Stripe deposit processing
+- Implemented proper state reset on modal close to prevent cross-request data contamination
+- Added detailed risk warnings for self-arranged delivery/deposit options with recommended badges for platform options
+- **Note**: Uber Direct API integration not yet implemented - currently using placeholder fees ($8.50 base + $2 margin)
+- Stripe Elements integration for secure payment authorization with automatic hold creation
 - Date: November 4, 2025
 
 ## Architecture

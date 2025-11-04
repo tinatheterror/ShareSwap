@@ -15,6 +15,7 @@ interface DeliveryDepositModalProps {
     depositMethod: 'self_arrange' | 'shareswap_deposit';
     uberQuoteFee?: number;
     depositAmount?: number;
+    depositProcessingFee?: number;
   }) => void;
   itemValue: number;
 }
@@ -28,6 +29,14 @@ export function DeliveryDepositModal({
   const [step, setStep] = useState<1 | 2>(1);
   const [deliveryMethod, setDeliveryMethod] = useState<'self_arrange' | 'shareswap_delivery' | null>(null);
   const [depositMethod, setDepositMethod] = useState<'self_arrange' | 'shareswap_deposit' | null>(null);
+
+  // Reset state whenever modal closes
+  const handleClose = () => {
+    setStep(1);
+    setDeliveryMethod(null);
+    setDepositMethod(null);
+    onClose();
+  };
 
   // Mock Uber delivery fee (in real implementation, this would come from Uber Direct API)
   const uberBaseFee = 8.50;
@@ -47,14 +56,19 @@ export function DeliveryDepositModal({
         depositMethod,
         uberQuoteFee: deliveryMethod === 'shareswap_delivery' ? totalDeliveryFee : undefined,
         depositAmount: depositMethod === 'shareswap_deposit' ? depositAmount : undefined,
+        depositProcessingFee: depositMethod === 'shareswap_deposit' ? depositProcessingFee : undefined,
       });
+      // Reset state after successful completion
+      setStep(1);
+      setDeliveryMethod(null);
+      setDepositMethod(null);
     }
   };
 
   const canContinue = step === 1 ? !!deliveryMethod : !!depositMethod;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold mb-6">
@@ -303,7 +317,7 @@ export function DeliveryDepositModal({
             variant="ghost"
             onClick={() => {
               if (step === 1) {
-                onClose();
+                handleClose();
               } else {
                 setStep(1);
               }

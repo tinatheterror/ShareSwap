@@ -29,6 +29,7 @@ import ReferralsPage from "@/pages/referrals-page";
 import MyItemsPage from "@/pages/my-items-page";
 import ShareCoinsInfoPage from "@/pages/sharecoins-info-page";
 import NotificationsPage from "@/pages/notifications-page";
+import RequestsPage from "@/pages/requests-page";
 
 function Router() {
   return (
@@ -56,7 +57,8 @@ function Router() {
       <ProtectedRoute path="/premium" component={PremiumPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
-      <ProtectedRoute path="/notifications" component={ProtectedRoute(NotificationsPage)} />
+      <ProtectedRoute path="/requests" component={RequestsPage} />
+      <ProtectedRoute path="/notifications" component={NotificationsPage} />
       <Route component={NotFound} />
     </Switch>
   );

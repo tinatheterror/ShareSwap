@@ -58,7 +58,7 @@ export default function MyItemsPage() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Package className="h-8 w-8 text-primary" />
-              My ShareChest
+              My Shares
             </h1>
             <p className="text-muted-foreground mt-2">
               Manage your uploaded items and track their availability
@@ -102,7 +102,7 @@ export default function MyItemsPage() {
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              {filter === "all" ? "No items in your ShareChest yet" : `No ${filter} items`}
+              {filter === "all" ? "No items yet" : `No ${filter} items`}
             </h3>
             <p className="text-gray-500 mb-6">
               {filter === "all" 

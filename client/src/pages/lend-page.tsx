@@ -268,34 +268,39 @@ export default function LendPage() {
                 onSubmit={form.handleSubmit((data) => createItemMutation.mutate(data))}
                 className="space-y-6"
               >
-                {/* Basic item details */}
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Item Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Item Name */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-medium">Item Name</h3>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Features and Details</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Features and Details */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-medium">Features and Details</h3>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 {/* Location field */}
                 <div className="space-y-4 border-t pt-4">
@@ -451,8 +456,9 @@ export default function LendPage() {
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <FormLabel>Photos</FormLabel>
+                {/* Photos */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-medium">Photos</h3>
                   <Tabs value={uploadMethod} onValueChange={(v) => setUploadMethod(v as "smartscan" | "manual")}>
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="smartscan">
@@ -503,19 +509,22 @@ export default function LendPage() {
                   )}
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="conditionRating"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Condition Rating (1-10)</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="1" max="10" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Condition Rating */}
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-medium">Condition Rating (1-10)</h3>
+                  <FormField
+                    control={form.control}
+                    name="conditionRating"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input type="number" min="1" max="10" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <Button
                   type="submit"

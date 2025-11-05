@@ -170,69 +170,69 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
             </div>
           )}
 
-          <div className="bg-white/70 backdrop-blur-sm p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h4 className="font-bold text-slate-800 text-xl mb-6 flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center shadow-md">
-                <Coins className="h-5 w-5 text-white" />
+          <div className="bg-white/70 backdrop-blur-sm p-3 rounded-xl border border-slate-200 shadow-sm">
+            <h4 className="font-bold text-slate-800 text-base mb-3 flex items-center gap-2">
+              <div className="w-6 h-6 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center shadow-md">
+                <Coins className="h-3.5 w-3.5 text-white" />
               </div>
               How ShareCoin Earning Works
             </h4>
 
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* Primary Earning Rules */}
-              <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-5 rounded-xl border border-teal-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h5 className="font-semibold text-teal-800 flex items-center gap-2">
-                    <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs">✓</span>
+              <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-3 rounded-lg border border-teal-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h5 className="font-semibold text-teal-800 text-sm flex items-center gap-1.5">
+                    <div className="w-4 h-4 bg-teal-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-[10px]">✓</span>
                     </div>
                     Earning Requirements
                   </h5>
                   <Link href="/sharecoins-info">
-                    <button className="text-sm text-teal-700 hover:text-teal-900 font-semibold hover:underline">
+                    <button className="text-xs text-teal-700 hover:text-teal-900 font-semibold hover:underline">
                       Learn More →
                     </button>
                   </Link>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full mt-1 flex-shrink-0"></div>
                     <div>
-                      <span className="text-slate-700 font-medium">ShareCoins earned only after successful completion</span>
-                      <p className="text-sm text-slate-600 mt-1">Your reward is guaranteed when the item is safely returned</p>
+                      <span className="text-slate-700 text-sm font-medium">ShareCoins earned only after successful completion</span>
+                      <p className="text-xs text-slate-600 mt-0.5">Your reward is guaranteed when the item is safely returned</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full mt-1 flex-shrink-0"></div>
                     <div>
-                      <span className="text-slate-700 font-medium">Reward amount varies by item value & duration</span>
-                      <p className="text-sm text-slate-600 mt-1">Higher value items and longer lending periods earn more ShareCoins</p>
+                      <span className="text-slate-700 text-sm font-medium">Reward amount varies by item value & duration</span>
+                      <p className="text-xs text-slate-600 mt-0.5">Higher value items and longer lending periods earn more ShareCoins</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Bonus Opportunities */}
-              <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-5 rounded-xl border border-teal-200">
-                <h5 className="font-semibold text-teal-800 mb-4 flex items-center gap-2">
-                  <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">★</span>
+              <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-3 rounded-lg border border-teal-200">
+                <h5 className="font-semibold text-teal-800 text-sm mb-2 flex items-center gap-1.5">
+                  <div className="w-4 h-4 bg-teal-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-[10px]">★</span>
                   </div>
                   Bonus Opportunities
                 </h5>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full mt-1 flex-shrink-0"></div>
                     <div>
-                      <span className="text-slate-700 font-medium">Extra ShareCoins for urgent requests</span>
-                      <p className="text-sm text-slate-600 mt-1">Help neighbors in need and earn bonus rewards</p>
+                      <span className="text-slate-700 text-sm font-medium">Extra ShareCoins for urgent requests</span>
+                      <p className="text-xs text-slate-600 mt-0.5">Help neighbors in need and earn bonus rewards</p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full mt-1 flex-shrink-0"></div>
                     <div>
-                      <span className="text-slate-700 font-medium">Build reputation while earning rewards</span>
-                      <p className="text-sm text-slate-600 mt-1">Each successful lending increases your community standing</p>
+                      <span className="text-slate-700 text-sm font-medium">Build reputation while earning rewards</span>
+                      <p className="text-xs text-slate-600 mt-0.5">Each successful lending increases your community standing</p>
                     </div>
                   </div>
                 </div>

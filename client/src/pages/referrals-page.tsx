@@ -78,7 +78,7 @@ export default function ReferralsPage() {
             Invite Friends
           </h1>
           <p className="text-muted-foreground">
-            Earn 10 ShareCoins for each friend who joins and completes their first transaction
+            Earn 10 ShareCoins everytime a friend joins and completes their first transaction
           </p>
         </div>
 
@@ -121,7 +121,7 @@ export default function ReferralsPage() {
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">
-                  Generate your unique referral code to start earning ShareCoins
+                  When neighbours sign up using your code you'll earn ShareCoins to use on future rentals or requests.
                 </p>
                 <Button 
                   onClick={() => generateCodeMutation.mutate()}

@@ -19,9 +19,16 @@ const csrfConfig = doubleCsrf({
   },
   getCsrfTokenFromRequest: (req: Request) => {
     // Check multiple possible locations for the CSRF token
-    return req.headers["x-csrf-token"] as string || 
+    const token = req.headers["x-csrf-token"] as string || 
            req.body?._csrf || 
            req.query?._csrf as string;
+    
+    // Debug logging
+    if (!token) {
+      console.log('[CSRF] No token found in request. Headers:', req.headers);
+    }
+    
+    return token;
   },
 });
 

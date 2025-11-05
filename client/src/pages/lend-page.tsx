@@ -317,19 +317,22 @@ export default function LendPage() {
                 {/* Sharing options */}
                 <div className="space-y-4">
                   <FormLabel>Sharing Options</FormLabel>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <FormField
                       control={form.control}
                       name="isLendable"
                       render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
+                        <FormItem>
                           <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                            />
+                            <Button
+                              type="button"
+                              variant={field.value ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => field.onChange(!field.value)}
+                            >
+                              Available for Lending
+                            </Button>
                           </FormControl>
-                          <FormLabel className="!mt-0">Available for Lending</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -338,14 +341,17 @@ export default function LendPage() {
                       control={form.control}
                       name="isSwappable"
                       render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
+                        <FormItem>
                           <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                            />
+                            <Button
+                              type="button"
+                              variant={field.value ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => field.onChange(!field.value)}
+                            >
+                              Available for Swaps
+                            </Button>
                           </FormControl>
-                          <FormLabel className="!mt-0">Available for Swaps</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -354,14 +360,17 @@ export default function LendPage() {
                       control={form.control}
                       name="isRentable"
                       render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
+                        <FormItem>
                           <FormControl>
-                            <Checkbox 
-                              checked={field.value} 
-                              onCheckedChange={field.onChange}
-                            />
+                            <Button
+                              type="button"
+                              variant={field.value ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => field.onChange(!field.value)}
+                            >
+                              Available for Rent
+                            </Button>
                           </FormControl>
-                          <FormLabel className="!mt-0">Available for Rent</FormLabel>
                         </FormItem>
                       )}
                     />

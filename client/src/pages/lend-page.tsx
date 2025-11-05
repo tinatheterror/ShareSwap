@@ -315,8 +315,8 @@ export default function LendPage() {
                 </div>
 
                 {/* Sharing options */}
-                <div className="space-y-4">
-                  <FormLabel>Sharing Options</FormLabel>
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-medium">Sharing Options</h3>
                   <div className="space-y-4">
                     <FormField
                       control={form.control}

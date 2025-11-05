@@ -326,8 +326,8 @@ export default function LendPage() {
                           <FormControl>
                             <Button
                               type="button"
-                              variant={field.value ? "default" : "outline"}
-                              className="w-full"
+                              variant="outline"
+                              className={`w-full ${field.value ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 hover:border-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300'}`}
                               onClick={() => field.onChange(!field.value)}
                             >
                               Available for Lending
@@ -345,8 +345,8 @@ export default function LendPage() {
                           <FormControl>
                             <Button
                               type="button"
-                              variant={field.value ? "default" : "outline"}
-                              className="w-full"
+                              variant="outline"
+                              className={`w-full ${field.value ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 hover:border-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300'}`}
                               onClick={() => field.onChange(!field.value)}
                             >
                               Available for Swaps
@@ -364,8 +364,8 @@ export default function LendPage() {
                           <FormControl>
                             <Button
                               type="button"
-                              variant={field.value ? "default" : "outline"}
-                              className="w-full"
+                              variant="outline"
+                              className={`w-full ${field.value ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 hover:border-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300'}`}
                               onClick={() => field.onChange(!field.value)}
                             >
                               Available for Rent

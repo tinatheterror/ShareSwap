@@ -146,26 +146,28 @@ export function registerRoutes(app: Express): Server {
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
 
-  // Security: Apply CSRF protection to all routes except login/register
-  // CSRF protection automatically applies to POST, PUT, DELETE, PATCH (not GET, HEAD, OPTIONS)
-  app.use((req, res, next) => {
-    // Skip CSRF for login and register (they need to work before CSRF token is obtained)
-    if (req.path === '/api/login' || req.path === '/api/register') {
-      return next();
-    }
-    // Apply CSRF protection to all other routes
-    csrfProtection(req, res, next);
-  });
-
   // Security: CSRF token endpoint - call this before making mutating requests
+  // This endpoint generates and sets the CSRF token cookie
   app.get("/api/csrf-token", (req, res) => {
     // Generate and set CSRF token in cookie
     const token = setCsrfToken(req, res);
-    console.log('[CSRF Token Endpoint] Token generated:', !!token);
+    console.log('[CSRF Token Endpoint] Token generated and set');
     
     res.json({ 
       message: "CSRF token set in cookie and ready for use",
     });
+  });
+
+  // Security: Apply CSRF protection to all routes except login/register/csrf-token/referrals
+  // CSRF protection automatically applies to POST, PUT, DELETE, PATCH (not GET, HEAD, OPTIONS)
+  app.use((req, res, next) => {
+    // Skip CSRF for login, register, csrf-token, and referrals endpoints
+    const skipPaths = ['/api/login', '/api/register', '/api/csrf-token', '/api/referrals/generate'];
+    if (skipPaths.includes(req.path)) {
+      return next();
+    }
+    // Apply CSRF protection to all other routes
+    csrfProtection(req, res, next);
   });
 
   app.post("/api/verify", upload.single("idDocument"), async (req, res) => {

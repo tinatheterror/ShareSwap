@@ -1375,11 +1375,22 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
 
     const requests = await db
       .select({
-        request: itemRequests,
+        id: itemRequests.id,
+        itemId: itemRequests.itemId,
+        requesterId: itemRequests.requesterId,
+        requestType: itemRequests.requestType,
+        status: itemRequests.status,
+        message: itemRequests.message,
+        startDate: itemRequests.startDate,
+        endDate: itemRequests.endDate,
+        createdAt: itemRequests.createdAt,
         item: {
           id: items.id,
           name: items.name,
+          description: items.description,
           photos: items.photos,
+          estimatedValue: items.estimatedValue,
+          ownerId: items.ownerId,
         },
         requester: {
           id: users.id,

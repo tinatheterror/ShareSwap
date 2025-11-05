@@ -33,7 +33,7 @@ import { addSimplifiedRoutes } from "./simplified-routes";
 import { platformConfig, calculateCommission } from "./platform-config";
 import { AntiFarmingSystem } from "./anti-farming-system";
 import { CooldownChecker } from "./cooldown-checker";
-import { csrfProtection } from "./csrf";
+import { csrfProtection, setCsrfToken } from "./csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
 
@@ -159,6 +159,10 @@ export function registerRoutes(app: Express): Server {
 
   // Security: CSRF token endpoint - call this before making mutating requests
   app.get("/api/csrf-token", (req, res) => {
+    // Generate and set CSRF token in cookie
+    const token = setCsrfToken(req, res);
+    console.log('[CSRF Token Endpoint] Token generated:', !!token);
+    
     res.json({ 
       message: "CSRF token set in cookie and ready for use",
     });

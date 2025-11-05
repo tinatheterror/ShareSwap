@@ -24,6 +24,7 @@ import RentPage from "@/pages/rent-page";
 import ProfilePage from "@/pages/profile-page";
 import AchievementsPage from "@/pages/achievements-page";
 import WishlistsPage from "@/pages/wishlists-page";
+import CommunityWishlistsPage from "@/pages/community-wishlists-page";
 import PremiumPage from "@/pages/premium-page";
 import ReferralsPage from "@/pages/referrals-page";
 import MyItemsPage from "@/pages/my-items-page";
@@ -53,6 +54,7 @@ function Router() {
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/achievements" component={AchievementsPage} />
       <ProtectedRoute path="/wishlists" component={WishlistsPage} />
+      <ProtectedRoute path="/community-wishlists" component={CommunityWishlistsPage} />
       <Route path="/sharecoins-info" component={ShareCoinsInfoPage} />
       <ProtectedRoute path="/premium" component={PremiumPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />

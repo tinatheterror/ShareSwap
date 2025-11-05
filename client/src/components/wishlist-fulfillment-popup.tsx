@@ -162,7 +162,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
               <p className="text-slate-600 text-lg mb-6 max-w-md mx-auto">
                 No urgent requests at the moment. Check back soon or explore all community wishlists.
               </p>
-              <Link href="/wishlists">
+              <Link href="/community-wishlists">
                 <Button variant="outline" size="lg" className="border-teal-200 text-teal-700 hover:bg-teal-50">
                   Explore All Wishlists
                 </Button>
@@ -241,7 +241,7 @@ export function WishlistFulfillmentPopup({ isOpen, onClose }: WishlistFulfillmen
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <Link href="/wishlists" className="block">
+            <Link href="/community-wishlists" className="block">
               <Button variant="outline" size="lg" className="w-full h-14 border-2 border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold">
                 Explore All Wishlists
               </Button>

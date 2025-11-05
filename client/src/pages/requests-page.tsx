@@ -257,7 +257,7 @@ export default function RequestsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading requests...</div>
@@ -267,11 +267,11 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Item Requests</h1>
+        <h1 className="text-3xl font-bold mb-6 text-teal-800">Item Requests</h1>
 
         {/* Incoming Requests */}
         <div className="mb-12">
@@ -281,7 +281,7 @@ export default function RequestsPage() {
           </h2>
 
           {incomingRequests.length === 0 ? (
-            <Card>
+            <Card className="bg-teal-50 border-teal-200">
               <CardContent className="p-8 text-center text-muted-foreground">
                 No pending requests for your items
               </CardContent>
@@ -289,7 +289,7 @@ export default function RequestsPage() {
           ) : (
             <div className="space-y-4">
               {incomingRequests.map((request) => (
-                <Card key={request.id} className="hover:shadow-md transition-shadow">
+                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:shadow-lg transition-all">
                   <CardContent className="p-6">
                     <div className="flex gap-4">
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
@@ -368,7 +368,7 @@ export default function RequestsPage() {
           <h2 className="text-2xl font-semibold mb-4">My Requests ({myRequests.length})</h2>
 
           {myRequests.length === 0 ? (
-            <Card>
+            <Card className="bg-teal-50 border-teal-200">
               <CardContent className="p-8 text-center text-muted-foreground">
                 You haven't made any requests yet
               </CardContent>
@@ -376,7 +376,7 @@ export default function RequestsPage() {
           ) : (
             <div className="space-y-4">
               {myRequests.map((request) => (
-                <Card key={request.id}>
+                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:shadow-md transition-all">
                   <CardContent className="p-6">
                     <div className="flex gap-4">
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">

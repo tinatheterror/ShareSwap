@@ -1,8 +1,24 @@
-# ShareSwap Post-Request Acceptance Modal - Design Guidelines
+# ShareSwap Design Guidelines
+
+## Color Palette - Teal Professional Theme
+
+**Primary Teal:** hsl(168, 88%, 43%) - Main brand color
+**Teal Shades:**
+- Light Teal Background: bg-teal-50 - For card backgrounds and subtle accents
+- Medium Teal: bg-teal-100 - For hover states and secondary backgrounds  
+- Darker Teal: bg-teal-600 - For emphasis and highlights
+- Teal Border: border-teal-200 - For card borders and separators
+
+**Usage Strategy:**
+- Cards: Use teal-50 backgrounds instead of white for warmth
+- Recommended badges: Teal gradient (from-teal-500 to-teal-700)
+- Hover states: Teal-100 backgrounds
+- Accent elements: Teal-600 for icons and emphasis
+- Borders: Teal-200 for subtle definition
 
 ## Design Approach
 
-**Reference-Based Strategy:** Drawing from Airbnb's marketplace trust patterns, Stripe's payment transparency, and Uber's service clarity. This modal must instill confidence through clear information hierarchy, transparent pricing, and gentle guidance toward platform-protected options.
+**Reference-Based Strategy:** Drawing from Airbnb's marketplace trust patterns, Stripe's payment transparency, and Uber's service clarity. Enhanced with professional teal color scheme throughout for visual warmth and brand consistency.
 
 ## Typography System
 
@@ -47,9 +63,10 @@
 - Spacing: mb-8
 
 ### Option Cards (Primary Selection UI)
-- Border: 2px solid, rounded-xl
-- Hover: Lift effect with shadow increase
-- Selected: Thicker border (3px), subtle glow
+- Background: bg-teal-50 (light teal for warmth)
+- Border: 2px solid border-teal-200
+- Hover: bg-teal-100 with shadow increase
+- Selected: border-primary (teal-500), bg-teal-100, subtle glow
 - Radio button: Top-right corner (20px size)
 - Layout: Vertical stack with 16px spacing between elements
 
@@ -63,8 +80,10 @@
 ### Recommended Badge
 - Position: Absolute top-right of card (offset -2px, -12px for hanging effect)
 - Rounded-full pill shape
-- Icon: Star or shield (12px) + text
-- Subtle gradient background enhancement
+- Background: Gradient from-teal-500 to-teal-700
+- Text: White, font-semibold
+- Icon: Star (12px) + text
+- Shadow for depth
 
 ### Warning Components
 - Light background treatment
@@ -75,10 +94,12 @@
 - Font: 13px with tighter line-height
 
 ### Fee Breakdown Table
+- Background: bg-teal-100/50 for subtle distinction
+- Border: border-teal-200
 - Two-column layout with divider line
 - Labels: Left-aligned, medium weight
 - Values: Right-aligned, bold
-- Total row: Thicker top border, larger text (16px)
+- Total row: border-t border-teal-300, larger text (16px)
 - Spacing: py-3 per row
 
 ### Button System

@@ -102,12 +102,12 @@ export function DeliveryDepositModal({
               <Card 
                 className={`relative cursor-pointer transition-all ${
                   deliveryMethod === 'shareswap_delivery' 
-                    ? 'border-3 border-primary shadow-lg' 
-                    : 'border-2 hover:border-primary/50 hover:shadow-md'
+                    ? 'border-3 border-primary bg-teal-100 shadow-lg' 
+                    : 'bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:border-primary/50 hover:shadow-md'
                 }`}
                 onClick={() => setDeliveryMethod('shareswap_delivery')}
               >
-                <Badge className="absolute -top-3 right-4 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-semibold px-3 py-1">
+                <Badge className="absolute -top-3 right-4 bg-gradient-to-r from-teal-500 to-teal-700 text-white font-semibold px-3 py-1 shadow-md">
                   <Star className="h-3 w-3 mr-1 inline" />
                   RECOMMENDED
                 </Badge>
@@ -140,22 +140,22 @@ export function DeliveryDepositModal({
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="bg-teal-100/50 border border-teal-200 rounded-lg p-4">
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-muted-foreground">Estimated base fee</span>
-                      <span>${estimatedBaseFee.toFixed(2)}</span>
+                      <span className="font-medium">${estimatedBaseFee.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="text-muted-foreground">Platform margin</span>
-                      <span>${deliveryMargin.toFixed(2)}</span>
+                      <span className="font-medium">${deliveryMargin.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Estimated time</span>
-                      <span>{estimatedDeliveryTime}</span>
+                      <span className="font-medium">{estimatedDeliveryTime}</span>
                     </div>
-                    <div className="flex justify-between font-bold text-base border-t pt-2">
+                    <div className="flex justify-between font-bold text-base border-t border-teal-300 pt-2">
                       <span>Total estimated fee</span>
-                      <span>${totalDeliveryFee.toFixed(2)}</span>
+                      <span className="text-teal-700">${totalDeliveryFee.toFixed(2)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -165,8 +165,8 @@ export function DeliveryDepositModal({
               <Card 
                 className={`cursor-pointer transition-all ${
                   deliveryMethod === 'self_arrange' 
-                    ? 'border-3 border-primary shadow-lg' 
-                    : 'border-2 hover:border-primary/50 hover:shadow-md'
+                    ? 'border-3 border-primary bg-teal-100 shadow-lg' 
+                    : 'bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:border-primary/50 hover:shadow-md'
                 }`}
                 onClick={() => setDeliveryMethod('self_arrange')}
               >
@@ -212,12 +212,12 @@ export function DeliveryDepositModal({
               <Card 
                 className={`relative cursor-pointer transition-all ${
                   depositMethod === 'shareswap_deposit' 
-                    ? 'border-3 border-primary shadow-lg' 
-                    : 'border-2 hover:border-primary/50 hover:shadow-md'
+                    ? 'border-3 border-primary bg-teal-100 shadow-lg' 
+                    : 'bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:border-primary/50 hover:shadow-md'
                 }`}
                 onClick={() => setDepositMethod('shareswap_deposit')}
               >
-                <Badge className="absolute -top-3 right-4 bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-semibold px-3 py-1">
+                <Badge className="absolute -top-3 right-4 bg-gradient-to-r from-teal-500 to-teal-700 text-white font-semibold px-3 py-1 shadow-md">
                   <Star className="h-3 w-3 mr-1 inline" />
                   RECOMMENDED
                 </Badge>
@@ -250,18 +250,18 @@ export function DeliveryDepositModal({
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="bg-teal-100/50 border border-teal-200 rounded-lg p-4">
                     <div className="flex justify-between text-sm mb-1">
-                      <span>Security deposit</span>
-                      <span>${depositAmount.toFixed(2)}</span>
+                      <span className="text-muted-foreground">Security deposit</span>
+                      <span className="font-medium">${depositAmount.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm mb-2">
-                      <span>Processing fee (5%)</span>
-                      <span>${depositProcessingFee.toFixed(2)}</span>
+                      <span className="text-muted-foreground">Processing fee (5%)</span>
+                      <span className="font-medium">${depositProcessingFee.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between font-bold text-base border-t pt-2">
+                    <div className="flex justify-between font-bold text-base border-t border-teal-300 pt-2">
                       <span>Total hold amount</span>
-                      <span>${(depositAmount + depositProcessingFee).toFixed(2)}</span>
+                      <span className="text-teal-700">${(depositAmount + depositProcessingFee).toFixed(2)}</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                       Deposit + fee are authorized (held) on your card and fully refunded when item is returned safely
@@ -274,8 +274,8 @@ export function DeliveryDepositModal({
               <Card 
                 className={`cursor-pointer transition-all ${
                   depositMethod === 'self_arrange' 
-                    ? 'border-3 border-primary shadow-lg' 
-                    : 'border-2 hover:border-primary/50 hover:shadow-md'
+                    ? 'border-3 border-primary bg-teal-100 shadow-lg' 
+                    : 'bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:border-primary/50 hover:shadow-md'
                 }`}
                 onClick={() => setDepositMethod('self_arrange')}
               >

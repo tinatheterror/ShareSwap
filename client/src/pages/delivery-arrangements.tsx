@@ -8,7 +8,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import QRCode from 'qrcode';
 import { useState } from 'react';
-import { Loader2, Truck, QrCode, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Loader2, Truck, QrCode, Calendar as CalendarIcon, X, Download, AlertTriangle, Smartphone, Camera, CheckCircle2 } from 'lucide-react';
 import type { EventClickArg } from '@fullcalendar/core';
 
 interface DeliveryArrangement {
@@ -288,19 +288,85 @@ export default function DeliveryArrangementsPage() {
                       </div>
                     </div>
                     {qrCodes[arr.id] && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg flex flex-col items-center space-y-4">
-                        <img
-                          src={qrCodes[arr.id]}
-                          alt="QR Code for Item Handover"
-                          className="w-40 h-40 border border-gray-200 rounded"
-                        />
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-gray-900 mb-1">
-                            QR Code for Easy Handover
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Show this code to verify the {arr.deliveryType === 'pickup' ? 'pickup' : 'delivery'} of {arr.request.item.name}
-                          </p>
+                      <div className="mt-4 p-5 bg-gradient-to-br from-teal-50 to-blue-50 rounded-lg border border-teal-200">
+                        <div className="flex flex-col lg:flex-row gap-6">
+                          {/* QR Code Display */}
+                          <div className="flex flex-col items-center justify-center lg:w-1/3">
+                            <img
+                              src={qrCodes[arr.id]}
+                              alt="QR Code for Item Handover"
+                              className="w-48 h-48 border-2 border-teal-600 rounded-lg shadow-md bg-white p-2"
+                            />
+                            <p className="text-sm font-semibold text-teal-900 mt-3">
+                              Handover Verification Code
+                            </p>
+                          </div>
+                          
+                          {/* Instructions */}
+                          <div className="flex-1 space-y-4">
+                            <h4 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                              <CheckCircle2 className="h-5 w-5 text-teal-600" />
+                              How to Use This QR Code
+                            </h4>
+                            
+                            <div className="space-y-3 text-sm">
+                              <div className="flex gap-3">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold">
+                                  1
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">When you meet for handover</p>
+                                  <p className="text-gray-600 text-xs">
+                                    Show this QR code on your phone when you meet the other person to exchange the item.
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-3">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold">
+                                  2
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">Other person scans it</p>
+                                  <p className="text-gray-600 text-xs flex items-center gap-1">
+                                    <Camera className="h-3 w-3" />
+                                    They scan with their phone camera or any QR code scanner app.
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-3">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold">
+                                  3
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">Confirms transaction details</p>
+                                  <p className="text-gray-600 text-xs">
+                                    The QR code contains: item name, {arr.deliveryType === 'pickup' ? 'pickup' : 'delivery'} date, address, and verification code.
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-3">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold">
+                                  4
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900">Serves as proof of handover</p>
+                                  <p className="text-gray-600 text-xs">
+                                    Both parties get confirmation that the item was handed over at the right time and place.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-4 p-3 bg-white/60 rounded-lg border border-teal-200">
+                              <p className="text-xs text-gray-700 flex items-center gap-2">
+                                <Smartphone className="h-4 w-4 text-teal-600" />
+                                <span><strong>Tip:</strong> Most modern phones can scan QR codes directly with the camera app - no special app needed!</span>
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}

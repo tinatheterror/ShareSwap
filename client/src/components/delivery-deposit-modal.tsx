@@ -38,10 +38,11 @@ export function DeliveryDepositModal({
     onClose();
   };
 
-  // Mock Uber delivery fee (in real implementation, this would come from Uber Direct API)
-  const uberBaseFee = 8.50;
+  // Simulated delivery fee (Test mode - will be replaced with real Uber Direct API)
+  const estimatedBaseFee = 8.50;
   const deliveryMargin = 2.00;
-  const totalDeliveryFee = uberBaseFee + deliveryMargin;
+  const totalDeliveryFee = estimatedBaseFee + deliveryMargin;
+  const estimatedDeliveryTime = "30-45 min";
 
   // Calculate deposit fee (5% of item value)
   const depositAmount = itemValue || 50; // Default to $50 if no value
@@ -115,10 +116,10 @@ export function DeliveryDepositModal({
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Truck className="h-5 w-5 text-primary" />
-                        <h3 className="font-semibold text-lg">Use ShareSwap Delivery</h3>
+                        <h3 className="font-semibold text-lg">ShareSwap Delivery (Test)</h3>
                       </div>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Powered by Uber Direct for safe, tracked delivery
+                        Simulated delivery service • Estimated fees and times shown
                       </p>
                     </div>
                     <RadioGroupItem value="shareswap_delivery" className="mt-1" />
@@ -127,29 +128,33 @@ export function DeliveryDepositModal({
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span>Real-time tracking</span>
+                      <span>Simulated real-time tracking</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span>Insurance coverage included</span>
+                      <span>Preview of insurance coverage</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Check className="h-4 w-4 text-green-600" />
-                      <span>Professional courier service</span>
+                      <span>Test mode features</span>
                     </div>
                   </div>
 
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex justify-between text-sm mb-1">
-                      <span>Uber Direct delivery</span>
-                      <span>${uberBaseFee.toFixed(2)}</span>
+                      <span className="text-muted-foreground">Estimated base fee</span>
+                      <span>${estimatedBaseFee.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>ShareSwap margin</span>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-muted-foreground">Platform margin</span>
                       <span>${deliveryMargin.toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Estimated time</span>
+                      <span>{estimatedDeliveryTime}</span>
+                    </div>
                     <div className="flex justify-between font-bold text-base border-t pt-2">
-                      <span>Total delivery fee</span>
+                      <span>Total estimated fee</span>
                       <span>${totalDeliveryFee.toFixed(2)}</span>
                     </div>
                   </div>

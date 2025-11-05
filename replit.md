@@ -13,6 +13,10 @@ A comprehensive peer-to-peer sharing marketplace platform that enables secure an
 - **Security**: Advanced location matching and item verification
 
 ## Recent Changes
+- ✅ **Fixed CSRF cookie parsing** - Added cookie-parser middleware to enable CSRF token validation
+- ✅ **Enhanced QR code instructions** - Added clear 4-step guide showing how to use QR codes for item handover verification
+- ✅ **Fixed database schema** - Added missing columns to delivery_arrangements and item_requests tables
+- Updated referral page copy for clarity: "Earn 10 ShareCoins everytime a friend joins..." and new description
 - ✅ **Implemented SmartScan AI item recognition** - Computer vision-powered auto-tagging with 3 free scans/month, unlimited for Premium
 - ✅ **Implemented CSRF protection** - Double-submit cookie pattern with csrf-csrf package protects all mutating requests
 - ✅ **Fixed WebSocket authentication security** - Session-based validation prevents user impersonation in real-time chat

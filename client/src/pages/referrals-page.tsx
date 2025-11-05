@@ -20,7 +20,8 @@ export default function ReferralsPage() {
 
   const generateCodeMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/referrals/generate", {});
+      const response = await apiRequest("POST", "/api/referrals/generate", {});
+      return response.json();
     },
     onSuccess: (data) => {
       setReferralCode(data.referralCode);

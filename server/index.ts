@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
@@ -33,6 +34,9 @@ export const authLimiter = rateLimit({
 });
 
 app.use('/api/', generalLimiter);
+
+// Security: Parse cookies (required for CSRF protection)
+app.use(cookieParser());
 
 app.use(express.json({ limit: '10mb' })); // Limit request body size
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));

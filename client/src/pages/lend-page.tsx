@@ -317,22 +317,19 @@ export default function LendPage() {
                 {/* Sharing options */}
                 <div className="space-y-4">
                   <FormLabel>Sharing Options</FormLabel>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-4">
                     <FormField
                       control={form.control}
                       name="isLendable"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className={`w-full ${field.value ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 hover:border-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300'}`}
-                              onClick={() => field.onChange(!field.value)}
-                            >
-                              Available for Lending
-                            </Button>
+                            <Checkbox 
+                              checked={field.value} 
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
+                          <FormLabel className="!mt-0">Available for Lending</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -341,17 +338,14 @@ export default function LendPage() {
                       control={form.control}
                       name="isSwappable"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className={`w-full ${field.value ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 hover:border-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300'}`}
-                              onClick={() => field.onChange(!field.value)}
-                            >
-                              Available for Swaps
-                            </Button>
+                            <Checkbox 
+                              checked={field.value} 
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
+                          <FormLabel className="!mt-0">Available for Swaps</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -360,17 +354,14 @@ export default function LendPage() {
                       control={form.control}
                       name="isRentable"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className={`w-full ${field.value ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700 hover:border-teal-700' : 'hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300'}`}
-                              onClick={() => field.onChange(!field.value)}
-                            >
-                              Available for Rent
-                            </Button>
+                            <Checkbox 
+                              checked={field.value} 
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
+                          <FormLabel className="!mt-0">Available for Rent</FormLabel>
                         </FormItem>
                       )}
                     />

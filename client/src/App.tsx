@@ -3,11 +3,11 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "./hooks/use-auth";
+import { ChatWidget } from "@/components/chat-widget";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
 import VerificationPage from "@/pages/verification-page";
-import ChatPage from "@/pages/chat-page";
 import ShareOptionsPage from "@/pages/share-options";
 import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
@@ -38,7 +38,6 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/verify" component={VerificationPage} />
-      <ProtectedRoute path="/chat" component={ChatPage} />
       <ProtectedRoute path="/share-options" component={ShareOptionsPage} />
       <ProtectedRoute path="/borrow" component={BorrowPage} />
       <ProtectedRoute path="/lend" component={LendPage} />
@@ -71,6 +70,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router />
+        <ChatWidget />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>

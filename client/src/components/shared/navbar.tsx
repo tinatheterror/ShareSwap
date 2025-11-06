@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { MessageCircle, Coins, Gamepad2, Trophy, Heart, Crown, Users, Package, Bell } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Crown, Users, Package, Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 
@@ -144,14 +144,6 @@ export function Navbar() {
                       <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
                         <Heart className="h-5 w-5" />
                         <span>My Wishlist</span>
-                      </Button>
-                    </Link>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
-                    <Link href="/chat">
-                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
-                        <MessageCircle className="h-5 w-5" />
-                        <span>Messages</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

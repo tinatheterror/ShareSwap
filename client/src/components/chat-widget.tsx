@@ -77,9 +77,9 @@ export function ChatWidget() {
   const filteredConversations = allConversations.filter((conv) => {
     if (activeTab === "all") return true;
     if (activeTab === "unread") return conv.unreadCount > 0;
-    if (activeTab === "lending") return conv.transactionType === "borrow";
-    if (activeTab === "renting") return conv.transactionType === "rent";
-    if (activeTab === "swapping") return conv.transactionType === "swap";
+    if (activeTab === "lending") return conv.transactionType?.toUpperCase() === "BORROW";
+    if (activeTab === "renting") return conv.transactionType?.toUpperCase() === "RENT";
+    if (activeTab === "swapping") return conv.transactionType?.toUpperCase() === "SWAP";
     return true;
   });
 
@@ -246,9 +246,9 @@ export function ChatWidget() {
                         </div>
                         {conv.itemName && (
                           <div className="text-xs text-muted-foreground mb-1">
-                            {conv.transactionType === "borrow" && "Lending"} 
-                            {conv.transactionType === "rent" && "Renting"} 
-                            {conv.transactionType === "swap" && "Swapping"}: {conv.itemName}
+                            {conv.transactionType?.toUpperCase() === "BORROW" && "Lending"} 
+                            {conv.transactionType?.toUpperCase() === "RENT" && "Renting"} 
+                            {conv.transactionType?.toUpperCase() === "SWAP" && "Swapping"}: {conv.itemName}
                           </div>
                         )}
                         <p className="text-sm text-muted-foreground truncate">

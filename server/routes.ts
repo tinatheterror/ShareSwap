@@ -1076,6 +1076,99 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
     res.json(chatMessages);
   });
 
+  // Get all conversations for the current user
+  app.get("/api/conversations", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    // Get all unique users the current user has messaged with
+    const conversationsQuery = await db
+      .select({
+        userId: sql<number>`CASE 
+          WHEN ${messages.senderId} = ${req.user.id} THEN ${messages.receiverId}
+          ELSE ${messages.senderId}
+        END`.as('user_id'),
+        lastMessageContent: sql<string>`(
+          SELECT content FROM messages m2 
+          WHERE (m2.sender_id = ${messages.senderId} AND m2.receiver_id = ${messages.receiverId})
+             OR (m2.sender_id = ${messages.receiverId} AND m2.receiver_id = ${messages.senderId})
+          ORDER BY m2.created_at DESC 
+          LIMIT 1
+        )`.as('last_message_content'),
+        lastMessageTime: sql<Date>`(
+          SELECT created_at FROM messages m2 
+          WHERE (m2.sender_id = ${messages.senderId} AND m2.receiver_id = ${messages.receiverId})
+             OR (m2.sender_id = ${messages.receiverId} AND m2.receiver_id = ${messages.senderId})
+          ORDER BY m2.created_at DESC 
+          LIMIT 1
+        )`.as('last_message_time'),
+        unreadCount: sql<number>`(
+          SELECT COUNT(*) FROM messages m3
+          WHERE m3.sender_id = user_id 
+            AND m3.receiver_id = ${req.user.id}
+        )`.as('unread_count'),
+      })
+      .from(messages)
+      .where(
+        or(
+          eq(messages.senderId, req.user.id),
+          eq(messages.receiverId, req.user.id)
+        )
+      )
+      .groupBy(sql`user_id`)
+      .orderBy(desc(sql`last_message_time`));
+
+    // Get user details and transaction types for each conversation
+    const conversations = await Promise.all(
+      conversationsQuery.map(async (conv) => {
+        // Get user details
+        const [otherUser] = await db
+          .select({
+            id: users.id,
+            username: users.username,
+          })
+          .from(users)
+          .where(eq(users.id, conv.userId));
+
+        // Try to find related item request to determine transaction type
+        const relatedRequests = await db
+          .select({
+            requestType: itemRequests.requestType,
+            itemName: items.name,
+          })
+          .from(itemRequests)
+          .innerJoin(items, eq(itemRequests.itemId, items.id))
+          .where(
+            or(
+              and(
+                eq(itemRequests.requesterId, conv.userId),
+                eq(items.ownerId, req.user.id)
+              ),
+              and(
+                eq(itemRequests.requesterId, req.user.id),
+                eq(items.ownerId, conv.userId)
+              )
+            )
+          )
+          .orderBy(desc(itemRequests.createdAt))
+          .limit(1);
+
+        return {
+          userId: conv.userId,
+          username: otherUser?.username || 'Unknown',
+          lastMessage: conv.lastMessageContent,
+          lastMessageTime: conv.lastMessageTime,
+          unreadCount: conv.unreadCount || 0,
+          transactionType: relatedRequests[0]?.requestType || null,
+          itemName: relatedRequests[0]?.itemName || null,
+        };
+      })
+    );
+
+    res.json(conversations);
+  });
+
   // ShareCoins transaction endpoints
   app.get("/api/transactions", async (req, res) => {
     if (!req.isAuthenticated()) {

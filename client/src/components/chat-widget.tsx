@@ -32,13 +32,15 @@ type TabType = "all" | "lending" | "renting" | "swapping" | "unread";
 
 export function ChatWidget() {
   const { user } = useAuth();
+
+  // Early return BEFORE any other hooks to avoid Rules of Hooks violation
+  if (!user) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  if (!user) return null;
 
   // WebSocket setup
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";

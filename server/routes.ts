@@ -1082,33 +1082,9 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
       return res.sendStatus(401);
     }
 
-    // Get all unique users the current user has messaged with
-    const conversationsQuery = await db
-      .select({
-        userId: sql<number>`CASE 
-          WHEN ${messages.senderId} = ${req.user.id} THEN ${messages.receiverId}
-          ELSE ${messages.senderId}
-        END`.as('user_id'),
-        lastMessageContent: sql<string>`(
-          SELECT content FROM messages m2 
-          WHERE (m2.sender_id = ${messages.senderId} AND m2.receiver_id = ${messages.receiverId})
-             OR (m2.sender_id = ${messages.receiverId} AND m2.receiver_id = ${messages.senderId})
-          ORDER BY m2.created_at DESC 
-          LIMIT 1
-        )`.as('last_message_content'),
-        lastMessageTime: sql<Date>`(
-          SELECT created_at FROM messages m2 
-          WHERE (m2.sender_id = ${messages.senderId} AND m2.receiver_id = ${messages.receiverId})
-             OR (m2.sender_id = ${messages.receiverId} AND m2.receiver_id = ${messages.senderId})
-          ORDER BY m2.created_at DESC 
-          LIMIT 1
-        )`.as('last_message_time'),
-        unreadCount: sql<number>`(
-          SELECT COUNT(*) FROM messages m3
-          WHERE m3.sender_id = user_id 
-            AND m3.receiver_id = ${req.user.id}
-        )`.as('unread_count'),
-      })
+    // Get all messages involving the current user
+    const allMessages = await db
+      .select()
       .from(messages)
       .where(
         or(
@@ -1116,12 +1092,35 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
           eq(messages.receiverId, req.user.id)
         )
       )
-      .groupBy(sql`user_id`)
-      .orderBy(desc(sql`last_message_time`));
+      .orderBy(desc(messages.createdAt));
+
+    // Group by conversation partner
+    const conversationMap = new Map<number, {
+      lastMessage: string;
+      lastMessageTime: Date;
+      unreadCount: number;
+    }>();
+
+    for (const msg of allMessages) {
+      const partnerId = msg.senderId === req.user.id ? msg.receiverId : msg.senderId;
+      
+      if (!conversationMap.has(partnerId)) {
+        // Count unread messages from this partner
+        const unread = allMessages.filter(
+          m => m.senderId === partnerId && m.receiverId === req.user.id
+        ).length;
+
+        conversationMap.set(partnerId, {
+          lastMessage: msg.content,
+          lastMessageTime: msg.createdAt!,
+          unreadCount: unread,
+        });
+      }
+    }
 
     // Get user details and transaction types for each conversation
     const conversations = await Promise.all(
-      conversationsQuery.map(async (conv) => {
+      Array.from(conversationMap.entries()).map(async ([partnerId, data]) => {
         // Get user details
         const [otherUser] = await db
           .select({
@@ -1129,7 +1128,7 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
             username: users.username,
           })
           .from(users)
-          .where(eq(users.id, conv.userId));
+          .where(eq(users.id, partnerId));
 
         // Try to find related item request to determine transaction type
         const relatedRequests = await db
@@ -1142,12 +1141,12 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
           .where(
             or(
               and(
-                eq(itemRequests.requesterId, conv.userId),
+                eq(itemRequests.requesterId, partnerId),
                 eq(items.ownerId, req.user.id)
               ),
               and(
                 eq(itemRequests.requesterId, req.user.id),
-                eq(items.ownerId, conv.userId)
+                eq(items.ownerId, partnerId)
               )
             )
           )
@@ -1155,15 +1154,20 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
           .limit(1);
 
         return {
-          userId: conv.userId,
+          userId: partnerId,
           username: otherUser?.username || 'Unknown',
-          lastMessage: conv.lastMessageContent,
-          lastMessageTime: conv.lastMessageTime,
-          unreadCount: conv.unreadCount || 0,
+          lastMessage: data.lastMessage,
+          lastMessageTime: data.lastMessageTime,
+          unreadCount: data.unreadCount,
           transactionType: relatedRequests[0]?.requestType || null,
           itemName: relatedRequests[0]?.itemName || null,
         };
       })
+    );
+
+    // Sort by most recent message
+    conversations.sort((a, b) => 
+      new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
     );
 
     res.json(conversations);

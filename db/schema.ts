@@ -5,7 +5,11 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
-  password: text("password").notNull(),
+  password: text("password"), // Made nullable for OAuth/phone auth
+  authProvider: text("auth_provider").default("local"), // 'local', 'google', 'phone'
+  googleId: text("google_id").unique(),
+  phoneNumber: text("phone_number").unique(),
+  phoneVerified: boolean("phone_verified").default(false),
   isVerified: boolean("is_verified").default(false),
   shareCoins: decimal("share_coins", { precision: 10, scale: 2 }).default("0.00"),
   reputationScore: integer("reputation_score").default(0),

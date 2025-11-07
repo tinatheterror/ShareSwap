@@ -45,7 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
+      // Use fetch directly to handle custom error messages
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+        credentials: "include",
+      });
+      
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Login failed");
@@ -66,7 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (newUser: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", newUser);
+      // Use fetch directly to handle custom error messages
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+        credentials: "include",
+      });
+      
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Registration failed");

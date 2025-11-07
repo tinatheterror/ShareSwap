@@ -53,8 +53,8 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen grid md:grid-cols-2">
-      <div className="flex flex-col items-center justify-center p-8">
-          <div className="w-full max-w-md" style={{ marginBottom: "1rem" }}>
+      <div className="flex flex-col items-center p-8 pt-12">
+          <div className="w-full max-w-md mb-6">
             <img 
               src="/logo.png"
               alt="SwapShare Logo"

@@ -126,7 +126,22 @@ export function setupAuth(app: Express) {
             }
 
             // Create new user from Google profile
-            const username = profile.emails?.[0]?.value?.split('@')[0] || `google_${profile.id.slice(0, 10)}`;
+            let baseUsername = profile.emails?.[0]?.value?.split('@')[0] || `google_${profile.id.slice(0, 10)}`;
+            let username = baseUsername;
+            let suffix = 1;
+            
+            // Ensure username is unique by checking and appending suffix if needed
+            while (true) {
+              const [existingUsername] = await db
+                .select()
+                .from(users)
+                .where(eq(users.username, username))
+                .limit(1);
+              
+              if (!existingUsername) break;
+              username = `${baseUsername}${suffix}`;
+              suffix++;
+            }
             
             const [newUser] = await db
               .insert(users)
@@ -201,7 +216,7 @@ export function setupAuth(app: Express) {
         .insert(users)
         .values({
           ...result.data,
-          password: await hashPassword(result.data.password),
+          password: result.data.password ? await hashPassword(result.data.password) : null,
         })
         .returning();
 

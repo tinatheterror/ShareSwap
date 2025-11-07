@@ -62,13 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+    // Error is handled inline in auth page, no toast needed
   });
 
   const registerMutation = useMutation({

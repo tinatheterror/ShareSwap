@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const formSchema = z.object({
   username: z.string().min(3).max(20),
@@ -87,6 +89,16 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
+                    
+                    {loginMutation.error && (
+                      <Alert variant="destructive" className="py-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          {loginMutation.error.message}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
                     <FormField
                       control={form.control}
                       name="password"

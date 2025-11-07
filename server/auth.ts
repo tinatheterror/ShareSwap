@@ -1,5 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Express } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -8,7 +9,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db, pool } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 
 // Security: Rate limiter for authentication endpoints
@@ -91,7 +92,7 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const [user] = await getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
+        if (!user || !user.password || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Invalid username or password" });
         }
         return done(null, user);
@@ -101,6 +102,52 @@ export function setupAuth(app: Express) {
       }
     })
   );
+
+  // Google OAuth Strategy
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'http://localhost:5000'}/api/auth/google/callback`,
+        },
+        async (accessToken, refreshToken, profile, done) => {
+          try {
+            // Check if user exists with this Google ID
+            const [existingUser] = await db
+              .select()
+              .from(users)
+              .where(eq(users.googleId, profile.id))
+              .limit(1);
+
+            if (existingUser) {
+              return done(null, existingUser);
+            }
+
+            // Create new user from Google profile
+            const username = profile.emails?.[0]?.value?.split('@')[0] || `google_${profile.id.slice(0, 10)}`;
+            
+            const [newUser] = await db
+              .insert(users)
+              .values({
+                username,
+                googleId: profile.id,
+                authProvider: 'google',
+                isVerified: true, // Google accounts are pre-verified
+                password: null,
+              })
+              .returning();
+
+            return done(null, newUser);
+          } catch (error) {
+            console.error("Google authentication error:", error);
+            return done(error as Error);
+          }
+        }
+      )
+    );
+  }
 
   passport.serializeUser((user, done) => {
     done(null, user.id);
@@ -166,6 +213,19 @@ export function setupAuth(app: Express) {
       next(error);
     }
   });
+
+  // Google OAuth routes
+  app.get("/api/auth/google", authLimiter, 
+    passport.authenticate("google", { scope: ["profile", "email"] })
+  );
+
+  app.get("/api/auth/google/callback", authLimiter,
+    passport.authenticate("google", { failureRedirect: "/auth" }),
+    (req, res) => {
+      // Successful authentication, redirect to home
+      res.redirect("/");
+    }
+  );
 
   app.post("/api/logout", (req, res, next) => {
     if (!req.user) {

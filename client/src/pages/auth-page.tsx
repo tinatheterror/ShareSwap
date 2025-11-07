@@ -54,12 +54,12 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="flex flex-col items-center px-8 pt-2">
-          <div className="w-full max-w-md mb-2">
+          <div className="w-full max-w-md -mb-4">
             <img 
               src="/logo.png"
               alt="SwapShare Logo"
               className="w-full h-auto"
-              style={{ clipPath: 'inset(28% 0 30% 0)' }}
+              style={{ clipPath: 'inset(38% 0 38% 0)' }}
             />
           </div>
           <Card className="w-full max-w-md border-primary/20">

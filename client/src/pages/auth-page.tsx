@@ -1,41 +1,13 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { AlertCircle, Lock } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-
-const formSchema = z.object({
-  username: z.string().min(3).max(20),
-  password: z.string().min(6),
-});
+import { Lock } from "lucide-react";
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
-  });
+  const { user } = useAuth();
 
   // Fetch platform statistics
   const { data: stats, isLoading: statsLoading } = useQuery<{
@@ -62,193 +34,47 @@ export default function AuthPage() {
             />
           </div>
           <Card className="w-full max-w-md border-primary/20">
-          <CardContent className="pt-6">
-            <Tabs defaultValue="login">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Login</TabsTrigger>
-                <TabsTrigger value="register" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Register</TabsTrigger>
-              </TabsList>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <h2 className="text-2xl font-semibold text-center mb-2">Welcome Back</h2>
+                <p className="text-sm text-muted-foreground text-center mb-6">
+                  Sign in to continue sharing with your community
+                </p>
 
-              <TabsContent value="login">
-                <div className="space-y-4">
-                  <Button
-                    onClick={() => window.location.href = '/api/auth/google'}
-                    className="w-full bg-primary hover:bg-primary/90 h-11"
-                  >
-                    Continue with Google
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground px-2">
-                    Fast and secure. We'll never post or share anything without permission.
-                  </p>
+                <Button
+                  onClick={() => window.location.href = '/api/auth/google'}
+                  className="w-full bg-primary hover:bg-primary/90 h-11"
+                >
+                  Continue with Google
+                </Button>
+                <p className="text-xs text-center text-muted-foreground px-2">
+                  Fast and secure. We'll never post or share anything without permission.
+                </p>
 
-                  <Button
-                    variant="outline"
-                    className="w-full h-11"
-                    disabled
-                  >
-                    Continue with Phone Number
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground px-2">
-                    No Google account? Verify with your phone number to build trust in your neighbourhood.
-                  </p>
+                <Button
+                  variant="outline"
+                  className="w-full h-11"
+                  disabled
+                >
+                  Continue with Phone Number
+                </Button>
+                <p className="text-xs text-center text-muted-foreground px-2">
+                  No Google account? Verify with your phone number to build trust in your neighbourhood.
+                </p>
 
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
-                    <Lock className="h-3 w-3" />
-                    <span>Your identity helps keep ShareSwap safe and neighbourly.</span>
-                  </div>
-
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <Separator />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Or continue with username
-                      </span>
-                    </div>
-                  </div>
-
-                  <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit((data) =>
-                        loginMutation.mutate(data)
-                      )}
-                      className="space-y-4"
-                    >
-                      <FormField
-                        control={form.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input {...field} className="focus-visible:ring-primary" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      {loginMutation.error && (
-                        <Alert variant="destructive" className="py-2">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>
-                            {loginMutation.error.message}
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                      
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" {...field} className="focus-visible:ring-primary" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="submit"
-                        className="w-full bg-primary hover:bg-primary/90"
-                        disabled={loginMutation.isPending}
-                      >
-                        Login
-                      </Button>
-                    </form>
-                  </Form>
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-6">
+                  <Lock className="h-3 w-3" />
+                  <span>Your identity helps keep ShareSwap safe and neighbourly.</span>
                 </div>
-              </TabsContent>
 
-              <TabsContent value="register">
-                <div className="space-y-4">
-                  <Button
-                    onClick={() => window.location.href = '/api/auth/google'}
-                    className="w-full bg-primary hover:bg-primary/90 h-11"
-                  >
-                    Continue with Google
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground px-2">
-                    Fast and secure. We'll never post or share anything without permission.
+                <div className="text-center mt-6 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    No account? <span className="text-primary font-medium">Register</span>
                   </p>
-
-                  <Button
-                    variant="outline"
-                    className="w-full h-11"
-                    disabled
-                  >
-                    Continue with Phone Number
-                  </Button>
-                  <p className="text-xs text-center text-muted-foreground px-2">
-                    No Google account? Verify with your phone number to build trust in your neighbourhood.
-                  </p>
-
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-4">
-                    <Lock className="h-3 w-3" />
-                    <span>Your identity helps keep ShareSwap safe and neighbourly.</span>
-                  </div>
-
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <Separator />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Or create username account
-                      </span>
-                    </div>
-                  </div>
-
-                  <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit((data) =>
-                        registerMutation.mutate(data)
-                      )}
-                      className="space-y-4"
-                    >
-                      <FormField
-                        control={form.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input {...field} className="focus-visible:ring-primary" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                              <Input type="password" {...field} className="focus-visible:ring-primary" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="submit"
-                        className="w-full bg-primary hover:bg-primary/90"
-                        disabled={registerMutation.isPending}
-                      >
-                        Register
-                      </Button>
-                    </form>
-                  </Form>
                 </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+              </div>
+            </CardContent>
+          </Card>
       </div>
 
       <div

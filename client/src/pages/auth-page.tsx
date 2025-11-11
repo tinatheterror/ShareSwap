@@ -37,11 +37,9 @@ export default function AuthPage() {
           <CardContent className="pt-6">
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold text-center mb-2">
-                Welcome Back
+                Sign in and start sharing with your community
               </h2>
-              <p className="text-sm text-muted-foreground text-center mb-6">
-                Sign in to continue sharing with your community
-              </p>
+              <p className="text-sm text-muted-foreground text-center mb-6"></p>
 
               <Button
                 onClick={() => (window.location.href = "/api/auth/google")}
@@ -50,15 +48,14 @@ export default function AuthPage() {
                 Continue with Google
               </Button>
               <p className="text-xs text-center text-muted-foreground px-2">
-                Secure and simple. your privacy always comes first.{" "}
+                Secure and simple. Your privacy always comes first.{" "}
               </p>
 
               <Button variant="outline" className="w-full h-11" disabled>
                 Continue with Phone Number
               </Button>
               <p className="text-xs text-center text-muted-foreground px-2">
-                No Google account? Verify with your phone number to build trust
-                in your neighbourhood.
+                Verify your number to build local trust. neighbourhood.
               </p>
 
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-6">

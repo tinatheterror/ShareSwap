@@ -67,8 +67,7 @@ export default function AuthPage() {
 
               <div className="text-center mt-6 pt-4 border-t">
                 <p className="text-sm text-muted-foreground">
-                  No account?{" "}
-                  <span className="text-primary font-medium">Register</span>
+                  No account? Your account will be created automatically when you sign in.
                 </p>
               </div>
             </div>

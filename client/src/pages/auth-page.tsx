@@ -9,14 +9,13 @@ import { Lock } from "lucide-react";
 export default function AuthPage() {
   const { user } = useAuth();
 
-  // Fetch platform statistics
   const { data: stats, isLoading: statsLoading } = useQuery<{
     itemsShared: number;
     totalUsers: number;
     successfulTransactions: number;
   }>({
     queryKey: ["/api/stats"],
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
   if (user) {
@@ -28,49 +27,46 @@ export default function AuthPage() {
       <div className="flex flex-col items-center px-8 pt-4">
         <div className="w-full max-w-md mb-4">
           <img
-            src="/logo-shareswap.png"
-            alt="ShareSwap Logo"
-            className="w-11/12 h-auto my-8 pt-10"
+            src="/logo.png"
+            alt="SwapShare Logo"
+            className="w-full h-auto"
           />
         </div>
         <Card className="w-full max-w-md border-primary/20">
           <CardContent className="pt-6">
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-center">
-                Sign in and spread a little neighbourly magic✨
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold text-center mb-2">
+                Welcome Back
               </h2>
+              <p className="text-sm text-muted-foreground text-center mb-6">
+                Sign in to continue sharing with your community
+              </p>
 
-              {/* Google login group */}
-              <div className="space-y-1">
-                <Button
-                  onClick={() => (window.location.href = "/api/auth/google")}
-                  className="w-full bg-primary hover:bg-primary/90 h-11"
-                >
-                  Continue with Google
-                </Button>
-                <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
-                  Secure and simple. Your privacy always comes first.
-                </p>
-              </div>
+              <Button
+                onClick={() => (window.location.href = "/api/auth/google")}
+                className="w-full bg-primary hover:bg-primary/90 h-11"
+              >
+                Continue with Google
+              </Button>
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 -mt-2">
+                Secure and simple. Your privacy always comes first.
+              </p>
 
-              {/* Phone login group */}
-              <div className="space-y-1">
-                <Button variant="outline" className="w-full h-11" disabled>
-                  Continue with Phone Number
-                </Button>
-                <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
-                  Verify your number to build local trust.
-                </p>
-              </div>
+              <Button variant="outline" className="w-full h-11" disabled>
+                Continue with Phone Number
+              </Button>
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 -mt-2">
+                Verify your number to build local trust in your neighbourhood.
+              </p>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-5 font-medium">
+              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-6 font-medium">
                 <Lock className="h-4 w-4" />
-                <span>Your identity helps keep ShareSwap safe and honest.</span>
+                <span>Your identity helps keep ShareSwap safe and neighbourly.</span>
               </div>
 
               <div className="text-center mt-6 pt-4 border-t">
                 <p className="text-sm text-muted-foreground">
-                  No account? Signing in will create one for you.
+                  No account? Your account will be created automatically when you sign in.
                 </p>
               </div>
             </div>
@@ -89,7 +85,6 @@ export default function AuthPage() {
               world of shared resources.
             </p>
 
-            {/* Platform Statistics */}
             <div className="flex items-baseline gap-3">
               <span className="text-xl font-bold text-white">
                 {statsLoading ? (

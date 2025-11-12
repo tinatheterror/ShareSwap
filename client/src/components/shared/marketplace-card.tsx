@@ -21,31 +21,31 @@ export function MarketplaceCard({
       onClick={onClick}
       className={cn(
         "w-full h-full flex flex-col items-center text-center p-8 rounded-lg border-2",
-        "bg-primary/10 border-primary/20",
+        "bg-primary/20 border-primary/30",
         "cursor-pointer relative overflow-hidden",
-        "transition-all duration-300",
+        "transition-all duration-150",
         className
       )}
       whileHover={{
         scale: 1.05,
-        borderColor: "hsl(var(--primary) / 0.5)",
-        backgroundColor: "hsl(var(--primary) / 0.15)",
-        boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.3)",
+        borderColor: "hsl(var(--primary) / 0.6)",
+        backgroundColor: "hsl(var(--primary) / 0.3)",
+        boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.4)",
       }}
       whileTap={{
         scale: 0.98,
-        boxShadow: "0 5px 20px -5px hsl(var(--primary) / 0.2)",
+        boxShadow: "0 5px 20px -5px hsl(var(--primary) / 0.3)",
       }}
       transition={{
         type: "spring",
-        stiffness: 400,
-        damping: 25,
+        stiffness: 600,
+        damping: 20,
       }}
     >
       <motion.div
-        className="p-3 bg-primary/20 rounded-full mb-4"
+        className="p-3 bg-primary/30 rounded-full mb-4"
         whileHover={{ rotate: 5, scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 300 }}
+        transition={{ type: "spring", stiffness: 500, damping: 15 }}
       >
         {icon}
       </motion.div>

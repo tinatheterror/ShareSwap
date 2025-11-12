@@ -92,7 +92,7 @@ export default function CommunityWishlistsPage() {
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {allWishlists.map((wishlist) => (
-              <Card key={wishlist.id} className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/90 backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden">
+              <Card key={wishlist.id} className="group hover:shadow-xl transition-all duration-150 border-0 bg-white backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden">
                 <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-2"></div>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">

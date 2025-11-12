@@ -41,8 +41,8 @@ export function MarketplaceCard({
       }}
       transition={{
         type: "spring",
-        stiffness: 400,
-        damping: 25,
+        stiffness: 600,
+        damping: 20,
       }}
     >
       <motion.div
@@ -51,7 +51,7 @@ export function MarketplaceCard({
           backgroundColor: "#99F6E4",
         }}
         whileHover={{ rotate: 5, scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 300 }}
+        transition={{ type: "spring", stiffness: 500, damping: 15 }}
       >
         {icon}
       </motion.div>

@@ -26,13 +26,13 @@ export function MarketplaceCard({
         className
       )}
       style={{
-        backgroundColor: "#0D948850",
-        borderColor: "#0D948880",
+        backgroundColor: "#0D9488",
+        borderColor: "#0D9488",
       }}
       whileHover={{
         scale: 1.05,
-        borderColor: "#0D9488",
-        backgroundColor: "#0D948866",
+        borderColor: "#0a7a70",
+        backgroundColor: "#0a7a70",
         boxShadow: "0 10px 40px -10px #0D948880",
       }}
       whileTap={{

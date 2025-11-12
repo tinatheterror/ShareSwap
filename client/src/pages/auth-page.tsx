@@ -37,7 +37,7 @@ export default function AuthPage() {
           <CardContent className="pt-6">
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold text-center mb-2">
-                Sign in and start sharing with your community
+                Sign in and spread a little neighbourly magic.
               </h2>
               <p className="text-sm text-muted-foreground text-center mb-6"></p>
 
@@ -55,19 +55,17 @@ export default function AuthPage() {
                 Continue with Phone Number
               </Button>
               <p className="text-[11px] text-center text-muted-foreground/70 px-2 -mt-2">
-                Verify your number to build local trust in your neighbourhood.
+                Verify your number to build local trust.
               </p>
 
               <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-6 font-medium">
                 <Lock className="h-4 w-4" />
-                <span>
-                  Your identity helps keep ShareSwap safe and neighbourly.
-                </span>
+                <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>
 
               <div className="text-center mt-6 pt-4 border-t">
                 <p className="text-sm text-muted-foreground">
-                  No account? Your account will be created automatically when you sign in.
+                  No account? Signing in will create one for you.
                 </p>
               </div>
             </div>

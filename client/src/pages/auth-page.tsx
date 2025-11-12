@@ -35,29 +35,35 @@ export default function AuthPage() {
         </div>
         <Card className="w-full max-w-md border-primary/20">
           <CardContent className="pt-6">
-            <div className="space-y-3">
-              <h2 className="text-2xl font-semibold text-center mb-1">
+            <div className="space-y-6">
+              <h2 className="text-2xl font-semibold text-center">
                 Sign in and spread a little neighbourly magic✨
               </h2>
 
-              <Button
-                onClick={() => (window.location.href = "/api/auth/google")}
-                className="w-full bg-primary hover:bg-primary/90 h-11"
-              >
-                Continue with Google
-              </Button>
-              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
-                Secure and simple. Your privacy always comes first.
-              </p>
+              {/* Google login group */}
+              <div className="space-y-1">
+                <Button
+                  onClick={() => (window.location.href = "/api/auth/google")}
+                  className="w-full bg-primary hover:bg-primary/90 h-11"
+                >
+                  Continue with Google
+                </Button>
+                <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
+                  Secure and simple. Your privacy always comes first.
+                </p>
+              </div>
 
-              <Button variant="outline" className="w-full h-11" disabled>
-                Continue with Phone Number
-              </Button>
-              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
-                Verify your number to build local trust.
-              </p>
+              {/* Phone login group */}
+              <div className="space-y-1">
+                <Button variant="outline" className="w-full h-11" disabled>
+                  Continue with Phone Number
+                </Button>
+                <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
+                  Verify your number to build local trust.
+                </p>
+              </div>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-4 font-medium">
+              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-5 font-medium">
                 <Lock className="h-4 w-4" />
                 <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>

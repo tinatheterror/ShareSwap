@@ -46,10 +46,7 @@ export function MarketplaceCard({
       }}
     >
       <motion.div
-        className="p-3 rounded-full mb-4"
-        style={{
-          backgroundColor: "#0D948866",
-        }}
+        className="p-3 bg-primary/20 rounded-full mb-4"
         whileHover={{ rotate: 5, scale: 1.1 }}
         transition={{ type: "spring", stiffness: 300 }}
       >

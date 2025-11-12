@@ -30,16 +30,15 @@ export default function AuthPage() {
           <img
             src="/logo-shareswap.png"
             alt="ShareSwap Logo"
-            className="w-11/12 h-auto my-12"
+            className="w-11/12 h-auto my-8 pt-10"
           />
         </div>
         <Card className="w-full max-w-md border-primary/20">
           <CardContent className="pt-6">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-semibold text-center mb-2">
-                Sign in and spread a little neighbourly magic.
+            <div className="space-y-3">
+              <h2 className="text-2xl font-semibold text-center mb-1">
+                Sign in and spread a little neighbourly magic✨
               </h2>
-              <p className="text-sm text-muted-foreground text-center mb-6"></p>
 
               <Button
                 onClick={() => (window.location.href = "/api/auth/google")}
@@ -47,18 +46,18 @@ export default function AuthPage() {
               >
                 Continue with Google
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground/70 px-2 -mt-2">
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
                 Secure and simple. Your privacy always comes first.
               </p>
 
               <Button variant="outline" className="w-full h-11" disabled>
                 Continue with Phone Number
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground/70 px-2 -mt-2">
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
                 Verify your number to build local trust.
               </p>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-6 font-medium">
+              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-4 font-medium">
                 <Lock className="h-4 w-4" />
                 <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>

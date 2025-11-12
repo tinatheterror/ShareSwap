@@ -26,18 +26,18 @@ export function MarketplaceCard({
         className
       )}
       style={{
-        backgroundColor: "#0D94881A",
-        borderColor: "#0D948833",
+        backgroundColor: "#0D948850",
+        borderColor: "#0D948880",
       }}
       whileHover={{
         scale: 1.05,
-        borderColor: "#0D948880",
-        backgroundColor: "#0D948826",
-        boxShadow: "0 10px 40px -10px #0D94884D",
+        borderColor: "#0D9488",
+        backgroundColor: "#0D948866",
+        boxShadow: "0 10px 40px -10px #0D948880",
       }}
       whileTap={{
         scale: 0.98,
-        boxShadow: "0 5px 20px -5px #0D948833",
+        boxShadow: "0 5px 20px -5px #0D948860",
       }}
       transition={{
         type: "spring",
@@ -48,7 +48,7 @@ export function MarketplaceCard({
       <motion.div
         className="p-3 rounded-full mb-4"
         style={{
-          backgroundColor: "#0D948833",
+          backgroundColor: "#0D948866",
         }}
         whileHover={{ rotate: 5, scale: 1.1 }}
         transition={{ type: "spring", stiffness: 300 }}

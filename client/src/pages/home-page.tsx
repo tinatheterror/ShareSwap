@@ -2,7 +2,13 @@ import { MarketplaceCard } from "@/components/shared/marketplace-card";
 import { Navbar } from "@/components/shared/navbar";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
-import { HandshakeIcon, Banknote, ArrowLeftRight, Coins, Heart } from "lucide-react";
+import {
+  HandshakeIcon,
+  Banknote,
+  ArrowLeftRight,
+  Coins,
+  Heart,
+} from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +20,7 @@ export default function HomePage() {
 
   // Check if user has seen tutorial
   useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
+    const hasSeenTutorial = localStorage.getItem("hasSeenTutorial");
     if (!hasSeenTutorial) {
       // Show tutorial after 1 second for first-time users
       const timer = setTimeout(() => {
@@ -25,7 +31,7 @@ export default function HomePage() {
   }, []);
 
   const handleTutorialComplete = () => {
-    localStorage.setItem('hasSeenTutorial', 'true');
+    localStorage.setItem("hasSeenTutorial", "true");
     setShowTutorial(false);
   };
 
@@ -47,7 +53,8 @@ export default function HomePage() {
             Lend, Rent, or Swap it out
           </h1>
           <p className="text-lg text-muted-foreground">
-            Share more, own less. Connect with your neighbours and discover a world of shared resources
+            Share more, own less. Connect with your neighbours and discover a
+            world of shared resources
           </p>
         </div>
 
@@ -63,7 +70,7 @@ export default function HomePage() {
           </div>
           <div data-tutorial="rent" className="flex">
             <MarketplaceCard
-              title="Rent It"
+              title="Rent"
               description="Earn real money by renting out your items securely"
               icon={<Banknote className="w-8 h-8 text-primary" />}
               onClick={() => navigate("/rent")}
@@ -72,7 +79,7 @@ export default function HomePage() {
           </div>
           <div data-tutorial="swap" className="flex">
             <MarketplaceCard
-              title="Swap It"
+              title="Swap"
               description="Exchange items with other verified users"
               icon={<ArrowLeftRight className="w-8 h-8 text-primary" />}
               onClick={() => navigate("/swap")}
@@ -83,7 +90,7 @@ export default function HomePage() {
 
         {/* Earn ShareCoins Button */}
         <div className="mt-8 max-w-5xl mx-auto flex justify-center">
-          <Button 
+          <Button
             size="lg"
             onClick={() => setShowWishlistPopup(true)}
             className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
@@ -99,7 +106,9 @@ export default function HomePage() {
         />
 
         {/* Onboarding Tutorial */}
-        {showTutorial && <OnboardingTutorial onComplete={handleTutorialComplete} />}
+        {showTutorial && (
+          <OnboardingTutorial onComplete={handleTutorialComplete} />
+        )}
       </main>
     </div>
   );

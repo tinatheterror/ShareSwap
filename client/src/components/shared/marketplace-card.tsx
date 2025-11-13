@@ -20,17 +20,16 @@ export function MarketplaceCard({
     <motion.button
       onClick={onClick}
       className={cn(
-        "w-full h-full flex flex-col items-center text-center p-8 rounded-lg border-2",
-        "bg-primary/20 border-primary/30",
+        "w-full h-full flex flex-col items-center text-center p-8 rounded-xl border-0",
+        "bg-primary/25",
         "cursor-pointer relative overflow-hidden",
         "transition-all duration-150",
         className
       )}
       whileHover={{
         scale: 1.05,
-        borderColor: "hsl(var(--primary) / 0.6)",
-        backgroundColor: "hsl(var(--primary) / 0.3)",
-        boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.4)",
+        backgroundColor: "hsl(var(--primary) / 0.35)",
+        boxShadow: "0 10px 40px -10px hsl(var(--primary) / 0.5)",
       }}
       whileTap={{
         scale: 0.98,
@@ -43,14 +42,14 @@ export function MarketplaceCard({
       }}
     >
       <motion.div
-        className="p-3 bg-primary/30 rounded-full mb-4"
+        className="p-4 bg-primary/40 rounded-full mb-4"
         whileHover={{ rotate: 5, scale: 1.1 }}
         transition={{ type: "spring", stiffness: 500, damping: 15 }}
       >
         {icon}
       </motion.div>
-      <h3 className="text-xl font-semibold mb-3">{title}</h3>
-      <p className="text-sm text-muted-foreground">{description}</p>
+      <h3 className="text-xl font-semibold mb-3 text-gray-900">{title}</h3>
+      <p className="text-sm text-gray-600">{description}</p>
     </motion.button>
   );
 }

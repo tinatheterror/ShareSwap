@@ -23,7 +23,6 @@ export function MarketplaceCard({
         "w-full h-full flex flex-col items-center text-center p-8 rounded-lg border-2",
         "bg-primary/20 border-primary/30",
         "cursor-pointer relative overflow-hidden",
-        "transition-all duration-[30ms]",
         className
       )}
       whileHover={{
@@ -37,15 +36,13 @@ export function MarketplaceCard({
         boxShadow: "0 5px 20px -5px hsl(var(--primary) / 0.3)",
       }}
       transition={{
-        type: "spring",
-        stiffness: 1200,
-        damping: 12,
+        duration: 0.1,
       }}
     >
       <motion.div
         className="p-3 bg-primary/30 rounded-full mb-4"
         whileHover={{ rotate: 5, scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 1000, damping: 10 }}
+        transition={{ duration: 0.1 }}
       >
         {icon}
       </motion.div>

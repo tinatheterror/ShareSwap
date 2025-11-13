@@ -321,9 +321,9 @@ export default function ProfilePage() {
               <CardContent className="p-6">
                 <div className="grid md:grid-cols-4 gap-6">
                   {/* ShareCoins - Light Teal Theme */}
-                  <div className="text-center group hover:scale-105 transition-transform duration-75">
+                  <div className="text-center group hover:scale-105 transition-transform duration-[30ms]">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-teal-300 to-teal-400 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-75">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-300 to-teal-400 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-[30ms]">
                         <Coins className="h-8 w-8 text-white drop-shadow-sm" />
                       </div>
                     </div>
@@ -342,9 +342,9 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Items Shared - Medium Teal Theme */}
-                  <div className="text-center group hover:scale-105 transition-transform duration-75">
+                  <div className="text-center group hover:scale-105 transition-transform duration-[30ms]">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-75">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-[30ms]">
                         <Package className="h-8 w-8 text-white drop-shadow-sm" />
                       </div>
                     </div>
@@ -363,9 +363,9 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Items Borrowed - Dark Teal Theme */}
-                  <div className="text-center group hover:scale-105 transition-transform duration-75">
+                  <div className="text-center group hover:scale-105 transition-transform duration-[30ms]">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-75">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-[30ms]">
                         <Heart className="h-8 w-8 text-white drop-shadow-sm" />
                       </div>
                     </div>
@@ -384,9 +384,9 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Rating - Darker Teal Theme */}
-                  <div className="text-center group hover:scale-105 transition-transform duration-75">
+                  <div className="text-center group hover:scale-105 transition-transform duration-[30ms]">
                     <div className="relative">
-                      <div className="w-16 h-16 bg-gradient-to-r from-teal-600 to-teal-700 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-75">
+                      <div className="w-16 h-16 bg-gradient-to-r from-teal-600 to-teal-700 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:shadow-xl transition-shadow duration-[30ms]">
                         <Star className="h-8 w-8 text-white drop-shadow-sm fill-current" />
                       </div>
                     </div>

@@ -23,7 +23,7 @@ export function MarketplaceCard({
         "w-full h-full flex flex-col items-center text-center p-8 rounded-xl border-0",
         "bg-primary/60",
         "cursor-pointer relative overflow-hidden",
-        "transition-all duration-150",
+        "transition-all duration-75",
         className
       )}
       whileHover={{
@@ -37,14 +37,14 @@ export function MarketplaceCard({
       }}
       transition={{
         type: "spring",
-        stiffness: 600,
-        damping: 20,
+        stiffness: 800,
+        damping: 15,
       }}
     >
       <motion.div
         className="p-4 bg-primary/50 rounded-full mb-4"
         whileHover={{ rotate: 5, scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 500, damping: 15 }}
+        transition={{ type: "spring", stiffness: 700, damping: 12 }}
       >
         {icon}
       </motion.div>

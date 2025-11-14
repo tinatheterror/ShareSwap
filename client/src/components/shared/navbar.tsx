@@ -37,9 +37,9 @@ function NotificationBell() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative p-2 hover:text-primary">
           <Bell className="h-5 w-5" />
-          {notifications?.count > 0 && (
+          {(notifications?.count ?? 0) > 0 && (
             <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 p-1 text-xs font-bold flex items-center justify-center">
-              {notifications.count}
+              {notifications?.count ?? 0}
             </Badge>
           )}
         </Button>
@@ -47,7 +47,7 @@ function NotificationBell() {
       <DropdownMenuContent align="end" className="w-64">
         <div className="p-2">
           <h6 className="text-sm font-semibold text-primary mb-2">Notifications</h6>
-          {notifications?.count === 0 ? (
+          {(notifications?.count ?? 0) === 0 ? (
             <p className="text-sm text-muted-foreground">No new notifications</p>
           ) : (
             <>

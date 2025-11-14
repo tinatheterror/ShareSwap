@@ -3,15 +3,13 @@ import { Navbar } from "@/components/shared/navbar";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 import {
-  HandshakeIcon,
-  Banknote,
-  ArrowLeftRight,
+  Hand,
   Coins,
-  Heart,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import shareChestImage from "../../../attached_assets/Tina_L_make_the_background_transparent_b0e0b639-012f-4a05-b8b4-accd19109449_1763162170523.jpg";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
@@ -50,7 +48,7 @@ export default function HomePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight mb-4">
-            Lend, Rent, or Swap it out
+            Give & Take from the Community ShareChest
           </h1>
           <p className="text-lg text-muted-foreground">
             Share more, own less. Connect with your neighbours and discover a
@@ -58,29 +56,30 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div data-tutorial="lend-borrow" className="flex">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-8 max-w-6xl mx-auto">
+          <div data-tutorial="give" className="flex flex-1 w-full md:max-w-md">
             <MarketplaceCard
-              title="Lend & Borrow"
-              description="Share items with trusted community members"
-              icon={<HandshakeIcon className="w-8 h-8 text-primary" />}
-              onClick={() => navigate("/share-options")}
+              title="Give"
+              description="Share your own treasures to the community ShareChest"
+              icon={<Hand className="w-8 h-8 text-primary rotate-180" />}
+              onClick={() => navigate("/lend")}
             />
           </div>
-          <div data-tutorial="rent" className="flex">
-            <MarketplaceCard
-              title="Rent"
-              description="Earn real money by renting out your items securely"
-              icon={<Banknote className="w-8 h-8 text-primary" />}
-              onClick={() => navigate("/rent")}
+          
+          <div className="flex items-center justify-center md:w-64 w-48 shrink-0">
+            <img 
+              src={shareChestImage} 
+              alt="Community ShareChest" 
+              className="w-full h-auto object-contain"
             />
           </div>
-          <div data-tutorial="swap" className="flex">
+          
+          <div data-tutorial="take" className="flex flex-1 w-full md:max-w-md">
             <MarketplaceCard
-              title="Swap"
-              description="Exchange items with other verified users"
-              icon={<ArrowLeftRight className="w-8 h-8 text-primary" />}
-              onClick={() => navigate("/swap")}
+              title="Take"
+              description="Browse the community ShareChest to find what you need"
+              icon={<Hand className="w-8 h-8 text-primary" />}
+              onClick={() => navigate("/borrow")}
             />
           </div>
         </div>

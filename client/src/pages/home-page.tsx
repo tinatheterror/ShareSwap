@@ -66,7 +66,7 @@ export default function HomePage() {
             />
           </div>
           
-          <div className="flex items-center justify-center md:w-[32rem] w-96 shrink-0 bg-white">
+          <div className="flex items-center justify-center md:w-64 w-48 shrink-0 bg-white">
             <img 
               src={shareChestImage} 
               alt="Community ShareChest" 

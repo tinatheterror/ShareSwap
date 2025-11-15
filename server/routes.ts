@@ -12,7 +12,7 @@ import {
   notifications,
   follows,
 } from "@db/schema";
-import { eq, and, or, desc, sql, gte } from "drizzle-orm";
+import { eq, and, or, desc, sql, gte, ne } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -2592,6 +2592,49 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
       ...user,
       isFollowing: !!followCheck,
     });
+  });
+
+  // Discover nearby users
+  app.get("/api/users/discover", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Get all users with their item counts and follow status using subqueries
+      const usersWithData = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          followerCount: users.followerCount,
+          followingCount: users.followingCount,
+          shareCoins: users.shareCoins,
+          itemCount: sql<number>`(
+            SELECT COALESCE(COUNT(*), 0)::int
+            FROM ${items}
+            WHERE ${items.ownerId} = ${users.id}
+          )`,
+          isFollowing: sql<boolean>`(
+            SELECT COALESCE(COUNT(*) > 0, false)
+            FROM ${follows}
+            WHERE ${follows.followedId} = ${users.id}
+              AND ${follows.followerId} = ${req.user.id}
+          )`,
+        })
+        .from(users)
+        .where(ne(users.id, req.user.id))
+        .orderBy(desc(sql<number>`(
+          SELECT COALESCE(COUNT(*), 0)::int
+          FROM ${items}
+          WHERE ${items.ownerId} = ${users.id}
+        )`))
+        .limit(50);
+
+      res.json(usersWithData);
+    } catch (error) {
+      console.error("Error discovering users:", error);
+      res.status(500).json({ error: "Failed to discover users" });
+    }
   });
 
   // Get items from followed users (feed)

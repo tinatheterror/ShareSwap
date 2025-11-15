@@ -196,11 +196,16 @@ export default function BorrowPage() {
           <div className="mb-8 p-6 bg-teal-50 border-2 border-teal-200 rounded-lg text-center">
             <Heart className="h-12 w-12 text-teal-600 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-teal-900 mb-2">
-              Follow neighbors to see their items here
+              Follow neighbours to see what they're sharing
             </h3>
-            <p className="text-sm text-teal-700">
+            <p className="text-sm text-teal-700 mb-4">
               When you follow other users, their newly posted items will appear in this feed
             </p>
+            <Link href="/discover-neighbors">
+              <Button className="bg-teal-600 hover:bg-teal-700">
+                Find Neighbours
+              </Button>
+            </Link>
           </div>
         )}
 

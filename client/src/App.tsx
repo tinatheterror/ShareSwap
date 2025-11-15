@@ -31,6 +31,7 @@ import MyItemsPage from "@/pages/my-items-page";
 import ShareCoinsInfoPage from "@/pages/sharecoins-info-page";
 import NotificationsPage from "@/pages/notifications-page";
 import RequestsPage from "@/pages/requests-page";
+import DiscoverNeighborsPage from "@/pages/discover-neighbors-page";
 
 function Router() {
   return (
@@ -60,6 +61,7 @@ function Router() {
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
+      <ProtectedRoute path="/discover-neighbors" component={DiscoverNeighborsPage} />
       <Route component={NotFound} />
     </Switch>
   );

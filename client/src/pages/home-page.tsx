@@ -9,7 +9,7 @@ import {
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import shareChestImage from "../../../attached_assets/Tina_L_make_the_background_transparent_b0e0b639-012f-4a05-b8b4-accd19109449_1763162170523.jpg";
+import shareChestImage from "../../../attached_assets/Tina_L_make_the_background_white_947fcd9a-2873-4576-814f-1d29e3f34c73_1763170291577.jpg";
 
 export default function HomePage() {
   const [, navigate] = useLocation();

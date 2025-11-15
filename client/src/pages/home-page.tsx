@@ -56,8 +56,8 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-center gap-8 max-w-6xl mx-auto">
-          <div data-tutorial="give" className="flex flex-1 w-full md:max-w-md">
+        <div className="flex flex-col items-center justify-center gap-8 max-w-md mx-auto">
+          <div data-tutorial="give" className="w-full">
             <MarketplaceCard
               title="Give"
               description="Share your own treasures to the community ShareChest"
@@ -66,7 +66,7 @@ export default function HomePage() {
             />
           </div>
           
-          <div className="flex items-center justify-center md:w-64 w-48 shrink-0 bg-white">
+          <div className="flex items-center justify-center w-64 shrink-0 bg-white">
             <img 
               src={shareChestImage} 
               alt="Community ShareChest" 
@@ -74,7 +74,7 @@ export default function HomePage() {
             />
           </div>
           
-          <div data-tutorial="take" className="flex flex-1 w-full md:max-w-md">
+          <div data-tutorial="take" className="w-full">
             <MarketplaceCard
               title="Take"
               description="Browse the community ShareChest to find what you need"

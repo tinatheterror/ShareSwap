@@ -1,11 +1,7 @@
-import { MarketplaceCard } from "@/components/shared/marketplace-card";
 import { Navbar } from "@/components/shared/navbar";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
-import {
-  Hand,
-  Coins,
-} from "lucide-react";
+import { Coins } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -56,17 +52,21 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-8 max-w-md mx-auto">
-          <div data-tutorial="give" className="w-full">
-            <MarketplaceCard
-              title="Give"
-              description="Share your own treasures to the community ShareChest"
-              icon={<Hand className="w-8 h-8 text-primary rotate-180" />}
+        <div className="flex flex-col items-center justify-center gap-6 max-w-sm mx-auto">
+          <div data-tutorial="give" className="w-full flex flex-col items-center gap-3">
+            <Button
               onClick={() => navigate("/lend")}
-            />
+              className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
+              size="lg"
+            >
+              Give
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              Share your own treasures to the community ShareChest
+            </p>
           </div>
           
-          <div className="flex items-center justify-center w-64 shrink-0 bg-white">
+          <div className="flex items-center justify-center w-64 shrink-0 bg-white py-4">
             <img 
               src={shareChestImage} 
               alt="Community ShareChest" 
@@ -74,13 +74,17 @@ export default function HomePage() {
             />
           </div>
           
-          <div data-tutorial="take" className="w-full">
-            <MarketplaceCard
-              title="Take"
-              description="Browse the community ShareChest to find what you need"
-              icon={<Hand className="w-8 h-8 text-primary" />}
+          <div data-tutorial="take" className="w-full flex flex-col items-center gap-3">
+            <Button
               onClick={() => navigate("/borrow")}
-            />
+              className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
+              size="lg"
+            >
+              Take
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              Browse the community ShareChest to find what you need
+            </p>
           </div>
         </div>
 

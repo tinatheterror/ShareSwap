@@ -5,7 +5,12 @@ import { Coins, Info } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import shareChestImage from "../../../attached_assets/Tina_L_make_the_background_white_947fcd9a-2873-4576-814f-1d29e3f34c73_1763170291577.jpg";
 
 export default function HomePage() {
@@ -47,14 +52,18 @@ export default function HomePage() {
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-2 mb-4">
               <h1 className="text-4xl font-bold tracking-tight">
-                Give & Take from the Community ShareChest
+                Share more, own less. Connect with your neighbours and discover
+                a world of shared resources
               </h1>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-5 w-5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  <p>Share more, own less. Connect with your neighbours and discover a world of shared resources</p>
+                  <p>
+                    Share more, own less. Connect with your neighbours and
+                    discover a world of shared resources
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -80,15 +89,15 @@ export default function HomePage() {
                 </Tooltip>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-center w-64 shrink-0 bg-white py-4">
-              <img 
-                src={shareChestImage} 
-                alt="Community ShareChest" 
+              <img
+                src={shareChestImage}
+                alt="Community ShareChest"
                 className="w-full h-auto object-contain"
               />
             </div>
-            
+
             <div data-tutorial="take" className="w-full">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <Button

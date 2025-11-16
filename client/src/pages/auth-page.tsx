@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { Lock, Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Lock } from "lucide-react";
 
 export default function AuthPage() {
   const { user } = useAuth();
@@ -36,55 +35,39 @@ export default function AuthPage() {
         </div>
         <Card className="w-full max-w-md border-primary/20">
           <CardContent className="pt-6">
-            <TooltipProvider>
-              <div className="space-y-3">
-                <h2 className="text-2xl font-semibold text-center mb-1">
-                  Sign in and spread a little neighbourly magic✨
-                </h2>
+            <div className="space-y-3">
+              <h2 className="text-2xl font-semibold text-center mb-1">
+                Sign in and spread a little neighbourly magic✨
+              </h2>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => (window.location.href = "/api/auth/google")}
-                    className="flex-1 bg-primary hover:bg-primary/90 h-11"
-                  >
-                    Continue with Google
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help flex-shrink-0" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Secure and simple. Your privacy always comes first.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+              <Button
+                onClick={() => (window.location.href = "/api/auth/google")}
+                className="w-full bg-primary hover:bg-primary/90 h-11"
+              >
+                Continue with Google
+              </Button>
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
+                Secure and simple. Your privacy always comes first.
+              </p>
 
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" className="flex-1 h-11" disabled>
-                    Continue with Phone Number
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help flex-shrink-0" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Verify your number to build local trust.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+              <Button variant="outline" className="w-full h-11" disabled>
+                Continue with Phone Number
+              </Button>
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
+                Verify your number to build local trust.
+              </p>
 
               <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-4 font-medium">
                 <Lock className="h-4 w-4" />
                 <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>
 
-                <div className="text-center mt-6 pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    No account? Signing in will create one for you.
-                  </p>
-                </div>
+              <div className="text-center mt-6 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  No account? Signing in will create one for you.
+                </p>
               </div>
-            </TooltipProvider>
+            </div>
           </CardContent>
         </Card>
       </div>

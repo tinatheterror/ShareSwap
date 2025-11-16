@@ -8,9 +8,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar, Archive, AlertTriangle, HandHeart, Info } from "lucide-react";
+import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar, Archive, AlertTriangle, HandHeart } from "lucide-react";
 import { useState } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Wishlist {
   id: number;
@@ -123,23 +122,17 @@ export default function WishlistsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <TooltipProvider>
-        <main className="max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Heart className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">My Wishlist</h1>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Create demand signals for items you need - get notified when they become available</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
+            <Heart className="h-8 w-8 text-primary" />
+            My Wishlist
+          </h1>
+          <p className="text-muted-foreground">
+            Create demand signals for items you need - get notified when they become available
+          </p>
 
-            {expiredWishlists.length > 0 && (
+          {expiredWishlists.length > 0 && (
             <div className="flex justify-center mt-4">
               <Button
                 variant="outline"
@@ -480,8 +473,7 @@ export default function WishlistsPage() {
             </Button>
           </div>
         )}
-        </main>
-      </TooltipProvider>
+      </main>
     </div>
   );
 }

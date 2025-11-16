@@ -10,10 +10,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, CheckCircle, XCircle, Info } from "lucide-react";
+import { Upload, CheckCircle, XCircle } from "lucide-react";
 import { useState } from "react";
 import type { SelectItem } from "@db/schema";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const verificationFormSchema = z.object({
   actualConditionRating: z.coerce
@@ -86,23 +85,15 @@ export default function VerifyItemsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <TooltipProvider>
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <h1 className="text-3xl font-bold">Verify Item Conditions</h1>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Review and verify the condition of items in the marketplace</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Verify Item Conditions</h1>
+          <p className="text-muted-foreground">
+            Review and verify the condition of items in the marketplace
+          </p>
+        </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8">
           <Card>
             <CardContent className="pt-6">
               <h2 className="text-xl font-semibold mb-4">Items Pending Verification</h2>
@@ -236,9 +227,8 @@ export default function VerifyItemsPage() {
               </CardContent>
             </Card>
           )}
-          </div>
-        </main>
-      </TooltipProvider>
+        </div>
+      </main>
     </div>
   );
 }

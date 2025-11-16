@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { Star, Loader2, Share2 } from "lucide-react";
+import { Star, Loader2, Share2, Info } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Recommendation {
   recommendation: {
@@ -63,15 +64,23 @@ export default function RecommendationsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Recommended for You</h1>
-          <p className="text-muted-foreground">
-            Discover items tailored to your interests and location
-          </p>
-        </div>
+      <TooltipProvider>
+        <main className="max-w-7xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <h1 className="text-3xl font-bold">Recommended for You</h1>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Discover items tailored to your interests and location</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recommendations?.map(({ recommendation, item }) => (
             <Card key={recommendation.id} className="overflow-hidden">
               <div className="relative aspect-square">
@@ -122,8 +131,9 @@ export default function RecommendationsPage() {
               </CardContent>
             </Card>
           ))}
-        </div>
-      </main>
+          </div>
+        </main>
+      </TooltipProvider>
     </div>
   );
 }

@@ -12,11 +12,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X, Heart, CheckCircle } from "lucide-react";
+import { Upload, MapPin, X, Heart, CheckCircle, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -254,12 +255,20 @@ export default function LendPage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">List Your Item</h1>
-          <p className="text-muted-foreground">
-            Share your items with the community through lending, renting, or swapping
-          </p>
-        </div>
+        <TooltipProvider>
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2">
+              <h1 className="text-3xl font-bold">List Your Item</h1>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Share your items with the community through lending, renting, or swapping</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
 
         <Card>
           <CardContent className="pt-6">
@@ -714,6 +723,7 @@ export default function LendPage() {
             </div>
           </div>
         )}
+        </TooltipProvider>
       </main>
     </div>
   );

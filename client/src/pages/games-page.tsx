@@ -6,8 +6,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/shared/navbar";
-import { Gamepad2, Coins, Trophy, Play, Clock, Users } from "lucide-react";
+import { Gamepad2, Coins, Trophy, Play, Clock, Users, Info } from "lucide-react";
 import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SponsoredGame {
   id: number;
@@ -116,18 +117,24 @@ export default function GamesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-            <Gamepad2 className="h-8 w-8 text-primary" />
-            Play Games & Earn ShareCoins
-          </h1>
-          <p className="text-muted-foreground">
-            Complete sponsored games to earn ShareCoins for borrowing items
-          </p>
-        </div>
+      <TooltipProvider>
+        <main className="max-w-7xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Gamepad2 className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl font-bold">Play Games & Earn ShareCoins</h1>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Complete sponsored games to earn ShareCoins for borrowing items</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
 
-        {/* Stats Cards */}
+          {/* Stats Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="pt-6">
@@ -288,8 +295,9 @@ export default function GamesPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </main>
+          </div>
+        </main>
+      </TooltipProvider>
     </div>
   );
 }

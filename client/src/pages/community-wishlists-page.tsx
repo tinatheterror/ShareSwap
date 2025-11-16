@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, HandHeart, Calendar } from "lucide-react";
+import { Heart, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, HandHeart, Calendar, Info } from "lucide-react";
 import { Link } from "wouter";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Wishlist {
   id: number;
@@ -63,18 +64,24 @@ export default function CommunityWishlistsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-            <Heart className="h-8 w-8 text-teal-600" />
-            Community Wishlists
-          </h1>
-          <p className="text-muted-foreground">
-            Help your neighbors by lending items they need. Earn ShareCoins and build trust!
-          </p>
-        </div>
+      <TooltipProvider>
+        <main className="max-w-7xl mx-auto px-4 py-12">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Heart className="h-8 w-8 text-teal-600" />
+              <h1 className="text-3xl font-bold">Community Wishlists</h1>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Help your neighbors by lending items they need. Earn ShareCoins and build trust!</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
 
-        {allWishlists.length === 0 ? (
+          {allWishlists.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Heart className="h-12 w-12 text-slate-400" />
@@ -159,7 +166,8 @@ export default function CommunityWishlistsPage() {
             ))}
           </div>
         )}
-      </main>
+        </main>
+      </TooltipProvider>
     </div>
   );
 }

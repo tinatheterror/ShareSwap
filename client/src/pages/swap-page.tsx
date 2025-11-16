@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeftRight, Search, Filter } from "lucide-react";
+import { ArrowLeftRight, Search, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { SelectItem } from "@db/schema";
 import { useLocation } from "wouter";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SwappableItem extends SelectItem {
   distance?: number;
@@ -99,18 +100,26 @@ export default function SwapPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <ArrowLeftRight className="h-12 w-12 text-teal-600" />
+      <TooltipProvider>
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <ArrowLeftRight className="h-12 w-12 text-teal-600" />
+            </div>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <h1 className="text-3xl font-bold">Item Swapping</h1>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Exchange items with other community members</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold mb-2">Item Swapping</h1>
-          <p className="text-muted-foreground">
-            Exchange items with other community members
-          </p>
-        </div>
 
-        {/* Search and Filters */}
+          {/* Search and Filters */}
         <div className="flex gap-4 mb-6 max-w-2xl mx-auto">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -230,7 +239,8 @@ export default function SwapPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </main>
+        </main>
+      </TooltipProvider>
     </div>
   );
 }

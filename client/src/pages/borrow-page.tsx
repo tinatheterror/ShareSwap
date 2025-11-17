@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart, HandHeart } from "lucide-react";
+import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart, HandHeart, UserPlus, Coins, Users } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +15,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
-import { Coins, Users } from "lucide-react";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -204,7 +203,7 @@ export default function BorrowPage() {
         {/* Empty state for no followed users */}
         {user && followingItems.length === 0 && (
           <div className="mb-8 p-6 bg-teal-50 border-2 border-teal-200 rounded-lg text-center">
-            <Heart className="h-12 w-12 text-teal-600 mx-auto mb-3" />
+            <UserPlus className="h-12 w-12 text-teal-600 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-teal-900 mb-4">
               Follow neighbours to see what they're sharing
             </h3>
@@ -357,7 +356,7 @@ export default function BorrowPage() {
             <AlertDialogHeader>
               <div className="flex justify-center mb-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-teal-50 to-teal-100 rounded-full flex items-center justify-center">
-                  <Users className="h-8 w-8 text-teal-600" />
+                  <UserPlus className="h-8 w-8 text-teal-600" />
                 </div>
               </div>
               <AlertDialogTitle className="text-center text-xl">

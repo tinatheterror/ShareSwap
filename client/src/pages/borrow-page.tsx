@@ -28,6 +28,7 @@ export default function BorrowPage() {
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
+  const [showFollowTutorial, setShowFollowTutorial] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -104,6 +105,17 @@ export default function BorrowPage() {
     queryKey: ['/api/feed/following-items'],
     enabled: !!user,
   });
+
+  // Show follow tutorial for first-time users
+  useEffect(() => {
+    const hasSeenFollowTutorial = localStorage.getItem("hasSeenFollowTutorial");
+    if (!hasSeenFollowTutorial && user && followingItems.length === 0) {
+      const timer = setTimeout(() => {
+        setShowFollowTutorial(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [user, followingItems]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -198,9 +210,6 @@ export default function BorrowPage() {
             <h3 className="text-lg font-semibold text-teal-900 mb-2">
               Follow neighbours to see what they're sharing
             </h3>
-            <p className="text-sm text-teal-700 mb-4">
-              When you follow other users, their newly posted items will appear in this feed
-            </p>
             <Link href="/discover-neighbors">
               <Button className="bg-teal-600 hover:bg-teal-700">
                 Find Neighbours
@@ -343,6 +352,43 @@ export default function BorrowPage() {
           isOpen={showWishlistPopup}
           onClose={() => setShowWishlistPopup(false)}
         />
+
+        {/* Follow Tutorial for First-Time Users */}
+        <Dialog open={showFollowTutorial} onOpenChange={setShowFollowTutorial}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-teal-600" />
+                Follow Neighbours
+              </DialogTitle>
+              <DialogDescription>
+                When you follow other users, their newly posted items will appear in this feed. Discover and connect with your community!
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex gap-3 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  localStorage.setItem("hasSeenFollowTutorial", "true");
+                  setShowFollowTutorial(false);
+                }}
+                className="flex-1"
+              >
+                Got it
+              </Button>
+              <Button
+                onClick={() => {
+                  localStorage.setItem("hasSeenFollowTutorial", "true");
+                  setShowFollowTutorial(false);
+                  navigate("/discover-neighbors");
+                }}
+                className="flex-1 bg-teal-600 hover:bg-teal-700"
+              >
+                Find Neighbours
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

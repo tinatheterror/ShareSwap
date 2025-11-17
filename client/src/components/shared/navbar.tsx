@@ -80,7 +80,7 @@ export function Navbar() {
         <div className="flex justify-between h-16 items-center">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer">
-              <img src="/logo.png" alt="ShareSwap Logo" className="h-[40px] w-auto" />
+              <img src="/logo.png" alt="ShareSwap Logo" className="h-[42px] w-auto" />
               <span className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
                 ShareSwap
               </span>

@@ -11,10 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
-import { Coins } from "lucide-react";
+import { Coins, Users } from "lucide-react";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -28,6 +29,7 @@ export default function BorrowPage() {
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
+  const [showFollowTutorial, setShowFollowTutorial] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -104,6 +106,14 @@ export default function BorrowPage() {
     queryKey: ['/api/feed/following-items'],
     enabled: !!user,
   });
+
+  // Show follow tutorial on first visit
+  useEffect(() => {
+    const hasSeenFollowTutorial = localStorage.getItem('hasSeenFollowTutorial');
+    if (!hasSeenFollowTutorial && user && followingItems.length === 0) {
+      setShowFollowTutorial(true);
+    }
+  }, [user, followingItems]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -195,12 +205,9 @@ export default function BorrowPage() {
         {user && followingItems.length === 0 && (
           <div className="mb-8 p-6 bg-teal-50 border-2 border-teal-200 rounded-lg text-center">
             <Heart className="h-12 w-12 text-teal-600 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-teal-900 mb-2">
+            <h3 className="text-lg font-semibold text-teal-900 mb-4">
               Follow neighbours to see what they're sharing
             </h3>
-            <p className="text-sm text-teal-700 mb-4">
-              When you follow other users, their newly posted items will appear in this feed
-            </p>
             <Link href="/discover-neighbors">
               <Button className="bg-teal-600 hover:bg-teal-700">
                 Find Neighbours
@@ -343,6 +350,47 @@ export default function BorrowPage() {
           isOpen={showWishlistPopup}
           onClose={() => setShowWishlistPopup(false)}
         />
+
+        {/* Follow Neighbours Tutorial - One-time popup */}
+        <AlertDialog open={showFollowTutorial} onOpenChange={setShowFollowTutorial}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-teal-50 to-teal-100 rounded-full flex items-center justify-center">
+                  <Users className="h-8 w-8 text-teal-600" />
+                </div>
+              </div>
+              <AlertDialogTitle className="text-center text-xl">
+                Follow Neighbours to See What They're Sharing
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-center">
+                When you follow other users, their newly posted items will appear in this personalized feed at the top of the page. Start building your community by finding and following neighbours!
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => {
+                  localStorage.setItem('hasSeenFollowTutorial', 'true');
+                  setShowFollowTutorial(false);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Got It
+              </Button>
+              <AlertDialogAction
+                onClick={() => {
+                  localStorage.setItem('hasSeenFollowTutorial', 'true');
+                  setShowFollowTutorial(false);
+                  navigate('/discover-neighbors');
+                }}
+                className="bg-teal-600 hover:bg-teal-700 flex-1"
+              >
+                Find Neighbours Now
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );

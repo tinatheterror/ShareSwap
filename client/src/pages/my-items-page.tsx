@@ -218,13 +218,13 @@ export default function MyItemsPage() {
             </button>
             <DialogHeader>
               <div className="flex items-start gap-3">
-                <div className="text-4xl">🪙</div>
+                <div className="text-4xl">📦</div>
                 <div>
                   <DialogTitle className="text-lg font-semibold mb-1">
-                    Need Items to Share
+                    Need items to Share
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600">
-                    You have 0 items in the ShareChest. Would you like to add something in to share with the community?
+                    You have {items.length} items in the ShareChest. Would you like to add something in to share with the community?
                   </DialogDescription>
                 </div>
               </div>
@@ -244,7 +244,7 @@ export default function MyItemsPage() {
                 }}
                 className="flex-1 bg-teal-600 hover:bg-teal-700"
               >
-                Lend an Item
+                Add My First Item
               </Button>
             </DialogFooter>
           </DialogContent>

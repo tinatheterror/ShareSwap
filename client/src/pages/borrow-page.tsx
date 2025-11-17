@@ -11,10 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
+import { TutorialTooltip } from "@/components/tutorial-tooltip";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -220,7 +220,7 @@ export default function BorrowPage() {
               Follow neighbours to see what they're sharing
             </h3>
             <Link href="/discover-neighbors">
-              <Button className="bg-teal-600 hover:bg-teal-700">
+              <Button className="bg-teal-600 hover:bg-teal-700" data-tutorial="follow-neighbors">
                 Find Neighbours
               </Button>
             </Link>
@@ -344,87 +344,33 @@ export default function BorrowPage() {
           onClose={() => setShowWishlistPopup(false)}
         />
 
-        {/* Follow Neighbours Tutorial - One-time popup */}
-        <AlertDialog open={showFollowTutorial} onOpenChange={setShowFollowTutorial}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-teal-50 to-teal-100 rounded-full flex items-center justify-center">
-                  <UserPlus className="h-8 w-8 text-teal-600" />
-                </div>
-              </div>
-              <AlertDialogTitle className="text-center text-xl">
-                Follow Neighbours to See What They're Sharing
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
-                When you follow other users, their newly posted items will appear in this personalized feed at the top of the page. Start building your community by finding and following neighbours!
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                onClick={() => {
-                  localStorage.setItem('hasSeenFollowTutorial', 'true');
-                  setShowFollowTutorial(false);
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                Got It
-              </Button>
-              <AlertDialogAction
-                onClick={() => {
-                  localStorage.setItem('hasSeenFollowTutorial', 'true');
-                  setShowFollowTutorial(false);
-                  navigate('/discover-neighbors');
-                }}
-                className="bg-teal-600 hover:bg-teal-700 flex-1"
-              >
-                Find Neighbours Now
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Follow Neighbours Tutorial Tooltip */}
+        <TutorialTooltip
+          isOpen={showFollowTutorial}
+          onClose={() => {
+            localStorage.setItem('hasSeenFollowTutorial', 'true');
+            setShowFollowTutorial(false);
+          }}
+          targetSelector="[data-tutorial='follow-neighbors']"
+          title="Follow Neighbours"
+          description="When you follow other users, their newly posted items will appear in this personalized feed at the top of the page!"
+          actionLabel="Find Neighbours"
+          onAction={() => navigate('/discover-neighbors')}
+        />
 
-        {/* Wishlist Tutorial - One-time popup */}
-        <AlertDialog open={showWishlistTutorial} onOpenChange={setShowWishlistTutorial}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-pink-50 to-pink-100 rounded-full flex items-center justify-center">
-                  <Heart className="h-8 w-8 text-pink-600" />
-                </div>
-              </div>
-              <AlertDialogTitle className="text-center text-xl">
-                Can't Find What You Need?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
-                Add items to your wishlist and we'll notify you when they become available in the community! Your neighbors can also see your wishlist and help fulfill your needs.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                onClick={() => {
-                  localStorage.setItem('hasSeenWishlistTutorial', 'true');
-                  setShowWishlistTutorial(false);
-                }}
-                variant="outline"
-                className="flex-1"
-              >
-                Got It
-              </Button>
-              <AlertDialogAction
-                onClick={() => {
-                  localStorage.setItem('hasSeenWishlistTutorial', 'true');
-                  setShowWishlistTutorial(false);
-                  navigate('/wishlists');
-                }}
-                className="bg-pink-600 hover:bg-pink-700 flex-1"
-              >
-                View My Wishlist
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Wishlist Tutorial Tooltip */}
+        <TutorialTooltip
+          isOpen={showWishlistTutorial}
+          onClose={() => {
+            localStorage.setItem('hasSeenWishlistTutorial', 'true');
+            setShowWishlistTutorial(false);
+          }}
+          targetSelector="[data-tutorial='wishlist']"
+          title="Can't Find What You Need?"
+          description="Add items to your wishlist and we'll notify you when they become available in the community!"
+          actionLabel="View Wishlist"
+          onAction={() => navigate('/wishlists')}
+        />
       </main>
     </div>
   );

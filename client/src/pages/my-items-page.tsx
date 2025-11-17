@@ -60,7 +60,7 @@ export default function MyItemsPage() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Package className="h-8 w-8 text-primary" />
-              My SharedChest
+              My Shared Items
             </h1>
             <p className="text-muted-foreground mt-2">
               Manage your uploaded items and track their availability

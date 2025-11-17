@@ -11,14 +11,16 @@ import type { SelectItem } from "@db/schema";
 
 export default function MyItemsPage() {
   const { user } = useAuth();
-  const [filter, setFilter] = useState<"all" | "available" | "unavailable">("all");
+  const [filter, setFilter] = useState<"all" | "available" | "unavailable">(
+    "all",
+  );
 
   const { data: items = [], isLoading } = useQuery<SelectItem[]>({
-    queryKey: ['/api/my-items'],
+    queryKey: ["/api/my-items"],
     enabled: !!user,
   });
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = items.filter((item) => {
     if (filter === "available") return item.isAvailable;
     if (filter === "unavailable") return !item.isAvailable;
     return true;
@@ -58,7 +60,7 @@ export default function MyItemsPage() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Package className="h-8 w-8 text-primary" />
-              My Shared Items
+              My SharedChest
             </h1>
             <p className="text-muted-foreground mt-2">
               Manage your uploaded items and track their availability
@@ -86,14 +88,14 @@ export default function MyItemsPage() {
             onClick={() => setFilter("available")}
             size="sm"
           >
-            Available ({items.filter(i => i.isAvailable).length})
+            Available ({items.filter((i) => i.isAvailable).length})
           </Button>
           <Button
             variant={filter === "unavailable" ? "default" : "outline"}
             onClick={() => setFilter("unavailable")}
             size="sm"
           >
-            Unavailable ({items.filter(i => !i.isAvailable).length})
+            Unavailable ({items.filter((i) => !i.isAvailable).length})
           </Button>
         </div>
 
@@ -105,10 +107,9 @@ export default function MyItemsPage() {
               {filter === "all" ? "No items yet" : `No ${filter} items`}
             </h3>
             <p className="text-gray-500 mb-6">
-              {filter === "all" 
+              {filter === "all"
                 ? "Start sharing by adding your first item to the marketplace"
-                : `You don't have any ${filter} items at the moment`
-              }
+                : `You don't have any ${filter} items at the moment`}
             </p>
             {filter === "all" && (
               <Link href="/lend">
@@ -122,7 +123,10 @@ export default function MyItemsPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredItems.map((item) => (
-              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <Card
+                key={item.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow"
+              >
                 <div className="aspect-video bg-muted relative">
                   {item.photos[0] ? (
                     <img
@@ -146,11 +150,15 @@ export default function MyItemsPage() {
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                     {item.description}
                   </p>
-                  
+
                   {/* Capabilities */}
                   <div className="flex flex-wrap gap-1 mb-3">
                     {getItemCapabilities(item).map((capability) => (
-                      <Badge key={capability} variant="outline" className="text-xs">
+                      <Badge
+                        key={capability}
+                        variant="outline"
+                        className="text-xs"
+                      >
                         {capability}
                       </Badge>
                     ))}
@@ -158,9 +166,17 @@ export default function MyItemsPage() {
 
                   {/* Condition */}
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="text-sm text-muted-foreground">Condition:</span>
-                    <Badge variant={item.isConditionVerified ? "default" : "secondary"} className="text-xs">
-                      {item.conditionRating}/10 {item.isConditionVerified && "✓"}
+                    <span className="text-sm text-muted-foreground">
+                      Condition:
+                    </span>
+                    <Badge
+                      variant={
+                        item.isConditionVerified ? "default" : "secondary"
+                      }
+                      className="text-xs"
+                    >
+                      {item.conditionRating}/10{" "}
+                      {item.isConditionVerified && "✓"}
                     </Badge>
                   </div>
 
@@ -176,7 +192,11 @@ export default function MyItemsPage() {
                       <Edit className="h-3 w-3 mr-1" />
                       Edit
                     </Button>
-                    <Button variant="outline" size="sm" className="text-teal-600 hover:text-teal-700">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-teal-600 hover:text-teal-700"
+                    >
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>

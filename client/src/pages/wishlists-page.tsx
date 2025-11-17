@@ -3,12 +3,30 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, Plus, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, Calendar, Archive, AlertTriangle, HandHeart } from "lucide-react";
+import {
+  Heart,
+  Plus,
+  MapPin,
+  Clock,
+  ArrowRightLeft,
+  ShoppingCart,
+  Repeat,
+  Calendar,
+  Archive,
+  AlertTriangle,
+  HandHeart,
+} from "lucide-react";
 import { useState } from "react";
 
 interface Wishlist {
@@ -34,18 +52,18 @@ export default function WishlistsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [formData, setFormData] = useState({
-    itemName: '',
-    description: '',
-    category: '',
-    needType: 'borrow',
-    preferredLocation: '',
-    urgency: 'normal',
-    neededDate: '',
-    returnDate: ''
+    itemName: "",
+    description: "",
+    category: "",
+    needType: "borrow",
+    preferredLocation: "",
+    urgency: "normal",
+    neededDate: "",
+    returnDate: "",
   });
 
   const { data: wishlists = [], isLoading } = useQuery<Wishlist[]>({
-    queryKey: ['/api/wishlists'],
+    queryKey: ["/api/wishlists"],
   });
 
   // Filter expired and active wishlists
@@ -57,17 +75,17 @@ export default function WishlistsPage() {
       return apiRequest("POST", "/api/wishlists", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/wishlists'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
       setShowAddForm(false);
       setFormData({
-        itemName: '',
-        description: '',
-        category: '',
-        needType: 'borrow',
-        preferredLocation: '',
-        urgency: 'normal',
-        neededDate: '',
-        returnDate: ''
+        itemName: "",
+        description: "",
+        category: "",
+        needType: "borrow",
+        preferredLocation: "",
+        urgency: "normal",
+        neededDate: "",
+        returnDate: "",
       });
       toast({
         title: "Wishlist item added!",
@@ -98,11 +116,16 @@ export default function WishlistsPage() {
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'urgent': return 'bg-teal-100 text-teal-800';
-      case 'high': return 'bg-teal-100 text-teal-800';
-      case 'normal': return 'bg-teal-100 text-teal-800';
-      case 'low': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-teal-100 text-teal-800';
+      case "urgent":
+        return "bg-teal-100 text-teal-800";
+      case "high":
+        return "bg-teal-100 text-teal-800";
+      case "normal":
+        return "bg-teal-100 text-teal-800";
+      case "low":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-teal-100 text-teal-800";
     }
   };
 
@@ -129,7 +152,8 @@ export default function WishlistsPage() {
             My Wishlist
           </h1>
           <p className="text-muted-foreground">
-            Create demand signals for items you need - get notified when they become available
+            Create demand signals for items you need. Get notified when they
+            become available
           </p>
 
           {expiredWishlists.length > 0 && (
@@ -140,7 +164,8 @@ export default function WishlistsPage() {
                 className="text-sm"
               >
                 <Archive className="h-4 w-4 mr-2" />
-                {showArchived ? 'Hide' : 'Show'} Archived ({expiredWishlists.length})
+                {showArchived ? "Hide" : "Show"} Archived (
+                {expiredWishlists.length})
               </Button>
             </div>
           )}
@@ -155,9 +180,7 @@ export default function WishlistsPage() {
                 Add to Wishlist
               </span>
               {!showAddForm && (
-                <Button onClick={() => setShowAddForm(true)}>
-                  Add Item
-                </Button>
+                <Button onClick={() => setShowAddForm(true)}>Add Item</Button>
               )}
             </CardTitle>
           </CardHeader>
@@ -167,26 +190,41 @@ export default function WishlistsPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Item Name *</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Item Name *
+                    </label>
                     <Input
                       value={formData.itemName}
-                      onChange={(e) => setFormData({...formData, itemName: e.target.value})}
+                      onChange={(e) =>
+                        setFormData({ ...formData, itemName: e.target.value })
+                      }
                       placeholder="e.g., Power drill, Camping tent, Stand mixer"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Category</label>
-                    <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                    <label className="block text-sm font-medium mb-2">
+                      Category
+                    </label>
+                    <Select
+                      value={formData.category}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, category: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="tools">Tools & Equipment</SelectItem>
                         <SelectItem value="electronics">Electronics</SelectItem>
-                        <SelectItem value="outdoor">Outdoor & Sports</SelectItem>
-                        <SelectItem value="kitchen">Kitchen & Appliances</SelectItem>
+                        <SelectItem value="outdoor">
+                          Outdoor & Sports
+                        </SelectItem>
+                        <SelectItem value="kitchen">
+                          Kitchen & Appliances
+                        </SelectItem>
                         <SelectItem value="home">Home & Garden</SelectItem>
                         <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
@@ -195,10 +233,14 @@ export default function WishlistsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Description</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Description
+                  </label>
                   <Textarea
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     placeholder="Describe what you need this item for or any specific requirements..."
                     rows={3}
                   />
@@ -206,29 +248,55 @@ export default function WishlistsPage() {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Need Type</label>
-                    <Select value={formData.needType} onValueChange={(value) => setFormData({...formData, needType: value})}>
+                    <label className="block text-sm font-medium mb-2">
+                      Need Type
+                    </label>
+                    <Select
+                      value={formData.needType}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, needType: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="borrow">Borrow - Use temporarily</SelectItem>
-                        <SelectItem value="rent">Rent - Pay for usage</SelectItem>
-                        <SelectItem value="swap">Swap - Exchange items</SelectItem>
+                        <SelectItem value="borrow">
+                          Borrow - Use temporarily
+                        </SelectItem>
+                        <SelectItem value="rent">
+                          Rent - Pay for usage
+                        </SelectItem>
+                        <SelectItem value="swap">
+                          Swap - Exchange items
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Urgency</label>
-                    <Select value={formData.urgency} onValueChange={(value) => setFormData({...formData, urgency: value})}>
+                    <label className="block text-sm font-medium mb-2">
+                      Urgency
+                    </label>
+                    <Select
+                      value={formData.urgency}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, urgency: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Low - Within a month</SelectItem>
-                        <SelectItem value="normal">Normal - Within 2 weeks</SelectItem>
-                        <SelectItem value="high">High - Within a week</SelectItem>
+                        <SelectItem value="low">
+                          Low - Within a month
+                        </SelectItem>
+                        <SelectItem value="normal">
+                          Normal - Within 2 weeks
+                        </SelectItem>
+                        <SelectItem value="high">
+                          High - Within a week
+                        </SelectItem>
                         <SelectItem value="urgent">Urgent - ASAP</SelectItem>
                       </SelectContent>
                     </Select>
@@ -237,35 +305,56 @@ export default function WishlistsPage() {
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Date Needed</label>
+                    <label className="block text-sm font-medium mb-2">
+                      Date Needed
+                    </label>
                     <Input
                       type="date"
                       value={formData.neededDate}
-                      onChange={(e) => setFormData({...formData, neededDate: e.target.value})}
-                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) =>
+                        setFormData({ ...formData, neededDate: e.target.value })
+                      }
+                      min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
 
-                  {formData.needType === 'borrow' && (
+                  {formData.needType === "borrow" && (
                     <div>
-                      <label className="block text-sm font-medium mb-2">Return Date</label>
+                      <label className="block text-sm font-medium mb-2">
+                        Return Date
+                      </label>
                       <Input
                         type="date"
                         value={formData.returnDate}
-                        onChange={(e) => setFormData({...formData, returnDate: e.target.value})}
-                        min={formData.neededDate || new Date().toISOString().split('T')[0]}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            returnDate: e.target.value,
+                          })
+                        }
+                        min={
+                          formData.neededDate ||
+                          new Date().toISOString().split("T")[0]
+                        }
                       />
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Preferred Location</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Preferred Location
+                  </label>
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-600" />
                     <Input
                       value={formData.preferredLocation}
-                      onChange={(e) => setFormData({...formData, preferredLocation: e.target.value})}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          preferredLocation: e.target.value,
+                        })
+                      }
                       placeholder="Neighborhood, postal code, or 'nearby'"
                       className="pl-10"
                     />
@@ -278,7 +367,9 @@ export default function WishlistsPage() {
                     disabled={addWishlistMutation.isPending}
                     className="flex-1"
                   >
-                    {addWishlistMutation.isPending ? 'Adding...' : 'Add to Wishlist'}
+                    {addWishlistMutation.isPending
+                      ? "Adding..."
+                      : "Add to Wishlist"}
                   </Button>
                   <Button
                     type="button"
@@ -302,77 +393,102 @@ export default function WishlistsPage() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {activeWishlists?.map((item) => (
-            <Card key={item.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="font-semibold text-lg">{item.itemName}</h3>
-                  <Badge className={getUrgencyColor(item.urgency)}>
-                    <Clock className="h-3 w-3 mr-1" />
-                    {item.urgency}
-                  </Badge>
-                </div>
-
-                {item.description && (
-                  <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
-                )}
-
-                <div className="space-y-2 text-sm">
-                  {item.category && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Category:</span>
-                      <Badge variant="outline">{item.category}</Badge>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Need Type:</span>
-                    <Badge variant="secondary" className={
-                      item.needType === 'borrow' ? 'bg-primary/10 text-primary' :
-                      item.needType === 'rent' ? 'bg-teal-100 text-teal-800' :
-                      'bg-teal-100 text-teal-800'
-                    }>
-                      {item.needType === 'borrow' && <HandHeart className="h-3 w-3 mr-1" />}
-                      {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
-                      {item.needType === 'swap' && <Repeat className="h-3 w-3 mr-1" />}
-                      {item.needType.charAt(0).toUpperCase() + item.needType.slice(1)}
-                    </Badge>
-                  </div>
-
-                  {item.neededDate && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Date Needed:</span>
-                      <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(item.neededDate).toLocaleDateString()}
+                <Card
+                  key={item.id}
+                  className="hover:shadow-md transition-shadow"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <h3 className="font-semibold text-lg">{item.itemName}</h3>
+                      <Badge className={getUrgencyColor(item.urgency)}>
+                        <Clock className="h-3 w-3 mr-1" />
+                        {item.urgency}
                       </Badge>
                     </div>
-                  )}
 
-                  {item.returnDate && item.needType === 'borrow' && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Return Date:</span>
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(item.returnDate).toLocaleDateString()}
-                      </Badge>
+                    {item.description && (
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {item.description}
+                      </p>
+                    )}
+
+                    <div className="space-y-2 text-sm">
+                      {item.category && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Category:</span>
+                          <Badge variant="outline">{item.category}</Badge>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Need Type:</span>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            item.needType === "borrow"
+                              ? "bg-primary/10 text-primary"
+                              : item.needType === "rent"
+                                ? "bg-teal-100 text-teal-800"
+                                : "bg-teal-100 text-teal-800"
+                          }
+                        >
+                          {item.needType === "borrow" && (
+                            <HandHeart className="h-3 w-3 mr-1" />
+                          )}
+                          {item.needType === "rent" && (
+                            <ArrowRightLeft className="h-3 w-3 mr-1" />
+                          )}
+                          {item.needType === "swap" && (
+                            <Repeat className="h-3 w-3 mr-1" />
+                          )}
+                          {item.needType.charAt(0).toUpperCase() +
+                            item.needType.slice(1)}
+                        </Badge>
+                      </div>
+
+                      {item.neededDate && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Date Needed:</span>
+                          <Badge
+                            variant="outline"
+                            className="bg-teal-50 text-teal-700 border-teal-200"
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {new Date(item.neededDate).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                      )}
+
+                      {item.returnDate && item.needType === "borrow" && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Return Date:</span>
+                          <Badge
+                            variant="outline"
+                            className="bg-primary/10 text-primary border-primary/20"
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {new Date(item.returnDate).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                      )}
+
+                      {item.preferredLocation && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">Location:</span>
+                          <span className="text-muted-foreground">
+                            {item.preferredLocation}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  {item.preferredLocation && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Location:</span>
-                      <span className="text-muted-foreground">{item.preferredLocation}</span>
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        Added {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
                     </div>
-                  )}
-                </div>
-
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-xs text-muted-foreground">
-                    Added {new Date(item.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </>
@@ -387,16 +503,24 @@ export default function WishlistsPage() {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {expiredWishlists?.map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow opacity-75 border-gray-300">
+                <Card
+                  key={item.id}
+                  className="hover:shadow-md transition-shadow opacity-75 border-gray-300"
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
-                      <h3 className="font-semibold text-lg text-gray-700">{item.itemName}</h3>
+                      <h3 className="font-semibold text-lg text-gray-700">
+                        {item.itemName}
+                      </h3>
                       <div className="flex flex-col gap-1">
                         <Badge className="bg-teal-100 text-teal-800">
                           <AlertTriangle className="h-3 w-3 mr-1" />
                           Expired
                         </Badge>
-                        <Badge className={getUrgencyColor(item.urgency)} variant="outline">
+                        <Badge
+                          className={getUrgencyColor(item.urgency)}
+                          variant="outline"
+                        >
                           <Clock className="h-3 w-3 mr-1" />
                           {item.urgency}
                         </Badge>
@@ -404,7 +528,9 @@ export default function WishlistsPage() {
                     </div>
 
                     {item.description && (
-                      <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {item.description}
+                      </p>
                     )}
 
                     <div className="space-y-2 text-sm">
@@ -417,28 +543,44 @@ export default function WishlistsPage() {
 
                       <div className="flex items-center gap-2">
                         <span className="font-medium">Need Type:</span>
-                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-200">
-                          {item.needType === 'borrow' && <ShoppingCart className="h-3 w-3 mr-1" />}
-                          {item.needType === 'rent' && <ArrowRightLeft className="h-3 w-3 mr-1" />}
-                          {item.needType === 'swap' && <Repeat className="h-3 w-3 mr-1" />}
-                          {item.needType.charAt(0).toUpperCase() + item.needType.slice(1)}
+                        <Badge
+                          variant="secondary"
+                          className="bg-teal-50 text-teal-700 border-teal-200"
+                        >
+                          {item.needType === "borrow" && (
+                            <ShoppingCart className="h-3 w-3 mr-1" />
+                          )}
+                          {item.needType === "rent" && (
+                            <ArrowRightLeft className="h-3 w-3 mr-1" />
+                          )}
+                          {item.needType === "swap" && (
+                            <Repeat className="h-3 w-3 mr-1" />
+                          )}
+                          {item.needType.charAt(0).toUpperCase() +
+                            item.needType.slice(1)}
                         </Badge>
                       </div>
 
                       {item.neededDate && (
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Was Needed:</span>
-                          <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                          <Badge
+                            variant="outline"
+                            className="bg-teal-50 text-teal-700 border-teal-200"
+                          >
                             <Calendar className="h-3 w-3 mr-1" />
                             {new Date(item.neededDate).toLocaleDateString()}
                           </Badge>
                         </div>
                       )}
 
-                      {item.returnDate && item.needType === 'borrow' && (
+                      {item.returnDate && item.needType === "borrow" && (
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Return Date:</span>
-                          <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-200">
+                          <Badge
+                            variant="outline"
+                            className="bg-teal-50 text-teal-700 border-teal-200"
+                          >
                             <Calendar className="h-3 w-3 mr-1" />
                             {new Date(item.returnDate).toLocaleDateString()}
                           </Badge>
@@ -463,9 +605,12 @@ export default function WishlistsPage() {
         {!wishlists?.length && (
           <div className="text-center py-12">
             <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No wishlist items yet</h3>
+            <h3 className="text-xl font-semibold mb-2">
+              No wishlist items yet
+            </h3>
             <p className="text-muted-foreground mb-6">
-              Add items you're looking for and we'll notify you when they become available in your area.
+              Add items you're looking for and we'll notify you when they become
+              available in your area.
             </p>
             <Button onClick={() => setShowAddForm(true)}>
               <Plus className="h-4 w-4 mr-2" />

@@ -29,6 +29,7 @@ export default function BorrowPage() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [showFollowTutorial, setShowFollowTutorial] = useState(false);
+  const [showWishlistTutorial, setShowWishlistTutorial] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -113,6 +114,17 @@ export default function BorrowPage() {
       setShowFollowTutorial(true);
     }
   }, [user, followingItems]);
+
+  // Show wishlist tutorial on first visit
+  useEffect(() => {
+    const hasSeenWishlistTutorial = localStorage.getItem('hasSeenWishlistTutorial');
+    if (!hasSeenWishlistTutorial && user) {
+      const timer = setTimeout(() => {
+        setShowWishlistTutorial(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -327,24 +339,6 @@ export default function BorrowPage() {
           </div>
         )}
 
-        {/* ShareCoin earning opportunity */}
-        <div className="mt-8 bg-gradient-to-r from-primary/10 to-primary/5 p-6 rounded-lg border border-primary/20">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-primary mb-2">
-              Can't find what you need?
-            </h3>
-            <p className="text-primary/80 mb-4">
-              Add it to your wishlist and we'll notify you when it becomes available!
-            </p>
-            <Link href="/wishlists">
-              <Button className="bg-primary hover:bg-primary/90">
-                <Heart className="h-4 w-4 mr-2" />
-                Add to Wishlist
-              </Button>
-            </Link>
-          </div>
-        </div>
-
         <WishlistFulfillmentPopup
           isOpen={showWishlistPopup}
           onClose={() => setShowWishlistPopup(false)}
@@ -386,6 +380,47 @@ export default function BorrowPage() {
                 className="bg-teal-600 hover:bg-teal-700 flex-1"
               >
                 Find Neighbours Now
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Wishlist Tutorial - One-time popup */}
+        <AlertDialog open={showWishlistTutorial} onOpenChange={setShowWishlistTutorial}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-pink-50 to-pink-100 rounded-full flex items-center justify-center">
+                  <Heart className="h-8 w-8 text-pink-600" />
+                </div>
+              </div>
+              <AlertDialogTitle className="text-center text-xl">
+                Can't Find What You Need?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-center">
+                Add items to your wishlist and we'll notify you when they become available in the community! Your neighbors can also see your wishlist and help fulfill your needs.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => {
+                  localStorage.setItem('hasSeenWishlistTutorial', 'true');
+                  setShowWishlistTutorial(false);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Got It
+              </Button>
+              <AlertDialogAction
+                onClick={() => {
+                  localStorage.setItem('hasSeenWishlistTutorial', 'true');
+                  setShowWishlistTutorial(false);
+                  navigate('/wishlists');
+                }}
+                className="bg-pink-600 hover:bg-pink-700 flex-1"
+              >
+                View My Wishlist
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

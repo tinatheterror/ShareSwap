@@ -5,7 +5,6 @@ import { Coins } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import shareChestImage from "../../../attached_assets/Tina_L_make_the_background_white_947fcd9a-2873-4576-814f-1d29e3f34c73_1763170291577.jpg";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
@@ -69,9 +68,9 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="flex items-center justify-center w-64 shrink-0 bg-white py-4">
+          <div className="flex items-center justify-center w-64 shrink-0 py-4">
             <img
-              src={shareChestImage}
+              src="/sharechest.png"
               alt="Community ShareChest"
               className="w-full h-auto object-contain"
             />

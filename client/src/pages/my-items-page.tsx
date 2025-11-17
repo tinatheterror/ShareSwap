@@ -221,10 +221,10 @@ export default function MyItemsPage() {
                 <div className="text-4xl">🪙</div>
                 <div>
                   <DialogTitle className="text-lg font-semibold mb-1">
-                    Need ShareCoins to Borrow
+                    Need Items to Share
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600">
-                    You have {user?.shareCoins || 0} ShareCoins to borrow items. Would you like to lend something out to earn ShareCoins?
+                    You have 0 items in the ShareChest. Would you like to add something in to share with the community?
                   </DialogDescription>
                 </div>
               </div>

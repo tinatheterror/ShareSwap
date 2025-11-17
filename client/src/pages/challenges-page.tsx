@@ -7,7 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Trophy, Users, Timer, Coins } from "lucide-react";
+import { Trophy, Users, Timer, Coins, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Challenge = {
   id: number;
@@ -64,12 +65,20 @@ export default function ChallengesPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Community Challenges</h1>
-          <p className="text-muted-foreground">
-            Participate in challenges to earn bonus ShareCoins and climb the leaderboard
-          </p>
-        </div>
+        <TooltipProvider>
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2">
+              <h1 className="text-3xl font-bold">Community Challenges</h1>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Participate in challenges to earn bonus ShareCoins and climb the leaderboard</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {challenges.map((challenge) => (
@@ -170,6 +179,7 @@ export default function ChallengesPage() {
             </Card>
           ))}
         </div>
+        </TooltipProvider>
       </main>
     </div>
   );

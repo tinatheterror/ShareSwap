@@ -44,7 +44,7 @@ export default function HomePage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold tracking-tight mb-4">
-            Give & Take from the Community ShareChest
+            Your Community ShareChest
           </h1>
           <p className="text-lg text-muted-foreground">
             Share more, own less. Connect with your neighbours and discover a
@@ -53,7 +53,10 @@ export default function HomePage() {
         </div>
 
         <div className="flex flex-col items-center justify-center gap-6 max-w-sm mx-auto">
-          <div data-tutorial="give" className="w-full flex flex-col items-center gap-3">
+          <div
+            data-tutorial="give"
+            className="w-full flex flex-col items-center gap-3"
+          >
             <Button
               onClick={() => navigate("/lend")}
               className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
@@ -65,16 +68,19 @@ export default function HomePage() {
               Share your own treasures to the community ShareChest
             </p>
           </div>
-          
+
           <div className="flex items-center justify-center w-64 shrink-0 bg-white py-4">
-            <img 
-              src={shareChestImage} 
-              alt="Community ShareChest" 
+            <img
+              src={shareChestImage}
+              alt="Community ShareChest"
               className="w-full h-auto object-contain"
             />
           </div>
-          
-          <div data-tutorial="take" className="w-full flex flex-col items-center gap-3">
+
+          <div
+            data-tutorial="take"
+            className="w-full flex flex-col items-center gap-3"
+          >
             <Button
               onClick={() => navigate("/borrow")}
               className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"

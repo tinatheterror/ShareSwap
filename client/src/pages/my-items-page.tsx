@@ -1,24 +1,33 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { Link } from "wouter";
-import { Edit, Trash2, Eye, Plus, Package } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Edit, Trash2, Eye, Plus, Package, Coins } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 
 export default function MyItemsPage() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [filter, setFilter] = useState<"all" | "available" | "unavailable">(
     "all",
   );
+  const [showNoItemsDialog, setShowNoItemsDialog] = useState(false);
 
   const { data: items = [], isLoading } = useQuery<SelectItem[]>({
     queryKey: ["/api/my-items"],
     enabled: !!user,
   });
+
+  useEffect(() => {
+    if (!isLoading && items.length === 0 && filter === "all") {
+      setShowNoItemsDialog(true);
+    }
+  }, [items.length, isLoading, filter]);
 
   const filteredItems = items.filter((item) => {
     if (filter === "available") return item.isAvailable;
@@ -111,14 +120,6 @@ export default function MyItemsPage() {
                 ? "Start sharing by adding your first item to the marketplace"
                 : `You don't have any ${filter} items at the moment`}
             </p>
-            {filter === "all" && (
-              <Link href="/lend">
-                <Button className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Your First Item
-                </Button>
-              </Link>
-            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -205,6 +206,49 @@ export default function MyItemsPage() {
             ))}
           </div>
         )}
+
+        {/* No Items Notification Dialog */}
+        <Dialog open={showNoItemsDialog} onOpenChange={setShowNoItemsDialog}>
+          <DialogContent className="sm:max-w-md">
+            <button
+              onClick={() => setShowNoItemsDialog(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              ✕
+            </button>
+            <DialogHeader>
+              <div className="flex items-start gap-3">
+                <div className="text-4xl">🪙</div>
+                <div>
+                  <DialogTitle className="text-lg font-semibold mb-1">
+                    Need ShareCoins to Borrow
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-gray-600">
+                    You have {user?.shareCoins || 0} ShareCoins to borrow items. Would you like to lend something out to earn ShareCoins?
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowNoItemsDialog(false)}
+                className="flex-1"
+              >
+                Browse Anyway
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowNoItemsDialog(false);
+                  navigate('/lend');
+                }}
+                className="flex-1 bg-teal-600 hover:bg-teal-700"
+              >
+                Lend an Item
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

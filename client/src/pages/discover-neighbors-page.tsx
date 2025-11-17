@@ -3,10 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, UserPlus, UserCheck, Package, Info } from "lucide-react";
+import { Users, UserPlus, UserCheck, Package } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface User {
   id: number;
@@ -72,21 +71,15 @@ export default function DiscoverNeighborsPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <TooltipProvider>
-          <div className="mb-8">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">Find Neighbours</h1>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Discover and follow neighbors in your community to see what they're sharing</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold">Find Neighbours</h1>
           </div>
+          <p className="text-muted-foreground">
+            Discover and follow neighbors in your community to see what they're sharing
+          </p>
+        </div>
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -157,7 +150,6 @@ export default function DiscoverNeighborsPage() {
             ))}
           </div>
         )}
-        </TooltipProvider>
       </main>
     </div>
   );

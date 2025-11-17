@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart, HandHeart, Coins, Info, UserPlus } from "lucide-react";
+import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart, HandHeart } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,16 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Coins } from "lucide-react";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -37,20 +28,9 @@ export default function BorrowPage() {
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
-
-  // Check if user has seen the tutorial
-  useEffect(() => {
-    if (user) {
-      const hasSeenTutorial = localStorage.getItem('hasSeenFollowTutorial');
-      if (!hasSeenTutorial) {
-        setShowTutorial(true);
-      }
-    }
-  }, [user]);
 
   // Get user's location when the component mounts
   useEffect(() => {
@@ -129,19 +109,14 @@ export default function BorrowPage() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <TooltipProvider>
-          <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold">Available Items</h1>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Browse items available for borrowing{userPostalCode && ` near ${userPostalCode}`}</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Available Items</h1>
+            <p className="text-muted-foreground">
+              Browse items available for borrowing
+              {userPostalCode && ` near ${userPostalCode}`}
+            </p>
+          </div>
           <div className="w-full md:w-96 space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -216,20 +191,23 @@ export default function BorrowPage() {
           </div>
         )}
 
-          {/* Empty state for no followed users */}
-          {user && followingItems.length === 0 && (
-            <div className="mb-8 p-6 bg-teal-50 border-2 border-teal-200 rounded-lg text-center">
-              <Heart className="h-12 w-12 text-teal-600 mx-auto mb-3" />
-              <h3 className="text-lg font-semibold text-teal-900 mb-4">
-                Follow neighbours to see what they're sharing
-              </h3>
-              <Link href="/discover-neighbors">
-                <Button className="bg-teal-600 hover:bg-teal-700">
-                  Find Neighbours
-                </Button>
-              </Link>
-            </div>
-          )}
+        {/* Empty state for no followed users */}
+        {user && followingItems.length === 0 && (
+          <div className="mb-8 p-6 bg-teal-50 border-2 border-teal-200 rounded-lg text-center">
+            <Heart className="h-12 w-12 text-teal-600 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-teal-900 mb-2">
+              Follow neighbours to see what they're sharing
+            </h3>
+            <p className="text-sm text-teal-700 mb-4">
+              When you follow other users, their newly posted items will appear in this feed
+            </p>
+            <Link href="/discover-neighbors">
+              <Button className="bg-teal-600 hover:bg-teal-700">
+                Find Neighbours
+              </Button>
+            </Link>
+          </div>
+        )}
 
         {/* AI Recommendations Section */}
         <div className="mb-8">
@@ -359,55 +337,12 @@ export default function BorrowPage() {
               </Button>
             </Link>
           </div>
-          </div>
+        </div>
 
-          <WishlistFulfillmentPopup
-            isOpen={showWishlistPopup}
-            onClose={() => setShowWishlistPopup(false)}
-          />
-
-          {/* First-time user tutorial */}
-          <AlertDialog open={showTutorial} onOpenChange={setShowTutorial}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5 text-primary" />
-                  Welcome to Your Feed!
-                </AlertDialogTitle>
-                <AlertDialogDescription className="space-y-3 pt-2">
-                  <p className="text-base">
-                    When you follow other users, their newly posted items will appear in the <strong>"From People You Follow"</strong> section on this page.
-                  </p>
-                  <p className="text-base">
-                    Start building your personalized feed by discovering and following neighbours in your community!
-                  </p>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                <AlertDialogAction
-                  onClick={() => {
-                    localStorage.setItem('hasSeenFollowTutorial', 'true');
-                    setShowTutorial(false);
-                  }}
-                  className="w-full sm:w-auto"
-                >
-                  Got it!
-                </AlertDialogAction>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    localStorage.setItem('hasSeenFollowTutorial', 'true');
-                    setShowTutorial(false);
-                    navigate('/discover-neighbors');
-                  }}
-                  className="w-full sm:w-auto"
-                >
-                  Find Neighbours Now
-                </Button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </TooltipProvider>
+        <WishlistFulfillmentPopup
+          isOpen={showWishlistPopup}
+          onClose={() => setShowWishlistPopup(false)}
+        />
       </main>
     </div>
   );

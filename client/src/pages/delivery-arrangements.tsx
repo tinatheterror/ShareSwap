@@ -8,9 +8,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import QRCode from 'qrcode';
 import { useState } from 'react';
-import { Loader2, Truck, QrCode, Calendar as CalendarIcon, X, Download, AlertTriangle, Smartphone, Camera, CheckCircle2, Info } from 'lucide-react';
+import { Loader2, Truck, QrCode, Calendar as CalendarIcon, X, Download, AlertTriangle, Smartphone, Camera, CheckCircle2 } from 'lucide-react';
 import type { EventClickArg } from '@fullcalendar/core';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface DeliveryArrangement {
   id: number;
@@ -195,23 +194,15 @@ export default function DeliveryArrangementsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <TooltipProvider>
-        <main className="max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <h1 className="text-3xl font-bold">Delivery Arrangements</h1>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-5 w-5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Manage your item pickups and deliveries</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
+      <main className="max-w-7xl mx-auto px-4 py-12">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">Delivery Arrangements</h1>
+          <p className="text-muted-foreground">
+            Manage your item pickups and deliveries
+          </p>
+        </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8">
           <Card>
             <CardContent className="pt-6">
               <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -384,9 +375,8 @@ export default function DeliveryArrangementsPage() {
               </div>
             </CardContent>
           </Card>
-          </div>
-        </main>
-      </TooltipProvider>
+        </div>
+      </main>
     </div>
   );
 }

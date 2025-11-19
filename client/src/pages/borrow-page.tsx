@@ -134,7 +134,6 @@ export default function BorrowPage() {
       if (!searchQuery) return true;
       const nameMatch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
       const descMatch = item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      console.log(`Filtering "${item.name}" with query "${searchQuery}":`, { nameMatch, descMatch, result: nameMatch || descMatch });
       return nameMatch || descMatch;
     }
   );
@@ -282,19 +281,25 @@ export default function BorrowPage() {
           </div>
         )}
 
-        {/* AI Recommendations Section */}
-        <div className="mb-8">
-          <Recommendations limit={6} />
-        </div>
+        {/* AI Recommendations Section - only show when not searching */}
+        {!searchQuery && (
+          <div className="mb-8">
+            <Recommendations limit={6} />
+          </div>
+        )}
 
-        {/* Seasonal Recommendations */}
-        <div className="mb-8">
-          <SeasonalRecommendations limit={6} />
-        </div>
+        {/* Seasonal Recommendations - only show when not searching */}
+        {!searchQuery && (
+          <div className="mb-8">
+            <SeasonalRecommendations limit={6} />
+          </div>
+        )}
 
         {/* All Available Items */}
         <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">All Items</h2>
+          <h2 className="text-xl font-bold mb-4">
+            {searchQuery ? `Search Results for "${searchQuery}"` : "All Items"}
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {filteredItems.map((item) => (
               <Card

@@ -300,54 +300,87 @@ export default function BorrowPage() {
           <h2 className="text-xl font-bold mb-4">
             {searchQuery ? `Search Results for "${searchQuery}"` : "All Items"}
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
-                className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden"
+                className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden"
               >
-                <CardContent className="p-4">
-                  <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                    {item.photos && item.photos[0] ? (
-                      <img
-                        src={item.photos[0]}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <Camera className="h-8 w-8 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-center mb-3">
-                    <h3 className="font-semibold text-sm mb-1 line-clamp-1">
-                      {item.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 mb-1">
-                      {item.isConditionVerified ? "Verificato" : "Reserveret"}
-                    </p>
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <Coins className="h-3 w-3 text-teal-600" />
-                      <span className="text-xs font-semibold text-teal-700">
-                        {item.shareCoinPrice || 5} ShareCoins
+                <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
+                  {item.photos && item.photos[0] ? (
+                    <img
+                      src={item.photos[0]}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                      <Camera className="h-16 w-16 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                
+                <CardContent className="p-6 bg-gray-50">
+                  <h3 className="font-bold text-xl mb-3 text-slate-800">
+                    {item.name}
+                  </h3>
+                  
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <MapPin className="h-4 w-4" />
+                      <span className="text-sm">
+                        {item.postalCode || userPostalCode || "Nearby"}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600">
-                      {item.distance
-                        ? `${item.distance.toFixed(1)}km`
-                        : "Nearby"}
-                    </p>
+                    
+                    <div className="text-sm text-slate-700">
+                      <span className="font-medium">Condition:</span> {item.condition || 8}/10
+                    </div>
+                    
+                    <div className="text-sm text-slate-700">
+                      <span className="font-medium">Value:</span>{" "}
+                      {item.rentalRate && item.shareCoinPrice
+                        ? `${item.shareCoinPrice} ShareCoins or $${item.rentalRate}/day`
+                        : item.rentalRate
+                        ? `$${item.rentalRate}/day`
+                        : `${item.shareCoinPrice || 50} ShareCoins`}
+                    </div>
                   </div>
 
-                  <Button
-                    className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
-                    disabled={!item.isConditionVerified}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
-                    {item.isConditionVerified ? "Share" : "Pending"}
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    {item.availabilityTypes?.includes("borrow") && (
+                      <Button
+                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        Borrow It
+                      </Button>
+                    )}
+                    {item.availabilityTypes?.includes("rent") && (
+                      <Button
+                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        Rent It
+                      </Button>
+                    )}
+                    {item.availabilityTypes?.includes("swap") && (
+                      <Button
+                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        Swap It
+                      </Button>
+                    )}
+                    {(!item.availabilityTypes || item.availabilityTypes.length === 0) && (
+                      <Button
+                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        View Details
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}

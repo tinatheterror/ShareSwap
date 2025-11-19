@@ -86,7 +86,9 @@ export function WishlistFulfillmentPopup({
     if (!neededDate) return false;
     const today = new Date();
     const needed = new Date(neededDate);
-    const daysUntilNeeded = Math.ceil((needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const daysUntilNeeded = Math.ceil(
+      (needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
     return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
   };
 
@@ -105,7 +107,7 @@ export function WishlistFulfillmentPopup({
               Fulfill a Wishlist + Earn ShareCoins✨
             </DialogTitle>
             <p className="text-slate-600 text-lg">
-              Neighbors need these items!! Lend, rent, or swap it out to them.
+              Neighbours need these items!! Lend, rent, or swap it out to them.
               You'll earn ShareCoins, and strengthen connections.
             </p>
           </div>
@@ -242,7 +244,8 @@ export function WishlistFulfillmentPopup({
                 No Wishlists Yet
               </h3>
               <p className="text-slate-600 text-lg mb-6 max-w-md mx-auto">
-                Your community hasn't added any wishlist items yet. Check back soon!
+                Your community hasn't added any wishlist items yet. Check back
+                soon!
               </p>
             </div>
           )}
@@ -315,7 +318,7 @@ export function WishlistFulfillmentPopup({
                         Extra ShareCoins for urgent requests
                       </span>
                       <p className="text-xs text-slate-600 mt-0.5">
-                        Help neighbors in need and earn bonus rewards
+                        Help neighbours in need and earn bonus rewards
                       </p>
                     </div>
                   </div>

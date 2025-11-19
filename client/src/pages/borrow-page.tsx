@@ -4,13 +4,31 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CheckCircle, AlertCircle, MapPin, X, Camera, Heart, HandHeart, UserPlus, Coins, Users } from "lucide-react";
+import {
+  Search,
+  CheckCircle,
+  AlertCircle,
+  MapPin,
+  X,
+  Camera,
+  Heart,
+  HandHeart,
+  UserPlus,
+  Coins,
+  Users,
+} from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
@@ -23,7 +41,10 @@ interface ItemWithDistance extends SelectItem {
 
 export default function BorrowPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lon: number;
+  } | null>(null);
   const [radius, setRadius] = useState(72); // Default 72km radius
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -48,7 +69,7 @@ export default function BorrowPage() {
           // Get postal code from coordinates
           try {
             const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
             );
             const data = await response.json();
             if (data.address?.postcode) {
@@ -62,33 +83,46 @@ export default function BorrowPage() {
           console.error("Error getting location:", error);
           toast({
             title: "Location Error",
-            description: "Could not get your location. Some features may be limited.",
+            description:
+              "Could not get your location. Some features may be limited.",
             variant: "destructive",
           });
-        }
+        },
       );
     }
   }, []);
 
-  const { data: items = [], error, isLoading } = useQuery<ItemWithDistance[]>({
-    queryKey: userLocation ? ['/api/items/nearby', userLocation.lat, userLocation.lon, radius, 'borrow'] : ['/api/items', 'borrow'],
+  const {
+    data: items = [],
+    error,
+    isLoading,
+  } = useQuery<ItemWithDistance[]>({
+    queryKey: userLocation
+      ? [
+          "/api/items/nearby",
+          userLocation.lat,
+          userLocation.lon,
+          radius,
+          "borrow",
+        ]
+      : ["/api/items", "borrow"],
     queryFn: async () => {
       if (userLocation) {
         const response = await fetch(
-          `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}&type=borrow`
+          `/api/items/nearby?latitude=${userLocation.lat}&longitude=${userLocation.lon}&radius=${radius}&type=borrow`,
         );
         if (!response.ok) {
-          console.error('Nearby items API failed, falling back to all items');
+          console.error("Nearby items API failed, falling back to all items");
           // Fall back to all borrow items if nearby fails
-          const fallbackResponse = await fetch('/api/items?type=borrow');
-          if (!fallbackResponse.ok) throw new Error('Failed to fetch items');
+          const fallbackResponse = await fetch("/api/items?type=borrow");
+          if (!fallbackResponse.ok) throw new Error("Failed to fetch items");
           return fallbackResponse.json();
         }
         return response.json();
       } else {
         // Fallback to all borrow items if no location
-        const response = await fetch('/api/items?type=borrow');
-        if (!response.ok) throw new Error('Failed to fetch items');
+        const response = await fetch("/api/items?type=borrow");
+        if (!response.ok) throw new Error("Failed to fetch items");
         return response.json();
       }
     },
@@ -98,18 +132,18 @@ export default function BorrowPage() {
   const filteredItems = items.filter(
     (item) =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
   // Get items from followed users
   const { data: followingItems = [] } = useQuery<ItemWithDistance[]>({
-    queryKey: ['/api/feed/following-items'],
+    queryKey: ["/api/feed/following-items"],
     enabled: !!user,
   });
 
   // Show follow tutorial on first visit
   useEffect(() => {
-    const hasSeenFollowTutorial = localStorage.getItem('hasSeenFollowTutorial');
+    const hasSeenFollowTutorial = localStorage.getItem("hasSeenFollowTutorial");
     if (!hasSeenFollowTutorial && user && followingItems.length === 0) {
       setShowFollowTutorial(true);
     }
@@ -117,7 +151,9 @@ export default function BorrowPage() {
 
   // Show wishlist tutorial on first visit
   useEffect(() => {
-    const hasSeenWishlistTutorial = localStorage.getItem('hasSeenWishlistTutorial');
+    const hasSeenWishlistTutorial = localStorage.getItem(
+      "hasSeenWishlistTutorial",
+    );
     if (!hasSeenWishlistTutorial && user) {
       const timer = setTimeout(() => {
         setShowWishlistTutorial(true);
@@ -132,9 +168,11 @@ export default function BorrowPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Available Items</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              Browse the community ShareChest
+            </h1>
             <p className="text-muted-foreground">
-              Browse items available for borrowing
+              Items available for borrowing
               {userPostalCode && ` near ${userPostalCode}`}
             </p>
           </div>
@@ -154,7 +192,9 @@ export default function BorrowPage() {
               onClick={() => setShowLocationModal(true)}
             >
               <MapPin className="h-4 w-4" />
-              {userPostalCode ? `${userPostalCode} (${radius}km radius)` : "Set Location"}
+              {userPostalCode
+                ? `${userPostalCode} (${radius}km radius)`
+                : "Set Location"}
             </Button>
           </div>
         </div>
@@ -168,7 +208,10 @@ export default function BorrowPage() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {followingItems.slice(0, 8).map((item) => (
-                <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
+                <Card
+                  key={item.id}
+                  className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden"
+                >
                   <CardContent className="p-4">
                     <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                       {item.photos && item.photos[0] ? (
@@ -183,9 +226,11 @@ export default function BorrowPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="text-center mb-3">
-                      <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
+                      <h3 className="font-semibold text-sm mb-1 line-clamp-1">
+                        {item.name}
+                      </h3>
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                         {item.description}
                       </p>
@@ -201,7 +246,10 @@ export default function BorrowPage() {
                     </div>
 
                     <Link href={`/item/${item.id}/borrow`}>
-                      <Button size="sm" className="w-full bg-primary hover:bg-primary/90">
+                      <Button
+                        size="sm"
+                        className="w-full bg-primary hover:bg-primary/90"
+                      >
                         Borrow
                       </Button>
                     </Link>
@@ -220,7 +268,10 @@ export default function BorrowPage() {
               Follow neighbours to see what they're sharing
             </h3>
             <Link href="/discover-neighbors">
-              <Button className="bg-teal-600 hover:bg-teal-700" data-tutorial="follow-neighbors">
+              <Button
+                className="bg-teal-600 hover:bg-teal-700"
+                data-tutorial="follow-neighbors"
+              >
                 Find Neighbours
               </Button>
             </Link>
@@ -239,51 +290,58 @@ export default function BorrowPage() {
 
         {/* All Available Items */}
         <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">All Items Available to Borrow</h2>
+          <h2 className="text-xl font-bold mb-4">All Items</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {filteredItems.map((item) => (
-            <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
-              <CardContent className="p-4">
-                <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                  {item.photos && item.photos[0] ? (
-                    <img
-                      src={item.photos[0]}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <Camera className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="text-center mb-3">
-                  <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
-                  <p className="text-xs text-gray-500 mb-1">
-                    {item.isConditionVerified ? "Verificato" : "Reserveret"}
-                  </p>
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <Coins className="h-3 w-3 text-teal-600" />
-                    <span className="text-xs font-semibold text-teal-700">
-                      {item.shareCoinPrice || 5} ShareCoins
-                    </span>
+            {filteredItems.map((item) => (
+              <Card
+                key={item.id}
+                className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden"
+              >
+                <CardContent className="p-4">
+                  <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                    {item.photos && item.photos[0] ? (
+                      <img
+                        src={item.photos[0]}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <Camera className="h-8 w-8 text-gray-400" />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-gray-600">
-                    {item.distance ? `${item.distance.toFixed(1)}km` : "Nearby"}
-                  </p>
-                </div>
-                
-                <Button 
-                  className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
-                  disabled={!item.isConditionVerified}
-                  onClick={() => navigate(`/items/${item.id}`)}
-                >
-                  {item.isConditionVerified ? "Share" : "Pending"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+
+                  <div className="text-center mb-3">
+                    <h3 className="font-semibold text-sm mb-1 line-clamp-1">
+                      {item.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-1">
+                      {item.isConditionVerified ? "Verificato" : "Reserveret"}
+                    </p>
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <Coins className="h-3 w-3 text-teal-600" />
+                      <span className="text-xs font-semibold text-teal-700">
+                        {item.shareCoinPrice || 5} ShareCoins
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      {item.distance
+                        ? `${item.distance.toFixed(1)}km`
+                        : "Nearby"}
+                    </p>
+                  </div>
+
+                  <Button
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
+                    disabled={!item.isConditionVerified}
+                    onClick={() => navigate(`/items/${item.id}`)}
+                  >
+                    {item.isConditionVerified ? "Share" : "Pending"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
 
@@ -314,7 +372,9 @@ export default function BorrowPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-muted-foreground">Radius</label>
+                    <label className="text-sm text-muted-foreground">
+                      Radius
+                    </label>
                     <select
                       value={radius}
                       onChange={(e) => setRadius(Number(e.target.value))}
@@ -348,28 +408,28 @@ export default function BorrowPage() {
         <TutorialTooltip
           isOpen={showFollowTutorial}
           onClose={() => {
-            localStorage.setItem('hasSeenFollowTutorial', 'true');
+            localStorage.setItem("hasSeenFollowTutorial", "true");
             setShowFollowTutorial(false);
           }}
           targetSelector="[data-tutorial='follow-neighbors']"
           title="Follow Neighbours"
           description="When you follow other users, their newly posted items will appear in this personalized feed at the top of the page!"
           actionLabel="Find Neighbours"
-          onAction={() => navigate('/discover-neighbors')}
+          onAction={() => navigate("/discover-neighbors")}
         />
 
         {/* Wishlist Tutorial Tooltip */}
         <TutorialTooltip
           isOpen={showWishlistTutorial}
           onClose={() => {
-            localStorage.setItem('hasSeenWishlistTutorial', 'true');
+            localStorage.setItem("hasSeenWishlistTutorial", "true");
             setShowWishlistTutorial(false);
           }}
           targetSelector="[data-tutorial='wishlist']"
           title="Can't Find What You Need?"
           description="Add items to your wishlist and we'll notify you when they become available in the community!"
           actionLabel="View Wishlist"
-          onAction={() => navigate('/wishlists')}
+          onAction={() => navigate("/wishlists")}
         />
       </main>
     </div>

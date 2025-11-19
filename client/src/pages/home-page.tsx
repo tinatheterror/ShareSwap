@@ -45,9 +45,8 @@ export default function HomePage() {
           <h1 className="text-4xl font-bold tracking-tight mb-4">
             Your Community ShareChest
           </h1>
-          <p className="text-lg text-muted-foreground">
-            Share more, own less. Connect with your neighbours and discover a
-            world of shared resources
+          <p className="text-lg text-muted-foreground font-semibold">
+            Give what you can, take what you need.
           </p>
         </div>
 

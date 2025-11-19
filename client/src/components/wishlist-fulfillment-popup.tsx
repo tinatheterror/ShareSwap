@@ -81,10 +81,17 @@ export function WishlistFulfillmentPopup({
     }
   };
 
-  const urgentWishlists =
-    allWishlists
-      ?.filter((w) => w.urgency === "urgent" || w.urgency === "high")
-      .slice(0, 6) || [];
+  // Check if item is urgently needed (within 7 days)
+  const isUrgent = (neededDate?: string) => {
+    if (!neededDate) return false;
+    const today = new Date();
+    const needed = new Date(neededDate);
+    const daysUntilNeeded = Math.ceil((needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
+  };
+
+  // Show ALL wishlists, not just urgent ones
+  const displayedWishlists = allWishlists?.slice(0, 6) || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -106,9 +113,9 @@ export function WishlistFulfillmentPopup({
 
         <div className="space-y-6">
           {/* Two Column Layout */}
-          {urgentWishlists.length > 0 ? (
+          {displayedWishlists.length > 0 ? (
             <div className="grid md:grid-cols-2 gap-6">
-              {urgentWishlists.map((wishlist) => (
+              {displayedWishlists.map((wishlist) => (
                 <Card
                   key={wishlist.id}
                   className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/90 backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden"
@@ -120,13 +127,13 @@ export function WishlistFulfillmentPopup({
                         <h4 className="font-bold text-xl text-slate-800 mb-1">
                           {wishlist.itemName}
                         </h4>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            className={`${getUrgencyColor(wishlist.urgency)} font-medium px-3 py-1`}
-                          >
-                            <Clock className="h-3 w-3 mr-1" />
-                            {wishlist.urgency.toUpperCase()}
-                          </Badge>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {isUrgent(wishlist.neededDate) && (
+                            <Badge className="bg-[#D4A574] text-amber-900 border-amber-200 font-medium px-3 py-1">
+                              <Clock className="h-3 w-3 mr-1" />
+                              URGENT
+                            </Badge>
+                          )}
                           <Badge
                             variant="secondary"
                             className="bg-teal-50 text-teal-700 border-teal-200 px-3 py-1 font-medium"
@@ -232,21 +239,11 @@ export function WishlistFulfillmentPopup({
                 <Heart className="h-12 w-12 text-slate-400" />
               </div>
               <h3 className="text-2xl font-bold text-slate-800 mb-3">
-                All Caught Up!
+                No Wishlists Yet
               </h3>
               <p className="text-slate-600 text-lg mb-6 max-w-md mx-auto">
-                No urgent requests at the moment. Check back soon or explore all
-                community wishlists.
+                Your community hasn't added any wishlist items yet. Check back soon!
               </p>
-              <Link href="/community-wishlists">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-teal-200 text-teal-700 hover:bg-teal-50"
-                >
-                  Explore All Wishlists
-                </Button>
-              </Link>
             </div>
           )}
 

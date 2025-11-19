@@ -125,7 +125,7 @@ export default function AuthPage() {
                 Continue with Phone Number
               </Button>
 
-              <div className="text-center mt-6 pt-4 border-t">
+              <div className="text-center mt-6">
                 <button
                   onClick={() => setShowEmailAuth(true)}
                   className="text-xs text-muted-foreground underline font-medium"
@@ -134,7 +134,7 @@ export default function AuthPage() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-4 font-medium">
+              <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-4 pt-4 border-t font-medium">
                 <Lock className="h-4 w-4" />
                 <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>

@@ -99,7 +99,7 @@ export default function CommunityWishlistsPage() {
                       <h4 className="font-bold text-xl text-slate-800 mb-1">{wishlist.itemName}</h4>
                       <div className="flex items-center gap-2 flex-wrap">
                         {isUrgent(wishlist.neededDate) && (
-                          <Badge className="bg-[#D4A574] text-amber-900 border-amber-200 font-medium px-3 py-1">
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-100 font-medium px-3 py-1">
                             <Clock className="h-3 w-3 mr-1" />
                             URGENT
                           </Badge>

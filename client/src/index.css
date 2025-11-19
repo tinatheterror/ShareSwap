@@ -2,13 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-bg: #F4FFFD;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    background-color: var(--app-bg) !important;
+  }
+
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply font-sans antialiased text-foreground;
   }
 }
 

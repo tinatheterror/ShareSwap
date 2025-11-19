@@ -69,7 +69,7 @@ export default function AchievementsPage() {
 
   if (achievementsLoading || userAchievementsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
         <main className="max-w-7xl mx-auto px-4 py-12">
           <div className="flex items-center justify-center min-h-[400px]">
@@ -81,7 +81,7 @@ export default function AchievementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-8">

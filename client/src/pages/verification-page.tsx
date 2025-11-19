@@ -118,7 +118,7 @@ export default function VerificationPage() {
 
   if (isVerified) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         <Navbar />
         <main className="max-w-2xl mx-auto px-4 py-12">
           <div className="text-center">
@@ -155,7 +155,7 @@ export default function VerificationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Navbar />
       <main className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-8">

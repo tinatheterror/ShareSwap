@@ -28,14 +28,13 @@ export default function CommunityWishlistsPage() {
     queryKey: ['/api/all-wishlists'],
   });
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'urgent': return 'bg-teal-200 text-teal-900';
-      case 'high': return 'bg-teal-100 text-teal-800';
-      case 'normal': return 'bg-teal-50 text-teal-700';
-      case 'low': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-teal-50 text-teal-700';
-    }
+  // Check if item is urgently needed (within 7 days)
+  const isUrgent = (neededDate?: string) => {
+    if (!neededDate) return false;
+    const today = new Date();
+    const needed = new Date(neededDate);
+    const daysUntilNeeded = Math.ceil((needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
   };
 
   const getNeedTypeIcon = (needType: string) => {
@@ -99,10 +98,12 @@ export default function CommunityWishlistsPage() {
                     <div className="flex-1">
                       <h4 className="font-bold text-xl text-slate-800 mb-1">{wishlist.itemName}</h4>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className={`${getUrgencyColor(wishlist.urgency)} font-medium px-3 py-1`}>
-                          <Clock className="h-3 w-3 mr-1" />
-                          {wishlist.urgency.toUpperCase()}
-                        </Badge>
+                        {isUrgent(wishlist.neededDate) && (
+                          <Badge className="bg-[#D4A574] text-amber-900 border-amber-200 font-medium px-3 py-1">
+                            <Clock className="h-3 w-3 mr-1" />
+                            URGENT
+                          </Badge>
+                        )}
                         <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-200 px-3 py-1 font-medium">
                           {getNeedTypeIcon(wishlist.needType)}
                           <span className="ml-1">{wishlist.needType.charAt(0).toUpperCase() + wishlist.needType.slice(1)}</span>

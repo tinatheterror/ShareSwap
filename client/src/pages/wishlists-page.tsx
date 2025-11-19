@@ -57,10 +57,18 @@ export default function WishlistsPage() {
     category: "",
     needType: "borrow",
     preferredLocation: "",
-    urgency: "normal",
     neededDate: "",
     returnDate: "",
   });
+
+  // Check if item is urgently needed (within 7 days)
+  const isUrgent = (neededDate?: string) => {
+    if (!neededDate) return false;
+    const today = new Date();
+    const needed = new Date(neededDate);
+    const daysUntilNeeded = Math.ceil((needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
+  };
 
   const { data: wishlists = [], isLoading } = useQuery<Wishlist[]>({
     queryKey: ["/api/wishlists"],
@@ -83,7 +91,6 @@ export default function WishlistsPage() {
         category: "",
         needType: "borrow",
         preferredLocation: "",
-        urgency: "normal",
         neededDate: "",
         returnDate: "",
       });
@@ -114,20 +121,6 @@ export default function WishlistsPage() {
     addWishlistMutation.mutate(formData);
   };
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "urgent":
-        return "bg-teal-100 text-teal-800";
-      case "high":
-        return "bg-teal-100 text-teal-800";
-      case "normal":
-        return "bg-teal-100 text-teal-800";
-      case "low":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-teal-100 text-teal-800";
-    }
-  };
 
   if (isLoading) {
     return (
@@ -246,61 +239,31 @@ export default function WishlistsPage() {
                   />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Need Type
-                    </label>
-                    <Select
-                      value={formData.needType}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, needType: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="borrow">
-                          Borrow - Use temporarily
-                        </SelectItem>
-                        <SelectItem value="rent">
-                          Rent - Pay for usage
-                        </SelectItem>
-                        <SelectItem value="swap">
-                          Swap - Exchange items
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Urgency
-                    </label>
-                    <Select
-                      value={formData.urgency}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, urgency: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">
-                          Low - Within a month
-                        </SelectItem>
-                        <SelectItem value="normal">
-                          Normal - Within 2 weeks
-                        </SelectItem>
-                        <SelectItem value="high">
-                          High - Within a week
-                        </SelectItem>
-                        <SelectItem value="urgent">Urgent - ASAP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Need Type
+                  </label>
+                  <Select
+                    value={formData.needType}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, needType: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="borrow">
+                        Borrow - Use temporarily
+                      </SelectItem>
+                      <SelectItem value="rent">
+                        Rent - Pay for usage
+                      </SelectItem>
+                      <SelectItem value="swap">
+                        Swap - Exchange items
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -400,10 +363,12 @@ export default function WishlistsPage() {
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <h3 className="font-semibold text-lg">{item.itemName}</h3>
-                      <Badge className={getUrgencyColor(item.urgency)}>
-                        <Clock className="h-3 w-3 mr-1" />
-                        {item.urgency}
-                      </Badge>
+                      {isUrgent(item.neededDate) && (
+                        <Badge className="bg-[#D4A574] text-amber-900 border-amber-200">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Urgent
+                        </Badge>
+                      )}
                     </div>
 
                     {item.description && (
@@ -512,19 +477,10 @@ export default function WishlistsPage() {
                       <h3 className="font-semibold text-lg text-gray-700">
                         {item.itemName}
                       </h3>
-                      <div className="flex flex-col gap-1">
-                        <Badge className="bg-teal-100 text-teal-800">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Expired
-                        </Badge>
-                        <Badge
-                          className={getUrgencyColor(item.urgency)}
-                          variant="outline"
-                        >
-                          <Clock className="h-3 w-3 mr-1" />
-                          {item.urgency}
-                        </Badge>
-                      </div>
+                      <Badge className="bg-teal-100 text-teal-800">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Expired
+                      </Badge>
                     </div>
 
                     {item.description && (

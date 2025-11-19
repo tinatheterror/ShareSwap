@@ -133,7 +133,7 @@ export default function AuthPage() {
               <div className="text-center mt-6 pt-4 border-t">
                 <button
                   onClick={() => setShowEmailAuth(true)}
-                  className="text-sm text-muted-foreground hover:underline font-medium"
+                  className="text-xs text-muted-foreground underline font-medium"
                 >
                   Continue with Email
                 </button>

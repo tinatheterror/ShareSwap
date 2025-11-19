@@ -130,9 +130,13 @@ export default function BorrowPage() {
   });
 
   const filteredItems = items.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase())),
+    (item) => {
+      if (!searchQuery) return true;
+      const nameMatch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const descMatch = item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase());
+      console.log(`Filtering "${item.name}" with query "${searchQuery}":`, { nameMatch, descMatch, result: nameMatch || descMatch });
+      return nameMatch || descMatch;
+    }
   );
 
   // Get items from followed users

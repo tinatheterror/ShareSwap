@@ -111,7 +111,7 @@ export default function AuthPage() {
           <CardContent className="pt-6">
             <div className="space-y-3">
               <h2 className="text-2xl font-semibold text-center mb-1">
-                Sign in and spread a little neighbourly magic✨
+                Sign in and spread a little neighbourly magic
               </h2>
 
               <Button

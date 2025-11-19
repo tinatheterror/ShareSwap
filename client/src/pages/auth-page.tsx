@@ -30,7 +30,7 @@ export default function AuthPage() {
           <img
             src="/shareswap-full-logo.png"
             alt="ShareSwap"
-            className="w-9/12 h-auto my-4 pt-16"
+            className="w-9/12 h-auto my-4 pt-16 mx-auto"
           />
         </div>
         <Card className="w-full max-w-md border-primary/20">

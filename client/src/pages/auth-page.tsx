@@ -133,7 +133,7 @@ export default function AuthPage() {
               <div className="text-center mt-6 pt-4 border-t">
                 <button
                   onClick={() => setShowEmailAuth(true)}
-                  className="text-sm text-primary hover:underline font-medium inline-flex items-center gap-2"
+                  className="text-sm text-muted-foreground hover:underline font-medium inline-flex items-center gap-2"
                 >
                   <Mail className="h-4 w-4" />
                   Continue with Email
@@ -141,7 +141,7 @@ export default function AuthPage() {
               </div>
 
               <div className="text-center mt-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-primary">
                   No account? Signing in will create one for you.
                 </p>
               </div>

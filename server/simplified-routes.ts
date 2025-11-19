@@ -156,7 +156,18 @@ export function addSimplifiedRoutes(app: Express) {
     }
 
     try {
-      // Mock sample wishlists from other users
+      // Generate dates relative to today for realistic mock data
+      const today = new Date();
+      const threeDaysLater = new Date(today);
+      threeDaysLater.setDate(today.getDate() + 3);
+      const fiveDaysLater = new Date(today);
+      fiveDaysLater.setDate(today.getDate() + 5);
+      const tenDaysLater = new Date(today);
+      tenDaysLater.setDate(today.getDate() + 10);
+      const fifteenDaysLater = new Date(today);
+      fifteenDaysLater.setDate(today.getDate() + 15);
+
+      // Mock sample wishlists from other users (no urgency field - calculated by frontend)
       const sampleWishlists = [
         {
           id: 1,
@@ -166,9 +177,8 @@ export function addSimplifiedRoutes(app: Express) {
           category: "tools",
           needType: "borrow",
           preferredLocation: "Downtown area",
-          urgency: "high",
-          neededDate: "2025-08-07",
-          returnDate: "2025-08-09",
+          neededDate: fiveDaysLater.toISOString().split('T')[0],
+          returnDate: new Date(fiveDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "Sarah M.",
@@ -182,8 +192,7 @@ export function addSimplifiedRoutes(app: Express) {
           category: "outdoor",
           needType: "rent",
           preferredLocation: "North side",
-          urgency: "urgent",
-          neededDate: "2025-08-09",
+          neededDate: threeDaysLater.toISOString().split('T')[0],
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "Mike R.",
@@ -197,9 +206,8 @@ export function addSimplifiedRoutes(app: Express) {
           category: "kitchen",
           needType: "borrow",
           preferredLocation: "Central area",
-          urgency: "high",
-          neededDate: "2025-08-08",
-          returnDate: "2025-08-10",
+          neededDate: fiveDaysLater.toISOString().split('T')[0],
+          returnDate: new Date(fiveDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "Emma L.",
@@ -213,9 +221,8 @@ export function addSimplifiedRoutes(app: Express) {
           category: "garden",
           needType: "borrow",
           preferredLocation: "Suburban area",
-          urgency: "normal",
-          neededDate: "2025-08-12",
-          returnDate: "2025-08-14",
+          neededDate: fifteenDaysLater.toISOString().split('T')[0],
+          returnDate: new Date(fifteenDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: true,
           createdAt: new Date().toISOString(),
           username: "David K.",

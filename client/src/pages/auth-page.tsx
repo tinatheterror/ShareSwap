@@ -2,12 +2,27 @@ import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { Lock } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
   const { user } = useAuth();
+  const [showEmailAuth, setShowEmailAuth] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const { toast } = useToast();
 
   // Fetch platform statistics
   const { data: stats, isLoading: statsLoading } = useQuery<{
@@ -16,8 +31,67 @@ export default function AuthPage() {
     successfulTransactions: number;
   }>({
     queryKey: ["/api/stats"],
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
+
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Login failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      window.location.href = "/";
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const registerMutation = useMutation({
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Registration failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      window.location.href = "/";
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEmailAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLogin) {
+      loginMutation.mutate({ username: email, password });
+    } else {
+      registerMutation.mutate({ username: email, password });
+    }
+  };
 
   if (user) {
     return <Redirect to="/" />;
@@ -46,10 +120,16 @@ export default function AuthPage() {
               >
                 Continue with Google
               </Button>
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
+                Secure and simple. Your privacy always comes first.
+              </p>
 
               <Button variant="outline" className="w-full h-11" disabled>
                 Continue with Phone Number
               </Button>
+              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
+                Verify your number to build local trust.
+              </p>
 
               <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-4 font-medium">
                 <Lock className="h-4 w-4" />
@@ -57,6 +137,16 @@ export default function AuthPage() {
               </div>
 
               <div className="text-center mt-6 pt-4 border-t">
+                <button
+                  onClick={() => setShowEmailAuth(true)}
+                  className="text-sm text-primary hover:underline font-medium inline-flex items-center gap-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  Continue with Email
+                </button>
+              </div>
+
+              <div className="text-center mt-2">
                 <p className="text-sm text-muted-foreground">
                   No account? Signing in will create one for you.
                 </p>
@@ -77,7 +167,6 @@ export default function AuthPage() {
               world of shared resources.
             </p>
 
-            {/* Platform Statistics */}
             <div className="flex items-baseline gap-3">
               <span className="text-xl font-bold text-white">
                 {statsLoading ? (
@@ -97,6 +186,64 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={showEmailAuth} onOpenChange={setShowEmailAuth}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {isLogin ? "Sign in with Email" : "Create Account"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email or Username</Label>
+              <Input
+                id="email"
+                type="text"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete={isLogin ? "current-password" : "new-password"}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loginMutation.isPending || registerMutation.isPending}
+            >
+              {loginMutation.isPending || registerMutation.isPending
+                ? "Please wait..."
+                : isLogin
+                ? "Sign In"
+                : "Create Account"}
+            </Button>
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-sm text-primary hover:underline"
+              >
+                {isLogin
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Sign in"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

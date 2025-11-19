@@ -140,7 +140,7 @@ export default function AuthPage() {
               </div>
 
               <div className="text-center mt-2">
-                <p className="text-sm text-primary">
+                <p className="text-sm text-muted-foreground">
                   No account? Signing in will create one for you.
                 </p>
               </div>

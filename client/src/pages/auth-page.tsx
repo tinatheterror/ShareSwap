@@ -120,16 +120,10 @@ export default function AuthPage() {
               >
                 Continue with Google
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
-                Secure and simple. Your privacy always comes first.
-              </p>
 
               <Button variant="outline" className="w-full h-11" disabled>
                 Continue with Phone Number
               </Button>
-              <p className="text-[11px] text-center text-muted-foreground/70 px-2 mt-0">
-                Verify your number to build local trust.
-              </p>
 
               <div className="flex items-center justify-center gap-2 text-sm text-foreground/80 mt-4 font-medium">
                 <Lock className="h-4 w-4" />

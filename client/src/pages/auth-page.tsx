@@ -138,12 +138,6 @@ export default function AuthPage() {
                 <Lock className="h-4 w-4" />
                 <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>
-
-              <div className="text-center mt-2">
-                <p className="text-sm text-muted-foreground">
-                  No account? Signing in will create one for you.
-                </p>
-              </div>
             </div>
           </CardContent>
         </Card>

@@ -133,9 +133,8 @@ export default function AuthPage() {
               <div className="text-center mt-6 pt-4 border-t">
                 <button
                   onClick={() => setShowEmailAuth(true)}
-                  className="text-sm text-muted-foreground hover:underline font-medium inline-flex items-center gap-2"
+                  className="text-sm text-muted-foreground hover:underline font-medium"
                 >
-                  <Mail className="h-4 w-4" />
                   Continue with Email
                 </button>
               </div>
@@ -221,8 +220,8 @@ export default function AuthPage() {
               {loginMutation.isPending || registerMutation.isPending
                 ? "Please wait..."
                 : isLogin
-                ? "Sign In"
-                : "Create Account"}
+                  ? "Sign In"
+                  : "Create Account"}
             </Button>
             <div className="text-center">
               <button

@@ -137,31 +137,31 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                 {item.isLendable && (
                   <Button
                     size="sm"
-                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <Heart className="h-3 w-3 mr-1" />
-                    Borrow It
+                    Borrow
                   </Button>
                 )}
                 {item.isRentable && (
                   <Button
                     size="sm"
-                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <DollarSign className="h-3 w-3 mr-1" />
-                    Rent It
+                    Rent
                   </Button>
                 )}
                 {item.isSwappable && (
                   <Button
                     size="sm"
-                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <ArrowLeftRight className="h-3 w-3 mr-1" />
-                    Swap It
+                    Swap
                   </Button>
                 )}
                 {!item.isLendable && !item.isRentable && !item.isSwappable && (

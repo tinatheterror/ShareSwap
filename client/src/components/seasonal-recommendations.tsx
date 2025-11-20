@@ -154,7 +154,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 {item.isLendable && (
                   <Button
                     size="sm"
-                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <Heart className="h-3 w-3 mr-1" />
@@ -164,7 +164,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 {item.isRentable && (
                   <Button
                     size="sm"
-                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <DollarSign className="h-3 w-3 mr-1" />
@@ -174,7 +174,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 {item.isSwappable && (
                   <Button
                     size="sm"
-                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <ArrowLeftRight className="h-3 w-3 mr-1" />
@@ -184,7 +184,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 {!item.isLendable && !item.isRentable && !item.isSwappable && (
                   <Button
                     size="sm"
-                    className="w-full bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     View

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, Camera, Coins } from "lucide-react";
+import { Sparkles, Camera, Coins, MapPin } from "lucide-react";
 import { useLocation } from "wouter";
 import type { SelectItem } from "@db/schema";
 
@@ -40,14 +40,15 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
             <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
           </div>
         )}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Array.from({ length: 2 }).map((_, i) => (
             <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-teal-100">
-              <CardContent className="p-4">
-                <div className="aspect-square bg-teal-100 rounded-lg mb-3"></div>
+              <div className="aspect-[16/9] bg-teal-100"></div>
+              <CardContent className="p-6">
+                <div className="h-6 bg-teal-100 rounded mb-4"></div>
                 <div className="h-4 bg-teal-100 rounded mb-2"></div>
-                <div className="h-3 bg-teal-100 rounded mb-3"></div>
-                <div className="h-8 bg-teal-100 rounded"></div>
+                <div className="h-4 bg-teal-100 rounded mb-4"></div>
+                <div className="h-10 bg-teal-100 rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -72,56 +73,100 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
         </div>
       )}
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {recommendations.map((item) => (
-          <Card key={item.id} className="group hover:shadow-md transition-all duration-300 bg-white rounded-xl overflow-hidden border border-teal-100 hover:border-teal-200 hover:-translate-y-1">
-            <CardContent className="p-4">
-              <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden flex items-center justify-center relative">
-                {item.photos && item.photos.length > 0 ? (
-                  <img
-                    src={item.photos[0]}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center text-gray-400">
-                    <Camera className="h-8 w-8" />
-                  </div>
-                )}
-                {item.recommendationReasons.length > 0 && (
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-teal-100 text-teal-800 text-xs border-teal-200">
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      AI Pick
-                    </Badge>
-                  </div>
-                )}
-              </div>
+          <Card key={item.id} className="group hover:shadow-lg transition-all duration-300 bg-white rounded-xl overflow-hidden border border-teal-100 hover:border-teal-200">
+            <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden relative">
+              {item.photos && item.photos.length > 0 ? (
+                <img
+                  src={item.photos[0]}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                  <Camera className="h-16 w-16 text-gray-400" />
+                </div>
+              )}
+              {item.recommendationReasons.length > 0 && (
+                <div className="absolute top-3 right-3">
+                  <Badge variant="secondary" className="bg-teal-100 text-teal-800 text-sm border-teal-200">
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    AI Pick
+                  </Badge>
+                </div>
+              )}
+            </div>
+            
+            <CardContent className="p-6 bg-gray-50">
+              <h3 className="font-bold text-xl mb-3 text-slate-800">
+                {item.name}
+              </h3>
               
-              <div className="text-center mb-3">
-                <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
-                <div className="flex flex-wrap gap-1 justify-center mb-2">
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <MapPin className="h-4 w-4" />
+                  <span className="text-sm">
+                    {item.city || "Nearby"}
+                  </span>
+                </div>
+                
+                <div className="text-sm text-slate-700">
+                  <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
+                </div>
+                
+                <div className="text-sm text-slate-700">
+                  <span className="font-medium">Value:</span>{" "}
+                  {item.dollarsPrice && item.shareCoinPrice
+                    ? `${item.shareCoinPrice} ShareCoins or $${item.dollarsPrice}/day`
+                    : item.dollarsPrice
+                    ? `$${item.dollarsPrice}/day`
+                    : `${item.shareCoinPrice || 50} ShareCoins`}
+                </div>
+                
+                <div className="flex flex-wrap gap-1 mt-2">
                   {item.recommendationReasons.slice(0, 2).map((reason, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs border-teal-200 text-teal-700 hover:bg-teal-50">
+                    <Badge key={idx} variant="outline" className="text-xs border-teal-200 text-teal-700 bg-teal-50">
                       {reason}
                     </Badge>
                   ))}
                 </div>
-                <div className="flex items-center justify-center gap-1">
-                  <Coins className="h-3 w-3 text-teal-600" />
-                  <span className="text-sm font-semibold text-teal-700">
-                    {item.shareCoinPrice || 5} ShareCoins
-                  </span>
-                </div>
               </div>
-              
-              <Button 
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg group-hover:bg-teal-700 transition-colors"
-                disabled={!item.isConditionVerified}
-                onClick={() => navigate(`/items/${item.id}`)}
-              >
-                {item.isConditionVerified ? "View Details" : "Pending"}
-              </Button>
+
+              <div className="flex gap-2 flex-wrap">
+                {item.isLendable && (
+                  <Button
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    onClick={() => navigate(`/items/${item.id}`)}
+                  >
+                    Borrow It
+                  </Button>
+                )}
+                {item.isRentable && (
+                  <Button
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    onClick={() => navigate(`/items/${item.id}`)}
+                  >
+                    Rent It
+                  </Button>
+                )}
+                {item.isSwappable && (
+                  <Button
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    onClick={() => navigate(`/items/${item.id}`)}
+                  >
+                    Swap It
+                  </Button>
+                )}
+                {!item.isLendable && !item.isRentable && !item.isSwappable && (
+                  <Button
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    onClick={() => navigate(`/items/${item.id}`)}
+                  >
+                    View Details
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}

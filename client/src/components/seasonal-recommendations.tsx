@@ -140,14 +140,6 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     ? `$${item.dollarsPrice}/day`
                     : `${item.shareCoinPrice || 50} ShareCoins`}
                 </div>
-                
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {item.recommendationReasons.slice(0, 2).map((reason, idx) => (
-                    <Badge key={idx} variant="outline" className="text-xs border-teal-200 text-teal-700 bg-teal-50">
-                      {reason}
-                    </Badge>
-                  ))}
-                </div>
               </div>
 
               <div className="flex gap-1">

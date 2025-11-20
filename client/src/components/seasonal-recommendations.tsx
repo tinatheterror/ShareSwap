@@ -158,7 +158,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <Heart className="h-3 w-3 mr-0.5" />
-                    Borrow
+                    Borrow It
                   </Button>
                 )}
                 {item.isRentable && (
@@ -168,7 +168,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <DollarSign className="h-3 w-3 mr-0.5" />
-                    Rent
+                    Rent It
                   </Button>
                 )}
                 {item.isSwappable && (
@@ -178,7 +178,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                    Swap
+                    Swap It
                   </Button>
                 )}
                 {!item.isLendable && !item.isRentable && !item.isSwappable && (

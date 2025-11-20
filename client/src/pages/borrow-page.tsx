@@ -272,7 +272,7 @@ export default function BorrowPage() {
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
                           <Heart className="h-3 w-3 mr-0.5" />
-                          Borrow
+                          Borrow It
                         </Button>
                       )}
                       {item.isRentable && (
@@ -282,7 +282,7 @@ export default function BorrowPage() {
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
                           <DollarSign className="h-3 w-3 mr-0.5" />
-                          Rent
+                          Rent It
                         </Button>
                       )}
                       {item.isSwappable && (
@@ -292,7 +292,7 @@ export default function BorrowPage() {
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
                           <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                          Swap
+                          Swap It
                         </Button>
                       )}
                       {!item.isLendable && !item.isRentable && !item.isSwappable && (
@@ -404,7 +404,7 @@ export default function BorrowPage() {
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <Heart className="h-3 w-3 mr-0.5" />
-                        Borrow
+                        Borrow It
                       </Button>
                     )}
                     {item.isRentable && (
@@ -414,7 +414,7 @@ export default function BorrowPage() {
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <DollarSign className="h-3 w-3 mr-0.5" />
-                        Rent
+                        Rent It
                       </Button>
                     )}
                     {item.isSwappable && (
@@ -424,7 +424,7 @@ export default function BorrowPage() {
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                        Swap
+                        Swap It
                       </Button>
                     )}
                     {!item.isLendable && !item.isRentable && !item.isSwappable && (

@@ -141,7 +141,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <Heart className="h-3 w-3 mr-0.5" />
-                    Borrow
+                    Borrow It
                   </Button>
                 )}
                 {item.isRentable && (
@@ -151,7 +151,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <DollarSign className="h-3 w-3 mr-0.5" />
-                    Rent
+                    Rent It
                   </Button>
                 )}
                 {item.isSwappable && (
@@ -161,7 +161,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                    Swap
+                    Swap It
                   </Button>
                 )}
                 {!item.isLendable && !item.isRentable && !item.isSwappable && (

@@ -16,6 +16,8 @@ import {
   UserPlus,
   Coins,
   Users,
+  DollarSign,
+  ArrowLeftRight,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
@@ -269,7 +271,8 @@ export default function BorrowPage() {
                           className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
-                          Borrow
+                          <Heart className="h-3 w-3 mr-1" />
+                          Borrow It
                         </Button>
                       )}
                       {item.isRentable && (
@@ -278,7 +281,8 @@ export default function BorrowPage() {
                           className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
-                          Rent
+                          <DollarSign className="h-3 w-3 mr-1" />
+                          Rent It
                         </Button>
                       )}
                       {item.isSwappable && (
@@ -287,7 +291,8 @@ export default function BorrowPage() {
                           className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
-                          Swap
+                          <ArrowLeftRight className="h-3 w-3 mr-1" />
+                          Swap It
                         </Button>
                       )}
                       {!item.isLendable && !item.isRentable && !item.isSwappable && (
@@ -398,7 +403,8 @@ export default function BorrowPage() {
                         className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
-                        Borrow
+                        <Heart className="h-3 w-3 mr-1" />
+                        Borrow It
                       </Button>
                     )}
                     {item.isRentable && (
@@ -407,7 +413,8 @@ export default function BorrowPage() {
                         className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
-                        Rent
+                        <DollarSign className="h-3 w-3 mr-1" />
+                        Rent It
                       </Button>
                     )}
                     {item.isSwappable && (
@@ -416,7 +423,8 @@ export default function BorrowPage() {
                         className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
-                        Swap
+                        <ArrowLeftRight className="h-3 w-3 mr-1" />
+                        Swap It
                       </Button>
                     )}
                     {!item.isLendable && !item.isRentable && !item.isSwappable && (

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Snowflake, Sun, Leaf, Flower, Camera, Coins, MapPin } from "lucide-react";
+import { Snowflake, Sun, Leaf, Flower, Camera, Coins, MapPin, Heart, DollarSign, ArrowLeftRight } from "lucide-react";
 import { useLocation } from "wouter";
 import type { SelectItem } from "@db/schema";
 
@@ -157,7 +157,8 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    Borrow
+                    <Heart className="h-3 w-3 mr-1" />
+                    Borrow It
                   </Button>
                 )}
                 {item.isRentable && (
@@ -166,7 +167,8 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    Rent
+                    <DollarSign className="h-3 w-3 mr-1" />
+                    Rent It
                   </Button>
                 )}
                 {item.isSwappable && (
@@ -175,7 +177,8 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    Swap
+                    <ArrowLeftRight className="h-3 w-3 mr-1" />
+                    Swap It
                   </Button>
                 )}
                 {!item.isLendable && !item.isRentable && !item.isSwappable && (

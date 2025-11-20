@@ -250,10 +250,8 @@ export default function BorrowPage() {
                       
                       <div className="text-sm text-slate-700">
                         <span className="font-medium">Value:</span>{" "}
-                        {item.dollarsPrice && item.shareCoinPrice
-                          ? `${item.shareCoinPrice} ShareCoins or $${item.dollarsPrice}/day`
-                          : item.dollarsPrice
-                          ? `$${item.dollarsPrice}/day`
+                        {item.isRentable && item.dollarsPrice
+                          ? `${item.shareCoinPrice || 50} ShareCoins • $${item.dollarsPrice}/day`
                           : `${item.shareCoinPrice || 50} ShareCoins`}
                       </div>
                       
@@ -388,10 +386,8 @@ export default function BorrowPage() {
                     
                     <div className="text-sm text-slate-700">
                       <span className="font-medium">Value:</span>{" "}
-                      {item.dollarsPrice && item.shareCoinPrice
-                        ? `${item.shareCoinPrice} ShareCoins or $${item.dollarsPrice}/day`
-                        : item.dollarsPrice
-                        ? `$${item.dollarsPrice}/day`
+                      {item.isRentable && item.dollarsPrice
+                        ? `${item.shareCoinPrice || 50} ShareCoins • $${item.dollarsPrice}/day`
                         : `${item.shareCoinPrice || 50} ShareCoins`}
                     </div>
                   </div>

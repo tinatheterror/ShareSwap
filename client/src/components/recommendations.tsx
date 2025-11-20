@@ -40,8 +40,8 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
             <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Array.from({ length: 2 }).map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-teal-100">
               <div className="aspect-[16/9] bg-teal-100"></div>
               <CardContent className="p-6">
@@ -73,7 +73,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {recommendations.map((item) => (
           <Card key={item.id} className="group hover:shadow-lg transition-all duration-300 bg-white rounded-xl overflow-hidden border border-teal-100 hover:border-teal-200">
             <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden relative">

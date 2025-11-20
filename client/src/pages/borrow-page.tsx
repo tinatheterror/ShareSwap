@@ -209,8 +209,8 @@ export default function BorrowPage() {
               <Heart className="h-5 w-5 text-primary" />
               <h2 className="text-xl font-bold">From People You Follow</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {followingItems.slice(0, 4).map((item) => (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {followingItems.slice(0, 8).map((item) => (
                 <Card
                   key={item.id}
                   className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden"
@@ -340,7 +340,7 @@ export default function BorrowPage() {
           <h2 className="text-xl font-bold mb-4">
             {searchQuery ? `Search Results for "${searchQuery}"` : "All Items"}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {filteredItems.map((item) => (
               <Card
                 key={item.id}

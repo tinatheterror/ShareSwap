@@ -314,14 +314,14 @@ export default function BorrowPage() {
 
         {/* Empty state for no followed users */}
         {user && followingItems.length === 0 && (
-          <div className="mb-6 p-4 bg-teal-700 border-2 border-teal-600 rounded-lg text-center">
-            <UserPlus className="h-8 w-8 text-white mx-auto mb-2" />
-            <h3 className="text-base font-semibold text-white mb-3">
+          <div className="mb-6 p-4 bg-teal-200 border-2 border-teal-300 rounded-lg text-center">
+            <UserPlus className="h-8 w-8 text-teal-700 mx-auto mb-2" />
+            <h3 className="text-base font-semibold text-teal-900 mb-3">
               Follow neighbours to see what they're sharing
             </h3>
             <Link href="/discover-neighbors">
               <Button
-                className="bg-teal-600 hover:bg-teal-500"
+                className="bg-teal-600 hover:bg-teal-700"
                 data-tutorial="follow-neighbors"
               >
                 Find Neighbours

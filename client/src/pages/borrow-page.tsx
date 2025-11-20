@@ -248,11 +248,21 @@ export default function BorrowPage() {
                         <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
                       </div>
                       
-                      <div className="text-sm text-slate-700">
-                        <span className="font-medium">Value:</span>{" "}
-                        {item.isRentable && item.dollarsPrice
-                          ? `${item.shareCoinPrice || 50} ShareCoins • $${item.dollarsPrice}/day`
-                          : `${item.shareCoinPrice || 50} ShareCoins`}
+                      <div className="flex items-center gap-2 text-sm text-slate-700">
+                        <span className="font-medium">Value:</span>
+                        <div className="flex items-center gap-1">
+                          <Coins className="h-4 w-4 text-teal-600" />
+                          <span>{item.shareCoinPrice || 50} ShareCoins</span>
+                        </div>
+                        {item.isRentable && item.dollarsPrice && (
+                          <>
+                            <span className="text-slate-400">|</span>
+                            <div className="flex items-center gap-1">
+                              <DollarSign className="h-4 w-4 text-teal-600" />
+                              <span>{item.dollarsPrice}/day</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                       
                       {(item as any).owner && (
@@ -384,11 +394,21 @@ export default function BorrowPage() {
                       <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
                     </div>
                     
-                    <div className="text-sm text-slate-700">
-                      <span className="font-medium">Value:</span>{" "}
-                      {item.isRentable && item.dollarsPrice
-                        ? `${item.shareCoinPrice || 50} ShareCoins • $${item.dollarsPrice}/day`
-                        : `${item.shareCoinPrice || 50} ShareCoins`}
+                    <div className="flex items-center gap-2 text-sm text-slate-700">
+                      <span className="font-medium">Value:</span>
+                      <div className="flex items-center gap-1">
+                        <Coins className="h-4 w-4 text-teal-600" />
+                        <span>{item.shareCoinPrice || 50} ShareCoins</span>
+                      </div>
+                      {item.isRentable && item.dollarsPrice && (
+                        <>
+                          <span className="text-slate-400">|</span>
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-4 w-4 text-teal-600" />
+                            <span>{item.dollarsPrice}/day</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 

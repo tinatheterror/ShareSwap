@@ -157,7 +157,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <Heart className="h-3 w-3 mr-1" />
+                    <Heart className="h-3 w-3 mr-0.5" />
                     Borrow
                   </Button>
                 )}
@@ -167,7 +167,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <DollarSign className="h-3 w-3 mr-1" />
+                    <DollarSign className="h-3 w-3 mr-0.5" />
                     Rent
                   </Button>
                 )}
@@ -177,7 +177,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <ArrowLeftRight className="h-3 w-3 mr-1" />
+                    <ArrowLeftRight className="h-3 w-3 mr-0.5" />
                     Swap
                   </Button>
                 )}

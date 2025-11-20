@@ -150,37 +150,41 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 </div>
               </div>
 
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-1">
                 {item.isLendable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    size="sm"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    Borrow It
+                    Borrow
                   </Button>
                 )}
                 {item.isRentable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    size="sm"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    Rent It
+                    Rent
                   </Button>
                 )}
                 {item.isSwappable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    size="sm"
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    Swap It
+                    Swap
                   </Button>
                 )}
                 {!item.isLendable && !item.isRentable && !item.isSwappable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg px-6"
+                    size="sm"
+                    className="w-full bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    View Details
+                    View
                   </Button>
                 )}
               </div>

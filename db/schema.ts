@@ -20,20 +20,8 @@ export const users = pgTable("users", {
   referredBy: integer("referred_by"),
   smartScansUsed: integer("smart_scans_used").default(0),
   smartScansResetDate: timestamp("smart_scans_reset_date").defaultNow(),
-  followerCount: integer("follower_count").default(0),
-  followingCount: integer("following_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
-
-export const follows = pgTable("follows", {
-  id: serial("id").primaryKey(),
-  followerId: integer("follower_id").references(() => users.id).notNull(),
-  followedId: integer("followed_id").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  followerFollowedIdx: index("follows_follower_followed_idx").on(table.followerId, table.followedId),
-  followedIdx: index("follows_followed_idx").on(table.followedId),
-}));
 
 export const reputationActivities = pgTable("reputation_activities", {
   id: serial("id").primaryKey(),
@@ -594,7 +582,3 @@ export const notifications = pgTable("notifications", {
 export type InsertNotification = typeof notifications.$inferInsert;
 export type SelectNotification = typeof notifications.$inferSelect;
 
-export const insertFollowSchema = createInsertSchema(follows);
-export const selectFollowSchema = createSelectSchema(follows);
-export type InsertFollow = typeof follows.$inferInsert;
-export type SelectFollow = typeof follows.$inferSelect;

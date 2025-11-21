@@ -1,27 +1,16 @@
 import { useState } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { ItemRequestForm } from "@/components/shared/item-request-form";
-import { FollowButton } from "@/components/follow-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Coins, Shield, Crown, Award } from "lucide-react";
+import { Coins } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 
 type RequestType = "BORROW" | "RENT" | "SWAP";
-
-interface ItemWithOwner extends SelectItem {
-  owner: {
-    id: number;
-    username: string;
-    isVerified: boolean;
-    isPremium: boolean;
-    reputationLevel: string;
-  };
-}
 
 export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
@@ -44,7 +33,7 @@ export default function ItemDetailsPage() {
   
   const prioritizedContext = getReferrerContext();
 
-  const { data: item } = useQuery<ItemWithOwner>({
+  const { data: item } = useQuery<SelectItem>({
     queryKey: [`/api/items/${itemId}`],
     enabled: !!itemId,
   });
@@ -167,43 +156,6 @@ export default function ItemDetailsPage() {
                   <h1 className="text-2xl font-bold">{item.name}</h1>
                   <p className="text-muted-foreground mt-2">{item.description}</p>
                 </div>
-
-                {item.owner && (
-                  <div className="flex items-center justify-between border-t border-b py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center text-lg font-semibold">
-                        {item.owner.username.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-muted-foreground">Posted by</p>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">@{item.owner.username}</span>
-                          <div className="flex items-center gap-1">
-                            {item.owner.isVerified && (
-                              <Badge variant="secondary" className="bg-teal-100 text-teal-800 text-xs px-1.5 py-0">
-                                <Shield className="h-3 w-3 mr-0.5" />
-                                Verified
-                              </Badge>
-                            )}
-                            {item.owner.isPremium && (
-                              <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs px-1.5 py-0">
-                                <Crown className="h-3 w-3 mr-0.5" />
-                                Premium
-                              </Badge>
-                            )}
-                            {item.owner.reputationLevel && item.owner.reputationLevel !== "Newcomer" && (
-                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs px-1.5 py-0">
-                                <Award className="h-3 w-3 mr-0.5" />
-                                {item.owner.reputationLevel}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <FollowButton userId={item.owner.id} username={item.owner.username} variant="default" size="sm" />
-                  </div>
-                )}
 
                 <div className="space-y-2">
                   <h3 className="font-medium">Condition</h3>

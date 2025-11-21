@@ -51,7 +51,6 @@ export default function BorrowPage() {
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
-  const [showFollowTutorial, setShowFollowTutorial] = useState(false);
   const [showWishlistTutorial, setShowWishlistTutorial] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();

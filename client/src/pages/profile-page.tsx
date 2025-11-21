@@ -81,13 +81,6 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
-  const { data: connections } = useQuery<{
-    followerCount: number;
-    followingCount: number;
-  }>({
-    queryKey: ['/api/users', user?.id, 'connections'],
-    enabled: !!user,
-  });
 
   const updateProfileMutation = useMutation({
     mutationFn: (data: any) => apiRequest('/api/user-profile', 'PATCH', data),

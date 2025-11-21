@@ -218,7 +218,7 @@ export default function BorrowPage() {
                 className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden"
                 style={{ backgroundColor: '#D4F7F1' }}
               >
-                <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
+                <div className="h-60 bg-gray-100 flex items-center justify-center overflow-hidden">
                   {item.photos && item.photos[0] ? (
                     <img
                       src={item.photos[0]}

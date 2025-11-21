@@ -95,7 +95,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {seasonalItems.map((item) => (
           <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden" style={{ backgroundColor: '#D4F7F1' }}>
-            <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden relative">
+            <div className="h-60 bg-gray-100 flex items-center justify-center overflow-hidden relative">
               {item.photos && item.photos.length > 0 ? (
                 <img
                   src={item.photos[0]}

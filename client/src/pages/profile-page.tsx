@@ -215,8 +215,8 @@ export default function ProfilePage() {
       <div className="min-h-screen">
         <Navbar />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Card className="mb-6">
-            <CardHeader className="bg-gradient-to-r from-teal-50 to-slate-50">
+          <Card className="mb-6" style={{ backgroundColor: '#D4F7F1' }}>
+            <CardHeader className="bg-transparent">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
                   {publicProfile.username.charAt(0).toUpperCase()}
@@ -252,7 +252,7 @@ export default function ProfilePage() {
             {userItems.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {userItems.map((item) => (
-                  <Card key={item.id} className="hover:shadow-lg transition-shadow">
+                  <Card key={item.id} className="hover:shadow-lg transition-shadow" style={{ backgroundColor: '#D4F7F1' }}>
                     <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
                       {item.photos && item.photos[0] ? (
                         <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
@@ -336,7 +336,7 @@ export default function ProfilePage() {
             {userReviews.length > 0 ? (
               <div className="space-y-4">
                 {userReviews.map((review: any) => (
-                  <Card key={review.id} className="p-4">
+                  <Card key={review.id} className="p-4" style={{ backgroundColor: '#D4F7F1' }}>
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold">
                         {review.reviewer.username.charAt(0).toUpperCase()}

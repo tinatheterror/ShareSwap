@@ -144,14 +144,14 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                   >
                     <div className="flex items-center gap-0.5">
                       <Coins style={{ width: 'clamp(0.75rem, 1.4vh, 1rem)', height: 'clamp(0.75rem, 1.4vh, 1rem)' }} className="text-teal-600" />
-                      <span>{item.shareCoinPrice || 50} SC</span>
+                      <span>{item.shareCoinPrice || 50} ShareCoins</span>
                     </div>
                     {item.isRentable && item.dollarsPrice && (
                       <>
                         <span className="text-slate-400">|</span>
                         <div className="flex items-center">
                           <DollarSign style={{ width: 'clamp(0.75rem, 1.4vh, 1rem)', height: 'clamp(0.75rem, 1.4vh, 1rem)' }} className="text-teal-600" />
-                          <span>{item.dollarsPrice}/d</span>
+                          <span>{item.dollarsPrice}/day</span>
                         </div>
                       </>
                     )}

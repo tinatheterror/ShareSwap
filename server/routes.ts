@@ -953,17 +953,53 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
       return res.status(400).json({ error: "Invalid item ID" });
     }
 
-    const [item] = await db
-      .select()
+    const [itemWithOwner] = await db
+      .select({
+        id: items.id,
+        name: items.name,
+        description: items.description,
+        category: items.category,
+        brand: items.brand,
+        conditionRating: items.conditionRating,
+        photos: items.photos,
+        city: items.city,
+        state: items.state,
+        country: items.country,
+        address: items.address,
+        latitude: items.latitude,
+        longitude: items.longitude,
+        isLendable: items.isLendable,
+        isRentable: items.isRentable,
+        isSwappable: items.isSwappable,
+        lendingDuration: items.lendingDuration,
+        shareCoinsReward: items.shareCoinsReward,
+        shareCoinPrice: items.shareCoinPrice,
+        dollarsPrice: items.dollarsPrice,
+        estimatedValue: items.estimatedValue,
+        isAvailable: items.isAvailable,
+        isConditionVerified: items.isConditionVerified,
+        wasSmartScanned: items.wasSmartScanned,
+        securityDeposit: items.securityDeposit,
+        ownerId: items.ownerId,
+        createdAt: items.createdAt,
+        owner: {
+          id: users.id,
+          username: users.username,
+          isVerified: users.isVerified,
+          isPremium: users.isPremium,
+          reputationLevel: users.reputationLevel,
+        },
+      })
       .from(items)
+      .innerJoin(users, eq(users.id, items.ownerId))
       .where(eq(items.id, itemId))
       .limit(1);
 
-    if (!item) {
+    if (!itemWithOwner) {
       return res.status(404).send("Item not found");
     }
 
-    res.json(item);
+    res.json(itemWithOwner);
   });
 
   // Item condition verification endpoints

@@ -391,8 +391,8 @@ export default function ProfilePage() {
           {/* Profile Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Main Profile Card */}
-            <Card className="border-2 border-teal-100">
-              <CardHeader className="bg-gradient-to-r from-teal-50 to-slate-50">
+            <Card className="border-2 border-teal-100" style={{ backgroundColor: '#D4F7F1' }}>
+              <CardHeader className="bg-transparent">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
@@ -532,8 +532,8 @@ export default function ProfilePage() {
             </Card>
 
             {/* Account Statistics - Gamified */}
-            <Card className="border-2 border-gradient-to-r from-teal-200 to-teal-300 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-teal-50 via-teal-100 to-teal-50">
+            <Card className="border-2 border-gradient-to-r from-teal-200 to-teal-300 shadow-lg" style={{ backgroundColor: '#D4F7F1' }}>
+              <CardHeader className="bg-transparent">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <div className="w-8 h-8 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
                     <TrendingUp className="h-5 w-5 text-white" />
@@ -678,8 +678,8 @@ export default function ProfilePage() {
             </Card>
 
             {/* Community Connections */}
-            <Card className="border-2 border-teal-100">
-              <CardHeader className="bg-gradient-to-r from-teal-50 to-slate-50">
+            <Card className="border-2 border-teal-100" style={{ backgroundColor: '#D4F7F1' }}>
+              <CardHeader className="bg-transparent">
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5 text-primary" />
                   Community Connections
@@ -708,7 +708,7 @@ export default function ProfilePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <Card>
+            <Card style={{ backgroundColor: '#D4F7F1' }}>
               <CardHeader>
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
@@ -733,7 +733,7 @@ export default function ProfilePage() {
             </Card>
 
             {/* Recent Achievements */}
-            <Card>
+            <Card style={{ backgroundColor: '#D4F7F1' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5 text-teal-600" />
@@ -766,7 +766,7 @@ export default function ProfilePage() {
 
             {/* Location Alerts */}
             {locationAlerts && locationAlerts.length > 0 && (
-              <Card>
+              <Card style={{ backgroundColor: '#D4F7F1' }}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Bell className="h-5 w-5 text-teal-600" />

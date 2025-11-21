@@ -75,7 +75,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {recommendations.map((item) => (
-          <Card key={item.id} className="group hover:shadow-lg transition-all duration-300 bg-white rounded-xl overflow-hidden border border-teal-100 hover:border-teal-200">
+          <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden" style={{ backgroundColor: '#D4F7F1' }}>
             <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden relative">
               {item.photos && item.photos.length > 0 ? (
                 <img
@@ -98,8 +98,8 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
               )}
             </div>
             
-            <CardContent className="p-6 bg-gray-50">
-              <h3 className="font-bold text-xl mb-3 text-slate-800">
+            <CardContent className="p-6">
+              <h3 className="font-bold text-xl mb-3 text-slate-800 truncate">
                 {item.name}
               </h3>
               

@@ -215,10 +215,10 @@ export default function BorrowPage() {
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
-                className="h-[420px] flex flex-col hover:shadow-lg transition-shadow rounded-xl overflow-hidden"
+                className="h-[300px] flex flex-col hover:shadow-lg transition-shadow rounded-xl overflow-hidden"
                 style={{ backgroundColor: '#D4F7F1' }}
               >
-                <div className="h-[60%] bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                <div className="h-[55%] bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {item.photos && item.photos[0] ? (
                     <img
                       src={item.photos[0]}
@@ -233,10 +233,10 @@ export default function BorrowPage() {
                 </div>
                 
                 <CardContent 
-                  className="h-[40%] flex flex-col min-h-0 flex-shrink-0"
+                  className="h-[45%] flex flex-col min-h-0 flex-shrink-0"
                   style={{ 
-                    padding: 'clamp(0.75rem, 1.5vh, 1.25rem)',
-                    gap: 'clamp(0.35rem, 0.8vh, 0.75rem)'
+                    padding: 'clamp(0.5rem, 1vh, 0.75rem)',
+                    gap: 'clamp(0.25rem, 0.5vh, 0.5rem)'
                   }}
                 >
                   <h3 

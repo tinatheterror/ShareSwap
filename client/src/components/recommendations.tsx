@@ -98,7 +98,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
               )}
             </div>
             
-            <CardContent className="px-6 pt-4 pb-4">
+            <CardContent className="px-6 pt-1 pb-4">
               <h3 className="font-bold text-xl mb-2 text-slate-800 truncate">
                 {item.name}
               </h3>

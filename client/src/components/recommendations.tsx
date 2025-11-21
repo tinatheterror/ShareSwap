@@ -75,12 +75,8 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {recommendations.map((item) => (
-          <Card 
-            key={item.id} 
-            className="h-[300px] flex flex-col hover:shadow-lg transition-shadow rounded-xl overflow-hidden" 
-            style={{ backgroundColor: '#D4F7F1' }}
-          >
-            <div className="h-[55%] bg-gray-100 flex items-center justify-center overflow-hidden relative flex-shrink-0">
+          <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden" style={{ backgroundColor: '#D4F7F1' }}>
+            <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden relative">
               {item.photos && item.photos.length > 0 ? (
                 <img
                   src={item.photos[0]}
@@ -102,55 +98,34 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
               )}
             </div>
             
-            <CardContent 
-              className="h-[45%] flex flex-col min-h-0 flex-shrink-0"
-              style={{ 
-                padding: 'clamp(0.5rem, 1vh, 0.75rem)',
-                gap: 'clamp(0.25rem, 0.5vh, 0.5rem)'
-              }}
-            >
-              <h3 
-                className="font-bold text-slate-800 truncate min-w-0"
-                style={{ fontSize: 'clamp(0.95rem, 1.8vh, 1.25rem)' }}
-              >
+            <CardContent className="p-6">
+              <h3 className="font-bold text-xl mb-3 text-slate-800 truncate">
                 {item.name}
               </h3>
               
-              <div 
-                className="flex flex-col min-h-0 flex-1"
-                style={{ gap: 'clamp(0.25rem, 0.6vh, 0.5rem)' }}
-              >
-                <div 
-                  className="flex items-center gap-1 text-slate-700 min-w-0"
-                  style={{ fontSize: 'clamp(0.75rem, 1.4vh, 0.875rem)' }}
-                >
-                  <MapPin style={{ width: 'clamp(0.75rem, 1.4vh, 1rem)', height: 'clamp(0.75rem, 1.4vh, 1rem)' }} />
-                  <span className="truncate min-w-0">
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <MapPin className="h-4 w-4" />
+                  <span className="text-sm">
                     {item.city || "Nearby"}
                   </span>
                 </div>
                 
-                <div 
-                  className="text-slate-700"
-                  style={{ fontSize: 'clamp(0.75rem, 1.4vh, 0.875rem)' }}
-                >
+                <div className="text-sm text-slate-700">
                   <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
                 </div>
                 
                 {(item.isLendable || item.isRentable) && (
-                  <div 
-                    className="flex items-center gap-1 text-slate-700 flex-wrap"
-                    style={{ fontSize: 'clamp(0.75rem, 1.4vh, 0.875rem)' }}
-                  >
-                    <div className="flex items-center gap-0.5">
-                      <Coins style={{ width: 'clamp(0.75rem, 1.4vh, 1rem)', height: 'clamp(0.75rem, 1.4vh, 1rem)' }} className="text-teal-600" />
+                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                    <div className="flex items-center gap-1">
+                      <Coins className="h-4 w-4 text-teal-600" />
                       <span>{item.shareCoinPrice || 50} ShareCoins</span>
                     </div>
                     {item.isRentable && item.dollarsPrice && (
                       <>
                         <span className="text-slate-400">|</span>
                         <div className="flex items-center">
-                          <DollarSign style={{ width: 'clamp(0.75rem, 1.4vh, 1rem)', height: 'clamp(0.75rem, 1.4vh, 1rem)' }} className="text-teal-600" />
+                          <DollarSign className="h-4 w-4 text-teal-600" />
                           <span>{item.dollarsPrice}/day</span>
                         </div>
                       </>
@@ -159,64 +134,41 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                 )}
               </div>
 
-              <div 
-                className="flex gap-1 flex-wrap mt-auto"
-                style={{ gap: 'clamp(0.25rem, 0.6vh, 0.5rem)' }}
-              >
+              <div className="flex gap-1">
                 {item.isLendable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white whitespace-nowrap"
-                    style={{
-                      fontSize: 'clamp(0.7rem, 1.3vh, 0.8rem)',
-                      padding: 'clamp(0.3rem, 0.7vh, 0.5rem) clamp(0.5rem, 1vh, 0.75rem)',
-                      height: 'clamp(1.75rem, 3.5vh, 2.25rem)',
-                      borderRadius: 'clamp(0.35rem, 0.8vh, 0.5rem)'
-                    }}
+                    size="sm"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <Heart style={{ width: 'clamp(0.65rem, 1.2vh, 0.75rem)', height: 'clamp(0.65rem, 1.2vh, 0.75rem)', marginRight: '0.15rem' }} />
+                    <Heart className="h-3 w-3 mr-0.5" />
                     Borrow It
                   </Button>
                 )}
                 {item.isRentable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white whitespace-nowrap"
-                    style={{
-                      fontSize: 'clamp(0.7rem, 1.3vh, 0.8rem)',
-                      padding: 'clamp(0.3rem, 0.7vh, 0.5rem) clamp(0.5rem, 1vh, 0.75rem)',
-                      height: 'clamp(1.75rem, 3.5vh, 2.25rem)',
-                      borderRadius: 'clamp(0.35rem, 0.8vh, 0.5rem)'
-                    }}
+                    size="sm"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <DollarSign style={{ width: 'clamp(0.65rem, 1.2vh, 0.75rem)', height: 'clamp(0.65rem, 1.2vh, 0.75rem)', marginRight: '0.15rem' }} />
+                    <DollarSign className="h-3 w-3 mr-0.5" />
                     Rent It
                   </Button>
                 )}
                 {item.isSwappable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white whitespace-nowrap"
-                    style={{
-                      fontSize: 'clamp(0.7rem, 1.3vh, 0.8rem)',
-                      padding: 'clamp(0.3rem, 0.7vh, 0.5rem) clamp(0.5rem, 1vh, 0.75rem)',
-                      height: 'clamp(1.75rem, 3.5vh, 2.25rem)',
-                      borderRadius: 'clamp(0.35rem, 0.8vh, 0.5rem)'
-                    }}
+                    size="sm"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <ArrowLeftRight style={{ width: 'clamp(0.65rem, 1.2vh, 0.75rem)', height: 'clamp(0.65rem, 1.2vh, 0.75rem)', marginRight: '0.15rem' }} />
+                    <ArrowLeftRight className="h-3 w-3 mr-0.5" />
                     Swap It
                   </Button>
                 )}
                 {!item.isLendable && !item.isRentable && !item.isSwappable && (
                   <Button
-                    className="bg-teal-500 hover:bg-teal-600 text-white whitespace-nowrap"
-                    style={{
-                      fontSize: 'clamp(0.7rem, 1.3vh, 0.8rem)',
-                      padding: 'clamp(0.3rem, 0.7vh, 0.5rem) clamp(0.5rem, 1vh, 0.75rem)',
-                      height: 'clamp(1.75rem, 3.5vh, 2.25rem)',
-                      borderRadius: 'clamp(0.35rem, 0.8vh, 0.5rem)'
-                    }}
+                    size="sm"
+                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
                     View

@@ -32,6 +32,10 @@ type TabType = "all" | "lending" | "renting" | "swapping" | "unread";
 
 export function ChatWidget() {
   const { user } = useAuth();
+
+  // Early return BEFORE any other hooks to avoid Rules of Hooks violation
+  if (!user) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
@@ -57,12 +61,10 @@ export function ChatWidget() {
       }
     },
     onConnect: () => {
-      if (user) {
-        send({
-          type: "authenticate",
-          payload: { userId: user.id },
-        });
-      }
+      send({
+        type: "authenticate",
+        payload: { userId: user.id },
+      });
     },
     autoConnect: true,
   });
@@ -71,6 +73,16 @@ export function ChatWidget() {
   const { data: allConversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
     enabled: !!user,
+  });
+
+  // Filter conversations based on active tab
+  const filteredConversations = allConversations.filter((conv) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "unread") return conv.unreadCount > 0;
+    if (activeTab === "lending") return conv.transactionType?.toUpperCase() === "BORROW";
+    if (activeTab === "renting") return conv.transactionType?.toUpperCase() === "RENT";
+    if (activeTab === "swapping") return conv.transactionType?.toUpperCase() === "SWAP";
+    return true;
   });
 
   // Fetch messages for selected conversation
@@ -85,19 +97,6 @@ export function ChatWidget() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // Early return AFTER all hooks to comply with Rules of Hooks
-  if (!user) return null;
-
-  // Filter conversations based on active tab
-  const filteredConversations = allConversations.filter((conv) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "unread") return conv.unreadCount > 0;
-    if (activeTab === "lending") return conv.transactionType?.toUpperCase() === "BORROW";
-    if (activeTab === "renting") return conv.transactionType?.toUpperCase() === "RENT";
-    if (activeTab === "swapping") return conv.transactionType?.toUpperCase() === "SWAP";
-    return true;
-  });
 
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedConversation) return;

@@ -19,19 +19,19 @@ export default function ItemDetailsPage() {
   const { toast } = useToast();
 
   // Extract item ID from URL
-  const itemId = location.split('/').pop();
-  
+  const itemId = location.split("/").pop();
+
   // Determine which sharing option to prioritize based on referrer
   const getReferrerContext = () => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const referrer = document.referrer;
-      if (referrer.includes('/swap')) return 'swap';
-      if (referrer.includes('/rent')) return 'rent';
-      if (referrer.includes('/borrow')) return 'borrow';
+      if (referrer.includes("/swap")) return "swap";
+      if (referrer.includes("/rent")) return "rent";
+      if (referrer.includes("/borrow")) return "borrow";
     }
-    return 'borrow';
+    return "borrow";
   };
-  
+
   const prioritizedContext = getReferrerContext();
 
   const { data: item } = useQuery<SelectItem>({
@@ -54,7 +54,8 @@ export default function ItemDetailsPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            {item.lendingDuration} days · ${Number(item.securityDeposit).toFixed(2)} deposit
+            {item.lendingDuration} days · $
+            {Number(item.securityDeposit).toFixed(2)} deposit
           </p>
         </div>
         <Button onClick={() => setRequestType("BORROW")} className="w-32">
@@ -69,7 +70,7 @@ export default function ItemDetailsPage() {
           <p className="font-medium">Rent</p>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg font-bold text-teal-700">
-              ${Number(item.dollarsPrice || 10).toFixed(2)}/day
+              $ {Number(item.dollarsPrice || 10).toFixed(2)}/day
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -104,21 +105,22 @@ export default function ItemDetailsPage() {
 
     // Order options based on context
     const options: JSX.Element[] = [];
-    
-    if (prioritizedContext === 'swap') {
+
+    if (prioritizedContext === "swap") {
       if (swapOption) options.push(swapOption);
       if (borrowOption) options.push(borrowOption);
       if (rentOption) options.push(rentOption);
-    } else if (prioritizedContext === 'rent') {
+    } else if (prioritizedContext === "rent") {
       if (rentOption) options.push(rentOption);
       if (borrowOption) options.push(borrowOption);
       if (swapOption) options.push(swapOption);
-    } else { // 'borrow' or default
+    } else {
+      // 'borrow' or default
       if (borrowOption) options.push(borrowOption);
       if (rentOption) options.push(rentOption);
       if (swapOption) options.push(swapOption);
     }
-    
+
     return options;
   };
 
@@ -141,7 +143,10 @@ export default function ItemDetailsPage() {
                 </div>
                 <div className="grid grid-cols-4 gap-2 mt-2">
                   {item.photos.slice(1).map((photo, i) => (
-                    <div key={i} className="aspect-square bg-muted rounded-lg overflow-hidden">
+                    <div
+                      key={i}
+                      className="aspect-square bg-muted rounded-lg overflow-hidden"
+                    >
                       <img
                         src={photo}
                         alt={`${item.name} ${i + 2}`}
@@ -155,17 +160,21 @@ export default function ItemDetailsPage() {
               <div className="space-y-6">
                 <div>
                   <h1 className="text-2xl font-bold">{item.name}</h1>
-                  <p className="text-muted-foreground mt-2">{item.description}</p>
-                  
+                  <p className="text-muted-foreground mt-2">
+                    {item.description}
+                  </p>
+
                   {(item as any).owner && (
                     <div className="flex items-center gap-2 mt-3">
-                      <span className="text-sm text-muted-foreground">Shared by</span>
+                      <span className="text-sm text-muted-foreground">
+                        Shared by
+                      </span>
                       <Link href={`/profile/${(item as any).owner.username}`}>
                         <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
                           @{(item as any).owner.username}
                         </span>
                       </Link>
-                      <UserBadges 
+                      <UserBadges
                         isVerified={(item as any).owner.isVerified}
                         reputationLevel={(item as any).owner.reputationLevel}
                         size="sm"
@@ -176,8 +185,11 @@ export default function ItemDetailsPage() {
 
                 <div className="space-y-2">
                   <h3 className="font-medium">Condition</h3>
-                  <Badge variant={item.isConditionVerified ? "default" : "secondary"}>
-                    {item.conditionRating}/10 {item.isConditionVerified && "✓ Verified"}
+                  <Badge
+                    variant={item.isConditionVerified ? "default" : "secondary"}
+                  >
+                    {item.conditionRating}/10{" "}
+                    {item.isConditionVerified && "✓ Verified"}
                   </Badge>
                 </div>
 

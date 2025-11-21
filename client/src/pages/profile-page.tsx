@@ -261,7 +261,7 @@ export default function ProfilePage() {
                       )}
                     </div>
                     <CardContent className="p-4">
-                      <h3 className="font-bold text-lg mb-2">{item.name}</h3>
+                      <h3 className="font-bold text-lg mb-2 truncate">{item.name}</h3>
                       <div className="space-y-1 text-sm mb-3">
                         <p className="text-muted-foreground">Condition: {item.conditionRating}/10</p>
                         {(item.isLendable || item.isRentable) && (

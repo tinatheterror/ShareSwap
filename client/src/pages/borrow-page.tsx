@@ -232,7 +232,7 @@ export default function BorrowPage() {
                 </div>
                 
                 <CardContent className="p-6 bg-gray-50">
-                  <h3 className="font-bold text-xl mb-3 text-slate-800">
+                  <h3 className="font-bold text-xl mb-3 text-slate-800 truncate">
                     {item.name}
                   </h3>
                   

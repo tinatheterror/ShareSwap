@@ -123,7 +123,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                   {item.isRentable && item.dollarsPrice && (
                     <>
                       <span className="text-slate-400">|</span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center">
                         <DollarSign className="h-4 w-4 text-teal-600" />
                         <span>{item.dollarsPrice}/day</span>
                       </div>

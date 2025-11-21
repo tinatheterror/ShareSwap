@@ -133,7 +133,6 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                 </div>
                 
                 <div className="flex items-center gap-2 text-sm text-slate-700">
-                  <span className="font-medium">Value:</span>
                   <div className="flex items-center gap-1">
                     <Coins className="h-4 w-4 text-teal-600" />
                     <span>{item.shareCoinPrice || 50} ShareCoins</span>
@@ -141,7 +140,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                   {item.isRentable && item.dollarsPrice && (
                     <>
                       <span className="text-slate-400">|</span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center">
                         <DollarSign className="h-4 w-4 text-teal-600" />
                         <span>{item.dollarsPrice}/day</span>
                       </div>

@@ -27,7 +27,7 @@ export default function DiscoverNeighborsPage() {
 
   const followMutation = useMutation({
     mutationFn: async (userId: number) => {
-      return apiRequest(`/api/users/${userId}/follow`, 'POST');
+      return apiRequest('POST', `/api/users/${userId}/follow`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users/discover'] });
@@ -48,7 +48,7 @@ export default function DiscoverNeighborsPage() {
 
   const unfollowMutation = useMutation({
     mutationFn: async (userId: number) => {
-      return apiRequest(`/api/users/${userId}/follow`, 'DELETE');
+      return apiRequest('DELETE', `/api/users/${userId}/follow`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users/discover'] });

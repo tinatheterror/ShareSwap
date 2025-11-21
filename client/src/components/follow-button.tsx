@@ -31,7 +31,7 @@ export function FollowButton({ userId, username, variant = "outline", size = "sm
   });
 
   const followMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/users/${userId}/follow`, 'POST', {}),
+    mutationFn: () => apiRequest('POST', `/api/users/${userId}/follow`, {}),
     onMutate: async () => {
       // Optimistically update the UI
       await queryClient.cancelQueries({ queryKey: ['/api/users', userId, 'connections'] });
@@ -68,7 +68,7 @@ export function FollowButton({ userId, username, variant = "outline", size = "sm
   });
 
   const unfollowMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/users/${userId}/follow`, 'DELETE', {}),
+    mutationFn: () => apiRequest('DELETE', `/api/users/${userId}/follow`, {}),
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['/api/users', userId, 'connections'] });
       const previousData = queryClient.getQueryData(['/api/users', userId, 'connections']);

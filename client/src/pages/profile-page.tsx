@@ -86,7 +86,7 @@ export default function ProfilePage() {
   const isOwnProfile = !usernameFromUrl || (user && usernameFromUrl === user.username);
 
   // Fetch user profile by username if viewing another user's profile
-  const { data: publicProfile } = useQuery({
+  const { data: publicProfile, isLoading: isLoadingPublicProfile } = useQuery<any>({
     queryKey: [`/api/users/username/${usernameFromUrl}`],
     enabled: !!usernameFromUrl && !isOwnProfile,
   });
@@ -105,12 +105,12 @@ export default function ProfilePage() {
 
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ['/api/user-profile'],
-    enabled: !!user && isOwnProfile,
+    enabled: isOwnProfile,
   });
 
   const { data: locationAlerts } = useQuery<LocationAlert[]>({
     queryKey: ['/api/location-alerts'],
-    enabled: !!user && isOwnProfile,
+    enabled: isOwnProfile,
   });
 
 
@@ -183,7 +183,34 @@ export default function ProfilePage() {
   }
 
   // Show public profile if viewing another user
-  if (!isOwnProfile && publicProfile) {
+  if (!isOwnProfile) {
+    if (isLoadingPublicProfile) {
+      return (
+        <div className="min-h-screen">
+          <Navbar />
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <p className="text-lg text-muted-foreground">Loading profile...</p>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    if (!publicProfile) {
+      return (
+        <div className="min-h-screen">
+          <Navbar />
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-slate-800 mb-4">User not found</h1>
+              <p className="text-muted-foreground">The user @{usernameFromUrl} does not exist.</p>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen">
         <Navbar />
@@ -624,31 +651,13 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-center gap-8">
                   <div className="text-center">
                     <div className="flex items-center gap-2 mb-2">
-                      <Heart className="h-5 w-5 text-teal-600" />
-                      <div>
-                        <div className="text-2xl font-bold text-teal-700">
-                          {connections?.followerCount || 0}
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          {connections?.followerCount === 1 
-                            ? 'Trusted by 1 neighbor' 
-                            : `Trusted by ${connections?.followerCount || 0} neighbors`}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="h-12 w-px bg-slate-200"></div>
-                  <div className="text-center">
-                    <div className="flex items-center gap-2 mb-2">
                       <Package className="h-5 w-5 text-teal-600" />
                       <div>
                         <div className="text-2xl font-bold text-teal-700">
-                          {connections?.followingCount || 0}
+                          {profile?.totalTransactions || 0}
                         </div>
                         <p className="text-sm text-slate-600">
-                          {connections?.followingCount === 1 
-                            ? 'Supporting 1 neighbor' 
-                            : `Supporting ${connections?.followingCount || 0} neighbors`}
+                          Total Transactions
                         </p>
                       </div>
                     </div>

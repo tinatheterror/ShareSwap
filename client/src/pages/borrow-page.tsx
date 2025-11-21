@@ -215,10 +215,10 @@ export default function BorrowPage() {
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
-                className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden flex flex-col"
-                style={{ backgroundColor: '#D4F7F1', height: '400px' }}
+                className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden"
+                style={{ backgroundColor: '#D4F7F1' }}
               >
-                <div className="bg-gray-100 flex items-center justify-center overflow-hidden" style={{ height: '60%' }}>
+                <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
                   {item.photos && item.photos[0] ? (
                     <img
                       src={item.photos[0]}
@@ -232,7 +232,7 @@ export default function BorrowPage() {
                   )}
                 </div>
                 
-                <CardContent className="p-6 flex flex-col justify-between" style={{ height: '40%' }}>
+                <CardContent className="p-6">
                   <h3 className="font-bold text-xl mb-3 text-slate-800 truncate">
                     {item.name}
                   </h3>

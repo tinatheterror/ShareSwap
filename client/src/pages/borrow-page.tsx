@@ -35,6 +35,7 @@ import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { TutorialTooltip } from "@/components/tutorial-tooltip";
+import { UserBadges } from "@/components/user-badges";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -246,6 +247,21 @@ export default function BorrowPage() {
                     <div className="text-sm text-slate-700">
                       <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
                     </div>
+                    
+                    {(item as any).owner && (
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/profile/${(item as any).owner.username}`}>
+                          <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
+                            @{(item as any).owner.username}
+                          </span>
+                        </Link>
+                        <UserBadges 
+                          isVerified={(item as any).owner.isVerified}
+                          reputationLevel={(item as any).owner.reputationLevel}
+                          size="sm"
+                        />
+                      </div>
+                    )}
                     
                     {(item.isLendable || item.isRentable) && (
                       <div className="flex items-center gap-2 text-sm text-slate-700">

@@ -51,6 +51,7 @@ function Router() {
       <ProtectedRoute path="/delivery" component={DeliveryArrangementsPage} />
       <ProtectedRoute path="/swap" component={SwapPage} />
       <ProtectedRoute path="/rent" component={RentPage} />
+      <ProtectedRoute path="/profile/:username" component={ProfilePage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/achievements" component={AchievementsPage} />
       <ProtectedRoute path="/wishlists" component={WishlistsPage} />

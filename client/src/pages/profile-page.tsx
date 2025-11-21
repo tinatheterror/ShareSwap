@@ -29,9 +29,15 @@ import {
   Edit3,
   Save,
   X,
-  BookOpen
+  BookOpen,
+  Camera,
+  DollarSign,
+  ArrowLeftRight
 } from "lucide-react";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
+import { UserBadges } from "@/components/user-badges";
+import { useLocation, Link } from "wouter";
+import type { SelectItem } from "@db/schema";
 
 interface UserProfile {
   id: number;
@@ -62,6 +68,7 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [location] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -70,15 +77,40 @@ export default function ProfilePage() {
     location: '',
     phone: ''
   });
+  
+  const [, navigate] = useLocation();
+
+  // Extract username from URL path
+  const pathParts = location.split('/');
+  const usernameFromUrl = pathParts[2]; // /profile/:username
+  const isOwnProfile = !usernameFromUrl || (user && usernameFromUrl === user.username);
+
+  // Fetch user profile by username if viewing another user's profile
+  const { data: publicProfile } = useQuery({
+    queryKey: [`/api/users/username/${usernameFromUrl}`],
+    enabled: !!usernameFromUrl && !isOwnProfile,
+  });
+
+  // Fetch user's items if viewing another user's profile
+  const { data: userItems = [] } = useQuery<SelectItem[]>({
+    queryKey: [`/api/users/username/${usernameFromUrl}/items`],
+    enabled: !!usernameFromUrl && !isOwnProfile,
+  });
+
+  // Fetch user's reviews if viewing another user's profile
+  const { data: userReviews = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/username/${usernameFromUrl}/reviews`],
+    enabled: !!usernameFromUrl && !isOwnProfile,
+  });
 
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ['/api/user-profile'],
-    enabled: !!user,
+    enabled: !!user && isOwnProfile,
   });
 
   const { data: locationAlerts } = useQuery<LocationAlert[]>({
     queryKey: ['/api/location-alerts'],
-    enabled: !!user,
+    enabled: !!user && isOwnProfile,
   });
 
 
@@ -143,13 +175,149 @@ export default function ProfilePage() {
         <Navbar />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-slate-800 mb-4">Please log in to view your profile</h1>
+            <h1 className="text-2xl font-bold text-slate-800 mb-4">Please log in to view profiles</h1>
           </div>
         </main>
       </div>
     );
   }
 
+  // Show public profile if viewing another user
+  if (!isOwnProfile && publicProfile) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card className="mb-6">
+            <CardHeader className="bg-gradient-to-r from-teal-50 to-slate-50">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 bg-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+                  {publicProfile.username.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <CardTitle className="text-2xl text-slate-800">@{publicProfile.username}</CardTitle>
+                    <UserBadges 
+                      isVerified={publicProfile.isVerified}
+                      reputationLevel={publicProfile.reputationLevel}
+                      size="md"
+                      showLabels
+                    />
+                  </div>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span>{publicProfile.averageRating.toFixed(1)} ({publicProfile.reviewCount} reviews)</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Package className="h-4 w-4" />
+                      <span>{userItems.length} items shared</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Shared Items */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
+            {userItems.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {userItems.map((item) => (
+                  <Card key={item.id} className="hover:shadow-lg transition-shadow">
+                    <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
+                      {item.photos && item.photos[0] ? (
+                        <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="h-16 w-16 text-gray-400" />
+                      )}
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-bold text-lg mb-2">{item.name}</h3>
+                      <div className="space-y-1 text-sm mb-3">
+                        <p className="text-muted-foreground">Condition: {item.conditionRating}/10</p>
+                        {(item.isLendable || item.isRentable) && (
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-4 w-4 text-teal-600" />
+                            <span>{item.shareCoinPrice || 50} ShareCoins</span>
+                            {item.isRentable && item.dollarsPrice && (
+                              <>
+                                <span className="text-slate-400">|</span>
+                                <DollarSign className="h-4 w-4 text-teal-600" />
+                                <span>${item.dollarsPrice}/day</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <Button size="sm" className="w-full" onClick={() => navigate(`/items/${item.id}`)}>
+                        View Item
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="p-6 text-center text-muted-foreground">
+                No items shared yet
+              </Card>
+            )}
+          </div>
+
+          {/* Reviews */}
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Reviews</h2>
+            {userReviews.length > 0 ? (
+              <div className="space-y-4">
+                {userReviews.map((review: any) => (
+                  <Card key={review.id} className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold">
+                        {review.reviewer.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link href={`/profile/${review.reviewer.username}`}>
+                            <span className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
+                              @{review.reviewer.username}
+                            </span>
+                          </Link>
+                          <UserBadges 
+                            isVerified={review.reviewer.isVerified}
+                            reputationLevel={review.reviewer.reputationLevel}
+                            size="sm"
+                          />
+                          <span className="text-muted-foreground text-sm">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mb-2">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                            />
+                          ))}
+                        </div>
+                        {review.comment && <p className="text-sm text-muted-foreground">{review.comment}</p>}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="p-6 text-center text-muted-foreground">
+                No reviews yet
+              </Card>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show own profile if viewing logged-in user's profile
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -170,12 +338,11 @@ export default function ProfilePage() {
                         <CardTitle className="text-2xl text-slate-800">
                           {profile?.fullName || user.username}
                         </CardTitle>
-                        {profile?.isVerified && (
-                          <Badge className="bg-teal-100 text-teal-800">
-                            <Shield className="h-3 w-3 mr-1" />
-                            Verified
-                          </Badge>
-                        )}
+                        <UserBadges 
+                          isVerified={profile?.isVerified || false}
+                          reputationLevel="Newcomer"
+                          size="sm"
+                        />
                       </div>
                       <p className="text-slate-600">@{user.username}</p>
                       {profile?.subscription && (

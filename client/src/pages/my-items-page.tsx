@@ -3,7 +3,14 @@ import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
@@ -224,7 +231,8 @@ export default function MyItemsPage() {
                     Need items to Share
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600">
-                    You have {items.length} items in the ShareChest. Would you like to add something in to share with the community?
+                    You have {items.length} items in the ShareChest. Would you
+                    like to add something to share with the community?
                   </DialogDescription>
                 </div>
               </div>
@@ -240,7 +248,7 @@ export default function MyItemsPage() {
               <Button
                 onClick={() => {
                   setShowNoItemsDialog(false);
-                  navigate('/lend');
+                  navigate("/lend");
                 }}
                 className="flex-1 bg-teal-600 hover:bg-teal-700"
               >

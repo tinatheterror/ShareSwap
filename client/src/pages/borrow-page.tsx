@@ -139,19 +139,6 @@ export default function BorrowPage() {
     }
   );
 
-  // Get items from followed users
-  const { data: followingItems = [] } = useQuery<ItemWithDistance[]>({
-    queryKey: ["/api/feed/following-items"],
-    enabled: !!user,
-  });
-
-  // Show follow tutorial on first visit
-  useEffect(() => {
-    const hasSeenFollowTutorial = localStorage.getItem("hasSeenFollowTutorial");
-    if (!hasSeenFollowTutorial && user && followingItems.length === 0) {
-      setShowFollowTutorial(true);
-    }
-  }, [user, followingItems]);
 
   // Show wishlist tutorial on first visit
   useEffect(() => {
@@ -203,140 +190,6 @@ export default function BorrowPage() {
           </div>
         </div>
 
-        {/* From People You Follow Section */}
-        {user && followingItems.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Heart className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">From People You Follow</h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {followingItems.slice(0, 8).map((item) => (
-                <Card
-                  key={item.id}
-                  className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden"
-                >
-                  <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
-                    {item.photos && item.photos[0] ? (
-                      <img
-                        src={item.photos[0]}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                        <Camera className="h-16 w-16 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <CardContent className="p-6 bg-gray-50">
-                    <h3 className="font-bold text-xl mb-3 text-slate-800">
-                      {item.name}
-                    </h3>
-                    
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <MapPin className="h-4 w-4" />
-                        <span className="text-sm">
-                          {item.city || userPostalCode || "Nearby"}
-                        </span>
-                      </div>
-                      
-                      <div className="text-sm text-slate-700">
-                        <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
-                      </div>
-                      
-                      {(item.isLendable || item.isRentable) && (
-                        <div className="flex items-center gap-2 text-sm text-slate-700">
-                          <div className="flex items-center gap-1">
-                            <Coins className="h-4 w-4 text-teal-600" />
-                            <span>{item.shareCoinPrice || 50} ShareCoins</span>
-                          </div>
-                          {item.isRentable && item.dollarsPrice && (
-                            <>
-                              <span className="text-slate-400">|</span>
-                              <div className="flex items-center">
-                                <DollarSign className="h-4 w-4 text-teal-600" />
-                                <span>{item.dollarsPrice}/day</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                      
-                      {(item as any).owner && (
-                        <div className="text-sm text-primary font-medium">
-                          by @{(item as any).owner.username}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-1">
-                      {item.isLendable && (
-                        <Button
-                          size="sm"
-                          className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <Heart className="h-3 w-3 mr-0.5" />
-                          Borrow It
-                        </Button>
-                      )}
-                      {item.isRentable && (
-                        <Button
-                          size="sm"
-                          className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <DollarSign className="h-3 w-3 mr-0.5" />
-                          Rent It
-                        </Button>
-                      )}
-                      {item.isSwappable && (
-                        <Button
-                          size="sm"
-                          className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                          Swap It
-                        </Button>
-                      )}
-                      {!item.isLendable && !item.isRentable && !item.isSwappable && (
-                        <Button
-                          size="sm"
-                          className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          View
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Empty state for no followed users */}
-        {user && followingItems.length === 0 && (
-          <div className="mb-6 p-4 bg-teal-100 border-2 border-teal-200 rounded-lg text-center">
-            <UserPlus className="h-8 w-8 text-teal-600 mx-auto mb-2" />
-            <h3 className="text-base font-semibold text-teal-900 mb-3">
-              Follow neighbours to see what they're sharing
-            </h3>
-            <Link href="/discover-neighbors">
-              <Button
-                className="bg-teal-600 hover:bg-teal-700"
-                data-tutorial="follow-neighbors"
-              >
-                Find Neighbours
-              </Button>
-            </Link>
-          </div>
-        )}
 
         {/* AI Recommendations Section - only show when not searching */}
         {!searchQuery && (
@@ -517,20 +370,6 @@ export default function BorrowPage() {
         <WishlistFulfillmentPopup
           isOpen={showWishlistPopup}
           onClose={() => setShowWishlistPopup(false)}
-        />
-
-        {/* Follow Neighbours Tutorial Tooltip */}
-        <TutorialTooltip
-          isOpen={showFollowTutorial}
-          onClose={() => {
-            localStorage.setItem("hasSeenFollowTutorial", "true");
-            setShowFollowTutorial(false);
-          }}
-          targetSelector="[data-tutorial='follow-neighbors']"
-          title="Follow Neighbours"
-          description="When you follow other users, their newly posted items will appear in this personalized feed at the top of the page!"
-          actionLabel="Find Neighbours"
-          onAction={() => navigate("/discover-neighbors")}
         />
 
         {/* Wishlist Tutorial Tooltip */}

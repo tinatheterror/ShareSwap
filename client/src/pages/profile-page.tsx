@@ -391,8 +391,8 @@ export default function ProfilePage() {
           {/* Profile Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Main Profile Card */}
-            <Card className="border-2 border-teal-100" style={{ backgroundColor: '#D4F7F1' }}>
-              <CardHeader className="bg-transparent">
+            <Card className="border-2 border-teal-100 overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-teal-100 via-teal-50 to-cyan-50">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">

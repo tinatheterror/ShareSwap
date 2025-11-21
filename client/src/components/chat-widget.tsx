@@ -32,10 +32,6 @@ type TabType = "all" | "lending" | "renting" | "swapping" | "unread";
 
 export function ChatWidget() {
   const { user } = useAuth();
-
-  // Early return BEFORE any other hooks to avoid Rules of Hooks violation
-  if (!user) return null;
-
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
@@ -61,10 +57,12 @@ export function ChatWidget() {
       }
     },
     onConnect: () => {
-      send({
-        type: "authenticate",
-        payload: { userId: user.id },
-      });
+      if (user) {
+        send({
+          type: "authenticate",
+          payload: { userId: user.id },
+        });
+      }
     },
     autoConnect: true,
   });
@@ -74,6 +72,9 @@ export function ChatWidget() {
     queryKey: ["/api/conversations"],
     enabled: !!user,
   });
+
+  // Early return AFTER all hooks to comply with Rules of Hooks
+  if (!user) return null;
 
   // Filter conversations based on active tab
   const filteredConversations = allConversations.filter((conv) => {

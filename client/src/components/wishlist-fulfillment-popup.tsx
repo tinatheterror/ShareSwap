@@ -130,7 +130,7 @@ export function WishlistFulfillmentPopup({
                         </h4>
                         <div className="flex items-center gap-2 flex-wrap">
                           {isUrgent(wishlist.neededDate) && (
-                            <Badge className="bg-[#D4A574] text-amber-900 border-amber-200 font-medium px-3 py-1">
+                            <Badge className="bg-[#EBC135] text-amber-900 border-amber-200 font-medium px-3 py-1">
                               <Clock className="h-3 w-3 mr-1" />
                               URGENT
                             </Badge>

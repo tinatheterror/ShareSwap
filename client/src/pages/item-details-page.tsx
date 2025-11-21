@@ -156,22 +156,6 @@ export default function ItemDetailsPage() {
                 <div>
                   <h1 className="text-2xl font-bold">{item.name}</h1>
                   <p className="text-muted-foreground mt-2">{item.description}</p>
-                  
-                  {(item as any).owner && (
-                    <div className="flex items-center gap-2 mt-3">
-                      <span className="text-sm text-muted-foreground">Shared by</span>
-                      <Link href={`/profile/${(item as any).owner.username}`}>
-                        <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
-                          @{(item as any).owner.username}
-                        </span>
-                      </Link>
-                      <UserBadges 
-                        isVerified={(item as any).owner.isVerified}
-                        reputationLevel={(item as any).owner.reputationLevel}
-                        size="sm"
-                      />
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-2">

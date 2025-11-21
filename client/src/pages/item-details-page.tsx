@@ -4,6 +4,7 @@ import { ItemRequestForm } from "@/components/shared/item-request-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
@@ -183,14 +184,28 @@ export default function ItemDetailsPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="font-medium">Condition</h3>
-                  <Badge
-                    variant={item.isConditionVerified ? "default" : "secondary"}
-                  >
-                    {item.conditionRating}/10{" "}
-                    {item.isConditionVerified && "✓ Verified"}
-                  </Badge>
+                <div className="space-y-3 bg-[#D4F7F1] p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Condition Rating (1-10)</h3>
+                    <span className="text-sm font-semibold text-teal-700">
+                      Rating: {item.conditionRating}/10
+                    </span>
+                  </div>
+                  <Slider
+                    value={[item.conditionRating]}
+                    max={10}
+                    min={1}
+                    step={1}
+                    disabled
+                    className="cursor-default"
+                  />
+                  {item.isConditionVerified && (
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="default" className="text-xs">
+                        ✓ Verified
+                      </Badge>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">

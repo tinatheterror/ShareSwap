@@ -14,11 +14,10 @@ import {
   Heart,
   MapPin,
   Clock,
-  ArrowRightLeft,
+  ArrowLeftRight,
   ShoppingCart,
-  Repeat,
+  DollarSign,
   X,
-  HandHeart,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -71,11 +70,11 @@ export function WishlistFulfillmentPopup({
   const getNeedTypeIcon = (needType: string) => {
     switch (needType) {
       case "borrow":
-        return <HandHeart className="h-3 w-3" />;
+        return <Heart className="h-3 w-3" />;
       case "rent":
-        return <ArrowRightLeft className="h-3 w-3" />;
+        return <DollarSign className="h-3 w-3" />;
       case "swap":
-        return <Repeat className="h-3 w-3" />;
+        return <ArrowLeftRight className="h-3 w-3" />;
       default:
         return <ShoppingCart className="h-3 w-3" />;
     }

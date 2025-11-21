@@ -103,12 +103,12 @@ export default function ProfilePage() {
     enabled: !!usernameFromUrl && !isOwnProfile,
   });
 
-  const { data: profile } = useQuery<UserProfile>({
+  const { data: profile } = useQuery<UserProfile | undefined>({
     queryKey: ['/api/user-profile'],
     enabled: isOwnProfile,
   });
 
-  const { data: locationAlerts } = useQuery<LocationAlert[]>({
+  const { data: locationAlerts = [] } = useQuery<LocationAlert[]>({
     queryKey: ['/api/location-alerts'],
     enabled: isOwnProfile,
   });

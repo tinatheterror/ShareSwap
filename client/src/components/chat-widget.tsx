@@ -73,19 +73,6 @@ export function ChatWidget() {
     enabled: !!user,
   });
 
-  // Early return AFTER all hooks to comply with Rules of Hooks
-  if (!user) return null;
-
-  // Filter conversations based on active tab
-  const filteredConversations = allConversations.filter((conv) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "unread") return conv.unreadCount > 0;
-    if (activeTab === "lending") return conv.transactionType?.toUpperCase() === "BORROW";
-    if (activeTab === "renting") return conv.transactionType?.toUpperCase() === "RENT";
-    if (activeTab === "swapping") return conv.transactionType?.toUpperCase() === "SWAP";
-    return true;
-  });
-
   // Fetch messages for selected conversation
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery<Message[]>({
     queryKey: ["/api/messages", selectedConversation],
@@ -98,6 +85,19 @@ export function ChatWidget() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Early return AFTER all hooks to comply with Rules of Hooks
+  if (!user) return null;
+
+  // Filter conversations based on active tab
+  const filteredConversations = allConversations.filter((conv) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "unread") return conv.unreadCount > 0;
+    if (activeTab === "lending") return conv.transactionType?.toUpperCase() === "BORROW";
+    if (activeTab === "renting") return conv.transactionType?.toUpperCase() === "RENT";
+    if (activeTab === "swapping") return conv.transactionType?.toUpperCase() === "SWAP";
+    return true;
+  });
 
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedConversation) return;

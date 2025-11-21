@@ -218,7 +218,7 @@ export default function BorrowPage() {
                 className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden"
                 style={{ backgroundColor: '#D4F7F1' }}
               >
-                <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
+                <div className="aspect-[16/11] bg-gray-100 flex items-center justify-center overflow-hidden">
                   {item.photos && item.photos[0] ? (
                     <img
                       src={item.photos[0]}
@@ -232,7 +232,7 @@ export default function BorrowPage() {
                   )}
                 </div>
                 
-                <CardContent className="px-6 pt-6 pb-4">
+                <CardContent className="px-6 pt-4 pb-4">
                   <h3 className="font-bold text-xl mb-2 text-slate-800 truncate">
                     {item.name}
                   </h3>

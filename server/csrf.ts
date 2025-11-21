@@ -1,9 +1,8 @@
 import { doubleCsrf } from "csrf-csrf";
 import { Request, Response, NextFunction } from "express";
-import crypto from "crypto";
 
 // Security: Configure CSRF protection
-const { doubleCsrfProtection } = doubleCsrf({
+const csrfConfig = doubleCsrf({
   getSecret: () => process.env.SESSION_SECRET || process.env.REPL_ID || "csrf-secret-fallback",
   cookieName: "x-csrf-token",
   cookieOptions: {
@@ -33,21 +32,14 @@ const { doubleCsrfProtection } = doubleCsrf({
   },
 });
 
-// Export the middleware
-export const csrfProtection = doubleCsrfProtection;
+// Export the middleware and token generator
+export const csrfProtection = csrfConfig.doubleCsrfProtection;
+export const generateCsrfToken = (csrfConfig as any).generateToken;
 
-// Manually set CSRF token in cookie (for GET /api/csrf-token endpoint)
+// Set CSRF token using the library's token generation
 export function setCsrfToken(req: Request, res: Response): string {
-  // Generate a random token
-  const token = crypto.randomBytes(32).toString('hex');
-  
-  // Set it in a cookie
-  res.cookie('x-csrf-token', token, {
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: false, // Must be false so frontend can read the token
-    path: "/",
-  });
+  // Use the library's generateToken function which properly signs the token
+  const token = (csrfConfig as any).generateToken(req, res);
   
   console.log('[CSRF] Token set in cookie');
   return token;

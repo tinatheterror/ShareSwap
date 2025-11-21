@@ -29,6 +29,21 @@ export default function DiscoverNeighborsPage() {
     mutationFn: async (userId: number) => {
       return apiRequest('POST', `/api/users/${userId}/follow`);
     },
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/users/discover'] });
+      const previousUsers = queryClient.getQueryData(['/api/users/discover']);
+
+      queryClient.setQueryData(['/api/users/discover'], (old: User[] | undefined) => {
+        if (!old) return old;
+        return old.map(user =>
+          user.id === userId
+            ? { ...user, isFollowing: true, followerCount: user.followerCount + 1 }
+            : user
+        );
+      });
+
+      return { previousUsers };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users/discover'] });
       queryClient.invalidateQueries({ queryKey: ['/api/feed/following-items'] });
@@ -37,7 +52,10 @@ export default function DiscoverNeighborsPage() {
         description: "You're now following this neighbor",
       });
     },
-    onError: () => {
+    onError: (error, userId, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData(['/api/users/discover'], context.previousUsers);
+      }
       toast({
         title: "Error",
         description: "Failed to follow user. Please try again.",
@@ -50,6 +68,21 @@ export default function DiscoverNeighborsPage() {
     mutationFn: async (userId: number) => {
       return apiRequest('DELETE', `/api/users/${userId}/follow`);
     },
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/users/discover'] });
+      const previousUsers = queryClient.getQueryData(['/api/users/discover']);
+
+      queryClient.setQueryData(['/api/users/discover'], (old: User[] | undefined) => {
+        if (!old) return old;
+        return old.map(user =>
+          user.id === userId
+            ? { ...user, isFollowing: false, followerCount: Math.max(user.followerCount - 1, 0) }
+            : user
+        );
+      });
+
+      return { previousUsers };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/users/discover'] });
       queryClient.invalidateQueries({ queryKey: ['/api/feed/following-items'] });
@@ -58,7 +91,10 @@ export default function DiscoverNeighborsPage() {
         description: "You unfollowed this neighbor",
       });
     },
-    onError: () => {
+    onError: (error, userId, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData(['/api/users/discover'], context.previousUsers);
+      }
       toast({
         title: "Error",
         description: "Failed to unfollow user. Please try again.",

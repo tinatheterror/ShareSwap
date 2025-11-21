@@ -680,10 +680,19 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
       }
 
       // Query only items within the bounding box (dramatically reduces data)
-      const boundedItems = await db
-        .select()
-        .from(items)
-        .where(and(...whereConditions));
+      const boundedItems = await db.query.items.findMany({
+        where: and(...whereConditions),
+        with: {
+          owner: {
+            columns: {
+              id: true,
+              username: true,
+              isVerified: true,
+              reputationLevel: true,
+            }
+          }
+        }
+      });
 
       // Calculate exact distance and filter by radius
       const nearbyItems = boundedItems
@@ -726,11 +735,20 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
         whereConditions.push(eq(items.isSwappable, true));
       }
 
-      const allItems = await db
-        .select()
-        .from(items)
-        .where(and(...whereConditions))
-        .orderBy(desc(items.createdAt));
+      const allItems = await db.query.items.findMany({
+        where: and(...whereConditions),
+        orderBy: desc(items.createdAt),
+        with: {
+          owner: {
+            columns: {
+              id: true,
+              username: true,
+              isVerified: true,
+              reputationLevel: true,
+            }
+          }
+        }
+      });
 
       res.json(allItems);
     } catch (error) {
@@ -2461,6 +2479,131 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
     }
 
     res.status(201).json(review);
+  });
+
+  // Get public user profile by username
+  app.get("/api/users/username/:username", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const username = req.params.username;
+    const [user] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        isVerified: users.isVerified,
+        reputationScore: users.reputationScore,
+        reputationLevel: users.reputationLevel,
+        isPremium: users.isPremium,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get review statistics
+    const reviews = await db
+      .select({
+        rating: userReviews.rating,
+      })
+      .from(userReviews)
+      .where(eq(userReviews.reviewedUserId, user.id));
+
+    const averageRating = reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+      : 0;
+
+    const reviewCount = reviews.length;
+
+    res.json({
+      ...user,
+      averageRating: Math.round(averageRating * 10) / 10,
+      reviewCount,
+    });
+  });
+
+  // Get user's shared items by username
+  app.get("/api/users/username/:username/items", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const username = req.params.username;
+    
+    // First find the user
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get user's items
+    const userItems = await db.query.items.findMany({
+      where: eq(items.ownerId, user.id),
+      orderBy: desc(items.createdAt),
+      with: {
+        owner: {
+          columns: {
+            id: true,
+            username: true,
+            isVerified: true,
+            reputationLevel: true,
+          }
+        }
+      }
+    });
+
+    res.json(userItems);
+  });
+
+  // Get user's reviews by username
+  app.get("/api/users/username/:username/reviews", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const username = req.params.username;
+    
+    // First find the user
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get user reviews with reviewer info
+    const reviews = await db
+      .select({
+        id: userReviews.id,
+        rating: userReviews.rating,
+        comment: userReviews.comment,
+        createdAt: userReviews.createdAt,
+        reviewer: {
+          id: users.id,
+          username: users.username,
+          isVerified: users.isVerified,
+          reputationLevel: users.reputationLevel,
+        },
+      })
+      .from(userReviews)
+      .innerJoin(users, eq(users.id, userReviews.reviewerId))
+      .where(eq(userReviews.reviewedUserId, user.id))
+      .orderBy(desc(userReviews.createdAt));
+
+    res.json(reviews);
   });
 
 

@@ -705,7 +705,7 @@ export default function LendPage() {
                       }
                     }}
                     disabled={!selectedWishlistMatch}
-                    className="flex-1 bg-teal-600 hover:bg-teal-700"
+                    className="flex-1 " style={{ backgroundColor: "#0DCEA1" }}
                   >
                     {selectedWishlistMatch ? 'Match & Auto-Fill Dates' : 'Select a Match'}
                   </Button>

@@ -83,7 +83,7 @@ export default function CommunityWishlistsPage() {
               Your community hasn't added any wishlist items yet. Check back soon!
             </p>
             <Link href="/wishlists">
-              <Button className="bg-teal-600 hover:bg-teal-700">
+              <Button className="" style={{ backgroundColor: "#0DCEA1" }}>
                 Create Your Own Wishlist
               </Button>
             </Link>
@@ -151,7 +151,7 @@ export default function CommunityWishlistsPage() {
                   </div>
 
                   <Link href="/lend">
-                    <Button size="lg" className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200">
+                    <Button size="lg" className="w-full  text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200" style={{ backgroundColor: "#0DCEA1" }}>
                       I Have This Item!
                     </Button>
                   </Link>

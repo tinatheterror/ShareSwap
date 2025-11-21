@@ -225,7 +225,7 @@ export function WishlistFulfillmentPopup({
                     <Link href="/lend">
                       <Button
                         size="lg"
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                        className="w-full  text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200" style={{ backgroundColor: "#0DCEA1" }}
                       >
                         I Have This Item!
                       </Button>
@@ -351,7 +351,7 @@ export function WishlistFulfillmentPopup({
             <Link href="/lend" className="block">
               <Button
                 size="lg"
-                className="w-full h-14 bg-teal-600 hover:bg-teal-700 font-semibold shadow-lg"
+                className="w-full h-14  font-semibold shadow-lg" style={{ backgroundColor: "#0DCEA1" }}
               >
                 Share an Item Now
               </Button>

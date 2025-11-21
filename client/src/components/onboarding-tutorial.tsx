@@ -237,12 +237,12 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                 </Button>
 
                 {currentStep < tutorialSteps.length - 1 ? (
-                  <Button onClick={handleNext} className="flex-1 bg-teal-600 hover:bg-teal-700">
+                  <Button onClick={handleNext} className="flex-1 " style={{ backgroundColor: "#0DCEA1" }}>
                     Next
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 ) : (
-                  <Button onClick={handleComplete} className="flex-1 bg-teal-600 hover:bg-teal-700">
+                  <Button onClick={handleComplete} className="flex-1 " style={{ backgroundColor: "#0DCEA1" }}>
                     Finish
                     <CheckCircle className="h-4 w-4 ml-1" />
                   </Button>

@@ -143,7 +143,7 @@ export function TutorialTooltip({
                     onClose();
                   }}
                   size="sm"
-                  className="flex-1 h-8 text-xs bg-teal-600 hover:bg-teal-700"
+                  className="flex-1 h-8 text-xs " style={{ backgroundColor: "#0DCEA1" }}
                 >
                   {actionLabel}
                 </Button>

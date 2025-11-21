@@ -282,7 +282,8 @@ export default function ProfilePage() {
                         {item.isLendable && (
                           <Button
                             size="sm"
-                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
                             <Heart className="h-3 w-3 mr-0.5" />
@@ -292,7 +293,8 @@ export default function ProfilePage() {
                         {item.isRentable && (
                           <Button
                             size="sm"
-                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
                             <DollarSign className="h-3 w-3 mr-0.5" />
@@ -302,7 +304,8 @@ export default function ProfilePage() {
                         {item.isSwappable && (
                           <Button
                             size="sm"
-                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
                             <ArrowLeftRight className="h-3 w-3 mr-0.5" />
@@ -312,7 +315,8 @@ export default function ProfilePage() {
                         {!item.isLendable && !item.isRentable && !item.isSwappable && (
                           <Button
                             size="sm"
-                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
                             View
@@ -477,7 +481,7 @@ export default function ProfilePage() {
                       <Button 
                         onClick={handleSaveProfile}
                         disabled={updateProfileMutation.isPending}
-                        className="bg-teal-600 hover:bg-teal-700"
+                        className="" style={{ backgroundColor: "#0DCEA1" }}
                       >
                         <Save className="h-4 w-4 mr-2" />
                         {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}

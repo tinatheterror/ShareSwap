@@ -250,7 +250,7 @@ export default function MyItemsPage() {
                   setShowNoItemsDialog(false);
                   navigate("/lend");
                 }}
-                className="flex-1 bg-teal-600 hover:bg-teal-700"
+                className="flex-1 " style={{ backgroundColor: "#0DCEA1" }}
               >
                 Add My First Item
               </Button>

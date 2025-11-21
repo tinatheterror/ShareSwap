@@ -272,7 +272,8 @@ export default function BorrowPage() {
                     {item.isLendable && (
                       <Button
                         size="sm"
-                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <Heart className="h-3 w-3 mr-0.5" />
@@ -282,7 +283,8 @@ export default function BorrowPage() {
                     {item.isRentable && (
                       <Button
                         size="sm"
-                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <DollarSign className="h-3 w-3 mr-0.5" />
@@ -292,7 +294,8 @@ export default function BorrowPage() {
                     {item.isSwappable && (
                       <Button
                         size="sm"
-                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <ArrowLeftRight className="h-3 w-3 mr-0.5" />
@@ -302,7 +305,8 @@ export default function BorrowPage() {
                     {!item.isLendable && !item.isRentable && !item.isSwappable && (
                       <Button
                         size="sm"
-                        className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         View

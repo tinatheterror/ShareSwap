@@ -202,7 +202,7 @@ export default function RentPage() {
                 </div>
                 
                 <Button 
-                  className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm py-2 rounded-lg"
+                  className="w-full  text-white text-sm py-2 rounded-lg" style={{ backgroundColor: "#0DCEA1" }}
                   disabled={!item.isConditionVerified}
                   onClick={() => navigate(`/items/${item.id}`)}
                 >

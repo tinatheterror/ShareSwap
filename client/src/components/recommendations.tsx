@@ -116,7 +116,6 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                 </div>
                 
                 <div className="flex items-center gap-2 text-sm text-slate-700">
-                  <span className="font-medium">Value:</span>
                   <div className="flex items-center gap-1">
                     <Coins className="h-4 w-4 text-teal-600" />
                     <span>{item.shareCoinPrice || 50} ShareCoins</span>

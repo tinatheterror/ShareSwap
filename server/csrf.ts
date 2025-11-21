@@ -34,12 +34,12 @@ const csrfConfig = doubleCsrf({
 
 // Export the middleware and token generator
 export const csrfProtection = csrfConfig.doubleCsrfProtection;
-export const generateCsrfToken = (csrfConfig as any).generateToken;
+export const generateCsrfToken = csrfConfig.generateCsrfToken;
 
 // Set CSRF token using the library's token generation
 export function setCsrfToken(req: Request, res: Response): string {
-  // Use the library's generateToken function which properly signs the token
-  const token = (csrfConfig as any).generateToken(req, res);
+  // Use the library's generateCsrfToken function which properly signs the token
+  const token = csrfConfig.generateCsrfToken(req, res);
   
   console.log('[CSRF] Token set in cookie');
   return token;

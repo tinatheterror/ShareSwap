@@ -278,9 +278,47 @@ export default function ProfilePage() {
                           </div>
                         )}
                       </div>
-                      <Button size="sm" className="w-full" onClick={() => navigate(`/items/${item.id}`)}>
-                        View Item
-                      </Button>
+                      <div className="flex gap-1">
+                        {item.isLendable && (
+                          <Button
+                            size="sm"
+                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <Heart className="h-3 w-3 mr-0.5" />
+                            Borrow It
+                          </Button>
+                        )}
+                        {item.isRentable && (
+                          <Button
+                            size="sm"
+                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <DollarSign className="h-3 w-3 mr-0.5" />
+                            Rent It
+                          </Button>
+                        )}
+                        {item.isSwappable && (
+                          <Button
+                            size="sm"
+                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <ArrowLeftRight className="h-3 w-3 mr-0.5" />
+                            Swap It
+                          </Button>
+                        )}
+                        {!item.isLendable && !item.isRentable && !item.isSwappable && (
+                          <Button
+                            size="sm"
+                            className="bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            View
+                          </Button>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 ))}

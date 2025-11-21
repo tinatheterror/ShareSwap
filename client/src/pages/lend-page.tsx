@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -510,15 +511,26 @@ export default function LendPage() {
                 </div>
 
                 {/* Condition Rating */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-medium">Condition Rating (1-10)</h3>
+                <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Condition Rating (1-10)</h3>
+                    <span className="text-sm font-semibold text-teal-700">
+                      Rating: {form.watch("conditionRating")}/10
+                    </span>
+                  </div>
                   <FormField
                     control={form.control}
                     name="conditionRating"
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <Input type="number" min="1" max="10" {...field} />
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            max={10}
+                            min={1}
+                            step={1}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

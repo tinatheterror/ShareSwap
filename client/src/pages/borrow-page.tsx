@@ -158,9 +158,9 @@ export default function BorrowPage() {
     <div className="min-h-screen">
       <Navbar />
       
-      {/* Hero Section with Search */}
-      <div className="w-full relative" style={{ backgroundColor: '#0DCEA1' }}>
-        <div className="max-w-7xl mx-auto px-4 py-12 pb-20">
+      {/* Hero Section with Search - Rounded bottom corners */}
+      <div className="w-full overflow-hidden" style={{ backgroundColor: '#0DCEA1', borderBottomLeftRadius: '32px', borderBottomRightRadius: '32px' }}>
+        <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
           <div className="max-w-2xl">
             <h1 className="text-4xl font-bold mb-3 text-white">
               Browse the community ShareChest
@@ -170,19 +170,19 @@ export default function BorrowPage() {
               {userPostalCode && ` near ${userPostalCode}`}
             </p>
             
-            <div className="space-y-3">
+            <div className="space-y-3 mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
                   placeholder="Search items..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 bg-white"
+                  className="pl-10 h-12 bg-white rounded-lg"
                 />
               </div>
               <Button
                 variant="outline"
-                className="w-full md:w-auto flex items-center gap-2 bg-white hover:bg-gray-50"
+                className="w-full md:w-auto flex items-center gap-2 bg-white hover:bg-gray-50 rounded-lg"
                 onClick={() => setShowLocationModal(true)}
               >
                 <MapPin className="h-4 w-4" />
@@ -193,23 +193,6 @@ export default function BorrowPage() {
             </div>
           </div>
         </div>
-        
-        {/* Rounded bottom edge matching reference image */}
-        <svg
-          className="absolute bottom-0 left-0 w-full"
-          viewBox="0 0 1440 80"
-          preserveAspectRatio="none"
-          style={{ height: '60px' }}
-        >
-          <path
-            d="M0,0 L0,20 Q0,40 20,40 L1420,40 Q1440,40 1440,20 L1440,0 Z"
-            fill="#0DCEA1"
-          />
-          <path
-            d="M0,20 Q0,40 20,40 L1420,40 Q1440,40 1440,20 L1440,80 L0,80 Z"
-            fill="white"
-          />
-        </svg>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">

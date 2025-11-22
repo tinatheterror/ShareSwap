@@ -194,19 +194,11 @@ export default function BorrowPage() {
           </div>
         </div>
         
-        {/* Inverted corner on bottom left */}
-        <svg
-          className="absolute bottom-0 left-0"
-          width="32"
-          height="32"
-          viewBox="0 0 32 32"
-          fill="none"
-        >
-          <path
-            d="M0 0 Q0 32 32 32 L0 32 Z"
-            fill="white"
-          />
-        </svg>
+        {/* Inverted corner on bottom left - white circle overlay creating cutout effect */}
+        <div 
+          className="absolute bottom-0 left-0 w-8 h-8 bg-white"
+          style={{ borderTopRightRadius: '100%' }}
+        />
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">

@@ -159,8 +159,8 @@ export default function BorrowPage() {
       <Navbar />
       
       {/* Hero Section with Search */}
-      <div className="w-full" style={{ backgroundColor: '#0DCEA1' }}>
-        <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="w-full relative" style={{ backgroundColor: '#0DCEA1' }}>
+        <div className="max-w-7xl mx-auto px-4 py-12 pb-20">
           <div className="max-w-2xl">
             <h1 className="text-4xl font-bold mb-3 text-white">
               Browse the community ShareChest
@@ -177,12 +177,12 @@ export default function BorrowPage() {
                   placeholder="Search items..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 bg-white rounded-lg"
+                  className="pl-10 h-12 bg-white"
                 />
               </div>
               <Button
                 variant="outline"
-                className="flex items-center gap-2 bg-white hover:bg-gray-50 rounded-full px-4"
+                className="w-full md:w-auto flex items-center gap-2 bg-white hover:bg-gray-50"
                 onClick={() => setShowLocationModal(true)}
               >
                 <MapPin className="h-4 w-4" />
@@ -193,6 +193,23 @@ export default function BorrowPage() {
             </div>
           </div>
         </div>
+        
+        {/* Rounded irregular bottom edge */}
+        <svg
+          className="absolute bottom-0 left-0 w-full"
+          viewBox="0 0 1440 100"
+          preserveAspectRatio="none"
+          style={{ height: '80px' }}
+        >
+          <path
+            d="M0,0 L0,40 C200,60 400,70 600,65 C800,60 1000,50 1200,55 C1300,57 1400,60 1440,65 L1440,0 Z"
+            fill="#0DCEA1"
+          />
+          <path
+            d="M0,40 C200,60 400,70 600,65 C800,60 1000,50 1200,55 C1300,57 1400,60 1440,65 L1440,100 L0,100 Z"
+            fill="white"
+          />
+        </svg>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">

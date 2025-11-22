@@ -158,8 +158,8 @@ export default function BorrowPage() {
     <div className="min-h-screen">
       <Navbar />
       
-      {/* Hero Section with Search - Rounded bottom corners */}
-      <div className="w-full overflow-hidden" style={{ backgroundColor: '#0DCEA1', borderBottomLeftRadius: '32px', borderBottomRightRadius: '32px' }}>
+      {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
+      <div className="w-full relative" style={{ backgroundColor: '#0DCEA1', borderBottomRightRadius: '32px' }}>
         <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
           <div className="max-w-2xl">
             <h1 className="text-4xl font-bold mb-3 text-white">
@@ -193,6 +193,20 @@ export default function BorrowPage() {
             </div>
           </div>
         </div>
+        
+        {/* Inverted corner on bottom left */}
+        <svg
+          className="absolute bottom-0 left-0"
+          width="32"
+          height="32"
+          viewBox="0 0 32 32"
+          fill="none"
+        >
+          <path
+            d="M0 0 Q0 32 32 32 L0 32 Z"
+            fill="white"
+          />
+        </svg>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">

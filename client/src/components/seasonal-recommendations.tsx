@@ -94,28 +94,30 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {seasonalItems.map((item) => (
-          <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden" style={{ backgroundColor: '#D4F7F1' }}>
-            <div className="aspect-[16/11] bg-gray-100 flex items-center justify-center overflow-hidden relative">
-              {item.photos && item.photos.length > 0 ? (
-                <img
-                  src={item.photos[0]}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                  <Camera className="h-16 w-16 text-gray-400" />
+          <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
+            <div className="p-4">
+              <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
+                {item.photos && item.photos.length > 0 ? (
+                  <img
+                    src={item.photos[0]}
+                    alt={item.name}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                    <Camera className="h-16 w-16 text-gray-400" />
+                  </div>
+                )}
+                <div className="absolute top-3 right-3">
+                  <Badge className="text-sm bg-teal-100 text-teal-800 border-teal-200">
+                    {getSeasonIcon(item.seasonalRelevance)}
+                    <span className="ml-1">{item.seasonalRelevance}</span>
+                  </Badge>
                 </div>
-              )}
-              <div className="absolute top-3 right-3">
-                <Badge className="text-sm bg-teal-100 text-teal-800 border-teal-200">
-                  {getSeasonIcon(item.seasonalRelevance)}
-                  <span className="ml-1">{item.seasonalRelevance}</span>
-                </Badge>
               </div>
             </div>
             
-            <CardContent className="px-6 pt-4 pb-4">
+            <CardContent className="px-6 pt-0 pb-4">
               <h3 className="font-bold text-xl mb-2 text-slate-800 truncate">
                 {item.name}
               </h3>

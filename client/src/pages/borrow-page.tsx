@@ -157,39 +157,45 @@ export default function BorrowPage() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">
+      
+      {/* Hero Section with Search */}
+      <div className="w-full" style={{ backgroundColor: '#0DCEA1' }}>
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl font-bold mb-3 text-white">
               Browse the community ShareChest
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-white/90 mb-6">
               Items available for borrowing
               {userPostalCode && ` near ${userPostalCode}`}
             </p>
-          </div>
-          <div className="w-full md:w-96 space-y-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <Input
+                  placeholder="Search items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-12 bg-white"
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="w-full md:w-auto flex items-center gap-2 bg-white hover:bg-gray-50"
+                onClick={() => setShowLocationModal(true)}
+              >
+                <MapPin className="h-4 w-4" />
+                {userPostalCode
+                  ? `${userPostalCode} (${radius}km radius)`
+                  : "Set Location"}
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              className="w-full flex items-center gap-2"
-              onClick={() => setShowLocationModal(true)}
-            >
-              <MapPin className="h-4 w-4" />
-              {userPostalCode
-                ? `${userPostalCode} (${radius}km radius)`
-                : "Set Location"}
-            </Button>
           </div>
         </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 py-8">
 
 
         {/* AI Recommendations Section - only show when not searching */}
@@ -215,24 +221,25 @@ export default function BorrowPage() {
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
-                className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden"
-                style={{ backgroundColor: '#D4F7F1' }}
+                className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
               >
-                <div className="aspect-[16/11] bg-gray-100 flex items-center justify-center overflow-hidden">
-                  {item.photos && item.photos[0] ? (
-                    <img
-                      src={item.photos[0]}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                      <Camera className="h-16 w-16 text-gray-400" />
-                    </div>
-                  )}
+                <div className="p-4">
+                  <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                    {item.photos && item.photos[0] ? (
+                      <img
+                        src={item.photos[0]}
+                        alt={item.name}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                        <Camera className="h-16 w-16 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
-                <CardContent className="px-6 pt-4 pb-4">
+                <CardContent className="px-6 pt-0 pb-4">
                   <h3 className="font-bold text-xl mb-2 text-slate-800 truncate">
                     {item.name}
                   </h3>

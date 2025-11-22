@@ -252,15 +252,19 @@ export default function ProfilePage() {
             {userItems.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {userItems.map((item) => (
-                  <Card key={item.id} className="hover:shadow-lg transition-shadow" style={{ backgroundColor: '#D4F7F1' }}>
-                    <div className="aspect-[16/9] bg-gray-100 flex items-center justify-center overflow-hidden">
-                      {item.photos && item.photos[0] ? (
-                        <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Camera className="h-16 w-16 text-gray-400" />
-                      )}
+                  <Card key={item.id} className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden">
+                    <div className="p-4">
+                      <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                        {item.photos && item.photos[0] ? (
+                          <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                            <Camera className="h-16 w-16 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <CardContent className="p-4">
+                    <CardContent className="px-6 pt-0 pb-4">
                       <h3 className="font-bold text-lg mb-2 truncate">{item.name}</h3>
                       <div className="space-y-1 text-sm mb-3">
                         <p className="text-muted-foreground">Condition: {item.conditionRating}/10</p>

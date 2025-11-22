@@ -196,7 +196,7 @@ export default function BorrowPage() {
         
         {/* Inverted corner on bottom left - white circle overlay creating cutout effect */}
         <div 
-          className="absolute bottom-0 left-0 w-16 h-16 bg-white"
+          className="absolute bottom-0 left-0 w-8 h-8 bg-white"
           style={{ borderTopRightRadius: '100%' }}
         />
       </div>

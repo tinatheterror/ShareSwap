@@ -159,8 +159,8 @@ export default function BorrowPage() {
       <Navbar />
       
       {/* Hero Section with Search */}
-      <div className="w-full" style={{ backgroundColor: '#0DCEA1' }}>
-        <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="w-full relative" style={{ backgroundColor: '#0DCEA1' }}>
+        <div className="max-w-7xl mx-auto px-4 py-12 pb-20">
           <div className="max-w-2xl">
             <h1 className="text-4xl font-bold mb-3 text-white">
               Browse the community ShareChest
@@ -193,6 +193,23 @@ export default function BorrowPage() {
             </div>
           </div>
         </div>
+        
+        {/* Curved bottom edge */}
+        <svg
+          className="absolute bottom-0 left-0 w-full"
+          viewBox="0 0 1440 120"
+          preserveAspectRatio="none"
+          style={{ height: '60px' }}
+        >
+          <path
+            d="M0,0 L0,80 Q360,20 720,80 T1440,80 L1440,0 Z"
+            fill="#0DCEA1"
+          />
+          <path
+            d="M0,80 Q360,20 720,80 T1440,80 L1440,120 L0,120 Z"
+            fill="white"
+          />
+        </svg>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">

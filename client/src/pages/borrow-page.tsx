@@ -194,19 +194,19 @@ export default function BorrowPage() {
           </div>
         </div>
         
-        {/* Rounded bottom edge matching reference image */}
+        {/* Rounded bottom edge with curved left corner */}
         <svg
           className="absolute bottom-0 left-0 w-full"
-          viewBox="0 0 1440 80"
+          viewBox="0 0 1440 100"
           preserveAspectRatio="none"
-          style={{ height: '60px' }}
+          style={{ height: '80px' }}
         >
           <path
-            d="M0,0 L0,20 Q0,40 20,40 L1420,40 Q1440,40 1440,20 L1440,0 Z"
+            d="M0,0 L0,30 Q0,60 40,60 Q60,60 60,40 L1420,40 Q1440,40 1440,20 L1440,0 Z"
             fill="#0DCEA1"
           />
           <path
-            d="M0,20 Q0,40 20,40 L1420,40 Q1440,40 1440,20 L1440,80 L0,80 Z"
+            d="M0,30 Q0,60 40,60 Q60,60 60,40 L1420,40 Q1440,40 1440,20 L1440,100 L0,100 Z"
             fill="white"
           />
         </svg>

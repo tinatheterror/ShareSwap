@@ -299,16 +299,11 @@ export default function LendPage() {
 
             <div className="flex flex-col gap-3 md:w-[520px]">
               <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Download className="h-4 w-4 text-teal-600" />
-                    <h3 className="font-bold text-sm text-black">
-                      Import from Marketplace
-                    </h3>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Facebook & Craigslist only
-                  </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <Download className="h-4 w-4 text-teal-600" />
+                  <h3 className="font-bold text-sm text-black">
+                    Import from Marketplace
+                  </h3>
                 </div>
                 <div className="flex gap-2">
                   <Input
@@ -372,6 +367,9 @@ export default function LendPage() {
                     {isImporting ? "Importing..." : "Import"}
                   </Button>
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Facebook groups, Facebook marketplace, and Craigslist
+                </p>
               </div>
             </div>
           </div>

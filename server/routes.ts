@@ -473,7 +473,7 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
   });
 
   // Import listing from marketplace URL
-  app.post("/api/import-listing", async (req, res) => {
+  app.post("/api/import-listing", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
@@ -485,11 +485,51 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
         return res.status(400).json({ error: "Valid URL is required" });
       }
 
-      // Validate URL
+      // Validate and sanitize URL
+      let parsedUrl;
       try {
-        new URL(url);
+        parsedUrl = new URL(url);
       } catch {
         return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Security: Only allow HTTPS URLs from approved marketplaces
+      if (parsedUrl.protocol !== 'https:') {
+        return res.status(400).json({ error: "Only HTTPS URLs are supported" });
+      }
+
+      // Allowlist of approved marketplace domains
+      const allowedDomains = [
+        'craigslist.org',
+        'facebook.com',
+        'fb.com',
+        'marketplace.facebook.com',
+      ];
+
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const isAllowed = allowedDomains.some(domain => 
+        hostname === domain || hostname.endsWith('.' + domain)
+      );
+
+      if (!isAllowed) {
+        return res.status(400).json({ 
+          error: "URL must be from Facebook Marketplace, Craigslist, or Facebook Groups" 
+        });
+      }
+
+      // Security: Prevent access to private/internal IP addresses
+      const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+      if (ipv4Regex.test(hostname)) {
+        const parts = hostname.split('.').map(Number);
+        // Block private IP ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x, 127.x.x.x
+        if (
+          parts[0] === 10 ||
+          parts[0] === 127 ||
+          (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+          (parts[0] === 192 && parts[1] === 168)
+        ) {
+          return res.status(400).json({ error: "Access to private IP addresses is not allowed" });
+        }
       }
 
       // Initialize OpenAI client with Replit AI Integrations
@@ -498,28 +538,67 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
 
-      // Fetch page content
+      // Fetch page content with security controls
       let pageContent = "";
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
         const response = await fetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           },
+          signal: controller.signal,
         });
         
-        if (response.ok) {
-          const html = await response.text();
-          // Simple text extraction - remove HTML tags
-          pageContent = html
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .substring(0, 5000); // Limit content length
+        clearTimeout(timeoutId);
+
+        // Validate response
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-      } catch (fetchError) {
-        console.log("Could not fetch URL content, using URL only:", fetchError);
+
+        // Check content type
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
+          throw new Error('Unsupported content type');
+        }
+
+        // Limit response size to prevent memory issues
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 1024 * 1024) { // 1MB limit
+          throw new Error('Response too large');
+        }
+
+        const html = await response.text();
+        
+        // Limit total text length
+        if (html.length > 1024 * 1024) { // 1MB limit
+          throw new Error('Content too large');
+        }
+
+        // Simple text extraction - remove HTML tags
+        pageContent = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .substring(0, 5000); // Limit content length for AI
+      } catch (fetchError: any) {
+        console.log("Could not fetch URL content:", fetchError.message);
+        // Don't expose internal error details to client
+        if (fetchError.name === 'AbortError') {
+          return res.status(400).json({ error: "Request timeout - the page took too long to load" });
+        }
+        // Continue with URL-only analysis
+      }
+
+      // Validate we have some content to analyze
+      if (!pageContent && !url) {
+        return res.status(400).json({ 
+          error: "Unable to extract content from URL. The page may require login or JavaScript to load." 
+        });
       }
 
       // Call GPT to extract listing details
@@ -542,7 +621,7 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
 }
 
 URL: ${url}
-${pageContent ? `\nPage Content:\n${pageContent}` : ''}
+${pageContent ? `\nPage Content:\n${pageContent}` : '\nNote: Could not fetch page content. Extract what you can from the URL.'}
 
 Return only the JSON object, no other text.`,
           },
@@ -551,26 +630,56 @@ Return only the JSON object, no other text.`,
         response_format: { type: "json_object" },
       });
 
-      // Parse AI response
+      // Parse AI response with validation
       const aiResponse = completion.choices[0]?.message?.content;
       if (!aiResponse) {
-        throw new Error("No response from AI");
+        return res.status(500).json({ 
+          error: "AI analysis failed. Please try again or enter details manually." 
+        });
       }
 
-      const listingData = JSON.parse(aiResponse);
+      let listingData;
+      try {
+        listingData = JSON.parse(aiResponse);
+      } catch (parseError) {
+        console.error("Failed to parse AI response:", aiResponse);
+        return res.status(500).json({ 
+          error: "Could not extract listing details. Please enter details manually." 
+        });
+      }
+
+      // Validate extracted data
+      if (!listingData.name || listingData.name.trim().length === 0) {
+        return res.status(400).json({ 
+          error: "Could not extract item name from listing. Please verify the URL is correct." 
+        });
+      }
 
       res.json({
         success: true,
-        name: listingData.name || "Imported Item",
+        name: (listingData.name || "Imported Item").substring(0, 60),
         description: listingData.description || "Imported from marketplace listing",
         price: listingData.price ? parseFloat(listingData.price) : null,
         conditionRating: Math.min(10, Math.max(1, parseInt(listingData.conditionRating) || 8)),
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error importing listing:", error);
+      
+      // Provide helpful error messages
+      if (error.message?.includes('timeout') || error.name === 'AbortError') {
+        return res.status(400).json({ 
+          error: "The request timed out. Please try again." 
+        });
+      }
+      
+      if (error.message?.includes('API') || error.message?.includes('rate limit')) {
+        return res.status(503).json({ 
+          error: "AI service is temporarily unavailable. Please try again later." 
+        });
+      }
+
       res.status(500).json({ 
-        error: "Failed to import listing", 
-        message: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to import listing. Please try again or enter details manually.",
       });
     }
   });

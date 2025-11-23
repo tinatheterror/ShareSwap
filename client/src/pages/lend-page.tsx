@@ -292,12 +292,7 @@ export default function LendPage() {
                       }
                       setIsImporting(true);
                       try {
-                        const response = await fetch("/api/import-listing", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ url: importUrl }),
-                        });
-                        if (!response.ok) throw new Error("Failed to import listing");
+                        const response = await apiRequest("POST", "/api/import-listing", { url: importUrl });
                         const data = await response.json();
                         
                         // Auto-fill form
@@ -316,7 +311,7 @@ export default function LendPage() {
                       } catch (error: any) {
                         toast({
                           title: "Import Failed",
-                          description: error.message,
+                          description: error.message || "Unable to import listing. Please try a different URL.",
                           variant: "destructive",
                         });
                       } finally {

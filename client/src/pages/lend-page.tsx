@@ -307,7 +307,7 @@ export default function LendPage() {
                     </h3>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Facebook market or group, Craigslist, etc.
+                    Facebook & Craigslist only
                   </p>
                 </div>
                 <div className="flex gap-2">

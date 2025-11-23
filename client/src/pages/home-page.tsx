@@ -1,7 +1,5 @@
 import { Navbar } from "@/components/shared/navbar";
-import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
-import { Coins } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +7,6 @@ import { Card } from "@/components/ui/card";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
-  const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
   // Check if user has seen tutorial
@@ -28,15 +25,6 @@ export default function HomePage() {
     localStorage.setItem("hasSeenTutorial", "true");
     setShowTutorial(false);
   };
-
-  // Show popup after 3 seconds for demonstration
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowWishlistPopup(true);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <div className="min-h-screen">
@@ -93,24 +81,7 @@ export default function HomePage() {
             </p>
           </div>
         </Card>
-
-          {/* Earn ShareCoins Button */}
-          <div className="flex justify-center">
-          <Button
-            size="lg"
-            onClick={() => setShowWishlistPopup(true)}
-            className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
-          >
-            <Coins className="h-6 w-6 mr-2" />
-            Earn ShareCoins by Helping Neighbours
-          </Button>
-          </div>
         </div>
-
-        <WishlistFulfillmentPopup
-          isOpen={showWishlistPopup}
-          onClose={() => setShowWishlistPopup(false)}
-        />
 
         {/* Onboarding Tutorial */}
         {showTutorial && (

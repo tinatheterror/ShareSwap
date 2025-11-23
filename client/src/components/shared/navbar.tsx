@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Crown, Users, Package, Bell } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Crown, Users, Package, Bell, HandHeart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 
 // Placeholder for NotificationBell component - actual implementation would fetch and display notifications
 function NotificationBell() {
@@ -73,6 +75,7 @@ function NotificationBell() {
 
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
+  const [showWishlistPopup, setShowWishlistPopup] = useState(false);
 
   return (
     <nav className="border-b bg-background">
@@ -126,6 +129,13 @@ export function Navbar() {
                             <span>Invite Friends</span>
                           </DropdownMenuItem>
                         </Link>
+                        <DropdownMenuItem 
+                          className="cursor-pointer hover:text-primary"
+                          onClick={() => setShowWishlistPopup(true)}
+                        >
+                          <HandHeart className="mr-2 h-4 w-4" />
+                          <span>Help Neighbours</span>
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </NavigationMenuItem>
@@ -187,6 +197,10 @@ export function Navbar() {
           </NavigationMenu>
         </div>
       </div>
+      <WishlistFulfillmentPopup
+        isOpen={showWishlistPopup}
+        onClose={() => setShowWishlistPopup(false)}
+      />
     </nav>
   );
 }

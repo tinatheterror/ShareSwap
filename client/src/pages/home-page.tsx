@@ -33,7 +33,7 @@ export default function HomePage() {
         <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
           <div className="text-left flex-shrink-0">
             <h1 className="text-4xl font-bold tracking-tight mb-8">
-              Your Community ShareChest
+              Your Community<br />ShareChest
             </h1>
             <p className="text-lg text-muted-foreground font-semibold">
               Give what you can, take what you need.

@@ -472,6 +472,109 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
     }
   });
 
+  // Import listing from marketplace URL
+  app.post("/api/import-listing", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { url } = req.body;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "Valid URL is required" });
+      }
+
+      // Validate URL
+      try {
+        new URL(url);
+      } catch {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+
+      // Initialize OpenAI client with Replit AI Integrations
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      // Fetch page content
+      let pageContent = "";
+      try {
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        });
+        
+        if (response.ok) {
+          const html = await response.text();
+          // Simple text extraction - remove HTML tags
+          pageContent = html
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .substring(0, 5000); // Limit content length
+        }
+      } catch (fetchError) {
+        console.log("Could not fetch URL content, using URL only:", fetchError);
+      }
+
+      // Call GPT to extract listing details
+      const completion = await openai.chat.completions.create({
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert at extracting structured data from marketplace listings (Facebook Marketplace, Craigslist, Facebook Groups, etc.). Extract item details and return valid JSON only.",
+          },
+          {
+            role: "user",
+            content: `Extract item listing details from this marketplace URL and content. Return ONLY valid JSON with this exact structure:
+
+{
+  "name": "Item name (max 60 chars)",
+  "description": "Detailed description of the item",
+  "price": "Price as a number (no currency symbol), or null if not found",
+  "conditionRating": "Integer 1-10 rating based on description, default 8 if unclear"
+}
+
+URL: ${url}
+${pageContent ? `\nPage Content:\n${pageContent}` : ''}
+
+Return only the JSON object, no other text.`,
+          },
+        ],
+        max_completion_tokens: 500,
+        response_format: { type: "json_object" },
+      });
+
+      // Parse AI response
+      const aiResponse = completion.choices[0]?.message?.content;
+      if (!aiResponse) {
+        throw new Error("No response from AI");
+      }
+
+      const listingData = JSON.parse(aiResponse);
+
+      res.json({
+        success: true,
+        name: listingData.name || "Imported Item",
+        description: listingData.description || "Imported from marketplace listing",
+        price: listingData.price ? parseFloat(listingData.price) : null,
+        conditionRating: Math.min(10, Math.max(1, parseInt(listingData.conditionRating) || 8)),
+      });
+    } catch (error) {
+      console.error("Error importing listing:", error);
+      res.status(500).json({ 
+        error: "Failed to import listing", 
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  });
+
   // Item endpoints
   app.post("/api/items", upload.array("photos"), async (req, res) => {
     if (!req.isAuthenticated()) {

@@ -45,6 +45,8 @@ export default function LendPage() {
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
   const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">("smartscan");
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
+  const [importUrl, setImportUrl] = useState<string>("");
+  const [isImporting, setIsImporting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -258,9 +260,82 @@ export default function LendPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">List Your Item</h1>
           <p className="text-muted-foreground">
-            Share your items with the community through lending, renting, or swapping
+            Share your items with the community or import from marketplace listings
           </p>
         </div>
+
+        {/* Import from URL Card */}
+        <Card className="mb-6 bg-gradient-to-r from-teal-50 to-blue-50 border-teal-200">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <h3 className="font-bold text-lg mb-2">📥 Import from Marketplace</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Paste a URL from Facebook Marketplace, Craigslist, or community groups to auto-fill your listing
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Paste marketplace URL here..."
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    className="flex-1 bg-white"
+                  />
+                  <Button
+                    onClick={async () => {
+                      if (!importUrl) {
+                        toast({
+                          title: "URL Required",
+                          description: "Please paste a marketplace URL",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setIsImporting(true);
+                      try {
+                        const response = await fetch("/api/import-listing", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ url: importUrl }),
+                        });
+                        if (!response.ok) throw new Error("Failed to import listing");
+                        const data = await response.json();
+                        
+                        // Auto-fill form
+                        form.setValue("name", data.name || "");
+                        form.setValue("description", data.description || "");
+                        form.setValue("conditionRating", data.conditionRating || 8);
+                        if (data.price) {
+                          form.setValue("securityDeposit", data.price);
+                        }
+                        
+                        toast({
+                          title: "Imported Successfully!",
+                          description: "Listing details have been auto-filled. Review and adjust as needed.",
+                        });
+                        setImportUrl("");
+                      } catch (error: any) {
+                        toast({
+                          title: "Import Failed",
+                          description: error.message,
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setIsImporting(false);
+                      }
+                    }}
+                    disabled={isImporting || !importUrl}
+                    className="bg-teal-600 hover:bg-teal-700"
+                  >
+                    {isImporting ? "Importing..." : "Import"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Supported: Facebook Marketplace, Craigslist, Facebook Groups, and more
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardContent className="pt-6">

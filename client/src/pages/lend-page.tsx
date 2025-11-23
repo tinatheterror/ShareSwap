@@ -297,24 +297,26 @@ export default function LendPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 md:w-96">
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Download className="h-4 w-4 text-teal-600" />
-                  <h3 className="font-bold text-sm text-black">
-                    Import from Marketplace
-                  </h3>
+            <div className="flex flex-col gap-3 md:w-[520px]">
+              <div className="bg-white rounded-lg p-3 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Download className="h-4 w-4 text-teal-600" />
+                    <h3 className="font-bold text-sm text-black">
+                      Import from Marketplace
+                    </h3>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Facebook, Craigslist, etc.
+                  </p>
                 </div>
-                <p className="text-xs text-gray-600 mb-3">
-                  Paste a URL to auto-fill your listing
-                </p>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Facebook, Craigslist, etc..."
+                    placeholder="Paste listing URL here..."
                     value={importUrl}
                     onChange={(e) => setImportUrl(e.target.value)}
                     className="flex-1 text-sm"
-                    style={{ height: "43px" }}
+                    style={{ height: "38px" }}
                   />
                   <Button
                     onClick={async () => {
@@ -365,7 +367,7 @@ export default function LendPage() {
                     }}
                     disabled={isImporting || !importUrl}
                     className="text-white text-sm"
-                    style={{ height: "43px", backgroundColor: "#0DCEA1" }}
+                    style={{ height: "38px", backgroundColor: "#0DCEA1" }}
                   >
                     {isImporting ? "Importing..." : "Import"}
                   </Button>

@@ -20,7 +20,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X, Heart, CheckCircle } from "lucide-react";
+import { Upload, MapPin, X, Heart, CheckCircle, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
@@ -293,15 +293,18 @@ export default function LendPage() {
                 List Your Item
               </h1>
               <p className="text-black/90">
-                Share items you no longer need with your community
+                Make your neighborhood richer without spending a cent
               </p>
             </div>
 
             <div className="flex flex-col gap-3 md:w-96">
               <div className="bg-white rounded-lg p-4 shadow-sm">
-                <h3 className="font-bold text-sm mb-2 text-black">
-                  📥 Import from Marketplace
-                </h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <Download className="h-4 w-4 text-teal-600" />
+                  <h3 className="font-bold text-sm text-black">
+                    Import from Marketplace
+                  </h3>
+                </div>
                 <p className="text-xs text-gray-600 mb-3">
                   Paste a URL to auto-fill your listing
                 </p>
@@ -380,7 +383,6 @@ export default function LendPage() {
       </div>
 
       <main className="max-w-3xl mx-auto px-4 py-8">
-
         <Card>
           <CardContent className="pt-6">
             <Form {...form}>

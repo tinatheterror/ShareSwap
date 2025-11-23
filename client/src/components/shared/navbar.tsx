@@ -76,7 +76,7 @@ export function Navbar() {
 
   return (
     <nav className="border-b bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto pl-2 pr-4 sm:pl-4 sm:pr-6 lg:pr-8">
         <div className="flex justify-between h-16 items-center">
           <Link href="/">
             <div className="flex items-center cursor-pointer">

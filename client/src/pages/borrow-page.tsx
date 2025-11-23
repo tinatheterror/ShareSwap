@@ -232,7 +232,7 @@ export default function BorrowPage() {
                 className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
               >
                 <div className="p-4">
-                  <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                  <div className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden" style={{ aspectRatio: '1 / 0.9' }}>
                     {item.photos && item.photos[0] ? (
                       <img
                         src={item.photos[0]}

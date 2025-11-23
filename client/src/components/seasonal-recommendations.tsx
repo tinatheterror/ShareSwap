@@ -96,7 +96,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
         {seasonalItems.map((item) => (
           <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
             <div className="p-4">
-              <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
+              <div className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative" style={{ aspectRatio: '1 / 0.9' }}>
                 {item.photos && item.photos.length > 0 ? (
                   <img
                     src={item.photos[0]}
@@ -118,11 +118,11 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
             </div>
             
             <CardContent className="px-6 pt-0 pb-4">
-              <h3 className="font-bold text-xl mb-2 text-slate-800 truncate">
+              <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
                 {item.name}
               </h3>
               
-              <div className="space-y-1 mb-3">
+              <div className="space-y-0.5 mb-3">
                 <div className="flex items-center gap-2 text-slate-700">
                   <MapPin className="h-4 w-4" />
                   <span className="text-sm">

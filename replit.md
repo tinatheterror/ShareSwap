@@ -24,6 +24,7 @@ Key architectural decisions and features include:
 - **Verification System**: Dual verification requiring government ID and payment method (credit card), enabling security deposits and damage/non-return protection.
 - **AI-Powered Features**:
     - **SmartScan**: Uses GPT-4 Vision API for AI-powered item recognition from 360° photo scans, auto-filling item details. Offers 3 free scans/month, unlimited for Premium users, with premium users receiving AI value estimates.
+    - **Marketplace Import**: AI-powered listing import from Facebook Marketplace, Craigslist, and Facebook Groups. Users paste a URL and GPT-5 extracts item details (name, description, price, condition) to auto-fill the listing form. Features comprehensive security controls including HTTPS-only, domain allowlisting, SSRF protection, and rate limiting.
     - **Item Recommendations**: AI-powered recommendations based on user behavior, categories, and seasonal relevance.
     - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and automatically matches lenders/borrowers based on wishlists.
 - **UI/UX Decisions**:

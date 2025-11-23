@@ -5,6 +5,7 @@ import { Coins } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
@@ -50,7 +51,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-6 max-w-sm mx-auto">
+        <Card className="flex flex-col items-center justify-center gap-6 max-w-sm mx-auto p-8 bg-white shadow-lg">
           <div
             data-tutorial="give"
             className="w-full flex flex-col items-center gap-3"
@@ -90,7 +91,7 @@ export default function HomePage() {
               Browse the community ShareChest to find what you need
             </p>
           </div>
-        </div>
+        </Card>
 
         {/* Earn ShareCoins Button */}
         <div className="mt-8 max-w-5xl mx-auto flex justify-center">

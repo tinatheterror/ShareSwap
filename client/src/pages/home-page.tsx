@@ -41,7 +41,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-8 shadow-lg" style={{ backgroundColor: 'var(--app-bg)' }}>
+          <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-8 bg-background shadow-lg">
             <div
               data-tutorial="give"
               className="w-full flex flex-col items-center gap-3"

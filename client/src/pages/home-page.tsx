@@ -30,8 +30,8 @@ export default function HomePage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex flex-col items-center justify-center">
-          <div className="text-center mb-12">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
+          <div className="text-left flex-shrink-0">
             <h1 className="text-4xl font-bold tracking-tight mb-8">
               Your Community ShareChest
             </h1>
@@ -40,47 +40,47 @@ export default function HomePage() {
             </p>
           </div>
 
-          <Card className="flex flex-col items-center justify-center gap-6 max-w-sm p-8 bg-white shadow-lg mb-8">
-          <div
-            data-tutorial="give"
-            className="w-full flex flex-col items-center gap-3"
-          >
-            <Button
-              onClick={() => navigate("/lend")}
-              className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
-              size="lg"
+          <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-8 bg-white shadow-lg">
+            <div
+              data-tutorial="give"
+              className="w-full flex flex-col items-center gap-3"
             >
-              Give
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Share your own treasures to the community ShareChest
-            </p>
-          </div>
+              <Button
+                onClick={() => navigate("/lend")}
+                className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
+                size="lg"
+              >
+                Give
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Share your own treasures to the ShareChest
+              </p>
+            </div>
 
-          <div className="flex items-center justify-center w-64 shrink-0 py-4">
-            <img
-              src="/sharechest.png"
-              alt="Community ShareChest"
-              className="w-full h-auto object-contain"
-            />
-          </div>
+            <div className="flex items-center justify-center w-64 shrink-0 py-4">
+              <img
+                src="/sharechest.png"
+                alt="Community ShareChest"
+                className="w-full h-auto object-contain"
+              />
+            </div>
 
-          <div
-            data-tutorial="take"
-            className="w-full flex flex-col items-center gap-3"
-          >
-            <Button
-              onClick={() => navigate("/borrow")}
-              className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
-              size="lg"
+            <div
+              data-tutorial="take"
+              className="w-full flex flex-col items-center gap-3"
             >
-              Take
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Browse the community ShareChest to find what you need
-            </p>
-          </div>
-        </Card>
+              <Button
+                onClick={() => navigate("/borrow")}
+                className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
+                size="lg"
+              >
+                Take
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Browse the ShareChest to find what you need
+              </p>
+            </div>
+          </Card>
         </div>
 
         {/* Onboarding Tutorial */}

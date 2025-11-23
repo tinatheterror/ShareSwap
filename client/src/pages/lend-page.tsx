@@ -382,16 +382,18 @@ export default function LendPage() {
         />
       </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="pt-6">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit((data) =>
-                  createItemMutation.mutate(data),
-                )}
-                className="space-y-6"
-              >
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit((data) =>
+              createItemMutation.mutate(data),
+            )}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          >
+            {/* Left Column - Form Fields */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardContent className="pt-6 space-y-6">
                 {/* Item Name */}
                 <div className="space-y-4 border-t pt-4">
                   <h3 className="font-medium">Item Name</h3>
@@ -603,9 +605,42 @@ export default function LendPage() {
                   </div>
                 )}
 
-                {/* Photos */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-medium">Photos</h3>
+                {/* Condition Rating */}
+                <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Condition Rating (1-10)</h3>
+                    <span className="text-sm font-semibold text-teal-700">
+                      Rating: {form.watch("conditionRating")}/10
+                    </span>
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name="conditionRating"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Slider
+                            value={[field.value]}
+                            onValueChange={(value) => field.onChange(value[0])}
+                            max={10}
+                            min={1}
+                            step={1}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Photos */}
+            <div className="lg:col-span-1">
+              <Card className="sticky top-8">
+                <CardContent className="pt-6">
+                  <h3 className="font-medium mb-4">Photos</h3>
                   <Tabs
                     value={uploadMethod}
                     onValueChange={(v) =>
@@ -649,54 +684,29 @@ export default function LendPage() {
                   </Tabs>
 
                   {smartScanPhotos.length > 0 && (
-                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
+                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
                       <p className="text-sm text-teal-700">
                         ✨ SmartScan detected {smartScanPhotos.length} photos -
                         form auto-filled!
                       </p>
                     </div>
                   )}
-                </div>
+                </CardContent>
+              </Card>
+            </div>
 
-                {/* Condition Rating */}
-                <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Condition Rating (1-10)</h3>
-                    <span className="text-sm font-semibold text-teal-700">
-                      Rating: {form.watch("conditionRating")}/10
-                    </span>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="conditionRating"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Slider
-                            value={[field.value]}
-                            onValueChange={(value) => field.onChange(value[0])}
-                            max={10}
-                            min={1}
-                            step={1}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={createItemMutation.isPending}
-                >
-                  List Item
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+            {/* Submit Button - Full Width Below Both Columns */}
+            <div className="lg:col-span-3">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={createItemMutation.isPending}
+              >
+                List Item
+              </Button>
+            </div>
+          </form>
+        </Form>
 
         {showLocationModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">

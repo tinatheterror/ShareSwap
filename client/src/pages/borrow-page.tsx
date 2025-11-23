@@ -172,20 +172,22 @@ export default function BorrowPage() {
               </p>
             </div>
             
-            <div className="flex flex-col gap-3 md:w-80">
+            <div className="flex flex-col gap-3 md:w-72">
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Search items..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 bg-white rounded-lg"
+                  className="pl-9 bg-white rounded-lg text-sm"
+                  style={{ height: '43px' }}
                 />
               </div>
               <Button
                 variant="outline"
-                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 rounded-lg h-12"
+                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 rounded-lg text-sm"
                 onClick={() => setShowLocationModal(true)}
+                style={{ height: '43px' }}
               >
                 <MapPin className="h-4 w-4" />
                 {userPostalCode

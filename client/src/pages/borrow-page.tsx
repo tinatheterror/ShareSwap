@@ -248,11 +248,11 @@ export default function BorrowPage() {
                 </div>
                 
                 <CardContent className="px-6 pt-0 pb-4">
-                  <h3 className="font-bold text-xl mb-2 text-slate-800 truncate">
+                  <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
                     {item.name}
                   </h3>
                   
-                  <div className="space-y-1 mb-3">
+                  <div className="space-y-0.5 mb-3">
                     <div className="flex items-center gap-2 text-slate-700">
                       <MapPin className="h-4 w-4" />
                       <span className="text-sm">

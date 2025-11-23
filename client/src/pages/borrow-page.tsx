@@ -161,16 +161,18 @@ export default function BorrowPage() {
       {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
       <div className="w-full relative" style={{ backgroundColor: '#0DCEA1', borderBottomRightRadius: '32px' }}>
         <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl font-bold mb-3 text-white">
-              Browse the community ShareChest
-            </h1>
-            <p className="text-white/90 mb-6">
-              Items available for borrowing
-              {userPostalCode && ` near ${userPostalCode}`}
-            </p>
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold mb-3 text-white">
+                Browse the community ShareChest
+              </h1>
+              <p className="text-white/90">
+                Items available for borrowing
+                {userPostalCode && ` near ${userPostalCode}`}
+              </p>
+            </div>
             
-            <div className="space-y-3 mb-4">
+            <div className="flex flex-col gap-3 md:w-80">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
@@ -182,7 +184,7 @@ export default function BorrowPage() {
               </div>
               <Button
                 variant="outline"
-                className="w-full md:w-auto flex items-center gap-2 bg-white hover:bg-gray-50 rounded-lg"
+                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 rounded-lg h-12"
                 onClick={() => setShowLocationModal(true)}
               >
                 <MapPin className="h-4 w-4" />

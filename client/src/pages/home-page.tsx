@@ -42,16 +42,17 @@ export default function HomePage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-4">
-            Your Community ShareChest
-          </h1>
-          <p className="text-lg text-muted-foreground font-semibold">
-            Give what you can, take what you need.
-          </p>
-        </div>
+        <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
+          <div className="text-left max-w-md">
+            <h1 className="text-4xl font-bold tracking-tight mb-4">
+              Your Community ShareChest
+            </h1>
+            <p className="text-lg text-muted-foreground font-semibold">
+              Give what you can, take what you need.
+            </p>
+          </div>
 
-        <Card className="flex flex-col items-center justify-center gap-6 max-w-sm mx-auto p-8 bg-white shadow-lg">
+          <Card className="flex flex-col items-center justify-center gap-6 max-w-sm p-8 bg-white shadow-lg">
           <div
             data-tutorial="give"
             className="w-full flex flex-col items-center gap-3"
@@ -92,6 +93,7 @@ export default function HomePage() {
             </p>
           </div>
         </Card>
+        </div>
 
         {/* Earn ShareCoins Button */}
         <div className="mt-8 max-w-5xl mx-auto flex justify-center">

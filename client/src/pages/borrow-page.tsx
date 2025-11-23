@@ -131,15 +131,16 @@ export default function BorrowPage() {
     retry: 1,
   });
 
-  const filteredItems = items.filter(
-    (item) => {
-      if (!searchQuery) return true;
-      const nameMatch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const descMatch = item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return nameMatch || descMatch;
-    }
-  );
-
+  const filteredItems = items.filter((item) => {
+    if (!searchQuery) return true;
+    const nameMatch = item.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const descMatch =
+      item.description &&
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return nameMatch || descMatch;
+  });
 
   // Show wishlist tutorial on first visit
   useEffect(() => {
@@ -157,21 +158,23 @@ export default function BorrowPage() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      
+
       {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
-      <div className="w-full relative" style={{ backgroundColor: '#0DCEA1', borderBottomRightRadius: '32px' }}>
+      <div
+        className="w-full relative"
+        style={{ backgroundColor: "#0DCEA1", borderBottomRightRadius: "32px" }}
+      >
         <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold mb-3 text-white">
+              <h1 className="text-4xl font-bold mb-3 text-black">
                 Browse the community ShareChest
               </h1>
-              <p className="text-white/90">
-                Items available for borrowing
-                {userPostalCode && ` near ${userPostalCode}`}
+              <p className="text-black/90">
+                Items available {userPostalCode && ` near ${userPostalCode}`}
               </p>
             </div>
-            
+
             <div className="flex flex-col gap-3 md:w-72">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -180,14 +183,14 @@ export default function BorrowPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 bg-white rounded-lg text-sm"
-                  style={{ height: '43px' }}
+                  style={{ height: "43px" }}
                 />
               </div>
               <Button
                 variant="outline"
                 className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 rounded-lg text-sm"
                 onClick={() => setShowLocationModal(true)}
-                style={{ height: '43px' }}
+                style={{ height: "43px" }}
               >
                 <MapPin className="h-4 w-4" />
                 {userPostalCode
@@ -197,17 +200,15 @@ export default function BorrowPage() {
             </div>
           </div>
         </div>
-        
+
         {/* Inverted corner on bottom left - white circle overlay creating cutout effect */}
-        <div 
+        <div
           className="absolute bottom-0 left-0 w-8 h-8 bg-white"
-          style={{ borderTopRightRadius: '100%' }}
+          style={{ borderTopRightRadius: "100%" }}
         />
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-
-
         {/* AI Recommendations Section - only show when not searching */}
         {!searchQuery && (
           <div className="mb-8">
@@ -234,7 +235,10 @@ export default function BorrowPage() {
                 className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
               >
                 <div className="p-4">
-                  <div className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden" style={{ aspectRatio: '1 / 0.9' }}>
+                  <div
+                    className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
+                    style={{ aspectRatio: "1 / 0.9" }}
+                  >
                     {item.photos && item.photos[0] ? (
                       <img
                         src={item.photos[0]}
@@ -248,12 +252,12 @@ export default function BorrowPage() {
                     )}
                   </div>
                 </div>
-                
+
                 <CardContent className="px-6 pt-0 pb-4">
                   <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
                     {item.name}
                   </h3>
-                  
+
                   <div className="space-y-0.5 mb-3">
                     <div className="flex items-center gap-2 text-slate-700">
                       <MapPin className="h-4 w-4" />
@@ -261,11 +265,12 @@ export default function BorrowPage() {
                         {item.city || userPostalCode || "Nearby"}
                       </span>
                     </div>
-                    
+
                     <div className="text-sm text-slate-700">
-                      <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
+                      <span className="font-medium">Condition:</span>{" "}
+                      {item.conditionRating || 8}/10
                     </div>
-                    
+
                     {(item.isLendable || item.isRentable) && (
                       <div className="flex items-center gap-2 text-sm text-slate-700">
                         <div className="flex items-center gap-1">
@@ -290,7 +295,7 @@ export default function BorrowPage() {
                       <Button
                         size="sm"
                         className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                        style={{ backgroundColor: '#0DCEA1' }}
+                        style={{ backgroundColor: "#0DCEA1" }}
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <Heart className="h-3 w-3 mr-0.5" />
@@ -301,7 +306,7 @@ export default function BorrowPage() {
                       <Button
                         size="sm"
                         className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                        style={{ backgroundColor: '#0DCEA1' }}
+                        style={{ backgroundColor: "#0DCEA1" }}
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <DollarSign className="h-3 w-3 mr-0.5" />
@@ -312,23 +317,25 @@ export default function BorrowPage() {
                       <Button
                         size="sm"
                         className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                        style={{ backgroundColor: '#0DCEA1' }}
+                        style={{ backgroundColor: "#0DCEA1" }}
                         onClick={() => navigate(`/items/${item.id}`)}
                       >
                         <ArrowLeftRight className="h-3 w-3 mr-0.5" />
                         Swap It
                       </Button>
                     )}
-                    {!item.isLendable && !item.isRentable && !item.isSwappable && (
-                      <Button
-                        size="sm"
-                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                        style={{ backgroundColor: '#0DCEA1' }}
-                        onClick={() => navigate(`/items/${item.id}`)}
-                      >
-                        View
-                      </Button>
-                    )}
+                    {!item.isLendable &&
+                      !item.isRentable &&
+                      !item.isSwappable && (
+                        <Button
+                          size="sm"
+                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                          style={{ backgroundColor: "#0DCEA1" }}
+                          onClick={() => navigate(`/items/${item.id}`)}
+                        >
+                          View
+                        </Button>
+                      )}
                   </div>
                 </CardContent>
               </Card>

@@ -307,7 +307,10 @@ export default function LendPage() {
             </div>
 
             <div className="flex flex-col gap-3 md:w-72">
-              <div className="bg-white rounded-lg shadow-sm" style={{ height: "98px", padding: "10px" }}>
+              <div
+                className="bg-white rounded-lg shadow-sm"
+                style={{ height: "98px", padding: "10px" }}
+              >
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Download className="h-4 w-4 text-teal-600" />
                   <h3 className="font-semibold text-sm text-black">
@@ -375,7 +378,7 @@ export default function LendPage() {
                     {isImporting ? "Importing..." : "Import"}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 pl-1">
                   Facebook groups, marketplace & Craigslist
                 </p>
               </div>

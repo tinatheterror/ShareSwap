@@ -63,7 +63,13 @@ export default function LendPage() {
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
   const [availabilityOption, setAvailabilityOption] = useState<
-    "indefinitely" | "7days" | "1month" | "3months" | "6months" | "1year" | "custom"
+    | "indefinitely"
+    | "7days"
+    | "1month"
+    | "3months"
+    | "6months"
+    | "1year"
+    | "custom"
   >("indefinitely");
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -296,7 +302,7 @@ export default function LendPage() {
                 List Your Item
               </h1>
               <p className="text-black/90">
-                Make your neighborhood richer without spending a cent
+                Make your neighbourhood richer without spending a cent
               </p>
             </div>
 
@@ -397,316 +403,399 @@ export default function LendPage() {
             <div className="lg:col-span-2">
               <Card>
                 <CardContent className="pt-6 space-y-6">
-                {/* Item Name */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-medium">Item Name</h3>
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Features and Details */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-medium">Features and Details</h3>
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Textarea {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Location field */}
-                <div className="space-y-4 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Location</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowLocationModal(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <MapPin className="h-4 w-4" />
-                      {watchPostalCode ? watchPostalCode : "Set Location"}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Sharing options */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-medium">Sharing Options</h3>
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="isLendable"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel className="!mt-0">
-                            Available for Lending
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="isSwappable"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel className="!mt-0">
-                            Available for Swaps
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="isRentable"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormLabel className="!mt-0">
-                            Available for Rent
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* Availability Period - Show when lending is enabled */}
-                <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-medium">Availability Period</h3>
-                  
-                  {/* Default Option */}
-                  <Button
-                    type="button"
-                    variant={availabilityOption === "indefinitely" ? "default" : "outline"}
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setAvailabilityOption("indefinitely");
-                      form.setValue("availableFromDate", undefined);
-                      form.setValue("availableToDate", undefined);
-                    }}
-                  >
-                    Available indefinitely
-                  </Button>
-
-                  {/* Quick-select Buttons */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant={availabilityOption === "7days" ? "default" : "outline"}
-                      className="justify-start"
-                      onClick={() => {
-                        setAvailabilityOption("7days");
-                        const today = new Date();
-                        const endDate = new Date(today);
-                        endDate.setDate(endDate.getDate() + 7);
-                        form.setValue("availableFromDate", today.toISOString().split("T")[0]);
-                        form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
-                      }}
-                    >
-                      7 days
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={availabilityOption === "1month" ? "default" : "outline"}
-                      className="justify-start"
-                      onClick={() => {
-                        setAvailabilityOption("1month");
-                        const today = new Date();
-                        const endDate = new Date(today);
-                        endDate.setMonth(endDate.getMonth() + 1);
-                        form.setValue("availableFromDate", today.toISOString().split("T")[0]);
-                        form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
-                      }}
-                    >
-                      1 month
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={availabilityOption === "3months" ? "default" : "outline"}
-                      className="justify-start"
-                      onClick={() => {
-                        setAvailabilityOption("3months");
-                        const today = new Date();
-                        const endDate = new Date(today);
-                        endDate.setMonth(endDate.getMonth() + 3);
-                        form.setValue("availableFromDate", today.toISOString().split("T")[0]);
-                        form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
-                      }}
-                    >
-                      3 months
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={availabilityOption === "6months" ? "default" : "outline"}
-                      className="justify-start"
-                      onClick={() => {
-                        setAvailabilityOption("6months");
-                        const today = new Date();
-                        const endDate = new Date(today);
-                        endDate.setMonth(endDate.getMonth() + 6);
-                        form.setValue("availableFromDate", today.toISOString().split("T")[0]);
-                        form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
-                      }}
-                    >
-                      6 months
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant={availabilityOption === "1year" ? "default" : "outline"}
-                      className="justify-start col-span-2"
-                      onClick={() => {
-                        setAvailabilityOption("1year");
-                        const today = new Date();
-                        const endDate = new Date(today);
-                        endDate.setFullYear(endDate.getFullYear() + 1);
-                        form.setValue("availableFromDate", today.toISOString().split("T")[0]);
-                        form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
-                      }}
-                    >
-                      1 year
-                    </Button>
-                  </div>
-
-                  {/* Custom Option - Less Prominent */}
-                  <Button
-                    type="button"
-                    variant={availabilityOption === "custom" ? "default" : "ghost"}
-                    size="sm"
-                    className="w-full text-muted-foreground"
-                    onClick={() => setAvailabilityOption("custom")}
-                  >
-                    Custom dates
-                  </Button>
-
-                  {/* Custom Date Inputs - Only show when custom is selected */}
-                  {availabilityOption === "custom" && (
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
-                      <FormField
-                        control={form.control}
-                        name="availableFromDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Available From</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="date"
-                                {...field}
-                                value={field.value || ""}
-                                placeholder="Select start date"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="availableToDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Available Until</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="date"
-                                {...field}
-                                value={field.value || ""}
-                                placeholder="Select end date"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
-
-                  {selectedWishlistMatch && (
-                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-teal-500" />
-                        <span className="text-teal-800 font-medium">
-                          Dates automatically matched to{" "}
-                          {selectedWishlistMatch.username}'s request
-                        </span>
-                      </div>
-                      <p className="text-teal-700 text-sm mt-1">
-                        Needed:{" "}
-                        {selectedWishlistMatch.neededDate
-                          ? new Date(
-                              selectedWishlistMatch.neededDate,
-                            ).toLocaleDateString()
-                          : "Not specified"}{" "}
-                        - Return:{" "}
-                        {selectedWishlistMatch.returnDate
-                          ? new Date(
-                              selectedWishlistMatch.returnDate,
-                            ).toLocaleDateString()
-                          : "Not specified"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Security Deposit */}
-                {watchIsLendable && (
+                  {/* Item Name */}
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Lending Options</h3>
+                    <h3 className="font-medium">Item Name</h3>
                     <FormField
                       control={form.control}
-                      name="securityDeposit"
+                      name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Security Deposit ($)</FormLabel>
                           <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              {...field}
-                              value={field.value || ""}
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Features and Details */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="font-medium">Features and Details</h3>
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Location field */}
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium">Location</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowLocationModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        {watchPostalCode ? watchPostalCode : "Set Location"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Sharing options */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="font-medium">Sharing Options</h3>
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="isLendable"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">
+                              Available for Lending
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="isSwappable"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">
+                              Available for Swaps
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="isRentable"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">
+                              Available for Rent
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Availability Period - Show when lending is enabled */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="font-medium">Availability Period</h3>
+
+                    {/* Default Option */}
+                    <Button
+                      type="button"
+                      variant={
+                        availabilityOption === "indefinitely"
+                          ? "default"
+                          : "outline"
+                      }
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setAvailabilityOption("indefinitely");
+                        form.setValue("availableFromDate", undefined);
+                        form.setValue("availableToDate", undefined);
+                      }}
+                    >
+                      Available Indefinitely
+                    </Button>
+
+                    {/* Quick-select Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={
+                          availabilityOption === "7days" ? "default" : "outline"
+                        }
+                        className="justify-start"
+                        onClick={() => {
+                          setAvailabilityOption("7days");
+                          const today = new Date();
+                          const endDate = new Date(today);
+                          endDate.setDate(endDate.getDate() + 7);
+                          form.setValue(
+                            "availableFromDate",
+                            today.toISOString().split("T")[0],
+                          );
+                          form.setValue(
+                            "availableToDate",
+                            endDate.toISOString().split("T")[0],
+                          );
+                        }}
+                      >
+                        7 days
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant={
+                          availabilityOption === "1month"
+                            ? "default"
+                            : "outline"
+                        }
+                        className="justify-start"
+                        onClick={() => {
+                          setAvailabilityOption("1month");
+                          const today = new Date();
+                          const endDate = new Date(today);
+                          endDate.setMonth(endDate.getMonth() + 1);
+                          form.setValue(
+                            "availableFromDate",
+                            today.toISOString().split("T")[0],
+                          );
+                          form.setValue(
+                            "availableToDate",
+                            endDate.toISOString().split("T")[0],
+                          );
+                        }}
+                      >
+                        1 month
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant={
+                          availabilityOption === "3months"
+                            ? "default"
+                            : "outline"
+                        }
+                        className="justify-start"
+                        onClick={() => {
+                          setAvailabilityOption("3months");
+                          const today = new Date();
+                          const endDate = new Date(today);
+                          endDate.setMonth(endDate.getMonth() + 3);
+                          form.setValue(
+                            "availableFromDate",
+                            today.toISOString().split("T")[0],
+                          );
+                          form.setValue(
+                            "availableToDate",
+                            endDate.toISOString().split("T")[0],
+                          );
+                        }}
+                      >
+                        3 months
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant={
+                          availabilityOption === "6months"
+                            ? "default"
+                            : "outline"
+                        }
+                        className="justify-start"
+                        onClick={() => {
+                          setAvailabilityOption("6months");
+                          const today = new Date();
+                          const endDate = new Date(today);
+                          endDate.setMonth(endDate.getMonth() + 6);
+                          form.setValue(
+                            "availableFromDate",
+                            today.toISOString().split("T")[0],
+                          );
+                          form.setValue(
+                            "availableToDate",
+                            endDate.toISOString().split("T")[0],
+                          );
+                        }}
+                      >
+                        6 months
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant={
+                          availabilityOption === "1year" ? "default" : "outline"
+                        }
+                        className="justify-start col-span-2"
+                        onClick={() => {
+                          setAvailabilityOption("1year");
+                          const today = new Date();
+                          const endDate = new Date(today);
+                          endDate.setFullYear(endDate.getFullYear() + 1);
+                          form.setValue(
+                            "availableFromDate",
+                            today.toISOString().split("T")[0],
+                          );
+                          form.setValue(
+                            "availableToDate",
+                            endDate.toISOString().split("T")[0],
+                          );
+                        }}
+                      >
+                        1 year
+                      </Button>
+                    </div>
+
+                    {/* Custom Option - Less Prominent */}
+                    <Button
+                      type="button"
+                      variant={
+                        availabilityOption === "custom" ? "default" : "ghost"
+                      }
+                      size="sm"
+                      className="w-full text-muted-foreground"
+                      onClick={() => setAvailabilityOption("custom")}
+                    >
+                      Custom dates
+                    </Button>
+
+                    {/* Custom Date Inputs - Only show when custom is selected */}
+                    {availabilityOption === "custom" && (
+                      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
+                        <FormField
+                          control={form.control}
+                          name="availableFromDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Available From</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  {...field}
+                                  value={field.value || ""}
+                                  placeholder="Select start date"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="availableToDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Available Until</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  {...field}
+                                  value={field.value || ""}
+                                  placeholder="Select end date"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+
+                    {selectedWishlistMatch && (
+                      <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-teal-500" />
+                          <span className="text-teal-800 font-medium">
+                            Dates automatically matched to{" "}
+                            {selectedWishlistMatch.username}'s request
+                          </span>
+                        </div>
+                        <p className="text-teal-700 text-sm mt-1">
+                          Needed:{" "}
+                          {selectedWishlistMatch.neededDate
+                            ? new Date(
+                                selectedWishlistMatch.neededDate,
+                              ).toLocaleDateString()
+                            : "Not specified"}{" "}
+                          - Return:{" "}
+                          {selectedWishlistMatch.returnDate
+                            ? new Date(
+                                selectedWishlistMatch.returnDate,
+                              ).toLocaleDateString()
+                            : "Not specified"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Security Deposit */}
+                  {watchIsLendable && (
+                    <div className="space-y-4 border-t pt-4">
+                      <h3 className="font-medium">Lending Options</h3>
+                      <FormField
+                        control={form.control}
+                        name="securityDeposit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Security Deposit ($)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                {...field}
+                                value={field.value || ""}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  {/* Condition Rating */}
+                  <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium">Condition Rating (1-10)</h3>
+                      <span className="text-sm font-semibold text-teal-700">
+                        Rating: {form.watch("conditionRating")}/10
+                      </span>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="conditionRating"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Slider
+                              value={[field.value]}
+                              onValueChange={(value) =>
+                                field.onChange(value[0])
+                              }
+                              max={10}
+                              min={1}
+                              step={1}
                             />
                           </FormControl>
                           <FormMessage />
@@ -714,35 +803,6 @@ export default function LendPage() {
                       )}
                     />
                   </div>
-                )}
-
-                {/* Condition Rating */}
-                <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Condition Rating (1-10)</h3>
-                    <span className="text-sm font-semibold text-teal-700">
-                      Rating: {form.watch("conditionRating")}/10
-                    </span>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="conditionRating"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Slider
-                            value={[field.value]}
-                            onValueChange={(value) => field.onChange(value[0])}
-                            max={10}
-                            min={1}
-                            step={1}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
                 </CardContent>
               </Card>
             </div>
@@ -836,7 +896,7 @@ export default function LendPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground">
-                      Search by city, neighborhood or ZIP code.
+                      Search by city, neighbourhood or ZIP code.
                     </label>
                     <Input
                       value={form.getValues("postalCode")}
@@ -988,7 +1048,7 @@ export default function LendPage() {
                             </span>
                           </div>
                           <span className="text-teal-800 font-semibold">
-                            Earn 10-20 ShareCoins for helping this neighbor!
+                            Earn 10-20 ShareCoins for helping this neighbour!
                           </span>
                         </div>
                       </div>

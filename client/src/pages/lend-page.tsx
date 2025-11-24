@@ -378,7 +378,7 @@ export default function LendPage() {
                     {isImporting ? "Importing..." : "Import"}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 pl-1">
+                <p className="text-xs text-gray-500">
                   Facebook groups, marketplace & Craigslist
                 </p>
               </div>

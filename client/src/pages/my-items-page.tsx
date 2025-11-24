@@ -54,7 +54,7 @@ export default function MyItemsPage() {
     return (
       <div className="min-h-screen">
         <Navbar />
-        <main className="max-w-6xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-12">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -71,7 +71,7 @@ export default function MyItemsPage() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
             <Package className="h-8 w-8 text-primary" />

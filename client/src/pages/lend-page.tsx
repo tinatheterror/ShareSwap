@@ -306,20 +306,20 @@ export default function LendPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 md:w-[520px]">
-              <div className="bg-white rounded-lg p-2.5 shadow-sm">
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <Download className="h-3.5 w-3.5 text-teal-600" />
-                  <h3 className="font-semibold text-xs text-black">
+            <div className="flex flex-col gap-3 md:w-72">
+              <div className="bg-white rounded-lg shadow-sm" style={{ height: "98px", padding: "10px" }}>
+                <div className="flex items-center gap-1 mb-1.5">
+                  <Download className="h-3 w-3 text-teal-600" />
+                  <h3 className="font-semibold text-[11px] text-black">
                     Import from Marketplace
                   </h3>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 mb-1">
                   <Input
-                    placeholder="Paste listing URL here..."
+                    placeholder="Paste listing URL..."
                     value={importUrl}
                     onChange={(e) => setImportUrl(e.target.value)}
-                    className="flex-1 text-xs h-8"
+                    className="flex-1 text-[11px] h-7 px-2"
                   />
                   <Button
                     onClick={async () => {
@@ -369,14 +369,14 @@ export default function LendPage() {
                       }
                     }}
                     disabled={isImporting || !importUrl}
-                    className="text-white text-xs h-8 px-3"
+                    className="text-white text-[11px] h-7 px-2.5"
                     style={{ backgroundColor: "#0DCEA1" }}
                   >
                     {isImporting ? "Importing..." : "Import"}
                   </Button>
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1">
-                  Facebook groups, Facebook marketplace, and Craigslist
+                <p className="text-[9px] text-gray-500 leading-tight">
+                  Facebook groups, marketplace & Craigslist
                 </p>
               </div>
             </div>

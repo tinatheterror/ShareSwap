@@ -314,7 +314,7 @@ export default function LendPage() {
                     Import from Marketplace
                   </h3>
                 </div>
-                <div className="flex gap-1.5 mb-1">
+                <div className="flex gap-1.5 mb-2">
                   <Input
                     placeholder="Paste listing URL..."
                     value={importUrl}
@@ -375,7 +375,7 @@ export default function LendPage() {
                     {isImporting ? "Importing..." : "Import"}
                   </Button>
                 </div>
-                <p className="text-[9px] text-gray-500 leading-tight">
+                <p className="text-xs text-gray-500">
                   Facebook groups, marketplace & Craigslist
                 </p>
               </div>

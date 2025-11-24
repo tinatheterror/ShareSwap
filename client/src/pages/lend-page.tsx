@@ -541,7 +541,7 @@ export default function LendPage() {
                         form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
                       }}
                     >
-                      ✔️ 7 days
+                      7 days
                     </Button>
 
                     <Button
@@ -557,7 +557,7 @@ export default function LendPage() {
                         form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
                       }}
                     >
-                      ✔️ 1 month
+                      1 month
                     </Button>
 
                     <Button
@@ -573,7 +573,7 @@ export default function LendPage() {
                         form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
                       }}
                     >
-                      ✔️ 3 months
+                      3 months
                     </Button>
 
                     <Button
@@ -589,7 +589,7 @@ export default function LendPage() {
                         form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
                       }}
                     >
-                      ✔️ 6 months
+                      6 months
                     </Button>
 
                     <Button
@@ -605,7 +605,7 @@ export default function LendPage() {
                         form.setValue("availableToDate", endDate.toISOString().split("T")[0]);
                       }}
                     >
-                      ✔️ 1 year
+                      1 year
                     </Button>
                   </div>
 

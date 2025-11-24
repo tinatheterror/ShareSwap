@@ -72,22 +72,14 @@ export default function MyItemsPage() {
     <div className="min-h-screen">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Package className="h-8 w-8 text-primary" />
-              My Shared Items
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Manage your uploaded items and track their availability
-            </p>
-          </div>
-          <Link href="/lend">
-            <Button className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add New Item
-            </Button>
-          </Link>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold flex items-center gap-3 justify-center">
+            <Package className="h-8 w-8 text-primary" />
+            My Shared Items
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Manage your uploaded items and track their availability
+          </p>
         </div>
 
         {/* Filter Tabs */}
@@ -127,6 +119,14 @@ export default function MyItemsPage() {
                 ? "Start sharing by adding your first item to the marketplace"
                 : `You don't have any ${filter} items at the moment`}
             </p>
+            {filter === "all" && (
+              <Link href="/lend">
+                <Button className="flex items-center gap-2 mx-auto">
+                  <Plus className="h-4 w-4" />
+                  Add New Item
+                </Button>
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -307,10 +307,10 @@ export default function LendPage() {
             </div>
 
             <div className="flex flex-col gap-3 md:w-[520px]">
-              <div className="bg-white rounded-lg p-3 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <Download className="h-4 w-4 text-teal-600" />
-                  <h3 className="font-bold text-sm text-black">
+              <div className="bg-white rounded-lg p-2.5 shadow-sm">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Download className="h-3.5 w-3.5 text-teal-600" />
+                  <h3 className="font-semibold text-xs text-black">
                     Import from Marketplace
                   </h3>
                 </div>
@@ -319,8 +319,7 @@ export default function LendPage() {
                     placeholder="Paste listing URL here..."
                     value={importUrl}
                     onChange={(e) => setImportUrl(e.target.value)}
-                    className="flex-1 text-sm"
-                    style={{ height: "38px" }}
+                    className="flex-1 text-xs h-8"
                   />
                   <Button
                     onClick={async () => {
@@ -370,13 +369,13 @@ export default function LendPage() {
                       }
                     }}
                     disabled={isImporting || !importUrl}
-                    className="text-white text-sm"
-                    style={{ height: "38px", backgroundColor: "#0DCEA1" }}
+                    className="text-white text-xs h-8 px-3"
+                    style={{ backgroundColor: "#0DCEA1" }}
                   >
                     {isImporting ? "Importing..." : "Import"}
                   </Button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-[10px] text-gray-500 mt-1">
                   Facebook groups, Facebook marketplace, and Craigslist
                 </p>
               </div>

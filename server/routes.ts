@@ -2265,6 +2265,122 @@ Return only the JSON object, no other text.`,
     }
   });
 
+  // Check and generate return reminders for active borrows/rentals
+  app.post("/api/notifications/check-return-reminders", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const userId = req.user.id;
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(23, 59, 59, 999);
+
+      // Find all active requests (ACCEPTED status) where user is the borrower/renter
+      const activeRequests = await db
+        .select({
+          request: itemRequests,
+          item: items,
+          owner: users,
+        })
+        .from(itemRequests)
+        .innerJoin(items, eq(itemRequests.itemId, items.id))
+        .innerJoin(users, eq(items.ownerId, users.id))
+        .where(
+          and(
+            eq(itemRequests.requesterId, userId),
+            eq(itemRequests.status, "ACCEPTED"),
+            or(
+              eq(itemRequests.requestType, "borrow"),
+              eq(itemRequests.requestType, "rent")
+            )
+          )
+        );
+
+      let remindersCreated = 0;
+
+      for (const { request, item, owner } of activeRequests) {
+        const returnDate = request.endDate;
+        if (!returnDate) continue;
+
+        const returnDateObj = new Date(returnDate);
+        returnDateObj.setHours(0, 0, 0, 0);
+        
+        const nowDate = new Date(now);
+        nowDate.setHours(0, 0, 0, 0);
+
+        const daysUntilReturn = Math.ceil((returnDateObj.getTime() - nowDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        let notificationType = "";
+        let title = "";
+        let message = "";
+
+        // Determine if reminder is needed
+        if (daysUntilReturn === 1) {
+          // Tomorrow
+          notificationType = "return_reminder_tomorrow";
+          title = "Return Reminder: Tomorrow";
+          message = `"${item.name}" is due to be returned tomorrow. Please prepare to return it to ${owner.username}.`;
+        } else if (daysUntilReturn === 0) {
+          // Today
+          notificationType = "return_reminder_today";
+          title = "Return Reminder: Today";
+          message = `"${item.name}" is due to be returned today! Please return it to ${owner.username} as soon as possible.`;
+        } else if (daysUntilReturn < 0) {
+          // Overdue
+          const daysOverdue = Math.abs(daysUntilReturn);
+          notificationType = "return_reminder_overdue";
+          title = "Overdue Return";
+          message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue! Please return it to ${owner.username} immediately.`;
+        }
+
+        if (notificationType) {
+          // Check if we already sent this type of notification for this request today
+          const todayStart = new Date(now);
+          todayStart.setHours(0, 0, 0, 0);
+
+          const existingNotification = await db
+            .select()
+            .from(notifications)
+            .where(
+              and(
+                eq(notifications.userId, userId),
+                eq(notifications.requestId, request.id),
+                eq(notifications.type, notificationType),
+                gte(notifications.createdAt, todayStart)
+              )
+            )
+            .limit(1);
+
+          if (existingNotification.length === 0) {
+            // Create the notification
+            await db.insert(notifications).values({
+              userId,
+              type: notificationType,
+              title,
+              message,
+              itemId: item.id,
+              requestId: request.id,
+              isRead: false,
+            });
+            remindersCreated++;
+          }
+        }
+      }
+
+      res.json({ remindersCreated });
+    } catch (error) {
+      console.error("Error checking return reminders:", error);
+      res.status(500).json({ error: "Failed to check return reminders" });
+    }
+  });
+
   // Get statistics for public display
   app.get("/api/stats", async (req, res) => {
     try {

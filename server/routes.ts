@@ -2266,7 +2266,7 @@ Return only the JSON object, no other text.`,
   });
 
   // Check and generate return reminders for active borrows/rentals
-  app.post("/api/notifications/check-return-reminders", async (req, res) => {
+  app.post("/api/notifications/check-return-reminders", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
@@ -2274,15 +2274,11 @@ Return only the JSON object, no other text.`,
     try {
       const userId = req.user.id;
       const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
+      const twoDaysFromNow = new Date(now);
+      twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
       
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(23, 59, 59, 999);
-
-      // Find all active requests (ACCEPTED status) where user is the borrower/renter
+      // Only check items due within next 2 days or already overdue
+      // This reduces DB load significantly
       const activeRequests = await db
         .select({
           request: itemRequests,
@@ -2299,7 +2295,9 @@ Return only the JSON object, no other text.`,
             or(
               eq(itemRequests.requestType, "borrow"),
               eq(itemRequests.requestType, "rent")
-            )
+            ),
+            // Only check items with endDate within next 2 days or overdue
+            sql`${itemRequests.endDate} IS NOT NULL AND ${itemRequests.endDate} <= ${twoDaysFromNow}`
           )
         );
 
@@ -2341,35 +2339,41 @@ Return only the JSON object, no other text.`,
         }
 
         if (notificationType) {
-          // Check if we already sent this type of notification for this request today
-          const todayStart = new Date(now);
-          todayStart.setHours(0, 0, 0, 0);
+          // More robust duplicate check: check if notification exists for this exact scenario
+          // Using try-catch to handle race conditions gracefully
+          try {
+            const todayStart = new Date(now);
+            todayStart.setHours(0, 0, 0, 0);
 
-          const existingNotification = await db
-            .select()
-            .from(notifications)
-            .where(
-              and(
-                eq(notifications.userId, userId),
-                eq(notifications.requestId, request.id),
-                eq(notifications.type, notificationType),
-                gte(notifications.createdAt, todayStart)
+            const existingNotification = await db
+              .select()
+              .from(notifications)
+              .where(
+                and(
+                  eq(notifications.userId, userId),
+                  eq(notifications.requestId, request.id),
+                  eq(notifications.type, notificationType),
+                  gte(notifications.createdAt, todayStart)
+                )
               )
-            )
-            .limit(1);
+              .limit(1);
 
-          if (existingNotification.length === 0) {
-            // Create the notification
-            await db.insert(notifications).values({
-              userId,
-              type: notificationType,
-              title,
-              message,
-              itemId: item.id,
-              requestId: request.id,
-              isRead: false,
-            });
-            remindersCreated++;
+            if (existingNotification.length === 0) {
+              // Create the notification
+              await db.insert(notifications).values({
+                userId,
+                type: notificationType,
+                title,
+                message,
+                itemId: item.id,
+                requestId: request.id,
+                isRead: false,
+              });
+              remindersCreated++;
+            }
+          } catch (insertError) {
+            // Silently handle duplicate insert errors from race conditions
+            console.error("Error creating notification (may be duplicate):", insertError);
           }
         }
       }

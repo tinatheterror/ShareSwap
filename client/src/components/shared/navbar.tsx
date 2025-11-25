@@ -16,55 +16,142 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { Coins, Gamepad2, Trophy, Heart, Crown, Users, Package, Bell, HandHeart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { apiRequest } from "@/lib/queryClient";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
+import { Clock, AlertCircle } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
-// Placeholder for NotificationBell component - actual implementation would fetch and display notifications
+interface Notification {
+  id: number;
+  userId: number;
+  type: string;
+  title: string;
+  message: string;
+  itemId: number | null;
+  requestId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 function NotificationBell() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Fetch unread notifications (replace with actual API call)
-  const { data: notifications } = useQuery({
-    queryKey: ["unreadNotifications", user?.id],
-    queryFn: async () => {
-      // Simulate fetching unread notifications
-      return { count: Math.floor(Math.random() * 5) };
-    },
-    enabled: !!user?.id, // Only run if user is logged in
+  // Fetch unread count (check every 2 minutes instead of 30s to reduce load)
+  const { data: unreadData } = useQuery<{ count: number }>({
+    queryKey: ["/api/notifications/unread-count"],
+    enabled: !!user?.id,
+    refetchInterval: 120000, // Refetch every 2 minutes
   });
+
+  // Fetch notifications
+  const { data: notifications = [] } = useQuery<Notification[]>({
+    queryKey: ["/api/notifications"],
+    enabled: !!user?.id,
+    refetchInterval: 120000, // Refetch every 2 minutes
+  });
+
+  // Check for return reminders periodically
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const checkReminders = async () => {
+      try {
+        await apiRequest("POST", "/api/notifications/check-return-reminders", {});
+        // Refresh notifications after checking
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+      } catch (error) {
+        console.error("Error checking return reminders:", error);
+      }
+    };
+
+    // Check immediately on mount
+    checkReminders();
+
+    // Then check every 15 minutes (reduced from 5min to reduce server load)
+    const interval = setInterval(checkReminders, 15 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user?.id, queryClient]);
+
+  // Mark notification as read
+  const markAsReadMutation = useMutation({
+    mutationFn: (notificationId: number) => {
+      return fetch(`/api/notifications/${notificationId}/read`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+    },
+  });
+
+  const unreadNotifications = notifications.filter(n => !n.isRead).slice(0, 5);
+  const unreadCount = unreadData?.count ?? 0;
+
+  const getNotificationIcon = (type: string) => {
+    if (type.includes('return_reminder_overdue')) {
+      return <AlertCircle className="h-4 w-4 text-red-500" />;
+    } else if (type.includes('return_reminder')) {
+      return <Clock className="h-4 w-4 text-orange-500" />;
+    }
+    return <Bell className="h-4 w-4 text-primary" />;
+  };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative p-2 hover:text-primary">
           <Bell className="h-5 w-5" />
-          {(notifications?.count ?? 0) > 0 && (
+          {unreadCount > 0 && (
             <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 p-1 text-xs font-bold flex items-center justify-center">
-              {notifications?.count ?? 0}
+              {unreadCount}
             </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-80 max-h-[500px] overflow-y-auto">
         <div className="p-2">
-          <h6 className="text-sm font-semibold text-primary mb-2">Notifications</h6>
-          {(notifications?.count ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">No new notifications</p>
+          <div className="flex items-center justify-between mb-2">
+            <h6 className="text-sm font-semibold text-primary">Notifications</h6>
+            {unreadCount > 0 && (
+              <span className="text-xs text-muted-foreground">{unreadCount} unread</span>
+            )}
+          </div>
+          {unreadNotifications.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No new notifications</p>
           ) : (
             <>
-              <Link href="/notifications">
-                <DropdownMenuItem className="cursor-pointer hover:text-primary flex flex-col items-start">
-                  <p className="font-medium">New Borrow Request</p>
-                  <p className="text-xs text-muted-foreground">Someone wants to borrow your item!</p>
-                </DropdownMenuItem>
-              </Link>
-              <DropdownMenuSeparator />
-              <Link href="/notifications">
-                <DropdownMenuItem className="cursor-pointer hover:text-primary">
-                  <span>View All Notifications</span>
-                </DropdownMenuItem>
-              </Link>
+              {unreadNotifications.map((notification) => (
+                <div key={notification.id}>
+                  <DropdownMenuItem 
+                    className="cursor-pointer hover:bg-gray-100 flex flex-col items-start p-3 gap-1"
+                    onClick={() => markAsReadMutation.mutate(notification.id)}
+                  >
+                    <div className="flex items-start gap-2 w-full">
+                      {getNotificationIcon(notification.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{notification.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        </p>
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </div>
+              ))}
+              {unreadCount > 5 && (
+                <div className="text-center text-xs text-muted-foreground py-2">
+                  +{unreadCount - 5} more notifications
+                </div>
+              )}
             </>
           )}
         </div>

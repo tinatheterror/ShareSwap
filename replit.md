@@ -39,6 +39,7 @@ Key architectural decisions and features include:
 - **Messaging**: Automated messaging system for item requests with template generation and date range selection.
 - **Inventory Management**: "My ShareChest" for intuitive inventory management with filtering and item actions.
 - **Follow System**: Allows users to follow neighbors to see their items in a personalized feed, promoting community.
+- **No Results Wishlist Prompt**: When search returns no results on Borrow, Rent, or Swap pages, users see an attractive empty state with an "Add to Wishlist" button. This converts potentially frustrating experiences into demand signals, building community-driven inventory while keeping users engaged.
 - **Security**: Comprehensive CSRF protection using a double-submit cookie pattern.
 - **Database Optimization**: Strategic composite indexes for improved query performance.
 

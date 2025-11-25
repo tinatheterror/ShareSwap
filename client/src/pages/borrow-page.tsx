@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Search,
   CheckCircle,
@@ -18,6 +19,7 @@ import {
   Users,
   DollarSign,
   ArrowLeftRight,
+  Sparkles,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
@@ -56,6 +58,30 @@ export default function BorrowPage() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Add to wishlist mutation
+  const addWishlistMutation = useMutation({
+    mutationFn: (data: { itemName: string }) => {
+      return apiRequest("POST", "/api/wishlists", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/all-wishlists"] });
+      toast({
+        title: "Added to wishlist!",
+        description: "You'll be notified when someone shares this item.",
+      });
+      setSearchQuery(""); // Clear search after adding to wishlist
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add item to wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Get user's location when the component mounts
   useEffect(() => {
@@ -228,119 +254,175 @@ export default function BorrowPage() {
           <h2 className="text-xl font-bold mb-4">
             {searchQuery ? `Search Results for "${searchQuery}"` : "All Items"}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {filteredItems.map((item) => (
-              <Card
-                key={item.id}
-                className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
+          {filteredItems.length === 0 && searchQuery ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div
+                className="rounded-2xl p-8 max-w-md w-full text-center"
+                style={{ backgroundColor: "#D4F7F1" }}
               >
-                <div className="p-4">
-                  <div
-                    className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
-                    style={{ aspectRatio: "1 / 0.9" }}
-                  >
-                    {item.photos && item.photos[0] ? (
-                      <img
-                        src={item.photos[0]}
-                        alt={item.name}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                        <Camera className="h-16 w-16 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
+                <div
+                  className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                  style={{ backgroundColor: "#0DCEA1" }}
+                >
+                  <Heart className="h-8 w-8 text-white" />
                 </div>
-
-                <CardContent className="px-6 pt-0 pb-4">
-                  <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
-                    {item.name}
-                  </h3>
-
-                  <div className="space-y-0.5 mb-3">
-                    <div className="flex items-center gap-2 text-slate-700">
-                      <MapPin className="h-4 w-4" />
-                      <span className="text-sm">
-                        {item.city || userPostalCode || "Nearby"}
-                      </span>
-                    </div>
-
-                    <div className="text-sm text-slate-700">
-                      <span className="font-medium">Condition:</span>{" "}
-                      {item.conditionRating || 8}/10
-                    </div>
-
-                    {(item.isLendable || item.isRentable) && (
-                      <div className="flex items-center gap-2 text-sm text-slate-700">
-                        <div className="flex items-center gap-1">
-                          <Coins className="h-4 w-4 text-teal-600" />
-                          <span>{item.shareCoinPrice || 50} ShareCoins</span>
+                <h3 className="text-2xl font-bold mb-2" style={{ color: "#0D9488" }}>
+                  No "{searchQuery}" found
+                </h3>
+                <p className="text-gray-700 mb-6">
+                  This item isn't available yet, but you can add it to your
+                  wishlist and we'll notify you when someone shares it!
+                </p>
+                <Button
+                  size="lg"
+                  className="text-white font-semibold"
+                  style={{ backgroundColor: "#0DCEA1" }}
+                  onClick={() => {
+                    if (!user) {
+                      toast({
+                        title: "Sign in required",
+                        description: "Please sign in to add items to your wishlist.",
+                        variant: "destructive",
+                      });
+                      navigate("/auth");
+                      return;
+                    }
+                    addWishlistMutation.mutate({ itemName: searchQuery });
+                  }}
+                  disabled={addWishlistMutation.isPending}
+                >
+                  {addWishlistMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5 mr-2" />
+                      Add to Wishlist
+                    </>
+                  )}
+                </Button>
+                <p className="text-sm text-gray-600 mt-4">
+                  Create demand signals for items you need
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {filteredItems.map((item) => (
+                <Card
+                  key={item.id}
+                  className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
+                >
+                  <div className="p-4">
+                    <div
+                      className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
+                      style={{ aspectRatio: "1 / 0.9" }}
+                    >
+                      {item.photos && item.photos[0] ? (
+                        <img
+                          src={item.photos[0]}
+                          alt={item.name}
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                          <Camera className="h-16 w-16 text-gray-400" />
                         </div>
-                        {item.isRentable && item.dollarsPrice && (
-                          <>
-                            <span className="text-slate-400">|</span>
-                            <div className="flex items-center">
-                              <DollarSign className="h-4 w-4 text-teal-600" />
-                              <span>{item.dollarsPrice}/day</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex gap-1">
-                    {item.isLendable && (
-                      <Button
-                        size="sm"
-                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                        style={{ backgroundColor: "#0DCEA1" }}
-                        onClick={() => navigate(`/items/${item.id}`)}
-                      >
-                        <Heart className="h-3 w-3 mr-0.5" />
-                        Borrow It
-                      </Button>
-                    )}
-                    {item.isRentable && (
-                      <Button
-                        size="sm"
-                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                        style={{ backgroundColor: "#0DCEA1" }}
-                        onClick={() => navigate(`/items/${item.id}`)}
-                      >
-                        <DollarSign className="h-3 w-3 mr-0.5" />
-                        Rent It
-                      </Button>
-                    )}
-                    {item.isSwappable && (
-                      <Button
-                        size="sm"
-                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                        style={{ backgroundColor: "#0DCEA1" }}
-                        onClick={() => navigate(`/items/${item.id}`)}
-                      >
-                        <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                        Swap It
-                      </Button>
-                    )}
-                    {!item.isLendable &&
-                      !item.isRentable &&
-                      !item.isSwappable && (
+                  <CardContent className="px-6 pt-0 pb-4">
+                    <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
+                      {item.name}
+                    </h3>
+
+                    <div className="space-y-0.5 mb-3">
+                      <div className="flex items-center gap-2 text-slate-700">
+                        <MapPin className="h-4 w-4" />
+                        <span className="text-sm">
+                          {item.city || userPostalCode || "Nearby"}
+                        </span>
+                      </div>
+
+                      <div className="text-sm text-slate-700">
+                        <span className="font-medium">Condition:</span>{" "}
+                        {item.conditionRating || 8}/10
+                      </div>
+
+                      {(item.isLendable || item.isRentable) && (
+                        <div className="flex items-center gap-2 text-sm text-slate-700">
+                          <div className="flex items-center gap-1">
+                            <Coins className="h-4 w-4 text-teal-600" />
+                            <span>{item.shareCoinPrice || 50} ShareCoins</span>
+                          </div>
+                          {item.isRentable && item.dollarsPrice && (
+                            <>
+                              <span className="text-slate-400">|</span>
+                              <div className="flex items-center">
+                                <DollarSign className="h-4 w-4 text-teal-600" />
+                                <span>{item.dollarsPrice}/day</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1">
+                      {item.isLendable && (
                         <Button
                           size="sm"
                           className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
                           style={{ backgroundColor: "#0DCEA1" }}
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
-                          View
+                          <Heart className="h-3 w-3 mr-0.5" />
+                          Borrow It
                         </Button>
                       )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      {item.isRentable && (
+                        <Button
+                          size="sm"
+                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                          style={{ backgroundColor: "#0DCEA1" }}
+                          onClick={() => navigate(`/items/${item.id}`)}
+                        >
+                          <DollarSign className="h-3 w-3 mr-0.5" />
+                          Rent It
+                        </Button>
+                      )}
+                      {item.isSwappable && (
+                        <Button
+                          size="sm"
+                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                          style={{ backgroundColor: "#0DCEA1" }}
+                          onClick={() => navigate(`/items/${item.id}`)}
+                        >
+                          <ArrowLeftRight className="h-3 w-3 mr-0.5" />
+                          Swap It
+                        </Button>
+                      )}
+                      {!item.isLendable &&
+                        !item.isRentable &&
+                        !item.isSwappable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            View
+                          </Button>
+                        )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {showLocationModal && (

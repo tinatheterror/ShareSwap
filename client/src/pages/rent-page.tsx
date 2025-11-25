@@ -4,8 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, Filter, MapPin, Coins, Camera } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Search, Filter, MapPin, Coins, Camera, Heart, Sparkles } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +38,30 @@ export default function RentPage() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Add to wishlist mutation
+  const addWishlistMutation = useMutation({
+    mutationFn: (data: { itemName: string }) => {
+      return apiRequest("POST", "/api/wishlists", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/all-wishlists"] });
+      toast({
+        title: "Added to wishlist!",
+        description: "You'll be notified when someone shares this item.",
+      });
+      setSearchQuery("");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add item to wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Get user's location when the component mounts
   useEffect(() => {
@@ -214,12 +239,67 @@ export default function RentPage() {
           </div>
         </div>
 
-        {/* Empty state */}
-        {filteredItems.length === 0 && !isLoading && (
+        {/* Empty state with wishlist prompt */}
+        {filteredItems.length === 0 && !isLoading && searchQuery && (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div
+              className="rounded-2xl p-8 max-w-md w-full text-center"
+              style={{ backgroundColor: "#D4F7F1" }}
+            >
+              <div
+                className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                style={{ backgroundColor: "#0DCEA1" }}
+              >
+                <Heart className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2" style={{ color: "#0D9488" }}>
+                No "{searchQuery}" found
+              </h3>
+              <p className="text-gray-700 mb-6">
+                This item isn't available yet, but you can add it to your
+                wishlist and we'll notify you when someone shares it!
+              </p>
+              <Button
+                size="lg"
+                className="text-white font-semibold"
+                style={{ backgroundColor: "#0DCEA1" }}
+                onClick={() => {
+                  if (!user) {
+                    toast({
+                      title: "Sign in required",
+                      description: "Please sign in to add items to your wishlist.",
+                      variant: "destructive",
+                    });
+                    navigate("/auth");
+                    return;
+                  }
+                  addWishlistMutation.mutate({ itemName: searchQuery });
+                }}
+                disabled={addWishlistMutation.isPending}
+              >
+                {addWishlistMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Add to Wishlist
+                  </>
+                )}
+              </Button>
+              <p className="text-sm text-gray-600 mt-4">
+                Create demand signals for items you need
+              </p>
+            </div>
+          </div>
+        )}
+        {filteredItems.length === 0 && !isLoading && !searchQuery && (
           <div className="text-center py-12">
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No rentable items found</h3>
             <p className="text-gray-500 mb-4">
-              {searchQuery ? "Try adjusting your search terms" : "No items are currently available for rent in your area"}
+              No items are currently available for rent in your area
             </p>
           </div>
         )}

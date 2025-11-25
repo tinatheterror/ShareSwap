@@ -3,12 +3,14 @@ import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeftRight, Search, Filter } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { ArrowLeftRight, Search, Filter, Heart, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { SelectItem } from "@db/schema";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Recommendations } from "@/components/recommendations";
 import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
@@ -23,6 +25,31 @@ export default function SwapPage() {
   const [showInventoryPrompt, setShowInventoryPrompt] = useState(false);
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Add to wishlist mutation
+  const addWishlistMutation = useMutation({
+    mutationFn: (data: { itemName: string }) => {
+      return apiRequest("POST", "/api/wishlists", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/all-wishlists"] });
+      toast({
+        title: "Added to wishlist!",
+        description: "You'll be notified when someone shares this item.",
+      });
+      setSearchQuery("");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add item to wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
   
   console.log('SwapPage render - searchQuery:', searchQuery);
 
@@ -149,15 +176,66 @@ export default function SwapPage() {
         </div>
 
         {/* Items Grid */}
-        {filteredItems.length === 0 ? (
+        {filteredItems.length === 0 && searchQuery ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div
+              className="rounded-2xl p-8 max-w-md w-full text-center"
+              style={{ backgroundColor: "#D4F7F1" }}
+            >
+              <div
+                className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                style={{ backgroundColor: "#0DCEA1" }}
+              >
+                <Heart className="h-8 w-8 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2" style={{ color: "#0D9488" }}>
+                No "{searchQuery}" found
+              </h3>
+              <p className="text-gray-700 mb-6">
+                This item isn't available yet, but you can add it to your
+                wishlist and we'll notify you when someone shares it!
+              </p>
+              <Button
+                size="lg"
+                className="text-white font-semibold"
+                style={{ backgroundColor: "#0DCEA1" }}
+                onClick={() => {
+                  if (!user) {
+                    toast({
+                      title: "Sign in required",
+                      description: "Please sign in to add items to your wishlist.",
+                      variant: "destructive",
+                    });
+                    navigate("/auth");
+                    return;
+                  }
+                  addWishlistMutation.mutate({ itemName: searchQuery });
+                }}
+                disabled={addWishlistMutation.isPending}
+              >
+                {addWishlistMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Add to Wishlist
+                  </>
+                )}
+              </Button>
+              <p className="text-sm text-gray-600 mt-4">
+                Create demand signals for items you need
+              </p>
+            </div>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="text-center py-12">
             <ArrowLeftRight className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No swappable items found</h3>
             <p className="text-gray-500 mb-4">
-              {swappableItems.length === 0 
-                ? "No items are currently available for swapping"
-                : "Try adjusting your search terms"
-              }
+              No items are currently available for swapping
             </p>
             <Button onClick={() => navigate("/lend")}>
               List an Item for Swapping

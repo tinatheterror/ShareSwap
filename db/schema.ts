@@ -70,6 +70,7 @@ export const items = pgTable("items", {
   isLendable: boolean("is_lendable").default(false),
   isSwappable: boolean("is_swappable").default(false),
   isRentable: boolean("is_rentable").default(false),
+  isGiftable: boolean("is_giftable").default(false),
   securityDeposit: decimal("security_deposit"),
   lendingDuration: integer("lending_duration"),
   shareCoinsReward: decimal("share_coins_reward").notNull(),
@@ -86,6 +87,7 @@ export const items = pgTable("items", {
   availableRentableIdx: index("items_available_rentable_idx").on(table.isAvailable, table.isRentable),
   availableLendableIdx: index("items_available_lendable_idx").on(table.isAvailable, table.isLendable),
   availableSwappableIdx: index("items_available_swappable_idx").on(table.isAvailable, table.isSwappable),
+  availableGiftableIdx: index("items_available_giftable_idx").on(table.isAvailable, table.isGiftable),
   locationIdx: index("items_location_idx").on(table.latitude, table.longitude),
 }));
 

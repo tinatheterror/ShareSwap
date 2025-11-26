@@ -20,7 +20,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X, Heart, CheckCircle, Download, HandHeart, ArrowLeftRight, Repeat } from "lucide-react";
+import { Upload, MapPin, X, Heart, CheckCircle, Download, HandHeart, ArrowLeftRight, Repeat, Gift } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
@@ -32,6 +32,7 @@ const formSchema = z.object({
   isLendable: z.boolean().default(false),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
+  isGiftable: z.boolean().default(false),
   availableFromDate: z.string().optional(),
   availableToDate: z.string().optional(),
   securityDeposit: z.coerce
@@ -82,6 +83,7 @@ export default function LendPage() {
       isLendable: false,
       isSwappable: false,
       isRentable: false,
+      isGiftable: false,
       availableFromDate: undefined,
       availableToDate: undefined,
       securityDeposit: undefined,
@@ -461,7 +463,7 @@ export default function LendPage() {
                   {/* Sharing options */}
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Sharing Options</h3>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-2">
                       <FormField
                         control={form.control}
                         name="isLendable"
@@ -506,6 +508,22 @@ export default function LendPage() {
                           >
                             <Repeat className="h-4 w-4 mr-1" />
                             Swap It
+                          </Button>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="isGiftable"
+                        render={({ field }) => (
+                          <Button
+                            type="button"
+                            variant={field.value ? "default" : "outline"}
+                            className="justify-center"
+                            onClick={() => field.onChange(!field.value)}
+                          >
+                            <Gift className="h-4 w-4 mr-1" />
+                            Gift It
                           </Button>
                         )}
                       />

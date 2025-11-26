@@ -13,11 +13,8 @@ export default function HomePage() {
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem("hasSeenTutorial");
     if (!hasSeenTutorial) {
-      // Show tutorial after 1 second for first-time users
-      const timer = setTimeout(() => {
-        setShowTutorial(true);
-      }, 1000);
-      return () => clearTimeout(timer);
+      // Show tutorial immediately for first-time users
+      setShowTutorial(true);
     }
   }, []);
 

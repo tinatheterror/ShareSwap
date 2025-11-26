@@ -72,6 +72,14 @@ export default function LendPage() {
     | "custom"
   >("indefinitely");
 
+  // Auto-detect location on page load if not already set
+  useEffect(() => {
+    const currentPostalCode = form.getValues("postalCode");
+    if (!currentPostalCode && "geolocation" in navigator) {
+      getCurrentLocation();
+    }
+  }, []);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {

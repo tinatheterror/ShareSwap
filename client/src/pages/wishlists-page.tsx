@@ -184,7 +184,7 @@ export default function WishlistsPage() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      Item Name *
+                      I'm looking for *
                     </label>
                     <Input
                       value={formData.itemName}

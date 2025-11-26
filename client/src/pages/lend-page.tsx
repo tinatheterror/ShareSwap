@@ -20,7 +20,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X, Heart, CheckCircle, Download } from "lucide-react";
+import { Upload, MapPin, X, Heart, CheckCircle, Download, HandHeart, ArrowLeftRight, Repeat } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
@@ -63,12 +63,7 @@ export default function LendPage() {
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
   const [availabilityOption, setAvailabilityOption] = useState<
-    | "indefinitely"
-    | "1month"
-    | "3months"
-    | "6months"
-    | "1year"
-    | "custom"
+    "indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom"
   >("indefinitely");
 
   // Auto-detect location on page load if not already set
@@ -414,7 +409,7 @@ export default function LendPage() {
                 <CardContent className="pt-6 space-y-6">
                   {/* Item Name */}
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Item Name</h3>
+                    <h3 className="font-medium">I'm Sharing my</h3>
                     <FormField
                       control={form.control}
                       name="name"
@@ -466,40 +461,20 @@ export default function LendPage() {
                   {/* Sharing options */}
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Sharing Options</h3>
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2">
                       <FormField
                         control={form.control}
                         name="isLendable"
                         render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">
-                              Available for Lending
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="isSwappable"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">
-                              Available for Swaps
-                            </FormLabel>
-                          </FormItem>
+                          <Button
+                            type="button"
+                            variant={field.value ? "default" : "outline"}
+                            className="justify-center"
+                            onClick={() => field.onChange(!field.value)}
+                          >
+                            <HandHeart className="h-4 w-4 mr-1" />
+                            Borrow It
+                          </Button>
                         )}
                       />
 
@@ -507,20 +482,35 @@ export default function LendPage() {
                         control={form.control}
                         name="isRentable"
                         render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">
-                              Available for Rent
-                            </FormLabel>
-                          </FormItem>
+                          <Button
+                            type="button"
+                            variant={field.value ? "default" : "outline"}
+                            className="justify-center"
+                            onClick={() => field.onChange(!field.value)}
+                          >
+                            <ArrowLeftRight className="h-4 w-4 mr-1" />
+                            Rent It
+                          </Button>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="isSwappable"
+                        render={({ field }) => (
+                          <Button
+                            type="button"
+                            variant={field.value ? "default" : "outline"}
+                            className="justify-center"
+                            onClick={() => field.onChange(!field.value)}
+                          >
+                            <Repeat className="h-4 w-4 mr-1" />
+                            Swap It
+                          </Button>
                         )}
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">Select one or more options</p>
                   </div>
 
                   {/* Availability Period - Show when lending is enabled */}

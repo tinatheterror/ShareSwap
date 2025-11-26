@@ -55,9 +55,22 @@ export default function WishlistsPage() {
     description: "",
     needTypes: ["borrow"] as string[],
     preferredLocation: "",
-    neededDate: "",
-    returnDate: "",
+    neededFromDate: "",
+    neededToDate: "",
   });
+
+  const toggleNeedType = (type: string) => {
+    setFormData((prev) => {
+      const current = prev.needTypes;
+      if (current.includes(type)) {
+        // Don't allow deselecting if it's the only one selected
+        if (current.length === 1) return prev;
+        return { ...prev, needTypes: current.filter((t) => t !== type) };
+      } else {
+        return { ...prev, needTypes: [...current, type] };
+      }
+    });
+  };
 
   // Check if item is urgently needed (within 7 days)
   const isUrgent = (neededDate?: string) => {
@@ -86,11 +99,10 @@ export default function WishlistsPage() {
       setFormData({
         itemName: "",
         description: "",
-        category: "",
-        needType: "borrow",
+        needTypes: ["borrow"],
         preferredLocation: "",
-        neededDate: "",
-        returnDate: "",
+        neededFromDate: "",
+        neededToDate: "",
       });
       toast({
         title: "Wishlist item added!",
@@ -214,70 +226,63 @@ export default function WishlistsPage() {
                   <div className="grid grid-cols-3 gap-2">
                     <Button
                       type="button"
-                      variant={formData.needType === "borrow" ? "default" : "outline"}
+                      variant={formData.needTypes.includes("borrow") ? "default" : "outline"}
                       className="justify-center"
-                      onClick={() => setFormData({ ...formData, needType: "borrow" })}
+                      onClick={() => toggleNeedType("borrow")}
                     >
                       <HandHeart className="h-4 w-4 mr-2" />
                       Borrow It
                     </Button>
                     <Button
                       type="button"
-                      variant={formData.needType === "rent" ? "default" : "outline"}
+                      variant={formData.needTypes.includes("rent") ? "default" : "outline"}
                       className="justify-center"
-                      onClick={() => setFormData({ ...formData, needType: "rent" })}
+                      onClick={() => toggleNeedType("rent")}
                     >
                       <ArrowRightLeft className="h-4 w-4 mr-2" />
                       Rent It
                     </Button>
                     <Button
                       type="button"
-                      variant={formData.needType === "swap" ? "default" : "outline"}
+                      variant={formData.needTypes.includes("swap") ? "default" : "outline"}
                       className="justify-center"
-                      onClick={() => setFormData({ ...formData, needType: "swap" })}
+                      onClick={() => toggleNeedType("swap")}
                     >
                       <Repeat className="h-4 w-4 mr-2" />
                       Swap It
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">Select one or more options</p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Date Needed
-                    </label>
-                    <Input
-                      type="date"
-                      value={formData.neededDate}
-                      onChange={(e) =>
-                        setFormData({ ...formData, neededDate: e.target.value })
-                      }
-                      min={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-
-                  {formData.needType === "borrow" && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Date Needed
+                  </label>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Return Date
-                      </label>
+                      <label className="block text-xs text-muted-foreground mb-1">From</label>
                       <Input
                         type="date"
-                        value={formData.returnDate}
+                        value={formData.neededFromDate}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            returnDate: e.target.value,
-                          })
+                          setFormData({ ...formData, neededFromDate: e.target.value })
                         }
-                        min={
-                          formData.neededDate ||
-                          new Date().toISOString().split("T")[0]
-                        }
+                        min={new Date().toISOString().split("T")[0]}
                       />
                     </div>
-                  )}
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">To</label>
+                      <Input
+                        type="date"
+                        value={formData.neededToDate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, neededToDate: e.target.value })
+                        }
+                        min={formData.neededFromDate || new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -354,30 +359,24 @@ export default function WishlistsPage() {
                     )}
 
                     <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">I want to:</span>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            item.needType === "borrow"
-                              ? "bg-primary/10 text-primary"
-                              : item.needType === "rent"
-                                ? "bg-teal-100 text-teal-800"
+                        {(item.needType ? [item.needType] : []).map((type: string) => (
+                          <Badge
+                            key={type}
+                            variant="secondary"
+                            className={
+                              type === "borrow"
+                                ? "bg-primary/10 text-primary"
                                 : "bg-teal-100 text-teal-800"
-                          }
-                        >
-                          {item.needType === "borrow" && (
-                            <HandHeart className="h-3 w-3 mr-1" />
-                          )}
-                          {item.needType === "rent" && (
-                            <ArrowRightLeft className="h-3 w-3 mr-1" />
-                          )}
-                          {item.needType === "swap" && (
-                            <Repeat className="h-3 w-3 mr-1" />
-                          )}
-                          {item.needType.charAt(0).toUpperCase() +
-                            item.needType.slice(1)} It
-                        </Badge>
+                            }
+                          >
+                            {type === "borrow" && <HandHeart className="h-3 w-3 mr-1" />}
+                            {type === "rent" && <ArrowRightLeft className="h-3 w-3 mr-1" />}
+                            {type === "swap" && <Repeat className="h-3 w-3 mr-1" />}
+                            {type.charAt(0).toUpperCase() + type.slice(1)} It
+                          </Badge>
+                        ))}
                       </div>
 
                       {item.neededDate && (
@@ -389,19 +388,7 @@ export default function WishlistsPage() {
                           >
                             <Calendar className="h-3 w-3 mr-1" />
                             {new Date(item.neededDate).toLocaleDateString()}
-                          </Badge>
-                        </div>
-                      )}
-
-                      {item.returnDate && item.needType === "borrow" && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Return Date:</span>
-                          <Badge
-                            variant="outline"
-                            className="bg-primary/10 text-primary border-primary/20"
-                          >
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {new Date(item.returnDate).toLocaleDateString()}
+                            {item.returnDate && ` - ${new Date(item.returnDate).toLocaleDateString()}`}
                           </Badge>
                         </div>
                       )}
@@ -459,24 +446,20 @@ export default function WishlistsPage() {
                     )}
 
                     <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">I want to:</span>
-                        <Badge
-                          variant="secondary"
-                          className="bg-teal-50 text-teal-700 border-teal-200"
-                        >
-                          {item.needType === "borrow" && (
-                            <HandHeart className="h-3 w-3 mr-1" />
-                          )}
-                          {item.needType === "rent" && (
-                            <ArrowRightLeft className="h-3 w-3 mr-1" />
-                          )}
-                          {item.needType === "swap" && (
-                            <Repeat className="h-3 w-3 mr-1" />
-                          )}
-                          {item.needType.charAt(0).toUpperCase() +
-                            item.needType.slice(1)} It
-                        </Badge>
+                        {(item.needType ? [item.needType] : []).map((type: string) => (
+                          <Badge
+                            key={type}
+                            variant="secondary"
+                            className="bg-teal-50 text-teal-700 border-teal-200"
+                          >
+                            {type === "borrow" && <HandHeart className="h-3 w-3 mr-1" />}
+                            {type === "rent" && <ArrowRightLeft className="h-3 w-3 mr-1" />}
+                            {type === "swap" && <Repeat className="h-3 w-3 mr-1" />}
+                            {type.charAt(0).toUpperCase() + type.slice(1)} It
+                          </Badge>
+                        ))}
                       </div>
 
                       {item.neededDate && (
@@ -488,19 +471,7 @@ export default function WishlistsPage() {
                           >
                             <Calendar className="h-3 w-3 mr-1" />
                             {new Date(item.neededDate).toLocaleDateString()}
-                          </Badge>
-                        </div>
-                      )}
-
-                      {item.returnDate && item.needType === "borrow" && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Return Date:</span>
-                          <Badge
-                            variant="outline"
-                            className="bg-teal-50 text-teal-700 border-teal-200"
-                          >
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {new Date(item.returnDate).toLocaleDateString()}
+                            {item.returnDate && ` - ${new Date(item.returnDate).toLocaleDateString()}`}
                           </Badge>
                         </div>
                       )}

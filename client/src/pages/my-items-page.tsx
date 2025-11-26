@@ -105,6 +105,13 @@ export default function MyItemsPage() {
           >
             Unavailable ({items.filter((i) => !i.isAvailable).length})
           </Button>
+          <div className="flex-1" />
+          <Link href="/lend">
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Item
+            </Button>
+          </Link>
         </div>
 
         {/* Items Grid */}

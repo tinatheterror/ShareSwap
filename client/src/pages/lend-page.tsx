@@ -20,7 +20,18 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X, Heart, CheckCircle, Download, HandHeart, DollarSign, ArrowLeftRight, Gift } from "lucide-react";
+import {
+  Upload,
+  MapPin,
+  X,
+  Heart,
+  CheckCircle,
+  Download,
+  HandHeart,
+  DollarSign,
+  ArrowLeftRight,
+  Gift,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
@@ -64,12 +75,7 @@ export default function LendPage() {
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
   const [availabilityOption, setAvailabilityOption] = useState<
-    | "indefinitely"
-    | "1month"
-    | "3months"
-    | "6months"
-    | "1year"
-    | "custom"
+    "indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom"
   >("indefinitely");
 
   // Auto-detect location on page load if not already set
@@ -415,7 +421,7 @@ export default function LendPage() {
                 <CardContent className="pt-6 space-y-6">
                   {/* Item Name */}
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Item Name</h3>
+                    <h3 className="font-medium">I'm sharing my </h3>
                     <FormField
                       control={form.control}
                       name="name"
@@ -448,7 +454,7 @@ export default function LendPage() {
                   </div>
 
                   {/* Condition Rating - Moved below Features and Details */}
-                  <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
+                  <div className="space-y-4 border-t pt-4 bg-white p-4 rounded-lg border">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">Condition Rating (1-10)</h3>
                       <span className="text-sm font-semibold text-teal-700">
@@ -496,7 +502,7 @@ export default function LendPage() {
 
                   {/* Sharing options */}
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Sharing Options</h3>
+                    <h3 className="font-medium">Neighbours can</h3>
                     <div className="grid grid-cols-2 gap-3">
                       <Button
                         type="button"
@@ -565,215 +571,217 @@ export default function LendPage() {
 
                   {/* Availability Period - Hide when Have It (gift) is selected */}
                   {!watchIsGift && (
-                  <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Availability Period</h3>
+                    <div className="space-y-4 border-t pt-4">
+                      <h3 className="font-medium">Availability Period</h3>
 
-                    {/* Quick-select Buttons - 3 rows x 2 columns */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Row 1 */}
-                      <Button
-                        type="button"
-                        variant={
-                          availabilityOption === "indefinitely"
-                            ? "default"
-                            : "outline"
-                        }
-                        className="justify-start"
-                        onClick={() => {
-                          setAvailabilityOption("indefinitely");
-                          form.setValue("availableFromDate", undefined);
-                          form.setValue("availableToDate", undefined);
-                        }}
-                      >
-                        Indefinitely
-                      </Button>
+                      {/* Quick-select Buttons - 3 rows x 2 columns */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Row 1 */}
+                        <Button
+                          type="button"
+                          variant={
+                            availabilityOption === "indefinitely"
+                              ? "default"
+                              : "outline"
+                          }
+                          className="justify-start"
+                          onClick={() => {
+                            setAvailabilityOption("indefinitely");
+                            form.setValue("availableFromDate", undefined);
+                            form.setValue("availableToDate", undefined);
+                          }}
+                        >
+                          Indefinitely
+                        </Button>
 
-                      <Button
-                        type="button"
-                        variant={
-                          availabilityOption === "1month"
-                            ? "default"
-                            : "outline"
-                        }
-                        className="justify-start"
-                        onClick={() => {
-                          setAvailabilityOption("1month");
-                          const today = new Date();
-                          const endDate = new Date(today);
-                          endDate.setMonth(endDate.getMonth() + 1);
-                          form.setValue(
-                            "availableFromDate",
-                            today.toISOString().split("T")[0],
-                          );
-                          form.setValue(
-                            "availableToDate",
-                            endDate.toISOString().split("T")[0],
-                          );
-                        }}
-                      >
-                        1 month
-                      </Button>
+                        <Button
+                          type="button"
+                          variant={
+                            availabilityOption === "1month"
+                              ? "default"
+                              : "outline"
+                          }
+                          className="justify-start"
+                          onClick={() => {
+                            setAvailabilityOption("1month");
+                            const today = new Date();
+                            const endDate = new Date(today);
+                            endDate.setMonth(endDate.getMonth() + 1);
+                            form.setValue(
+                              "availableFromDate",
+                              today.toISOString().split("T")[0],
+                            );
+                            form.setValue(
+                              "availableToDate",
+                              endDate.toISOString().split("T")[0],
+                            );
+                          }}
+                        >
+                          1 month
+                        </Button>
 
-                      <Button
-                        type="button"
-                        variant={
-                          availabilityOption === "3months"
-                            ? "default"
-                            : "outline"
-                        }
-                        className="justify-start"
-                        onClick={() => {
-                          setAvailabilityOption("3months");
-                          const today = new Date();
-                          const endDate = new Date(today);
-                          endDate.setMonth(endDate.getMonth() + 3);
-                          form.setValue(
-                            "availableFromDate",
-                            today.toISOString().split("T")[0],
-                          );
-                          form.setValue(
-                            "availableToDate",
-                            endDate.toISOString().split("T")[0],
-                          );
-                        }}
-                      >
-                        3 months
-                      </Button>
+                        <Button
+                          type="button"
+                          variant={
+                            availabilityOption === "3months"
+                              ? "default"
+                              : "outline"
+                          }
+                          className="justify-start"
+                          onClick={() => {
+                            setAvailabilityOption("3months");
+                            const today = new Date();
+                            const endDate = new Date(today);
+                            endDate.setMonth(endDate.getMonth() + 3);
+                            form.setValue(
+                              "availableFromDate",
+                              today.toISOString().split("T")[0],
+                            );
+                            form.setValue(
+                              "availableToDate",
+                              endDate.toISOString().split("T")[0],
+                            );
+                          }}
+                        >
+                          3 months
+                        </Button>
 
-                      {/* Row 3 */}
-                      <Button
-                        type="button"
-                        variant={
-                          availabilityOption === "6months"
-                            ? "default"
-                            : "outline"
-                        }
-                        className="justify-start"
-                        onClick={() => {
-                          setAvailabilityOption("6months");
-                          const today = new Date();
-                          const endDate = new Date(today);
-                          endDate.setMonth(endDate.getMonth() + 6);
-                          form.setValue(
-                            "availableFromDate",
-                            today.toISOString().split("T")[0],
-                          );
-                          form.setValue(
-                            "availableToDate",
-                            endDate.toISOString().split("T")[0],
-                          );
-                        }}
-                      >
-                        6 months
-                      </Button>
+                        {/* Row 3 */}
+                        <Button
+                          type="button"
+                          variant={
+                            availabilityOption === "6months"
+                              ? "default"
+                              : "outline"
+                          }
+                          className="justify-start"
+                          onClick={() => {
+                            setAvailabilityOption("6months");
+                            const today = new Date();
+                            const endDate = new Date(today);
+                            endDate.setMonth(endDate.getMonth() + 6);
+                            form.setValue(
+                              "availableFromDate",
+                              today.toISOString().split("T")[0],
+                            );
+                            form.setValue(
+                              "availableToDate",
+                              endDate.toISOString().split("T")[0],
+                            );
+                          }}
+                        >
+                          6 months
+                        </Button>
 
-                      <Button
-                        type="button"
-                        variant={
-                          availabilityOption === "1year" ? "default" : "outline"
-                        }
-                        className="justify-start"
-                        onClick={() => {
-                          setAvailabilityOption("1year");
-                          const today = new Date();
-                          const endDate = new Date(today);
-                          endDate.setFullYear(endDate.getFullYear() + 1);
-                          form.setValue(
-                            "availableFromDate",
-                            today.toISOString().split("T")[0],
-                          );
-                          form.setValue(
-                            "availableToDate",
-                            endDate.toISOString().split("T")[0],
-                          );
-                        }}
-                      >
-                        1 year
-                      </Button>
-                    </div>
-
-                    {/* Custom Option - Less Prominent */}
-                    <Button
-                      type="button"
-                      variant={
-                        availabilityOption === "custom" ? "default" : "ghost"
-                      }
-                      size="sm"
-                      className="w-full text-muted-foreground"
-                      onClick={() => setAvailabilityOption("custom")}
-                    >
-                      Custom dates
-                    </Button>
-
-                    {/* Custom Date Inputs - Only show when custom is selected */}
-                    {availabilityOption === "custom" && (
-                      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
-                        <FormField
-                          control={form.control}
-                          name="availableFromDate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Available From</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="date"
-                                  {...field}
-                                  value={field.value || ""}
-                                  placeholder="Select start date"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="availableToDate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Available Until</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="date"
-                                  {...field}
-                                  value={field.value || ""}
-                                  placeholder="Select end date"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <Button
+                          type="button"
+                          variant={
+                            availabilityOption === "1year"
+                              ? "default"
+                              : "outline"
+                          }
+                          className="justify-start"
+                          onClick={() => {
+                            setAvailabilityOption("1year");
+                            const today = new Date();
+                            const endDate = new Date(today);
+                            endDate.setFullYear(endDate.getFullYear() + 1);
+                            form.setValue(
+                              "availableFromDate",
+                              today.toISOString().split("T")[0],
+                            );
+                            form.setValue(
+                              "availableToDate",
+                              endDate.toISOString().split("T")[0],
+                            );
+                          }}
+                        >
+                          1 year
+                        </Button>
                       </div>
-                    )}
 
-                    {selectedWishlistMatch && (
-                      <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-5 w-5 text-teal-500" />
-                          <span className="text-teal-800 font-medium">
-                            Dates automatically matched to{" "}
-                            {selectedWishlistMatch.username}'s request
-                          </span>
+                      {/* Custom Option - Less Prominent */}
+                      <Button
+                        type="button"
+                        variant={
+                          availabilityOption === "custom" ? "default" : "ghost"
+                        }
+                        size="sm"
+                        className="w-full text-muted-foreground"
+                        onClick={() => setAvailabilityOption("custom")}
+                      >
+                        Custom dates
+                      </Button>
+
+                      {/* Custom Date Inputs - Only show when custom is selected */}
+                      {availabilityOption === "custom" && (
+                        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
+                          <FormField
+                            control={form.control}
+                            name="availableFromDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Available From</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    {...field}
+                                    value={field.value || ""}
+                                    placeholder="Select start date"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="availableToDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Available Until</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    {...field}
+                                    value={field.value || ""}
+                                    placeholder="Select end date"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
-                        <p className="text-teal-700 text-sm mt-1">
-                          Needed:{" "}
-                          {selectedWishlistMatch.neededDate
-                            ? new Date(
-                                selectedWishlistMatch.neededDate,
-                              ).toLocaleDateString()
-                            : "Not specified"}{" "}
-                          - Return:{" "}
-                          {selectedWishlistMatch.returnDate
-                            ? new Date(
-                                selectedWishlistMatch.returnDate,
-                              ).toLocaleDateString()
-                            : "Not specified"}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                      )}
+
+                      {selectedWishlistMatch && (
+                        <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-teal-500" />
+                            <span className="text-teal-800 font-medium">
+                              Dates automatically matched to{" "}
+                              {selectedWishlistMatch.username}'s request
+                            </span>
+                          </div>
+                          <p className="text-teal-700 text-sm mt-1">
+                            Needed:{" "}
+                            {selectedWishlistMatch.neededDate
+                              ? new Date(
+                                  selectedWishlistMatch.neededDate,
+                                ).toLocaleDateString()
+                              : "Not specified"}{" "}
+                            - Return:{" "}
+                            {selectedWishlistMatch.returnDate
+                              ? new Date(
+                                  selectedWishlistMatch.returnDate,
+                                ).toLocaleDateString()
+                              : "Not specified"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Security Deposit */}

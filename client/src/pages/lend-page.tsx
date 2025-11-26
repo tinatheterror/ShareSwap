@@ -314,14 +314,14 @@ export default function LendPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 md:w-72">
+            <div className="flex flex-col gap-3 md:w-96">
               <div
                 className="bg-white rounded-lg shadow-sm"
                 style={{ height: "98px", padding: "10px" }}
               >
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Download className="h-4 w-4 text-teal-600" />
-                  <h3 className="font-semibold text-sm text-black">
+                  <Download className="h-3.5 w-3.5 text-teal-600" />
+                  <h3 className="font-medium text-xs text-black">
                     Import from Marketplace
                   </h3>
                 </div>

@@ -934,7 +934,7 @@ Return only the JSON object, no other text.`,
     }
 
     try {
-      const { type } = req.query; // Add type filter (rent, borrow, swap)
+      const { type } = req.query; // Add type filter (rent, borrow, swap, gift)
       
       let whereConditions = [eq(items.isAvailable, true)];
       
@@ -945,6 +945,8 @@ Return only the JSON object, no other text.`,
         whereConditions.push(eq(items.isLendable, true));
       } else if (type === 'swap') {
         whereConditions.push(eq(items.isSwappable, true));
+      } else if (type === 'gift') {
+        whereConditions.push(eq(items.isGift, true));
       }
 
       const allItems = await db.query.items.findMany({

@@ -70,6 +70,7 @@ export const items = pgTable("items", {
   isLendable: boolean("is_lendable").default(false),
   isSwappable: boolean("is_swappable").default(false),
   isRentable: boolean("is_rentable").default(false),
+  isGift: boolean("is_gift").default(false),
   securityDeposit: decimal("security_deposit"),
   lendingDuration: integer("lending_duration"),
   shareCoinsReward: decimal("share_coins_reward").notNull(),

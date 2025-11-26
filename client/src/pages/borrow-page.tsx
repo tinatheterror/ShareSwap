@@ -19,6 +19,7 @@ import {
   DollarSign,
   ArrowLeftRight,
   Sparkles,
+  Gift,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
@@ -156,7 +157,28 @@ export default function BorrowPage() {
     retry: 1,
   });
 
+  // Query for gift items (free items)
+  const { data: giftItems = [] } = useQuery<ItemWithDistance[]>({
+    queryKey: ["/api/items", "gifts"],
+    queryFn: async () => {
+      const response = await fetch("/api/items?type=gift");
+      if (!response.ok) throw new Error("Failed to fetch gift items");
+      return response.json();
+    },
+  });
+
   const filteredItems = items.filter((item) => {
+    if (!searchQuery) return true;
+    const nameMatch = item.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const descMatch =
+      item.description &&
+      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return nameMatch || descMatch;
+  });
+
+  const filteredGiftItems = giftItems.filter((item) => {
     if (!searchQuery) return true;
     const nameMatch = item.name
       .toLowerCase()
@@ -245,6 +267,71 @@ export default function BorrowPage() {
         {!searchQuery && (
           <div className="mb-8">
             <SeasonalRecommendations limit={6} />
+          </div>
+        )}
+
+        {/* Free Gifts Section */}
+        {filteredGiftItems.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-gradient-to-br from-pink-100 to-pink-200 rounded-lg">
+                <Gift className="h-4 w-4 text-pink-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Free Gifts</h3>
+              <Badge className="bg-pink-100 text-pink-800 border-pink-200">
+                {filteredGiftItems.length} available
+              </Badge>
+              <div className="flex-1 h-px bg-gradient-to-r from-pink-200 to-transparent"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {filteredGiftItems.slice(0, 4).map((item) => (
+                <Card
+                  key={item.id}
+                  className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white border-pink-100"
+                >
+                  <div className="p-4">
+                    <div
+                      className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative"
+                      style={{ aspectRatio: "1 / 0.9" }}
+                    >
+                      <Badge className="absolute top-2 right-2 bg-pink-500 text-white">
+                        FREE
+                      </Badge>
+                      {item.photos && item.photos[0] ? (
+                        <img
+                          src={item.photos[0]}
+                          alt={item.name}
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-pink-100 flex items-center justify-center rounded-lg">
+                          <Gift className="h-16 w-16 text-pink-400" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <CardContent className="px-4 pt-0 pb-4">
+                    <h3 className="font-bold text-lg mb-1 text-slate-800 truncate">
+                      {item.name}
+                    </h3>
+                    <div className="flex items-center gap-2 text-slate-600 mb-3">
+                      <MapPin className="h-3 w-3" />
+                      <span className="text-sm">
+                        {item.city || userPostalCode || "Nearby"}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                      onClick={() => navigate(`/items/${item.id}`)}
+                    >
+                      <Gift className="h-3 w-3 mr-1" />
+                      Claim Gift
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
 

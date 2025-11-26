@@ -32,6 +32,7 @@ const formSchema = z.object({
   isLendable: z.boolean().default(false),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
+  isGift: z.boolean().default(false),
   availableFromDate: z.string().optional(),
   availableToDate: z.string().optional(),
   securityDeposit: z.coerce
@@ -516,6 +517,24 @@ export default function LendPage() {
                             </FormControl>
                             <FormLabel className="!mt-0">
                               Available for Rent
+                            </FormLabel>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="isGift"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel className="!mt-0">
+                              Free Gift (Give Away)
                             </FormLabel>
                           </FormItem>
                         )}

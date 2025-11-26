@@ -503,7 +503,7 @@ export default function LendPage() {
                   {/* Sharing options */}
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Neighbours can</h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-4 gap-2">
                       <Button
                         type="button"
                         variant={watchIsLendable ? "default" : "outline"}

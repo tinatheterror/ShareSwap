@@ -53,8 +53,7 @@ export default function WishlistsPage() {
   const [formData, setFormData] = useState({
     itemName: "",
     description: "",
-    category: "",
-    needType: "borrow",
+    needTypes: ["borrow"] as string[],
     preferredLocation: "",
     neededDate: "",
     returnDate: "",

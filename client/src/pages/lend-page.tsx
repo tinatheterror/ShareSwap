@@ -530,7 +530,7 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <ArrowLeftRight className="h-4 w-4" />
+                        <DollarSign className="h-4 w-4" />
                         <span className="text-sm font-medium">Rent It</span>
                       </Button>
 
@@ -564,7 +564,7 @@ export default function LendPage() {
                         }}
                       >
                         <Gift className="h-4 w-4" />
-                        <span className="text-sm font-medium">Gift It</span>
+                        <span className="text-sm font-medium">Have It</span>
                       </Button>
                     </div>
                     <p className="text-sm text-gray-400">Select one or more options</p>

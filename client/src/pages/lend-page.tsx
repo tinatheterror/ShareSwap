@@ -421,7 +421,7 @@ export default function LendPage() {
                 <CardContent className="pt-6 space-y-6">
                   {/* Item Name */}
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">I'm sharing my </h3>
+                    <h3 className="font-medium">I'm Sharing my </h3>
                     <FormField
                       control={form.control}
                       name="name"
@@ -454,10 +454,10 @@ export default function LendPage() {
                   </div>
 
                   {/* Condition Rating - Moved below Features and Details */}
-                  <div className="space-y-4 border-t pt-4 bg-white p-4 rounded-lg border">
+                  <div className="space-y-4 border-t pt-4">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">Condition Rating (1-10)</h3>
-                      <span className="text-sm font-semibold text-teal-700">
+                      <span className="text-sm font-semibold text-gray-700">
                         Rating: {form.watch("conditionRating")}/10
                       </span>
                     </div>

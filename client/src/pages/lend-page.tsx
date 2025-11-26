@@ -20,7 +20,18 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X, Heart, CheckCircle, Download, HandHeart, ArrowLeftRight, Repeat, Gift } from "lucide-react";
+import {
+  Upload,
+  MapPin,
+  X,
+  Heart,
+  CheckCircle,
+  Download,
+  HandHeart,
+  ArrowLeftRight,
+  Repeat,
+  Gift,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
@@ -462,7 +473,7 @@ export default function LendPage() {
 
                   {/* Sharing options */}
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Sharing Options</h3>
+                    <h3 className="font-medium">Neighbours cans</h3>
                     <div className="grid grid-cols-4 gap-2">
                       <FormField
                         control={form.control}
@@ -528,7 +539,9 @@ export default function LendPage() {
                         )}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">Select one or more options</p>
+                    <p className="text-xs text-muted-foreground">
+                      Select one or more options
+                    </p>
                   </div>
 
                   {/* Availability Period - Show when lending is enabled */}

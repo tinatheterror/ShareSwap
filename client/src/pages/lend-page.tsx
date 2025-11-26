@@ -552,7 +552,7 @@ export default function LendPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsGift ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"}`}
+                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsGift ? "bg-pink-500 hover:bg-pink-600 text-white border-pink-500" : "bg-white hover:bg-gray-50"}`}
                         onClick={() => {
                           const newGiftValue = !watchIsGift;
                           form.setValue("isGift", newGiftValue);

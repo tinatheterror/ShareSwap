@@ -64,7 +64,6 @@ export default function LendPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [availabilityOption, setAvailabilityOption] = useState<
     | "indefinitely"
-    | "7days"
     | "1month"
     | "3months"
     | "6months"
@@ -548,31 +547,6 @@ export default function LendPage() {
                         Indefinitely
                       </Button>
 
-                      <Button
-                        type="button"
-                        variant={
-                          availabilityOption === "7days" ? "default" : "outline"
-                        }
-                        className="justify-start"
-                        onClick={() => {
-                          setAvailabilityOption("7days");
-                          const today = new Date();
-                          const endDate = new Date(today);
-                          endDate.setDate(endDate.getDate() + 7);
-                          form.setValue(
-                            "availableFromDate",
-                            today.toISOString().split("T")[0],
-                          );
-                          form.setValue(
-                            "availableToDate",
-                            endDate.toISOString().split("T")[0],
-                          );
-                        }}
-                      >
-                        7 days
-                      </Button>
-
-                      {/* Row 2 */}
                       <Button
                         type="button"
                         variant={

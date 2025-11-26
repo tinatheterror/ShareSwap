@@ -20,6 +20,7 @@ import {
   Coins, 
   Package, 
   Heart,
+  HandHeart,
   Bell,
   Settings,
   Shield,
@@ -290,7 +291,7 @@ export default function ProfilePage() {
                             style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
-                            <Heart className="h-3 w-3 mr-0.5" />
+                            <HandHeart className="h-3 w-3 mr-0.5" />
                             Borrow It
                           </Button>
                         )}

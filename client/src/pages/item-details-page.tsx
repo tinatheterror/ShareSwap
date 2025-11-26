@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
-import { Coins } from "lucide-react";
+import { Coins, HandHeart, DollarSign, ArrowLeftRight } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
 
@@ -59,7 +59,8 @@ export default function ItemDetailsPage() {
           </p>
         </div>
         <Button onClick={() => setRequestType("BORROW")} className="w-32">
-          Request to Borrow
+          <HandHeart className="h-4 w-4 mr-1" />
+          Borrow
         </Button>
       </div>
     ) : null;

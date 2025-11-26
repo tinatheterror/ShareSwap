@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, Camera, Coins, MapPin, Heart, DollarSign, ArrowLeftRight } from "lucide-react";
+import { Sparkles, Camera, Coins, MapPin, HandHeart, DollarSign, ArrowLeftRight } from "lucide-react";
 import { useLocation } from "wouter";
 import type { SelectItem } from "@db/schema";
 
@@ -144,7 +144,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                     style={{ backgroundColor: '#0DCEA1' }}
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <Heart className="h-3 w-3 mr-0.5" />
+                    <HandHeart className="h-3 w-3 mr-0.5" />
                     Borrow It
                   </Button>
                 )}

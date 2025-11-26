@@ -501,13 +501,13 @@ export default function LendPage() {
                   </div>
 
                   {/* Sharing options */}
-                  <div className="space-y-4 border-t pt-4">
+                  <div className="space-y-3 border-t pt-4">
                     <h3 className="font-medium">Neighbours can</h3>
                     <div className="grid grid-cols-4 gap-2">
                       <Button
                         type="button"
-                        variant={watchIsLendable ? "default" : "outline"}
-                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsLendable ? "bg-teal-600 hover:bg-teal-700" : ""} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        variant="outline"
+                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsLendable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -515,14 +515,14 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <HandHeart className="h-5 w-5" />
+                        <HandHeart className="h-4 w-4" />
                         <span className="text-sm font-medium">Borrow It</span>
                       </Button>
 
                       <Button
                         type="button"
-                        variant={watchIsRentable ? "default" : "outline"}
-                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsRentable ? "bg-teal-600 hover:bg-teal-700" : ""} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        variant="outline"
+                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsRentable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -530,14 +530,14 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <DollarSign className="h-5 w-5" />
+                        <ArrowLeftRight className="h-4 w-4" />
                         <span className="text-sm font-medium">Rent It</span>
                       </Button>
 
                       <Button
                         type="button"
-                        variant={watchIsSwappable ? "default" : "outline"}
-                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsSwappable ? "bg-teal-600 hover:bg-teal-700" : ""} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        variant="outline"
+                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsSwappable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -545,14 +545,14 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <ArrowLeftRight className="h-5 w-5" />
+                        <ArrowLeftRight className="h-4 w-4" />
                         <span className="text-sm font-medium">Swap It</span>
                       </Button>
 
                       <Button
                         type="button"
-                        variant={watchIsGift ? "default" : "outline"}
-                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsGift ? "bg-pink-500 hover:bg-pink-600" : ""}`}
+                        variant="outline"
+                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsGift ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"}`}
                         onClick={() => {
                           const newGiftValue = !watchIsGift;
                           form.setValue("isGift", newGiftValue);
@@ -563,10 +563,11 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <Gift className="h-5 w-5" />
-                        <span className="text-sm font-medium">Have It</span>
+                        <Gift className="h-4 w-4" />
+                        <span className="text-sm font-medium">Gift It</span>
                       </Button>
                     </div>
+                    <p className="text-sm text-gray-400">Select one or more options</p>
                   </div>
 
                   {/* Availability Period - Hide when Have It (gift) is selected */}

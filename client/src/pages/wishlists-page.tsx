@@ -20,7 +20,6 @@ import {
   MapPin,
   Clock,
   ArrowRightLeft,
-  ShoppingCart,
   Repeat,
   Calendar,
   Archive,
@@ -181,48 +180,18 @@ export default function WishlistsPage() {
           {showAddForm && (
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      I'm looking for *
-                    </label>
-                    <Input
-                      value={formData.itemName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, itemName: e.target.value })
-                      }
-                      placeholder="e.g., Power drill, Camping tent, Stand mixer"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Category
-                    </label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, category: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="tools">Tools & Equipment</SelectItem>
-                        <SelectItem value="electronics">Electronics</SelectItem>
-                        <SelectItem value="outdoor">
-                          Outdoor & Sports
-                        </SelectItem>
-                        <SelectItem value="kitchen">
-                          Kitchen & Appliances
-                        </SelectItem>
-                        <SelectItem value="home">Home & Garden</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    I'm looking for *
+                  </label>
+                  <Input
+                    value={formData.itemName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, itemName: e.target.value })
+                    }
+                    placeholder="e.g., Power drill, Camping tent, Stand mixer"
+                    required
+                  />
                 </div>
 
                 <div>
@@ -241,29 +210,37 @@ export default function WishlistsPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Need Type
+                    I want to
                   </label>
-                  <Select
-                    value={formData.needType}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, needType: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="borrow">
-                        Borrow - Use temporarily
-                      </SelectItem>
-                      <SelectItem value="rent">
-                        Rent - Pay for usage
-                      </SelectItem>
-                      <SelectItem value="swap">
-                        Swap - Exchange items
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant={formData.needType === "borrow" ? "default" : "outline"}
+                      className="justify-center"
+                      onClick={() => setFormData({ ...formData, needType: "borrow" })}
+                    >
+                      <HandHeart className="h-4 w-4 mr-2" />
+                      Borrow It
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.needType === "rent" ? "default" : "outline"}
+                      className="justify-center"
+                      onClick={() => setFormData({ ...formData, needType: "rent" })}
+                    >
+                      <ArrowRightLeft className="h-4 w-4 mr-2" />
+                      Rent It
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.needType === "swap" ? "default" : "outline"}
+                      className="justify-center"
+                      onClick={() => setFormData({ ...formData, needType: "swap" })}
+                    >
+                      <Repeat className="h-4 w-4 mr-2" />
+                      Swap It
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -378,15 +355,8 @@ export default function WishlistsPage() {
                     )}
 
                     <div className="space-y-2 text-sm">
-                      {item.category && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Category:</span>
-                          <Badge variant="outline">{item.category}</Badge>
-                        </div>
-                      )}
-
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">Need Type:</span>
+                        <span className="font-medium">I want to:</span>
                         <Badge
                           variant="secondary"
                           className={
@@ -407,7 +377,7 @@ export default function WishlistsPage() {
                             <Repeat className="h-3 w-3 mr-1" />
                           )}
                           {item.needType.charAt(0).toUpperCase() +
-                            item.needType.slice(1)}
+                            item.needType.slice(1)} It
                         </Badge>
                       </div>
 
@@ -490,21 +460,14 @@ export default function WishlistsPage() {
                     )}
 
                     <div className="space-y-2 text-sm">
-                      {item.category && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Category:</span>
-                          <Badge variant="outline">{item.category}</Badge>
-                        </div>
-                      )}
-
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">Need Type:</span>
+                        <span className="font-medium">I want to:</span>
                         <Badge
                           variant="secondary"
                           className="bg-teal-50 text-teal-700 border-teal-200"
                         >
                           {item.needType === "borrow" && (
-                            <ShoppingCart className="h-3 w-3 mr-1" />
+                            <HandHeart className="h-3 w-3 mr-1" />
                           )}
                           {item.needType === "rent" && (
                             <ArrowRightLeft className="h-3 w-3 mr-1" />
@@ -513,7 +476,7 @@ export default function WishlistsPage() {
                             <Repeat className="h-3 w-3 mr-1" />
                           )}
                           {item.needType.charAt(0).toUpperCase() +
-                            item.needType.slice(1)}
+                            item.needType.slice(1)} It
                         </Badge>
                       </div>
 

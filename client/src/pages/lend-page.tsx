@@ -20,7 +20,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Upload, MapPin, X, Heart, CheckCircle, Download } from "lucide-react";
+import { Upload, MapPin, X, Heart, CheckCircle, Download, HandHeart, DollarSign, ArrowLeftRight, Gift } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
@@ -289,10 +289,10 @@ export default function LendPage() {
   };
 
   const watchIsLendable = form.watch("isLendable");
+  const watchIsRentable = form.watch("isRentable");
+  const watchIsSwappable = form.watch("isSwappable");
+  const watchIsGift = form.watch("isGift");
   const watchPostalCode = form.watch("postalCode");
-
-  // Debug logging
-  console.log("watchIsLendable:", watchIsLendable);
 
   return (
     <div className="min-h-screen">
@@ -447,6 +447,36 @@ export default function LendPage() {
                     />
                   </div>
 
+                  {/* Condition Rating - Moved below Features and Details */}
+                  <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium">Condition Rating (1-10)</h3>
+                      <span className="text-sm font-semibold text-teal-700">
+                        Rating: {form.watch("conditionRating")}/10
+                      </span>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="conditionRating"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Slider
+                              value={[field.value]}
+                              onValueChange={(value) =>
+                                field.onChange(value[0])
+                              }
+                              max={10}
+                              min={1}
+                              step={1}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   {/* Location field */}
                   <div className="space-y-4 border-t pt-4">
                     <div className="flex items-center justify-between">
@@ -467,82 +497,74 @@ export default function LendPage() {
                   {/* Sharing options */}
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Sharing Options</h3>
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="isLendable"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">
-                              Available for Lending
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        variant={watchIsLendable ? "default" : "outline"}
+                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsLendable ? "bg-teal-600 hover:bg-teal-700" : ""} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={watchIsGift}
+                        onClick={() => {
+                          if (!watchIsGift) {
+                            form.setValue("isLendable", !watchIsLendable);
+                          }
+                        }}
+                      >
+                        <HandHeart className="h-5 w-5" />
+                        <span className="text-sm font-medium">Borrow It</span>
+                      </Button>
 
-                      <FormField
-                        control={form.control}
-                        name="isSwappable"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">
-                              Available for Swaps
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                      <Button
+                        type="button"
+                        variant={watchIsRentable ? "default" : "outline"}
+                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsRentable ? "bg-teal-600 hover:bg-teal-700" : ""} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={watchIsGift}
+                        onClick={() => {
+                          if (!watchIsGift) {
+                            form.setValue("isRentable", !watchIsRentable);
+                          }
+                        }}
+                      >
+                        <DollarSign className="h-5 w-5" />
+                        <span className="text-sm font-medium">Rent It</span>
+                      </Button>
 
-                      <FormField
-                        control={form.control}
-                        name="isRentable"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">
-                              Available for Rent
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                      <Button
+                        type="button"
+                        variant={watchIsSwappable ? "default" : "outline"}
+                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsSwappable ? "bg-teal-600 hover:bg-teal-700" : ""} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        disabled={watchIsGift}
+                        onClick={() => {
+                          if (!watchIsGift) {
+                            form.setValue("isSwappable", !watchIsSwappable);
+                          }
+                        }}
+                      >
+                        <ArrowLeftRight className="h-5 w-5" />
+                        <span className="text-sm font-medium">Swap It</span>
+                      </Button>
 
-                      <FormField
-                        control={form.control}
-                        name="isGift"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="!mt-0">
-                              Free Gift (Give Away)
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                      <Button
+                        type="button"
+                        variant={watchIsGift ? "default" : "outline"}
+                        className={`h-auto py-3 flex flex-col items-center gap-1 ${watchIsGift ? "bg-pink-500 hover:bg-pink-600" : ""}`}
+                        onClick={() => {
+                          const newGiftValue = !watchIsGift;
+                          form.setValue("isGift", newGiftValue);
+                          if (newGiftValue) {
+                            form.setValue("isLendable", false);
+                            form.setValue("isRentable", false);
+                            form.setValue("isSwappable", false);
+                          }
+                        }}
+                      >
+                        <Gift className="h-5 w-5" />
+                        <span className="text-sm font-medium">Have It</span>
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Availability Period - Show when lending is enabled */}
+                  {/* Availability Period - Hide when Have It (gift) is selected */}
+                  {!watchIsGift && (
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Availability Period</h3>
 
@@ -752,6 +774,7 @@ export default function LendPage() {
                       </div>
                     )}
                   </div>
+                  )}
 
                   {/* Security Deposit */}
                   {watchIsLendable && (
@@ -778,36 +801,6 @@ export default function LendPage() {
                       />
                     </div>
                   )}
-
-                  {/* Condition Rating */}
-                  <div className="space-y-4 border-t pt-4 bg-[#D4F7F1] p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">Condition Rating (1-10)</h3>
-                      <span className="text-sm font-semibold text-teal-700">
-                        Rating: {form.watch("conditionRating")}/10
-                      </span>
-                    </div>
-                    <FormField
-                      control={form.control}
-                      name="conditionRating"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Slider
-                              value={[field.value]}
-                              onValueChange={(value) =>
-                                field.onChange(value[0])
-                              }
-                              max={10}
-                              min={1}
-                              step={1}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                 </CardContent>
               </Card>
             </div>

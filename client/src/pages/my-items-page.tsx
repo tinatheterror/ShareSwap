@@ -121,19 +121,11 @@ export default function MyItemsPage() {
             <h3 className="text-xl font-semibold text-gray-600 mb-2">
               {filter === "all" ? "No items yet" : `No ${filter} items`}
             </h3>
-            <p className="text-gray-500 mb-6">
+            <p className="text-gray-500">
               {filter === "all"
                 ? "Start sharing by adding your first item to the marketplace"
                 : `You don't have any ${filter} items at the moment`}
             </p>
-            {filter === "all" && (
-              <Link href="/lend">
-                <Button className="flex items-center gap-2 mx-auto">
-                  <Plus className="h-4 w-4" />
-                  Add New Item
-                </Button>
-              </Link>
-            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

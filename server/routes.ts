@@ -726,7 +726,6 @@ Return only the JSON object, no other text.`,
       const isLendable = req.body.isLendable === "true";
       const isSwappable = req.body.isSwappable === "true";
       const isRentable = req.body.isRentable === "true";
-      const isGiftable = req.body.isGiftable === "true";
 
     // Calculate ShareCoins reward based on sharing modes
     let shareCoinsReward = 0;
@@ -765,10 +764,6 @@ Return only the JSON object, no other text.`,
       }
     }
 
-    if (isGiftable) {
-      shareCoinsReward += 50; // Generous reward for gifting items
-    }
-
     // Ensure shareCoinsReward is a valid number
     if (isNaN(shareCoinsReward)) {
       shareCoinsReward = 5; // Fallback to base reward
@@ -790,7 +785,6 @@ Return only the JSON object, no other text.`,
       isLendable,
       isSwappable,
       isRentable,
-      isGiftable,
       securityDeposit: req.body.securityDeposit || "0",
       lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
       shareCoinsReward: shareCoinsReward.toString(),
@@ -812,7 +806,6 @@ Return only the JSON object, no other text.`,
         isLendable && "Lending",
         isSwappable && "Swapping",
         isRentable && "Renting",
-        isGiftable && "Gifting",
       ]
         .filter(Boolean)
         .join(", ")})`,
@@ -896,8 +889,6 @@ Return only the JSON object, no other text.`,
         whereConditions.push(eq(items.isLendable, true));
       } else if (type === 'swap') {
         whereConditions.push(eq(items.isSwappable, true));
-      } else if (type === 'gift') {
-        whereConditions.push(eq(items.isGiftable, true));
       }
 
       // Query only items within the bounding box (dramatically reduces data)
@@ -954,8 +945,6 @@ Return only the JSON object, no other text.`,
         whereConditions.push(eq(items.isLendable, true));
       } else if (type === 'swap') {
         whereConditions.push(eq(items.isSwappable, true));
-      } else if (type === 'gift') {
-        whereConditions.push(eq(items.isGiftable, true));
       }
 
       const allItems = await db.query.items.findMany({

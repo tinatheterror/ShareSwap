@@ -168,10 +168,6 @@ export default function WishlistsPage() {
             <Heart className="h-8 w-8 text-primary" />
             My Wishlist
           </h1>
-          <p className="text-muted-foreground">
-            Create demand signals for items you need. Get notified when they
-            become available.
-          </p>
         </div>
 
         {/* Filter Tabs */}

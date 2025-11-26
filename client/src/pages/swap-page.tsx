@@ -225,9 +225,6 @@ export default function SwapPage() {
                   </>
                 )}
               </Button>
-              <p className="text-sm text-gray-600 mt-4">
-                Create demand signals for items you need
-              </p>
             </div>
           </div>
         ) : filteredItems.length === 0 ? (

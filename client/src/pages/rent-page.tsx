@@ -289,9 +289,6 @@ export default function RentPage() {
                   </>
                 )}
               </Button>
-              <p className="text-sm text-gray-600 mt-4">
-                Create demand signals for items you need
-              </p>
             </div>
           </div>
         )}

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, ChevronLeft, ChevronRight, Home, Coins, Gamepad2, Heart, CheckCircle } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Home, Coins, Gamepad2, Heart, CheckCircle, Package, Trophy } from 'lucide-react';
 
 interface TutorialStep {
   id: number;
@@ -72,14 +72,20 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 8,
-    title: 'Fulfill Wishlists',
-    description: 'Help neighbors by sharing items from their wishlist and earn bonus ShareCoins! Everyone wins when we share.',
+    title: 'Your Wishlist',
+    description: 'Create demand signals for items you need. Add items to your wishlist and get notified when they become available in your area!',
     icon: <Heart className="h-8 w-8 text-teal-600" />,
-    highlightSelector: '[data-tutorial="earn-button"]',
-    position: 'top'
+    position: 'center'
   },
   {
     id: 9,
+    title: 'Earn Achievements',
+    description: 'Unlock badges by participating in the sharing community. Complete milestones, help neighbors, and earn rewards!',
+    icon: <Trophy className="h-8 w-8 text-teal-600" />,
+    position: 'center'
+  },
+  {
+    id: 10,
     title: 'You\'re All Set! 🎊',
     description: 'You now know all the key features of ShareSwap. Start sharing, earning, and connecting with your community!',
     icon: <CheckCircle className="h-8 w-8 text-teal-600" />,

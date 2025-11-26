@@ -77,9 +77,6 @@ export default function MyItemsPage() {
             <Package className="h-8 w-8 text-primary" />
             My Shared Items
           </h1>
-          <p className="text-muted-foreground">
-            Manage your uploaded items and track their availability
-          </p>
         </div>
 
         {/* Filter Tabs */}

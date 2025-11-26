@@ -89,9 +89,6 @@ export default function AchievementsPage() {
             <Trophy className="h-8 w-8 text-primary" />
             Your Achievements
           </h1>
-          <p className="text-muted-foreground">
-            Unlock badges by participating in the sharing community
-          </p>
         </div>
 
         {/* Stats Overview */}

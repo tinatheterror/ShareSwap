@@ -528,26 +528,26 @@ export default function LendPage() {
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Availability Period</h3>
 
-                    {/* Default Option */}
-                    <Button
-                      type="button"
-                      variant={
-                        availabilityOption === "indefinitely"
-                          ? "default"
-                          : "outline"
-                      }
-                      className="w-full justify-start"
-                      onClick={() => {
-                        setAvailabilityOption("indefinitely");
-                        form.setValue("availableFromDate", undefined);
-                        form.setValue("availableToDate", undefined);
-                      }}
-                    >
-                      Available Indefinitely
-                    </Button>
-
-                    {/* Quick-select Buttons */}
+                    {/* Quick-select Buttons - 3 rows x 2 columns */}
                     <div className="grid grid-cols-2 gap-2">
+                      {/* Row 1 */}
+                      <Button
+                        type="button"
+                        variant={
+                          availabilityOption === "indefinitely"
+                            ? "default"
+                            : "outline"
+                        }
+                        className="justify-start"
+                        onClick={() => {
+                          setAvailabilityOption("indefinitely");
+                          form.setValue("availableFromDate", undefined);
+                          form.setValue("availableToDate", undefined);
+                        }}
+                      >
+                        Indefinitely
+                      </Button>
+
                       <Button
                         type="button"
                         variant={
@@ -572,6 +572,7 @@ export default function LendPage() {
                         7 days
                       </Button>
 
+                      {/* Row 2 */}
                       <Button
                         type="button"
                         variant={
@@ -624,6 +625,7 @@ export default function LendPage() {
                         3 months
                       </Button>
 
+                      {/* Row 3 */}
                       <Button
                         type="button"
                         variant={
@@ -655,7 +657,7 @@ export default function LendPage() {
                         variant={
                           availabilityOption === "1year" ? "default" : "outline"
                         }
-                        className="justify-start col-span-2"
+                        className="justify-start"
                         onClick={() => {
                           setAvailabilityOption("1year");
                           const today = new Date();

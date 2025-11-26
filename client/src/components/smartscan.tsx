@@ -15,7 +15,7 @@ export function SmartScan({ onAnalysisComplete }: SmartScanProps) {
           </div>
           <div>
             <h3 className="font-semibold text-lg text-gray-900">
-              Smart Scan — Only in the App
+              Smart Scan — Mobile-only
             </h3>
           </div>
         </div>
@@ -25,10 +25,10 @@ export function SmartScan({ onAnalysisComplete }: SmartScanProps) {
             <Smartphone className="w-8 h-8 text-teal-600" />
           </div>
           <p className="text-gray-700 font-medium mb-2">
-            Use the app to scan your item
+            Use the app to scan your item and we'll do the writing for you.
           </p>
           <p className="text-sm text-gray-500">
-            and we'll do the writing for you.
+            Coming soon to iOS and Android.
           </p>
         </div>
 

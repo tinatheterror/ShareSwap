@@ -69,7 +69,7 @@ export default function LendPage() {
   const [showMatchingModal, setShowMatchingModal] = useState(false);
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
   const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">(
-    "smartscan",
+    "manual",
   );
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
   const [importUrl, setImportUrl] = useState<string>("");

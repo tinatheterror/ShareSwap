@@ -575,8 +575,8 @@ export default function LendPage() {
                     <div className="space-y-4 border-t pt-4">
                       <h3 className="font-medium">Availability Period</h3>
 
-                      {/* Quick-select Buttons - all in 1 row */}
-                      <div className="flex flex-wrap gap-2">
+                      {/* Quick-select Buttons - all in 1 row, full width */}
+                      <div className="flex gap-2 w-full">
                         <Button
                           type="button"
                           variant={
@@ -585,6 +585,7 @@ export default function LendPage() {
                               : "outline"
                           }
                           size="sm"
+                          className="flex-1"
                           onClick={() => {
                             setAvailabilityOption("indefinitely");
                             form.setValue("availableFromDate", undefined);
@@ -602,6 +603,7 @@ export default function LendPage() {
                               : "outline"
                           }
                           size="sm"
+                          className="flex-1"
                           onClick={() => {
                             setAvailabilityOption("1month");
                             const today = new Date();
@@ -628,6 +630,7 @@ export default function LendPage() {
                               : "outline"
                           }
                           size="sm"
+                          className="flex-1"
                           onClick={() => {
                             setAvailabilityOption("3months");
                             const today = new Date();
@@ -654,6 +657,7 @@ export default function LendPage() {
                               : "outline"
                           }
                           size="sm"
+                          className="flex-1"
                           onClick={() => {
                             setAvailabilityOption("6months");
                             const today = new Date();
@@ -680,6 +684,7 @@ export default function LendPage() {
                               : "outline"
                           }
                           size="sm"
+                          className="flex-1"
                           onClick={() => {
                             setAvailabilityOption("1year");
                             const today = new Date();

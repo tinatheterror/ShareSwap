@@ -112,6 +112,30 @@ export default function LendPage() {
     queryKey: ["/api/all-wishlists"],
   });
 
+  // Smart matching function: requires substantial word coverage before showing match
+  const isGoodMatch = (typed: string, wishlistName: string): boolean => {
+    const typedWords = typed.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+    const wishlistWords = wishlistName.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+    
+    // Check if any typed word substantially matches a wishlist word
+    for (const typedWord of typedWords) {
+      for (const wishlistWord of wishlistWords) {
+        // Word must match at least 60% of the wishlist word OR be 5+ chars matching
+        if (wishlistWord.startsWith(typedWord)) {
+          const coverage = typedWord.length / wishlistWord.length;
+          if (coverage >= 0.6 || typedWord.length >= 5) {
+            return true;
+          }
+        }
+        // Also check if wishlist word is fully contained in typed word
+        if (typedWord.includes(wishlistWord) && wishlistWord.length >= 4) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   // Check for wishlist matches when item name changes (debounced to not interrupt typing)
   useEffect(() => {
     const itemName = form.watch("name");
@@ -120,9 +144,7 @@ export default function LendPage() {
     const timeoutId = setTimeout(() => {
       if (itemName && itemName.length >= 4 && Array.isArray(allWishlists)) {
         const matches = allWishlists.filter(
-          (wishlist: any) =>
-            wishlist.itemName.toLowerCase().includes(itemName.toLowerCase()) ||
-            itemName.toLowerCase().includes(wishlist.itemName.toLowerCase()),
+          (wishlist: any) => isGoodMatch(itemName, wishlist.itemName)
         );
         setMatchedWishlists(matches);
 

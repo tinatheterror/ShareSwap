@@ -71,6 +71,7 @@ export default function LendPage() {
   const [matchedWishlists, setMatchedWishlists] = useState<any[]>([]);
   const [showMatchingModal, setShowMatchingModal] = useState(false);
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
+  const [matchModalDismissed, setMatchModalDismissed] = useState(false);
   const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">(
     "manual",
   );
@@ -148,7 +149,8 @@ export default function LendPage() {
         );
         setMatchedWishlists(matches);
 
-        if (matches.length > 0 && !showMatchingModal) {
+        // Only show modal if not already dismissed by user
+        if (matches.length > 0 && !showMatchingModal && !matchModalDismissed) {
           setShowMatchingModal(true);
           // Auto-select the first match
           setSelectedWishlistMatch(matches[0]);
@@ -165,12 +167,14 @@ export default function LendPage() {
         }
       } else {
         setMatchedWishlists([]);
+        // Reset dismissed flag when name changes significantly (no matches)
+        setMatchModalDismissed(false);
       }
     }, 600);
 
     // Cleanup: cancel the timeout if user keeps typing
     return () => clearTimeout(timeoutId);
-  }, [form.watch("name"), allWishlists, showMatchingModal]);
+  }, [form.watch("name"), allWishlists, showMatchingModal, matchModalDismissed]);
 
   const [smartScanAnalysis, setSmartScanAnalysis] = useState<any>(null);
 
@@ -1025,7 +1029,10 @@ export default function LendPage() {
                     variant="ghost"
                     size="sm"
                     className="absolute top-2 right-2 text-white hover:bg-white/20"
-                    onClick={() => setShowMatchingModal(false)}
+                    onClick={() => {
+                      setShowMatchingModal(false);
+                      setMatchModalDismissed(true);
+                    }}
                   >
                     <X className="h-5 w-5" />
                   </Button>
@@ -1130,6 +1137,7 @@ export default function LendPage() {
                       onClick={() => {
                         setSelectedWishlistMatch(null);
                         setShowMatchingModal(false);
+                        setMatchModalDismissed(true);
                       }}
                       className="flex-1 h-12 text-gray-600 border-gray-300 hover:bg-gray-50"
                     >
@@ -1143,6 +1151,7 @@ export default function LendPage() {
                       <Button
                         onClick={() => {
                           setShowMatchingModal(false);
+                          setMatchModalDismissed(true);
                           if (
                             selectedWishlistMatch?.neededDate &&
                             selectedWishlistMatch?.returnDate

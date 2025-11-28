@@ -31,11 +31,13 @@ import {
   DollarSign,
   ArrowLeftRight,
   Gift,
+  Sparkles,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion, AnimatePresence } from "framer-motion";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -122,6 +124,8 @@ export default function LendPage() {
 
       if (matches.length > 0 && !showMatchingModal) {
         setShowMatchingModal(true);
+        // Auto-select the first match
+        setSelectedWishlistMatch(matches[0]);
 
         // Auto-fill dates from the first matching wishlist
         const firstMatch = matches[0];
@@ -941,174 +945,229 @@ export default function LendPage() {
           </div>
         )}
 
-        {/* Wishlist Matching Modal */}
-        {showMatchingModal && matchedWishlists.length > 0 && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-r from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
-                      <Heart className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Perfect Match Found!
-                      </h3>
-                      <p className="text-gray-600">
-                        Someone in your community is looking for this item
-                      </p>
-                    </div>
-                  </div>
+        {/* Wishlist Matching Modal - Dating App Style */}
+        <AnimatePresence>
+          {showMatchingModal && matchedWishlists.length > 0 && (
+            <motion.div 
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {/* Floating Hearts Animation */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {[...Array(12)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute text-pink-400"
+                    initial={{ 
+                      x: Math.random() * window.innerWidth, 
+                      y: window.innerHeight + 50,
+                      rotate: Math.random() * 360,
+                      scale: 0.5 + Math.random() * 0.5
+                    }}
+                    animate={{ 
+                      y: -100,
+                      rotate: Math.random() * 360,
+                    }}
+                    transition={{ 
+                      duration: 3 + Math.random() * 2,
+                      repeat: Infinity,
+                      delay: Math.random() * 2,
+                      ease: "linear"
+                    }}
+                  >
+                    <Heart className="h-6 w-6 fill-current" />
+                  </motion.div>
+                ))}
+              </div>
+
+              <motion.div 
+                className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
+                initial={{ scale: 0.8, opacity: 0, y: 50 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 50 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              >
+                {/* Header with gradient */}
+                <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 p-6 text-white text-center relative overflow-hidden">
+                  {/* Sparkle effects */}
+                  <motion.div
+                    className="absolute top-2 left-4"
+                    animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Sparkles className="h-5 w-5 text-yellow-300" />
+                  </motion.div>
+                  <motion.div
+                    className="absolute top-4 right-6"
+                    animate={{ rotate: -360, scale: [1, 1.3, 1] }}
+                    transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+                  >
+                    <Sparkles className="h-4 w-4 text-yellow-200" />
+                  </motion.div>
+                  <motion.div
+                    className="absolute bottom-2 right-12"
+                    animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+                    transition={{ duration: 3, repeat: Infinity, delay: 1 }}
+                  >
+                    <Sparkles className="h-3 w-3 text-pink-200" />
+                  </motion.div>
+
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="absolute top-2 right-2 text-white hover:bg-white/20"
                     onClick={() => setShowMatchingModal(false)}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                   </Button>
+
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", delay: 0.2, damping: 10 }}
+                    className="mb-3"
+                  >
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto">
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <Heart className="h-8 w-8 text-white fill-white" />
+                      </motion.div>
+                    </div>
+                  </motion.div>
+
+                  <motion.h2 
+                    className="text-2xl font-bold"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    It's a Match!
+                  </motion.h2>
+                  <motion.p 
+                    className="text-pink-100 mt-1"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    Your neighbor needs exactly what you're sharing!
+                  </motion.p>
                 </div>
-              </div>
 
-              <div className="p-6">
-                <div className="space-y-4">
-                  {matchedWishlists.map((wishlist: any) => (
-                    <div
-                      key={wishlist.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        selectedWishlistMatch?.id === wishlist.id
-                          ? "border-teal-500 bg-teal-50"
-                          : "border-gray-200 hover:border-teal-300"
-                      }`}
-                      onClick={() => setSelectedWishlistMatch(wishlist)}
+                {/* Match Card */}
+                <div className="p-6">
+                  {selectedWishlistMatch && (
+                    <motion.div
+                      initial={{ y: 30, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="border-2 border-teal-400 bg-gradient-to-br from-teal-50 to-white rounded-xl p-4 shadow-lg"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold text-lg">
-                              {wishlist.itemName}
-                            </h4>
-                            {selectedWishlistMatch?.id === wishlist.id && (
-                              <CheckCircle className="h-5 w-5 text-teal-500" />
-                            )}
-                          </div>
-
-                          <p className="text-gray-600 mb-3">
-                            {wishlist.description}
-                          </p>
-
-                          <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
-                            <span className="flex items-center gap-1">
-                              <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center">
-                                <span className="text-teal-700 font-bold text-xs">
-                                  {wishlist.username?.charAt(0)}
-                                </span>
-                              </div>
-                              {wishlist.username}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {wishlist.distance}
-                            </span>
-                          </div>
-
-                          {wishlist.neededDate && wishlist.returnDate && (
-                            <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mb-2">
-                              <div className="flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4 text-teal-500" />
-                                <span className="text-teal-800 font-medium text-sm">
-                                  Perfect Date Match Available
-                                </span>
-                              </div>
-                              <div className="text-teal-700 text-sm mt-1">
-                                <div className="flex justify-between">
-                                  <span>
-                                    Needed:{" "}
-                                    {new Date(
-                                      wishlist.neededDate,
-                                    ).toLocaleDateString()}
-                                  </span>
-                                  <span>
-                                    Return:{" "}
-                                    {new Date(
-                                      wishlist.returnDate,
-                                    ).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-teal-600 mt-1">
-                                  Duration:{" "}
-                                  {Math.ceil(
-                                    (new Date(wishlist.returnDate).getTime() -
-                                      new Date(wishlist.neededDate).getTime()) /
-                                      (1000 * 60 * 60 * 24),
-                                  )}{" "}
-                                  days
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <h3 className="font-bold text-lg text-gray-900">
+                          {selectedWishlistMatch.itemName}
+                        </h3>
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 0.5, repeat: 2 }}
+                        >
+                          <CheckCircle className="h-5 w-5 text-teal-500" />
+                        </motion.div>
                       </div>
 
-                      <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-200">
+                      <p className="text-gray-600 text-sm mb-4">
+                        {selectedWishlistMatch.description}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-sm text-gray-600 mb-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 bg-teal-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">
-                              🪙
+                          <div className="w-8 h-8 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">
+                              {selectedWishlistMatch.username?.charAt(0).toUpperCase()}
                             </span>
                           </div>
-                          <span className="text-teal-800 font-semibold">
-                            Earn 10-20 ShareCoins for helping this neighbour!
+                          <span className="font-medium">{selectedWishlistMatch.username}</span>
+                        </div>
+                        <span className="flex items-center gap-1 text-gray-500">
+                          <MapPin className="h-4 w-4" />
+                          {selectedWishlistMatch.distance}
+                        </span>
+                      </div>
+
+                      {/* ShareCoins reward */}
+                      <motion.div 
+                        className="bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg p-3 border border-amber-200"
+                        animate={{ boxShadow: ["0 0 0 0 rgba(251, 191, 36, 0)", "0 0 0 8px rgba(251, 191, 36, 0.2)", "0 0 0 0 rgba(251, 191, 36, 0)"] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">🪙</span>
+                          <span className="text-amber-800 font-semibold">
+                            Earn 10-20 ShareCoins for helping!
                           </span>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
 
-                <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedWishlistMatch(null);
-                      setShowMatchingModal(false);
-                    }}
-                    className="flex-1"
+                  {/* Action Buttons */}
+                  <motion.div 
+                    className="flex gap-3 mt-6"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.6 }}
                   >
-                    Skip Matching
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowMatchingModal(false);
-                      // Auto-fill dates when a match is selected
-                      if (
-                        selectedWishlistMatch?.neededDate &&
-                        selectedWishlistMatch?.returnDate
-                      ) {
-                        form.setValue(
-                          "availableFromDate",
-                          selectedWishlistMatch.neededDate.split("T")[0],
-                        );
-                        form.setValue(
-                          "availableToDate",
-                          selectedWishlistMatch.returnDate.split("T")[0],
-                        );
-                        form.setValue("isLendable", true); // Ensure lending is enabled
-                      }
-                    }}
-                    disabled={!selectedWishlistMatch}
-                    className="flex-1 "
-                    style={{ backgroundColor: "#0DCEA1" }}
-                  >
-                    {selectedWishlistMatch
-                      ? "Match & Auto-Fill Dates"
-                      : "Select a Match"}
-                  </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedWishlistMatch(null);
+                        setShowMatchingModal(false);
+                      }}
+                      className="flex-1 h-12 text-gray-600 border-gray-300 hover:bg-gray-50"
+                    >
+                      Skip Matching
+                    </Button>
+                    <motion.div
+                      className="flex-1"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        onClick={() => {
+                          setShowMatchingModal(false);
+                          if (
+                            selectedWishlistMatch?.neededDate &&
+                            selectedWishlistMatch?.returnDate
+                          ) {
+                            form.setValue(
+                              "availableFromDate",
+                              selectedWishlistMatch.neededDate.split("T")[0],
+                            );
+                            form.setValue(
+                              "availableToDate",
+                              selectedWishlistMatch.returnDate.split("T")[0],
+                            );
+                            form.setValue("isLendable", true);
+                          }
+                          toast({
+                            title: "🎉 It's a Match!",
+                            description: `Dates auto-filled for ${selectedWishlistMatch?.username}'s request!`,
+                          });
+                        }}
+                        className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold shadow-lg"
+                      >
+                        Match & Auto-Fill Dates
+                      </Button>
+                    </motion.div>
+                  </motion.div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

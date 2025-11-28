@@ -71,7 +71,7 @@ export default function LendPage() {
   const [matchedWishlists, setMatchedWishlists] = useState<any[]>([]);
   const [showMatchingModal, setShowMatchingModal] = useState(false);
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
-  const [matchModalDismissed, setMatchModalDismissed] = useState(false);
+  const [listedItemData, setListedItemData] = useState<any>(null);
   const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">(
     "manual",
   );
@@ -137,44 +137,19 @@ export default function LendPage() {
     return false;
   };
 
-  // Check for wishlist matches when item name changes (debounced to not interrupt typing)
+  // Check for wishlist matches when item name changes (for background tracking, no popup during typing)
   useEffect(() => {
     const itemName = form.watch("name");
     
-    // Debounce: wait 600ms after user stops typing before showing match
-    const timeoutId = setTimeout(() => {
-      if (itemName && itemName.length >= 4 && Array.isArray(allWishlists)) {
-        const matches = allWishlists.filter(
-          (wishlist: any) => isGoodMatch(itemName, wishlist.itemName)
-        );
-        setMatchedWishlists(matches);
-
-        // Only show modal if not already dismissed by user
-        if (matches.length > 0 && !showMatchingModal && !matchModalDismissed) {
-          setShowMatchingModal(true);
-          // Auto-select the first match
-          setSelectedWishlistMatch(matches[0]);
-
-          // Auto-fill dates from the first matching wishlist
-          const firstMatch = matches[0];
-          if (firstMatch.neededDate && firstMatch.returnDate) {
-            form.setValue(
-              "availableFromDate",
-              firstMatch.neededDate.split("T")[0],
-            );
-            form.setValue("availableToDate", firstMatch.returnDate.split("T")[0]);
-          }
-        }
-      } else {
-        setMatchedWishlists([]);
-        // Reset dismissed flag when name changes significantly (no matches)
-        setMatchModalDismissed(false);
-      }
-    }, 600);
-
-    // Cleanup: cancel the timeout if user keeps typing
-    return () => clearTimeout(timeoutId);
-  }, [form.watch("name"), allWishlists, showMatchingModal, matchModalDismissed]);
+    if (itemName && itemName.length >= 4 && Array.isArray(allWishlists)) {
+      const matches = allWishlists.filter(
+        (wishlist: any) => isGoodMatch(itemName, wishlist.itemName)
+      );
+      setMatchedWishlists(matches);
+    } else {
+      setMatchedWishlists([]);
+    }
+  }, [form.watch("name"), allWishlists]);
 
   const [smartScanAnalysis, setSmartScanAnalysis] = useState<any>(null);
 
@@ -285,17 +260,6 @@ export default function LendPage() {
 
       const res = await apiRequest("POST", "/api/items", formData);
       const result = await res.json();
-
-      // If there's a selected wishlist match, create automatic connection
-      if (selectedWishlistMatch) {
-        await apiRequest("POST", "/api/auto-match", {
-          itemId: result.id,
-          wishlistId: selectedWishlistMatch.id,
-          lenderUserId: result.userId,
-          borrowerUserId: selectedWishlistMatch.userId,
-        });
-      }
-
       return result;
     },
     onSuccess: (data) => {
@@ -304,18 +268,18 @@ export default function LendPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/nearby-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
 
-      if (selectedWishlistMatch) {
-        toast({
-          title: "Item matched successfully!",
-          description: `Your ${form.getValues("name")} has been automatically matched with ${selectedWishlistMatch.username}'s request!`,
-        });
+      // Check if there are wishlist matches - show modal after listing
+      if (matchedWishlists.length > 0) {
+        setListedItemData(data);
+        setSelectedWishlistMatch(matchedWishlists[0]);
+        setShowMatchingModal(true);
       } else {
         toast({
           title: "Successfully Listed!",
-          description: `Your item has been added to ShareChest. You'll earn ${data.shareCoinsReward} ShareCoins for this listing.`,
+          description: `Your item has been added to ShareChest. You'll earn ${data.shareCoinsReward || 10} ShareCoins for this listing.`,
         });
+        navigate("/borrow");
       }
-      navigate("/borrow");
     },
     onError: (error: Error) => {
       toast({
@@ -1031,7 +995,11 @@ export default function LendPage() {
                     className="absolute top-2 right-2 text-white hover:bg-white/20"
                     onClick={() => {
                       setShowMatchingModal(false);
-                      setMatchModalDismissed(true);
+                      toast({
+                        title: "Successfully Listed!",
+                        description: `Your item has been added to ShareChest.`,
+                      });
+                      navigate("/borrow");
                     }}
                   >
                     <X className="h-5 w-5" />
@@ -1137,7 +1105,11 @@ export default function LendPage() {
                       onClick={() => {
                         setSelectedWishlistMatch(null);
                         setShowMatchingModal(false);
-                        setMatchModalDismissed(true);
+                        toast({
+                          title: "Successfully Listed!",
+                          description: `Your item has been added to ShareChest.`,
+                        });
+                        navigate("/borrow");
                       }}
                       className="flex-1 h-12 text-gray-600 border-gray-300 hover:bg-gray-50"
                     >
@@ -1149,31 +1121,33 @@ export default function LendPage() {
                       whileTap={{ scale: 0.98 }}
                     >
                       <Button
-                        onClick={() => {
-                          setShowMatchingModal(false);
-                          setMatchModalDismissed(true);
-                          if (
-                            selectedWishlistMatch?.neededDate &&
-                            selectedWishlistMatch?.returnDate
-                          ) {
-                            form.setValue(
-                              "availableFromDate",
-                              selectedWishlistMatch.neededDate.split("T")[0],
-                            );
-                            form.setValue(
-                              "availableToDate",
-                              selectedWishlistMatch.returnDate.split("T")[0],
-                            );
-                            form.setValue("isLendable", true);
+                        onClick={async () => {
+                          // Create the auto-match connection
+                          if (listedItemData && selectedWishlistMatch) {
+                            try {
+                              await apiRequest("POST", "/api/auto-match", {
+                                itemId: listedItemData.id,
+                                wishlistId: selectedWishlistMatch.id,
+                                lenderUserId: listedItemData.userId,
+                                borrowerUserId: selectedWishlistMatch.userId,
+                              });
+                              toast({
+                                title: "🎉 It's a Match!",
+                                description: `Your ${form.getValues("name")} has been matched with ${selectedWishlistMatch.username}'s request!`,
+                              });
+                            } catch (error) {
+                              toast({
+                                title: "Successfully Listed!",
+                                description: `Your item has been added to ShareChest.`,
+                              });
+                            }
                           }
-                          toast({
-                            title: "🎉 It's a Match!",
-                            description: `Dates auto-filled for ${selectedWishlistMatch?.username}'s request!`,
-                          });
+                          setShowMatchingModal(false);
+                          navigate("/borrow");
                         }}
                         className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold shadow-lg"
                       >
-                        Match & Auto-Fill Dates
+                        Match with {selectedWishlistMatch?.username}
                       </Button>
                     </motion.div>
                   </motion.div>

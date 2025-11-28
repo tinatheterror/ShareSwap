@@ -1139,17 +1139,13 @@ export default function LendPage() {
                         )}
                       </div>
 
-                      {/* ShareCoins reward - no card, just glowing text */}
-                      <motion.div 
-                        className="flex items-center gap-2"
-                        animate={{ textShadow: ["0 0 0 rgba(13, 148, 136, 0)", "0 0 12px rgba(13, 148, 136, 0.6)", "0 0 0 rgba(13, 148, 136, 0)"] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
+                      {/* ShareCoins reward */}
+                      <div className="flex items-center gap-2">
                         <span className="text-2xl">🪙</span>
                         <span style={{ color: "#0D9488" }} className="font-semibold">
                           Earn 10-20 ShareCoins for helping!
                         </span>
-                      </motion.div>
+                      </div>
                     </motion.div>
                   )}
 

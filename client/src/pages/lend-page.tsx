@@ -1112,7 +1112,8 @@ export default function LendPage() {
                         {selectedWishlistMatch.description}
                       </p>
 
-                      <div className="flex items-center gap-3 text-sm text-gray-600 mb-4">
+                      {/* Name, location, and date on same row */}
+                      <div className="flex items-center flex-wrap gap-3 text-sm text-gray-600 mb-4">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
                             <span className="text-white font-bold text-sm">
@@ -1125,36 +1126,29 @@ export default function LendPage() {
                           <MapPin className="h-4 w-4" />
                           {selectedWishlistMatch.distance}
                         </span>
-                      </div>
-
-                      {/* Compact date display */}
-                      {selectedWishlistMatch.neededDate && (
-                        <div className="bg-teal-50 rounded-lg px-3 py-2 mb-4">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="h-4 w-4 text-teal-600" />
-                            <span className="text-teal-800 font-medium">
+                        {selectedWishlistMatch.neededDate && (
+                          <span className="flex items-center gap-1 text-teal-600">
+                            <Calendar className="h-4 w-4" />
+                            <span className="font-medium">
                               {new Date(selectedWishlistMatch.neededDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                               {selectedWishlistMatch.returnDate && 
                                 ` - ${new Date(selectedWishlistMatch.returnDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
                               }
                             </span>
-                          </div>
-                        </div>
-                      )}
+                          </span>
+                        )}
+                      </div>
 
-                      {/* ShareCoins reward */}
+                      {/* ShareCoins reward - no card, just glowing text */}
                       <motion.div 
-                        className="rounded-lg p-3 border"
-                        style={{ backgroundColor: "#0D9488", borderColor: "#0D9488" }}
-                        animate={{ boxShadow: ["0 0 0 0 rgba(13, 148, 136, 0)", "0 0 0 8px rgba(13, 148, 136, 0.2)", "0 0 0 0 rgba(13, 148, 136, 0)"] }}
+                        className="flex items-center gap-2"
+                        animate={{ textShadow: ["0 0 0 rgba(13, 148, 136, 0)", "0 0 12px rgba(13, 148, 136, 0.6)", "0 0 0 rgba(13, 148, 136, 0)"] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">🪙</span>
-                          <span className="text-white font-semibold">
-                            Earn 10-20 ShareCoins for helping!
-                          </span>
-                        </div>
+                        <span className="text-2xl">🪙</span>
+                        <span style={{ color: "#0D9488" }} className="font-semibold">
+                          Earn 10-20 ShareCoins for helping!
+                        </span>
                       </motion.div>
                     </motion.div>
                   )}

@@ -1106,13 +1106,14 @@ export default function LendPage() {
 
                       {/* ShareCoins reward */}
                       <motion.div 
-                        className="bg-gradient-to-r from-amber-100 to-yellow-100 rounded-lg p-3 border border-amber-200"
-                        animate={{ boxShadow: ["0 0 0 0 rgba(251, 191, 36, 0)", "0 0 0 8px rgba(251, 191, 36, 0.2)", "0 0 0 0 rgba(251, 191, 36, 0)"] }}
+                        className="rounded-lg p-3 border"
+                        style={{ backgroundColor: "#0D9488", borderColor: "#0D9488" }}
+                        animate={{ boxShadow: ["0 0 0 0 rgba(13, 148, 136, 0)", "0 0 0 8px rgba(13, 148, 136, 0.2)", "0 0 0 0 rgba(13, 148, 136, 0)"] }}
                         transition={{ duration: 2, repeat: Infinity }}
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">🪙</span>
-                          <span className="text-amber-800 font-semibold">
+                          <span className="text-white font-semibold">
                             Earn 10-20 ShareCoins for helping!
                           </span>
                         </div>

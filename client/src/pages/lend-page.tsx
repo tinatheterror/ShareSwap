@@ -1021,29 +1021,6 @@ export default function LendPage() {
               >
                 {/* Header with gradient */}
                 <div className="bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 p-6 text-white text-center relative overflow-hidden">
-                  {/* Sparkle effects */}
-                  <motion.div
-                    className="absolute top-2 left-4"
-                    animate={{ rotate: 360, scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Sparkles className="h-5 w-5 text-yellow-300" />
-                  </motion.div>
-                  <motion.div
-                    className="absolute top-4 right-6"
-                    animate={{ rotate: -360, scale: [1, 1.3, 1] }}
-                    transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
-                  >
-                    <Sparkles className="h-4 w-4 text-yellow-200" />
-                  </motion.div>
-                  <motion.div
-                    className="absolute bottom-2 right-12"
-                    animate={{ rotate: 360, scale: [1, 1.2, 1] }}
-                    transition={{ duration: 3, repeat: Infinity, delay: 1 }}
-                  >
-                    <Sparkles className="h-3 w-3 text-pink-200" />
-                  </motion.div>
-
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1077,14 +1054,6 @@ export default function LendPage() {
                   >
                     It's a Match!
                   </motion.h2>
-                  <motion.p 
-                    className="text-pink-100 mt-1"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    Your neighbor needs exactly what you're sharing!
-                  </motion.p>
                 </div>
 
                 {/* Match Card */}

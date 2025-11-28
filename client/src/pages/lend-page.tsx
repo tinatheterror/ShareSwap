@@ -32,6 +32,7 @@ import {
   ArrowLeftRight,
   Gift,
   Sparkles,
+  Calendar,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -1103,6 +1104,21 @@ export default function LendPage() {
                           {selectedWishlistMatch.distance}
                         </span>
                       </div>
+
+                      {/* Compact date display */}
+                      {selectedWishlistMatch.neededDate && (
+                        <div className="bg-teal-50 rounded-lg px-3 py-2 mb-4">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="h-4 w-4 text-teal-600" />
+                            <span className="text-teal-800 font-medium">
+                              {new Date(selectedWishlistMatch.neededDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              {selectedWishlistMatch.returnDate && 
+                                ` - ${new Date(selectedWishlistMatch.returnDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {/* ShareCoins reward */}
                       <motion.div 

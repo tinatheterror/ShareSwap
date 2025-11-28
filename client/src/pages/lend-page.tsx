@@ -111,35 +111,42 @@ export default function LendPage() {
     queryKey: ["/api/all-wishlists"],
   });
 
-  // Check for wishlist matches when item name changes
+  // Check for wishlist matches when item name changes (debounced to not interrupt typing)
   useEffect(() => {
     const itemName = form.watch("name");
-    if (itemName && itemName.length > 2 && Array.isArray(allWishlists)) {
-      const matches = allWishlists.filter(
-        (wishlist: any) =>
-          wishlist.itemName.toLowerCase().includes(itemName.toLowerCase()) ||
-          itemName.toLowerCase().includes(wishlist.itemName.toLowerCase()),
-      );
-      setMatchedWishlists(matches);
+    
+    // Debounce: wait 600ms after user stops typing before showing match
+    const timeoutId = setTimeout(() => {
+      if (itemName && itemName.length >= 4 && Array.isArray(allWishlists)) {
+        const matches = allWishlists.filter(
+          (wishlist: any) =>
+            wishlist.itemName.toLowerCase().includes(itemName.toLowerCase()) ||
+            itemName.toLowerCase().includes(wishlist.itemName.toLowerCase()),
+        );
+        setMatchedWishlists(matches);
 
-      if (matches.length > 0 && !showMatchingModal) {
-        setShowMatchingModal(true);
-        // Auto-select the first match
-        setSelectedWishlistMatch(matches[0]);
+        if (matches.length > 0 && !showMatchingModal) {
+          setShowMatchingModal(true);
+          // Auto-select the first match
+          setSelectedWishlistMatch(matches[0]);
 
-        // Auto-fill dates from the first matching wishlist
-        const firstMatch = matches[0];
-        if (firstMatch.neededDate && firstMatch.returnDate) {
-          form.setValue(
-            "availableFromDate",
-            firstMatch.neededDate.split("T")[0],
-          ); // Format for date input
-          form.setValue("availableToDate", firstMatch.returnDate.split("T")[0]); // Format for date input
+          // Auto-fill dates from the first matching wishlist
+          const firstMatch = matches[0];
+          if (firstMatch.neededDate && firstMatch.returnDate) {
+            form.setValue(
+              "availableFromDate",
+              firstMatch.neededDate.split("T")[0],
+            );
+            form.setValue("availableToDate", firstMatch.returnDate.split("T")[0]);
+          }
         }
+      } else {
+        setMatchedWishlists([]);
       }
-    } else {
-      setMatchedWishlists([]);
-    }
+    }, 600);
+
+    // Cleanup: cancel the timeout if user keeps typing
+    return () => clearTimeout(timeoutId);
   }, [form.watch("name"), allWishlists, showMatchingModal]);
 
   const [smartScanAnalysis, setSmartScanAnalysis] = useState<any>(null);

@@ -58,9 +58,9 @@ export default function ItemDetailsPage() {
             {Number(item.securityDeposit).toFixed(2)} deposit
           </p>
         </div>
-        <Button onClick={() => setRequestType("BORROW")} className="w-32">
+        <Button onClick={() => setRequestType("BORROW")} className="w-40">
           <HandHeart className="h-4 w-4 mr-1" />
-          Borrow
+          Request to Borrow
         </Button>
       </div>
     ) : null;
@@ -78,7 +78,8 @@ export default function ItemDetailsPage() {
             ${Number(item.securityDeposit).toFixed(2)} deposit required
           </p>
         </div>
-        <Button onClick={() => setRequestType("RENT")} className="w-32">
+        <Button onClick={() => setRequestType("RENT")} className="w-40">
+          <DollarSign className="h-4 w-4 mr-1" />
           Request to Rent
         </Button>
       </div>
@@ -98,7 +99,8 @@ export default function ItemDetailsPage() {
             Exchange with your items
           </p>
         </div>
-        <Button onClick={() => setRequestType("SWAP")} className="w-32">
+        <Button onClick={() => setRequestType("SWAP")} className="w-40">
+          <ArrowLeftRight className="h-4 w-4 mr-1" />
           Request to Swap
         </Button>
       </div>

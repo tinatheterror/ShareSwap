@@ -705,11 +705,13 @@ Return only the JSON object, no other text.`,
         "Tools & Equipment",
       ];
 
-      // Use OpenAI to categorize the item
-      const openai = (await import("openai")).default;
-      const client = new openai();
+      // Use OpenAI to categorize the item (with Replit AI Integrations)
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
 
-      const response = await client.chat.completions.create({
+      const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {

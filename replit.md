@@ -25,8 +25,20 @@ Key architectural decisions and features include:
 - **AI-Powered Features**:
     - **SmartScan**: Uses GPT-4 Vision API for AI-powered item recognition from 360° photo scans, auto-filling item details. Offers 3 free scans/month, unlimited for Premium users, with premium users receiving AI value estimates.
     - **Marketplace Import**: AI-powered listing import from Facebook Marketplace, Craigslist, and Facebook Groups. Users paste a URL and GPT-5 extracts item details (name, description, price, condition) to auto-fill the listing form. Features comprehensive security controls including HTTPS-only, domain allowlisting, SSRF protection, and rate limiting.
+    - **Item Category Detection**: AI-powered auto-categorization of items based on name. Uses GPT-4o-mini to detect item type (Baby & Kids, Clothing & Accessories, Electronics, Home & Kitchen, Tools & Equipment).
     - **Item Recommendations**: AI-powered recommendations based on user behavior, categories, and seasonal relevance.
     - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and automatically matches lenders/borrowers based on wishlists.
+- **Tier-Based Pricing System**:
+    - **4 Required Questions**: Item Name, Item Type (AI auto-filled), Condition (4 options), Original Value (5 price ranges)
+    - **Automatic Tier Assignment**: 
+      - Tier 1 (Under $50) = 5 ShareCoins/week
+      - Tier 2 ($50-$150) = 10 ShareCoins/week
+      - Tier 3 ($150-$300) = 20 ShareCoins/week
+      - Tier 4 ($300+) = 40 ShareCoins/week
+    - **Condition Modifier**: Items not in "New/Like New" condition drop 1 tier (minimum Tier 1)
+    - **Day Proration**: ShareCoin cost = (Weekly Rate ÷ 7) × days, rounded down with minimum 1 coin
+    - **Category-Specific Durations**: Baby & Kids items show longer duration presets (1 week to 6 months) vs standard items (1 day to 1 month)
+    - **Tier Display**: Only visible on "My Shared Items" page with tooltip explaining tier calculation
 - **UI/UX Decisions**:
     - Focus on intuitive interfaces like swipeable cards for item requests, stacked card UI with animations, and in-app scheduling.
     - Gamified Account Statistics section with gradients, animations, and progress bars to incentivize sharing behavior, leading to Community Impact Levels with associated benefits.

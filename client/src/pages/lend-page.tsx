@@ -33,16 +33,92 @@ import {
   Gift,
   Sparkles,
   Calendar,
+  ChevronDown,
+  Lightbulb,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 
+const ITEM_TYPES = [
+  "Baby & Kids",
+  "Clothing & Accessories",
+  "Electronics",
+  "Home & Kitchen",
+  "Tools & Equipment",
+] as const;
+
+const CONDITIONS = [
+  "New / Like New",
+  "Good",
+  "Fair",
+  "Well Loved",
+] as const;
+
+const ORIGINAL_VALUES = [
+  "Under $50",
+  "$50–$150",
+  "$150–$300",
+  "$300–$600",
+  "$600+",
+] as const;
+
+const TIER_NAMES: Record<number, string> = {
+  1: "Tier 1 – Budget Friendly",
+  2: "Tier 2 – Everyday Household Item",
+  3: "Tier 3 – Premium Item",
+  4: "Tier 4 – High Value Item",
+};
+
+const TIER_WEEKLY_COINS: Record<number, number> = {
+  1: 5,
+  2: 10,
+  3: 20,
+  4: 40,
+};
+
+const calculateTier = (originalValue: string, condition: string): number => {
+  let baseTier = 1;
+  if (originalValue === "Under $50") baseTier = 1;
+  else if (originalValue === "$50–$150") baseTier = 2;
+  else if (originalValue === "$150–$300") baseTier = 3;
+  else if (originalValue === "$300–$600" || originalValue === "$600+") baseTier = 4;
+  
+  if (condition !== "New / Like New") {
+    baseTier = Math.max(1, baseTier - 1);
+  }
+  
+  return baseTier;
+};
+
+const calculateShareCoinsForDays = (tier: number, days: number): number => {
+  const weeklyCoins = TIER_WEEKLY_COINS[tier] || 5;
+  const dailyCoins = weeklyCoins / 7;
+  const calculated = Math.floor(dailyCoins * days);
+  return Math.max(1, calculated);
+};
+
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(10, "Please provide a detailed description"),
+  itemType: z.string().min(1, "Item type is required"),
+  condition: z.string().min(1, "Condition is required"),
+  originalValue: z.string().min(1, "Original value is required"),
   isLendable: z.boolean().default(false),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
@@ -90,23 +166,56 @@ export default function LendPage() {
     }
   }, []);
 
+  const [isDetectingCategory, setIsDetectingCategory] = useState(false);
+  const lastDetectedName = useRef("");
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       description: "",
+      itemType: "",
+      condition: "",
+      originalValue: "",
       isLendable: false,
       isSwappable: false,
       isRentable: false,
       availableFromDate: undefined,
       availableToDate: undefined,
       securityDeposit: undefined,
-      conditionRating: 10,
+      conditionRating: 5,
       postalCode: "",
       latitude: undefined,
       longitude: undefined,
     },
   });
+  
+  const watchItemType = form.watch("itemType");
+  const watchCondition = form.watch("condition");
+  const watchOriginalValue = form.watch("originalValue");
+  
+  const calculatedTier = watchCondition && watchOriginalValue 
+    ? calculateTier(watchOriginalValue, watchCondition) 
+    : null;
+  
+  const detectItemCategory = async (itemName: string) => {
+    if (!itemName || itemName.length < 3 || itemName === lastDetectedName.current) return;
+    
+    lastDetectedName.current = itemName;
+    setIsDetectingCategory(true);
+    
+    try {
+      const response = await apiRequest("POST", "/api/detect-category", { itemName });
+      const data = await response.json();
+      if (data.category && ITEM_TYPES.includes(data.category)) {
+        form.setValue("itemType", data.category);
+      }
+    } catch (error) {
+      console.error("Failed to detect category:", error);
+    } finally {
+      setIsDetectingCategory(false);
+    }
+  };
 
   // Get all community wishlists for matching
   const { data: allWishlists = [] } = useQuery({
@@ -232,11 +341,9 @@ export default function LendPage() {
 
       // Use SmartScan photos or manual uploads
       if (smartScanPhotos.length > 0 && smartScanAnalysis) {
-        // SmartScan photos are already uploaded, pass their URLs
         formData.append("smartScanPhotos", JSON.stringify(smartScanPhotos));
         formData.append("wasSmartScanned", "true");
 
-        // Include SmartScan analysis data
         if (smartScanAnalysis.category) {
           formData.append("category", smartScanAnalysis.category);
         }
@@ -257,6 +364,12 @@ export default function LendPage() {
           formData.append(key, String(value));
         }
       });
+      
+      // Calculate and add tier
+      if (data.condition && data.originalValue) {
+        const tier = calculateTier(data.originalValue, data.condition);
+        formData.append("tier", String(tier));
+      }
 
       const res = await apiRequest("POST", "/api/items", formData);
       const result = await res.json();
@@ -421,18 +534,64 @@ export default function LendPage() {
             <div className="lg:col-span-2">
               <Card>
                 <CardContent className="pt-6 space-y-6">
-                  {/* Item Name */}
+                  {/* Question 1: Item Name with Item Type */}
                   <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">I'm Sharing my </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-medium">I'm Sharing my</h3>
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem className="flex-1 min-w-[200px]">
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="e.g., Baby Stroller, Power Drill..."
+                                onBlur={(e) => {
+                                  field.onBlur();
+                                  detectItemCategory(e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      {watchItemType && (
+                        <div className="flex items-center gap-2 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-200">
+                          <span className="text-sm text-teal-700 font-medium">{watchItemType}</span>
+                          {isDetectingCategory && (
+                            <span className="text-xs text-teal-500 animate-pulse">detecting...</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Question 2: Item Type Dropdown */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="font-medium">Item Type</h3>
                     <FormField
                       control={form.control}
-                      name="name"
+                      name="itemType"
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Input {...field} />
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select item type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ITEM_TYPES.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {type}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </FormControl>
                           <FormMessage />
+                          <p className="text-xs text-gray-400">AI will auto-detect based on item name, but you can change it</p>
                         </FormItem>
                       )}
                     />
@@ -455,34 +614,108 @@ export default function LendPage() {
                     />
                   </div>
 
-                  {/* Condition Rating - Moved below Features and Details */}
+                  {/* Question 3: Condition - 4 Options */}
                   <div className="space-y-4 border-t pt-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">Condition Rating (1-10)</h3>
-                      <span className="text-sm font-semibold text-gray-700">
-                        Rating: {form.watch("conditionRating")}/10
-                      </span>
-                    </div>
+                    <h3 className="font-medium">Condition</h3>
                     <FormField
                       control={form.control}
-                      name="conditionRating"
+                      name="condition"
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Slider
-                              value={[field.value]}
-                              onValueChange={(value) =>
-                                field.onChange(value[0])
-                              }
-                              max={10}
-                              min={1}
-                              step={1}
-                            />
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              {CONDITIONS.map((cond) => (
+                                <Button
+                                  key={cond}
+                                  type="button"
+                                  variant="outline"
+                                  className={`h-12 flex flex-col items-center justify-center transition-all ${
+                                    field.value === cond
+                                      ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
+                                      : "bg-white hover:bg-gray-50"
+                                  }`}
+                                  onClick={() => {
+                                    field.onChange(cond);
+                                    const ratingMap: Record<string, number> = {
+                                      "New / Like New": 10,
+                                      "Good": 7,
+                                      "Fair": 5,
+                                      "Well Loved": 3,
+                                    };
+                                    form.setValue("conditionRating", ratingMap[cond] || 5);
+                                  }}
+                                >
+                                  <span className="text-sm font-medium">{cond}</span>
+                                </Button>
+                              ))}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  {/* Question 4: Original Value - Pill Buttons */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="font-medium">Original Value</h3>
+                    <FormField
+                      control={form.control}
+                      name="originalValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2">
+                              {ORIGINAL_VALUES.map((value) => (
+                                <Button
+                                  key={value}
+                                  type="button"
+                                  variant="outline"
+                                  className={`h-10 px-4 rounded-full transition-all ${
+                                    field.value === value
+                                      ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
+                                      : "bg-white hover:bg-gray-50"
+                                  }`}
+                                  onClick={() => field.onChange(value)}
+                                >
+                                  <span className="text-sm font-medium">{value}</span>
+                                </Button>
+                              ))}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {/* Tier Preview - show after condition and value are selected */}
+                    {calculatedTier && (
+                      <TooltipProvider>
+                        <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-200">
+                          <div className="flex items-center gap-2">
+                            <span className="text-teal-800 font-medium">
+                              Assigned Tier: {TIER_NAMES[calculatedTier]}
+                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-sm max-w-xs">
+                                  Tier is based on category, condition, and typical market value.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <p className="text-sm text-teal-600 mt-1">
+                            (Used to calculate ShareCoin value automatically)
+                          </p>
+                          <p className="text-sm text-teal-700 mt-2 font-medium">
+                            {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
+                          </p>
+                        </div>
+                      </TooltipProvider>
+                    )}
                   </div>
 
                   {/* Location field */}

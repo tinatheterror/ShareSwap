@@ -11,11 +11,24 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Edit, Trash2, Eye, Plus, Package, Coins } from "lucide-react";
+import { Edit, Trash2, Eye, Plus, Package, Coins, Lightbulb } from "lucide-react";
 import type { SelectItem } from "@db/schema";
+
+const TIER_NAMES: Record<number, string> = {
+  1: "Tier 1 – Budget Friendly",
+  2: "Tier 2 – Everyday Household Item",
+  3: "Tier 3 – Premium Item",
+  4: "Tier 4 – High Value Item",
+};
 
 export default function MyItemsPage() {
   const { user } = useAuth();
@@ -169,7 +182,7 @@ export default function MyItemsPage() {
                   </div>
 
                   {/* Condition */}
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-2 mb-3">
                     <span className="text-sm text-muted-foreground">
                       Condition:
                     </span>
@@ -179,10 +192,36 @@ export default function MyItemsPage() {
                       }
                       className="text-xs"
                     >
-                      {item.conditionRating}/10{" "}
+                      {(item as any).condition || `${item.conditionRating}/10`}{" "}
                       {item.isConditionVerified && "✓"}
                     </Badge>
                   </div>
+
+                  {/* Tier Info - Only show on My Shared Items page */}
+                  {(item as any).tier && (
+                    <TooltipProvider>
+                      <div className="p-3 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-200 mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-teal-800 font-medium">
+                            Assigned Tier: {TIER_NAMES[(item as any).tier] || `Tier ${(item as any).tier}`}
+                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-sm max-w-xs">
+                                Tier is based on category, condition, and typical market value.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <p className="text-xs text-teal-600 mt-0.5">
+                          (Used to calculate ShareCoin value automatically)
+                        </p>
+                      </div>
+                    </TooltipProvider>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">

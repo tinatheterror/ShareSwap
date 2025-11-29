@@ -684,6 +684,73 @@ Return only the JSON object, no other text.`,
     }
   });
 
+  // AI-powered item category detection
+  app.post("/api/detect-category", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { itemName } = req.body;
+      
+      if (!itemName || typeof itemName !== 'string' || itemName.length < 3) {
+        return res.status(400).json({ error: "Valid item name is required" });
+      }
+
+      const ITEM_CATEGORIES = [
+        "Baby & Kids",
+        "Clothing & Accessories", 
+        "Electronics",
+        "Home & Kitchen",
+        "Tools & Equipment",
+      ];
+
+      // Use OpenAI to categorize the item
+      const openai = (await import("openai")).default;
+      const client = new openai();
+
+      const response = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a categorization assistant. Given an item name, determine which category it belongs to.
+            
+Available categories:
+- Baby & Kids (strollers, cribs, toys, baby clothes, car seats, playpens, etc.)
+- Clothing & Accessories (adult clothing, shoes, bags, jewelry, hats, scarves, etc.)
+- Electronics (phones, laptops, cameras, TVs, speakers, headphones, gaming, etc.)
+- Home & Kitchen (furniture, appliances, cookware, decor, bedding, storage, etc.)
+- Tools & Equipment (power tools, hand tools, gardening, ladders, outdoor equipment, etc.)
+
+Respond with ONLY the category name, nothing else.`
+          },
+          {
+            role: "user",
+            content: `Categorize this item: "${itemName}"`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 20,
+      });
+
+      const detectedCategory = response.choices[0]?.message?.content?.trim() || "";
+      
+      // Validate the detected category is in our list
+      const validCategory = ITEM_CATEGORIES.find(cat => 
+        cat.toLowerCase() === detectedCategory.toLowerCase()
+      );
+
+      res.json({ 
+        category: validCategory || null,
+        confidence: validCategory ? 0.9 : 0.3
+      });
+    } catch (error: any) {
+      console.error("Error detecting category:", error);
+      res.json({ category: null, confidence: 0 });
+    }
+  });
+
   // Item endpoints
   app.post("/api/items", upload.array("photos"), async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -774,6 +841,10 @@ Return only the JSON object, no other text.`,
       description: req.body.description,
       category: req.body.category || null,
       brand: req.body.brand || null,
+      itemType: req.body.itemType || null,
+      condition: req.body.condition || null,
+      originalValue: req.body.originalValue || null,
+      tier: req.body.tier ? parseInt(req.body.tier) : null,
       conditionRating: parseInt(req.body.conditionRating) || 0,
       photos: photoUrls,
       latitude: latitude?.toString() || null,

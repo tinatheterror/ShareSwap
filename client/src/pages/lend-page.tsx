@@ -167,6 +167,7 @@ export default function LendPage() {
   }, []);
 
   const [isDetectingCategory, setIsDetectingCategory] = useState(false);
+  const [itemTypeGlow, setItemTypeGlow] = useState(false);
   const lastDetectedName = useRef("");
   
   const form = useForm<z.infer<typeof formSchema>>({
@@ -209,6 +210,8 @@ export default function LendPage() {
       const data = await response.json();
       if (data.category && ITEM_TYPES.includes(data.category)) {
         form.setValue("itemType", data.category);
+        setItemTypeGlow(true);
+        setTimeout(() => setItemTypeGlow(false), 1500);
       }
     } catch (error) {
       console.error("Failed to detect category:", error);
@@ -534,10 +537,39 @@ export default function LendPage() {
             <div className="lg:col-span-2">
               <Card>
                 <CardContent className="pt-6 space-y-6">
-                  {/* Question 1: Item Name with Item Type */}
+                  {/* Question 1: Item Name with Item Type inline */}
                   <div className="space-y-4 border-t pt-4">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium">I'm Sharing my</h3>
+                      <h3 className="font-medium whitespace-nowrap">I'm Sharing my</h3>
+                      <FormField
+                        control={form.control}
+                        name="itemType"
+                        render={({ field }) => (
+                          <FormItem className="w-[180px]">
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger 
+                                  className={`transition-all duration-500 ${
+                                    itemTypeGlow 
+                                      ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]" 
+                                      : ""
+                                  }`}
+                                >
+                                  <SelectValue placeholder="Item type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ITEM_TYPES.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                      {type}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="name"
@@ -557,44 +589,11 @@ export default function LendPage() {
                           </FormItem>
                         )}
                       />
-                      {watchItemType && (
-                        <div className="flex items-center gap-2 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-200">
-                          <span className="text-sm text-teal-700 font-medium">{watchItemType}</span>
-                          {isDetectingCategory && (
-                            <span className="text-xs text-teal-500 animate-pulse">detecting...</span>
-                          )}
-                        </div>
+                      {isDetectingCategory && (
+                        <span className="text-xs text-teal-500 animate-pulse">detecting...</span>
                       )}
                     </div>
-                  </div>
-
-                  {/* Question 2: Item Type Dropdown */}
-                  <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Item Type</h3>
-                    <FormField
-                      control={form.control}
-                      name="itemType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select item type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ITEM_TYPES.map((type) => (
-                                  <SelectItem key={type} value={type}>
-                                    {type}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                          <p className="text-xs text-gray-400">AI will auto-detect based on item name, but you can change it</p>
-                        </FormItem>
-                      )}
-                    />
+                    <p className="text-xs text-gray-400">AI will auto-detect item type when you enter a name</p>
                   </div>
 
                   {/* Features and Details */}

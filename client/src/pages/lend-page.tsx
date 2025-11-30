@@ -539,64 +539,66 @@ export default function LendPage() {
                 <CardContent className="pt-6 space-y-6">
                   {/* Question 1: Item Name with Item Type inline */}
                   <div className="space-y-4 border-t pt-4">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium whitespace-nowrap">I'm Sharing my</h3>
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem className="flex-1 min-w-[200px]">
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="e.g., Baby Stroller, Power Drill..."
-                                onBlur={(e) => {
-                                  field.onBlur();
-                                  detectItemCategory(e.target.value);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex flex-col">
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <h3 className="font-medium whitespace-nowrap pt-2">I'm Sharing my</h3>
+                      <div className="flex-1 flex gap-2 min-w-[300px]">
                         <FormField
                           control={form.control}
-                          name="itemType"
+                          name="name"
                           render={({ field }) => (
-                            <FormItem className="w-[180px]">
+                            <FormItem className="flex-1">
                               <FormControl>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                  <SelectTrigger 
-                                    className={`transition-all duration-500 ${
-                                      itemTypeGlow 
-                                        ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]" 
-                                        : ""
-                                    }`}
-                                  >
-                                    <SelectValue placeholder="Item type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {ITEM_TYPES.map((type) => (
-                                      <SelectItem key={type} value={type}>
-                                        {type}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <Input 
+                                  {...field} 
+                                  placeholder="e.g., Baby Stroller, Power Drill..."
+                                  onBlur={(e) => {
+                                    field.onBlur();
+                                    detectItemCategory(e.target.value);
+                                  }}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <p className="text-xs text-gray-400 mt-1">
-                          {isDetectingCategory ? (
-                            <span className="text-teal-500 animate-pulse">AI detecting...</span>
-                          ) : (
-                            "AI will auto-detect"
-                          )}
-                        </p>
+                        <div className="flex flex-col w-1/2">
+                          <FormField
+                            control={form.control}
+                            name="itemType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger 
+                                      className={`transition-all duration-500 ${
+                                        itemTypeGlow 
+                                          ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]" 
+                                          : ""
+                                      }`}
+                                    >
+                                      <SelectValue placeholder="Item type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {ITEM_TYPES.map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                          {type}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <p className="text-xs text-gray-400 mt-1">
+                            {isDetectingCategory ? (
+                              <span className="text-teal-500 animate-pulse">AI detecting...</span>
+                            ) : (
+                              "AI will auto-detect"
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>

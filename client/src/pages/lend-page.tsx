@@ -543,35 +543,6 @@ export default function LendPage() {
                       <h3 className="font-medium whitespace-nowrap">I'm Sharing my</h3>
                       <FormField
                         control={form.control}
-                        name="itemType"
-                        render={({ field }) => (
-                          <FormItem className="w-[180px]">
-                            <FormControl>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger 
-                                  className={`transition-all duration-500 ${
-                                    itemTypeGlow 
-                                      ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]" 
-                                      : ""
-                                  }`}
-                                >
-                                  <SelectValue placeholder="Item type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {ITEM_TYPES.map((type) => (
-                                    <SelectItem key={type} value={type}>
-                                      {type}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
                         name="name"
                         render={({ field }) => (
                           <FormItem className="flex-1 min-w-[200px]">
@@ -589,11 +560,45 @@ export default function LendPage() {
                           </FormItem>
                         )}
                       />
-                      {isDetectingCategory && (
-                        <span className="text-xs text-teal-500 animate-pulse">detecting...</span>
-                      )}
+                      <div className="flex flex-col">
+                        <FormField
+                          control={form.control}
+                          name="itemType"
+                          render={({ field }) => (
+                            <FormItem className="w-[180px]">
+                              <FormControl>
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                  <SelectTrigger 
+                                    className={`transition-all duration-500 ${
+                                      itemTypeGlow 
+                                        ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]" 
+                                        : ""
+                                    }`}
+                                  >
+                                    <SelectValue placeholder="Item type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {ITEM_TYPES.map((type) => (
+                                      <SelectItem key={type} value={type}>
+                                        {type}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          {isDetectingCategory ? (
+                            <span className="text-teal-500 animate-pulse">AI detecting...</span>
+                          ) : (
+                            "AI will auto-detect"
+                          )}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-400">AI will auto-detect item type when you enter a name</p>
                   </div>
 
                   {/* Features and Details */}

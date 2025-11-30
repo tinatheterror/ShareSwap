@@ -510,7 +510,7 @@ export default function LendPage() {
                     {isImporting ? "Importing..." : "Import"}
                   </Button>
                 </div>
-                <p className="text-[10px] text-gray-400">
+                <p className="text-[10px] text-gray-400 pl-2">
                   Facebook groups, marketplace & Craigslist
                 </p>
               </div>
@@ -591,7 +591,7 @@ export default function LendPage() {
                               </FormItem>
                             )}
                           />
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-gray-400 mt-1 pl-3">
                             {isDetectingCategory ? (
                               <span className="text-teal-500 animate-pulse">AI detecting...</span>
                             ) : (

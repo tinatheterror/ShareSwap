@@ -99,7 +99,7 @@ const calculateTier = (originalValue: string, condition: string): number => {
   else if (originalValue === "$150–$300") baseTier = 3;
   else if (originalValue === "$300–$600" || originalValue === "$600+") baseTier = 4;
   
-  if (condition !== "New / Like New") {
+  if (condition === "Fair" || condition === "Well Loved") {
     baseTier = Math.max(1, baseTier - 1);
   }
   

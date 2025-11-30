@@ -35,7 +35,7 @@ Key architectural decisions and features include:
       - Tier 2 ($50-$150) = 10 ShareCoins/week
       - Tier 3 ($150-$300) = 20 ShareCoins/week
       - Tier 4 ($300+) = 40 ShareCoins/week
-    - **Condition Modifier**: Items not in "New/Like New" condition drop 1 tier (minimum Tier 1)
+    - **Condition Modifier**: Items in "Fair" or "Well Loved" condition drop 1 tier (minimum Tier 1). "New/Like New" and "Good" keep the same tier.
     - **Day Proration**: ShareCoin cost = (Weekly Rate ÷ 7) × days, rounded down with minimum 1 coin
     - **Category-Specific Durations**: Baby & Kids items show longer duration presets (1 week to 6 months) vs standard items (1 day to 1 month)
     - **Tier Display**: Only visible on "My Shared Items" page with tooltip explaining tier calculation

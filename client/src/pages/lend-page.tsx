@@ -561,12 +561,12 @@ export default function LendPage() {
                             </FormItem>
                           )}
                         />
-                        <div className="flex flex-col w-1/2">
+                        <div className="flex items-center gap-2 w-1/2">
                           <FormField
                             control={form.control}
                             name="itemType"
                             render={({ field }) => (
-                              <FormItem>
+                              <FormItem className="flex-1">
                                 <FormControl>
                                   <Select value={field.value} onValueChange={field.onChange}>
                                     <SelectTrigger 
@@ -591,7 +591,7 @@ export default function LendPage() {
                               </FormItem>
                             )}
                           />
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-gray-400 whitespace-nowrap">
                             {isDetectingCategory ? (
                               <span className="text-teal-500 animate-pulse">AI detecting...</span>
                             ) : (

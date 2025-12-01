@@ -165,7 +165,9 @@ export default function LendPage() {
 
   const [isDetectingCategory, setIsDetectingCategory] = useState(false);
   const [itemTypeGlow, setItemTypeGlow] = useState(false);
+  const [tierGlow, setTierGlow] = useState(false);
   const lastDetectedName = useRef("");
+  const previousTier = useRef<number | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -196,6 +198,15 @@ export default function LendPage() {
     watchCondition && watchOriginalValue
       ? calculateTier(watchOriginalValue, watchCondition)
       : null;
+
+  // Trigger tier glow animation when tier first appears
+  useEffect(() => {
+    if (calculatedTier && previousTier.current === null) {
+      setTierGlow(true);
+      setTimeout(() => setTierGlow(false), 1500);
+    }
+    previousTier.current = calculatedTier;
+  }, [calculatedTier]);
 
   const detectItemCategory = async (itemName: string) => {
     if (
@@ -722,7 +733,11 @@ export default function LendPage() {
                     {/* Tier Preview - show after condition and value are selected */}
                     {calculatedTier && (
                       <TooltipProvider>
-                        <div className="p-4 bg-white rounded-lg border border-teal-200 ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]">
+                        <div className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
+                          tierGlow
+                            ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
+                            : ""
+                        }`}>
                           <div className="flex items-center gap-2">
                             <span className="text-black font-medium">
                               {TIER_NAMES[calculatedTier]}

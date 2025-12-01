@@ -187,13 +187,12 @@ export default function LendPage() {
     },
   });
 
-  const watchName = form.watch("name");
   const watchItemType = form.watch("itemType");
   const watchCondition = form.watch("condition");
   const watchOriginalValue = form.watch("originalValue");
 
   const calculatedTier =
-    watchName && watchName.trim().length >= 3 && watchItemType && watchCondition && watchOriginalValue
+    watchCondition && watchOriginalValue
       ? calculateTier(watchOriginalValue, watchCondition)
       : null;
 
@@ -722,7 +721,7 @@ export default function LendPage() {
                     {/* Tier Preview - show after condition and value are selected */}
                     {calculatedTier && (
                       <TooltipProvider>
-                        <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-200">
+                        <div className="p-4 bg-white rounded-lg border border-teal-200">
                           <div className="flex items-center gap-2">
                             <span className="text-teal-800 font-medium">
                               {TIER_NAMES[calculatedTier]}

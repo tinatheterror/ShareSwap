@@ -59,7 +59,6 @@ const ITEM_TYPES = [
   "Baby & Kids",
   "Clothing & Accessories",
   "Electronics",
-  "Hobbies & Collectibles",
   "Home & Kitchen",
   "Tools & Equipment",
 ] as const;
@@ -188,12 +187,13 @@ export default function LendPage() {
     },
   });
 
+  const watchName = form.watch("name");
   const watchItemType = form.watch("itemType");
   const watchCondition = form.watch("condition");
   const watchOriginalValue = form.watch("originalValue");
 
   const calculatedTier =
-    watchCondition && watchOriginalValue
+    watchName && watchName.trim().length >= 3 && watchItemType && watchCondition && watchOriginalValue
       ? calculateTier(watchOriginalValue, watchCondition)
       : null;
 
@@ -725,7 +725,7 @@ export default function LendPage() {
                         <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-200">
                           <div className="flex items-center gap-2">
                             <span className="text-teal-800 font-medium">
-                              Assigned Tier: {TIER_NAMES[calculatedTier]}
+                              {TIER_NAMES[calculatedTier]}
                             </span>
                             <Tooltip>
                               <TooltipTrigger asChild>

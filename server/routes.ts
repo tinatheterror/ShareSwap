@@ -795,6 +795,7 @@ Respond with ONLY the category name, nothing else.`
       const isLendable = req.body.isLendable === "true";
       const isSwappable = req.body.isSwappable === "true";
       const isRentable = req.body.isRentable === "true";
+      const isGift = req.body.isGift === "true";
 
     // Calculate ShareCoins reward based on sharing modes
     let shareCoinsReward = 0;
@@ -833,6 +834,10 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    if (isGift) {
+      shareCoinsReward += 5; // Gifting reward: 5 ShareCoins per gifted item
+    }
+
     // Ensure shareCoinsReward is a valid number
     if (isNaN(shareCoinsReward)) {
       shareCoinsReward = 5; // Fallback to base reward
@@ -858,6 +863,7 @@ Respond with ONLY the category name, nothing else.`
       isLendable,
       isSwappable,
       isRentable,
+      isGift,
       securityDeposit: req.body.securityDeposit || "0",
       lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
       shareCoinsReward: shareCoinsReward.toString(),
@@ -879,6 +885,7 @@ Respond with ONLY the category name, nothing else.`
         isLendable && "Lending",
         isSwappable && "Swapping",
         isRentable && "Renting",
+        isGift && "Gifting",
       ]
         .filter(Boolean)
         .join(", ")})`,

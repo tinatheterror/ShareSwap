@@ -793,7 +793,7 @@ TIER ASSIGNMENTS (use estimated market value):
 - Tier 1: $0-49 (basics, common items)
 - Tier 2: $50-149 (mid-range, everyday items)
 - Tier 3: $150-299 (premium items)
-- Tier 4: $300+ (high-value, luxury items)
+- Tier 4: $300+ (high-value items - includes $400, $500, $1000+ items)
 
 CONFIDENCE LEVELS:
 - "high": ${photoUrls && photoUrls.length > 0 ? 'Clear photos showing brand/model, ' : ''}well-known brand/model, clear market data

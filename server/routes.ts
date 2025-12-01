@@ -684,6 +684,86 @@ Return only the JSON object, no other text.`,
     }
   });
 
+  // AI-powered item valuation (tier + estimated value)
+  app.post("/api/valuate-item", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { name, description, itemType, condition } = req.body;
+      
+      if (!name || !itemType || !condition) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert appraiser for a peer-to-peer sharing marketplace. 
+            
+Your job is to estimate the current market value of used items and assign them to pricing tiers.
+
+Tiers are defined as:
+- Tier 1: Items worth under $50 (basic household items, common tools)
+- Tier 2: Items worth $50-$150 (mid-range appliances, quality tools)
+- Tier 3: Items worth $150-$300 (premium electronics, specialized equipment)
+- Tier 4: Items worth $300+ (high-value electronics, professional tools)
+
+Condition impacts value:
+- "New / Like New": 100% of typical market value
+- "Good": 70-80% of typical market value
+- "Fair": 50-60% of typical market value  
+- "Well Loved": 30-40% of typical market value
+
+Respond with ONLY a JSON object in this format:
+{
+  "tier": 1-4,
+  "estimatedValue": number (current market value in USD),
+  "explanation": "Brief 1-sentence explanation of valuation"
+}`
+          },
+          {
+            role: "user",
+            content: `Value this item:
+Name: ${name}
+Description: ${description || 'N/A'}
+Category: ${itemType}
+Condition: ${condition}
+
+Provide tier, estimated market value, and brief explanation.`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 150,
+        response_format: { type: "json_object" },
+      });
+
+      const result = JSON.parse(response.choices[0]?.message?.content || "{}");
+      
+      res.json({
+        tier: Math.min(4, Math.max(1, result.tier || 2)),
+        estimatedValue: Math.max(0, result.estimatedValue || 50),
+        explanation: result.explanation || "AI-powered valuation based on market data",
+      });
+    } catch (error: any) {
+      console.error("Error valuating item:", error);
+      // Fallback to basic valuation
+      res.json({
+        tier: 2,
+        estimatedValue: 75,
+        explanation: "Estimated value (AI temporarily unavailable)",
+      });
+    }
+  });
+
   // AI-powered item category detection
   app.post("/api/detect-category", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {

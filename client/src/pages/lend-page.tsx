@@ -66,13 +66,6 @@ const ITEM_TYPES = [
 
 const CONDITIONS = ["New / Like New", "Good", "Fair", "Well Loved"] as const;
 
-const ORIGINAL_VALUES = [
-  "Under $50",
-  "$50–$150",
-  "$150–$300",
-  "$300+",
-] as const;
-
 const TIER_NAMES: Record<number, string> = {
   1: "Tier 1 – Budget Friendly",
   2: "Tier 2 – Everyday Household Item",
@@ -87,20 +80,6 @@ const TIER_WEEKLY_COINS: Record<number, number> = {
   4: 40,
 };
 
-const calculateTier = (originalValue: string, condition: string): number => {
-  let baseTier = 1;
-  if (originalValue === "Under $50") baseTier = 1;
-  else if (originalValue === "$50–$150") baseTier = 2;
-  else if (originalValue === "$150–$300") baseTier = 3;
-  else if (originalValue === "$300+") baseTier = 4;
-
-  if (condition === "Fair" || condition === "Well Loved") {
-    baseTier = Math.max(1, baseTier - 1);
-  }
-
-  return baseTier;
-};
-
 const calculateShareCoinsForDays = (tier: number, days: number): number => {
   const weeklyCoins = TIER_WEEKLY_COINS[tier] || 5;
   const dailyCoins = weeklyCoins / 7;
@@ -113,7 +92,6 @@ const formSchema = z.object({
   description: z.string().min(10, "Please provide a detailed description"),
   itemType: z.string().min(1, "Item type is required"),
   condition: z.string().min(1, "Condition is required"),
-  originalValue: z.string().min(1, "Original value is required"),
   isLendable: z.boolean().default(false),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
@@ -166,6 +144,12 @@ export default function LendPage() {
   const [tierGlow, setTierGlow] = useState(false);
   const lastDetectedName = useRef("");
   const previousTier = useRef<number | null>(null);
+  const [aiValuation, setAiValuation] = useState<{
+    tier: number;
+    estimatedValue: number;
+    explanation: string;
+  } | null>(null);
+  const [isValuating, setIsValuating] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -174,7 +158,6 @@ export default function LendPage() {
       description: "",
       itemType: "",
       condition: "",
-      originalValue: "",
       isLendable: false,
       isSwappable: false,
       isRentable: false,
@@ -190,21 +173,44 @@ export default function LendPage() {
 
   const watchItemType = form.watch("itemType");
   const watchCondition = form.watch("condition");
-  const watchOriginalValue = form.watch("originalValue");
+  const watchName = form.watch("name");
+  const watchDescription = form.watch("description");
 
-  const calculatedTier =
-    watchCondition && watchOriginalValue
-      ? calculateTier(watchOriginalValue, watchCondition)
-      : null;
-
-  // Trigger tier glow animation when tier first appears
+  // Trigger AI valuation when item type and condition are filled
   useEffect(() => {
-    if (calculatedTier && previousTier.current === null) {
-      setTierGlow(true);
-      setTimeout(() => setTierGlow(false), 1500);
-    }
-    previousTier.current = calculatedTier;
-  }, [calculatedTier]);
+    const performValuation = async () => {
+      if (watchName && watchItemType && watchCondition && watchDescription) {
+        setIsValuating(true);
+        try {
+          const response = await apiRequest("POST", "/api/valuate-item", {
+            name: watchName,
+            description: watchDescription,
+            itemType: watchItemType,
+            condition: watchCondition,
+          });
+          const data = await response.json();
+          
+          setAiValuation({
+            tier: data.tier,
+            estimatedValue: data.estimatedValue,
+            explanation: data.explanation,
+          });
+          
+          // Trigger tier glow animation
+          setTierGlow(true);
+          setTimeout(() => setTierGlow(false), 1500);
+        } catch (error) {
+          console.error("Failed to valuate item:", error);
+        } finally {
+          setIsValuating(false);
+        }
+      } else {
+        setAiValuation(null);
+      }
+    };
+    
+    performValuation();
+  }, [watchName, watchItemType, watchCondition, watchDescription]);
 
   const detectItemCategory = async (itemName: string) => {
     if (
@@ -388,10 +394,10 @@ export default function LendPage() {
         }
       });
 
-      // Calculate and add tier
-      if (data.condition && data.originalValue) {
-        const tier = calculateTier(data.originalValue, data.condition);
-        formData.append("tier", String(tier));
+      // Add AI valuation data
+      if (aiValuation) {
+        formData.append("tier", String(aiValuation.tier));
+        formData.append("estimatedValue", String(aiValuation.estimatedValue));
       }
 
       const res = await apiRequest("POST", "/api/items", formData);
@@ -694,75 +700,63 @@ export default function LendPage() {
                     />
                   </div>
 
-                  {/* Question 4: Original Value - Pill Buttons */}
-                  <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Original Value</h3>
-                    <FormField
-                      control={form.control}
-                      name="originalValue"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2">
-                              {ORIGINAL_VALUES.map((value) => (
-                                <Button
-                                  key={value}
-                                  type="button"
-                                  variant="outline"
-                                  className={`h-10 px-4 rounded-full transition-all ${
-                                    field.value === value
-                                      ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
-                                      : "bg-white hover:bg-gray-50"
-                                  }`}
-                                  onClick={() => field.onChange(value)}
-                                >
-                                  <span className="text-sm font-medium">
-                                    {value}
-                                  </span>
-                                </Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Tier Preview - show after condition and value are selected */}
-                    {calculatedTier && (
-                      <TooltipProvider>
-                        <div className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
-                          tierGlow
-                            ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
-                            : ""
-                        }`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-black font-medium">
-                              {TIER_NAMES[calculatedTier]}
-                            </span>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-sm max-w-xs">
-                                  Tier is based on category, condition, and
-                                  typical market value.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                          <p className="text-sm text-black mt-1">
-                            (Used to calculate ShareCoin value automatically)
-                          </p>
-                          <p className="text-sm text-teal-700 mt-2 font-medium flex items-center gap-1">
-                            <Coins className="h-4 w-4 text-teal-600" />
-                            {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
+                  {/* AI Valuation Display - show after item details are filled */}
+                  {(isValuating || aiValuation) && (
+                    <div className="space-y-4 border-t pt-4">
+                      <h3 className="font-medium flex items-center gap-2">
+                        <Sparkles className="h-5 w-5 text-teal-500" />
+                        AI Valuation
+                      </h3>
+                      
+                      {isValuating ? (
+                        <div className="p-4 bg-gray-50 rounded-lg border animate-pulse">
+                          <p className="text-sm text-gray-500">
+                            Analyzing item value...
                           </p>
                         </div>
-                      </TooltipProvider>
-                    )}
-                  </div>
+                      ) : aiValuation ? (
+                        <TooltipProvider>
+                          <div className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
+                            tierGlow
+                              ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
+                              : ""
+                          }`}>
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-black font-medium">
+                                    {TIER_NAMES[aiValuation.tier]}
+                                  </span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-sm max-w-xs">
+                                        AI-powered valuation based on item type, condition, and market data.
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <span className="text-lg font-bold text-teal-600">
+                                  ${aiValuation.estimatedValue}
+                                </span>
+                              </div>
+                              
+                              <p className="text-xs text-gray-600 italic">
+                                {aiValuation.explanation}
+                              </p>
+                              
+                              <p className="text-sm text-teal-700 mt-2 font-medium flex items-center gap-1">
+                                <Coins className="h-4 w-4 text-teal-600" />
+                                {TIER_WEEKLY_COINS[aiValuation.tier]} ShareCoins/week
+                              </p>
+                            </div>
+                          </div>
+                        </TooltipProvider>
+                      ) : null}
+                    </div>
+                  )}
 
                   {/* Location field */}
                   <div className="space-y-4 border-t pt-4">

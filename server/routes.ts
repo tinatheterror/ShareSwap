@@ -719,11 +719,13 @@ VALUATION METHODOLOGY:
 - Clothing & Accessories: 25-40% per year (fashion cycles)
 - Hobbies & Collectibles: Variable (-5% to +10%, some items appreciate)
 
-2. CONDITION MULTIPLIERS:
-- "New / Like New": 85-100% of current retail value
-- "Good": 60-75% of current retail value
-- "Fair": 40-55% of current retail value
-- "Well Loved": 20-35% of current retail value
+2. CONDITION MULTIPLIERS (do NOT drop tiers for "Good" condition):
+- "New / Like New": 85-100% of current retail value (no tier penalty)
+- "Good": 70-85% of current retail value (no tier penalty - still quality items)
+- "Fair": 45-60% of current retail value (may drop 1 tier from base)
+- "Well Loved": 25-40% of current retail value (may drop 1 tier from base)
+
+IMPORTANT: "Good" condition is a respectable quality level and should NOT drop a tier. Only "Fair" and "Well Loved" items warrant tier reduction due to significant wear.
 
 3. MARKET TRENDS TO CONSIDER:
 - Seasonal demand (baby items peak in spring, tools in summer)
@@ -731,10 +733,10 @@ VALUATION METHODOLOGY:
 - Availability of similar items in secondhand market
 - Current retail prices for comparison
 
-TIER DEFINITIONS:
-- Tier 1 ($0-$49): Basic household items, common accessories, well-worn goods
-- Tier 2 ($50-$149): Quality everyday items, mid-range electronics, good condition goods
-- Tier 3 ($150-$299): Premium items, specialized equipment, excellent condition
+TIER DEFINITIONS (based on estimated market value only):
+- Tier 1 ($0-$49): Basic household items, common accessories, lower-value goods
+- Tier 2 ($50-$149): Quality everyday items, mid-range electronics
+- Tier 3 ($150-$299): Premium items, specialized equipment
 - Tier 4 ($300+): High-value electronics, professional tools, luxury items
 
 Respond with ONLY a JSON object:

@@ -32,7 +32,7 @@ Key architectural decisions and features include:
     - **3 Required Questions**: Item Name, Item Type (AI auto-filled), Condition (4 options) - No manual value entry needed
     - **AI Valuation Analysis**: Automatically triggered when item details are filled, analyzing:
       - Category-specific depreciation rates (Electronics: 20-30%/year, Baby & Kids: 15-25%/year, Tools: 10-15%/year, etc.)
-      - Condition multipliers (New/Like New: 85-100%, Good: 60-75%, Fair: 40-55%, Well Loved: 20-35%)
+      - Condition multipliers (New/Like New: 85-100%, Good: 70-85% - no tier penalty, Fair: 45-60%, Well Loved: 25-40%)
       - Market trends (seasonal demand, brand reputation, secondhand availability)
     - **Trust-Building Display**: Shows confidence level badge (High/Medium/Low), original retail estimate, depreciation breakdown, and market context
     - **Automatic Tier Assignment**: 

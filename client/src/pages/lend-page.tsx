@@ -181,7 +181,7 @@ export default function LendPage() {
   const watchName = form.watch("name");
   const watchDescription = form.watch("description");
 
-  // Trigger AI valuation when item type and condition are filled
+  // Trigger AI valuation when item type and condition are filled (includes photos if available)
   useEffect(() => {
     const performValuation = async () => {
       if (watchName && watchItemType && watchCondition && watchDescription) {
@@ -192,6 +192,7 @@ export default function LendPage() {
             description: watchDescription,
             itemType: watchItemType,
             condition: watchCondition,
+            photoUrls: smartScanPhotos.length > 0 ? smartScanPhotos : undefined,
           });
           const data = await response.json();
           
@@ -219,7 +220,7 @@ export default function LendPage() {
     };
     
     performValuation();
-  }, [watchName, watchItemType, watchCondition, watchDescription]);
+  }, [watchName, watchItemType, watchCondition, watchDescription, smartScanPhotos]);
 
   const detectItemCategory = async (itemName: string) => {
     if (
@@ -563,9 +564,17 @@ export default function LendPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) =>
-              createItemMutation.mutate(data),
-            )}
+            onSubmit={form.handleSubmit((data) => {
+              if (selectedPhotos.length === 0 && smartScanPhotos.length === 0) {
+                toast({
+                  title: "Photo Required",
+                  description: "Please upload at least one photo of your item.",
+                  variant: "destructive",
+                });
+                return;
+              }
+              createItemMutation.mutate(data);
+            })}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
             {/* Left Column - Form Fields */}
@@ -1178,7 +1187,10 @@ export default function LendPage() {
             <div className="lg:col-span-1">
               <Card className="sticky top-8">
                 <CardContent className="pt-6">
-                  <h3 className="font-medium mb-4">Photos</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-medium">Photos <span className="text-red-500">*</span></h3>
+                    <span className="text-xs text-muted-foreground">At least 1 required</span>
+                  </div>
                   <Tabs
                     value={uploadMethod}
                     onValueChange={(v) =>
@@ -1192,10 +1204,13 @@ export default function LendPage() {
 
                     <TabsContent value="smartscan" className="mt-4">
                       <SmartScan onAnalysisComplete={handleSmartScanComplete} />
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        SmartScan photos are used for AI-powered valuation
+                      </p>
                     </TabsContent>
 
                     <TabsContent value="manual" className="mt-4">
-                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                      <div className={`border-2 border-dashed rounded-lg p-6 text-center ${selectedPhotos.length === 0 ? 'border-gray-300' : 'border-teal-400 bg-teal-50'}`}>
                         <Input
                           type="file"
                           accept="image/*"
@@ -1206,15 +1221,15 @@ export default function LendPage() {
                         />
                         <label htmlFor="photos">
                           <div className="cursor-pointer">
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                              Click to upload photos
+                            <Upload className={`w-8 h-8 mx-auto mb-2 ${selectedPhotos.length > 0 ? 'text-teal-600' : 'text-muted-foreground'}`} />
+                            <p className={`text-sm ${selectedPhotos.length > 0 ? 'text-teal-700' : 'text-muted-foreground'}`}>
+                              {selectedPhotos.length > 0 ? 'Click to change photos' : 'Click to upload photos'}
                             </p>
                           </div>
                         </label>
                         {selectedPhotos.length > 0 && (
-                          <p className="mt-2 text-sm">
-                            {selectedPhotos.length} photos selected
+                          <p className="mt-2 text-sm font-medium text-teal-700">
+                            {selectedPhotos.length} photo{selectedPhotos.length > 1 ? 's' : ''} selected
                           </p>
                         )}
                       </div>
@@ -1224,8 +1239,15 @@ export default function LendPage() {
                   {smartScanPhotos.length > 0 && (
                     <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
                       <p className="text-sm text-teal-700">
-                        ✨ SmartScan detected {smartScanPhotos.length} photos -
-                        form auto-filled!
+                        ✨ SmartScan detected {smartScanPhotos.length} photos - AI valuation enhanced!
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedPhotos.length === 0 && smartScanPhotos.length === 0 && (
+                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
+                      <p className="text-xs text-amber-700">
+                        Photos help our AI provide accurate valuations and build trust with borrowers
                       </p>
                     </div>
                   )}

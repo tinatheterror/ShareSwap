@@ -684,14 +684,14 @@ Return only the JSON object, no other text.`,
     }
   });
 
-  // AI-powered item valuation (tier + estimated value)
+  // AI-powered item valuation (tier + estimated value) with optional photo analysis
   app.post("/api/valuate-item", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
 
     try {
-      const { name, description, itemType, condition } = req.body;
+      const { name, description, itemType, condition, photoUrls } = req.body;
       
       if (!name || !itemType || !condition) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -702,12 +702,52 @@ Return only the JSON object, no other text.`,
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
 
+      // Build the user message content - text + optional images
+      const userContent: any[] = [
+        {
+          type: "text",
+          text: `Value this item using current market data:
+
+Item Name: ${name}
+Description: ${description || 'No additional details provided'}
+Category: ${itemType}
+Condition: ${condition}
+
+${photoUrls && photoUrls.length > 0 ? 'IMPORTANT: Analyze the provided photos carefully to identify the brand, model, actual condition, and any details that affect value. Use what you see in the photos to provide a more accurate valuation.' : ''}
+
+Find comparable sold listings and provide accurate market value based on what this item would ACTUALLY sell for today in this condition.`
+        }
+      ];
+
+      // Add photo URLs if provided (GPT-4 Vision)
+      if (photoUrls && Array.isArray(photoUrls) && photoUrls.length > 0) {
+        // Add up to 4 photos for vision analysis
+        const photosToAnalyze = photoUrls.slice(0, 4);
+        for (const url of photosToAnalyze) {
+          if (typeof url === 'string' && url.startsWith('/uploads/')) {
+            // For local uploads, we need to construct the full URL
+            const fullUrl = `${req.protocol}://${req.get('host')}${url}`;
+            userContent.push({
+              type: "image_url",
+              image_url: { url: fullUrl, detail: "low" }
+            });
+          } else if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
+            userContent.push({
+              type: "image_url",
+              image_url: { url, detail: "low" }
+            });
+          }
+        }
+      }
+
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
             content: `You are an expert appraiser for a peer-to-peer sharing marketplace. Use current market data from eBay, Facebook Marketplace, and Craigslist to provide accurate valuations.
+
+${photoUrls && photoUrls.length > 0 ? 'PHOTO ANALYSIS: You will receive photos of the item. Carefully examine them to identify:\n- Brand and model (look for logos, labels, model numbers)\n- Actual condition (scratches, wear, stains, damage)\n- Age indicators (design era, wear patterns)\n- Completeness (all parts present, accessories included)\n- Quality level (premium vs budget brand)\n\nUse the photos to verify or adjust the user\'s stated condition and provide a more accurate valuation.' : ''}
 
 CRITICAL: Use REAL current market prices. Check what similar items are ACTUALLY selling for today.
 
@@ -737,10 +777,11 @@ HOME & KITCHEN:
 - Instant Pot (Good): $50-70 (retail $120)
 
 VALUATION PROCESS:
-1. Find comparable items on secondary markets (eBay sold listings, FB Marketplace, Craigslist)
-2. Apply age depreciation (electronics: 25-30%/year, baby: 20%/year, tools: 15%/year)
-3. Adjust for condition stated by user
-4. Cross-check against tier thresholds
+1. ${photoUrls && photoUrls.length > 0 ? 'Analyze photos to identify brand, model, and actual condition' : 'Use provided item details'}
+2. Find comparable items on secondary markets (eBay sold listings, FB Marketplace, Craigslist)
+3. Apply age depreciation (electronics: 25-30%/year, baby: 20%/year, tools: 15%/year)
+4. Adjust for condition (verified by photos if available)
+5. Cross-check against tier thresholds
 
 CONDITION MULTIPLIERS:
 - "New / Like New": 80-95% of current retail
@@ -755,9 +796,9 @@ TIER ASSIGNMENTS (use estimated market value):
 - Tier 4: $300+ (high-value, luxury items)
 
 CONFIDENCE LEVELS:
-- "high": Clear market data available, well-known brand/model
-- "medium": Some market data, generic description
-- "low": Limited info, unclear item details
+- "high": ${photoUrls && photoUrls.length > 0 ? 'Clear photos showing brand/model, ' : ''}well-known brand/model, clear market data
+- "medium": Some market data, generic description${photoUrls && photoUrls.length > 0 ? ', unclear photos' : ''}
+- "low": Limited info, unclear item details${photoUrls && photoUrls.length > 0 ? ', photos don\'t help identification' : ''}
 
 Return JSON ONLY:
 {
@@ -766,20 +807,13 @@ Return JSON ONLY:
   "originalRetailEstimate": number (new retail price if known),
   "depreciationApplied": string (specific calculation shown),
   "marketContext": string (what similar items sell for),
-  "explanation": string (brief reasoning),
+  "explanation": string (brief reasoning${photoUrls && photoUrls.length > 0 ? ', mention what you identified from photos' : ''}),
   "confidenceLevel": "high" | "medium" | "low"
 }`
           },
           {
             role: "user",
-            content: `Value this item using current market data:
-
-Item Name: ${name}
-Description: ${description || 'No additional details provided'}
-Category: ${itemType}
-Condition: ${condition}
-
-Find comparable sold listings and provide accurate market value based on what this item would ACTUALLY sell for today in this condition.`
+            content: userContent
           }
         ],
         temperature: 0.2,

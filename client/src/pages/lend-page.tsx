@@ -752,13 +752,15 @@ export default function LendPage() {
                               </TooltipContent>
                             </Tooltip>
                           </div>
-                          <p className="text-sm text-black mt-1">
-                            (Used to calculate ShareCoin value automatically)
-                          </p>
-                          <p className="text-sm text-teal-700 mt-2 font-medium flex items-center gap-1">
-                            <Coins className="h-4 w-4 text-teal-600" />
-                            {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
-                          </p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-sm text-black">
+                              (Used to calculate ShareCoin value automatically)
+                            </p>
+                            <p className="text-sm text-teal-700 font-medium flex items-center gap-1">
+                              <Coins className="h-4 w-4 text-teal-600" />
+                              {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
+                            </p>
+                          </div>
                         </div>
                       </TooltipProvider>
                     )}

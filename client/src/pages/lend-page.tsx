@@ -70,8 +70,7 @@ const ORIGINAL_VALUES = [
   "Under $50",
   "$50–$150",
   "$150–$300",
-  "$300–$600",
-  "$600+",
+  "$300+",
 ] as const;
 
 const TIER_NAMES: Record<number, string> = {
@@ -93,8 +92,7 @@ const calculateTier = (originalValue: string, condition: string): number => {
   if (originalValue === "Under $50") baseTier = 1;
   else if (originalValue === "$50–$150") baseTier = 2;
   else if (originalValue === "$150–$300") baseTier = 3;
-  else if (originalValue === "$300–$600" || originalValue === "$600+")
-    baseTier = 4;
+  else if (originalValue === "$300+") baseTier = 4;
 
   if (condition === "Fair" || condition === "Well Loved") {
     baseTier = Math.max(1, baseTier - 1);

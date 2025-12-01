@@ -712,23 +712,36 @@ export default function LendPage() {
                   {/* AI Valuation Display - show after item details are filled */}
                   {(isValuating || aiValuation) && (
                     <div className="space-y-4 border-t pt-4">
-                      <h3 className="font-medium flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-teal-500" />
-                        AI Valuation
-                        {aiValuation?.confidenceLevel && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            aiValuation.confidenceLevel === "high" 
-                              ? "bg-green-100 text-green-700" 
-                              : aiValuation.confidenceLevel === "medium"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-gray-100 text-gray-600"
-                          }`}>
-                            {aiValuation.confidenceLevel === "high" ? "High Confidence" : 
-                             aiValuation.confidenceLevel === "medium" ? "Medium Confidence" : 
-                             "Estimate"}
-                          </span>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-medium flex items-center gap-2">
+                          <Sparkles className="h-5 w-5 text-teal-500" />
+                          AI Valuation
+                          {aiValuation?.confidenceLevel && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              aiValuation.confidenceLevel === "high" 
+                                ? "bg-green-100 text-green-700" 
+                                : aiValuation.confidenceLevel === "medium"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-gray-100 text-gray-600"
+                            }`}>
+                              {aiValuation.confidenceLevel === "high" ? "High Confidence" : 
+                               aiValuation.confidenceLevel === "medium" ? "Medium Confidence" : 
+                               "Estimate"}
+                            </span>
+                          )}
+                        </h3>
+                        {aiValuation && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                            onClick={() => setAiValuation(null)}
+                          >
+                            Dismiss
+                          </Button>
                         )}
-                      </h3>
+                      </div>
                       
                       {isValuating ? (
                         <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-100">

@@ -707,62 +707,83 @@ Return only the JSON object, no other text.`,
         messages: [
           {
             role: "system",
-            content: `You are an expert appraiser for a peer-to-peer sharing marketplace, specialized in valuing used items using real market data and depreciation analysis.
+            content: `You are an expert appraiser for a peer-to-peer sharing marketplace. Use current market data from eBay, Facebook Marketplace, and Craigslist to provide accurate valuations.
 
-VALUATION METHODOLOGY:
+CRITICAL: Use REAL current market prices. Check what similar items are ACTUALLY selling for today.
 
-1. CATEGORY-SPECIFIC DEPRECIATION RATES (annual):
-- Electronics: 20-30% per year (technology obsolescence)
-- Baby & Kids: 15-25% per year (safety standards, growth phases)
-- Tools & Equipment: 10-15% per year (durability, professional use)
-- Home & Kitchen: 15-20% per year (style changes, wear)
-- Clothing & Accessories: 25-40% per year (fashion cycles)
-- Hobbies & Collectibles: Variable (-5% to +10%, some items appreciate)
+CATEGORY EXAMPLES (use these as benchmarks):
 
-2. CONDITION MULTIPLIERS (do NOT drop tiers for "Good" condition):
-- "New / Like New": 85-100% of current retail value (no tier penalty)
-- "Good": 70-85% of current retail value (no tier penalty - still quality items)
-- "Fair": 45-60% of current retail value (may drop 1 tier from base)
-- "Well Loved": 25-40% of current retail value (may drop 1 tier from base)
+BABY & KIDS:
+- UPPAbaby Vista Stroller (2-3 years old, Good): $400-500 (retail $1000)
+- Baby Jogger City Mini (4-5 years old, Good): $120-180 (retail $300)
+- Graco Pack n Play (Good): $40-60 (retail $120)
+- Baby Bjorn Carrier (Good): $60-90 (retail $180)
 
-IMPORTANT: "Good" condition is a respectable quality level and should NOT drop a tier. Only "Fair" and "Well Loved" items warrant tier reduction due to significant wear.
+ELECTRONICS:
+- iPhone 13 (Good, 2 years old): $400-500 (retail $800)
+- iPad Air (2020, Good): $300-400 (retail $600)
+- MacBook Air M1 (2 years, Good): $600-750 (retail $1000)
+- Sony WH-1000XM4 Headphones (Good): $180-220 (retail $350)
+- Nintendo Switch (Good): $200-250 (retail $300)
 
-3. MARKET TRENDS TO CONSIDER:
-- Seasonal demand (baby items peak in spring, tools in summer)
-- Brand reputation and resale value
-- Availability of similar items in secondhand market
-- Current retail prices for comparison
+TOOLS & EQUIPMENT:
+- DeWalt Cordless Drill Set (Good): $80-120 (retail $200)
+- Craftsman Tool Set (Good): $100-150 (retail $250)
+- Power Washer (Good): $150-200 (retail $350)
 
-TIER DEFINITIONS (based on estimated market value only):
-- Tier 1 ($0-$49): Basic household items, common accessories, lower-value goods
-- Tier 2 ($50-$149): Quality everyday items, mid-range electronics
-- Tier 3 ($150-$299): Premium items, specialized equipment
-- Tier 4 ($300+): High-value electronics, professional tools, luxury items
+HOME & KITCHEN:
+- KitchenAid Stand Mixer (Good): $200-280 (retail $450)
+- Dyson V11 Vacuum (Good): $300-400 (retail $600)
+- Instant Pot (Good): $50-70 (retail $120)
 
-Respond with ONLY a JSON object:
+VALUATION PROCESS:
+1. Find comparable items on secondary markets (eBay sold listings, FB Marketplace, Craigslist)
+2. Apply age depreciation (electronics: 25-30%/year, baby: 20%/year, tools: 15%/year)
+3. Adjust for condition stated by user
+4. Cross-check against tier thresholds
+
+CONDITION MULTIPLIERS:
+- "New / Like New": 80-95% of current retail
+- "Good": 60-75% of current retail (normal wear, fully functional)
+- "Fair": 40-55% of current retail (visible wear, some issues)
+- "Well Loved": 25-40% of current retail (heavy wear, cosmetic damage)
+
+TIER ASSIGNMENTS (use estimated market value):
+- Tier 1: $0-49 (basics, common items)
+- Tier 2: $50-149 (mid-range, everyday items)
+- Tier 3: $150-299 (premium items)
+- Tier 4: $300+ (high-value, luxury items)
+
+CONFIDENCE LEVELS:
+- "high": Clear market data available, well-known brand/model
+- "medium": Some market data, generic description
+- "low": Limited info, unclear item details
+
+Return JSON ONLY:
 {
   "tier": 1-4,
-  "estimatedValue": number (current market value in USD),
-  "originalRetailEstimate": number (estimated original retail price),
-  "depreciationApplied": string (e.g., "25% for electronics + condition adjustment"),
-  "marketContext": string (brief note on market factors, e.g., "High demand for quality strollers"),
-  "explanation": string (1-2 sentence summary tying it together),
+  "estimatedValue": number (realistic current market value),
+  "originalRetailEstimate": number (new retail price if known),
+  "depreciationApplied": string (specific calculation shown),
+  "marketContext": string (what similar items sell for),
+  "explanation": string (brief reasoning),
   "confidenceLevel": "high" | "medium" | "low"
 }`
           },
           {
             role: "user",
-            content: `Value this item for our sharing marketplace:
-Name: ${name}
-Description: ${description || 'N/A'}
+            content: `Value this item using current market data:
+
+Item Name: ${name}
+Description: ${description || 'No additional details provided'}
 Category: ${itemType}
 Condition: ${condition}
 
-Analyze using market data, apply appropriate depreciation, and provide a comprehensive valuation.`
+Find comparable sold listings and provide accurate market value based on what this item would ACTUALLY sell for today in this condition.`
           }
         ],
-        temperature: 0.3,
-        max_tokens: 300,
+        temperature: 0.2,
+        max_tokens: 400,
         response_format: { type: "json_object" },
       });
 

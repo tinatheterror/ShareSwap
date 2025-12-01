@@ -59,16 +59,12 @@ const ITEM_TYPES = [
   "Baby & Kids",
   "Clothing & Accessories",
   "Electronics",
+  "Hobbies & Collectibles",
   "Home & Kitchen",
   "Tools & Equipment",
 ] as const;
 
-const CONDITIONS = [
-  "New / Like New",
-  "Good",
-  "Fair",
-  "Well Loved",
-] as const;
+const CONDITIONS = ["New / Like New", "Good", "Fair", "Well Loved"] as const;
 
 const ORIGINAL_VALUES = [
   "Under $50",
@@ -97,12 +93,13 @@ const calculateTier = (originalValue: string, condition: string): number => {
   if (originalValue === "Under $50") baseTier = 1;
   else if (originalValue === "$50–$150") baseTier = 2;
   else if (originalValue === "$150–$300") baseTier = 3;
-  else if (originalValue === "$300–$600" || originalValue === "$600+") baseTier = 4;
-  
+  else if (originalValue === "$300–$600" || originalValue === "$600+")
+    baseTier = 4;
+
   if (condition === "Fair" || condition === "Well Loved") {
     baseTier = Math.max(1, baseTier - 1);
   }
-  
+
   return baseTier;
 };
 
@@ -169,7 +166,7 @@ export default function LendPage() {
   const [isDetectingCategory, setIsDetectingCategory] = useState(false);
   const [itemTypeGlow, setItemTypeGlow] = useState(false);
   const lastDetectedName = useRef("");
-  
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -190,23 +187,31 @@ export default function LendPage() {
       longitude: undefined,
     },
   });
-  
+
   const watchItemType = form.watch("itemType");
   const watchCondition = form.watch("condition");
   const watchOriginalValue = form.watch("originalValue");
-  
-  const calculatedTier = watchCondition && watchOriginalValue 
-    ? calculateTier(watchOriginalValue, watchCondition) 
-    : null;
-  
+
+  const calculatedTier =
+    watchCondition && watchOriginalValue
+      ? calculateTier(watchOriginalValue, watchCondition)
+      : null;
+
   const detectItemCategory = async (itemName: string) => {
-    if (!itemName || itemName.length < 3 || itemName === lastDetectedName.current) return;
-    
+    if (
+      !itemName ||
+      itemName.length < 3 ||
+      itemName === lastDetectedName.current
+    )
+      return;
+
     lastDetectedName.current = itemName;
     setIsDetectingCategory(true);
-    
+
     try {
-      const response = await apiRequest("POST", "/api/detect-category", { itemName });
+      const response = await apiRequest("POST", "/api/detect-category", {
+        itemName,
+      });
       const data = await response.json();
       if (data.category && ITEM_TYPES.includes(data.category)) {
         form.setValue("itemType", data.category);
@@ -227,9 +232,15 @@ export default function LendPage() {
 
   // Smart matching function: requires substantial word coverage before showing match
   const isGoodMatch = (typed: string, wishlistName: string): boolean => {
-    const typedWords = typed.toLowerCase().split(/\s+/).filter(w => w.length > 0);
-    const wishlistWords = wishlistName.toLowerCase().split(/\s+/).filter(w => w.length > 0);
-    
+    const typedWords = typed
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 0);
+    const wishlistWords = wishlistName
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 0);
+
     // Check if any typed word substantially matches a wishlist word
     for (const typedWord of typedWords) {
       for (const wishlistWord of wishlistWords) {
@@ -252,10 +263,10 @@ export default function LendPage() {
   // Check for wishlist matches when item name changes (for background tracking, no popup during typing)
   useEffect(() => {
     const itemName = form.watch("name");
-    
+
     if (itemName && itemName.length >= 4 && Array.isArray(allWishlists)) {
-      const matches = allWishlists.filter(
-        (wishlist: any) => isGoodMatch(itemName, wishlist.itemName)
+      const matches = allWishlists.filter((wishlist: any) =>
+        isGoodMatch(itemName, wishlist.itemName),
       );
       setMatchedWishlists(matches);
     } else {
@@ -367,7 +378,7 @@ export default function LendPage() {
           formData.append(key, String(value));
         }
       });
-      
+
       // Calculate and add tier
       if (data.condition && data.originalValue) {
         const tier = calculateTier(data.originalValue, data.condition);
@@ -511,7 +522,7 @@ export default function LendPage() {
                   </Button>
                 </div>
                 <p className="text-[10px] text-gray-400 pl-2">
-                  Facebook groups, marketplace & Craigslist
+                  Facebook groups, Facebook marketplace & Craigslist
                 </p>
               </div>
             </div>
@@ -540,7 +551,9 @@ export default function LendPage() {
                   {/* Question 1: Item Name with Item Type inline */}
                   <div className="space-y-4 border-t pt-4">
                     <div className="flex items-start gap-2 flex-wrap">
-                      <h3 className="font-medium whitespace-nowrap pt-2">I'm Sharing my</h3>
+                      <h3 className="font-medium whitespace-nowrap pt-2">
+                        I'm Sharing my
+                      </h3>
                       <div className="flex-1 flex gap-2 min-w-[300px]">
                         <FormField
                           control={form.control}
@@ -548,8 +561,8 @@ export default function LendPage() {
                           render={({ field }) => (
                             <FormItem className="flex-1">
                               <FormControl>
-                                <Input 
-                                  {...field} 
+                                <Input
+                                  {...field}
                                   placeholder="e.g., Baby Stroller, Power Drill..."
                                   onBlur={(e) => {
                                     field.onBlur();
@@ -568,11 +581,14 @@ export default function LendPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>
-                                  <Select value={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger 
+                                  <Select
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                  >
+                                    <SelectTrigger
                                       className={`transition-all duration-500 ${
-                                        itemTypeGlow 
-                                          ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]" 
+                                        itemTypeGlow
+                                          ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
                                           : ""
                                       }`}
                                     >
@@ -593,7 +609,9 @@ export default function LendPage() {
                           />
                           <p className="text-xs text-gray-400 mt-1 pl-3">
                             {isDetectingCategory ? (
-                              <span className="text-teal-500 animate-pulse">AI detecting...</span>
+                              <span className="text-teal-500 animate-pulse">
+                                AI detecting...
+                              </span>
                             ) : (
                               "AI will auto-detect"
                             )}
@@ -644,14 +662,19 @@ export default function LendPage() {
                                     field.onChange(cond);
                                     const ratingMap: Record<string, number> = {
                                       "New / Like New": 10,
-                                      "Good": 7,
-                                      "Fair": 5,
+                                      Good: 7,
+                                      Fair: 5,
                                       "Well Loved": 3,
                                     };
-                                    form.setValue("conditionRating", ratingMap[cond] || 5);
+                                    form.setValue(
+                                      "conditionRating",
+                                      ratingMap[cond] || 5,
+                                    );
                                   }}
                                 >
-                                  <span className="text-sm font-medium">{cond}</span>
+                                  <span className="text-sm font-medium">
+                                    {cond}
+                                  </span>
                                 </Button>
                               ))}
                             </div>
@@ -684,7 +707,9 @@ export default function LendPage() {
                                   }`}
                                   onClick={() => field.onChange(value)}
                                 >
-                                  <span className="text-sm font-medium">{value}</span>
+                                  <span className="text-sm font-medium">
+                                    {value}
+                                  </span>
                                 </Button>
                               ))}
                             </div>
@@ -693,7 +718,7 @@ export default function LendPage() {
                         </FormItem>
                       )}
                     />
-                    
+
                     {/* Tier Preview - show after condition and value are selected */}
                     {calculatedTier && (
                       <TooltipProvider>
@@ -708,7 +733,8 @@ export default function LendPage() {
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="text-sm max-w-xs">
-                                  Tier is based on category, condition, and typical market value.
+                                  Tier is based on category, condition, and
+                                  typical market value.
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -808,7 +834,9 @@ export default function LendPage() {
                         <span className="text-sm font-medium">Have It</span>
                       </Button>
                     </div>
-                    <p className="text-sm text-gray-400">Select one or more options</p>
+                    <p className="text-sm text-gray-400">
+                      Select one or more options
+                    </p>
                   </div>
 
                   {/* Availability Period - Hide when Have It (gift) is selected */}
@@ -1185,7 +1213,7 @@ export default function LendPage() {
         {/* Wishlist Matching Modal - Dating App Style */}
         <AnimatePresence>
           {showMatchingModal && matchedWishlists.length > 0 && (
-            <motion.div 
+            <motion.div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1197,21 +1225,21 @@ export default function LendPage() {
                   <motion.div
                     key={i}
                     className="absolute text-pink-400"
-                    initial={{ 
-                      x: Math.random() * window.innerWidth, 
+                    initial={{
+                      x: Math.random() * window.innerWidth,
                       y: window.innerHeight + 50,
                       rotate: Math.random() * 360,
-                      scale: 0.5 + Math.random() * 0.5
+                      scale: 0.5 + Math.random() * 0.5,
                     }}
-                    animate={{ 
+                    animate={{
                       y: -100,
                       rotate: Math.random() * 360,
                     }}
-                    transition={{ 
+                    transition={{
                       duration: 3 + Math.random() * 2,
                       repeat: Infinity,
                       delay: Math.random() * 2,
-                      ease: "linear"
+                      ease: "linear",
                     }}
                   >
                     <Heart className="h-6 w-6 fill-current" />
@@ -1219,7 +1247,7 @@ export default function LendPage() {
                 ))}
               </div>
 
-              <motion.div 
+              <motion.div
                 className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
                 initial={{ scale: 0.8, opacity: 0, y: 50 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -1260,7 +1288,7 @@ export default function LendPage() {
                     </div>
                   </motion.div>
 
-                  <motion.h2 
+                  <motion.h2
                     className="text-2xl font-bold"
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -1300,10 +1328,14 @@ export default function LendPage() {
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
                             <span className="text-white font-bold text-sm">
-                              {selectedWishlistMatch.username?.charAt(0).toUpperCase()}
+                              {selectedWishlistMatch.username
+                                ?.charAt(0)
+                                .toUpperCase()}
                             </span>
                           </div>
-                          <span className="font-medium">{selectedWishlistMatch.username}</span>
+                          <span className="font-medium">
+                            {selectedWishlistMatch.username}
+                          </span>
                         </div>
                         <span className="flex items-center gap-1 text-gray-500">
                           <MapPin className="h-4 w-4" />
@@ -1313,10 +1345,14 @@ export default function LendPage() {
                           <span className="flex items-center gap-1 text-teal-600">
                             <Calendar className="h-4 w-4" />
                             <span className="font-medium">
-                              {new Date(selectedWishlistMatch.neededDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              {selectedWishlistMatch.returnDate && 
-                                ` - ${new Date(selectedWishlistMatch.returnDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                              }
+                              {new Date(
+                                selectedWishlistMatch.neededDate,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                              {selectedWishlistMatch.returnDate &&
+                                ` - ${new Date(selectedWishlistMatch.returnDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
                             </span>
                           </span>
                         )}
@@ -1325,7 +1361,10 @@ export default function LendPage() {
                       {/* ShareCoins reward */}
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">🪙</span>
-                        <span style={{ color: "#0D9488" }} className="font-semibold">
+                        <span
+                          style={{ color: "#0D9488" }}
+                          className="font-semibold"
+                        >
                           Earn 10-20 ShareCoins for helping!
                         </span>
                       </div>
@@ -1333,7 +1372,7 @@ export default function LendPage() {
                   )}
 
                   {/* Action Buttons */}
-                  <motion.div 
+                  <motion.div
                     className="flex gap-3 mt-6"
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}

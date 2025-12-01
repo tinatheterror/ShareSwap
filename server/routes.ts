@@ -836,10 +836,10 @@ Analyze using market data, apply appropriate depreciation, and provide a compreh
 Available categories:
 - Baby & Kids (strollers, cribs, toys, baby clothes, car seats, playpens, etc.)
 - Clothing & Accessories (adult clothing, shoes, bags, jewelry, hats, scarves, etc.)
-- Electronics (phones, laptops, cameras, TVs, speakers, headphones, gaming, etc.)
-- Hobbies & Collectibles (board games, musical instruments, sports cards, vinyl records, art supplies, craft kits, puzzles, figurines, etc.)
+- Electronics (phones, laptops, cameras, TVs, speakers, headphones, gaming consoles, etc.)
+- Hobbies & Collectibles (board games, musical instruments, sports cards, vinyl records, art supplies, craft kits, puzzles, figurines, fishing rods, fishing gear, camping gear, sports equipment, bikes, skis, kayaks, tents, outdoor recreation, etc.)
 - Home & Kitchen (furniture, appliances, cookware, decor, bedding, storage, etc.)
-- Tools & Equipment (power tools, hand tools, gardening, ladders, outdoor equipment, etc.)
+- Tools & Equipment (power tools, hand tools, gardening tools, ladders, workshop equipment, etc.)
 
 Respond with ONLY the category name, nothing else.`
           },

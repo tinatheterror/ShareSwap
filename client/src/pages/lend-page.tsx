@@ -724,7 +724,7 @@ export default function LendPage() {
                       <TooltipProvider>
                         <div className="p-4 bg-white rounded-lg border border-teal-200">
                           <div className="flex items-center gap-2">
-                            <span className="text-black font-medium">
+                            <span className="text-teal-700 font-medium">
                               {TIER_NAMES[calculatedTier]}
                             </span>
                             <Tooltip>
@@ -739,7 +739,7 @@ export default function LendPage() {
                               </TooltipContent>
                             </Tooltip>
                           </div>
-                          <p className="text-sm text-black mt-1">
+                          <p className="text-sm text-teal-700 mt-1">
                             (Used to calculate ShareCoin value automatically)
                           </p>
                           <p className="text-sm text-teal-700 mt-2 font-medium flex items-center gap-1">

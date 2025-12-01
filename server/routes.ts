@@ -707,59 +707,91 @@ Return only the JSON object, no other text.`,
         messages: [
           {
             role: "system",
-            content: `You are an expert appraiser for a peer-to-peer sharing marketplace. 
-            
-Your job is to estimate the current market value of used items and assign them to pricing tiers.
+            content: `You are an expert appraiser for a peer-to-peer sharing marketplace, specialized in valuing used items using real market data and depreciation analysis.
 
-Tiers are defined as:
-- Tier 1: Items worth under $50 (basic household items, common tools)
-- Tier 2: Items worth $50-$150 (mid-range appliances, quality tools)
-- Tier 3: Items worth $150-$300 (premium electronics, specialized equipment)
-- Tier 4: Items worth $300+ (high-value electronics, professional tools)
+VALUATION METHODOLOGY:
 
-Condition impacts value:
-- "New / Like New": 100% of typical market value
-- "Good": 70-80% of typical market value
-- "Fair": 50-60% of typical market value  
-- "Well Loved": 30-40% of typical market value
+1. CATEGORY-SPECIFIC DEPRECIATION RATES (annual):
+- Electronics: 20-30% per year (technology obsolescence)
+- Baby & Kids: 15-25% per year (safety standards, growth phases)
+- Tools & Equipment: 10-15% per year (durability, professional use)
+- Home & Kitchen: 15-20% per year (style changes, wear)
+- Clothing & Accessories: 25-40% per year (fashion cycles)
+- Hobbies & Collectibles: Variable (-5% to +10%, some items appreciate)
 
-Respond with ONLY a JSON object in this format:
+2. CONDITION MULTIPLIERS:
+- "New / Like New": 85-100% of current retail value
+- "Good": 60-75% of current retail value
+- "Fair": 40-55% of current retail value
+- "Well Loved": 20-35% of current retail value
+
+3. MARKET TRENDS TO CONSIDER:
+- Seasonal demand (baby items peak in spring, tools in summer)
+- Brand reputation and resale value
+- Availability of similar items in secondhand market
+- Current retail prices for comparison
+
+TIER DEFINITIONS:
+- Tier 1 ($0-$49): Basic household items, common accessories, well-worn goods
+- Tier 2 ($50-$149): Quality everyday items, mid-range electronics, good condition goods
+- Tier 3 ($150-$299): Premium items, specialized equipment, excellent condition
+- Tier 4 ($300+): High-value electronics, professional tools, luxury items
+
+Respond with ONLY a JSON object:
 {
   "tier": 1-4,
   "estimatedValue": number (current market value in USD),
-  "explanation": "Brief 1-sentence explanation of valuation"
+  "originalRetailEstimate": number (estimated original retail price),
+  "depreciationApplied": string (e.g., "25% for electronics + condition adjustment"),
+  "marketContext": string (brief note on market factors, e.g., "High demand for quality strollers"),
+  "explanation": string (1-2 sentence summary tying it together),
+  "confidenceLevel": "high" | "medium" | "low"
 }`
           },
           {
             role: "user",
-            content: `Value this item:
+            content: `Value this item for our sharing marketplace:
 Name: ${name}
 Description: ${description || 'N/A'}
 Category: ${itemType}
 Condition: ${condition}
 
-Provide tier, estimated market value, and brief explanation.`
+Analyze using market data, apply appropriate depreciation, and provide a comprehensive valuation.`
           }
         ],
         temperature: 0.3,
-        max_tokens: 150,
+        max_tokens: 300,
         response_format: { type: "json_object" },
       });
 
       const result = JSON.parse(response.choices[0]?.message?.content || "{}");
       
+      // Validate confidence level
+      const validConfidenceLevels = ["high", "medium", "low"];
+      const confidenceLevel = validConfidenceLevels.includes(result.confidenceLevel) 
+        ? result.confidenceLevel 
+        : "medium";
+      
       res.json({
         tier: Math.min(4, Math.max(1, result.tier || 2)),
         estimatedValue: Math.max(0, result.estimatedValue || 50),
+        originalRetailEstimate: typeof result.originalRetailEstimate === 'number' ? result.originalRetailEstimate : null,
+        depreciationApplied: typeof result.depreciationApplied === 'string' ? result.depreciationApplied : null,
+        marketContext: typeof result.marketContext === 'string' ? result.marketContext : null,
         explanation: result.explanation || "AI-powered valuation based on market data",
+        confidenceLevel,
       });
     } catch (error: any) {
       console.error("Error valuating item:", error);
-      // Fallback to basic valuation
+      // Fallback to basic valuation with helpful context
       res.json({
         tier: 2,
         estimatedValue: 75,
-        explanation: "Estimated value (AI temporarily unavailable)",
+        originalRetailEstimate: null,
+        depreciationApplied: null,
+        marketContext: null,
+        explanation: "Estimated value based on category averages (AI temporarily unavailable)",
+        confidenceLevel: "low",
       });
     }
   });

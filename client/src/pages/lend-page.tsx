@@ -148,6 +148,10 @@ export default function LendPage() {
     tier: number;
     estimatedValue: number;
     explanation: string;
+    originalRetailEstimate?: number | null;
+    depreciationApplied?: string | null;
+    marketContext?: string | null;
+    confidenceLevel?: "high" | "medium" | "low";
   } | null>(null);
   const [isValuating, setIsValuating] = useState(false);
 
@@ -194,6 +198,10 @@ export default function LendPage() {
             tier: data.tier,
             estimatedValue: data.estimatedValue,
             explanation: data.explanation,
+            originalRetailEstimate: data.originalRetailEstimate,
+            depreciationApplied: data.depreciationApplied,
+            marketContext: data.marketContext,
+            confidenceLevel: data.confidenceLevel,
           });
           
           // Trigger tier glow animation
@@ -706,51 +714,109 @@ export default function LendPage() {
                       <h3 className="font-medium flex items-center gap-2">
                         <Sparkles className="h-5 w-5 text-teal-500" />
                         AI Valuation
+                        {aiValuation?.confidenceLevel && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            aiValuation.confidenceLevel === "high" 
+                              ? "bg-green-100 text-green-700" 
+                              : aiValuation.confidenceLevel === "medium"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {aiValuation.confidenceLevel === "high" ? "High Confidence" : 
+                             aiValuation.confidenceLevel === "medium" ? "Medium Confidence" : 
+                             "Estimate"}
+                          </span>
+                        )}
                       </h3>
                       
                       {isValuating ? (
-                        <div className="p-4 bg-gray-50 rounded-lg border animate-pulse">
-                          <p className="text-sm text-gray-500">
-                            Analyzing item value...
-                          </p>
+                        <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center animate-pulse">
+                              <Sparkles className="h-4 w-4 text-teal-500" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-600 font-medium">
+                                Analyzing market value...
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                Checking category trends, condition, and depreciation rates
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       ) : aiValuation ? (
                         <TooltipProvider>
-                          <div className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
+                          <div className={`p-4 bg-gradient-to-br from-white to-teal-50/30 rounded-lg border border-teal-200 transition-all duration-500 ${
                             tierGlow
                               ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
                               : ""
                           }`}>
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-black font-medium">
-                                    {TIER_NAMES[aiValuation.tier]}
-                                  </span>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-sm max-w-xs">
-                                        AI-powered valuation based on item type, condition, and market data.
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                            <div className="space-y-4">
+                              {/* Main Value Display */}
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-black font-semibold text-lg">
+                                      {TIER_NAMES[aiValuation.tier]}
+                                    </span>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-sm">
+                                        <p className="text-sm">
+                                          This tier determines your ShareCoin earnings. Higher value items earn more coins when shared.
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                  <p className="text-sm text-teal-700 font-medium flex items-center gap-1">
+                                    <Coins className="h-4 w-4 text-teal-600" />
+                                    Earn {TIER_WEEKLY_COINS[aiValuation.tier]} ShareCoins/week
+                                  </p>
                                 </div>
-                                <span className="text-lg font-bold text-teal-600">
-                                  ${aiValuation.estimatedValue}
-                                </span>
+                                <div className="text-right">
+                                  <span className="text-2xl font-bold text-teal-600">
+                                    ${aiValuation.estimatedValue}
+                                  </span>
+                                  <p className="text-xs text-gray-500">Current Value</p>
+                                </div>
                               </div>
-                              
-                              <p className="text-xs text-gray-600 italic">
-                                {aiValuation.explanation}
-                              </p>
-                              
-                              <p className="text-sm text-teal-700 mt-2 font-medium flex items-center gap-1">
-                                <Coins className="h-4 w-4 text-teal-600" />
-                                {TIER_WEEKLY_COINS[aiValuation.tier]} ShareCoins/week
-                              </p>
+
+                              {/* AI Explanation */}
+                              <div className="bg-white/60 rounded-lg p-3 border border-teal-100">
+                                <p className="text-sm text-gray-700">
+                                  {aiValuation.explanation}
+                                </p>
+                              </div>
+
+                              {/* Detailed Analysis */}
+                              {(aiValuation.originalRetailEstimate || aiValuation.depreciationApplied || aiValuation.marketContext) && (
+                                <div className="grid grid-cols-1 gap-2 pt-2 border-t border-teal-100">
+                                  {aiValuation.originalRetailEstimate && (
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                      <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                                      <span className="font-medium">Retail Value:</span>
+                                      <span>${aiValuation.originalRetailEstimate}</span>
+                                    </div>
+                                  )}
+                                  {aiValuation.depreciationApplied && (
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                                      <span className="font-medium">Depreciation:</span>
+                                      <span>{aiValuation.depreciationApplied}</span>
+                                    </div>
+                                  )}
+                                  {aiValuation.marketContext && (
+                                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                                      <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                                      <span className="font-medium">Market:</span>
+                                      <span>{aiValuation.marketContext}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </TooltipProvider>

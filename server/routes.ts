@@ -829,9 +829,22 @@ Return JSON ONLY:
         ? result.confidenceLevel 
         : "medium";
       
+      // Calculate tier from estimated value (don't trust AI's tier assignment)
+      const estimatedValue = Math.max(0, result.estimatedValue || 50);
+      let calculatedTier: number;
+      if (estimatedValue >= 300) {
+        calculatedTier = 4; // High Value Item
+      } else if (estimatedValue >= 150) {
+        calculatedTier = 3; // Premium Item
+      } else if (estimatedValue >= 50) {
+        calculatedTier = 2; // Everyday Household Item
+      } else {
+        calculatedTier = 1; // Budget Friendly
+      }
+      
       res.json({
-        tier: Math.min(4, Math.max(1, result.tier || 2)),
-        estimatedValue: Math.max(0, result.estimatedValue || 50),
+        tier: calculatedTier,
+        estimatedValue,
         originalRetailEstimate: typeof result.originalRetailEstimate === 'number' ? result.originalRetailEstimate : null,
         depreciationApplied: typeof result.depreciationApplied === 'string' ? result.depreciationApplied : null,
         marketContext: typeof result.marketContext === 'string' ? result.marketContext : null,

@@ -60,6 +60,7 @@ const ITEM_TYPES = [
   "Baby & Kids",
   "Clothing & Accessories",
   "Electronics",
+  "Hobbies & Collectibles",
   "Home & Kitchen",
   "Tools & Equipment",
 ] as const;

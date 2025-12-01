@@ -29,7 +29,13 @@ Key architectural decisions and features include:
     - **Item Recommendations**: AI-powered recommendations based on user behavior, categories, and seasonal relevance.
     - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and automatically matches lenders/borrowers based on wishlists.
 - **AI-Powered Automatic Valuation System**:
+    - **Photo Required**: At least 1 photo is mandatory for listing items (enforced on frontend and backend)
     - **3 Required Questions**: Item Name, Item Type (AI auto-filled), Condition (4 options) - No manual value entry needed
+    - **Vision-Enhanced AI Valuation**: Uses GPT-4 Vision to analyze uploaded photos for:
+      - Brand and model identification (logos, labels, model numbers)
+      - Actual condition verification (scratches, wear, stains, damage)
+      - Age indicators and completeness assessment
+      - Quality level (premium vs budget brand)
     - **AI Valuation Analysis**: Automatically triggered when item details are filled, analyzing:
       - Category-specific depreciation rates (Electronics: 20-30%/year, Baby & Kids: 15-25%/year, Tools: 10-15%/year, etc.)
       - Condition multipliers (New/Like New: 85-100%, Good: 70-85% - no tier penalty, Fair: 45-60%, Well Loved: 25-40%)

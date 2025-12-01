@@ -956,6 +956,11 @@ Respond with ONLY the category name, nothing else.`
         photoUrls = files ? files.map((file) => `/uploads/${file.filename}`) : [];
       }
 
+      // Validate at least one photo is provided
+      if (photoUrls.length === 0) {
+        return res.status(400).json({ error: "At least one photo is required" });
+      }
+
       // Parse location data
       const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
       const longitude = req.body.longitude

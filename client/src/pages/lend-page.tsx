@@ -981,7 +981,7 @@ export default function LendPage() {
                           availabilityOption === "custom" ? "default" : "ghost"
                         }
                         size="sm"
-                        className="w-full text-muted-foreground"
+                        className="w-full text-muted-foreground text-xs mt-1"
                         onClick={() => setAvailabilityOption("custom")}
                       >
                         Custom dates
@@ -1146,8 +1146,8 @@ export default function LendPage() {
               </Card>
             </div>
 
-            {/* Submit Button - Full Width Below Both Columns */}
-            <div className="lg:col-span-3">
+            {/* Submit Button - Same Width as Card Above */}
+            <div className="lg:col-span-2">
               <Button
                 type="submit"
                 className="w-full"

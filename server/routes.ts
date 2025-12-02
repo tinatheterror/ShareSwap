@@ -756,6 +756,58 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Real-time AI valuation preview endpoint
+  app.post("/api/valuation/preview", csrfProtection, async (req, res) => {
+    try {
+      const { name, description, itemType, category, brand, condition, conditionRating, originalValue, estimatedValue } = req.body;
+
+      if (!name || !condition || !originalValue) {
+        return res.status(400).json({ error: "Missing required fields: name, condition, originalValue" });
+      }
+
+      // Calculate tier from originalValue and condition (same logic as frontend)
+      let baseTier = 1;
+      if (originalValue === "Under $50") baseTier = 1;
+      else if (originalValue === "$50–$150") baseTier = 2;
+      else if (originalValue === "$150–$300") baseTier = 3;
+      else if (originalValue === "$300+") baseTier = 4;
+
+      // Apply condition modifier
+      if (condition === "Fair" || condition === "Well Loved") {
+        baseTier = Math.max(1, baseTier - 1);
+      }
+
+      const tier = baseTier;
+
+      // Prepare valuation input
+      const valuationInput: ItemValuationInput = {
+        tier,
+        condition,
+        conditionRating: parseInt(conditionRating) || 5,
+        brand: brand || null,
+        category: category || null,
+        itemType: itemType || null,
+        name,
+        description: description || "",
+        originalValue: originalValue || null,
+        estimatedValue: estimatedValue || null,
+      };
+
+      const result = await calculateAIValuation(valuationInput);
+      
+      res.json({
+        tier,
+        shareCoinsValue: result.shareCoinsValue,
+        tierBand: result.tierBand,
+        reasoning: result.reasoning,
+        factors: result.factors,
+      });
+    } catch (error: any) {
+      console.error("Valuation preview error:", error);
+      res.status(500).json({ error: "Failed to calculate valuation" });
+    }
+  });
+
   // Item endpoints
   app.post("/api/items", upload.array("photos"), async (req, res) => {
     if (!req.isAuthenticated()) {

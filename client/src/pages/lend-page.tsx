@@ -60,12 +60,19 @@ const ITEM_TYPES = [
   "Baby & Kids",
   "Clothing & Accessories",
   "Electronics",
-  "Hobbies & Collectibles",
   "Home & Kitchen",
   "Tools & Equipment",
 ] as const;
 
 const CONDITIONS = ["New / Like New", "Good", "Fair", "Well Loved"] as const;
+
+const ORIGINAL_VALUES = [
+  "Under $50",
+  "$50–$150",
+  "$150–$300",
+  "$300–$600",
+  "$600+",
+] as const;
 
 const TIER_NAMES: Record<number, string> = {
   1: "Tier 1 – Budget Friendly",
@@ -81,6 +88,21 @@ const TIER_WEEKLY_COINS: Record<number, number> = {
   4: 40,
 };
 
+const calculateTier = (originalValue: string, condition: string): number => {
+  let baseTier = 1;
+  if (originalValue === "Under $50") baseTier = 1;
+  else if (originalValue === "$50–$150") baseTier = 2;
+  else if (originalValue === "$150–$300") baseTier = 3;
+  else if (originalValue === "$300–$600" || originalValue === "$600+")
+    baseTier = 4;
+
+  if (condition === "Fair" || condition === "Well Loved") {
+    baseTier = Math.max(1, baseTier - 1);
+  }
+
+  return baseTier;
+};
+
 const calculateShareCoinsForDays = (tier: number, days: number): number => {
   const weeklyCoins = TIER_WEEKLY_COINS[tier] || 5;
   const dailyCoins = weeklyCoins / 7;
@@ -93,6 +115,7 @@ const formSchema = z.object({
   description: z.string().min(10, "Please provide a detailed description"),
   itemType: z.string().min(1, "Item type is required"),
   condition: z.string().min(1, "Condition is required"),
+  originalValue: z.string().min(1, "Original value is required"),
   isLendable: z.boolean().default(false),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
@@ -145,16 +168,6 @@ export default function LendPage() {
   const [tierGlow, setTierGlow] = useState(false);
   const lastDetectedName = useRef("");
   const previousTier = useRef<number | null>(null);
-  const [aiValuation, setAiValuation] = useState<{
-    tier: number;
-    estimatedValue: number;
-    explanation: string;
-    originalRetailEstimate?: number | null;
-    depreciationApplied?: string | null;
-    marketContext?: string | null;
-    confidenceLevel?: "high" | "medium" | "low";
-  } | null>(null);
-  const [isValuating, setIsValuating] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -163,6 +176,7 @@ export default function LendPage() {
       description: "",
       itemType: "",
       condition: "",
+      originalValue: "",
       isLendable: false,
       isSwappable: false,
       isRentable: false,
@@ -178,49 +192,21 @@ export default function LendPage() {
 
   const watchItemType = form.watch("itemType");
   const watchCondition = form.watch("condition");
-  const watchName = form.watch("name");
-  const watchDescription = form.watch("description");
+  const watchOriginalValue = form.watch("originalValue");
 
-  // Trigger AI valuation when item type and condition are filled (includes photos if available)
+  const calculatedTier =
+    watchCondition && watchOriginalValue
+      ? calculateTier(watchOriginalValue, watchCondition)
+      : null;
+
+  // Trigger tier glow animation when tier first appears
   useEffect(() => {
-    const performValuation = async () => {
-      if (watchName && watchItemType && watchCondition && watchDescription) {
-        setIsValuating(true);
-        try {
-          const response = await apiRequest("POST", "/api/valuate-item", {
-            name: watchName,
-            description: watchDescription,
-            itemType: watchItemType,
-            condition: watchCondition,
-            photoUrls: smartScanPhotos.length > 0 ? smartScanPhotos : undefined,
-          });
-          const data = await response.json();
-          
-          setAiValuation({
-            tier: data.tier,
-            estimatedValue: data.estimatedValue,
-            explanation: data.explanation,
-            originalRetailEstimate: data.originalRetailEstimate,
-            depreciationApplied: data.depreciationApplied,
-            marketContext: data.marketContext,
-            confidenceLevel: data.confidenceLevel,
-          });
-          
-          // Trigger tier glow animation
-          setTierGlow(true);
-          setTimeout(() => setTierGlow(false), 1500);
-        } catch (error) {
-          console.error("Failed to valuate item:", error);
-        } finally {
-          setIsValuating(false);
-        }
-      } else {
-        setAiValuation(null);
-      }
-    };
-    
-    performValuation();
-  }, [watchName, watchItemType, watchCondition, watchDescription, smartScanPhotos]);
+    if (calculatedTier && previousTier.current === null) {
+      setTierGlow(true);
+      setTimeout(() => setTierGlow(false), 1500);
+    }
+    previousTier.current = calculatedTier;
+  }, [calculatedTier]);
 
   const detectItemCategory = async (itemName: string) => {
     if (
@@ -404,10 +390,10 @@ export default function LendPage() {
         }
       });
 
-      // Add AI valuation data
-      if (aiValuation) {
-        formData.append("tier", String(aiValuation.tier));
-        formData.append("estimatedValue", String(aiValuation.estimatedValue));
+      // Calculate and add tier
+      if (data.condition && data.originalValue) {
+        const tier = calculateTier(data.originalValue, data.condition);
+        formData.append("tier", String(tier));
       }
 
       const res = await apiRequest("POST", "/api/items", formData);
@@ -564,17 +550,9 @@ export default function LendPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => {
-              if (selectedPhotos.length === 0 && smartScanPhotos.length === 0) {
-                toast({
-                  title: "Photo Required",
-                  description: "Please upload at least one photo of your item.",
-                  variant: "destructive",
-                });
-                return;
-              }
-              createItemMutation.mutate(data);
-            })}
+            onSubmit={form.handleSubmit((data) =>
+              createItemMutation.mutate(data),
+            )}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
             {/* Left Column - Form Fields */}
@@ -718,134 +696,75 @@ export default function LendPage() {
                     />
                   </div>
 
-                  {/* AI Valuation Display - show after item details are filled */}
-                  {(isValuating || aiValuation) && (
-                    <div className="space-y-4 border-t pt-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-teal-500" />
-                          AI Valuation
-                          {aiValuation?.confidenceLevel && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              aiValuation.confidenceLevel === "high" 
-                                ? "bg-green-100 text-green-700" 
-                                : aiValuation.confidenceLevel === "medium"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-gray-100 text-gray-600"
-                            }`}>
-                              {aiValuation.confidenceLevel === "high" ? "High Confidence" : 
-                               aiValuation.confidenceLevel === "medium" ? "Medium Confidence" : 
-                               "Estimate"}
-                            </span>
-                          )}
-                        </h3>
-                        {aiValuation && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs text-gray-500 hover:text-gray-700"
-                            onClick={() => setAiValuation(null)}
-                          >
-                            Dismiss
-                          </Button>
-                        )}
-                      </div>
-                      
-                      {isValuating ? (
-                        <div className="p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center animate-pulse">
-                              <Sparkles className="h-4 w-4 text-teal-500" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-sm text-gray-600 font-medium">
-                                Analyzing market value...
-                              </p>
-                              <p className="text-xs text-gray-400">
-                                Checking category trends, condition, and depreciation rates
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : aiValuation ? (
-                        <TooltipProvider>
-                          <div className={`p-4 bg-gradient-to-br from-white to-teal-50/30 rounded-lg border border-teal-200 transition-all duration-500 ${
-                            tierGlow
-                              ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
-                              : ""
-                          }`}>
-                            <div className="space-y-4">
-                              {/* Main Value Display */}
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-black font-semibold text-lg">
-                                      {TIER_NAMES[aiValuation.tier]}
-                                    </span>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-sm">
-                                        <p className="text-sm">
-                                          This tier determines your ShareCoin earnings. Higher value items earn more coins when shared.
-                                        </p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </div>
-                                  <p className="text-sm text-teal-700 font-medium flex items-center gap-1">
-                                    <Coins className="h-4 w-4 text-teal-600" />
-                                    Earn {TIER_WEEKLY_COINS[aiValuation.tier]} ShareCoins/week
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-2xl font-bold text-teal-600">
-                                    ${aiValuation.estimatedValue}
+                  {/* Question 4: Original Value - Pill Buttons */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="font-medium">Original Value</h3>
+                    <FormField
+                      control={form.control}
+                      name="originalValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <div className="flex flex-wrap gap-2">
+                              {ORIGINAL_VALUES.map((value) => (
+                                <Button
+                                  key={value}
+                                  type="button"
+                                  variant="outline"
+                                  className={`h-10 px-4 rounded-full transition-all ${
+                                    field.value === value
+                                      ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
+                                      : "bg-white hover:bg-gray-50"
+                                  }`}
+                                  onClick={() => field.onChange(value)}
+                                >
+                                  <span className="text-sm font-medium">
+                                    {value}
                                   </span>
-                                  <p className="text-xs text-gray-500">Current Value</p>
-                                </div>
-                              </div>
-
-                              {/* AI Explanation */}
-                              <div className="bg-white/60 rounded-lg p-3 border border-teal-100">
-                                <p className="text-sm text-gray-700">
-                                  {aiValuation.explanation}
-                                </p>
-                              </div>
-
-                              {/* Detailed Analysis */}
-                              {(aiValuation.originalRetailEstimate || aiValuation.depreciationApplied || aiValuation.marketContext) && (
-                                <div className="grid grid-cols-1 gap-2 pt-2 border-t border-teal-100">
-                                  {aiValuation.originalRetailEstimate && (
-                                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                                      <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                                      <span className="font-medium">Retail Value:</span>
-                                      <span>${aiValuation.originalRetailEstimate}</span>
-                                    </div>
-                                  )}
-                                  {aiValuation.depreciationApplied && (
-                                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                                      <span className="font-medium">Depreciation:</span>
-                                      <span>{aiValuation.depreciationApplied}</span>
-                                    </div>
-                                  )}
-                                  {aiValuation.marketContext && (
-                                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                                      <span className="w-2 h-2 rounded-full bg-green-400"></span>
-                                      <span className="font-medium">Market:</span>
-                                      <span>{aiValuation.marketContext}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                                </Button>
+                              ))}
                             </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Tier Preview - show after condition and value are selected */}
+                    {calculatedTier && (
+                      <TooltipProvider>
+                        <div className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
+                          tierGlow
+                            ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
+                            : ""
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-black font-medium">
+                              {TIER_NAMES[calculatedTier]}
+                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-sm max-w-xs">
+                                  Tier is based on category, condition, and
+                                  typical market value.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
-                        </TooltipProvider>
-                      ) : null}
-                    </div>
-                  )}
+                          <p className="text-sm text-black mt-1">
+                            (Used to calculate ShareCoin value automatically)
+                          </p>
+                          <p className="text-sm text-teal-700 mt-2 font-medium flex items-center gap-1">
+                            <Coins className="h-4 w-4 text-teal-600" />
+                            {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
+                          </p>
+                        </div>
+                      </TooltipProvider>
+                    )}
+                  </div>
 
                   {/* Location field */}
                   <div className="space-y-4 border-t pt-4">
@@ -1187,10 +1106,7 @@ export default function LendPage() {
             <div className="lg:col-span-1">
               <Card className="sticky top-8">
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium">Photos <span className="text-red-500">*</span></h3>
-                    <span className="text-xs text-muted-foreground">At least 1 required</span>
-                  </div>
+                  <h3 className="font-medium mb-4">Photos</h3>
                   <Tabs
                     value={uploadMethod}
                     onValueChange={(v) =>
@@ -1204,13 +1120,10 @@ export default function LendPage() {
 
                     <TabsContent value="smartscan" className="mt-4">
                       <SmartScan onAnalysisComplete={handleSmartScanComplete} />
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        SmartScan photos are used for AI-powered valuation
-                      </p>
                     </TabsContent>
 
                     <TabsContent value="manual" className="mt-4">
-                      <div className={`border-2 border-dashed rounded-lg p-6 text-center ${selectedPhotos.length === 0 ? 'border-gray-300' : 'border-teal-400 bg-teal-50'}`}>
+                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
                         <Input
                           type="file"
                           accept="image/*"
@@ -1221,15 +1134,15 @@ export default function LendPage() {
                         />
                         <label htmlFor="photos">
                           <div className="cursor-pointer">
-                            <Upload className={`w-8 h-8 mx-auto mb-2 ${selectedPhotos.length > 0 ? 'text-teal-600' : 'text-muted-foreground'}`} />
-                            <p className={`text-sm ${selectedPhotos.length > 0 ? 'text-teal-700' : 'text-muted-foreground'}`}>
-                              {selectedPhotos.length > 0 ? 'Click to change photos' : 'Click to upload photos'}
+                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              Click to upload photos
                             </p>
                           </div>
                         </label>
                         {selectedPhotos.length > 0 && (
-                          <p className="mt-2 text-sm font-medium text-teal-700">
-                            {selectedPhotos.length} photo{selectedPhotos.length > 1 ? 's' : ''} selected
+                          <p className="mt-2 text-sm">
+                            {selectedPhotos.length} photos selected
                           </p>
                         )}
                       </div>
@@ -1239,15 +1152,8 @@ export default function LendPage() {
                   {smartScanPhotos.length > 0 && (
                     <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
                       <p className="text-sm text-teal-700">
-                        ✨ SmartScan detected {smartScanPhotos.length} photos - AI valuation enhanced!
-                      </p>
-                    </div>
-                  )}
-                  
-                  {selectedPhotos.length === 0 && smartScanPhotos.length === 0 && (
-                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 mt-4">
-                      <p className="text-xs text-amber-700">
-                        Photos help our AI provide accurate valuations and build trust with borrowers
+                        ✨ SmartScan detected {smartScanPhotos.length} photos -
+                        form auto-filled!
                       </p>
                     </div>
                   )}

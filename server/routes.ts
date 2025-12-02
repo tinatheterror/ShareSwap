@@ -684,188 +684,6 @@ Return only the JSON object, no other text.`,
     }
   });
 
-  // AI-powered item valuation (tier + estimated value) with optional photo analysis
-  app.post("/api/valuate-item", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const { name, description, itemType, condition, photoUrls } = req.body;
-      
-      if (!name || !itemType || !condition) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
-      const openai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-      });
-
-      // Build the user message content - text + optional images
-      const userContent: any[] = [
-        {
-          type: "text",
-          text: `Value this item using current market data:
-
-Item Name: ${name}
-Description: ${description || 'No additional details provided'}
-Category: ${itemType}
-Condition: ${condition}
-
-${photoUrls && photoUrls.length > 0 ? 'IMPORTANT: Analyze the provided photos carefully to identify the brand, model, actual condition, and any details that affect value. Use what you see in the photos to provide a more accurate valuation.' : ''}
-
-Find comparable sold listings and provide accurate market value based on what this item would ACTUALLY sell for today in this condition.`
-        }
-      ];
-
-      // Add photo URLs if provided (GPT-4 Vision)
-      if (photoUrls && Array.isArray(photoUrls) && photoUrls.length > 0) {
-        // Add up to 4 photos for vision analysis
-        const photosToAnalyze = photoUrls.slice(0, 4);
-        for (const url of photosToAnalyze) {
-          if (typeof url === 'string' && url.startsWith('/uploads/')) {
-            // For local uploads, we need to construct the full URL
-            const fullUrl = `${req.protocol}://${req.get('host')}${url}`;
-            userContent.push({
-              type: "image_url",
-              image_url: { url: fullUrl, detail: "low" }
-            });
-          } else if (typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) {
-            userContent.push({
-              type: "image_url",
-              image_url: { url, detail: "low" }
-            });
-          }
-        }
-      }
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert appraiser for a peer-to-peer sharing marketplace. Use current market data from eBay, Facebook Marketplace, and Craigslist to provide accurate valuations.
-
-${photoUrls && photoUrls.length > 0 ? 'PHOTO ANALYSIS: You will receive photos of the item. Carefully examine them to identify:\n- Brand and model (look for logos, labels, model numbers)\n- Actual condition (scratches, wear, stains, damage)\n- Age indicators (design era, wear patterns)\n- Completeness (all parts present, accessories included)\n- Quality level (premium vs budget brand)\n\nUse the photos to verify or adjust the user\'s stated condition and provide a more accurate valuation.' : ''}
-
-CRITICAL: Use REAL current market prices. Check what similar items are ACTUALLY selling for today.
-
-CATEGORY EXAMPLES (use these as benchmarks):
-
-BABY & KIDS:
-- UPPAbaby Vista Stroller (2-3 years old, Good): $400-500 (retail $1000)
-- Baby Jogger City Mini (4-5 years old, Good): $120-180 (retail $300)
-- Graco Pack n Play (Good): $40-60 (retail $120)
-- Baby Bjorn Carrier (Good): $60-90 (retail $180)
-
-ELECTRONICS:
-- iPhone 13 (Good, 2 years old): $400-500 (retail $800)
-- iPad Air (2020, Good): $300-400 (retail $600)
-- MacBook Air M1 (2 years, Good): $600-750 (retail $1000)
-- Sony WH-1000XM4 Headphones (Good): $180-220 (retail $350)
-- Nintendo Switch (Good): $200-250 (retail $300)
-
-TOOLS & EQUIPMENT:
-- DeWalt Cordless Drill Set (Good): $80-120 (retail $200)
-- Craftsman Tool Set (Good): $100-150 (retail $250)
-- Power Washer (Good): $150-200 (retail $350)
-
-HOME & KITCHEN:
-- KitchenAid Stand Mixer (Good): $200-280 (retail $450)
-- Dyson V11 Vacuum (Good): $300-400 (retail $600)
-- Instant Pot (Good): $50-70 (retail $120)
-
-VALUATION PROCESS:
-1. ${photoUrls && photoUrls.length > 0 ? 'Analyze photos to identify brand, model, and actual condition' : 'Use provided item details'}
-2. Find comparable items on secondary markets (eBay sold listings, FB Marketplace, Craigslist)
-3. Apply age depreciation (electronics: 25-30%/year, baby: 20%/year, tools: 15%/year)
-4. Adjust for condition (verified by photos if available)
-5. Cross-check against tier thresholds
-
-CONDITION MULTIPLIERS:
-- "New / Like New": 80-95% of current retail
-- "Good": 60-75% of current retail (normal wear, fully functional)
-- "Fair": 40-55% of current retail (visible wear, some issues)
-- "Well Loved": 25-40% of current retail (heavy wear, cosmetic damage)
-
-TIER ASSIGNMENTS (use estimated market value):
-- Tier 1: $0-49 (basics, common items)
-- Tier 2: $50-149 (mid-range, everyday items)
-- Tier 3: $150-299 (premium items)
-- Tier 4: $300+ (high-value items - includes $400, $500, $1000+ items)
-
-CONFIDENCE LEVELS:
-- "high": ${photoUrls && photoUrls.length > 0 ? 'Clear photos showing brand/model, ' : ''}well-known brand/model, clear market data
-- "medium": Some market data, generic description${photoUrls && photoUrls.length > 0 ? ', unclear photos' : ''}
-- "low": Limited info, unclear item details${photoUrls && photoUrls.length > 0 ? ', photos don\'t help identification' : ''}
-
-Return JSON ONLY:
-{
-  "tier": 1-4,
-  "estimatedValue": number (realistic current market value),
-  "originalRetailEstimate": number (new retail price if known),
-  "depreciationApplied": string (specific calculation shown),
-  "marketContext": string (what similar items sell for),
-  "explanation": string (brief reasoning${photoUrls && photoUrls.length > 0 ? ', mention what you identified from photos' : ''}),
-  "confidenceLevel": "high" | "medium" | "low"
-}`
-          },
-          {
-            role: "user",
-            content: userContent
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 400,
-        response_format: { type: "json_object" },
-      });
-
-      const result = JSON.parse(response.choices[0]?.message?.content || "{}");
-      
-      // Validate confidence level
-      const validConfidenceLevels = ["high", "medium", "low"];
-      const confidenceLevel = validConfidenceLevels.includes(result.confidenceLevel) 
-        ? result.confidenceLevel 
-        : "medium";
-      
-      // Calculate tier from estimated value (don't trust AI's tier assignment)
-      const estimatedValue = Math.max(0, result.estimatedValue || 50);
-      let calculatedTier: number;
-      if (estimatedValue >= 300) {
-        calculatedTier = 4; // High Value Item
-      } else if (estimatedValue >= 150) {
-        calculatedTier = 3; // Premium Item
-      } else if (estimatedValue >= 50) {
-        calculatedTier = 2; // Everyday Household Item
-      } else {
-        calculatedTier = 1; // Budget Friendly
-      }
-      
-      res.json({
-        tier: calculatedTier,
-        estimatedValue,
-        originalRetailEstimate: typeof result.originalRetailEstimate === 'number' ? result.originalRetailEstimate : null,
-        depreciationApplied: typeof result.depreciationApplied === 'string' ? result.depreciationApplied : null,
-        marketContext: typeof result.marketContext === 'string' ? result.marketContext : null,
-        explanation: result.explanation || "AI-powered valuation based on market data",
-        confidenceLevel,
-      });
-    } catch (error: any) {
-      console.error("Error valuating item:", error);
-      // Fallback to basic valuation with helpful context
-      res.json({
-        tier: 2,
-        estimatedValue: 75,
-        originalRetailEstimate: null,
-        depreciationApplied: null,
-        marketContext: null,
-        explanation: "Estimated value based on category averages (AI temporarily unavailable)",
-        confidenceLevel: "low",
-      });
-    }
-  });
-
   // AI-powered item category detection
   app.post("/api/detect-category", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -904,10 +722,10 @@ Return JSON ONLY:
 Available categories:
 - Baby & Kids (strollers, cribs, toys, baby clothes, car seats, playpens, etc.)
 - Clothing & Accessories (adult clothing, shoes, bags, jewelry, hats, scarves, etc.)
-- Electronics (phones, laptops, cameras, TVs, speakers, headphones, gaming consoles, etc.)
-- Hobbies & Collectibles (board games, musical instruments, sports cards, vinyl records, art supplies, craft kits, puzzles, figurines, fishing rods, fishing gear, camping gear, sports equipment, bikes, skis, kayaks, tents, outdoor recreation, etc.)
+- Electronics (phones, laptops, cameras, TVs, speakers, headphones, gaming, etc.)
+- Hobbies & Collectibles (board games, musical instruments, sports cards, vinyl records, art supplies, craft kits, puzzles, figurines, etc.)
 - Home & Kitchen (furniture, appliances, cookware, decor, bedding, storage, etc.)
-- Tools & Equipment (power tools, hand tools, gardening tools, ladders, workshop equipment, etc.)
+- Tools & Equipment (power tools, hand tools, gardening, ladders, outdoor equipment, etc.)
 
 Respond with ONLY the category name, nothing else.`
           },
@@ -967,11 +785,6 @@ Respond with ONLY the category name, nothing else.`
         // Use manually uploaded photos
         const files = req.files as Express.Multer.File[];
         photoUrls = files ? files.map((file) => `/uploads/${file.filename}`) : [];
-      }
-
-      // Validate at least one photo is provided
-      if (photoUrls.length === 0) {
-        return res.status(400).json({ error: "At least one photo is required" });
       }
 
       // Parse location data

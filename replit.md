@@ -28,26 +28,17 @@ Key architectural decisions and features include:
     - **Item Category Detection**: AI-powered auto-categorization of items based on name. Uses GPT-4o-mini to detect item type (Baby & Kids, Clothing & Accessories, Electronics, Home & Kitchen, Tools & Equipment).
     - **Item Recommendations**: AI-powered recommendations based on user behavior, categories, and seasonal relevance.
     - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and automatically matches lenders/borrowers based on wishlists.
-- **AI-Powered Automatic Valuation System**:
-    - **Photo Required**: At least 1 photo is mandatory for listing items (enforced on frontend and backend)
-    - **3 Required Questions**: Item Name, Item Type (AI auto-filled), Condition (4 options) - No manual value entry needed
-    - **Vision-Enhanced AI Valuation**: Uses GPT-4 Vision to analyze uploaded photos for:
-      - Brand and model identification (logos, labels, model numbers)
-      - Actual condition verification (scratches, wear, stains, damage)
-      - Age indicators and completeness assessment
-      - Quality level (premium vs budget brand)
-    - **AI Valuation Analysis**: Automatically triggered when item details are filled, analyzing:
-      - Category-specific depreciation rates (Electronics: 20-30%/year, Baby & Kids: 15-25%/year, Tools: 10-15%/year, etc.)
-      - Condition multipliers (New/Like New: 85-100%, Good: 70-85% - no tier penalty, Fair: 45-60%, Well Loved: 25-40%)
-      - Market trends (seasonal demand, brand reputation, secondhand availability)
-    - **Trust-Building Display**: Shows confidence level badge (High/Medium/Low), original retail estimate, depreciation breakdown, and market context
+- **Tier-Based Pricing System**:
+    - **4 Required Questions**: Item Name, Item Type (AI auto-filled), Condition (4 options), Original Value (5 price ranges)
     - **Automatic Tier Assignment**: 
-      - Tier 1 ($0-$49) = 5 ShareCoins/week
-      - Tier 2 ($50-$149) = 10 ShareCoins/week
-      - Tier 3 ($150-$299) = 20 ShareCoins/week
+      - Tier 1 (Under $50) = 5 ShareCoins/week
+      - Tier 2 ($50-$150) = 10 ShareCoins/week
+      - Tier 3 ($150-$300) = 20 ShareCoins/week
       - Tier 4 ($300+) = 40 ShareCoins/week
+    - **Condition Modifier**: Items in "Fair" or "Well Loved" condition drop 1 tier (minimum Tier 1). "New/Like New" and "Good" keep the same tier.
     - **Day Proration**: ShareCoin cost = (Weekly Rate ÷ 7) × days, rounded down with minimum 1 coin
     - **Category-Specific Durations**: Baby & Kids items show longer duration presets (1 week to 6 months) vs standard items (1 day to 1 month)
+    - **Tier Display**: Only visible on "My Shared Items" page with tooltip explaining tier calculation
 - **UI/UX Decisions**:
     - Focus on intuitive interfaces like swipeable cards for item requests, stacked card UI with animations, and in-app scheduling.
     - Gamified Account Statistics section with gradients, animations, and progress bars to incentivize sharing behavior, leading to Community Impact Levels with associated benefits.

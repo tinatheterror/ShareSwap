@@ -759,7 +759,7 @@ Respond with ONLY the category name, nothing else.`
   // Real-time AI valuation preview endpoint
   app.post("/api/valuation/preview", csrfProtection, async (req, res) => {
     try {
-      const { name, description, itemType, category, brand, condition, conditionRating, originalValue, estimatedValue } = req.body;
+      const { name, description, itemType, category, brand, condition, conditionRating, originalValue, estimatedValue, photos } = req.body;
 
       if (!name || !condition || !originalValue) {
         return res.status(400).json({ error: "Missing required fields: name, condition, originalValue" });
@@ -779,6 +779,14 @@ Respond with ONLY the category name, nothing else.`
 
       const tier = baseTier;
 
+      // Validate and limit photos
+      let validPhotos: string[] = [];
+      if (photos && Array.isArray(photos)) {
+        validPhotos = photos.slice(0, 3).filter((p: string) => 
+          typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('/uploads/') || p.startsWith('http'))
+        );
+      }
+
       // Prepare valuation input
       const valuationInput: ItemValuationInput = {
         tier,
@@ -791,6 +799,7 @@ Respond with ONLY the category name, nothing else.`
         description: description || "",
         originalValue: originalValue || null,
         estimatedValue: estimatedValue || null,
+        photos: validPhotos.length > 0 ? validPhotos : undefined,
       };
 
       const result = await calculateAIValuation(valuationInput);

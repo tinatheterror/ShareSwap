@@ -213,9 +213,32 @@ export default function LendPage() {
   const [isLoadingValuation, setIsLoadingValuation] = useState(false);
   const valuationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Check if we have at least one photo
+  const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0;
+
+  // Convert files to base64 for AI valuation
+  const getPhotoDataUrls = async (): Promise<string[]> => {
+    // If we have SmartScan photos, use those (they're already URLs)
+    if (smartScanPhotos.length > 0) {
+      return smartScanPhotos.slice(0, 3); // Limit to 3 for API efficiency
+    }
+    
+    // Convert selected files to base64
+    const photoPromises = selectedPhotos.slice(0, 3).map((file) => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    return Promise.all(photoPromises);
+  };
+
   // Fetch AI valuation when relevant fields change (debounced)
   useEffect(() => {
-    if (!watchName || !watchCondition || !watchOriginalValue) {
+    if (!watchName || !watchCondition || !watchOriginalValue || !hasPhotos) {
       setValuationResult(null);
       return;
     }
@@ -229,6 +252,9 @@ export default function LendPage() {
     valuationTimeoutRef.current = setTimeout(async () => {
       setIsLoadingValuation(true);
       try {
+        // Get photo data URLs for AI analysis
+        const photoDataUrls = await getPhotoDataUrls();
+        
         const response = await apiRequest("POST", "/api/valuation/preview", {
           name: watchName,
           description: watchDescription || "",
@@ -236,6 +262,7 @@ export default function LendPage() {
           condition: watchCondition,
           conditionRating: watchConditionRating || 5,
           originalValue: watchOriginalValue,
+          photos: photoDataUrls,
         });
         const data = await response.json();
         if (data.shareCoinsValue) {
@@ -259,7 +286,7 @@ export default function LendPage() {
         clearTimeout(valuationTimeoutRef.current);
       }
     };
-  }, [watchName, watchDescription, watchItemType, watchCondition, watchConditionRating, watchOriginalValue]);
+  }, [watchName, watchDescription, watchItemType, watchCondition, watchConditionRating, watchOriginalValue, selectedPhotos, smartScanPhotos]);
 
   // Trigger tier glow animation when tier first appears
   useEffect(() => {
@@ -424,6 +451,11 @@ export default function LendPage() {
 
   const createItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      // Require at least 1 photo
+      if (selectedPhotos.length === 0 && smartScanPhotos.length === 0) {
+        throw new Error("Please upload at least one photo of your item");
+      }
+
       const formData = new FormData();
 
       // Use SmartScan photos or manual uploads

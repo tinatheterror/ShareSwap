@@ -37,6 +37,7 @@ export interface ItemValuationInput {
   description?: string;
   originalValue?: string | null;
   estimatedValue?: string | null;
+  photos?: string[]; // Array of base64 data URLs or image URLs
 }
 
 export interface ValuationResult {
@@ -81,7 +82,10 @@ export async function calculateAIValuation(
     const conditionMod = CONDITION_MODIFIERS[item.condition] || 0;
     const categoryHint = CATEGORY_RATE_HINTS[item.itemType || ""] || "middle";
 
+    const hasPhotos = item.photos && item.photos.length > 0;
+
     const prompt = `You are an expert item valuation AI for a peer-to-peer sharing marketplace. Your task is to determine the exact ShareCoin value for an item within a specific tier band.
+${hasPhotos ? "\nIMPORTANT: Analyze the provided photo(s) carefully to assess the actual condition, brand quality, and item characteristics." : ""}
 
 TIER BAND: ${band.min} to ${band.max} ShareCoins (weekly rate)
 BAND RANGE: ${bandRange} ShareCoins
@@ -90,7 +94,7 @@ ITEM DETAILS:
 - Name: ${item.name}
 - Category/Type: ${item.itemType || "Unknown"}
 - Brand: ${item.brand || "Unknown/Generic"}
-- Condition: ${item.condition} (Rating: ${item.conditionRating}/10)
+- Condition (stated): ${item.condition} (Rating: ${item.conditionRating}/10)
 - Original Value: ${item.originalValue || "Unknown"}
 - Estimated Market Value: ${item.estimatedValue || "Unknown"}
 - Description: ${item.description || "No description provided"}
@@ -101,11 +105,13 @@ VALUATION RULES:
    - Good: +10% towards max
    - Used/Fair: -10% towards min
    - Heavily Used/Well Loved: -20% towards min
+${hasPhotos ? "   - IMPORTANT: Verify condition from photos - if actual condition differs from stated, adjust accordingly" : ""}
 
 2. Brand Impact:
    - High-end/Premium brands (Apple, Dyson, KitchenAid, etc.): shift towards max
    - Mid-tier brands: stay centered in band
    - Generic/Unknown/Off-brand: shift towards min
+${hasPhotos ? "   - Look for brand logos/labels in photos to verify brand quality" : ""}
 
 3. Category/Demand Factors:
    - Baby gear: tends towards LOWER end of band (high depreciation, safety concerns)
@@ -117,8 +123,9 @@ VALUATION RULES:
    - Local marketplace demand for this type of item
    - Typical depreciation rates for this category
    - Rarity or uniqueness of the item
+${hasPhotos ? "   - Assess overall presentation quality from photos" : ""}
 
-Based on these factors, calculate the exact ShareCoin value. Return ONLY a JSON object with this structure:
+Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate the exact ShareCoin value. Return ONLY a JSON object with this structure:
 
 {
   "shareCoinsValue": <integer between ${band.min} and ${band.max}>,
@@ -126,19 +133,35 @@ Based on these factors, calculate the exact ShareCoin value. Return ONLY a JSON 
   "brandAdjustment": <percentage as decimal>,
   "categoryAdjustment": <percentage as decimal>,
   "demandAdjustment": <percentage as decimal>,
-  "reasoning": "<brief 1-2 sentence explanation of the valuation>"
+  "reasoning": "<brief 1-2 sentence explanation of the valuation${hasPhotos ? ", mentioning what you observed in the photos" : ""}>"
 }`;
+
+    // Build message content with optional images
+    const messageContent: any[] = [{ type: "text", text: prompt }];
+    
+    // Add photos if available (for GPT-4 Vision)
+    if (hasPhotos && item.photos) {
+      for (const photo of item.photos.slice(0, 3)) { // Limit to 3 photos
+        messageContent.push({
+          type: "image_url",
+          image_url: {
+            url: photo,
+            detail: "low", // Use low detail for faster processing
+          },
+        });
+      }
+    }
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are a precise item valuation expert. Return only valid JSON with the exact ShareCoin value within the specified band.",
+          content: `You are a precise item valuation expert${hasPhotos ? " with visual analysis capabilities" : ""}. Return only valid JSON with the exact ShareCoin value within the specified band.`,
         },
         {
           role: "user",
-          content: prompt,
+          content: messageContent,
         },
       ],
       temperature: 0.3,

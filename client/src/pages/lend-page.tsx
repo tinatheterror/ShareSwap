@@ -81,7 +81,10 @@ const TIER_NAMES: Record<number, string> = {
   4: "Tier 4 – High Value Item",
 };
 
-const TIER_WEEKLY_BANDS: Record<number, { min: number; max: number; display: string }> = {
+const TIER_WEEKLY_BANDS: Record<
+  number,
+  { min: number; max: number; display: string }
+> = {
   1: { min: 5, max: 5, display: "5" },
   2: { min: 10, max: 15, display: "10-15" },
   3: { min: 20, max: 30, display: "20-30" },
@@ -93,8 +96,7 @@ const calculateTier = (originalValue: string, condition: string): number => {
   if (originalValue === "Under $50") baseTier = 1;
   else if (originalValue === "$50–$150") baseTier = 2;
   else if (originalValue === "$150–$300") baseTier = 3;
-  else if (originalValue === "$300+")
-    baseTier = 4;
+  else if (originalValue === "$300+") baseTier = 4;
 
   if (condition === "Fair" || condition === "Well Loved") {
     baseTier = Math.max(1, baseTier - 1);
@@ -103,7 +105,10 @@ const calculateTier = (originalValue: string, condition: string): number => {
   return baseTier;
 };
 
-const calculateShareCoinsForDays = (tier: number, days: number): { min: number; max: number } => {
+const calculateShareCoinsForDays = (
+  tier: number,
+  days: number,
+): { min: number; max: number } => {
   const band = TIER_WEEKLY_BANDS[tier] || TIER_WEEKLY_BANDS[1];
   const dailyMin = band.min / 7;
   const dailyMax = band.max / 7;
@@ -222,7 +227,7 @@ export default function LendPage() {
     if (smartScanPhotos.length > 0) {
       return smartScanPhotos.slice(0, 3); // Limit to 3 for API efficiency
     }
-    
+
     // Convert selected files to base64
     const photoPromises = selectedPhotos.slice(0, 3).map((file) => {
       return new Promise<string>((resolve, reject) => {
@@ -232,7 +237,7 @@ export default function LendPage() {
         reader.readAsDataURL(file);
       });
     });
-    
+
     return Promise.all(photoPromises);
   };
 
@@ -254,7 +259,7 @@ export default function LendPage() {
       try {
         // Get photo data URLs for AI analysis
         const photoDataUrls = await getPhotoDataUrls();
-        
+
         const response = await apiRequest("POST", "/api/valuation/preview", {
           name: watchName,
           description: watchDescription || "",
@@ -286,7 +291,16 @@ export default function LendPage() {
         clearTimeout(valuationTimeoutRef.current);
       }
     };
-  }, [watchName, watchDescription, watchItemType, watchCondition, watchConditionRating, watchOriginalValue, selectedPhotos, smartScanPhotos]);
+  }, [
+    watchName,
+    watchDescription,
+    watchItemType,
+    watchCondition,
+    watchConditionRating,
+    watchOriginalValue,
+    selectedPhotos,
+    smartScanPhotos,
+  ]);
 
   // Trigger tier glow animation when tier first appears
   useEffect(() => {
@@ -827,11 +841,13 @@ export default function LendPage() {
                     {/* Tier Preview - show after condition and value are selected */}
                     {calculatedTier && (
                       <TooltipProvider>
-                        <div className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
-                          tierGlow
-                            ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
-                            : ""
-                        }`}>
+                        <div
+                          className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
+                            tierGlow
+                              ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
+                              : ""
+                          }`}
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-black font-medium">
@@ -842,9 +858,12 @@ export default function LendPage() {
                                   <Sparkles className="h-4 w-4 text-teal-500 cursor-help" />
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
-                                  <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
+                                  <p className="text-sm font-medium mb-1">
+                                    AI-Powered Valuation
+                                  </p>
                                   <p className="text-xs">
-                                    {valuationResult?.reasoning || "AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate."}
+                                    {valuationResult?.reasoning ||
+                                      "AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate."}
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
@@ -863,7 +882,8 @@ export default function LendPage() {
                               <div className="flex items-center gap-1.5 text-sm">
                                 <Coins className="h-5 w-5 text-teal-600" />
                                 <span className="font-semibold text-teal-700 text-lg">
-                                  {valuationResult.shareCoinsValue} ShareCoins/week
+                                  {valuationResult.shareCoinsValue}{" "}
+                                  ShareCoins/week
                                 </span>
                               </div>
                             ) : (
@@ -873,10 +893,14 @@ export default function LendPage() {
                                 )}
                                 <Coins className="h-5 w-5 text-teal-600" />
                                 <span className="font-medium text-teal-700">
-                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"} ShareCoins/week
+                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display ||
+                                    "5"}{" "}
+                                  ShareCoins/week
                                 </span>
                                 {isLoadingValuation && (
-                                  <span className="text-gray-400 text-xs">(calculating...)</span>
+                                  <span className="text-gray-400 text-xs">
+                                    (calculating...)
+                                  </span>
                                 )}
                               </div>
                             )}
@@ -1228,7 +1252,8 @@ export default function LendPage() {
                 <CardContent className="pt-6">
                   <h3 className="font-medium mb-2">Photos</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    At least 1 photo required. Photos help AI valuate your item more accurately.
+                    Minimum 1 photo required. AI needs it to valuate your item
+                    more accurately.
                   </p>
                   <Tabs
                     value={uploadMethod}

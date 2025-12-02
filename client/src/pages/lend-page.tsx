@@ -800,31 +800,38 @@ export default function LendPage() {
                             ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
                             : ""
                         }`}>
-                          <div className="flex items-center gap-2">
-                            <span className="text-black font-medium">
-                              {TIER_NAMES[calculatedTier]}
-                            </span>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Sparkles className="h-4 w-4 text-teal-500 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
-                                <p className="text-xs">
-                                  {valuationResult?.reasoning || "AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate."}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-black font-medium">
+                                {TIER_NAMES[calculatedTier]}
+                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Sparkles className="h-4 w-4 text-teal-500 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
+                                  <p className="text-xs">
+                                    {valuationResult?.reasoning || "AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate."}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                            {valuationResult && !isLoadingValuation && (
+                              <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
+                                <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+                                <span className="text-xs text-teal-700 font-medium">
+                                  AI valued
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center justify-between mt-2">
+                          <div className="mt-2">
                             {valuationResult && !isLoadingValuation ? (
                               <div className="text-sm">
                                 <span className="text-gray-600">Weekly rate: </span>
                                 <span className="font-semibold text-teal-700 text-lg">
                                   {valuationResult.shareCoinsValue} ShareCoins
-                                </span>
-                                <span className="text-gray-400 text-xs ml-2">
-                                  (within {valuationResult.tierBand.min}-{valuationResult.tierBand.max} band)
                                 </span>
                               </div>
                             ) : (
@@ -839,14 +846,6 @@ export default function LendPage() {
                                 {isLoadingValuation && (
                                   <span className="text-gray-400 text-xs">(calculating...)</span>
                                 )}
-                              </div>
-                            )}
-                            {valuationResult && !isLoadingValuation && (
-                              <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
-                                <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-                                <span className="text-xs text-teal-700 font-medium">
-                                  AI valued
-                                </span>
                               </div>
                             )}
                           </div>

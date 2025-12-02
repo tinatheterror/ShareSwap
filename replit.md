@@ -28,17 +28,23 @@ Key architectural decisions and features include:
     - **Item Category Detection**: AI-powered auto-categorization of items based on name. Uses GPT-4o-mini to detect item type (Baby & Kids, Clothing & Accessories, Electronics, Home & Kitchen, Tools & Equipment).
     - **Item Recommendations**: AI-powered recommendations based on user behavior, categories, and seasonal relevance.
     - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and automatically matches lenders/borrowers based on wishlists.
-- **Tier-Based Pricing System**:
+- **Tier-Based Pricing System with AI Valuation**:
     - **4 Required Questions**: Item Name, Item Type (AI auto-filled), Condition (4 options), Original Value (5 price ranges)
-    - **Automatic Tier Assignment**: 
-      - Tier 1 (Under $50) = 5 ShareCoins/week
-      - Tier 2 ($50-$150) = 10 ShareCoins/week
-      - Tier 3 ($150-$300) = 20 ShareCoins/week
-      - Tier 4 ($300+) = 40 ShareCoins/week
+    - **Automatic Tier Assignment with Weekly Bands**: 
+      - Tier 1 (Under $50) = 5 ShareCoins/week (fixed)
+      - Tier 2 ($50-$150) = 10-15 ShareCoins/week (AI-valued within band)
+      - Tier 3 ($150-$300) = 20-30 ShareCoins/week (AI-valued within band)
+      - Tier 4 ($300+) = 40-60 ShareCoins/week (AI-valued within band)
+    - **AI-Powered Valuation** (server/ai-valuation.ts): After tier assignment, AI picks the exact ShareCoin value within the band based on:
+      - **Condition Impact**: Like New +20%, Good +10%, Used/Fair -10%, Heavily Used -20%
+      - **Brand Quality**: High-end brands shift towards max, mid-tier stays centered, generic/unknown shifts lower
+      - **Category Demand**: Baby gear → lower end, Tools → stable middle, Electronics → higher end
+      - **Seasonal & Demand Factors**: Market relevance, depreciation rates, local demand
+    - **Fallback Valuation**: Deterministic calculation using the same factors if AI call fails
     - **Condition Modifier**: Items in "Fair" or "Well Loved" condition drop 1 tier (minimum Tier 1). "New/Like New" and "Good" keep the same tier.
     - **Day Proration**: ShareCoin cost = (Weekly Rate ÷ 7) × days, rounded down with minimum 1 coin
     - **Category-Specific Durations**: Baby & Kids items show longer duration presets (1 week to 6 months) vs standard items (1 day to 1 month)
-    - **Tier Display**: Only visible on "My Shared Items" page with tooltip explaining tier calculation
+    - **Tier Display**: Shows weekly band range and "AI picks exact rate" indicator on lend page
 - **UI/UX Decisions**:
     - Focus on intuitive interfaces like swipeable cards for item requests, stacked card UI with animations, and in-app scheduling.
     - Gamified Account Statistics section with gradients, animations, and progress bars to incentivize sharing behavior, leading to Community Impact Levels with associated benefits.

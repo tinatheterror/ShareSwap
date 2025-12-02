@@ -81,11 +81,11 @@ const TIER_NAMES: Record<number, string> = {
   4: "Tier 4 – High Value Item",
 };
 
-const TIER_WEEKLY_COINS: Record<number, number> = {
-  1: 5,
-  2: 10,
-  3: 20,
-  4: 40,
+const TIER_WEEKLY_BANDS: Record<number, { min: number; max: number; display: string }> = {
+  1: { min: 5, max: 5, display: "5" },
+  2: { min: 10, max: 15, display: "10-15" },
+  3: { min: 20, max: 30, display: "20-30" },
+  4: { min: 40, max: 60, display: "40-60" },
 };
 
 const calculateTier = (originalValue: string, condition: string): number => {
@@ -103,11 +103,13 @@ const calculateTier = (originalValue: string, condition: string): number => {
   return baseTier;
 };
 
-const calculateShareCoinsForDays = (tier: number, days: number): number => {
-  const weeklyCoins = TIER_WEEKLY_COINS[tier] || 5;
-  const dailyCoins = weeklyCoins / 7;
-  const calculated = Math.floor(dailyCoins * days);
-  return Math.max(1, calculated);
+const calculateShareCoinsForDays = (tier: number, days: number): { min: number; max: number } => {
+  const band = TIER_WEEKLY_BANDS[tier] || TIER_WEEKLY_BANDS[1];
+  const dailyMin = band.min / 7;
+  const dailyMax = band.max / 7;
+  const minCoins = Math.max(1, Math.floor(dailyMin * days));
+  const maxCoins = Math.max(1, Math.floor(dailyMax * days));
+  return { min: minCoins, max: maxCoins };
 };
 
 const formSchema = z.object({
@@ -744,25 +746,33 @@ export default function LendPage() {
                             </span>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
+                                <Sparkles className="h-4 w-4 text-teal-500 cursor-help" />
                               </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-sm max-w-xs">
-                                  Tier is based on category, condition, and
-                                  typical market value.
+                              <TooltipContent className="max-w-xs">
+                                <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
+                                <p className="text-xs">
+                                  AI picks the exact rate within the band based on: condition, brand quality, category demand, seasonal factors, and typical depreciation rates.
                                 </p>
                               </TooltipContent>
                             </Tooltip>
                           </div>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-sm text-black">
-                              (Used to calculate ShareCoin value automatically)
-                            </p>
-                            <p className="text-sm text-teal-700 font-medium flex items-center gap-1">
-                              <Coins className="h-4 w-4 text-teal-600" />
-                              {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
-                            </p>
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="text-sm text-gray-600">
+                              <span>Weekly band: </span>
+                              <span className="font-medium text-teal-700">
+                                {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"} ShareCoins
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
+                              <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+                              <span className="text-xs text-teal-700 font-medium">
+                                AI picks exact rate
+                              </span>
+                            </div>
                           </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Factors: Condition (+/- 20%), Brand, Category demand, Seasonality
+                          </p>
                         </div>
                       </TooltipProvider>
                     )}

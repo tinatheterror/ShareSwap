@@ -35,6 +35,7 @@ import { CooldownChecker } from "./cooldown-checker";
 import { csrfProtection, setCsrfToken } from "./csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
+import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
 
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -799,45 +800,76 @@ Respond with ONLY the category name, nothing else.`
       const isRentable = req.body.isRentable === "true";
       const isGift = req.body.isGift === "true";
 
-    // Calculate ShareCoins reward based on sharing modes
-    let shareCoinsReward = 0;
+    // Parse tier from request
+    const tier = req.body.tier ? parseInt(req.body.tier) : null;
+    
+    // Calculate ShareCoins reward using AI valuation when tier is available
+    let shareCoinsReward = 5; // Default base reward
+    let aiValuationResult = null;
 
-    // Base reward for listing an item
-    const baseReward = 5;
-    shareCoinsReward += baseReward;
+    if (tier && tier >= 1 && tier <= 4) {
+      // Use AI to calculate exact ShareCoin value within the tier band
+      const valuationInput: ItemValuationInput = {
+        tier,
+        condition: req.body.condition || "Good",
+        conditionRating: parseInt(req.body.conditionRating) || 5,
+        brand: req.body.brand || null,
+        category: req.body.category || null,
+        itemType: req.body.itemType || null,
+        name: req.body.name,
+        description: req.body.description || "",
+        originalValue: req.body.originalValue || null,
+        estimatedValue: req.body.estimatedValue || null,
+      };
 
-    if (isLendable) {
-      const securityDeposit = parseFloat(req.body.securityDeposit || "0");
-      const lendingDuration = parseInt(req.body.lendingDuration || "0");
-      
-      // Ensure values are valid numbers
-      if (!isNaN(securityDeposit) && !isNaN(lendingDuration)) {
-        const lendingReward = Math.max(
-          10,
-          Math.floor(securityDeposit * lendingDuration * 0.01),
-        );
-        shareCoinsReward += lendingReward;
-      } else {
-        shareCoinsReward += 10; // Default lending reward
+      try {
+        aiValuationResult = await calculateAIValuation(valuationInput);
+        shareCoinsReward = aiValuationResult.shareCoinsValue;
+        console.log(`AI Valuation for "${req.body.name}": ${shareCoinsReward} ShareCoins (Tier ${tier}, Band: ${aiValuationResult.tierBand.min}-${aiValuationResult.tierBand.max})`);
+        console.log(`Reasoning: ${aiValuationResult.reasoning}`);
+      } catch (error) {
+        console.error("AI valuation failed, using fallback:", error);
+        // Fallback to tier-based minimum
+        const band = getTierBand(tier);
+        shareCoinsReward = band.min;
       }
-    }
+    } else {
+      // No tier provided - use legacy calculation based on sharing modes
+      const baseReward = 5;
+      shareCoinsReward = baseReward;
 
-    if (isSwappable) {
-      shareCoinsReward += 20;
-    }
-
-    if (isRentable) {
-      const securityDeposit = parseFloat(req.body.securityDeposit || "0");
-      if (!isNaN(securityDeposit)) {
-        const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
-        shareCoinsReward += rentalReward;
-      } else {
-        shareCoinsReward += 25; // Default rental reward
+      if (isLendable) {
+        const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+        const lendingDuration = parseInt(req.body.lendingDuration || "0");
+        
+        if (!isNaN(securityDeposit) && !isNaN(lendingDuration)) {
+          const lendingReward = Math.max(
+            10,
+            Math.floor(securityDeposit * lendingDuration * 0.01),
+          );
+          shareCoinsReward += lendingReward;
+        } else {
+          shareCoinsReward += 10;
+        }
       }
-    }
 
-    if (isGift) {
-      shareCoinsReward += 5; // Gifting reward: 5 ShareCoins per gifted item
+      if (isSwappable) {
+        shareCoinsReward += 20;
+      }
+
+      if (isRentable) {
+        const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+        if (!isNaN(securityDeposit)) {
+          const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
+          shareCoinsReward += rentalReward;
+        } else {
+          shareCoinsReward += 25;
+        }
+      }
+
+      if (isGift) {
+        shareCoinsReward += 5;
+      }
     }
 
     // Ensure shareCoinsReward is a valid number
@@ -853,7 +885,7 @@ Respond with ONLY the category name, nothing else.`
       itemType: req.body.itemType || null,
       condition: req.body.condition || null,
       originalValue: req.body.originalValue || null,
-      tier: req.body.tier ? parseInt(req.body.tier) : null,
+      tier: tier,
       conditionRating: parseInt(req.body.conditionRating) || 0,
       photos: photoUrls,
       latitude: latitude?.toString() || null,
@@ -879,18 +911,27 @@ Respond with ONLY the category name, nothing else.`
     // First insert the item
     const [item] = await db.insert(items).values(itemData).returning();
 
-    // Record the ShareCoins transaction
-    await db.insert(shareCoinsTransactions).values({
-      userId: req.user.id,
-      amount: shareCoinsReward.toString(),
-      description: `Earned for listing ${item.name} (${[
+    // Build transaction description
+    let transactionDescription = `Earned for listing ${item.name}`;
+    if (aiValuationResult) {
+      const tierBand = aiValuationResult.tierBand;
+      transactionDescription += ` (AI-valued at ${shareCoinsReward} ShareCoins/week in Tier ${tier} band: ${tierBand.min}-${tierBand.max})`;
+    } else {
+      transactionDescription += ` (${[
         isLendable && "Lending",
         isSwappable && "Swapping",
         isRentable && "Renting",
         isGift && "Gifting",
       ]
         .filter(Boolean)
-        .join(", ")})`,
+        .join(", ")})`;
+    }
+
+    // Record the ShareCoins transaction
+    await db.insert(shareCoinsTransactions).values({
+      userId: req.user.id,
+      amount: shareCoinsReward.toString(),
+      description: transactionDescription,
       transactionType: "EARNED",
     });
 
@@ -902,10 +943,21 @@ Respond with ONLY the category name, nothing else.`
       })
       .where(eq(users.id, req.user.id));
 
-    res.status(201).json({
+    // Prepare response with AI valuation details
+    const responseData: any = {
       ...item,
       shareCoinsReward,
-    });
+    };
+    
+    if (aiValuationResult) {
+      responseData.aiValuation = {
+        tierBand: aiValuationResult.tierBand,
+        reasoning: aiValuationResult.reasoning,
+        factors: aiValuationResult.factors,
+      };
+    }
+
+    res.status(201).json(responseData);
     } catch (error) {
       console.error("Error creating item:", error);
       res.status(500).json({ error: "Failed to create item. Please try again." });

@@ -20,7 +20,9 @@ import {
   ArrowLeftRight,
   Sparkles,
   Gift,
+  Shield,
 } from "lucide-react";
+import { calculateTrustBasedDeposit, getTrustDiscount } from "@/lib/deposit-calculator";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -454,52 +456,80 @@ export default function BorrowPage() {
                       )}
                     </div>
 
-                    <div className="flex gap-1">
-                      {item.isLendable && (
-                        <Button
-                          size="sm"
-                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                          style={{ backgroundColor: "#0DCEA1" }}
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <HandHeart className="h-3 w-3 mr-0.5" />
-                          Borrow It
-                        </Button>
-                      )}
-                      {item.isRentable && (
-                        <Button
-                          size="sm"
-                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                          style={{ backgroundColor: "#0DCEA1" }}
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <DollarSign className="h-3 w-3 mr-0.5" />
-                          Rent It
-                        </Button>
-                      )}
-                      {item.isSwappable && (
-                        <Button
-                          size="sm"
-                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                          style={{ backgroundColor: "#0DCEA1" }}
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                          Swap It
-                        </Button>
-                      )}
-                      {!item.isLendable &&
-                        !item.isRentable &&
-                        !item.isSwappable && (
+                    <div className="space-y-2">
+                      <div className="flex gap-1">
+                        {item.isLendable && (
                           <Button
                             size="sm"
                             className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
                             style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
-                            View
+                            <HandHeart className="h-3 w-3 mr-0.5" />
+                            Borrow It
                           </Button>
                         )}
+                        {item.isRentable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <DollarSign className="h-3 w-3 mr-0.5" />
+                            Rent It
+                          </Button>
+                        )}
+                        {item.isSwappable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <ArrowLeftRight className="h-3 w-3 mr-0.5" />
+                            Swap It
+                          </Button>
+                        )}
+                        {!item.isLendable &&
+                          !item.isRentable &&
+                          !item.isSwappable && (
+                            <Button
+                              size="sm"
+                              className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                              style={{ backgroundColor: "#0DCEA1" }}
+                              onClick={() => navigate(`/items/${item.id}`)}
+                            >
+                              View
+                            </Button>
+                          )}
+                      </div>
+                      
+                      {/* Trust-Based Deposit Info - Only show for borrowable items */}
+                      {item.isLendable && user && (() => {
+                        const depositInfo = calculateTrustBasedDeposit(
+                          item.originalValue,
+                          user.reputationScore || 0
+                        );
+                        const { discountPercent } = getTrustDiscount(user.reputationScore || 0);
+                        return (
+                          <div className="pt-2 border-t border-gray-100">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600 mb-0.5">
+                              <Coins className="h-3 w-3 text-teal-600" />
+                              <span>{item.shareCoinPrice || 5} ShareCoins/week</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
+                              <Shield className="h-3 w-3 text-blue-500" />
+                              <span>Trust-Based Deposit: ${depositInfo.finalDeposit.toFixed(2)}</span>
+                            </div>
+                            {discountPercent > 0 && (
+                              <p className="text-[10px] text-green-600 ml-4.5 pl-4">
+                                Your trust score reduced your deposit by {discountPercent}%
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </CardContent>
                 </Card>

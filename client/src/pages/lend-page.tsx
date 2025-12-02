@@ -1226,7 +1226,10 @@ export default function LendPage() {
             <div className="lg:col-span-1">
               <Card className="sticky top-8">
                 <CardContent className="pt-6">
-                  <h3 className="font-medium mb-4">Photos</h3>
+                  <h3 className="font-medium mb-2">Photos</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    At least 1 photo required. Photos help AI valuate your item more accurately.
+                  </p>
                   <Tabs
                     value={uploadMethod}
                     onValueChange={(v) =>

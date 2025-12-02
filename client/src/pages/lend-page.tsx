@@ -195,11 +195,71 @@ export default function LendPage() {
   const watchItemType = form.watch("itemType");
   const watchCondition = form.watch("condition");
   const watchOriginalValue = form.watch("originalValue");
+  const watchName = form.watch("name");
+  const watchDescription = form.watch("description");
+  const watchConditionRating = form.watch("conditionRating");
 
   const calculatedTier =
     watchCondition && watchOriginalValue
       ? calculateTier(watchOriginalValue, watchCondition)
       : null;
+
+  // AI valuation state
+  const [valuationResult, setValuationResult] = useState<{
+    shareCoinsValue: number;
+    tierBand: { min: number; max: number };
+    reasoning: string;
+  } | null>(null);
+  const [isLoadingValuation, setIsLoadingValuation] = useState(false);
+  const valuationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch AI valuation when relevant fields change (debounced)
+  useEffect(() => {
+    if (!watchName || !watchCondition || !watchOriginalValue) {
+      setValuationResult(null);
+      return;
+    }
+
+    // Clear previous timeout
+    if (valuationTimeoutRef.current) {
+      clearTimeout(valuationTimeoutRef.current);
+    }
+
+    // Debounce the API call
+    valuationTimeoutRef.current = setTimeout(async () => {
+      setIsLoadingValuation(true);
+      try {
+        const response = await apiRequest("POST", "/api/valuation/preview", {
+          name: watchName,
+          description: watchDescription || "",
+          itemType: watchItemType || "",
+          condition: watchCondition,
+          conditionRating: watchConditionRating || 5,
+          originalValue: watchOriginalValue,
+        });
+        const data = await response.json();
+        if (data.shareCoinsValue) {
+          setValuationResult({
+            shareCoinsValue: data.shareCoinsValue,
+            tierBand: data.tierBand,
+            reasoning: data.reasoning,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to get valuation:", error);
+        // Use fallback band display
+        setValuationResult(null);
+      } finally {
+        setIsLoadingValuation(false);
+      }
+    }, 500);
+
+    return () => {
+      if (valuationTimeoutRef.current) {
+        clearTimeout(valuationTimeoutRef.current);
+      }
+    };
+  }, [watchName, watchDescription, watchItemType, watchCondition, watchConditionRating, watchOriginalValue]);
 
   // Trigger tier glow animation when tier first appears
   useEffect(() => {
@@ -751,28 +811,45 @@ export default function LendPage() {
                               <TooltipContent className="max-w-xs">
                                 <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
                                 <p className="text-xs">
-                                  AI picks the exact rate within the band based on: condition, brand quality, category demand, seasonal factors, and typical depreciation rates.
+                                  {valuationResult?.reasoning || "AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate."}
                                 </p>
                               </TooltipContent>
                             </Tooltip>
                           </div>
                           <div className="flex items-center justify-between mt-2">
-                            <div className="text-sm text-gray-600">
-                              <span>Weekly band: </span>
-                              <span className="font-medium text-teal-700">
-                                {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"} ShareCoins
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
-                              <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-                              <span className="text-xs text-teal-700 font-medium">
-                                AI picks exact rate
-                              </span>
-                            </div>
+                            {valuationResult && !isLoadingValuation ? (
+                              <div className="text-sm">
+                                <span className="text-gray-600">Weekly rate: </span>
+                                <span className="font-semibold text-teal-700 text-lg">
+                                  {valuationResult.shareCoinsValue} ShareCoins
+                                </span>
+                                <span className="text-gray-400 text-xs ml-2">
+                                  (within {valuationResult.tierBand.min}-{valuationResult.tierBand.max} band)
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-sm">
+                                {isLoadingValuation && (
+                                  <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                                )}
+                                <span className="text-gray-600">Weekly rate: </span>
+                                <span className="font-medium text-teal-700">
+                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"} ShareCoins
+                                </span>
+                                {isLoadingValuation && (
+                                  <span className="text-gray-400 text-xs">(calculating...)</span>
+                                )}
+                              </div>
+                            )}
+                            {valuationResult && !isLoadingValuation && (
+                              <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
+                                <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+                                <span className="text-xs text-teal-700 font-medium">
+                                  AI valued
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-2">
-                            Factors: Condition (+/- 20%), Brand, Category demand, Seasonality
-                          </p>
                         </div>
                       </TooltipProvider>
                     )}

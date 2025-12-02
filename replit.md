@@ -52,7 +52,12 @@ Key architectural decisions and features include:
 - **Transactional System**:
     - In-app scheduling for pickup/delivery, celebration animations for transaction acceptance.
     - Flexible commission system for rentals (e.g., 5% standard) with platform sustainability and user reward fund components (ShareCoins).
-    - Security deposit options (Stripe payment authorization holds vs. self-arranged).
+    - **Trust-Based Security Deposits**: Base deposit is 30% of item value, discounted by borrower's trust score:
+      - Trust Score 90-100: 60% discount
+      - Trust Score 70-89: 40% discount
+      - Trust Score 50-69: 20% discount
+      - Trust Score 0-49: No discount
+      - UI displays "Trust-Based Deposit: $X" with subtext showing discount percentage
     - Anti-farming system for ShareCoin exploitation detection.
 - **Messaging**: Automated messaging system for item requests with template generation and date range selection.
 - **Inventory Management**: "My ShareChest" for intuitive inventory management with filtering and item actions.

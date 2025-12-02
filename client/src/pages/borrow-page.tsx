@@ -21,6 +21,7 @@ import {
   Sparkles,
   Gift,
   Shield,
+  Heart,
 } from "lucide-react";
 import { calculateTrustBasedDeposit, getTrustDiscount } from "@/lib/deposit-calculator";
 import type { SelectItem } from "@db/schema";

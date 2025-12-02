@@ -828,20 +828,20 @@ export default function LendPage() {
                           </div>
                           <div className="mt-2">
                             {valuationResult && !isLoadingValuation ? (
-                              <div className="text-sm">
-                                <span className="text-gray-600">Weekly rate: </span>
+                              <div className="flex items-center gap-1.5 text-sm">
+                                <Coins className="h-5 w-5 text-teal-600" />
                                 <span className="font-semibold text-teal-700 text-lg">
-                                  {valuationResult.shareCoinsValue} ShareCoins
+                                  {valuationResult.shareCoinsValue} ShareCoins/week
                                 </span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 text-sm">
+                              <div className="flex items-center gap-1.5 text-sm">
                                 {isLoadingValuation && (
                                   <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                                 )}
-                                <span className="text-gray-600">Weekly rate: </span>
+                                <Coins className="h-5 w-5 text-teal-600" />
                                 <span className="font-medium text-teal-700">
-                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"} ShareCoins
+                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"} ShareCoins/week
                                 </span>
                                 {isLoadingValuation && (
                                   <span className="text-gray-400 text-xs">(calculating...)</span>

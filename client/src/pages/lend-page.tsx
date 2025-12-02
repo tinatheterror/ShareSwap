@@ -60,6 +60,7 @@ const ITEM_TYPES = [
   "Baby & Kids",
   "Clothing & Accessories",
   "Electronics",
+  "Hobbies & Collectibles",
   "Home & Kitchen",
   "Tools & Equipment",
 ] as const;
@@ -70,8 +71,7 @@ const ORIGINAL_VALUES = [
   "Under $50",
   "$50–$150",
   "$150–$300",
-  "$300–$600",
-  "$600+",
+  "$300+",
 ] as const;
 
 const TIER_NAMES: Record<number, string> = {
@@ -93,7 +93,7 @@ const calculateTier = (originalValue: string, condition: string): number => {
   if (originalValue === "Under $50") baseTier = 1;
   else if (originalValue === "$50–$150") baseTier = 2;
   else if (originalValue === "$150–$300") baseTier = 3;
-  else if (originalValue === "$300–$600" || originalValue === "$600+")
+  else if (originalValue === "$300+")
     baseTier = 4;
 
   if (condition === "Fair" || condition === "Well Loved") {
@@ -754,13 +754,15 @@ export default function LendPage() {
                               </TooltipContent>
                             </Tooltip>
                           </div>
-                          <p className="text-sm text-black mt-1">
-                            (Used to calculate ShareCoin value automatically)
-                          </p>
-                          <p className="text-sm text-teal-700 mt-2 font-medium flex items-center gap-1">
-                            <Coins className="h-4 w-4 text-teal-600" />
-                            {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
-                          </p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-sm text-black">
+                              (Used to calculate ShareCoin value automatically)
+                            </p>
+                            <p className="text-sm text-teal-700 font-medium flex items-center gap-1">
+                              <Coins className="h-4 w-4 text-teal-600" />
+                              {TIER_WEEKLY_COINS[calculatedTier]} ShareCoins/week
+                            </p>
+                          </div>
                         </div>
                       </TooltipProvider>
                     )}

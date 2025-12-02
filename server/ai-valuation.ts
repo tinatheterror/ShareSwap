@@ -26,6 +26,21 @@ const CATEGORY_RATE_HINTS: Record<string, string> = {
   "Tools & Equipment": "stable_middle",
 };
 
+// Luxury/designer brands that should anchor at top of band
+const LUXURY_BRANDS = [
+  "chanel", "louis vuitton", "lv", "hermes", "hermès", "gucci", "prada", 
+  "dior", "fendi", "goyard", "celine", "céline", "ysl", "saint laurent",
+  "balenciaga", "burberry", "loewe", "cartier", "rolex", "omega", "patek",
+  "audemars", "vacheron", "breitling", "bottega veneta", "valentino",
+  "givenchy", "versace", "alexander mcqueen", "tom ford", "bvlgari"
+];
+
+// Premium tech/tool brands (lower weight than luxury)
+const PREMIUM_BRANDS = [
+  "apple", "dyson", "kitchenaid", "samsung", "sony", "bose", "dewalt", 
+  "makita", "bosch", "milwaukee", "festool", "snap-on", "leica", "hasselblad"
+];
+
 export interface ItemValuationInput {
   tier: number;
   condition: string;
@@ -83,9 +98,19 @@ export async function calculateAIValuation(
     const categoryHint = CATEGORY_RATE_HINTS[item.itemType || ""] || "middle";
 
     const hasPhotos = item.photos && item.photos.length > 0;
+    
+    // Detect luxury brand and high value
+    const itemBrand = (item.brand || item.name || "").toLowerCase();
+    const isLuxuryBrand = LUXURY_BRANDS.some(b => itemBrand.includes(b));
+    const isHighValue = item.originalValue === "$300+" || 
+      (item.estimatedValue && parseFloat(item.estimatedValue.replace(/[^0-9.]/g, '')) >= 1000);
+    const isExcellentCondition = item.condition === "New / Like New" || 
+      item.condition === "Like New" || 
+      (item.condition === "Good" && item.conditionRating >= 8);
 
     const prompt = `You are an expert item valuation AI for a peer-to-peer sharing marketplace. Your task is to determine the exact ShareCoin value for an item within a specific tier band.
 ${hasPhotos ? "\nIMPORTANT: Analyze the provided photo(s) carefully to assess the actual condition, brand quality, and item characteristics." : ""}
+${isLuxuryBrand && isHighValue ? "\n⚠️ HIGH-VALUE LUXURY ITEM DETECTED: This appears to be a luxury/designer brand item worth significantly more than the tier minimum. Unless there is visible damage or wear concerns, this should be valued at or very near the MAXIMUM of the band." : ""}
 
 TIER BAND: ${band.min} to ${band.max} ShareCoins (weekly rate)
 BAND RANGE: ${bandRange} ShareCoins
@@ -93,7 +118,7 @@ BAND RANGE: ${bandRange} ShareCoins
 ITEM DETAILS:
 - Name: ${item.name}
 - Category/Type: ${item.itemType || "Unknown"}
-- Brand: ${item.brand || "Unknown/Generic"}
+- Brand: ${item.brand || "Unknown/Generic"}${isLuxuryBrand ? " ⭐ LUXURY/DESIGNER BRAND" : ""}
 - Condition (stated): ${item.condition} (Rating: ${item.conditionRating}/10)
 - Original Value: ${item.originalValue || "Unknown"}
 - Estimated Market Value: ${item.estimatedValue || "Unknown"}
@@ -107,23 +132,29 @@ VALUATION RULES:
    - Heavily Used/Well Loved: -20% towards min
 ${hasPhotos ? "   - IMPORTANT: Verify condition from photos - if actual condition differs from stated, adjust accordingly" : ""}
 
-2. Brand Impact:
-   - High-end/Premium brands (Apple, Dyson, KitchenAid, etc.): shift towards max
+2. Brand Impact (CRITICAL for accurate valuation):
+   - ULTRA-LUXURY/DESIGNER brands (Chanel, Louis Vuitton, Hermès, Gucci, Prada, Rolex, Cartier, etc.): 
+     ➤ These should ANCHOR AT THE MAXIMUM of the band (${band.max}) unless there is visible wear/damage
+     ➤ Only reduce from max if condition issues are apparent
+   - Premium tech/tool brands (Apple, Dyson, DeWalt, etc.): shift towards upper portion of band
    - Mid-tier brands: stay centered in band
    - Generic/Unknown/Off-brand: shift towards min
-${hasPhotos ? "   - Look for brand logos/labels in photos to verify brand quality" : ""}
+${hasPhotos ? "   - Look for brand logos/labels, authenticity cues (stitching, hardware, materials)" : ""}
 
-3. Category/Demand Factors:
+3. Value Signal:
+   - Items worth significantly more than $300 (especially $1000+) should be valued at the TOP of Tier 4
+   - High original/market value is a strong indicator for maximum band value
+
+4. Category/Demand Factors:
    - Baby gear: tends towards LOWER end of band (high depreciation, safety concerns)
    - Tools & Equipment: stable MIDDLE of band (utility-focused)
    - Electronics: tends towards HIGHER end (high demand, tech value)
-   - Seasonal items: consider current market relevance
+   - Luxury fashion/accessories: tends towards MAXIMUM of band (prestige, resale value)
 
-4. Additional Considerations:
-   - Local marketplace demand for this type of item
-   - Typical depreciation rates for this category
-   - Rarity or uniqueness of the item
-${hasPhotos ? "   - Assess overall presentation quality from photos" : ""}
+5. Additional Considerations:
+   - Rarity or exclusivity of the item
+   - Current market demand for luxury/designer items
+${hasPhotos ? "   - Assess overall presentation quality and authenticity from photos" : ""}
 
 Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate the exact ShareCoin value. Return ONLY a JSON object with this structure:
 
@@ -201,19 +232,48 @@ function calculateFallbackValuation(
   band: { min: number; max: number }
 ): ValuationResult {
   const bandRange = band.max - band.min;
+  
+  // Check for luxury brand first
+  const brandText = (item.brand || item.name || "").toLowerCase();
+  const isLuxuryBrand = LUXURY_BRANDS.some(b => brandText.includes(b));
+  const isPremiumBrand = PREMIUM_BRANDS.some(b => brandText.includes(b));
+  const budgetIndicators = ["generic", "unknown", "off-brand", "no-name", "unbranded"];
+  const isBudgetBrand = budgetIndicators.some(b => brandText.includes(b)) || !item.brand;
+  
+  // Check for high value and excellent condition
+  const isHighValue = item.originalValue === "$300+" || 
+    (item.estimatedValue && parseFloat(item.estimatedValue.replace(/[^0-9.]/g, '')) >= 1000);
+  const isExcellentCondition = item.condition === "New / Like New" || 
+    item.condition === "Like New" || 
+    (item.condition === "Good" && item.conditionRating >= 8);
+
+  // For luxury brands in excellent condition with high value, go straight to max
+  if (isLuxuryBrand && isHighValue && isExcellentCondition && item.tier === 4) {
+    return {
+      shareCoinsValue: band.max,
+      tierBand: band,
+      reasoning: `Luxury designer item (${item.brand || 'detected from name'}) in excellent condition valued at maximum.`,
+      factors: {
+        conditionAdjustment: 0.20,
+        brandAdjustment: 0.30,
+        categoryAdjustment: 0.10,
+        demandAdjustment: 0.10,
+      },
+    };
+  }
+
+  // Standard calculation for other items
   let baseValue = (band.min + band.max) / 2;
 
   const conditionMod = CONDITION_MODIFIERS[item.condition] || 0;
   baseValue += bandRange * conditionMod;
 
   let brandMod = 0;
-  const brand = (item.brand || "").toLowerCase();
-  const premiumBrands = ["apple", "dyson", "kitchenaid", "samsung", "sony", "bose", "dewalt", "makita", "bosch"];
-  const budgetIndicators = ["generic", "unknown", "off-brand", "no-name", "unbranded"];
-  
-  if (premiumBrands.some(b => brand.includes(b))) {
-    brandMod = 0.15;
-  } else if (budgetIndicators.some(b => brand.includes(b)) || !item.brand) {
+  if (isLuxuryBrand) {
+    brandMod = 0.30; // Luxury brands get +30% towards max
+  } else if (isPremiumBrand) {
+    brandMod = 0.15; // Premium tech/tool brands get +15%
+  } else if (isBudgetBrand) {
     brandMod = -0.10;
   }
   baseValue += bandRange * brandMod;
@@ -230,7 +290,8 @@ function calculateFallbackValuation(
   } else if (categoryContext.includes("tools") || categoryContext.includes("equipment")) {
     categoryMod = 0;
   } else if (categoryContext.includes("clothing") || categoryContext.includes("accessories")) {
-    categoryMod = -0.05;
+    // Luxury fashion should not be penalized
+    categoryMod = isLuxuryBrand ? 0.10 : -0.05;
   }
   baseValue += bandRange * categoryMod;
 
@@ -239,7 +300,9 @@ function calculateFallbackValuation(
   return {
     shareCoinsValue,
     tierBand: band,
-    reasoning: "Valuation based on condition, brand, and category factors.",
+    reasoning: isLuxuryBrand 
+      ? `Luxury/designer brand item valued at upper range of band.`
+      : "Valuation based on condition, brand, and category factors.",
     factors: {
       conditionAdjustment: conditionMod,
       brandAdjustment: brandMod,

@@ -226,9 +226,10 @@ Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate t
     shareCoinsValue = Math.max(band.min, Math.min(band.max, shareCoinsValue));
     
     // Use AI estimated value or fallback to base value
-    const internalItemValue = parsed.estimatedItemValue 
-      ? Math.round(parsed.estimatedItemValue) 
-      : getBaseItemValue(item.originalValue);
+    // Ensure minimum value based on original value range
+    const baseValue = getBaseItemValue(item.originalValue);
+    const aiEstimate = parsed.estimatedItemValue ? Math.round(parsed.estimatedItemValue) : baseValue;
+    const internalItemValue = Math.max(aiEstimate, baseValue);
 
     return {
       shareCoinsValue,

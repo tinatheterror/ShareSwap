@@ -9,7 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { calculateSecurityDeposit, formatDeposit } from "@/lib/deposit-calculator";
-import { calculateRentalRate, calculateRentalDeposit, validateRentalRate, formatCurrency } from "@/lib/rental-calculator";
+import { calculateRentalRate, calculateRentalDeposit, validateRentalRate, validateRentalDeposit, formatCurrency } from "@/lib/rental-calculator";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -227,6 +227,8 @@ export default function LendPage() {
   // Rental rate state
   const [customRentalRate, setCustomRentalRate] = useState<number | null>(null);
   const [rentalRateWarning, setRentalRateWarning] = useState<string | null>(null);
+  const [customRentalDeposit, setCustomRentalDeposit] = useState<number | null>(null);
+  const [rentalDepositWarning, setRentalDepositWarning] = useState<string | null>(null);
 
   // Check if we have at least one photo
   const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0;
@@ -1060,9 +1062,8 @@ export default function LendPage() {
                     {/* Rental Rate and Deposit Card - show when Rent It is selected */}
                     {watchIsRentable && calculatedTier && (
                       <div className="mt-4 grid grid-cols-4 gap-2">
-                        <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
+                        <div className="col-start-2 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
                           {(() => {
-                            // Get internal item value from valuation or estimate from original value
                             const getEstimatedValue = () => {
                               if (valuationResult?.internalItemValue) {
                                 return valuationResult.internalItemValue;
@@ -1080,11 +1081,18 @@ export default function LendPage() {
                             const rentalCalc = calculateRentalRate(itemValue, watchItemType || "");
                             const depositCalc = calculateRentalDeposit(itemValue, calculatedTier);
                             const displayRate = customRentalRate !== null ? customRentalRate : rentalCalc.weeklyRate;
+                            const displayDeposit = customRentalDeposit !== null ? customRentalDeposit : depositCalc.deposit;
                             
                             const handleRateChange = (newRate: number) => {
                               const validation = validateRentalRate(rentalCalc.weeklyRate, newRate);
                               setCustomRentalRate(newRate);
                               setRentalRateWarning(validation.warning);
+                            };
+                            
+                            const handleDepositChange = (newDeposit: number) => {
+                              const validation = validateRentalDeposit(depositCalc.deposit, newDeposit);
+                              setCustomRentalDeposit(newDeposit);
+                              setRentalDepositWarning(validation.warning);
                             };
 
                             return (
@@ -1114,9 +1122,22 @@ export default function LendPage() {
                                   <div className="text-xs font-medium text-gray-700">
                                     Security Deposit:
                                   </div>
-                                  <div className="text-sm font-semibold text-gray-800">
-                                    {formatCurrency(depositCalc.deposit)}
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-gray-500">$</span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={displayDeposit}
+                                      onChange={(e) => handleDepositChange(Math.max(1, parseInt(e.target.value) || 1))}
+                                      className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                    />
                                   </div>
+                                  {rentalDepositWarning && (
+                                    <div className="flex items-center gap-1 mt-1 text-amber-600 text-[10px]">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      <span>{rentalDepositWarning}</span>
+                                    </div>
+                                  )}
                                 </div>
                               </>
                             );

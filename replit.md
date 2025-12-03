@@ -55,12 +55,13 @@ Key architectural decisions and features include:
       - Clothing & Accessories: 20%
       - Hobbies & Collectibles: 6%
     - **Editable Rental Rates**: Owners can adjust AI-suggested weekly rate (minimum $1), with warning if change exceeds ±20%
-    - **Tier-Based Rental Security Deposits** (no trust discounts):
+    - **Tier-Based Rental Security Deposits** (editable ±20%):
       - Tier 1: 20% of item value
       - Tier 2: 30% of item value
       - Tier 3: 40% of item value
       - Tier 4: 50% of item value
-    - **UI Display**: Rental rate and deposit shown below "Rent It" button on lend page, matching the borrow card style
+    - **Editable Security Deposits**: Owners can adjust deposit within ±20% of AI suggestion, shows error if outside range
+    - **UI Display**: Rental card positioned directly under "Rent It" button (column 2) on lend page
 - **UI/UX Decisions**:
     - Focus on intuitive interfaces like swipeable cards for item requests, stacked card UI with animations, and in-app scheduling.
     - Gamified Account Statistics section with gradients, animations, and progress bars to incentivize sharing behavior, leading to Community Impact Levels with associated benefits.

@@ -1043,10 +1043,7 @@ export default function LendPage() {
                                 ) : isLoadingValuation ? (
                                   <span className="text-gray-500">...</span>
                                 ) : (
-                                  <>
-                                    {TIER_WEEKLY_BANDS[calculatedTier].min}-
-                                    {TIER_WEEKLY_BANDS[calculatedTier].max}
-                                  </>
+                                  <>{TIER_WEEKLY_BANDS[calculatedTier].display}</>
                                 )}
                                 <span className="font-normal text-teal-700">
                                   {" "}

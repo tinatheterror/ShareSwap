@@ -1185,14 +1185,16 @@ export default function LendPage() {
                                     </div>
                                   </div>
                                   <div className="mt-2 pt-2 border-t border-emerald-100">
-                                    <div className="text-xs font-medium text-gray-700">
-                                      Platform Fee (10%):
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-gray-600">Platform fee:</span>
+                                      <span className="font-medium text-emerald-600">0% for 2025</span>
                                     </div>
-                                    <div className="text-sm font-semibold text-gray-800 mt-0.5">
-                                      ${Math.round(displayRate * 0.1)}/week
+                                    <div className="flex justify-between text-xs mt-1">
+                                      <span className="text-gray-600">Payment processing:</span>
+                                      <span className="font-medium text-gray-700">3%</span>
                                     </div>
-                                    <div className="text-[10px] text-gray-400 mt-0.5">
-                                      You receive: ${displayRate - Math.round(displayRate * 0.1)}/week
+                                    <div className="text-[10px] text-gray-400 mt-1.5">
+                                      You receive: ${Math.round(displayRate * 0.97)}/week
                                     </div>
                                   </div>
                                 </>

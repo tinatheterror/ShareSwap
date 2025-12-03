@@ -8,8 +8,17 @@ import { Slider } from "@/components/ui/slider";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { calculateSecurityDeposit, formatDeposit } from "@/lib/deposit-calculator";
-import { calculateRentalRate, calculateRentalDeposit, validateRentalRate, validateRentalDeposit, formatCurrency } from "@/lib/rental-calculator";
+import {
+  calculateSecurityDeposit,
+  formatDeposit,
+} from "@/lib/deposit-calculator";
+import {
+  calculateRentalRate,
+  calculateRentalDeposit,
+  validateRentalRate,
+  validateRentalDeposit,
+  formatCurrency,
+} from "@/lib/rental-calculator";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -226,9 +235,15 @@ export default function LendPage() {
 
   // Rental rate state
   const [customRentalRate, setCustomRentalRate] = useState<number | null>(null);
-  const [rentalRateWarning, setRentalRateWarning] = useState<string | null>(null);
-  const [customRentalDeposit, setCustomRentalDeposit] = useState<number | null>(null);
-  const [rentalDepositWarning, setRentalDepositWarning] = useState<string | null>(null);
+  const [rentalRateWarning, setRentalRateWarning] = useState<string | null>(
+    null,
+  );
+  const [customRentalDeposit, setCustomRentalDeposit] = useState<number | null>(
+    null,
+  );
+  const [rentalDepositWarning, setRentalDepositWarning] = useState<
+    string | null
+  >(null);
 
   // Check if we have at least one photo
   const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0;
@@ -1013,7 +1028,7 @@ export default function LendPage() {
                     <p className="text-sm text-gray-400">
                       Select one or more options
                     </p>
-                    
+
                     {/* Borrow and Rental Cards - show side by side when selected */}
                     {(watchIsLendable || watchIsRentable) && calculatedTier && (
                       <div className="mt-4 grid grid-cols-4 gap-2">
@@ -1028,18 +1043,28 @@ export default function LendPage() {
                                 ) : isLoadingValuation ? (
                                   <span className="text-gray-500">...</span>
                                 ) : (
-                                  <>{TIER_WEEKLY_BANDS[calculatedTier].min}-{TIER_WEEKLY_BANDS[calculatedTier].max}</>
+                                  <>
+                                    {TIER_WEEKLY_BANDS[calculatedTier].min}-
+                                    {TIER_WEEKLY_BANDS[calculatedTier].max}
+                                  </>
                                 )}
-                                <span className="font-normal text-teal-700"> ShareCoins/week</span>
+                                <span className="font-normal text-teal-700">
+                                  {" "}
+                                  ShareCoins/week
+                                </span>
                               </span>
                             </div>
                             {(() => {
-                              const reputationScore = user?.reputationScore || 0;
-                              const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+                              const reputationScore =
+                                user?.reputationScore || 0;
+                              const trustScore = Math.min(
+                                100,
+                                Math.round((reputationScore / 500) * 100) + 50,
+                              );
                               const depositCalc = calculateSecurityDeposit(
                                 calculatedTier,
                                 watchOriginalValue,
-                                trustScore
+                                trustScore,
                               );
                               return (
                                 <div className="mt-2 pt-2 border-t border-teal-100">
@@ -1051,7 +1076,8 @@ export default function LendPage() {
                                   </div>
                                   {depositCalc.discountPercentage > 0 && (
                                     <div className="text-teal-600 text-[10px] mt-0.5">
-                                      Your trust score reduced the deposit by {depositCalc.discountPercentage}%
+                                      Your trust score reduced the deposit by{" "}
+                                      {depositCalc.discountPercentage}%
                                     </div>
                                   )}
                                 </div>
@@ -1062,7 +1088,9 @@ export default function LendPage() {
 
                         {/* Rental Card - Column 2 */}
                         {watchIsRentable && (
-                          <div className={`p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100 ${!watchIsLendable ? 'col-start-2' : ''}`}>
+                          <div
+                            className={`p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100 ${!watchIsLendable ? "col-start-2" : ""}`}
+                          >
                             {(() => {
                               const getEstimatedValue = () => {
                                 if (valuationResult?.internalItemValue) {
@@ -1076,24 +1104,48 @@ export default function LendPage() {
                                 };
                                 return valueMap[watchOriginalValue] || 100;
                               };
-                              
+
                               const itemValue = getEstimatedValue();
-                              const rentalCalc = calculateRentalRate(itemValue, watchItemType || "");
-                              const depositCalc = calculateRentalDeposit(itemValue, calculatedTier);
-                              const displayRate = customRentalRate !== null ? customRentalRate : rentalCalc.weeklyRate;
-                              const displayDeposit = customRentalDeposit !== null ? customRentalDeposit : depositCalc.deposit;
-                              
+                              const rentalCalc = calculateRentalRate(
+                                itemValue,
+                                watchItemType || "",
+                              );
+                              const depositCalc = calculateRentalDeposit(
+                                itemValue,
+                                calculatedTier,
+                              );
+                              const displayRate =
+                                customRentalRate !== null
+                                  ? customRentalRate
+                                  : rentalCalc.weeklyRate;
+                              const displayDeposit =
+                                customRentalDeposit !== null
+                                  ? customRentalDeposit
+                                  : depositCalc.deposit;
+
                               const handleRateChange = (newRate: number) => {
-                                const validation = validateRentalRate(rentalCalc.weeklyRate, newRate);
+                                const validation = validateRentalRate(
+                                  rentalCalc.weeklyRate,
+                                  newRate,
+                                );
                                 setCustomRentalRate(newRate);
                                 setRentalRateWarning(validation.warning);
                               };
-                              
-                              const minDeposit = Math.round(depositCalc.deposit * 0.8);
-                              const maxDeposit = Math.round(depositCalc.deposit * 1.2);
-                              
-                              const handleDepositChange = (newDeposit: number) => {
-                                const clampedDeposit = Math.max(minDeposit, Math.min(maxDeposit, newDeposit));
+
+                              const minDeposit = Math.round(
+                                depositCalc.deposit * 0.8,
+                              );
+                              const maxDeposit = Math.round(
+                                depositCalc.deposit * 1.2,
+                              );
+
+                              const handleDepositChange = (
+                                newDeposit: number,
+                              ) => {
+                                const clampedDeposit = Math.max(
+                                  minDeposit,
+                                  Math.min(maxDeposit, newDeposit),
+                                );
                                 setCustomRentalDeposit(clampedDeposit);
                               };
 
@@ -1101,7 +1153,9 @@ export default function LendPage() {
                                 <>
                                   <div className="flex items-center gap-1.5 mb-1.5">
                                     <DollarSign className="h-4 w-4 text-emerald-600" />
-                                    <span className="text-xs text-emerald-700">Weekly Rental Rate</span>
+                                    <span className="text-xs text-emerald-700">
+                                      Rental Rate
+                                    </span>
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <span className="text-gray-500">$</span>
@@ -1109,10 +1163,19 @@ export default function LendPage() {
                                       type="number"
                                       min="1"
                                       value={displayRate}
-                                      onChange={(e) => handleRateChange(Math.max(1, parseInt(e.target.value) || 1))}
+                                      onChange={(e) =>
+                                        handleRateChange(
+                                          Math.max(
+                                            1,
+                                            parseInt(e.target.value) || 1,
+                                          ),
+                                        )
+                                      }
                                       className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                     />
-                                    <span className="text-xs text-gray-500">/week</span>
+                                    <span className="text-xs text-gray-500">
+                                      /week
+                                    </span>
                                   </div>
                                   <div className="text-[10px] text-gray-400 mt-0.5">
                                     AI suggested: ${rentalCalc.weeklyRate}/week
@@ -1135,9 +1198,18 @@ export default function LendPage() {
                                         max={maxDeposit}
                                         step="1"
                                         value={displayDeposit}
-                                        onChange={(e) => handleDepositChange(parseInt(e.target.value) || minDeposit)}
+                                        onChange={(e) =>
+                                          handleDepositChange(
+                                            parseInt(e.target.value) ||
+                                              minDeposit,
+                                          )
+                                        }
                                         onKeyDown={(e) => {
-                                          if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'Tab') {
+                                          if (
+                                            e.key !== "ArrowUp" &&
+                                            e.key !== "ArrowDown" &&
+                                            e.key !== "Tab"
+                                          ) {
                                             e.preventDefault();
                                           }
                                         }}
@@ -1374,7 +1446,6 @@ export default function LendPage() {
                       )}
                     </div>
                   )}
-
                 </CardContent>
               </Card>
             </div>

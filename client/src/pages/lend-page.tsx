@@ -83,14 +83,11 @@ const TIER_NAMES: Record<number, string> = {
   4: "Tier 4 – High Value Item",
 };
 
-const TIER_WEEKLY_BANDS: Record<
-  number,
-  { min: number; max: number; display: string }
-> = {
-  1: { min: 5, max: 5, display: "5" },
-  2: { min: 10, max: 15, display: "10-15" },
-  3: { min: 20, max: 30, display: "20-30" },
-  4: { min: 40, max: 60, display: "40-60" },
+const TIER_WEEKLY_RATES: Record<number, number> = {
+  1: 5,
+  2: 10,
+  3: 20,
+  4: 40,
 };
 
 const calculateTier = (originalValue: string, condition: string): number => {
@@ -110,13 +107,10 @@ const calculateTier = (originalValue: string, condition: string): number => {
 const calculateShareCoinsForDays = (
   tier: number,
   days: number,
-): { min: number; max: number } => {
-  const band = TIER_WEEKLY_BANDS[tier] || TIER_WEEKLY_BANDS[1];
-  const dailyMin = band.min / 7;
-  const dailyMax = band.max / 7;
-  const minCoins = Math.max(1, Math.floor(dailyMin * days));
-  const maxCoins = Math.max(1, Math.floor(dailyMax * days));
-  return { min: minCoins, max: maxCoins };
+): number => {
+  const weeklyRate = TIER_WEEKLY_RATES[tier] || TIER_WEEKLY_RATES[1];
+  const dailyRate = weeklyRate / 7;
+  return Math.max(1, Math.floor(dailyRate * days));
 };
 
 const formSchema = z.object({
@@ -896,8 +890,7 @@ export default function LendPage() {
                                 )}
                                 <Coins className="h-5 w-5 text-teal-600" />
                                 <span className="font-medium text-teal-700">
-                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display ||
-                                    "5"}{" "}
+                                  {TIER_WEEKLY_RATES[calculatedTier] || 5}{" "}
                                   ShareCoins/week
                                 </span>
                                 {isLoadingValuation && (
@@ -1008,13 +1001,7 @@ export default function LendPage() {
                           <div className="flex items-center gap-1.5 mb-1.5">
                             <Coins className="h-4 w-4 text-teal-600" />
                             <span className="font-semibold text-teal-800 text-sm">
-                              {valuationResult ? (
-                                <>{valuationResult.shareCoinsValue}</>
-                              ) : isLoadingValuation ? (
-                                <span className="text-gray-500">...</span>
-                              ) : (
-                                <>{TIER_WEEKLY_BANDS[calculatedTier].min}-{TIER_WEEKLY_BANDS[calculatedTier].max}</>
-                              )}
+                              {TIER_WEEKLY_RATES[calculatedTier] || 5}
                               <span className="font-normal text-teal-700"> ShareCoins/week</span>
                             </span>
                           </div>

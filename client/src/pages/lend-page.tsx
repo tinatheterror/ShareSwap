@@ -1117,9 +1117,6 @@ export default function LendPage() {
                                   <div className="text-sm font-semibold text-gray-800">
                                     {formatCurrency(depositCalc.deposit)}
                                   </div>
-                                  <div className="text-emerald-600 text-[10px] mt-0.5">
-                                    {depositCalc.depositPercentage}% of item value
-                                  </div>
                                 </div>
                               </>
                             );

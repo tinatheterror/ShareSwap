@@ -65,6 +65,8 @@ export interface ValuationResult {
     categoryAdjustment: number;
     demandAdjustment: number;
   };
+  // Internal item value for rental calculations (not displayed to users)
+  internalItemValue: number;
 }
 
 export async function calculateAIValuation(
@@ -73,6 +75,17 @@ export async function calculateAIValuation(
   const tier = item.tier;
   const band = TIER_BANDS[tier] || TIER_BANDS[1];
   
+  // Estimate internal item value based on original value range
+  const getBaseItemValue = (originalValue: string | null | undefined): number => {
+    const valueMap: Record<string, number> = {
+      "Under $50": 30,
+      "$50–$150": 100,
+      "$150–$300": 225,
+      "$300+": 500,
+    };
+    return valueMap[originalValue || ""] || 100;
+  };
+
   if (band.min === band.max) {
     return {
       shareCoinsValue: band.min,
@@ -84,6 +97,7 @@ export async function calculateAIValuation(
         categoryAdjustment: 0,
         demandAdjustment: 0,
       },
+      internalItemValue: getBaseItemValue(item.originalValue),
     };
   }
 
@@ -156,10 +170,11 @@ ${hasPhotos ? "   - Look for brand logos/labels, authenticity cues (stitching, h
    - Current market demand for luxury/designer items
 ${hasPhotos ? "   - Assess overall presentation quality and authenticity from photos" : ""}
 
-Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate the exact ShareCoin value. Return ONLY a JSON object with this structure:
+Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate the exact ShareCoin value AND estimate the current market value of the item in USD. Return ONLY a JSON object with this structure:
 
 {
   "shareCoinsValue": <integer between ${band.min} and ${band.max}>,
+  "estimatedItemValue": <integer in USD - your best estimate of current market value based on condition, brand, photos, and market demand>,
   "conditionAdjustment": <percentage as decimal, e.g., 0.20 for +20%>,
   "brandAdjustment": <percentage as decimal>,
   "categoryAdjustment": <percentage as decimal>,
@@ -209,6 +224,11 @@ Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate t
     
     let shareCoinsValue = Math.round(parsed.shareCoinsValue);
     shareCoinsValue = Math.max(band.min, Math.min(band.max, shareCoinsValue));
+    
+    // Use AI estimated value or fallback to base value
+    const internalItemValue = parsed.estimatedItemValue 
+      ? Math.round(parsed.estimatedItemValue) 
+      : getBaseItemValue(item.originalValue);
 
     return {
       shareCoinsValue,
@@ -220,18 +240,21 @@ Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate t
         categoryAdjustment: parsed.categoryAdjustment || 0,
         demandAdjustment: parsed.demandAdjustment || 0,
       },
+      internalItemValue,
     };
   } catch (error) {
     console.error("AI valuation error:", error);
-    return calculateFallbackValuation(item, band);
+    return calculateFallbackValuation(item, band, getBaseItemValue);
   }
 }
 
 function calculateFallbackValuation(
   item: ItemValuationInput,
-  band: { min: number; max: number }
+  band: { min: number; max: number },
+  getBaseItemValue: (originalValue: string | null | undefined) => number
 ): ValuationResult {
   const bandRange = band.max - band.min;
+  const baseItemValue = getBaseItemValue(item.originalValue);
   
   // Check for luxury brand first
   const brandText = (item.brand || item.name || "").toLowerCase();
@@ -247,6 +270,20 @@ function calculateFallbackValuation(
     item.condition === "Like New" || 
     (item.condition === "Good" && item.conditionRating >= 8);
 
+  // Calculate internal item value with adjustments
+  let internalItemValue = baseItemValue;
+  if (isLuxuryBrand) {
+    internalItemValue = baseItemValue * 2; // Luxury items worth more
+  } else if (isPremiumBrand) {
+    internalItemValue = baseItemValue * 1.3;
+  }
+  // Condition adjustment
+  if (isExcellentCondition) {
+    internalItemValue *= 1.1;
+  } else if (item.condition === "Fair" || item.condition === "Well Loved") {
+    internalItemValue *= 0.7;
+  }
+
   // For luxury brands in excellent condition with high value, go straight to max
   if (isLuxuryBrand && isHighValue && isExcellentCondition && item.tier === 4) {
     return {
@@ -259,6 +296,7 @@ function calculateFallbackValuation(
         categoryAdjustment: 0.10,
         demandAdjustment: 0.10,
       },
+      internalItemValue: Math.round(internalItemValue),
     };
   }
 
@@ -309,6 +347,7 @@ function calculateFallbackValuation(
       categoryAdjustment: categoryMod,
       demandAdjustment: 0,
     },
+    internalItemValue: Math.round(internalItemValue),
   };
 }
 

@@ -1265,31 +1265,6 @@ export default function LendPage() {
                     </div>
                   )}
 
-                  {/* Security Deposit */}
-                  {watchIsLendable && (
-                    <div className="space-y-4 border-t pt-4">
-                      <h3 className="font-medium">Lending Options</h3>
-                      <FormField
-                        control={form.control}
-                        name="securityDeposit"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Security Deposit ($)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                {...field}
-                                value={field.value || ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>

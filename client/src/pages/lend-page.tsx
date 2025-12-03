@@ -1036,7 +1036,7 @@ export default function LendPage() {
                                 </div>
                                 {depositCalc.discountPercentage > 0 && (
                                   <div className="text-teal-600 text-[10px] mt-0.5">
-                                    -{depositCalc.discountPercentage}% trust discount
+                                    Your trust score reduced the deposit by {depositCalc.discountPercentage}%
                                   </div>
                                 )}
                               </div>

@@ -35,16 +35,32 @@ Key architectural decisions and features include:
       - Tier 2 ($50-$150) = 10-15 ShareCoins/week (AI-valued within band)
       - Tier 3 ($150-$300) = 20-30 ShareCoins/week (AI-valued within band)
       - Tier 4 ($300+) = 40-60 ShareCoins/week (AI-valued within band)
-    - **AI-Powered Valuation** (server/ai-valuation.ts): After tier assignment, AI picks the exact ShareCoin value within the band based on:
-      - **Condition Impact**: Like New +20%, Good +10%, Used/Fair -10%, Heavily Used -20%
-      - **Brand Quality**: High-end brands shift towards max, mid-tier stays centered, generic/unknown shifts lower
-      - **Category Demand**: Baby gear → lower end, Tools → stable middle, Electronics → higher end
-      - **Seasonal & Demand Factors**: Market relevance, depreciation rates, local demand
+    - **AI-Powered Internal Item Appraisal** (server/ai-valuation.ts): AI analyzes uploaded photos, category, condition, original value, market demand, and brands to determine internal item valuation (not displayed to users). This value drives:
+      - **ShareCoin Valuation**: Picks exact ShareCoin value within tier band
+      - **Trust-Based Borrow Deposits**: Tier-based percentages (10-40%) with trust score discounts
+      - **Rental Rate Calculation**: Category-based weekly percentages of item value
+      - **Rental Security Deposits**: Tier-based percentages (20-50%) with no trust discounts
+    - **Condition Impact**: Like New +20%, Good +10%, Used/Fair -10%, Heavily Used -20%
+    - **Brand Quality**: Luxury brands (Chanel, LV, Hermès, etc.) anchor at max, premium tech brands shift higher, generic shifts lower
+    - **Category Demand**: Baby gear → lower end, Tools → stable middle, Electronics → higher end
     - **Fallback Valuation**: Deterministic calculation using the same factors if AI call fails
-    - **Condition Modifier**: Items in "Fair" or "Well Loved" condition drop 1 tier (minimum Tier 1). "New/Like New" and "Good" keep the same tier.
+    - **Condition Modifier**: Items in "Fair" or "Well Loved" condition drop 1 tier (minimum Tier 1)
     - **Day Proration**: ShareCoin cost = (Weekly Rate ÷ 7) × days, rounded down with minimum 1 coin
-    - **Category-Specific Durations**: Baby & Kids items show longer duration presets (1 week to 6 months) vs standard items (1 day to 1 month)
-    - **Tier Display**: Shows weekly band range and "AI picks exact rate" indicator on lend page
+- **Rental Pricing System** (client/src/lib/rental-calculator.ts):
+    - **Category-Based Weekly Rental Rates** (% of AI-appraised item value):
+      - Baby & Kids: 12%
+      - Electronics: 16%
+      - Tools & Equipment: 10%
+      - Home & Kitchen: 10%
+      - Clothing & Accessories: 20%
+      - Hobbies & Collectibles: 6%
+    - **Editable Rental Rates**: Owners can adjust AI-suggested weekly rate (minimum $1), with warning if change exceeds ±20%
+    - **Tier-Based Rental Security Deposits** (no trust discounts):
+      - Tier 1: 20% of item value
+      - Tier 2: 30% of item value
+      - Tier 3: 40% of item value
+      - Tier 4: 50% of item value
+    - **UI Display**: Rental rate and deposit shown below "Rent It" button on lend page, matching the borrow card style
 - **UI/UX Decisions**:
     - Focus on intuitive interfaces like swipeable cards for item requests, stacked card UI with animations, and in-app scheduling.
     - Gamified Account Statistics section with gradients, animations, and progress bars to incentivize sharing behavior, leading to Community Impact Levels with associated benefits.

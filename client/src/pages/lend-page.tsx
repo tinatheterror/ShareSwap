@@ -8,7 +8,9 @@ import { Slider } from "@/components/ui/slider";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { calculateSecurityDeposit, formatDeposit } from "@/lib/deposit-calculator";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Form,
   FormControl,
@@ -144,6 +146,7 @@ const formSchema = z.object({
 
 export default function LendPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [, navigate] = useLocation();
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -997,6 +1000,48 @@ export default function LendPage() {
                     <p className="text-sm text-gray-400">
                       Select one or more options
                     </p>
+                    
+                    {/* ShareCoins and Trust-Based Deposit Display - show when Borrow It is selected */}
+                    {watchIsLendable && calculatedTier && (
+                      <div className="mt-4 p-4 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Coins className="h-5 w-5 text-teal-600" />
+                          <span className="font-semibold text-teal-800">
+                            {valuationResult ? (
+                              <>{valuationResult.shareCoinsValue} ShareCoins/week</>
+                            ) : isLoadingValuation ? (
+                              <span className="text-gray-500">Calculating...</span>
+                            ) : (
+                              <>{TIER_WEEKLY_BANDS[calculatedTier].min}-{TIER_WEEKLY_BANDS[calculatedTier].max} ShareCoins/week</>
+                            )}
+                          </span>
+                        </div>
+                        {(() => {
+                          // Calculate trust score (0-100 scale from reputation score)
+                          const reputationScore = user?.reputationScore || 0;
+                          // Map reputation score to trust score (0-100)
+                          // Assuming max reputation around 500 for scaling
+                          const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+                          const depositCalc = calculateSecurityDeposit(
+                            calculatedTier,
+                            watchOriginalValue,
+                            trustScore
+                          );
+                          return (
+                            <div className="text-sm">
+                              <div className="font-medium text-gray-700">
+                                Trust-Based Deposit: {formatDeposit(depositCalc.finalDeposit)}
+                              </div>
+                              {depositCalc.discountPercentage > 0 && (
+                                <div className="text-teal-600 text-xs mt-1">
+                                  Your trust score reduced your deposit by {depositCalc.discountPercentage}%
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   {/* Availability Period - Hide when Have It (gift) is selected */}

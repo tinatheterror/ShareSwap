@@ -229,7 +229,6 @@ export default function LendPage() {
   const [rentalRateWarning, setRentalRateWarning] = useState<string | null>(null);
   const [customRentalDeposit, setCustomRentalDeposit] = useState<number | null>(null);
   const [rentalDepositWarning, setRentalDepositWarning] = useState<string | null>(null);
-  const [customBorrowDeposit, setCustomBorrowDeposit] = useState<number | null>(null);
 
   // Check if we have at least one photo
   const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0;
@@ -1021,6 +1020,19 @@ export default function LendPage() {
                         {/* Borrow Card - Column 1 */}
                         {watchIsLendable && (
                           <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100">
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Coins className="h-4 w-4 text-teal-600" />
+                              <span className="font-semibold text-teal-800 text-sm">
+                                {valuationResult ? (
+                                  <>{valuationResult.shareCoinsValue}</>
+                                ) : isLoadingValuation ? (
+                                  <span className="text-gray-500">...</span>
+                                ) : (
+                                  <>{TIER_WEEKLY_BANDS[calculatedTier].min}-{TIER_WEEKLY_BANDS[calculatedTier].max}</>
+                                )}
+                                <span className="font-normal text-teal-700"> ShareCoins/week</span>
+                              </span>
+                            </div>
                             {(() => {
                               const reputationScore = user?.reputationScore || 0;
                               const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
@@ -1029,71 +1041,20 @@ export default function LendPage() {
                                 watchOriginalValue,
                                 trustScore
                               );
-                              
-                              const minDeposit = Math.round(depositCalc.baseDeposit * 0.8);
-                              const maxDeposit = Math.round(depositCalc.baseDeposit * 1.2);
-                              const displayDeposit = customBorrowDeposit !== null ? customBorrowDeposit : depositCalc.finalDeposit;
-                              
-                              const handleDepositChange = (newDeposit: number) => {
-                                const clampedDeposit = Math.max(minDeposit, Math.min(maxDeposit, newDeposit));
-                                setCustomBorrowDeposit(clampedDeposit);
-                              };
-                              
-                              const aiSuggestedShareCoins = valuationResult?.shareCoinsValue || 
-                                Math.round((TIER_WEEKLY_BANDS[calculatedTier].min + TIER_WEEKLY_BANDS[calculatedTier].max) / 2);
-                              
                               return (
-                                <>
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <Coins className="h-4 w-4 text-teal-600" />
-                                    <span className="text-xs text-teal-700">Weekly Borrow Rate</span>
+                                <div className="mt-2 pt-2 border-t border-teal-100">
+                                  <div className="text-xs font-medium text-gray-700">
+                                    Trust-Based Deposit:
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <span className="font-semibold text-teal-800 text-sm">
-                                      {valuationResult ? (
-                                        <>{valuationResult.shareCoinsValue}</>
-                                      ) : isLoadingValuation ? (
-                                        <span className="text-gray-500">...</span>
-                                      ) : (
-                                        <>{TIER_WEEKLY_BANDS[calculatedTier].min}-{TIER_WEEKLY_BANDS[calculatedTier].max}</>
-                                      )}
-                                    </span>
-                                    <span className="text-xs text-gray-500">ShareCoins/week</span>
+                                  <div className="text-sm font-semibold text-gray-800">
+                                    {formatDeposit(depositCalc.finalDeposit)}
                                   </div>
-                                  <div className="text-[10px] text-gray-400 mt-0.5">
-                                    AI suggested: {aiSuggestedShareCoins} ShareCoins/week
-                                  </div>
-                                  <div className="mt-2 pt-2 border-t border-teal-100">
-                                    <div className="text-xs font-medium text-gray-700">
-                                      Trust-Based Deposit:
+                                  {depositCalc.discountPercentage > 0 && (
+                                    <div className="text-teal-600 text-[10px] mt-0.5">
+                                      Your trust score reduced the deposit by {depositCalc.discountPercentage}%
                                     </div>
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      <span className="text-gray-500">$</span>
-                                      <input
-                                        type="number"
-                                        min={minDeposit}
-                                        max={maxDeposit}
-                                        step="1"
-                                        value={displayDeposit}
-                                        onChange={(e) => handleDepositChange(parseInt(e.target.value) || minDeposit)}
-                                        onKeyDown={(e) => {
-                                          if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'Tab') {
-                                            e.preventDefault();
-                                          }
-                                        }}
-                                        className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-400 cursor-pointer"
-                                      />
-                                    </div>
-                                    <div className="text-[10px] text-gray-400 mt-0.5">
-                                      AI suggested: ${depositCalc.finalDeposit}
-                                    </div>
-                                    {depositCalc.discountPercentage > 0 && (
-                                      <div className="text-teal-600 text-[10px] mt-0.5">
-                                        Your trust score reduced the deposit by {depositCalc.discountPercentage}%
-                                      </div>
-                                    )}
-                                  </div>
-                                </>
+                                  )}
+                                </div>
                               );
                             })()}
                           </div>

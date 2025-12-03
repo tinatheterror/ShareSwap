@@ -1114,6 +1114,9 @@ export default function LendPage() {
                                     />
                                     <span className="text-xs text-gray-500">/week</span>
                                   </div>
+                                  <div className="text-[10px] text-gray-400 mt-0.5">
+                                    AI suggested: ${rentalCalc.weeklyRate}/week
+                                  </div>
                                   {rentalRateWarning && (
                                     <div className="flex items-center gap-1 mt-1 text-amber-600 text-[10px]">
                                       <AlertTriangle className="h-3 w-3" />
@@ -1140,6 +1143,9 @@ export default function LendPage() {
                                         }}
                                         className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer"
                                       />
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 mt-0.5">
+                                      AI suggested: ${depositCalc.deposit}
                                     </div>
                                   </div>
                                 </>

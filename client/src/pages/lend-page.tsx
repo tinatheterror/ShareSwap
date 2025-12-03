@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { calculateSecurityDeposit, formatDeposit } from "@/lib/deposit-calculator";
+import { calculateRentalRate, calculateRentalDeposit, validateRentalRate, formatCurrency } from "@/lib/rental-calculator";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -38,6 +39,7 @@ import {
   ChevronDown,
   Lightbulb,
   Coins,
+  AlertTriangle,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -217,9 +219,14 @@ export default function LendPage() {
     shareCoinsValue: number;
     tierBand: { min: number; max: number };
     reasoning: string;
+    internalItemValue?: number;
   } | null>(null);
   const [isLoadingValuation, setIsLoadingValuation] = useState(false);
   const valuationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Rental rate state
+  const [customRentalRate, setCustomRentalRate] = useState<number | null>(null);
+  const [rentalRateWarning, setRentalRateWarning] = useState<string | null>(null);
 
   // Check if we have at least one photo
   const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0;
@@ -278,7 +285,11 @@ export default function LendPage() {
             shareCoinsValue: data.shareCoinsValue,
             tierBand: data.tierBand,
             reasoning: data.reasoning,
+            internalItemValue: data.internalItemValue,
           });
+          // Reset custom rental rate when valuation changes
+          setCustomRentalRate(null);
+          setRentalRateWarning(null);
         }
       } catch (error) {
         console.error("Failed to get valuation:", error);
@@ -1040,6 +1051,77 @@ export default function LendPage() {
                                   </div>
                                 )}
                               </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rental Rate and Deposit Card - show when Rent It is selected */}
+                    {watchIsRentable && calculatedTier && (
+                      <div className="mt-4 grid grid-cols-4 gap-2">
+                        <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
+                          {(() => {
+                            // Get internal item value from valuation or estimate from original value
+                            const getEstimatedValue = () => {
+                              if (valuationResult?.internalItemValue) {
+                                return valuationResult.internalItemValue;
+                              }
+                              const valueMap: Record<string, number> = {
+                                "Under $50": 30,
+                                "$50–$150": 100,
+                                "$150–$300": 225,
+                                "$300+": 500,
+                              };
+                              return valueMap[watchOriginalValue] || 100;
+                            };
+                            
+                            const itemValue = getEstimatedValue();
+                            const rentalCalc = calculateRentalRate(itemValue, watchItemType || "");
+                            const depositCalc = calculateRentalDeposit(itemValue, calculatedTier);
+                            const displayRate = customRentalRate !== null ? customRentalRate : rentalCalc.weeklyRate;
+                            
+                            const handleRateChange = (newRate: number) => {
+                              const validation = validateRentalRate(rentalCalc.weeklyRate, newRate);
+                              setCustomRentalRate(newRate);
+                              setRentalRateWarning(validation.warning);
+                            };
+
+                            return (
+                              <>
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <DollarSign className="h-4 w-4 text-emerald-600" />
+                                  <span className="text-xs text-emerald-700">Weekly Rental Rate</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-gray-500">$</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={displayRate}
+                                    onChange={(e) => handleRateChange(Math.max(1, parseInt(e.target.value) || 1))}
+                                    className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                  />
+                                  <span className="text-xs text-gray-500">/week</span>
+                                </div>
+                                {rentalRateWarning && (
+                                  <div className="flex items-center gap-1 mt-1 text-amber-600 text-[10px]">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    <span>{rentalRateWarning}</span>
+                                  </div>
+                                )}
+                                <div className="mt-2 pt-2 border-t border-emerald-100">
+                                  <div className="text-xs font-medium text-gray-700">
+                                    Security Deposit:
+                                  </div>
+                                  <div className="text-sm font-semibold text-gray-800">
+                                    {formatCurrency(depositCalc.deposit)}
+                                  </div>
+                                  <div className="text-emerald-600 text-[10px] mt-0.5">
+                                    {depositCalc.depositPercentage}% of item value
+                                  </div>
+                                </div>
+                              </>
                             );
                           })()}
                         </div>

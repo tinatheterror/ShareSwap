@@ -810,6 +810,7 @@ Respond with ONLY the category name, nothing else.`
         tierBand: result.tierBand,
         reasoning: result.reasoning,
         factors: result.factors,
+        internalItemValue: result.internalItemValue,
       });
     } catch (error: any) {
       console.error("Valuation preview error:", error);

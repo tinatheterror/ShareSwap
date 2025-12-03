@@ -1184,6 +1184,17 @@ export default function LendPage() {
                                       AI suggested: ${depositCalc.deposit}
                                     </div>
                                   </div>
+                                  <div className="mt-2 pt-2 border-t border-emerald-100">
+                                    <div className="text-xs font-medium text-gray-700">
+                                      Platform Fee (10%):
+                                    </div>
+                                    <div className="text-sm font-semibold text-gray-800 mt-0.5">
+                                      ${Math.round(displayRate * 0.1)}/week
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 mt-0.5">
+                                      You receive: ${displayRate - Math.round(displayRate * 0.1)}/week
+                                    </div>
+                                  </div>
                                 </>
                               );
                             })()}

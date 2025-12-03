@@ -1015,9 +1015,9 @@ export default function LendPage() {
                               ) : (
                                 <>{TIER_WEEKLY_BANDS[calculatedTier].min}-{TIER_WEEKLY_BANDS[calculatedTier].max}</>
                               )}
+                              <span className="font-normal text-teal-700"> ShareCoins/week</span>
                             </span>
                           </div>
-                          <div className="text-xs text-teal-700">ShareCoins/week</div>
                           {(() => {
                             const reputationScore = user?.reputationScore || 0;
                             const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);

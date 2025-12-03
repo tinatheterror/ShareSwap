@@ -1132,21 +1132,10 @@ export default function LendPage() {
                                 setRentalRateWarning(validation.warning);
                               };
 
-                              const minDeposit = Math.round(
-                                depositCalc.deposit * 0.8,
-                              );
-                              const maxDeposit = Math.round(
-                                depositCalc.deposit * 1.2,
-                              );
-
                               const handleDepositChange = (
                                 newDeposit: number,
                               ) => {
-                                const clampedDeposit = Math.max(
-                                  minDeposit,
-                                  Math.min(maxDeposit, newDeposit),
-                                );
-                                setCustomRentalDeposit(clampedDeposit);
+                                setCustomRentalDeposit(Math.max(0, newDeposit));
                               };
 
                               return (
@@ -1194,26 +1183,15 @@ export default function LendPage() {
                                       <span className="text-gray-500">$</span>
                                       <input
                                         type="number"
-                                        min={minDeposit}
-                                        max={maxDeposit}
+                                        min="0"
                                         step="1"
                                         value={displayDeposit}
                                         onChange={(e) =>
                                           handleDepositChange(
-                                            parseInt(e.target.value) ||
-                                              minDeposit,
+                                            parseInt(e.target.value) || 0,
                                           )
                                         }
-                                        onKeyDown={(e) => {
-                                          if (
-                                            e.key !== "ArrowUp" &&
-                                            e.key !== "ArrowDown" &&
-                                            e.key !== "Tab"
-                                          ) {
-                                            e.preventDefault();
-                                          }
-                                        }}
-                                        className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer"
+                                        className="w-20 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                       />
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-0.5">

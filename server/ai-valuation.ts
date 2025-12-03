@@ -2,9 +2,9 @@ import OpenAI from "openai";
 
 const TIER_BANDS: Record<number, { min: number; max: number }> = {
   1: { min: 5, max: 5 },
-  2: { min: 10, max: 15 },
-  3: { min: 20, max: 30 },
-  4: { min: 40, max: 60 },
+  2: { min: 10, max: 10 },
+  3: { min: 20, max: 20 },
+  4: { min: 40, max: 40 },
 };
 
 const CONDITION_MODIFIERS: Record<string, number> = {

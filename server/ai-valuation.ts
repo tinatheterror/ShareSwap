@@ -136,9 +136,21 @@ ITEM DETAILS:
 - Condition (stated): ${item.condition} (Rating: ${item.conditionRating}/10)
 - Original Value: ${item.originalValue || "Unknown"}
 - Estimated Market Value: ${item.estimatedValue || "Unknown"}
-- Description: ${item.description || "No description provided"}
+- Features & Details: ${item.description || "No description provided"}
 
 VALUATION RULES:
+
+0. Features & Details Analysis (CRITICAL for accurate valuation):
+   - CAREFULLY analyze the Features & Details text for value-adding information:
+     ➤ Premium materials (leather, solid wood, stainless steel, etc.) → increase value
+     ➤ Special editions, limited releases, or collectibles → significantly increase value
+     ➤ Additional accessories or complete sets → increase value
+     ➤ Professional-grade or commercial quality → increase value
+     ➤ Age, vintage status, or antique value → may increase value for collectibles
+     ➤ Warranty or recent service/maintenance → increase value
+     ➤ Defects, damage, or missing parts mentioned → decrease value
+   - Use these details to refine your estimated item value
+
 1. Condition Impact (applied as % shift within the band):
    - Like New/New: +20% towards max
    - Good: +10% towards max
@@ -271,6 +283,16 @@ function calculateFallbackValuation(
     item.condition === "Like New" || 
     (item.condition === "Good" && item.conditionRating >= 8);
 
+  // Analyze description for premium features
+  const descriptionText = (item.description || "").toLowerCase();
+  const premiumMaterials = ["leather", "solid wood", "stainless steel", "titanium", "carbon fiber", "gold", "silver"];
+  const premiumFeatures = ["limited edition", "special edition", "collector", "professional", "commercial grade", "complete set", "with accessories", "warranty"];
+  const negativeIndicators = ["damaged", "broken", "missing", "defect", "scratch", "dent", "crack", "worn"];
+  
+  const hasPremiumMaterials = premiumMaterials.some(m => descriptionText.includes(m));
+  const hasPremiumFeatures = premiumFeatures.some(f => descriptionText.includes(f));
+  const hasNegativeIndicators = negativeIndicators.some(n => descriptionText.includes(n));
+
   // Calculate internal item value with adjustments
   let internalItemValue = baseItemValue;
   if (isLuxuryBrand) {
@@ -283,6 +305,17 @@ function calculateFallbackValuation(
     internalItemValue *= 1.1;
   } else if (item.condition === "Fair" || item.condition === "Well Loved") {
     internalItemValue *= 0.7;
+  }
+  
+  // Description-based adjustments
+  if (hasPremiumMaterials) {
+    internalItemValue *= 1.15; // Premium materials add 15% value
+  }
+  if (hasPremiumFeatures) {
+    internalItemValue *= 1.2; // Premium features add 20% value
+  }
+  if (hasNegativeIndicators) {
+    internalItemValue *= 0.85; // Negative indicators reduce 15% value
   }
 
   // For luxury brands in excellent condition with high value, go straight to max
@@ -334,19 +367,38 @@ function calculateFallbackValuation(
   }
   baseValue += bandRange * categoryMod;
 
+  // Description-based adjustments for ShareCoin value
+  let descriptionMod = 0;
+  if (hasPremiumMaterials) {
+    descriptionMod += 0.10; // Premium materials add 10% towards max
+  }
+  if (hasPremiumFeatures) {
+    descriptionMod += 0.15; // Premium features add 15% towards max
+  }
+  if (hasNegativeIndicators) {
+    descriptionMod -= 0.15; // Negative indicators reduce 15% towards min
+  }
+  baseValue += bandRange * descriptionMod;
+
   const shareCoinsValue = Math.round(Math.max(band.min, Math.min(band.max, baseValue)));
+
+  // Build reasoning message
+  let reasoning = isLuxuryBrand 
+    ? `Luxury/designer brand item valued at upper range of band.`
+    : "Valuation based on condition, brand, and category factors.";
+  if (hasPremiumMaterials || hasPremiumFeatures) {
+    reasoning += " Premium features/materials detected in description.";
+  }
 
   return {
     shareCoinsValue,
     tierBand: band,
-    reasoning: isLuxuryBrand 
-      ? `Luxury/designer brand item valued at upper range of band.`
-      : "Valuation based on condition, brand, and category factors.",
+    reasoning,
     factors: {
       conditionAdjustment: conditionMod,
       brandAdjustment: brandMod,
       categoryAdjustment: categoryMod,
-      demandAdjustment: 0,
+      demandAdjustment: descriptionMod,
     },
     internalItemValue: Math.round(internalItemValue),
   };

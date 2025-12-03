@@ -1067,7 +1067,7 @@ export default function LendPage() {
                                 trustScore,
                               );
                               return (
-                                <div className="mt-2 pt-2 border-t border-teal-100">
+                                <div className="mt-2 pt-2 border-t border-teal-100 text-center">
                                   <div className="text-xs font-medium text-gray-700">
                                     Trust-Based Deposit:
                                   </div>

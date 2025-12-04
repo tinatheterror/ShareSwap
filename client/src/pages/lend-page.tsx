@@ -1252,7 +1252,7 @@ export default function LendPage() {
                                           )}
                                           <div className="flex items-center gap-1.5 text-xs text-red-500 pt-1">
                                             <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                            <span>2+ tier gap = blocked</span>
+                                            <span>Tier {calculatedTier > 2 ? calculatedTier - 2 : calculatedTier + 2} or further = too different</span>
                                           </div>
                                           <div className="text-[10px] text-gray-500 pt-1 border-t mt-1">
                                             ShareCoin offsets only<br/>No cash • No deposits

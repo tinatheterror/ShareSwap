@@ -1211,6 +1211,12 @@ export default function LendPage() {
                           <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100">
                             {(() => {
                               const swapInfo = getSwapEligibility(calculatedTier);
+                              const tierSC = getTierShareCoins(calculatedTier);
+                              const lowerTier = calculatedTier > 1 ? calculatedTier - 1 : null;
+                              const higherTier = calculatedTier < 4 ? calculatedTier + 1 : null;
+                              const lowerTierSC = lowerTier ? getTierShareCoins(lowerTier) : 0;
+                              const higherTierSC = higherTier ? getTierShareCoins(higherTier) : 0;
+                              
                               return (
                                 <>
                                   <div className="flex items-center gap-1.5 mb-1.5">
@@ -1220,32 +1226,42 @@ export default function LendPage() {
                                     </span>
                                   </div>
                                   <div className="text-sm font-semibold text-gray-800">
-                                    Tier {calculatedTier} ({swapInfo.yourShareCoins} SC)
+                                    Tier {calculatedTier} ({tierSC} ShareCoins)
                                   </div>
                                   <div className="mt-2 pt-2 border-t border-purple-100">
-                                    <div className="text-xs font-medium text-gray-700">
+                                    <div className="text-xs font-medium text-gray-700 mb-1">
                                       Fair swap with:
                                     </div>
-                                    <div className="text-xs text-purple-700 mt-1">
-                                      {getAcceptableSwapsLabel(calculatedTier)}
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1.5 text-xs">
+                                        <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                                        <span className="text-gray-700">Tier {calculatedTier}</span>
+                                        <span className="text-gray-400">= fair swap</span>
+                                      </div>
+                                      {lowerTier && (
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                          <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                          <span className="text-gray-700">Tier {lowerTier}</span>
+                                          <span className="text-purple-600">+{tierSC - lowerTierSC} SC offset</span>
+                                        </div>
+                                      )}
+                                      {higherTier && (
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                          <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                          <span className="text-gray-700">Tier {higherTier}</span>
+                                          <span className="text-purple-600">−{higherTierSC - tierSC} SC offset</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                   <div className="mt-2 pt-2 border-t border-purple-100">
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                                      <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
-                                      Same tier = no offset
-                                    </div>
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
-                                      <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                      ±1 tier = ShareCoin offset
-                                    </div>
-                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                                    <div className="flex items-center gap-1 text-[10px] text-red-500">
                                       <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
                                       2+ tier gap = not allowed
                                     </div>
-                                  </div>
-                                  <div className="mt-2 pt-2 border-t border-purple-100 text-[10px] text-purple-600">
-                                    No deposits required for swaps
+                                    <div className="text-[10px] text-gray-500 mt-1">
+                                      ShareCoin offsets only • No cash • No deposits
+                                    </div>
                                   </div>
                                 </>
                               );

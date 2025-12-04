@@ -19,6 +19,11 @@ import {
   validateRentalDeposit,
   formatCurrency,
 } from "@/lib/rental-calculator";
+import {
+  getSwapEligibility,
+  getTierShareCoins,
+  getAcceptableSwapsLabel,
+} from "@/lib/swap-calculator";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -1029,9 +1034,9 @@ export default function LendPage() {
                       Select one or more options
                     </p>
 
-                    {/* Borrow and Rental Cards - show side by side when selected */}
-                    {(watchIsLendable || watchIsRentable) && calculatedTier && (
-                      <div className="mt-4 grid grid-cols-4 gap-2">
+                    {/* Borrow, Rental, and Swap Cards - show side by side when selected */}
+                    {(watchIsLendable || watchIsRentable || watchIsSwappable) && calculatedTier && (
+                      <div className="mt-4 grid grid-cols-3 gap-2">
                         {/* Borrow Card - Column 1 */}
                         {watchIsLendable && (
                           <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100">
@@ -1083,11 +1088,9 @@ export default function LendPage() {
                           </div>
                         )}
 
-                        {/* Rental Card - Column 2 */}
+                        {/* Rental Card */}
                         {watchIsRentable && (
-                          <div
-                            className={`p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100 ${!watchIsLendable ? "col-start-2" : ""}`}
-                          >
+                          <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
                             {(() => {
                               const getEstimatedValue = () => {
                                 if (valuationResult?.internalItemValue) {
@@ -1196,6 +1199,53 @@ export default function LendPage() {
                                     <div className="text-[10px] text-gray-400 mt-1.5">
                                       You receive: ${Math.round(displayRate * 0.97)}/week
                                     </div>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Swap Card */}
+                        {watchIsSwappable && (
+                          <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100">
+                            {(() => {
+                              const swapInfo = getSwapEligibility(calculatedTier);
+                              return (
+                                <>
+                                  <div className="flex items-center gap-1.5 mb-1.5">
+                                    <ArrowLeftRight className="h-4 w-4 text-purple-600" />
+                                    <span className="text-xs text-purple-700">
+                                      Swap Value
+                                    </span>
+                                  </div>
+                                  <div className="text-sm font-semibold text-gray-800">
+                                    Tier {calculatedTier} ({swapInfo.yourShareCoins} SC)
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-purple-100">
+                                    <div className="text-xs font-medium text-gray-700">
+                                      Fair swap with:
+                                    </div>
+                                    <div className="text-xs text-purple-700 mt-1">
+                                      {getAcceptableSwapsLabel(calculatedTier)}
+                                    </div>
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-purple-100">
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                                      <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                                      Same tier = no offset
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                                      <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                      ±1 tier = ShareCoin offset
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                                      <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                                      2+ tier gap = not allowed
+                                    </div>
+                                  </div>
+                                  <div className="mt-2 pt-2 border-t border-purple-100 text-[10px] text-purple-600">
+                                    No deposits required for swaps
                                   </div>
                                 </>
                               );

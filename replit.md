@@ -60,8 +60,17 @@ Key architectural decisions and features include:
       - Tier 2: 30% of item value
       - Tier 3: 40% of item value
       - Tier 4: 50% of item value
-    - **Editable Security Deposits**: Owners can adjust deposit within ±20% of AI suggestion, shows error if outside range
-    - **UI Display**: Rental card positioned directly under "Rent It" button (column 2) on lend page
+    - **Editable Security Deposits**: Owners can fully adjust deposit (no restrictions)
+    - **Platform Fees**: 0% platform fee for 2025, 3% payment processing fee always applies
+    - **UI Display**: Rental card positioned in middle column on lend page
+- **Swap System** (client/src/lib/swap-calculator.ts):
+    - **Tier-Based Fairness**: Swaps use fixed ShareCoin values per tier (5/10/20/40) as fairness measure
+    - **Same-Tier Swaps**: Free, no offset needed (Tier 2 ↔ Tier 2 = fair)
+    - **1-Tier Difference**: Allowed with ShareCoin offset (e.g., Tier 2 ↔ Tier 3 = +10 SC from lower tier)
+    - **2+ Tier Gap**: Not allowed - too risky for disputes
+    - **No Cash Offsets**: Only ShareCoins can balance value differences
+    - **No Deposits**: Swaps require no security deposits
+    - **UI Display**: Purple swap card shows tier, fair swap options, and rules legend
 - **UI/UX Decisions**:
     - Focus on intuitive interfaces like swipeable cards for item requests, stacked card UI with animations, and in-app scheduling.
     - Gamified Account Statistics section with gradients, animations, and progress bars to incentivize sharing behavior, leading to Community Impact Levels with associated benefits.

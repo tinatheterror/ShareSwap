@@ -1035,239 +1035,294 @@ export default function LendPage() {
                     </p>
 
                     {/* Borrow, Rental, and Swap Cards - show side by side when selected */}
-                    {(watchIsLendable || watchIsRentable || watchIsSwappable) && calculatedTier && (
-                      <div className="mt-4 grid grid-cols-4 gap-2">
-                        {/* Borrow Card - Column 1 */}
-                        {watchIsLendable && (
-                          <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100 col-start-1">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <Coins className="h-4 w-4 text-teal-600" />
-                              <span className="font-semibold text-teal-800 text-sm">
-                                {valuationResult ? (
-                                  <>{valuationResult.shareCoinsValue}</>
-                                ) : isLoadingValuation ? (
-                                  <span className="text-gray-500">...</span>
-                                ) : (
-                                  <>{TIER_WEEKLY_BANDS[calculatedTier].display}</>
-                                )}
-                                <span className="font-normal text-teal-700">
-                                  {" "}
-                                  ShareCoins/week
-                                </span>
-                              </span>
-                            </div>
-                            {(() => {
-                              const reputationScore =
-                                user?.reputationScore || 0;
-                              const trustScore = Math.min(
-                                100,
-                                Math.round((reputationScore / 500) * 100) + 50,
-                              );
-                              const depositCalc = calculateSecurityDeposit(
-                                calculatedTier,
-                                watchOriginalValue,
-                                trustScore,
-                              );
-                              return (
-                                <div className="mt-2 pt-2 border-t border-teal-100">
-                                  <div className="text-xs font-medium text-gray-700">
-                                    Trust-Based Deposit:
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-800">
-                                    {formatDeposit(depositCalc.finalDeposit)}
-                                  </div>
-                                  {depositCalc.discountPercentage > 0 && (
-                                    <div className="text-teal-600 text-[10px] mt-0.5">
-                                      Your trust score reduced the deposit by{" "}
-                                      {depositCalc.discountPercentage}%
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-
-                        {/* Rental Card - Column 2 */}
-                        {watchIsRentable && (
-                          <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100 col-start-2">
-                            {(() => {
-                              const getEstimatedValue = () => {
-                                if (valuationResult?.internalItemValue) {
-                                  return valuationResult.internalItemValue;
-                                }
-                                const valueMap: Record<string, number> = {
-                                  "Under $50": 30,
-                                  "$50–$150": 100,
-                                  "$150–$300": 225,
-                                  "$300+": 500,
-                                };
-                                return valueMap[watchOriginalValue] || 100;
-                              };
-
-                              const itemValue = getEstimatedValue();
-                              const rentalCalc = calculateRentalRate(
-                                itemValue,
-                                watchItemType || "",
-                              );
-                              const depositCalc = calculateRentalDeposit(
-                                itemValue,
-                                calculatedTier,
-                              );
-                              const displayRate =
-                                customRentalRate !== null
-                                  ? customRentalRate
-                                  : rentalCalc.weeklyRate;
-                              const displayDeposit =
-                                customRentalDeposit !== null
-                                  ? customRentalDeposit
-                                  : depositCalc.deposit;
-
-                              const handleRateChange = (newRate: number) => {
-                                setCustomRentalRate(newRate);
-                              };
-
-                              const handleDepositChange = (
-                                newDeposit: number,
-                              ) => {
-                                setCustomRentalDeposit(Math.max(0, newDeposit));
-                              };
-
-                              return (
-                                <>
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <DollarSign className="h-4 w-4 text-emerald-600" />
-                                    <span className="text-xs text-emerald-700">
-                                      Rental Rate
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-gray-500">$</span>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      value={displayRate}
-                                      onChange={(e) =>
-                                        handleRateChange(
-                                          Math.max(
-                                            1,
-                                            parseInt(e.target.value) || 1,
-                                          ),
-                                        )
+                    {(watchIsLendable || watchIsRentable || watchIsSwappable) &&
+                      calculatedTier && (
+                        <div className="mt-4 grid grid-cols-4 gap-2">
+                          {/* Borrow Card - Column 1 */}
+                          {watchIsLendable && (
+                            <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100 col-start-1">
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <Coins className="h-4 w-4 text-teal-600" />
+                                <span className="font-semibold text-teal-800 text-sm">
+                                  {valuationResult ? (
+                                    <>{valuationResult.shareCoinsValue}</>
+                                  ) : isLoadingValuation ? (
+                                    <span className="text-gray-500">...</span>
+                                  ) : (
+                                    <>
+                                      {
+                                        TIER_WEEKLY_BANDS[calculatedTier]
+                                          .display
                                       }
-                                      className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                                    />
-                                    <span className="text-xs text-gray-500">
-                                      /week
-                                    </span>
-                                  </div>
-                                  <div className="text-[10px] text-gray-400 mt-0.5">
-                                    AI suggested: ${rentalCalc.weeklyRate}/week
-                                  </div>
-                                  <div className="mt-2 pt-2 border-t border-emerald-100">
+                                    </>
+                                  )}
+                                  <span className="font-normal text-teal-700">
+                                    {" "}
+                                    ShareCoins/week
+                                  </span>
+                                </span>
+                              </div>
+                              {(() => {
+                                const reputationScore =
+                                  user?.reputationScore || 0;
+                                const trustScore = Math.min(
+                                  100,
+                                  Math.round((reputationScore / 500) * 100) +
+                                    50,
+                                );
+                                const depositCalc = calculateSecurityDeposit(
+                                  calculatedTier,
+                                  watchOriginalValue,
+                                  trustScore,
+                                );
+                                return (
+                                  <div className="mt-2 pt-2 border-t border-teal-100">
                                     <div className="text-xs font-medium text-gray-700">
-                                      Security Deposit:
+                                      Trust-Based Deposit:
                                     </div>
-                                    <div className="flex items-center gap-1 mt-0.5">
+                                    <div className="text-sm font-semibold text-gray-800">
+                                      {formatDeposit(depositCalc.finalDeposit)}
+                                    </div>
+                                    {depositCalc.discountPercentage > 0 && (
+                                      <div className="text-teal-600 text-[10px] mt-0.5">
+                                        Your trust score reduced the deposit by{" "}
+                                        {depositCalc.discountPercentage}%
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {/* Rental Card - Column 2 */}
+                          {watchIsRentable && (
+                            <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100 col-start-2">
+                              {(() => {
+                                const getEstimatedValue = () => {
+                                  if (valuationResult?.internalItemValue) {
+                                    return valuationResult.internalItemValue;
+                                  }
+                                  const valueMap: Record<string, number> = {
+                                    "Under $50": 30,
+                                    "$50–$150": 100,
+                                    "$150–$300": 225,
+                                    "$300+": 500,
+                                  };
+                                  return valueMap[watchOriginalValue] || 100;
+                                };
+
+                                const itemValue = getEstimatedValue();
+                                const rentalCalc = calculateRentalRate(
+                                  itemValue,
+                                  watchItemType || "",
+                                );
+                                const depositCalc = calculateRentalDeposit(
+                                  itemValue,
+                                  calculatedTier,
+                                );
+                                const displayRate =
+                                  customRentalRate !== null
+                                    ? customRentalRate
+                                    : rentalCalc.weeklyRate;
+                                const displayDeposit =
+                                  customRentalDeposit !== null
+                                    ? customRentalDeposit
+                                    : depositCalc.deposit;
+
+                                const handleRateChange = (newRate: number) => {
+                                  setCustomRentalRate(newRate);
+                                };
+
+                                const handleDepositChange = (
+                                  newDeposit: number,
+                                ) => {
+                                  setCustomRentalDeposit(
+                                    Math.max(0, newDeposit),
+                                  );
+                                };
+
+                                return (
+                                  <>
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                      <DollarSign className="h-4 w-4 text-emerald-600" />
+                                      <span className="text-xs text-emerald-700">
+                                        Rental Rate
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
                                       <span className="text-gray-500">$</span>
                                       <input
                                         type="number"
-                                        min="0"
-                                        step="1"
-                                        value={displayDeposit}
+                                        min="1"
+                                        value={displayRate}
                                         onChange={(e) =>
-                                          handleDepositChange(
-                                            parseInt(e.target.value) || 0,
+                                          handleRateChange(
+                                            Math.max(
+                                              1,
+                                              parseInt(e.target.value) || 1,
+                                            ),
                                           )
                                         }
-                                        className="w-20 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                        className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                       />
+                                      <span className="text-xs text-gray-500">
+                                        /week
+                                      </span>
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-0.5">
-                                      AI suggested: ${depositCalc.deposit}
+                                      AI suggested: ${rentalCalc.weeklyRate}
+                                      /week
                                     </div>
-                                  </div>
-                                  <div className="mt-2 pt-2 border-t border-emerald-100">
-                                    <div className="flex justify-between text-xs">
-                                      <span className="text-gray-600">Platform fee:</span>
-                                      <span className="font-medium text-emerald-600">0% for 2025</span>
+                                    <div className="mt-2 pt-2 border-t border-emerald-100">
+                                      <div className="text-xs font-medium text-gray-700">
+                                        Security Deposit:
+                                      </div>
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        <span className="text-gray-500">$</span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step="1"
+                                          value={displayDeposit}
+                                          onChange={(e) =>
+                                            handleDepositChange(
+                                              parseInt(e.target.value) || 0,
+                                            )
+                                          }
+                                          className="w-20 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                                        />
+                                      </div>
+                                      <div className="text-[10px] text-gray-400 mt-0.5">
+                                        AI suggested: ${depositCalc.deposit}
+                                      </div>
                                     </div>
-                                    <div className="flex justify-between text-xs mt-1">
-                                      <span className="text-gray-600">Payment processing:</span>
-                                      <span className="font-medium text-gray-700">3%</span>
+                                    <div className="mt-2 pt-2 border-t border-emerald-100">
+                                      <div className="flex justify-between text-xs">
+                                        <span className="text-gray-600">
+                                          Platform fee:
+                                        </span>
+                                        <span className="font-medium text-emerald-600">
+                                          0% for 2025
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between text-xs mt-1">
+                                        <span className="text-gray-600">
+                                          Payment processing:
+                                        </span>
+                                        <span className="font-medium text-gray-700">
+                                          3%
+                                        </span>
+                                      </div>
+                                      <div className="text-[10px] text-gray-400 mt-1.5">
+                                        You receive: $
+                                        {Math.round(displayRate * 0.97)}/week
+                                      </div>
                                     </div>
-                                    <div className="text-[10px] text-gray-400 mt-1.5">
-                                      You receive: ${Math.round(displayRate * 0.97)}/week
-                                    </div>
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
 
-                        {/* Swap Card - Column 3 */}
-                        {watchIsSwappable && (
-                          <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100 col-start-3">
-                            {(() => {
-                              const tierSC = getTierShareCoins(calculatedTier);
-                              const lowerTier = calculatedTier > 1 ? calculatedTier - 1 : null;
-                              const higherTier = calculatedTier < 4 ? calculatedTier + 1 : null;
-                              const lowerTierSC = lowerTier ? getTierShareCoins(lowerTier) : 0;
-                              const higherTierSC = higherTier ? getTierShareCoins(higherTier) : 0;
-                              
-                              return (
-                                <>
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <ArrowLeftRight className="h-4 w-4 text-purple-600" />
-                                    <span className="text-xs text-purple-700">
-                                      Swap Value
-                                    </span>
-                                  </div>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="text-sm font-semibold text-gray-800 cursor-help underline decoration-dotted decoration-purple-300">
-                                          Tier {calculatedTier} ({tierSC} SC)
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="max-w-[200px] p-3">
-                                        <div className="space-y-1.5">
-                                          <div className="text-xs font-medium mb-2">Swap Rules:</div>
-                                          <div className="flex items-center gap-1.5 text-xs">
-                                            <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
-                                            <span>Tier {calculatedTier} = fair swap</span>
+                          {/* Swap Card - Column 3 */}
+                          {watchIsSwappable && (
+                            <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100 col-start-3">
+                              {(() => {
+                                const tierSC =
+                                  getTierShareCoins(calculatedTier);
+                                const lowerTier =
+                                  calculatedTier > 1
+                                    ? calculatedTier - 1
+                                    : null;
+                                const higherTier =
+                                  calculatedTier < 4
+                                    ? calculatedTier + 1
+                                    : null;
+                                const lowerTierSC = lowerTier
+                                  ? getTierShareCoins(lowerTier)
+                                  : 0;
+                                const higherTierSC = higherTier
+                                  ? getTierShareCoins(higherTier)
+                                  : 0;
+
+                                return (
+                                  <>
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                      <ArrowLeftRight className="h-4 w-4 text-purple-600" />
+                                      <span className="text-xs text-purple-700">
+                                        Swap Value
+                                      </span>
+                                    </div>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="text-sm font-semibold text-gray-800 cursor-help underline decoration-dotted decoration-purple-300">
+                                            Tier {calculatedTier} ({tierSC}{" "}
+                                            ShareCoins)
                                           </div>
-                                          {lowerTier && (
-                                            <div className="flex items-center gap-1.5 text-xs">
-                                              <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                              <span>Tier {lowerTier} = +{tierSC - lowerTierSC} SC offset</span>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                          side="top"
+                                          className="max-w-[200px] p-3"
+                                        >
+                                          <div className="space-y-1.5">
+                                            <div className="text-xs font-medium mb-2">
+                                              Swap Rules:
                                             </div>
-                                          )}
-                                          {higherTier && (
                                             <div className="flex items-center gap-1.5 text-xs">
-                                              <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                              <span>Tier {higherTier} = −{higherTierSC - tierSC} SC offset</span>
+                                              <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                                              <span>
+                                                Tier {calculatedTier} = fair
+                                                swap
+                                              </span>
                                             </div>
-                                          )}
-                                          <div className="flex items-center gap-1.5 text-xs text-red-500 pt-1">
-                                            <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                            <span>Tier {calculatedTier > 2 ? calculatedTier - 2 : calculatedTier + 2} or further = too different</span>
+                                            {lowerTier && (
+                                              <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                                <span>
+                                                  Tier {lowerTier} = +
+                                                  {tierSC - lowerTierSC} SC
+                                                  offset
+                                                </span>
+                                              </div>
+                                            )}
+                                            {higherTier && (
+                                              <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                                <span>
+                                                  Tier {higherTier} = −
+                                                  {higherTierSC - tierSC} SC
+                                                  offset
+                                                </span>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center gap-1.5 text-xs text-red-500 pt-1">
+                                              <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                                              <span>
+                                                Tier{" "}
+                                                {calculatedTier > 2
+                                                  ? calculatedTier - 2
+                                                  : calculatedTier + 2}{" "}
+                                                or further = too different
+                                              </span>
+                                            </div>
+                                            <div className="text-[10px] text-gray-500 pt-1 border-t mt-1">
+                                              ShareCoin offsets only
+                                              <br />
+                                              No cash • No deposits
+                                            </div>
                                           </div>
-                                          <div className="text-[10px] text-gray-500 pt-1 border-t mt-1">
-                                            ShareCoin offsets only<br/>No cash • No deposits
-                                          </div>
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </div>
 
                   {/* Availability Period - Hide when Have It (gift) is selected */}

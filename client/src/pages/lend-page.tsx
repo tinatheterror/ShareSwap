@@ -1036,7 +1036,7 @@ export default function LendPage() {
 
                     {/* Borrow, Rental, and Swap Cards - show side by side when selected */}
                     {(watchIsLendable || watchIsRentable || watchIsSwappable) && calculatedTier && (
-                      <div className="mt-4 grid grid-cols-3 gap-2">
+                      <div className="mt-4 grid grid-cols-4 gap-2">
                         {/* Borrow Card - Column 1 */}
                         {watchIsLendable && (
                           <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100">

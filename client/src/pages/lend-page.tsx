@@ -1210,7 +1210,6 @@ export default function LendPage() {
                         {watchIsSwappable && (
                           <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100">
                             {(() => {
-                              const swapInfo = getSwapEligibility(calculatedTier);
                               const tierSC = getTierShareCoins(calculatedTier);
                               const lowerTier = calculatedTier > 1 ? calculatedTier - 1 : null;
                               const higherTier = calculatedTier < 4 ? calculatedTier + 1 : null;
@@ -1226,42 +1225,50 @@ export default function LendPage() {
                                     </span>
                                   </div>
                                   <div className="text-sm font-semibold text-gray-800">
-                                    Tier {calculatedTier} ({tierSC} ShareCoins)
+                                    Tier {calculatedTier} ({tierSC} SC)
                                   </div>
                                   <div className="mt-2 pt-2 border-t border-purple-100">
-                                    <div className="text-xs font-medium text-gray-700 mb-1">
-                                      Fair swap with:
-                                    </div>
-                                    <div className="space-y-1">
-                                      <div className="flex items-center gap-1.5 text-xs">
-                                        <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
-                                        <span className="text-gray-700">Tier {calculatedTier}</span>
-                                        <span className="text-gray-400">= fair swap</span>
-                                      </div>
-                                      {lowerTier && (
-                                        <div className="flex items-center gap-1.5 text-xs">
-                                          <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                          <span className="text-gray-700">Tier {lowerTier}</span>
-                                          <span className="text-purple-600">+{tierSC - lowerTierSC} SC offset</span>
-                                        </div>
-                                      )}
-                                      {higherTier && (
-                                        <div className="flex items-center gap-1.5 text-xs">
-                                          <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                          <span className="text-gray-700">Tier {higherTier}</span>
-                                          <span className="text-purple-600">−{higherTierSC - tierSC} SC offset</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="mt-2 pt-2 border-t border-purple-100">
-                                    <div className="flex items-center gap-1 text-[10px] text-red-500">
-                                      <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                      2+ tier gap = not allowed
-                                    </div>
-                                    <div className="text-[10px] text-gray-500 mt-1">
-                                      ShareCoin offsets only • No cash • No deposits
-                                    </div>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-1 cursor-help">
+                                            <span className="text-xs text-purple-700 underline decoration-dotted">
+                                              Fair swap: Tier {calculatedTier}
+                                              {lowerTier && `, ${lowerTier}`}
+                                              {higherTier && `, ${higherTier}`}
+                                            </span>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-[200px] p-3">
+                                          <div className="space-y-1.5">
+                                            <div className="text-xs font-medium mb-2">Swap Rules:</div>
+                                            <div className="flex items-center gap-1.5 text-xs">
+                                              <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                                              <span>Tier {calculatedTier} = fair swap</span>
+                                            </div>
+                                            {lowerTier && (
+                                              <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                                <span>Tier {lowerTier} = +{tierSC - lowerTierSC} SC offset</span>
+                                              </div>
+                                            )}
+                                            {higherTier && (
+                                              <div className="flex items-center gap-1.5 text-xs">
+                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                                <span>Tier {higherTier} = −{higherTierSC - tierSC} SC offset</span>
+                                              </div>
+                                            )}
+                                            <div className="flex items-center gap-1.5 text-xs text-red-500 pt-1">
+                                              <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                                              <span>2+ tier gap = blocked</span>
+                                            </div>
+                                            <div className="text-[10px] text-gray-500 pt-1 border-t mt-1">
+                                              ShareCoin offsets only<br/>No cash • No deposits
+                                            </div>
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
                                   </div>
                                 </>
                               );

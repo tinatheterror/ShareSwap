@@ -1224,52 +1224,43 @@ export default function LendPage() {
                                       Swap Value
                                     </span>
                                   </div>
-                                  <div className="text-sm font-semibold text-gray-800">
-                                    Tier {calculatedTier} ({tierSC} SC)
-                                  </div>
-                                  <div className="mt-2 pt-2 border-t border-purple-100">
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="flex items-center gap-1 cursor-help">
-                                            <span className="text-xs text-purple-700 underline decoration-dotted">
-                                              Fair swap: Tier {calculatedTier}
-                                              {lowerTier && `, ${lowerTier}`}
-                                              {higherTier && `, ${higherTier}`}
-                                            </span>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="text-sm font-semibold text-gray-800 cursor-help underline decoration-dotted decoration-purple-300">
+                                          Tier {calculatedTier} ({tierSC} SC)
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-[200px] p-3">
+                                        <div className="space-y-1.5">
+                                          <div className="text-xs font-medium mb-2">Swap Rules:</div>
+                                          <div className="flex items-center gap-1.5 text-xs">
+                                            <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
+                                            <span>Tier {calculatedTier} = fair swap</span>
                                           </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" className="max-w-[200px] p-3">
-                                          <div className="space-y-1.5">
-                                            <div className="text-xs font-medium mb-2">Swap Rules:</div>
+                                          {lowerTier && (
                                             <div className="flex items-center gap-1.5 text-xs">
-                                              <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
-                                              <span>Tier {calculatedTier} = fair swap</span>
+                                              <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                              <span>Tier {lowerTier} = +{tierSC - lowerTierSC} SC offset</span>
                                             </div>
-                                            {lowerTier && (
-                                              <div className="flex items-center gap-1.5 text-xs">
-                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                                <span>Tier {lowerTier} = +{tierSC - lowerTierSC} SC offset</span>
-                                              </div>
-                                            )}
-                                            {higherTier && (
-                                              <div className="flex items-center gap-1.5 text-xs">
-                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                                <span>Tier {higherTier} = −{higherTierSC - tierSC} SC offset</span>
-                                              </div>
-                                            )}
-                                            <div className="flex items-center gap-1.5 text-xs text-red-500 pt-1">
-                                              <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                              <span>2+ tier gap = blocked</span>
+                                          )}
+                                          {higherTier && (
+                                            <div className="flex items-center gap-1.5 text-xs">
+                                              <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                              <span>Tier {higherTier} = −{higherTierSC - tierSC} SC offset</span>
                                             </div>
-                                            <div className="text-[10px] text-gray-500 pt-1 border-t mt-1">
-                                              ShareCoin offsets only<br/>No cash • No deposits
-                                            </div>
+                                          )}
+                                          <div className="flex items-center gap-1.5 text-xs text-red-500 pt-1">
+                                            <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
+                                            <span>2+ tier gap = blocked</span>
                                           </div>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  </div>
+                                          <div className="text-[10px] text-gray-500 pt-1 border-t mt-1">
+                                            ShareCoin offsets only<br/>No cash • No deposits
+                                          </div>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
                                 </>
                               );
                             })()}

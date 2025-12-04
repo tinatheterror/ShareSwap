@@ -1039,7 +1039,7 @@ export default function LendPage() {
                       <div className="mt-4 grid grid-cols-4 gap-2">
                         {/* Borrow Card - Column 1 */}
                         {watchIsLendable && (
-                          <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100">
+                          <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100 col-start-1">
                             <div className="flex items-center gap-1.5 mb-1.5">
                               <Coins className="h-4 w-4 text-teal-600" />
                               <span className="font-semibold text-teal-800 text-sm">
@@ -1088,9 +1088,9 @@ export default function LendPage() {
                           </div>
                         )}
 
-                        {/* Rental Card */}
+                        {/* Rental Card - Column 2 */}
                         {watchIsRentable && (
-                          <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
+                          <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100 col-start-2">
                             {(() => {
                               const getEstimatedValue = () => {
                                 if (valuationResult?.internalItemValue) {
@@ -1206,9 +1206,9 @@ export default function LendPage() {
                           </div>
                         )}
 
-                        {/* Swap Card */}
+                        {/* Swap Card - Column 3 */}
                         {watchIsSwappable && (
-                          <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100">
+                          <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100 col-start-3">
                             {(() => {
                               const tierSC = getTierShareCoins(calculatedTier);
                               const lowerTier = calculatedTier > 1 ? calculatedTier - 1 : null;

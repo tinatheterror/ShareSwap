@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -177,6 +178,7 @@ export default function LendPage() {
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
+  const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] = useState(false);
   const [availabilityOption, setAvailabilityOption] = useState<
     "indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom"
   >("indefinitely");
@@ -560,7 +562,8 @@ export default function LendPage() {
           title: "Successfully Listed!",
           description: `Your item has been added to ShareChest. You'll earn ${data.shareCoinsReward || 10} ShareCoins for this listing.`,
         });
-        navigate("/borrow");
+        // Show wishlist fulfillment popup after successful listing
+        setShowWishlistFulfillmentPopup(true);
       }
     },
     onError: (error: Error) => {
@@ -1899,6 +1902,15 @@ export default function LendPage() {
           )}
         </AnimatePresence>
       </main>
+
+      {/* Wishlist Fulfillment Popup - shown after successful listing */}
+      <WishlistFulfillmentPopup
+        isOpen={showWishlistFulfillmentPopup}
+        onClose={() => {
+          setShowWishlistFulfillmentPopup(false);
+          navigate("/borrow");
+        }}
+      />
     </div>
   );
 }

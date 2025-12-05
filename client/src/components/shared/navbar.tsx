@@ -247,7 +247,7 @@ export function Navbar() {
                     <Link href="/help">
                       <Button variant="ghost" className="flex items-center gap-2 hover:text-primary text-gray-500">
                         <HelpCircle className="h-4 w-4" />
-                        <span className="text-sm">Help</span>
+                        <span className="text-sm">How It Works</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

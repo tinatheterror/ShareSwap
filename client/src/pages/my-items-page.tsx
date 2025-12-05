@@ -20,7 +20,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Edit, Trash2, Eye, Plus, Package, Coins, Lightbulb } from "lucide-react";
+import { Edit, Trash2, Eye, Plus, Package, Coins, Sparkles } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 
 const TIER_NAMES: Record<number, string> = {
@@ -28,6 +28,13 @@ const TIER_NAMES: Record<number, string> = {
   2: "Tier 2 – Everyday Household Item",
   3: "Tier 3 – Premium Item",
   4: "Tier 4 – High Value Item",
+};
+
+const TIER_WEEKLY_BANDS: Record<number, { min: number; max: number; display: string }> = {
+  1: { min: 5, max: 5, display: "5" },
+  2: { min: 10, max: 15, display: "10-15" },
+  3: { min: 20, max: 30, display: "20-30" },
+  4: { min: 40, max: 60, display: "40-60" },
 };
 
 export default function MyItemsPage() {
@@ -197,28 +204,44 @@ export default function MyItemsPage() {
                     </Badge>
                   </div>
 
-                  {/* Tier Info - Only show on My Shared Items page */}
+                  {/* Tier Info - Same card as lend page */}
                   {(item as any).tier && (
                     <TooltipProvider>
-                      <div className="p-3 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg border border-teal-200 mb-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-teal-800 font-medium">
-                            Assigned Tier: {TIER_NAMES[(item as any).tier] || `Tier ${(item as any).tier}`}
-                          </span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Lightbulb className="h-4 w-4 text-teal-500 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-sm max-w-xs">
-                                Tier is based on category, condition, and typical market value.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
+                      <div className="p-4 bg-white rounded-lg border border-teal-200 mb-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-black font-medium">
+                              {TIER_NAMES[(item as any).tier] || `Tier ${(item as any).tier}`}
+                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Sparkles className="h-4 w-4 text-teal-500 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p className="text-sm font-medium mb-1">
+                                  AI-Powered Valuation
+                                </p>
+                                <p className="text-xs">
+                                  AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
+                            <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+                            <span className="text-xs text-teal-700 font-medium">
+                              AI valued
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-xs text-teal-600 mt-0.5">
-                          (Used to calculate ShareCoin value automatically)
-                        </p>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <Coins className="h-5 w-5 text-teal-600" />
+                            <span className="font-semibold text-teal-700 text-lg">
+                              {TIER_WEEKLY_BANDS[(item as any).tier]?.display || "5"} ShareCoins/week
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </TooltipProvider>
                   )}

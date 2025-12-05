@@ -768,29 +768,29 @@ export default function ProfilePage() {
               </div>
 
               {/* Why Go Premium? */}
-              <div className="mt-8 py-6 bg-gray-50 rounded-lg">
-                <h3 className="text-xl font-bold text-center mb-6">Why Go Premium?</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="mt-4 py-3 bg-gray-50 rounded-lg px-4">
+                <h3 className="text-lg font-bold text-center mb-3">Why Go Premium?</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Zap className="h-6 w-6 text-teal-600" />
+                    <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Zap className="h-5 w-5 text-teal-600" />
                     </div>
-                    <h4 className="font-semibold mb-1">Priority Access</h4>
-                    <p className="text-sm text-gray-500">Get first dibs on the most popular items before they're fully booked</p>
+                    <h4 className="font-semibold text-sm mb-1">Priority Access</h4>
+                    <p className="text-xs text-gray-500">Get first dibs on the most popular items before they're fully booked</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Gift className="h-6 w-6 text-teal-600" />
+                    <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Gift className="h-5 w-5 text-teal-600" />
                     </div>
-                    <h4 className="font-semibold mb-1">Lower Fees</h4>
-                    <p className="text-sm text-gray-500">Save money with reduced transaction fees on all your borrowing and lending</p>
+                    <h4 className="font-semibold text-sm mb-1">Lower Fees</h4>
+                    <p className="text-xs text-gray-500">Save money with reduced transaction fees on all your borrowing and lending</p>
                   </div>
                   <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Shield className="h-6 w-6 text-teal-600" />
+                    <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-teal-600" />
                     </div>
-                    <h4 className="font-semibold mb-1">Premium Support</h4>
-                    <p className="text-sm text-gray-500">Get faster response times and dedicated support when you need help</p>
+                    <h4 className="font-semibold text-sm mb-1">Premium Support</h4>
+                    <p className="text-xs text-gray-500">Get faster response times and dedicated support when you need help</p>
                   </div>
                 </div>
               </div>

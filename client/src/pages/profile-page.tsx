@@ -716,6 +716,84 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Upgrade to Premium */}
+            <div className="mt-6">
+              <div className="text-center mb-4">
+                <h2 className="flex items-center justify-center gap-2 text-xl font-bold">
+                  <Crown className="h-6 w-6 text-teal-600" />
+                  Upgrade to Premium
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Get priority access, lower fees, and exclusive features to maximize your sharing experience
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ShareSwap Premium Card */}
+                <div className="relative border border-gray-200 rounded-lg p-4 bg-white">
+                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-teal-500 text-white text-xs px-3">
+                    Most Popular
+                  </Badge>
+                  <div className="text-center pt-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <Crown className="h-5 w-5 text-teal-600" />
+                      <span className="font-semibold text-lg">ShareSwap Premium</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Unlock priority access, lower fees, and exclusive features</p>
+                    <div className="mt-3">
+                      <span className="text-3xl font-bold text-teal-600">$9.99</span>
+                      <span className="text-sm text-gray-500">/month</span>
+                    </div>
+                    <p className="text-xs text-teal-600 mt-1">Save $19.89/year with annual billing</p>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm">
+                    <div className="flex items-center gap-2"><Zap className="h-4 w-4 text-teal-600" /><span>Priority access to high-demand items</span></div>
+                    <div className="flex items-center gap-2"><Gift className="h-4 w-4 text-teal-600" /><span>50% reduction in transaction fees</span></div>
+                    <div className="flex items-center gap-2"><Star className="h-4 w-4 text-teal-600" /><span>Early access to new features</span></div>
+                    <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-teal-600" /><span>Premium customer support</span></div>
+                    <div className="flex items-center gap-2"><Check className="h-4 w-4 text-teal-600" /><span>Advanced search filters</span></div>
+                    <div className="flex items-center gap-2"><Check className="h-4 w-4 text-teal-600" /><span>Unlimited wishlist items</span></div>
+                    <div className="flex items-center gap-2"><Check className="h-4 w-4 text-teal-600" /><span>Enhanced profile visibility</span></div>
+                  </div>
+                  <Link href="/premium">
+                    <Button className="w-full mt-4 bg-teal-500 hover:bg-teal-600 text-white">
+                      Upgrade to ShareSwap Premium
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-center text-gray-500 mt-2">Or pay $99.99 annually (2 months free!)</p>
+                </div>
+
+                {/* ShareSwap Pro Card */}
+                <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                  <div className="text-center pt-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <Crown className="h-5 w-5 text-gray-600" />
+                      <span className="font-semibold text-lg">ShareSwap Pro</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Perfect for active community members</p>
+                    <div className="mt-3">
+                      <span className="text-3xl font-bold text-gray-700">$4.99</span>
+                      <span className="text-sm text-gray-500">/month</span>
+                    </div>
+                    <p className="text-xs text-teal-600 mt-1">Save $9.89/year with annual billing</p>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm">
+                    <div className="flex items-center gap-2"><Gift className="h-4 w-4 text-teal-600" /><span>25% reduction in transaction fees</span></div>
+                    <div className="flex items-center gap-2"><Check className="h-4 w-4 text-teal-600" /><span>Advanced search filters</span></div>
+                    <div className="flex items-center gap-2"><Check className="h-4 w-4 text-teal-600" /><span>Up to 20 wishlist items</span></div>
+                    <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-teal-600" /><span>Priority customer support</span></div>
+                    <div className="flex items-center gap-2"><Check className="h-4 w-4 text-teal-600" /><span>Extended borrowing periods</span></div>
+                  </div>
+                  <Link href="/premium">
+                    <Button variant="outline" className="w-full mt-4">
+                      Upgrade to ShareSwap Pro
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-center text-gray-500 mt-2">Or pay $49.99 annually (2 months free!)</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -742,77 +820,6 @@ export default function ProfilePage() {
                   <Shield className="h-4 w-4 mr-2" />
                   Verification Status
                 </Button>
-              </CardContent>
-            </Card>
-
-            {/* Upgrade to Premium */}
-            <Card className="border border-gray-200 bg-white">
-              <CardHeader className="pb-2 text-center">
-                <CardTitle className="flex items-center justify-center gap-2 text-lg">
-                  <Crown className="h-5 w-5 text-teal-600" />
-                  Upgrade to Premium
-                </CardTitle>
-                <p className="text-xs text-gray-500 mt-1">
-                  Get priority access, lower fees, and exclusive features to maximize your sharing experience
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* ShareSwap Premium Card */}
-                <div className="relative border border-gray-200 rounded-lg p-3 bg-white">
-                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-teal-500 text-white text-[10px] px-2">
-                    Most Popular
-                  </Badge>
-                  <div className="text-center pt-2">
-                    <div className="flex items-center justify-center gap-1">
-                      <Crown className="h-4 w-4 text-teal-600" />
-                      <span className="font-semibold text-sm">ShareSwap Premium</span>
-                    </div>
-                    <p className="text-[10px] text-gray-500">Unlock priority access, lower fees, and exclusive features</p>
-                    <div className="mt-2">
-                      <span className="text-xl font-bold text-teal-600">$9.99</span>
-                      <span className="text-xs text-gray-500">/month</span>
-                    </div>
-                    <p className="text-[10px] text-teal-600">Save $19.89/year with annual billing</p>
-                  </div>
-                  <div className="mt-2 space-y-1 text-[10px]">
-                    <div className="flex items-center gap-1"><Zap className="h-3 w-3 text-teal-600" /><span>Priority access to high-demand items</span></div>
-                    <div className="flex items-center gap-1"><Gift className="h-3 w-3 text-teal-600" /><span>50% reduction in transaction fees</span></div>
-                    <div className="flex items-center gap-1"><Check className="h-3 w-3 text-teal-600" /><span>Unlimited wishlist items</span></div>
-                  </div>
-                  <Link href="/premium">
-                    <Button className="w-full mt-2 bg-teal-500 hover:bg-teal-600 text-white text-xs h-8">
-                      Upgrade to ShareSwap Premium
-                    </Button>
-                  </Link>
-                  <p className="text-[10px] text-center text-gray-500 mt-1">Or pay $99.99 annually (2 months free!)</p>
-                </div>
-
-                {/* ShareSwap Pro Card */}
-                <div className="border border-gray-200 rounded-lg p-3 bg-white">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Crown className="h-4 w-4 text-gray-600" />
-                      <span className="font-semibold text-sm">ShareSwap Pro</span>
-                    </div>
-                    <p className="text-[10px] text-gray-500">Perfect for active community members</p>
-                    <div className="mt-2">
-                      <span className="text-xl font-bold text-gray-700">$4.99</span>
-                      <span className="text-xs text-gray-500">/month</span>
-                    </div>
-                    <p className="text-[10px] text-teal-600">Save $9.89/year with annual billing</p>
-                  </div>
-                  <div className="mt-2 space-y-1 text-[10px]">
-                    <div className="flex items-center gap-1"><Gift className="h-3 w-3 text-teal-600" /><span>25% reduction in transaction fees</span></div>
-                    <div className="flex items-center gap-1"><Check className="h-3 w-3 text-teal-600" /><span>Advanced search filters</span></div>
-                    <div className="flex items-center gap-1"><Check className="h-3 w-3 text-teal-600" /><span>Up to 20 wishlist items</span></div>
-                  </div>
-                  <Link href="/premium">
-                    <Button variant="outline" className="w-full mt-2 text-xs h-8">
-                      Upgrade to ShareSwap Pro
-                    </Button>
-                  </Link>
-                  <p className="text-[10px] text-center text-gray-500 mt-1">Or pay $49.99 annually (2 months free!)</p>
-                </div>
               </CardContent>
             </Card>
 

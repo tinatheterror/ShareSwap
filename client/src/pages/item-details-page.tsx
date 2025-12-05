@@ -131,7 +131,7 @@ export default function ItemDetailsPage() {
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-md p-2 text-xs text-purple-700">
           <Info className="h-3 w-3 inline mr-1" />
-          Swaps have no deposits. Value differences are balanced with ShareCoins.
+          Tier differences are balanced with ShareCoins.
         </div>
       </div>
     ) : null;

@@ -190,8 +190,8 @@ export default function LendPage() {
   
   // Fetch existing item data if in edit mode
   const { data: editItem, isLoading: isLoadingEditItem } = useQuery({
-    queryKey: ["/api/items", editItemId],
-    enabled: isEditMode,
+    queryKey: [`/api/items/${editItemId}`],
+    enabled: isEditMode && !!editItemId,
   });
 
   // Auto-detect location on page load if not already set

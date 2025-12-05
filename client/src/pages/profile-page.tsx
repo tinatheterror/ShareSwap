@@ -690,33 +690,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Community Connections */}
-            <Card className="border-2 border-teal-100" style={{ backgroundColor: '#D4F7F1' }}>
-              <CardHeader className="bg-transparent">
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-primary" />
-                  Community Connections
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-center gap-8">
-                  <div className="text-center">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Package className="h-5 w-5 text-teal-600" />
-                      <div>
-                        <div className="text-2xl font-bold text-teal-700">
-                          {profile?.totalTransactions || 0}
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          Total Transactions
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Upgrade to Premium */}
             <div className="mt-6">
               <div className="text-center mb-4">
@@ -793,6 +766,34 @@ export default function ProfilePage() {
                   <p className="text-xs text-center text-gray-500 mt-2">Or pay $49.99 annually (2 months free!)</p>
                 </div>
               </div>
+
+              {/* Why Go Premium? */}
+              <div className="mt-8 py-6 bg-gray-50 rounded-lg">
+                <h3 className="text-xl font-bold text-center mb-6">Why Go Premium?</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Zap className="h-6 w-6 text-teal-600" />
+                    </div>
+                    <h4 className="font-semibold mb-1">Priority Access</h4>
+                    <p className="text-sm text-gray-500">Get first dibs on the most popular items before they're fully booked</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Gift className="h-6 w-6 text-teal-600" />
+                    </div>
+                    <h4 className="font-semibold mb-1">Lower Fees</h4>
+                    <p className="text-sm text-gray-500">Save money with reduced transaction fees on all your borrowing and lending</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Shield className="h-6 w-6 text-teal-600" />
+                    </div>
+                    <h4 className="font-semibold mb-1">Premium Support</h4>
+                    <p className="text-sm text-gray-500">Get faster response times and dedicated support when you need help</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -850,6 +851,29 @@ export default function ProfilePage() {
                       <div className="font-medium text-sm">Generous Sharer</div>
                       <div className="text-xs text-slate-600">Shared 10 items</div>
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Community Connections */}
+            <Card style={{ backgroundColor: '#D4F7F1' }}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-teal-600" />
+                  Community Connections
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-teal-600" />
+                  <div>
+                    <div className="text-2xl font-bold text-teal-700">
+                      {profile?.totalTransactions || 0}
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      Total Transactions
+                    </p>
                   </div>
                 </div>
               </CardContent>

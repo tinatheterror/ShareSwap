@@ -380,7 +380,7 @@ export default function BorrowPage() {
                   }}
                 >
                   <Sparkles className="h-5 w-5 mr-2" />
-                  Add to Wishlist
+                  Add Your Wishlist
                 </Button>
               </div>
             </div>

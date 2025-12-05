@@ -2,16 +2,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Calendar, User } from "lucide-react";
+import { Sparkles, Calendar, ArrowLeftRight, Camera, Coins, Check } from "lucide-react";
 import { useState } from "react";
 import * as z from "zod";
 import type { SelectItem } from "@db/schema";
+import { calculateSwap, getSwapTierLabel } from "@/lib/swap-calculator";
 
 const formSchema = z.object({
   message: z.string().min(1, "Please include a message to the owner"),
@@ -24,9 +26,10 @@ type Props = {
   requestType: "BORROW" | "RENT" | "SWAP";
   isOpen: boolean;
   onClose: () => void;
+  swapOfferItem?: SelectItem | null;
 };
 
-export function ItemRequestForm({ item, requestType, isOpen, onClose }: Props) {
+export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferItem }: Props) {
   const { toast } = useToast();
   const [showTemplates, setShowTemplates] = useState(false);
   
@@ -93,6 +96,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose }: Props) {
       const res = await apiRequest("POST", `/api/items/${item.id}/request`, {
         ...data,
         requestType,
+        swapOfferItemId: swapOfferItem?.id,
       });
       return res.json();
     },
@@ -121,6 +125,75 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose }: Props) {
             Send a message to the owner explaining why you'd like to {requestType.toLowerCase()} this item.
           </DialogDescription>
         </DialogHeader>
+
+        {requestType === "SWAP" && swapOfferItem && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2 text-purple-700 font-medium">
+              <ArrowLeftRight className="h-4 w-4" />
+              Swap Summary
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="text-xs text-purple-600 mb-1">You're offering:</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                    {swapOfferItem.photos?.[0] ? (
+                      <img src={swapOfferItem.photos[0]} alt={swapOfferItem.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 truncate">{swapOfferItem.name}</p>
+                    <Badge variant="outline" className="text-xs border-purple-300 text-purple-700">
+                      {getSwapTierLabel((swapOfferItem as any).tier || 2)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <ArrowLeftRight className="h-5 w-5 text-purple-400" />
+              <div className="flex-1">
+                <div className="text-xs text-purple-600 mb-1">For their:</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                    {item.photos?.[0] ? (
+                      <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                    <Badge variant="outline" className="text-xs border-purple-300 text-purple-700">
+                      {getSwapTierLabel((item as any).tier || 2)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {(() => {
+              const yourTier = (swapOfferItem as any).tier || 2;
+              const theirTier = (item as any).tier || 2;
+              const swap = calculateSwap(yourTier, theirTier);
+              if (swap.fairness === "fair") {
+                return (
+                  <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 p-2 rounded">
+                    <Check className="h-4 w-4" />
+                    Fair swap - no offset needed!
+                  </div>
+                );
+              } else if (swap.fairness === "offset_required") {
+                return (
+                  <div className="flex items-center gap-2 text-amber-600 text-sm bg-amber-50 p-2 rounded">
+                    <Coins className="h-4 w-4" />
+                    {swap.message}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        )}
 
         <Form {...form}>
           <form

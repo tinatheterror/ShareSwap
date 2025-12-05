@@ -1,22 +1,39 @@
 import { useState } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { ItemRequestForm } from "@/components/shared/item-request-form";
+import { SwapInventorySelector } from "@/components/swap-inventory-selector";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
-import { Coins, HandHeart, DollarSign, ArrowLeftRight, Info } from "lucide-react";
+import {
+  Coins,
+  HandHeart,
+  DollarSign,
+  ArrowLeftRight,
+  Info,
+} from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getSwapTierLabel, getAcceptableSwapsLabel } from "@/lib/swap-calculator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  getSwapTierLabel,
+  getAcceptableSwapsLabel,
+} from "@/lib/swap-calculator";
 
 type RequestType = "BORROW" | "RENT" | "SWAP";
 
 export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
+  const [showSwapSelector, setShowSwapSelector] = useState(false);
+  const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem | null>(null);
   const [location] = useLocation();
   const { toast } = useToast();
 
@@ -97,7 +114,10 @@ export default function ItemDetailsPage() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
-                    <Badge variant="outline" className="border-purple-300 text-purple-700 cursor-help">
+                    <Badge
+                      variant="outline"
+                      className="border-purple-300 text-purple-700 cursor-help"
+                    >
                       {getSwapTierLabel(itemTier)}
                     </Badge>
                   </TooltipTrigger>
@@ -124,14 +144,18 @@ export default function ItemDetailsPage() {
               {getAcceptableSwapsLabel(itemTier)}
             </p>
           </div>
-          <Button onClick={() => setRequestType("SWAP")} className="w-40 bg-purple-600 hover:bg-purple-700">
+          <Button
+            onClick={() => setShowSwapSelector(true)}
+            className="w-40 bg-purple-600 hover:bg-purple-700"
+          >
             <ArrowLeftRight className="h-4 w-4 mr-1" />
             Request Swap
           </Button>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-md p-2 text-xs text-purple-700">
           <Info className="h-3 w-3 inline mr-1" />
-          Tier differences are balanced with ShareCoins.
+          Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the
+          difference.
         </div>
       </div>
     ) : null;
@@ -240,9 +264,24 @@ export default function ItemDetailsPage() {
             item={item}
             requestType={requestType}
             isOpen={!!requestType}
-            onClose={() => setRequestType(null)}
+            onClose={() => {
+              setRequestType(null);
+              setSelectedSwapItem(null);
+            }}
+            swapOfferItem={selectedSwapItem}
           />
         )}
+
+        <SwapInventorySelector
+          targetItem={item}
+          isOpen={showSwapSelector}
+          onClose={() => setShowSwapSelector(false)}
+          onSelectItem={(selectedItem) => {
+            setSelectedSwapItem(selectedItem);
+            setShowSwapSelector(false);
+            setRequestType("SWAP");
+          }}
+        />
       </main>
     </div>
   );

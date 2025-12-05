@@ -25,7 +25,7 @@ import {
   getTierShareCoins,
   getAcceptableSwapsLabel,
 } from "@/lib/swap-calculator";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Form,
@@ -165,7 +165,12 @@ export default function LendPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const searchString = useSearch();
+  const editItemId = new URLSearchParams(searchString).get("edit");
+  const isEditMode = !!editItemId;
+  
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [matchedWishlists, setMatchedWishlists] = useState<any[]>([]);
@@ -182,6 +187,12 @@ export default function LendPage() {
   const [availabilityOption, setAvailabilityOption] = useState<
     "indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom"
   >("indefinitely");
+  
+  // Fetch existing item data if in edit mode
+  const { data: editItem, isLoading: isLoadingEditItem } = useQuery({
+    queryKey: ["/api/items", editItemId],
+    enabled: isEditMode,
+  });
 
   // Auto-detect location on page load if not already set
   useEffect(() => {
@@ -253,7 +264,35 @@ export default function LendPage() {
   >(null);
 
   // Check if we have at least one photo
-  const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0;
+  const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0 || existingPhotos.length > 0;
+  
+  // Populate form when editing an existing item
+  useEffect(() => {
+    if (editItem && isEditMode) {
+      const item = editItem as any;
+      form.reset({
+        name: item.name || "",
+        description: item.description || "",
+        itemType: item.itemType || "",
+        condition: item.condition || "",
+        originalValue: item.originalValue || "",
+        isLendable: item.isLendable || false,
+        isSwappable: item.isSwappable || false,
+        isRentable: item.isRentable || false,
+        isGift: item.isGift || false,
+        availableFromDate: item.availableFromDate || undefined,
+        availableToDate: item.availableToDate || undefined,
+        securityDeposit: item.securityDeposit || undefined,
+        conditionRating: item.conditionRating || 5,
+        postalCode: item.postalCode || "",
+        latitude: item.latitude || undefined,
+        longitude: item.longitude || undefined,
+      });
+      if (item.photos && item.photos.length > 0) {
+        setExistingPhotos(item.photos);
+      }
+    }
+  }, [editItem, isEditMode]);
 
   // Convert files to base64 for AI valuation
   const getPhotoDataUrls = async (): Promise<string[]> => {
@@ -574,6 +613,57 @@ export default function LendPage() {
       });
     },
   });
+  
+  // Update item mutation for edit mode
+  const updateItemMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const formData = new FormData();
+
+      // If new photos were uploaded, use them; otherwise keep existing
+      if (selectedPhotos.length > 0) {
+        selectedPhotos.forEach((photo) => {
+          formData.append("photos", photo);
+        });
+      } else if (existingPhotos.length > 0) {
+        formData.append("existingPhotos", JSON.stringify(existingPhotos));
+      }
+
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          formData.append(key, String(value));
+        }
+      });
+
+      // Calculate and add tier
+      if (data.condition && data.originalValue) {
+        const tier = calculateTier(data.originalValue, data.condition);
+        formData.append("tier", String(tier));
+      }
+
+      const res = await apiRequest("PATCH", `/api/items/${editItemId}`, formData);
+      const result = await res.json();
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/nearby-items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      
+      toast({
+        title: "Item Updated!",
+        description: "Your item has been successfully updated.",
+      });
+      navigate("/my-items");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update item",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -600,10 +690,10 @@ export default function LendPage() {
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div className="flex-1">
               <h1 className="text-4xl font-bold mb-3 text-black">
-                List Your Item
+                {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
               <p className="text-black/90">
-                Make your neighbourhood richer without spending a cent
+                {isEditMode ? "Update your listing details" : "Make your neighbourhood richer without spending a cent"}
               </p>
             </div>
 
@@ -698,7 +788,7 @@ export default function LendPage() {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((data) =>
-              createItemMutation.mutate(data),
+              isEditMode ? updateItemMutation.mutate(data) : createItemMutation.mutate(data),
             )}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
@@ -1608,6 +1698,26 @@ export default function LendPage() {
                       </p>
                     </div>
                   )}
+                  
+                  {/* Show existing photos when editing */}
+                  {isEditMode && existingPhotos.length > 0 && selectedPhotos.length === 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm text-muted-foreground mb-2">Current photos:</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {existingPhotos.map((photo, idx) => (
+                          <img
+                            key={idx}
+                            src={photo}
+                            alt={`Item photo ${idx + 1}`}
+                            className="w-20 h-20 object-cover rounded-lg border"
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Upload new photos to replace these
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1617,9 +1727,9 @@ export default function LendPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createItemMutation.isPending}
+                disabled={isEditMode ? updateItemMutation.isPending : createItemMutation.isPending}
               >
-                List Item
+                {isEditMode ? (updateItemMutation.isPending ? "Updating..." : "Update Item") : (createItemMutation.isPending ? "Listing..." : "List Item")}
               </Button>
             </div>
           </form>

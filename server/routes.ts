@@ -1026,6 +1026,83 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Update item endpoint
+  app.patch("/api/items/:id", upload.array("photos"), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const itemId = parseInt(req.params.id);
+      
+      // Check if item exists and belongs to the user
+      const [existingItem] = await db.select().from(items).where(eq(items.id, itemId));
+      
+      if (!existingItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      if (existingItem.ownerId !== req.user.id) {
+        return res.status(403).json({ error: "You can only edit your own items" });
+      }
+
+      // Handle photos
+      let photoUrls: string[] = existingItem.photos || [];
+      const files = req.files as Express.Multer.File[];
+      
+      if (files && files.length > 0) {
+        // New photos uploaded
+        photoUrls = files.map((file) => `/uploads/${file.filename}`);
+      } else if (req.body.existingPhotos) {
+        // Keep existing photos
+        photoUrls = JSON.parse(req.body.existingPhotos);
+      }
+
+      // Parse location data
+      const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
+      const longitude = req.body.longitude ? parseFloat(req.body.longitude) : null;
+
+      // Parse boolean flags
+      const isLendable = req.body.isLendable === "true";
+      const isSwappable = req.body.isSwappable === "true";
+      const isRentable = req.body.isRentable === "true";
+      const isGift = req.body.isGift === "true";
+
+      // Parse tier
+      const tier = req.body.tier ? parseInt(req.body.tier) : existingItem.tier;
+
+      const updateData = {
+        name: req.body.name || existingItem.name,
+        description: req.body.description || existingItem.description,
+        itemType: req.body.itemType || existingItem.itemType,
+        condition: req.body.condition || existingItem.condition,
+        originalValue: req.body.originalValue || existingItem.originalValue,
+        tier: tier,
+        conditionRating: parseInt(req.body.conditionRating) || existingItem.conditionRating,
+        photos: photoUrls,
+        latitude: latitude?.toString() || existingItem.latitude,
+        longitude: longitude?.toString() || existingItem.longitude,
+        isLendable,
+        isSwappable,
+        isRentable,
+        isGift,
+        securityDeposit: req.body.securityDeposit || existingItem.securityDeposit,
+        updatedAt: new Date(),
+      };
+
+      const [updatedItem] = await db
+        .update(items)
+        .set(updateData)
+        .where(eq(items.id, itemId))
+        .returning();
+
+      res.json(updatedItem);
+    } catch (error) {
+      console.error("Error updating item:", error);
+      res.status(500).json({ error: "Failed to update item" });
+    }
+  });
+
   // Add new endpoint for finding nearby items (MUST come before /api/items/:id)
   app.get("/api/items/nearby", async (req, res) => {
     if (!req.isAuthenticated()) {

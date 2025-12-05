@@ -20,7 +20,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Edit, Trash2, Eye, Plus, Package, Coins, Sparkles } from "lucide-react";
+import { Edit, Trash2, Plus, Package, Coins, Sparkles } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 
 const TIER_NAMES: Record<number, string> = {
@@ -151,26 +151,30 @@ export default function MyItemsPage() {
                 key={item.id}
                 className="overflow-hidden hover:shadow-lg transition-shadow"
               >
-                <div className="aspect-video bg-muted relative">
-                  {item.photos[0] ? (
-                    <img
-                      src={item.photos[0]}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-12 w-12 text-muted-foreground" />
+                <Link href={`/items/${item.id}`}>
+                  <div className="aspect-video bg-muted relative cursor-pointer">
+                    {item.photos[0] ? (
+                      <img
+                        src={item.photos[0]}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package className="h-12 w-12 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <Badge variant={item.isAvailable ? "default" : "secondary"}>
+                        {item.isAvailable ? "Available" : "Unavailable"}
+                      </Badge>
                     </div>
-                  )}
-                  <div className="absolute top-2 right-2">
-                    <Badge variant={item.isAvailable ? "default" : "secondary"}>
-                      {item.isAvailable ? "Available" : "Unavailable"}
-                    </Badge>
                   </div>
-                </div>
+                </Link>
                 <CardContent className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
+                  <Link href={`/items/${item.id}`}>
+                    <h3 className="font-semibold text-lg mb-2 hover:text-teal-600 cursor-pointer">{item.name}</h3>
+                  </Link>
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                     {item.description}
                   </p>
@@ -248,20 +252,16 @@ export default function MyItemsPage() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">
-                    <Link href={`/items/${item.id}`}>
-                      <Button variant="outline" size="sm" className="flex-1">
-                        <Eye className="h-3 w-3 mr-1" />
-                        View
+                    <Link href={`/lend?edit=${item.id}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full">
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
                       </Button>
                     </Link>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-teal-600 hover:text-teal-700"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

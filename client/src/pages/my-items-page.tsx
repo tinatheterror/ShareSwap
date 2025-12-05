@@ -30,11 +30,11 @@ const TIER_NAMES: Record<number, string> = {
   4: "Tier 4 – High Value Item",
 };
 
-const TIER_WEEKLY_BANDS: Record<number, { min: number; max: number; display: string }> = {
-  1: { min: 5, max: 5, display: "5" },
-  2: { min: 10, max: 15, display: "10-15" },
-  3: { min: 20, max: 30, display: "20-30" },
-  4: { min: 40, max: 60, display: "40-60" },
+const TIER_SHARECOINS: Record<number, number> = {
+  1: 5,
+  2: 10,
+  3: 20,
+  4: 40,
 };
 
 export default function MyItemsPage() {
@@ -238,7 +238,7 @@ export default function MyItemsPage() {
                           <div className="flex items-center gap-1.5 text-sm">
                             <Coins className="h-5 w-5 text-teal-600" />
                             <span className="font-semibold text-teal-700 text-lg">
-                              {TIER_WEEKLY_BANDS[(item as any).tier]?.display || "5"} ShareCoins/week
+                              {TIER_SHARECOINS[(item as any).tier] || 5} ShareCoins/week
                             </span>
                           </div>
                         </div>

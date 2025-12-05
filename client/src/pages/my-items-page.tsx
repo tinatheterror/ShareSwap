@@ -17,10 +17,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import { Edit, Trash2, Plus, Package, Coins, Sparkles } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { SelectItem } from "@db/schema";
 
 const TIER_NAMES: Record<number, string> = {
@@ -40,14 +42,38 @@ const TIER_SHARECOINS: Record<number, number> = {
 export default function MyItemsPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"all" | "available" | "unavailable">(
     "all",
   );
   const [showNoItemsDialog, setShowNoItemsDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<SelectItem | null>(null);
 
   const { data: items = [], isLoading } = useQuery<SelectItem[]>({
     queryKey: ["/api/my-items"],
     enabled: !!user,
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (itemId: number) => {
+      await apiRequest("DELETE", `/api/items/${itemId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
+      toast({
+        title: "Item Removed",
+        description: "Your item has been permanently removed from circulation.",
+      });
+      setItemToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Remove",
+        description: error.message || "Could not remove the item. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   useEffect(() => {
@@ -262,6 +288,7 @@ export default function MyItemsPage() {
                       variant="outline"
                       size="sm"
                       className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => setItemToDelete(item)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -271,6 +298,42 @@ export default function MyItemsPage() {
             ))}
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <div className="flex items-start gap-3">
+                <div className="text-4xl">🗑️</div>
+                <div>
+                  <DialogTitle className="text-lg font-semibold mb-1">
+                    Remove Item
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-gray-600">
+                    Are you sure you want to remove <span className="font-medium">{itemToDelete?.name}</span> out of circulation? This action cannot be undone.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setItemToDelete(null)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => itemToDelete && deleteItemMutation.mutate(itemToDelete.id)}
+                disabled={deleteItemMutation.isPending}
+                className="flex-1"
+              >
+                {deleteItemMutation.isPending ? "Removing..." : "Yes, Remove Item"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* No Items Notification Dialog */}
         <Dialog open={showNoItemsDialog} onOpenChange={setShowNoItemsDialog}>

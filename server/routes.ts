@@ -1103,6 +1103,53 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Delete item (hard delete - permanently removes from database)
+  app.delete("/api/items/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const itemId = parseInt(req.params.id);
+      
+      // Check if item exists and belongs to the user
+      const [existingItem] = await db.select().from(items).where(eq(items.id, itemId));
+      
+      if (!existingItem) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      
+      if (existingItem.ownerId !== req.user.id) {
+        return res.status(403).json({ error: "You can only delete your own items" });
+      }
+
+      // Check if item has any active requests or transactions
+      const activeRequests = await db.query.itemRequests.findMany({
+        where: and(
+          eq(itemRequests.itemId, itemId),
+          or(
+            eq(itemRequests.status, "PENDING"),
+            eq(itemRequests.status, "ACCEPTED")
+          )
+        ),
+      });
+
+      if (activeRequests.length > 0) {
+        return res.status(400).json({ 
+          error: "Cannot delete item with active requests. Please complete or decline pending requests first." 
+        });
+      }
+
+      // Delete the item
+      await db.delete(items).where(eq(items.id, itemId));
+
+      res.json({ success: true, message: "Item permanently removed" });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
   // Add new endpoint for finding nearby items (MUST come before /api/items/:id)
   app.get("/api/items/nearby", async (req, res) => {
     if (!req.isAuthenticated()) {

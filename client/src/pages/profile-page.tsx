@@ -33,7 +33,11 @@ import {
   BookOpen,
   Camera,
   DollarSign,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Crown,
+  Zap,
+  Gift,
+  Check
 } from "lucide-react";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 import { UserBadges } from "@/components/user-badges";
@@ -738,6 +742,41 @@ export default function ProfilePage() {
                   <Shield className="h-4 w-4 mr-2" />
                   Verification Status
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* Premium Membership */}
+            <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Crown className="h-5 w-5 text-amber-600" />
+                  Premium Membership
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  Unlock exclusive benefits and maximize your sharing experience
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Zap className="h-4 w-4 text-amber-600" />
+                    <span>Priority access to popular items</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Gift className="h-4 w-4 text-amber-600" />
+                    <span>Lower transaction fees</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Shield className="h-4 w-4 text-amber-600" />
+                    <span>Premium support</span>
+                  </div>
+                </div>
+                <Link href="/premium">
+                  <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade to Premium
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 

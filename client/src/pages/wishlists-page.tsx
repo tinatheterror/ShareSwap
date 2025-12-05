@@ -50,7 +50,9 @@ export default function WishlistsPage() {
   const queryClient = useQueryClient();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "expired">("all");
-  const [wishlistToDelete, setWishlistToDelete] = useState<Wishlist | null>(null);
+  const [wishlistToDelete, setWishlistToDelete] = useState<Wishlist | null>(
+    null,
+  );
   const [wishlistToEdit, setWishlistToEdit] = useState<Wishlist | null>(null);
   const [formData, setFormData] = useState({
     itemName: "",
@@ -240,7 +242,7 @@ export default function WishlistsPage() {
           <div className="flex-1" />
           <Button onClick={() => setShowAddDialog(true)} size="sm">
             <Plus className="h-4 w-4 mr-1" />
-            Add Wish
+            Add Your Wish
           </Button>
         </div>
 
@@ -249,14 +251,12 @@ export default function WishlistsPage() {
           <div className="text-center py-12">
             <Heart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              {filter === "all"
-                ? "No wishlist items yet"
-                : `No ${filter} items`}
+              {filter === "all" ? "No wishlist items yet" : `Need anything?`}
             </h3>
             <p className="text-gray-500 mb-6">
               {filter === "all"
                 ? "Add items you're looking for and we'll notify you when they become available"
-                : `You don't have any ${filter} wishlist items at the moment`}
+                : `No ${filter} wishlist item at the moment`}
             </p>
             {filter === "all" && (
               <Button
@@ -346,9 +346,9 @@ export default function WishlistsPage() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex-1"
                       onClick={() => setWishlistToEdit(item)}
                     >
@@ -383,16 +383,14 @@ export default function WishlistsPage() {
                 Add to Wishlist
               </DialogTitle>
               <DialogDescription>
-                Tell us what you're looking for and we'll notify you when it
-                becomes available.
+                Tell us what you're looking for and we'll notify you when it is
+                available.
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  I'm looking for *
-                </label>
+                <label className="block text-sm font-medium mb-2">I need</label>
                 <Input
                   value={formData.itemName}
                   onChange={(e) =>
@@ -557,7 +555,10 @@ export default function WishlistsPage() {
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={!!wishlistToDelete} onOpenChange={(open) => !open && setWishlistToDelete(null)}>
+        <Dialog
+          open={!!wishlistToDelete}
+          onOpenChange={(open) => !open && setWishlistToDelete(null)}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <div className="flex items-start gap-3">
@@ -567,7 +568,11 @@ export default function WishlistsPage() {
                     Remove Wishlist Item
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600">
-                    Are you sure you want to remove <span className="font-medium">{wishlistToDelete?.itemName}</span> from your wishlist? This action cannot be undone.
+                    Are you sure you want to remove{" "}
+                    <span className="font-medium">
+                      {wishlistToDelete?.itemName}
+                    </span>{" "}
+                    from your wishlist? This action cannot be undone.
                   </DialogDescription>
                 </div>
               </div>
@@ -581,19 +586,27 @@ export default function WishlistsPage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => wishlistToDelete && deleteWishlistMutation.mutate(wishlistToDelete.id)}
+                onClick={() =>
+                  wishlistToDelete &&
+                  deleteWishlistMutation.mutate(wishlistToDelete.id)
+                }
                 disabled={deleteWishlistMutation.isPending}
                 className="flex-1 text-white"
                 style={{ backgroundColor: "#0DCEA1" }}
               >
-                {deleteWishlistMutation.isPending ? "Removing..." : "Yes, Remove Item"}
+                {deleteWishlistMutation.isPending
+                  ? "Removing..."
+                  : "Yes, Remove Item"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
 
         {/* Edit Wishlist Dialog */}
-        <Dialog open={!!wishlistToEdit} onOpenChange={(open) => !open && setWishlistToEdit(null)}>
+        <Dialog
+          open={!!wishlistToEdit}
+          onOpenChange={(open) => !open && setWishlistToEdit(null)}
+        >
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -602,7 +615,7 @@ export default function WishlistsPage() {
               </DialogTitle>
             </DialogHeader>
 
-            <form 
+            <form
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!wishlistToEdit) return;
@@ -618,7 +631,7 @@ export default function WishlistsPage() {
                     returnDate: formData.get("returnDate") || null,
                   },
                 });
-              }} 
+              }}
               className="space-y-4"
             >
               <div>
@@ -657,7 +670,13 @@ export default function WishlistsPage() {
                     <Input
                       type="date"
                       name="neededDate"
-                      defaultValue={wishlistToEdit?.neededDate ? new Date(wishlistToEdit.neededDate).toISOString().split("T")[0] : ""}
+                      defaultValue={
+                        wishlistToEdit?.neededDate
+                          ? new Date(wishlistToEdit.neededDate)
+                              .toISOString()
+                              .split("T")[0]
+                          : ""
+                      }
                     />
                   </div>
                   <div>
@@ -667,7 +686,13 @@ export default function WishlistsPage() {
                     <Input
                       type="date"
                       name="returnDate"
-                      defaultValue={wishlistToEdit?.returnDate ? new Date(wishlistToEdit.returnDate).toISOString().split("T")[0] : ""}
+                      defaultValue={
+                        wishlistToEdit?.returnDate
+                          ? new Date(wishlistToEdit.returnDate)
+                              .toISOString()
+                              .split("T")[0]
+                          : ""
+                      }
                     />
                   </div>
                 </div>
@@ -702,7 +727,9 @@ export default function WishlistsPage() {
                   disabled={updateWishlistMutation.isPending}
                   className="flex-1"
                 >
-                  {updateWishlistMutation.isPending ? "Saving..." : "Save Changes"}
+                  {updateWishlistMutation.isPending
+                    ? "Saving..."
+                    : "Save Changes"}
                 </Button>
               </div>
             </form>

@@ -39,6 +39,7 @@ import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { TutorialTooltip } from "@/components/tutorial-tooltip";
 import { UserBadges } from "@/components/user-badges";
+import { WishlistFormDialog } from "@/components/wishlist-form-dialog";
 
 interface ItemWithDistance extends SelectItem {
   distance?: number;
@@ -56,6 +57,7 @@ export default function BorrowPage() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [showWishlistTutorial, setShowWishlistTutorial] = useState(false);
+  const [showWishlistForm, setShowWishlistForm] = useState(false);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -374,21 +376,11 @@ export default function BorrowPage() {
                       navigate("/auth");
                       return;
                     }
-                    addWishlistMutation.mutate({ itemName: searchQuery });
+                    setShowWishlistForm(true);
                   }}
-                  disabled={addWishlistMutation.isPending}
                 >
-                  {addWishlistMutation.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Adding...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      Add to Wishlist
-                    </>
-                  )}
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Add to Wishlist
                 </Button>
               </div>
             </div>
@@ -580,6 +572,16 @@ export default function BorrowPage() {
           description="Add items to your wishlist and we'll notify you when they become available in the community!"
           actionLabel="View Wishlist"
           onAction={() => navigate("/wishlists")}
+        />
+
+        {/* Wishlist Form Dialog */}
+        <WishlistFormDialog
+          isOpen={showWishlistForm}
+          onClose={() => {
+            setShowWishlistForm(false);
+            setSearchQuery("");
+          }}
+          initialItemName={searchQuery}
         />
       </main>
     </div>

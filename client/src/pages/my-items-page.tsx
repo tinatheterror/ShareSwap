@@ -70,7 +70,8 @@ export default function MyItemsPage() {
     onError: (error: any) => {
       toast({
         title: "Failed to Remove",
-        description: error.message || "Could not remove the item. Please try again.",
+        description:
+          error.message || "Could not remove the item. Please try again.",
         variant: "destructive",
       });
     },
@@ -152,7 +153,7 @@ export default function MyItemsPage() {
           <Link href="/lend">
             <Button size="sm">
               <Plus className="h-4 w-4 mr-1" />
-              Add Item
+              Add Your Item
             </Button>
           </Link>
         </div>
@@ -191,7 +192,9 @@ export default function MyItemsPage() {
                       </div>
                     )}
                     <div className="absolute top-2 right-2">
-                      <Badge variant={item.isAvailable ? "default" : "secondary"}>
+                      <Badge
+                        variant={item.isAvailable ? "default" : "secondary"}
+                      >
                         {item.isAvailable ? "Available" : "Unavailable"}
                       </Badge>
                     </div>
@@ -199,7 +202,9 @@ export default function MyItemsPage() {
                 </Link>
                 <CardContent className="p-4">
                   <Link href={`/items/${item.id}`}>
-                    <h3 className="font-semibold text-lg mb-2 hover:text-teal-600 cursor-pointer">{item.name}</h3>
+                    <h3 className="font-semibold text-lg mb-2 hover:text-teal-600 cursor-pointer">
+                      {item.name}
+                    </h3>
                   </Link>
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                     {item.description}
@@ -241,7 +246,8 @@ export default function MyItemsPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-black font-medium">
-                              {TIER_NAMES[(item as any).tier] || `Tier ${(item as any).tier}`}
+                              {TIER_NAMES[(item as any).tier] ||
+                                `Tier ${(item as any).tier}`}
                             </span>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -252,7 +258,9 @@ export default function MyItemsPage() {
                                   AI-Powered Valuation
                                 </p>
                                 <p className="text-xs">
-                                  AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.
+                                  AI analyzes condition, brand quality, category
+                                  demand, and seasonal factors to determine the
+                                  exact rate.
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -268,7 +276,8 @@ export default function MyItemsPage() {
                           <div className="flex items-center gap-1.5 text-sm">
                             <Coins className="h-5 w-5 text-teal-600" />
                             <span className="font-semibold text-teal-700 text-lg">
-                              {TIER_SHARECOINS[(item as any).tier] || 5} ShareCoins/week
+                              {TIER_SHARECOINS[(item as any).tier] || 5}{" "}
+                              ShareCoins/week
                             </span>
                           </div>
                         </div>
@@ -301,7 +310,10 @@ export default function MyItemsPage() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <Dialog
+          open={!!itemToDelete}
+          onOpenChange={(open) => !open && setItemToDelete(null)}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <div className="flex items-start gap-3">
@@ -311,7 +323,9 @@ export default function MyItemsPage() {
                     Remove Item
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600">
-                    Are you sure you want to remove <span className="font-medium">{itemToDelete?.name}</span> out of circulation? This action cannot be undone.
+                    Are you sure you want to remove{" "}
+                    <span className="font-medium">{itemToDelete?.name}</span>{" "}
+                    out of circulation? This action cannot be undone.
                   </DialogDescription>
                 </div>
               </div>
@@ -325,12 +339,16 @@ export default function MyItemsPage() {
                 Cancel
               </Button>
               <Button
-                onClick={() => itemToDelete && deleteItemMutation.mutate(itemToDelete.id)}
+                onClick={() =>
+                  itemToDelete && deleteItemMutation.mutate(itemToDelete.id)
+                }
                 disabled={deleteItemMutation.isPending}
                 className="flex-1 text-white"
                 style={{ backgroundColor: "#0DCEA1" }}
               >
-                {deleteItemMutation.isPending ? "Removing..." : "Yes, Remove Item"}
+                {deleteItemMutation.isPending
+                  ? "Removing..."
+                  : "Yes, Remove Item"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -372,7 +390,8 @@ export default function MyItemsPage() {
                   setShowNoItemsDialog(false);
                   navigate("/lend");
                 }}
-                className="flex-1 " style={{ backgroundColor: "#0DCEA1" }}
+                className="flex-1 "
+                style={{ backgroundColor: "#0DCEA1" }}
               >
                 Add My First Item
               </Button>

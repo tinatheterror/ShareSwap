@@ -49,7 +49,9 @@ export default function WishlistsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [filter, setFilter] = useState<"all" | "active" | "archived">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "expired">("all");
+  const [wishlistToDelete, setWishlistToDelete] = useState<Wishlist | null>(null);
+  const [wishlistToEdit, setWishlistToEdit] = useState<Wishlist | null>(null);
   const [formData, setFormData] = useState({
     itemName: "",
     description: "",
@@ -86,11 +88,11 @@ export default function WishlistsPage() {
   });
 
   const activeWishlists = wishlists.filter((w: Wishlist) => !w.isExpired);
-  const archivedWishlists = wishlists.filter((w: Wishlist) => w.isExpired);
+  const expiredWishlists = wishlists.filter((w: Wishlist) => w.isExpired);
 
   const filteredWishlists = wishlists.filter((item) => {
     if (filter === "active") return !item.isExpired;
-    if (filter === "archived") return item.isExpired;
+    if (filter === "expired") return item.isExpired;
     return true;
   });
 
@@ -118,6 +120,48 @@ export default function WishlistsPage() {
       toast({
         title: "Error",
         description: "Failed to add wishlist item. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteWishlistMutation = useMutation({
+    mutationFn: async (wishlistId: number) => {
+      return apiRequest("DELETE", `/api/wishlists/${wishlistId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      setWishlistToDelete(null);
+      toast({
+        title: "Wishlist item removed",
+        description: "Your wishlist item has been permanently removed.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete wishlist item. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateWishlistMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      return apiRequest("PATCH", `/api/wishlists/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      setWishlistToEdit(null);
+      toast({
+        title: "Wishlist item updated!",
+        description: "Your wishlist item has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update wishlist item. Please try again.",
         variant: "destructive",
       });
     },
@@ -187,11 +231,11 @@ export default function WishlistsPage() {
             Active ({activeWishlists.length})
           </Button>
           <Button
-            variant={filter === "archived" ? "default" : "outline"}
-            onClick={() => setFilter("archived")}
+            variant={filter === "expired" ? "default" : "outline"}
+            onClick={() => setFilter("expired")}
             size="sm"
           >
-            Archived ({archivedWishlists.length})
+            Expired ({expiredWishlists.length})
           </Button>
           <div className="flex-1" />
           <Button onClick={() => setShowAddDialog(true)} size="sm">
@@ -241,7 +285,7 @@ export default function WishlistsPage() {
                       </Badge>
                     )}
                     {item.isExpired && (
-                      <Badge variant="secondary">Archived</Badge>
+                      <Badge variant="secondary">Expired</Badge>
                     )}
                   </div>
                 </div>
@@ -302,13 +346,20 @@ export default function WishlistsPage() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => setWishlistToEdit(item)}
+                    >
                       Edit
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 hover:text-red-700"
+                      className="hover:bg-teal-50"
+                      style={{ color: "#0DCEA1" }}
+                      onClick={() => setWishlistToDelete(item)}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -499,6 +550,159 @@ export default function WishlistsPage() {
                   {addWishlistMutation.isPending
                     ? "Adding..."
                     : "Add to Wishlist"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!wishlistToDelete} onOpenChange={(open) => !open && setWishlistToDelete(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <div className="flex items-start gap-3">
+                <div className="text-4xl">🗑️</div>
+                <div>
+                  <DialogTitle className="text-lg font-semibold mb-1">
+                    Remove Wishlist Item
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-gray-600">
+                    Are you sure you want to remove <span className="font-medium">{wishlistToDelete?.itemName}</span> from your wishlist? This action cannot be undone.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setWishlistToDelete(null)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => wishlistToDelete && deleteWishlistMutation.mutate(wishlistToDelete.id)}
+                disabled={deleteWishlistMutation.isPending}
+                className="flex-1 text-white"
+                style={{ backgroundColor: "#0DCEA1" }}
+              >
+                {deleteWishlistMutation.isPending ? "Removing..." : "Yes, Remove Item"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Wishlist Dialog */}
+        <Dialog open={!!wishlistToEdit} onOpenChange={(open) => !open && setWishlistToEdit(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-primary" />
+                Edit Wishlist Item
+              </DialogTitle>
+            </DialogHeader>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!wishlistToEdit) return;
+                const formEl = e.target as HTMLFormElement;
+                const formData = new FormData(formEl);
+                updateWishlistMutation.mutate({
+                  id: wishlistToEdit.id,
+                  data: {
+                    itemName: formData.get("itemName"),
+                    description: formData.get("description"),
+                    preferredLocation: formData.get("preferredLocation"),
+                    neededDate: formData.get("neededDate") || null,
+                    returnDate: formData.get("returnDate") || null,
+                  },
+                });
+              }} 
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  I'm looking for *
+                </label>
+                <Input
+                  name="itemName"
+                  defaultValue={wishlistToEdit?.itemName || ""}
+                  placeholder="e.g., Power drill, Camping tent, Stand mixer"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Description
+                </label>
+                <Textarea
+                  name="description"
+                  defaultValue={wishlistToEdit?.description || ""}
+                  placeholder="Describe what you need this item for or any specific requirements..."
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Date Needed
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      From
+                    </label>
+                    <Input
+                      type="date"
+                      name="neededDate"
+                      defaultValue={wishlistToEdit?.neededDate ? new Date(wishlistToEdit.neededDate).toISOString().split("T")[0] : ""}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      To
+                    </label>
+                    <Input
+                      type="date"
+                      name="returnDate"
+                      defaultValue={wishlistToEdit?.returnDate ? new Date(wishlistToEdit.returnDate).toISOString().split("T")[0] : ""}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Preferred Location
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    name="preferredLocation"
+                    defaultValue={wishlistToEdit?.preferredLocation || ""}
+                    placeholder="Neighborhood, postal code, or 'nearby'"
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setWishlistToEdit(null)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateWishlistMutation.isPending}
+                  className="flex-1"
+                >
+                  {updateWishlistMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </form>

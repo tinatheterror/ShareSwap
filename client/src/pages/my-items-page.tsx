@@ -178,7 +178,7 @@ export default function MyItemsPage() {
                 className="overflow-hidden hover:shadow-lg transition-shadow"
               >
                 <Link href={`/items/${item.id}`}>
-                  <div className="aspect-video bg-muted relative cursor-pointer">
+                  <div className="h-32 bg-muted relative cursor-pointer">
                     {item.photos[0] ? (
                       <img
                         src={item.photos[0]}

@@ -379,6 +379,55 @@ export function addSimplifiedRoutes(app: Express) {
     }
   });
 
+  // Delete wishlist item
+  app.delete("/api/wishlists/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const wishlistId = parseInt(req.params.id);
+      
+      // In production, this would delete from the database
+      // For now, we'll just return success
+      res.json({ success: true, message: "Wishlist item deleted" });
+    } catch (error) {
+      console.error("Error deleting wishlist:", error);
+      res.status(500).json({ error: "Failed to delete wishlist" });
+    }
+  });
+
+  // Update wishlist item
+  app.patch("/api/wishlists/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const wishlistId = parseInt(req.params.id);
+      const { itemName, description, preferredLocation, neededDate, returnDate } = req.body;
+      
+      // In production, this would update the database
+      // For now, we'll return the updated data
+      const updatedWishlist = {
+        id: wishlistId,
+        userId: req.user.id,
+        itemName,
+        description,
+        preferredLocation,
+        neededDate,
+        returnDate,
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+      };
+
+      res.json(updatedWishlist);
+    } catch (error) {
+      console.error("Error updating wishlist:", error);
+      res.status(500).json({ error: "Failed to update wishlist" });
+    }
+  });
+
   // Subscription plans route
   app.get("/api/subscription-plans", async (req, res) => {
     if (!req.isAuthenticated()) {

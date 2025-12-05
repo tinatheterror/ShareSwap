@@ -20,6 +20,7 @@ import {
   ArrowLeftRight,
   Sparkles,
   Gift,
+  Heart,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";

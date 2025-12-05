@@ -168,7 +168,7 @@ export default function LendPage() {
   const searchString = useSearch();
   const editItemId = new URLSearchParams(searchString).get("edit");
   const isEditMode = !!editItemId;
-  
+
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
@@ -183,11 +183,12 @@ export default function LendPage() {
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
-  const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] = useState(false);
+  const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] =
+    useState(false);
   const [availabilityOption, setAvailabilityOption] = useState<
     "indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom"
   >("indefinitely");
-  
+
   // Fetch existing item data if in edit mode
   const { data: editItem, isLoading: isLoadingEditItem } = useQuery({
     queryKey: [`/api/items/${editItemId}`],
@@ -264,8 +265,11 @@ export default function LendPage() {
   >(null);
 
   // Check if we have at least one photo
-  const hasPhotos = selectedPhotos.length > 0 || smartScanPhotos.length > 0 || existingPhotos.length > 0;
-  
+  const hasPhotos =
+    selectedPhotos.length > 0 ||
+    smartScanPhotos.length > 0 ||
+    existingPhotos.length > 0;
+
   // Populate form when editing an existing item
   useEffect(() => {
     if (editItem && isEditMode) {
@@ -613,7 +617,7 @@ export default function LendPage() {
       });
     },
   });
-  
+
   // Update item mutation for edit mode
   const updateItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
@@ -640,7 +644,11 @@ export default function LendPage() {
         formData.append("tier", String(tier));
       }
 
-      const res = await apiRequest("PATCH", `/api/items/${editItemId}`, formData);
+      const res = await apiRequest(
+        "PATCH",
+        `/api/items/${editItemId}`,
+        formData,
+      );
       const result = await res.json();
       return result;
     },
@@ -649,7 +657,7 @@ export default function LendPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/nearby-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
-      
+
       toast({
         title: "Item Updated!",
         description: "Your item has been successfully updated.",
@@ -693,7 +701,9 @@ export default function LendPage() {
                 {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
               <p className="text-black/90">
-                {isEditMode ? "Update your listing details" : "Make your neighbourhood richer without spending a cent"}
+                {isEditMode
+                  ? " "
+                  : "Make your neighbourhood richer without spending a cent"}
               </p>
             </div>
 
@@ -790,7 +800,9 @@ export default function LendPage() {
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((data) =>
-              isEditMode ? updateItemMutation.mutate(data) : createItemMutation.mutate(data),
+              isEditMode
+                ? updateItemMutation.mutate(data)
+                : createItemMutation.mutate(data),
             )}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
@@ -1700,26 +1712,30 @@ export default function LendPage() {
                       </p>
                     </div>
                   )}
-                  
+
                   {/* Show existing photos when editing */}
-                  {isEditMode && existingPhotos.length > 0 && selectedPhotos.length === 0 && (
-                    <div className="mt-4">
-                      <p className="text-sm text-muted-foreground mb-2">Current photos:</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {existingPhotos.map((photo, idx) => (
-                          <img
-                            key={idx}
-                            src={photo}
-                            alt={`Item photo ${idx + 1}`}
-                            className="w-20 h-20 object-cover rounded-lg border"
-                          />
-                        ))}
+                  {isEditMode &&
+                    existingPhotos.length > 0 &&
+                    selectedPhotos.length === 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Current photos:
+                        </p>
+                        <div className="flex gap-2 flex-wrap">
+                          {existingPhotos.map((photo, idx) => (
+                            <img
+                              key={idx}
+                              src={photo}
+                              alt={`Item photo ${idx + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border"
+                            />
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Upload new photos to replace these
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Upload new photos to replace these
-                      </p>
-                    </div>
-                  )}
+                    )}
                 </CardContent>
               </Card>
             </div>
@@ -1729,9 +1745,19 @@ export default function LendPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={isEditMode ? updateItemMutation.isPending : createItemMutation.isPending}
+                disabled={
+                  isEditMode
+                    ? updateItemMutation.isPending
+                    : createItemMutation.isPending
+                }
               >
-                {isEditMode ? (updateItemMutation.isPending ? "Updating..." : "Update Item") : (createItemMutation.isPending ? "Listing..." : "List Item")}
+                {isEditMode
+                  ? updateItemMutation.isPending
+                    ? "Updating..."
+                    : "Update Item"
+                  : createItemMutation.isPending
+                    ? "Listing..."
+                    : "List Item"}
               </Button>
             </div>
           </form>

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Crown, Users, Package, Bell, HandHeart } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -244,10 +244,10 @@ export function Navbar() {
                   </NavigationMenuItem>
 
                   <NavigationMenuItem>
-                    <Link href="/premium">
-                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary text-teal-600">
-                        <Crown className="h-5 w-5" />
-                        <span>Premium</span>
+                    <Link href="/help">
+                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary text-gray-500">
+                        <HelpCircle className="h-4 w-4" />
+                        <span className="text-sm">Help</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

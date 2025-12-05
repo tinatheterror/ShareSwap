@@ -287,7 +287,8 @@ export default function MyItemsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      className="hover:bg-teal-50"
+                      style={{ color: "#0DCEA1" }}
                       onClick={() => setItemToDelete(item)}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -324,10 +325,10 @@ export default function MyItemsPage() {
                 Cancel
               </Button>
               <Button
-                variant="destructive"
                 onClick={() => itemToDelete && deleteItemMutation.mutate(itemToDelete.id)}
                 disabled={deleteItemMutation.isPending}
-                className="flex-1"
+                className="flex-1 text-white"
+                style={{ backgroundColor: "#0DCEA1" }}
               >
                 {deleteItemMutation.isPending ? "Removing..." : "Yes, Remove Item"}
               </Button>

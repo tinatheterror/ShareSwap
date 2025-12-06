@@ -883,21 +883,59 @@ export default function LendPage() {
                     </div>
                   </div>
 
-                  {/* Features and Details */}
-                  <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Features and Details</h3>
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Textarea {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Features and Details + Original Value - Side by Side */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
+                    {/* Features and Details */}
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Features and Details</h3>
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Textarea {...field} rows={4} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Original Value */}
+                    <div className="space-y-4">
+                      <h3 className="font-medium">Original Value</h3>
+                      <FormField
+                        control={form.control}
+                        name="originalValue"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <div className="flex flex-wrap gap-2">
+                                {ORIGINAL_VALUES.map((value) => (
+                                  <Button
+                                    key={value}
+                                    type="button"
+                                    variant="outline"
+                                    className={`h-10 px-4 rounded-full transition-all ${
+                                      field.value === value
+                                        ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
+                                        : "bg-white hover:bg-gray-50"
+                                    }`}
+                                    onClick={() => field.onChange(value)}
+                                  >
+                                    <span className="text-sm font-medium">
+                                      {value}
+                                    </span>
+                                  </Button>
+                                ))}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
                   {/* Question 3: Condition - 4 Options */}
@@ -947,41 +985,8 @@ export default function LendPage() {
                     />
                   </div>
 
-                  {/* Question 4: Original Value - Pill Buttons */}
-                  <div className="space-y-4 border-t pt-4">
-                    <h3 className="font-medium">Original Value</h3>
-                    <FormField
-                      control={form.control}
-                      name="originalValue"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <div className="flex flex-wrap gap-2">
-                              {ORIGINAL_VALUES.map((value) => (
-                                <Button
-                                  key={value}
-                                  type="button"
-                                  variant="outline"
-                                  className={`h-10 px-4 rounded-full transition-all ${
-                                    field.value === value
-                                      ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
-                                      : "bg-white hover:bg-gray-50"
-                                  }`}
-                                  onClick={() => field.onChange(value)}
-                                >
-                                  <span className="text-sm font-medium">
-                                    {value}
-                                  </span>
-                                </Button>
-                              ))}
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Tier Preview - show after condition and value are selected */}
+                  {/* Tier Preview - show after condition and value are selected */}
+                  <div className="border-t pt-4">
                     {calculatedTier && (
                       <TooltipProvider>
                         <div

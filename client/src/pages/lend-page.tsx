@@ -911,22 +911,20 @@ export default function LendPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex gap-1">
                                 {ORIGINAL_VALUES.map((value) => (
                                   <Button
                                     key={value}
                                     type="button"
                                     variant="outline"
-                                    className={`h-10 px-4 rounded-full transition-all ${
+                                    className={`h-8 px-2 text-xs rounded-full transition-all ${
                                       field.value === value
                                         ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
                                         : "bg-white hover:bg-gray-50"
                                     }`}
                                     onClick={() => field.onChange(value)}
                                   >
-                                    <span className="text-sm font-medium">
-                                      {value}
-                                    </span>
+                                    {value}
                                   </Button>
                                 ))}
                               </div>

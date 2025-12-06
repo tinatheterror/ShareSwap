@@ -1057,18 +1057,20 @@ export default function LendPage() {
                   </div>
 
                   {/* Location field */}
-                  <div className="flex items-center justify-between py-1">
-                    <h3 className="font-medium text-sm">Location</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowLocationModal(true)}
-                      className="flex items-center gap-1.5 h-7 text-xs"
-                    >
-                      <MapPin className="h-3.5 w-3.5" />
-                      {watchPostalCode ? watchPostalCode : "Set Location"}
-                    </Button>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium">Location</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowLocationModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        {watchPostalCode ? watchPostalCode : "Set Location"}
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Sharing options */}

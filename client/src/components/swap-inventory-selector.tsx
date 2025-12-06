@@ -123,7 +123,7 @@ export function SwapInventorySelector({
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => (window.location.href = "/give")}
+                onClick={() => (window.location.href = "/lend")}
               >
                 Add items to swap
               </Button>

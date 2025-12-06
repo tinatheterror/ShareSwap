@@ -1057,9 +1057,9 @@ export default function LendPage() {
                   </div>
 
                   {/* Location field */}
-                  <div className="space-y-1">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-sm">Location</h3>
+                      <h3 className="font-medium">Location</h3>
                       <Button
                         type="button"
                         variant="outline"

@@ -156,9 +156,15 @@ const formSchema = z.object({
     .number()
     .min(1)
     .max(10, "Rating must be between 1 and 10"),
-  postalCode: z.string().min(1, "Postal code is required"),
+  postalCode: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+}).refine((data) => {
+  // Require either postalCode or lat/lng coordinates
+  return data.postalCode || (data.latitude && data.longitude);
+}, {
+  message: "Location is required - please enter a postal code",
+  path: ["postalCode"],
 });
 
 export default function LendPage() {
@@ -274,6 +280,9 @@ export default function LendPage() {
   useEffect(() => {
     if (editItem && isEditMode) {
       const item = editItem as any;
+      // Parse lat/lng as numbers (they come as strings from database)
+      const lat = item.latitude ? parseFloat(item.latitude) : undefined;
+      const lng = item.longitude ? parseFloat(item.longitude) : undefined;
       form.reset({
         name: item.name || "",
         description: item.description || "",
@@ -288,9 +297,9 @@ export default function LendPage() {
         availableToDate: item.availableToDate || undefined,
         securityDeposit: item.securityDeposit || undefined,
         conditionRating: item.conditionRating || 5,
-        postalCode: item.postalCode || "",
-        latitude: item.latitude || undefined,
-        longitude: item.longitude || undefined,
+        postalCode: item.address || "",
+        latitude: lat,
+        longitude: lng,
       });
       if (item.photos && item.photos.length > 0) {
         setExistingPhotos(item.photos);

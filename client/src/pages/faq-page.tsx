@@ -174,7 +174,7 @@ export default function FAQPage() {
                     <CheckCircle className="h-5 w-5 text-teal-600" />
                     <h4 className="font-medium text-teal-800">Earning Requirements</h4>
                   </div>
-                  <Link href="/sharecoins" className="flex items-center gap-1 text-teal-600 hover:text-teal-700 text-sm font-medium">
+                  <Link href="/sharecoins-info" className="flex items-center gap-1 text-teal-600 hover:text-teal-700 text-sm font-medium">
                     Learn More <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>

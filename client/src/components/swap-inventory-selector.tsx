@@ -135,7 +135,7 @@ export function SwapInventorySelector({
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 opacity-50"
                     >
                       <div className="w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         {item.photos?.[0] ? (

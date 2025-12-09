@@ -97,24 +97,24 @@ export default function FAQPage() {
                 <h4 className="font-medium text-purple-800 mb-3">Swap Tiers & ShareCoin Values</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-white rounded p-3 text-center">
-                    <div className="text-sm text-gray-500">Tier 1</div>
-                    <div className="font-semibold">Under $50</div>
-                    <div className="text-purple-600 text-sm">5 SC</div>
+                    <div className="font-semibold text-gray-800">Tier 1</div>
+                    <div className="text-sm text-gray-500">Under $50</div>
+                    <div className="text-purple-600 font-medium">5 SC</div>
                   </div>
                   <div className="bg-white rounded p-3 text-center">
-                    <div className="text-sm text-gray-500">Tier 2</div>
-                    <div className="font-semibold">$50–$150</div>
-                    <div className="text-purple-600 text-sm">10 SC</div>
+                    <div className="font-semibold text-gray-800">Tier 2</div>
+                    <div className="text-sm text-gray-500">$50–$150</div>
+                    <div className="text-purple-600 font-medium">10 SC</div>
                   </div>
                   <div className="bg-white rounded p-3 text-center">
-                    <div className="text-sm text-gray-500">Tier 3</div>
-                    <div className="font-semibold">$150–$300</div>
-                    <div className="text-purple-600 text-sm">20 SC</div>
+                    <div className="font-semibold text-gray-800">Tier 3</div>
+                    <div className="text-sm text-gray-500">$150–$300</div>
+                    <div className="text-purple-600 font-medium">20 SC</div>
                   </div>
                   <div className="bg-white rounded p-3 text-center">
-                    <div className="text-sm text-gray-500">Tier 4</div>
-                    <div className="font-semibold">$300+</div>
-                    <div className="text-purple-600 text-sm">40 SC</div>
+                    <div className="font-semibold text-gray-800">Tier 4</div>
+                    <div className="text-sm text-gray-500">$300+</div>
+                    <div className="text-purple-600 font-medium">40 SC</div>
                   </div>
                 </div>
               </div>

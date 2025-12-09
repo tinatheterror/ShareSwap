@@ -108,8 +108,8 @@ export default function ItemDetailsPage() {
           <div>
             <p className="font-medium">Swap</p>
             <div className="flex items-center gap-2 mb-1">
-              <ArrowLeftRight className="h-4 w-4 text-purple-600" />
-              <span className="text-lg font-bold text-purple-700">
+              <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
+              <span className="text-lg font-bold text-[#0BB88C]">
                 Exchange items
               </span>
             </div>
@@ -119,14 +119,14 @@ export default function ItemDetailsPage() {
                   <button className="focus:outline-none">
                     <Badge
                       variant="outline"
-                      className="border-purple-300 text-purple-700 cursor-help"
+                      className="border-[#0DCEA1]/50 text-[#0BB88C] cursor-help"
                     >
                       {getSwapTierLabel(itemTier)}
                     </Badge>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="p-0 border-0 bg-transparent shadow-none">
-                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2 text-xs text-purple-700">
+                  <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
                     <Info className="h-3 w-3 inline mr-1" />
                     Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the difference.
                   </div>
@@ -136,7 +136,7 @@ export default function ItemDetailsPage() {
           </div>
           <Button
             onClick={() => setShowSwapSelector(true)}
-            className="w-40 bg-purple-600 hover:bg-purple-700"
+            className="w-40 bg-[#0DCEA1] hover:bg-[#0BB88C]"
           >
             <ArrowLeftRight className="h-4 w-4 mr-1" />
             Request Swap

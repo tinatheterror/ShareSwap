@@ -62,8 +62,8 @@ export default function FAQPage() {
                   <DollarSign className="h-5 w-5 text-green-500" />
                   <span className="text-sm font-medium text-gray-700">Rent items for cash</span>
                 </div>
-                <div className="flex items-center gap-2 bg-purple-50 rounded-lg p-3">
-                  <ArrowLeftRight className="h-5 w-5 text-purple-500" />
+                <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
+                  <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
                   <span className="text-sm font-medium text-gray-700">Swap items</span>
                 </div>
                 <div className="flex items-center gap-2 bg-pink-50 rounded-lg p-3">
@@ -83,7 +83,7 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <ArrowLeftRight className="h-5 w-5 text-purple-600" />
+              <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
               How Swaps Work
             </CardTitle>
           </CardHeader>
@@ -93,28 +93,28 @@ export default function FAQPage() {
                 Swapping lets you trade items directly with neighbours. Our tier system ensures fair exchanges.
               </p>
               
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-medium text-purple-800 mb-3">Swap Tiers & ShareCoin Values</h4>
+              <div className="bg-[#E6FBF5] rounded-lg p-4">
+                <h4 className="font-medium text-[#099E78] mb-3">Swap Tiers & ShareCoin Values</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-white rounded p-3 text-center">
                     <div className="font-semibold text-gray-800">Tier 1</div>
                     <div className="text-sm text-gray-500">Under $50</div>
-                    <div className="text-purple-600 font-medium">5 SC</div>
+                    <div className="text-[#0DCEA1] font-medium">5 SC</div>
                   </div>
                   <div className="bg-white rounded p-3 text-center">
                     <div className="font-semibold text-gray-800">Tier 2</div>
                     <div className="text-sm text-gray-500">$50–$150</div>
-                    <div className="text-purple-600 font-medium">10 SC</div>
+                    <div className="text-[#0DCEA1] font-medium">10 SC</div>
                   </div>
                   <div className="bg-white rounded p-3 text-center">
                     <div className="font-semibold text-gray-800">Tier 3</div>
                     <div className="text-sm text-gray-500">$150–$300</div>
-                    <div className="text-purple-600 font-medium">20 SC</div>
+                    <div className="text-[#0DCEA1] font-medium">20 SC</div>
                   </div>
                   <div className="bg-white rounded p-3 text-center">
                     <div className="font-semibold text-gray-800">Tier 4</div>
                     <div className="text-sm text-gray-500">$300+</div>
-                    <div className="text-purple-600 font-medium">40 SC</div>
+                    <div className="text-[#0DCEA1] font-medium">40 SC</div>
                   </div>
                 </div>
               </div>
@@ -248,7 +248,7 @@ export default function FAQPage() {
               
               <div className="border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <ArrowLeftRight className="h-4 w-4 text-purple-600" />
+                  <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
                   <h4 className="font-medium">Swap It</h4>
                 </div>
                 <p className="text-sm text-gray-600">

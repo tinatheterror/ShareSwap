@@ -70,7 +70,7 @@ export function SwapInventorySelector({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
         {/* Hero Section - Target Item */}
-        <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-6 text-white">
+        <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-6 text-white">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-white/10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
               {targetItem.photos?.[0] ? (
@@ -106,7 +106,7 @@ export function SwapInventorySelector({
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0DCEA1]"></div>
             </div>
           ) : swappableItems.length === 0 && needsSwapEnabled.length === 0 ? (
             <div className="text-center py-10">
@@ -200,7 +200,7 @@ export function SwapInventorySelector({
                       key={item.id}
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${
                         isSelected
-                          ? "border-purple-500 bg-purple-50"
+                          ? "border-[#0DCEA1] bg-[#E6FBF5]"
                           : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
                       }`}
                       onClick={() => setSelectedItemId(item.id)}
@@ -218,7 +218,7 @@ export function SwapInventorySelector({
                           </div>
                         )}
                         {isSelected && (
-                          <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center">
+                          <div className="absolute inset-0 bg-[#0DCEA1]/30 flex items-center justify-center">
                             <Check className="h-5 w-5 text-white" />
                           </div>
                         )}
@@ -260,7 +260,7 @@ export function SwapInventorySelector({
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                  className="flex-1 bg-[#0DCEA1] hover:bg-[#0BB88C]"
                   disabled={!selectedItemId}
                   onClick={handleConfirmSelection}
                 >

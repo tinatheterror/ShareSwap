@@ -127,14 +127,14 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
         </DialogHeader>
 
         {requestType === "SWAP" && swapOfferItem && (
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-3">
-            <div className="flex items-center gap-2 text-purple-700 font-medium">
+          <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2 text-[#0BB88C] font-medium">
               <ArrowLeftRight className="h-4 w-4" />
               Swap Summary
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <div className="text-xs text-purple-600 mb-1">You're offering:</div>
+                <div className="text-xs text-[#0DCEA1] mb-1">You're offering:</div>
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                     {swapOfferItem.photos?.[0] ? (
@@ -145,15 +145,15 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900 truncate">{swapOfferItem.name}</p>
-                    <Badge variant="outline" className="text-xs border-purple-300 text-purple-700">
+                    <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((swapOfferItem as any).tier || 2)}
                     </Badge>
                   </div>
                 </div>
               </div>
-              <ArrowLeftRight className="h-5 w-5 text-purple-400" />
+              <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]/70" />
               <div className="flex-1">
-                <div className="text-xs text-purple-600 mb-1">For their:</div>
+                <div className="text-xs text-[#0DCEA1] mb-1">For their:</div>
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                     {item.photos?.[0] ? (
@@ -164,7 +164,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                    <Badge variant="outline" className="text-xs border-purple-300 text-purple-700">
+                    <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((item as any).tier || 2)}
                     </Badge>
                   </div>

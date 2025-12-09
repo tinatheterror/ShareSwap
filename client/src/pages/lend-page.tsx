@@ -1346,7 +1346,7 @@ export default function LendPage() {
 
                           {/* Swap Card - Column 3 */}
                           {watchIsSwappable && (
-                            <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100 col-start-3">
+                            <div className="p-3 bg-gradient-to-r from-[#E6FBF5] to-teal-50 rounded-lg border border-[#0DCEA1]/20 col-start-3">
                               {(() => {
                                 const tierSC =
                                   getTierShareCoins(calculatedTier);
@@ -1368,15 +1368,15 @@ export default function LendPage() {
                                 return (
                                   <>
                                     <div className="flex items-center gap-1.5 mb-1.5">
-                                      <ArrowLeftRight className="h-4 w-4 text-purple-600" />
-                                      <span className="text-xs text-purple-700">
+                                      <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
+                                      <span className="text-xs text-[#0BB88C]">
                                         Swap Value
                                       </span>
                                     </div>
                                     <TooltipProvider>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <div className="text-sm font-semibold text-gray-800 cursor-help underline decoration-dotted decoration-purple-300">
+                                          <div className="text-sm font-semibold text-gray-800 cursor-help underline decoration-dotted decoration-[#0DCEA1]/50">
                                             Tier {calculatedTier} ({tierSC}{" "}
                                             ShareCoins)
                                           </div>

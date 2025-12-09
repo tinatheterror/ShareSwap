@@ -22,7 +22,7 @@ export function UserBadges({
       case "Community Champion":
         return {
           icon: <Crown className={iconSize} />,
-          color: "bg-purple-100 text-purple-800 border-purple-200",
+          color: "bg-[#E6FBF5] text-[#099E78] border-[#0DCEA1]/30",
           label: "Champion"
         };
       case "Trusted Sharer":

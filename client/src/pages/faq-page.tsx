@@ -16,7 +16,9 @@ import {
   HandHeart,
   DollarSign,
   Gift,
+  ArrowRight,
 } from "lucide-react";
+import { Link } from "wouter";
 
 export default function FAQPage() {
   return (
@@ -166,40 +168,32 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-teal-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
+              <div className="bg-teal-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-teal-600" />
                     <h4 className="font-medium text-teal-800">Earning Requirements</h4>
                   </div>
-                  <ul className="text-sm text-gray-600 space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="text-teal-600 mt-0.5">•</span>
-                      <span>ShareCoins earned only after successful completion</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-teal-600 mt-0.5">•</span>
-                      <span>Your reward is guaranteed when the item is safely returned</span>
-                    </li>
-                  </ul>
+                  <Link href="/sharecoins" className="flex items-center gap-1 text-teal-600 hover:text-teal-700 text-sm font-medium">
+                    Learn More <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
-                
-                <div className="bg-teal-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Coins className="h-5 w-5 text-teal-600" />
-                    <h4 className="font-medium text-teal-800">Reward Amounts</h4>
-                  </div>
-                  <ul className="text-sm text-gray-600 space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="text-teal-600 mt-0.5">•</span>
-                      <span>Reward amount varies by item value & duration</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-teal-600 mt-0.5">•</span>
-                      <span>Higher value items and longer lending periods earn more ShareCoins</span>
-                    </li>
-                  </ul>
-                </div>
+                <ul className="text-sm text-gray-600 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-600 mt-0.5">•</span>
+                    <div>
+                      <span className="font-medium text-gray-800">ShareCoins earned only after successful completion</span>
+                      <p className="text-gray-500 text-xs">Your reward is guaranteed when the item is safely returned</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-teal-600 mt-0.5">•</span>
+                    <div>
+                      <span className="font-medium text-gray-800">Reward amount varies by item value & duration</span>
+                      <p className="text-gray-500 text-xs">Higher value items and longer lending periods earn more ShareCoins</p>
+                    </div>
+                  </li>
+                </ul>
               </div>
 
               <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg p-4 border border-amber-100">

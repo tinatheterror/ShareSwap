@@ -145,6 +145,9 @@ export function registerRoutes(app: Express): Server {
 
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
+  
+  // Serve attached assets (logos, images)
+  app.use("/attached_assets", express.static("attached_assets"));
 
   // Security: CSRF token endpoint - call this before making mutating requests
   // This endpoint generates and sets the CSRF token cookie

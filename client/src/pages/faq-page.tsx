@@ -36,14 +36,11 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-3 text-lg">
-              <div className="flex items-center gap-2">
-                <img 
-                  src="/attached_assets/Artboard_1_copy_9_1765319727692.jpeg" 
-                  alt="ShareSwap Logo" 
-                  className="w-8 h-8 rounded-lg"
-                />
-                <span className="font-bold text-teal-600">ShareSwap</span>
-              </div>
+              <img 
+                src="/attached_assets/Artboard_1_copy_9_1765319727692.jpeg" 
+                alt="ShareSwap Logo" 
+                className="w-10 h-10"
+              />
               What is ShareSwap?
             </CardTitle>
           </CardHeader>

@@ -13,10 +13,17 @@ import {
   HandHeart,
   DollarSign,
   ArrowLeftRight,
+  Info,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
 import { getSwapTierLabel } from "@/lib/swap-calculator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type RequestType = "BORROW" | "RENT" | "SWAP";
 
@@ -106,15 +113,24 @@ export default function ItemDetailsPage() {
                 Exchange items
               </span>
             </div>
-            <Badge
-              variant="outline"
-              className="border-purple-300 text-purple-700"
-            >
-              {getSwapTierLabel(itemTier)}
-            </Badge>
-            <p className="text-xs text-purple-600 mt-1">
-              Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the difference.
-            </p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge
+                    variant="outline"
+                    className="border-purple-300 text-purple-700 cursor-help"
+                  >
+                    {getSwapTierLabel(itemTier)}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs p-0 border-0 bg-transparent shadow-none">
+                  <div className="bg-purple-50 border border-purple-200 rounded-md p-2 text-xs text-purple-700">
+                    <Info className="h-3 w-3 inline mr-1" />
+                    Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the difference.
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <Button
             onClick={() => setShowSwapSelector(true)}

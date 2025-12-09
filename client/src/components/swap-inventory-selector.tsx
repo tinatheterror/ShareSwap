@@ -89,8 +89,7 @@ export function SwapInventorySelector({
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold truncate">{targetItem.name}</h2>
               <div className="flex items-center gap-1.5 mt-2 text-white/90 text-sm">
-                <span>Tier {targetTier}</span>
-                <span className="text-white/50">·</span>
+                <span>Tier {targetTier} -</span>
                 <Coins className="h-3.5 w-3.5" />
                 <span>{targetShareCoins} ShareCoins</span>
               </div>
@@ -149,9 +148,8 @@ export function SwapInventorySelector({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 truncate">{item.name}</p>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                          <span>Tier {tierInfo.tier}</span>
-                          <span className="text-gray-300">·</span>
+                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                          <span>Tier {tierInfo.tier} -</span>
                           <Coins className="h-3 w-3" />
                           <span>{tierInfo.coins} ShareCoins</span>
                         </div>
@@ -222,19 +220,18 @@ export function SwapInventorySelector({
                         <p className="font-medium text-gray-900 truncate">
                           {item.name}
                         </p>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
-                          <span>Tier {tierInfo.tier}</span>
-                          <span className="text-gray-300">·</span>
+                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                          <span>Tier {tierInfo.tier} -</span>
                           <Coins className="h-3 w-3" />
                           <span>{tierInfo.coins} ShareCoins</span>
                           {swap.fairness === "fair" ? (
                             <>
-                              <span className="text-gray-300">·</span>
+                              <span className="text-gray-300 ml-1">·</span>
                               <span className="text-green-600">Fair swap</span>
                             </>
                           ) : (
                             <>
-                              <span className="text-gray-300">·</span>
+                              <span className="text-gray-300 ml-1">·</span>
                               <span className="text-gray-500">
                                 {swap.offsetDirection === "you_pay"
                                   ? `+${swap.offsetRequired} SC`

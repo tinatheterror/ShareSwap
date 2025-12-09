@@ -35,11 +35,13 @@ export default function FAQPage() {
         {/* What is ShareSwap? */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
+            <CardTitle className="flex items-center gap-3 text-lg">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
-                  <ArrowLeftRight className="h-4 w-4 text-white" />
-                </div>
+                <img 
+                  src="/attached_assets/Artboard_1_copy_9_1765319727692.jpeg" 
+                  alt="ShareSwap Logo" 
+                  className="w-8 h-8 rounded-lg"
+                />
                 <span className="font-bold text-teal-600">ShareSwap</span>
               </div>
               What is ShareSwap?

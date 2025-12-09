@@ -1,8 +1,5 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -53,7 +50,9 @@ export function SwapInventorySelector({
   });
 
   const swappableItems = tierCompatibleItems.filter((item) => item.isSwappable);
-  const needsSwapEnabled = tierCompatibleItems.filter((item) => !item.isSwappable);
+  const needsSwapEnabled = tierCompatibleItems.filter(
+    (item) => !item.isSwappable,
+  );
 
   const handleConfirmSelection = () => {
     const selectedItem = swappableItems.find((i) => i.id === selectedItemId);
@@ -87,7 +86,9 @@ export function SwapInventorySelector({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold truncate">{targetItem.name}</h2>
+              <h2 className="text-xl font-bold truncate">
+                Swap for {targetItem.name}
+              </h2>
               <div className="flex items-center gap-1.5 mt-2 text-white/90 text-sm">
                 <span>Tier {targetTier} -</span>
                 <Coins className="h-3.5 w-3.5" />
@@ -100,7 +101,7 @@ export function SwapInventorySelector({
         {/* Content Section - White Background */}
         <div className="p-5 bg-white">
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Choose an item to trade
+            Select one of your items to trade
           </h3>
 
           {isLoading ? (
@@ -112,11 +113,10 @@ export function SwapInventorySelector({
               <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 font-medium">No eligible items</p>
               <p className="text-sm text-gray-400 mt-1 mb-4">
-                Add items in Tier {Math.max(1, targetTier - 1)}-{targetTier + 1} to swap
+                Add items in Tier {Math.max(1, targetTier - 1)}-{targetTier + 1}{" "}
+                to swap
               </p>
-              <Button
-                onClick={() => (window.location.href = "/lend")}
-              >
+              <Button onClick={() => (window.location.href = "/lend")}>
                 Add an item
               </Button>
             </div>
@@ -139,7 +139,11 @@ export function SwapInventorySelector({
                     >
                       <div className="w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         {item.photos?.[0] ? (
-                          <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                          <img
+                            src={item.photos[0]}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Camera className="h-5 w-5 text-gray-400" />
@@ -147,14 +151,18 @@ export function SwapInventorySelector({
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {item.name}
+                        </p>
                         <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                           <span>Tier {tierInfo.tier} -</span>
                           <Coins className="h-3 w-3" />
                           <span>{tierInfo.coins} ShareCoins</span>
                         </div>
                       </div>
-                      <span className="text-xs text-gray-400 flex-shrink-0">Swap turned off</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        Swap turned off
+                      </span>
                     </div>
                   );
                 })}
@@ -164,9 +172,9 @@ export function SwapInventorySelector({
               <div className="flex gap-2">
                 <Button
                   className="flex-1"
-                  onClick={() => (window.location.href = "/inventory")}
+                  onClick={() => (window.location.href = "/my-items")}
                 >
-                  Enable swapping on your items
+                  Turn on Swap It on your items
                 </Button>
                 <Button
                   variant="outline"

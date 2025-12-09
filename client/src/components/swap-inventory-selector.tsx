@@ -123,7 +123,7 @@ export function SwapInventorySelector({
           ) : swappableItems.length === 0 && needsSwapEnabled.length > 0 ? (
             <div className="space-y-4">
               {/* Calm instructional message */}
-              <p className="text-sm text-gray-500 text-center py-2">
+              <p className="text-sm text-gray-500 py-2">
                 To swap items, enable "Swap It" on your listings.
               </p>
 
@@ -153,8 +153,8 @@ export function SwapInventorySelector({
                           <Coins className="h-3 w-3" />
                           <span>{tierInfo.coins} ShareCoins</span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Swap turned off</p>
                       </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0">Swap turned off</span>
                     </div>
                   );
                 })}

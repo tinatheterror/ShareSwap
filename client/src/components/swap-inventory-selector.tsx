@@ -124,7 +124,7 @@ export function SwapInventorySelector({
             <div className="space-y-4">
               {/* Calm instructional message */}
               <p className="text-sm text-gray-500 py-2 text-center">
-                To swap items, enable "Swap It" on your listings.
+                To swap items, turn on "Swap It" on your listings.
               </p>
 
               {/* Items list - showing disabled items with inline text */}
@@ -174,7 +174,7 @@ export function SwapInventorySelector({
                   className="flex-1"
                   onClick={() => (window.location.href = "/my-items")}
                 >
-                  Turn on Swap It on your items
+                  Enable Swap It on your items
                 </Button>
                 <Button
                   variant="outline"

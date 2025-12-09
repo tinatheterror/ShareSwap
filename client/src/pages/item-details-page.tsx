@@ -13,16 +13,9 @@ import {
   HandHeart,
   DollarSign,
   ArrowLeftRight,
-  Info,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { getSwapTierLabel } from "@/lib/swap-calculator";
 
 type RequestType = "BORROW" | "RENT" | "SWAP";
@@ -113,28 +106,15 @@ export default function ItemDetailsPage() {
                 Exchange items
               </span>
             </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Badge
-                    variant="outline"
-                    className="border-purple-300 text-purple-700 cursor-help"
-                  >
-                    {getSwapTierLabel(itemTier)}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <div className="space-y-2 text-sm">
-                    <p className="font-medium">Swap Rules:</p>
-                    <ul className="space-y-1 text-gray-600">
-                      <li>• Same tier = Free swap</li>
-                      <li>• 1 tier difference = ShareCoin offset</li>
-                      <li>• 2+ tier difference = Not allowed</li>
-                    </ul>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Badge
+              variant="outline"
+              className="border-purple-300 text-purple-700"
+            >
+              {getSwapTierLabel(itemTier)}
+            </Badge>
+            <p className="text-xs text-purple-600 mt-1">
+              Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the difference.
+            </p>
           </div>
           <Button
             onClick={() => setShowSwapSelector(true)}
@@ -143,11 +123,6 @@ export default function ItemDetailsPage() {
             <ArrowLeftRight className="h-4 w-4 mr-1" />
             Request Swap
           </Button>
-        </div>
-        <div className="bg-purple-50 border border-purple-200 rounded-md p-2 text-xs text-purple-700">
-          <Info className="h-3 w-3 inline mr-1" />
-          Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the
-          difference.
         </div>
       </div>
     ) : null;

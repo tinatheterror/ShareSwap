@@ -23,10 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  getSwapTierLabel,
-  getAcceptableSwapsLabel,
-} from "@/lib/swap-calculator";
+import { getSwapTierLabel } from "@/lib/swap-calculator";
 
 type RequestType = "BORROW" | "RENT" | "SWAP";
 
@@ -109,40 +106,35 @@ export default function ItemDetailsPage() {
       <div key="swap" className="space-y-2">
         <div className="flex justify-between items-center">
           <div>
-            <p className="font-medium flex items-center gap-2">
-              Swap
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Badge
-                      variant="outline"
-                      className="border-purple-300 text-purple-700 cursor-help"
-                    >
-                      {getSwapTierLabel(itemTier)}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <div className="space-y-2 text-sm">
-                      <p className="font-medium">Swap Rules:</p>
-                      <ul className="space-y-1 text-gray-600">
-                        <li>• Same tier = Free swap</li>
-                        <li>• 1 tier difference = ShareCoin offset</li>
-                        <li>• 2+ tier difference = Not allowed</li>
-                      </ul>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </p>
+            <p className="font-medium">Swap</p>
             <div className="flex items-center gap-2 mb-1">
               <ArrowLeftRight className="h-4 w-4 text-purple-600" />
               <span className="text-lg font-bold text-purple-700">
                 Exchange items
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {getAcceptableSwapsLabel(itemTier)}
-            </p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge
+                    variant="outline"
+                    className="border-purple-300 text-purple-700 cursor-help"
+                  >
+                    {getSwapTierLabel(itemTier)}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <div className="space-y-2 text-sm">
+                    <p className="font-medium">Swap Rules:</p>
+                    <ul className="space-y-1 text-gray-600">
+                      <li>• Same tier = Free swap</li>
+                      <li>• 1 tier difference = ShareCoin offset</li>
+                      <li>• 2+ tier difference = Not allowed</li>
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <Button
             onClick={() => setShowSwapSelector(true)}

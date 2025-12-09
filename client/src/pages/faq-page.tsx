@@ -28,9 +28,54 @@ export default function FAQPage() {
             Help & FAQ
           </h1>
           <p className="text-gray-600">
-            Everything you need to know about sharing, earning, and swapping
+            Everything you need to know about to use the platform with confidence
           </p>
         </div>
+
+        {/* What is ShareSwap? */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
+                  <ArrowLeftRight className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-bold text-teal-600">ShareSwap</span>
+              </div>
+              What is ShareSwap?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-gray-700 font-medium">
+                A community platform where neighbors can:
+              </p>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="flex items-center gap-2 bg-amber-50 rounded-lg p-3">
+                  <Coins className="h-5 w-5 text-amber-500" />
+                  <span className="text-sm font-medium text-gray-700">Borrow items using ShareCoins</span>
+                </div>
+                <div className="flex items-center gap-2 bg-green-50 rounded-lg p-3">
+                  <DollarSign className="h-5 w-5 text-green-500" />
+                  <span className="text-sm font-medium text-gray-700">Rent items for cash</span>
+                </div>
+                <div className="flex items-center gap-2 bg-purple-50 rounded-lg p-3">
+                  <ArrowLeftRight className="h-5 w-5 text-purple-500" />
+                  <span className="text-sm font-medium text-gray-700">Swap items</span>
+                </div>
+                <div className="flex items-center gap-2 bg-pink-50 rounded-lg p-3">
+                  <Gift className="h-5 w-5 text-pink-500" />
+                  <span className="text-sm font-medium text-gray-700">Gift items</span>
+                </div>
+              </div>
+
+              <p className="text-gray-600 text-center italic pt-2">
+                Give what you can. Take what you need. Simple.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* How Swaps Work */}
         <Card className="mb-6">

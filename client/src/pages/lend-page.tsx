@@ -55,6 +55,7 @@ import {
   Lightbulb,
   Coins,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -1350,20 +1351,6 @@ export default function LendPage() {
                               {(() => {
                                 const tierSC =
                                   getTierShareCoins(calculatedTier);
-                                const lowerTier =
-                                  calculatedTier > 1
-                                    ? calculatedTier - 1
-                                    : null;
-                                const higherTier =
-                                  calculatedTier < 4
-                                    ? calculatedTier + 1
-                                    : null;
-                                const lowerTierSC = lowerTier
-                                  ? getTierShareCoins(lowerTier)
-                                  : 0;
-                                const higherTierSC = higherTier
-                                  ? getTierShareCoins(higherTier)
-                                  : 0;
 
                                 return (
                                   <>
@@ -1373,64 +1360,19 @@ export default function LendPage() {
                                         Swap Value
                                       </span>
                                     </div>
-                                    <TooltipProvider>
+                                    <TooltipProvider delayDuration={0}>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <div className="text-sm font-semibold text-gray-800 cursor-help underline decoration-dotted decoration-[#0DCEA1]/50">
+                                          <div className="text-sm font-semibold text-gray-800 cursor-help flex items-center gap-1">
                                             Tier {calculatedTier} ({tierSC}{" "}
                                             ShareCoins)
+                                            <Info className="h-3 w-3 text-gray-400" />
                                           </div>
                                         </TooltipTrigger>
-                                        <TooltipContent
-                                          side="top"
-                                          className="max-w-[200px] p-3"
-                                        >
-                                          <div className="space-y-1.5">
-                                            <div className="text-xs font-medium mb-2">
-                                              Swap Rules:
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-xs">
-                                              <span className="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
-                                              <span>
-                                                Tier {calculatedTier} = fair
-                                                swap
-                                              </span>
-                                            </div>
-                                            {lowerTier && (
-                                              <div className="flex items-center gap-1.5 text-xs">
-                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                                <span>
-                                                  Tier {lowerTier} = +
-                                                  {tierSC - lowerTierSC} SC
-                                                  offset
-                                                </span>
-                                              </div>
-                                            )}
-                                            {higherTier && (
-                                              <div className="flex items-center gap-1.5 text-xs">
-                                                <span className="inline-block w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                                <span>
-                                                  Tier {higherTier} = −
-                                                  {higherTierSC - tierSC} SC
-                                                  offset
-                                                </span>
-                                              </div>
-                                            )}
-                                            <div className="flex items-center gap-1.5 text-xs text-red-500 pt-1">
-                                              <span className="inline-block w-2 h-2 bg-red-400 rounded-full"></span>
-                                              <span>
-                                                Tier{" "}
-                                                {calculatedTier > 2
-                                                  ? calculatedTier - 2
-                                                  : calculatedTier + 2}{" "}
-                                                or further = too different
-                                              </span>
-                                            </div>
-                                            <div className="text-[10px] text-gray-500 pt-1 border-t mt-1">
-                                              ShareCoin offsets only
-                                              <br />
-                                              No cash • No deposits
-                                            </div>
+                                        <TooltipContent side="top" className="p-0 border-0 bg-transparent shadow-none">
+                                          <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
+                                            <Info className="h-3 w-3 inline mr-1" />
+                                            Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the difference.
                                           </div>
                                         </TooltipContent>
                                       </Tooltip>

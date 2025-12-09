@@ -123,7 +123,7 @@ export function SwapInventorySelector({
           ) : swappableItems.length === 0 && needsSwapEnabled.length > 0 ? (
             <div className="space-y-4">
               {/* Calm instructional message */}
-              <p className="text-sm text-gray-500 py-2">
+              <p className="text-sm text-gray-500 py-2 text-center">
                 To swap items, enable "Swap It" on your listings.
               </p>
 

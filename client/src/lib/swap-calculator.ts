@@ -117,8 +117,7 @@ export function calculateSwap(yourTier: number, theirTier: number): SwapCalculat
 }
 
 export function getSwapTierLabel(tier: number): string {
-  const shareCoins = getTierShareCoins(tier);
-  return `Tier ${tier} (${shareCoins} SC)`;
+  return `Tier ${tier}`;
 }
 
 export function getAcceptableSwapsLabel(tier: number): string {

@@ -4,7 +4,6 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,6 +12,7 @@ import {
   Check,
   Coins,
   Package,
+  Plus,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import {
@@ -62,6 +62,11 @@ export function SwapInventorySelector({
     }
   };
 
+  const formatTierDisplay = (tier: number) => {
+    const coins = getTierShareCoins(tier);
+    return { tier, coins };
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
@@ -83,10 +88,11 @@ export function SwapInventorySelector({
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold truncate">{targetItem.name}</h2>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge className="bg-white/20 hover:bg-white/20 text-white border-0 text-xs">
-                  {getSwapTierLabel(targetTier)}
-                </Badge>
+              <div className="flex items-center gap-1.5 mt-2 text-white/90 text-sm">
+                <span>Tier {targetTier}</span>
+                <span className="text-white/50">·</span>
+                <Coins className="h-3.5 w-3.5" />
+                <span>{targetShareCoins} ShareCoins</span>
               </div>
             </div>
           </div>
@@ -95,7 +101,7 @@ export function SwapInventorySelector({
         {/* Content Section - White Background */}
         <div className="p-5 bg-white">
           <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Select your item to offer
+            Choose an item to trade
           </h3>
 
           {isLoading ? (
@@ -112,7 +118,7 @@ export function SwapInventorySelector({
               <Button
                 onClick={() => (window.location.href = "/lend")}
               >
-                Add items
+                Add an item
               </Button>
             </div>
           ) : swappableItems.length === 0 && needsSwapEnabled.length > 0 ? (
@@ -122,48 +128,64 @@ export function SwapInventorySelector({
                 To swap items, enable "Swap It" on your listings.
               </p>
 
-              {/* Items list - greyed out */}
+              {/* Items list - showing disabled items with inline text */}
               <div className="space-y-2 max-h-[200px] overflow-y-auto">
                 {needsSwapEnabled.map((item) => {
                   const itemTier = (item as any).tier || 2;
+                  const tierInfo = formatTierDisplay(itemTier);
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg opacity-50"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100"
                     >
-                      <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                      <div className="w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         {item.photos?.[0] ? (
                           <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <Camera className="h-4 w-4 text-gray-400" />
+                            <Camera className="h-5 w-5 text-gray-400" />
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-600 truncate text-sm">{item.name}</p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {getSwapTierLabel(itemTier)}
-                        </Badge>
+                        <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                          <span>Tier {tierInfo.tier}</span>
+                          <span className="text-gray-300">·</span>
+                          <Coins className="h-3 w-3" />
+                          <span>{tierInfo.coins} ShareCoins</span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">Swap turned off</p>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Single clear CTA */}
-              <Button
-                className="w-full"
-                onClick={() => (window.location.href = "/inventory")}
-              >
-                Edit my items
-              </Button>
+              {/* Two buttons side by side */}
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  onClick={() => (window.location.href = "/inventory")}
+                >
+                  Enable swapping on your items
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-shrink-0"
+                  onClick={() => (window.location.href = "/lend")}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add an item
+                </Button>
+              </div>
             </div>
           ) : (
             <>
               <div className="space-y-2 max-h-[280px] overflow-y-auto">
                 {swappableItems.map((item) => {
                   const itemTier = (item as any).tier || 2;
+                  const tierInfo = formatTierDisplay(itemTier);
                   const swap = calculateSwap(itemTier, targetTier);
                   const isSelected = selectedItemId === item.id;
 
@@ -200,18 +222,25 @@ export function SwapInventorySelector({
                         <p className="font-medium text-gray-900 truncate">
                           {item.name}
                         </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {getSwapTierLabel(itemTier)}
-                          </Badge>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                          <span>Tier {tierInfo.tier}</span>
+                          <span className="text-gray-300">·</span>
+                          <Coins className="h-3 w-3" />
+                          <span>{tierInfo.coins} ShareCoins</span>
                           {swap.fairness === "fair" ? (
-                            <span className="text-xs text-green-600">Fair swap</span>
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span className="text-green-600">Fair swap</span>
+                            </>
                           ) : (
-                            <span className="text-xs text-gray-500">
-                              {swap.offsetDirection === "you_pay"
-                                ? `+${swap.offsetRequired} SC`
-                                : `-${swap.offsetRequired} SC`}
-                            </span>
+                            <>
+                              <span className="text-gray-300">·</span>
+                              <span className="text-gray-500">
+                                {swap.offsetDirection === "you_pay"
+                                  ? `+${swap.offsetRequired} SC`
+                                  : `-${swap.offsetRequired} SC`}
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>

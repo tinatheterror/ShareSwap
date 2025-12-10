@@ -1364,8 +1364,7 @@ export default function LendPage() {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <div className="text-sm font-semibold text-gray-800 cursor-help flex items-center gap-1">
-                                            Tier {calculatedTier} ({tierSC}{" "}
-                                            ShareCoins)
+                                            Tier {calculatedTier} – {tierSC} ShareCoins
                                             <Info className="h-3 w-3 text-gray-400" />
                                           </div>
                                         </TooltipTrigger>

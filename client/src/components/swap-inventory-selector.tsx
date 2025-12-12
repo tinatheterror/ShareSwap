@@ -43,17 +43,27 @@ export function SwapInventorySelector({
   });
 
   const toggleSwapMutation = useMutation({
-    mutationFn: async ({ itemId, isSwappable }: { itemId: number; isSwappable: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/items/${itemId}`, { isSwappable });
+    mutationFn: async ({
+      itemId,
+      isSwappable,
+    }: {
+      itemId: number;
+      isSwappable: boolean;
+    }) => {
+      const res = await apiRequest("PATCH", `/api/items/${itemId}`, {
+        isSwappable,
+      });
       return res.json();
     },
     onMutate: async ({ itemId, isSwappable }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/my-items"] });
-      const previousItems = queryClient.getQueryData<SelectItem[]>(["/api/my-items"]);
+      const previousItems = queryClient.getQueryData<SelectItem[]>([
+        "/api/my-items",
+      ]);
       queryClient.setQueryData<SelectItem[]>(["/api/my-items"], (old) =>
         old?.map((item) =>
-          item.id === itemId ? { ...item, isSwappable } : item
-        )
+          item.id === itemId ? { ...item, isSwappable } : item,
+        ),
       );
       return { previousItems };
     },
@@ -112,9 +122,7 @@ export function SwapInventorySelector({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold truncate">
-                Swap for {targetItem.name}
-              </h2>
+              <h2 className="text-xl font-bold truncate">{targetItem.name}</h2>
               <div className="flex items-center gap-1.5 mt-2 text-gray-800 text-sm">
                 <span>Tier {targetTier} –</span>
                 <Coins className="h-3.5 w-3.5" />
@@ -164,8 +172,8 @@ export function SwapInventorySelector({
                         !canSelect
                           ? "border-gray-200 bg-gray-100 opacity-60"
                           : isSelected
-                          ? "border-[#0DCEA1] bg-[#E6FBF5] cursor-pointer"
-                          : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 cursor-pointer"
+                            ? "border-[#0DCEA1] bg-[#E6FBF5] cursor-pointer"
+                            : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 cursor-pointer"
                       }`}
                       onClick={() => canSelect && setSelectedItemId(item.id)}
                     >
@@ -196,11 +204,13 @@ export function SwapInventorySelector({
                           <span>Tier {tierInfo.tier} -</span>
                           <Coins className="h-3 w-3" />
                           <span>{tierInfo.coins} ShareCoins</span>
-                          {canSelect && (
-                            swap.fairness === "fair" ? (
+                          {canSelect &&
+                            (swap.fairness === "fair" ? (
                               <>
                                 <span className="text-gray-300 ml-1">·</span>
-                                <span className="text-green-600">Fair swap</span>
+                                <span className="text-green-600">
+                                  Fair swap
+                                </span>
                               </>
                             ) : (
                               <>
@@ -211,14 +221,13 @@ export function SwapInventorySelector({
                                     : `-${swap.offsetRequired} SC`}
                                 </span>
                               </>
-                            )
-                          )}
+                            ))}
                         </div>
                       </div>
 
                       {/* Toggle for non-swappable items */}
                       {!canSelect && (
-                        <div 
+                        <div
                           className="flex items-center gap-2 flex-shrink-0"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -226,7 +235,10 @@ export function SwapInventorySelector({
                           <Switch
                             checked={item.isSwappable ?? false}
                             onCheckedChange={(checked) => {
-                              toggleSwapMutation.mutate({ itemId: item.id, isSwappable: checked });
+                              toggleSwapMutation.mutate({
+                                itemId: item.id,
+                                isSwappable: checked,
+                              });
                             }}
                             disabled={toggleSwapMutation.isPending}
                           />
@@ -248,7 +260,7 @@ export function SwapInventorySelector({
                   onClick={handleConfirmSelection}
                 >
                   <ArrowLeftRight className="h-4 w-4 mr-2" />
-                  Continue
+                  Swap
                 </Button>
               </div>
               <Button

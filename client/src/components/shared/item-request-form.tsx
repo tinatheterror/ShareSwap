@@ -160,8 +160,8 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                       <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
                     )}
                   </div>
-                  <div className="min-w-0 max-w-[100px]">
-                    <p className="text-sm font-medium text-gray-900 truncate pb-0.5">{swapOfferItem.name}</p>
+                  <div className="min-w-0 max-w-[100px] overflow-visible">
+                    <p className="text-sm font-medium text-gray-900 truncate" style={{ lineHeight: '1.4' }}>{swapOfferItem.name}</p>
                     <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((swapOfferItem as any).tier || 2)}
                     </Badge>
@@ -179,8 +179,8 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                       <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
                     )}
                   </div>
-                  <div className="min-w-0 max-w-[100px]">
-                    <p className="text-sm font-medium text-gray-900 truncate pb-0.5">{item.name}</p>
+                  <div className="min-w-0 max-w-[100px] overflow-visible">
+                    <p className="text-sm font-medium text-gray-900 truncate" style={{ lineHeight: '1.4' }}>{item.name}</p>
                     <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((item as any).tier || 2)}
                     </Badge>

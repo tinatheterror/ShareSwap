@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Calendar, ArrowLeftRight, Camera, Coins, Check } from "lucide-react";
@@ -32,6 +32,7 @@ type Props = {
 
 export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferItem }: Props) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [showTemplates, setShowTemplates] = useState(false);
   
   // Get current user info for personalized messages
@@ -116,6 +117,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/requests'] });
       toast({
         title: "Request Sent!",
         description: "The owner will be notified of your request.",

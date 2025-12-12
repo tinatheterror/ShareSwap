@@ -14,6 +14,7 @@ import {
   DollarSign,
   ArrowLeftRight,
   Info,
+  Clock,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
@@ -26,6 +27,13 @@ import {
 } from "@/components/ui/tooltip";
 
 type RequestType = "BORROW" | "RENT" | "SWAP";
+
+type ItemRequest = {
+  id: number;
+  itemId: number;
+  requestType: string;
+  status: string;
+};
 
 export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
@@ -55,6 +63,21 @@ export default function ItemDetailsPage() {
     enabled: !!itemId,
   });
 
+  // Fetch pending requests to check if user already has a pending request for this item
+  const { data: requests } = useQuery<ItemRequest[]>({
+    queryKey: ['/api/requests'],
+  });
+
+  // Check if user has pending requests for this item
+  const pendingRequests = requests?.filter(
+    (r) => r.itemId === Number(itemId) && r.status === "PENDING"
+  ) || [];
+  
+  const hasPendingBorrow = pendingRequests.some((r) => r.requestType === "BORROW");
+  const hasPendingRent = pendingRequests.some((r) => r.requestType === "RENT");
+  const hasPendingSwap = pendingRequests.some((r) => r.requestType === "SWAP");
+  const hasAnyPending = pendingRequests.length > 0;
+
   if (!item) return null;
 
   // Create ordered sharing options based on context
@@ -74,10 +97,21 @@ export default function ItemDetailsPage() {
             {Number(item.securityDeposit).toFixed(2)} deposit
           </p>
         </div>
-        <Button onClick={() => setRequestType("BORROW")} className="w-40">
-          <HandHeart className="h-4 w-4 mr-1" />
-          Request to Borrow
-        </Button>
+        {hasPendingBorrow ? (
+          <Button disabled className="w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+            <Clock className="h-4 w-4 mr-1" />
+            Request Pending
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => setRequestType("BORROW")} 
+            className="w-40"
+            disabled={hasAnyPending}
+          >
+            <HandHeart className="h-4 w-4 mr-1" />
+            Request to Borrow
+          </Button>
+        )}
       </div>
     ) : null;
 
@@ -94,10 +128,21 @@ export default function ItemDetailsPage() {
             ${Number(item.securityDeposit).toFixed(2)} deposit required
           </p>
         </div>
-        <Button onClick={() => setRequestType("RENT")} className="w-40">
-          <DollarSign className="h-4 w-4 mr-1" />
-          Request to Rent
-        </Button>
+        {hasPendingRent ? (
+          <Button disabled className="w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+            <Clock className="h-4 w-4 mr-1" />
+            Request Pending
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => setRequestType("RENT")} 
+            className="w-40"
+            disabled={hasAnyPending}
+          >
+            <DollarSign className="h-4 w-4 mr-1" />
+            Request to Rent
+          </Button>
+        )}
       </div>
     ) : null;
 
@@ -134,13 +179,21 @@ export default function ItemDetailsPage() {
               </Tooltip>
             </TooltipProvider>
           </div>
-          <Button
-            onClick={() => setShowSwapSelector(true)}
-            className="w-40 bg-[#0DCEA1] hover:bg-[#0BB88C]"
-          >
-            <ArrowLeftRight className="h-4 w-4 mr-1" />
-            Request Swap
-          </Button>
+          {hasPendingSwap ? (
+            <Button disabled className="w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+              <Clock className="h-4 w-4 mr-1" />
+              Request Pending
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setShowSwapSelector(true)}
+              className="w-40 bg-[#0DCEA1] hover:bg-[#0BB88C]"
+              disabled={hasAnyPending}
+            >
+              <ArrowLeftRight className="h-4 w-4 mr-1" />
+              Request Swap
+            </Button>
+          )}
         </div>
       </div>
     ) : null;

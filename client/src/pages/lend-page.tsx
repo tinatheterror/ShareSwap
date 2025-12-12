@@ -137,36 +137,41 @@ const calculateShareCoinsForDays = (
   return { min: minCoins, max: maxCoins };
 };
 
-const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(10, "Please provide a detailed description"),
-  itemType: z.string().min(1, "Item type is required"),
-  condition: z.string().min(1, "Condition is required"),
-  originalValue: z.string().min(1, "Original value is required"),
-  isLendable: z.boolean().default(false),
-  isSwappable: z.boolean().default(false),
-  isRentable: z.boolean().default(false),
-  isGift: z.boolean().default(false),
-  availableFromDate: z.string().optional(),
-  availableToDate: z.string().optional(),
-  securityDeposit: z.coerce
-    .number()
-    .min(0, "Security deposit must be positive")
-    .optional(),
-  conditionRating: z.coerce
-    .number()
-    .min(1)
-    .max(10, "Rating must be between 1 and 10"),
-  postalCode: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-}).refine((data) => {
-  // Require either postalCode or lat/lng coordinates
-  return data.postalCode || (data.latitude && data.longitude);
-}, {
-  message: "Location is required - please enter a postal code",
-  path: ["postalCode"],
-});
+const formSchema = z
+  .object({
+    name: z.string().min(1, "Name is required"),
+    description: z.string().min(10, "Please provide a detailed description"),
+    itemType: z.string().min(1, "Item type is required"),
+    condition: z.string().min(1, "Condition is required"),
+    originalValue: z.string().min(1, "Original value is required"),
+    isLendable: z.boolean().default(false),
+    isSwappable: z.boolean().default(false),
+    isRentable: z.boolean().default(false),
+    isGift: z.boolean().default(false),
+    availableFromDate: z.string().optional(),
+    availableToDate: z.string().optional(),
+    securityDeposit: z.coerce
+      .number()
+      .min(0, "Security deposit must be positive")
+      .optional(),
+    conditionRating: z.coerce
+      .number()
+      .min(1)
+      .max(10, "Rating must be between 1 and 10"),
+    postalCode: z.string().optional(),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+  })
+  .refine(
+    (data) => {
+      // Require either postalCode or lat/lng coordinates
+      return data.postalCode || (data.latitude && data.longitude);
+    },
+    {
+      message: "Location is required - please enter a postal code",
+      path: ["postalCode"],
+    },
+  );
 
 export default function LendPage() {
   const { toast } = useToast();
@@ -1197,11 +1202,13 @@ export default function LendPage() {
                                 );
                                 return (
                                   <div className="mt-2 pt-2 border-t border-teal-100">
-                                    <div className="text-xs font-medium text-gray-700">
-                                      Trust-Based Deposit:
-                                    </div>
-                                    <div className="text-sm font-semibold text-gray-800">
-                                      {formatDeposit(depositCalc.finalDeposit)}
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-medium text-gray-700">
+                                        Trust-Based Deposit:
+                                      </span>
+                                      <span className="text-sm font-semibold text-gray-800">
+                                        {formatDeposit(depositCalc.finalDeposit)}
+                                      </span>
                                     </div>
                                     {depositCalc.discountPercentage > 0 && (
                                       <div className="text-teal-600 text-[10px] mt-0.5">
@@ -1364,14 +1371,19 @@ export default function LendPage() {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <div className="text-sm font-semibold text-gray-800 cursor-help flex items-center gap-1">
-                                            Tier {calculatedTier} – {tierSC} ShareCoins
+                                            Tier {calculatedTier} Item
                                             <Info className="h-3 w-3 text-gray-400" />
                                           </div>
                                         </TooltipTrigger>
-                                        <TooltipContent side="top" className="p-0 border-0 bg-transparent shadow-none">
+                                        <TooltipContent
+                                          side="top"
+                                          className="p-0 border-0 bg-transparent shadow-none"
+                                        >
                                           <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
                                             <Info className="h-3 w-3 inline mr-1" />
-                                            Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the difference.
+                                            Swaps allow same-tier or ±1 tier
+                                            items, with ShareCoins balancing the
+                                            difference.
                                           </div>
                                         </TooltipContent>
                                       </Tooltip>

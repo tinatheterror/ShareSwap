@@ -39,6 +39,7 @@ export function SwapInventorySelector({
   const { data: myItems = [], isLoading } = useQuery<SelectItem[]>({
     queryKey: ["/api/my-items"],
     enabled: isOpen,
+    staleTime: 0,
   });
 
   const toggleSwapMutation = useMutation({
@@ -47,7 +48,7 @@ export function SwapInventorySelector({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
+      queryClient.refetchQueries({ queryKey: ["/api/my-items"] });
     },
   });
 

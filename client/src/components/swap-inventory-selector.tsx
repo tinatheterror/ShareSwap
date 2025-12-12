@@ -162,7 +162,7 @@ export function SwapInventorySelector({
                       key={item.id}
                       className={`flex items-center gap-3 p-3 rounded-lg transition-all border ${
                         !canSelect
-                          ? "border-gray-100 bg-gray-50/50"
+                          ? "border-gray-200 bg-gray-100 opacity-60"
                           : isSelected
                           ? "border-[#0DCEA1] bg-[#E6FBF5] cursor-pointer"
                           : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 cursor-pointer"

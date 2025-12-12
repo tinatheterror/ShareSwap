@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeftRight,
   Camera,
@@ -32,10 +34,21 @@ export function SwapInventorySelector({
   onSelectItem,
 }: Props) {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: myItems = [], isLoading } = useQuery<SelectItem[]>({
     queryKey: ["/api/my-items"],
     enabled: isOpen,
+  });
+
+  const toggleSwapMutation = useMutation({
+    mutationFn: async ({ itemId, isSwappable }: { itemId: number; isSwappable: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/items/${itemId}`, { isSwappable });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
+    },
   });
 
   const targetTier = (targetItem as any).tier || 2;
@@ -124,18 +137,18 @@ export function SwapInventorySelector({
             <div className="space-y-4">
               {/* Calm instructional message */}
               <p className="text-sm text-gray-500 py-2 text-center">
-                To swap items, turn on "Swap It" on your listings.
+                Turn on "Swap it" to enable swapping.
               </p>
 
-              {/* Items list - showing disabled items with inline text */}
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {/* Items list - showing disabled items with toggle */}
+              <div className="space-y-2 max-h-[250px] overflow-y-auto">
                 {needsSwapEnabled.map((item) => {
                   const itemTier = (item as any).tier || 2;
                   const tierInfo = formatTierDisplay(itemTier);
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 opacity-50"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100"
                     >
                       <div className="w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         {item.photos?.[0] ? (
@@ -160,31 +173,28 @@ export function SwapInventorySelector({
                           <span>{tierInfo.coins} ShareCoins</span>
                         </div>
                       </div>
-                      <span className="text-xs text-gray-400 flex-shrink-0">
-                        Swap turned off
-                      </span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs text-gray-500">Swap it</span>
+                        <Switch
+                          checked={false}
+                          onCheckedChange={() => toggleSwapMutation.mutate({ itemId: item.id, isSwappable: true })}
+                          disabled={toggleSwapMutation.isPending}
+                        />
+                      </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Two buttons side by side */}
-              <div className="flex gap-2">
-                <Button
-                  className="flex-1"
-                  onClick={() => (window.location.href = "/my-items")}
-                >
-                  Enable Swap It on your items
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-shrink-0"
-                  onClick={() => (window.location.href = "/lend")}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add an item
-                </Button>
-              </div>
+              {/* Single button */}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => (window.location.href = "/lend")}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add an item
+              </Button>
             </div>
           ) : (
             <>

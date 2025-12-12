@@ -192,14 +192,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
               const yourTier = (swapOfferItem as any).tier || 2;
               const theirTier = (item as any).tier || 2;
               const swap = calculateSwap(yourTier, theirTier);
-              if (swap.fairness === "fair") {
-                return (
-                  <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 p-2 rounded">
-                    <Check className="h-4 w-4" />
-                    Fair swap - no offset needed!
-                  </div>
-                );
-              } else if (swap.fairness === "offset_required") {
+              if (swap.fairness === "offset_required") {
                 return (
                   <div className="flex items-center gap-2 text-[#0BB88C] text-sm bg-[#E6FBF5] p-2 rounded">
                     <Coins className="h-4 w-4" />

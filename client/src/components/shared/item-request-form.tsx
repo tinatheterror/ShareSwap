@@ -120,7 +120,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-white">
         <DialogHeader>
           <DialogTitle>Request to {requestType.toLowerCase()} {item.name}</DialogTitle>
           {requestType !== "SWAP" && (

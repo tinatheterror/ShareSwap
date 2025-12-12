@@ -122,7 +122,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] bg-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Request to {requestType.toLowerCase()} {item.name}</DialogTitle>
+          <DialogTitle className="truncate pr-6">Request to {requestType.toLowerCase()} {item.name}</DialogTitle>
           {requestType !== "SWAP" && (
             <DialogDescription>
               Send a message to the owner explaining why you'd like to {requestType.toLowerCase()} this item.
@@ -147,7 +147,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                       <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0 max-w-[100px]">
                     <p className="text-sm font-medium text-gray-900 truncate">{swapOfferItem.name}</p>
                     <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((swapOfferItem as any).tier || 2)}
@@ -166,7 +166,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                       <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0 max-w-[100px]">
                     <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
                     <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((item as any).tier || 2)}

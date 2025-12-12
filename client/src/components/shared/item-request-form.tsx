@@ -19,6 +19,7 @@ const formSchema = z.object({
   message: z.string().min(1, "Please include a message to the owner"),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  conditionConfirmed: z.boolean().optional(),
 });
 
 type Props = {
@@ -44,6 +45,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
       message: "",
       startDate: "",
       endDate: "",
+      conditionConfirmed: false,
     },
   });
 
@@ -202,46 +204,73 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
             onSubmit={form.handleSubmit((data) => createRequestMutation.mutate(data))}
             className="space-y-4 mt-4"
           >
-            {/* Date Selection */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Date Selection - Hide for SWAP */}
+            {requestType !== "SWAP" && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Start Date
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date" 
+                          {...field} 
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date" 
+                          {...field} 
+                          min={form.watch('startDate') || new Date().toISOString().split('T')[0]}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Condition Confirmation - Only for SWAP */}
+            {requestType === "SWAP" && (
               <FormField
                 control={form.control}
-                name="startDate"
+                name="conditionConfirmed"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Start Date
-                    </FormLabel>
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3">
                     <FormControl>
-                      <Input 
-                        type="date" 
-                        {...field} 
-                        min={new Date().toISOString().split('T')[0]}
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={field.onChange}
+                        className="h-4 w-4 mt-0.5 accent-[#0DCEA1]"
                       />
                     </FormControl>
-                    <FormMessage />
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm font-normal cursor-pointer">
+                        I confirm this item matches the condition stated.
+                      </FormLabel>
+                    </div>
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="date" 
-                        {...field} 
-                        min={form.watch('startDate') || new Date().toISOString().split('T')[0]}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            )}
 
             {/* Automated Message Templates */}
             <div className="space-y-2">

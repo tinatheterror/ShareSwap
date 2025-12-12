@@ -47,8 +47,23 @@ export function SwapInventorySelector({
       const res = await apiRequest("PATCH", `/api/items/${itemId}`, { isSwappable });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ["/api/my-items"] });
+    onMutate: async ({ itemId, isSwappable }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/my-items"] });
+      const previousItems = queryClient.getQueryData<SelectItem[]>(["/api/my-items"]);
+      queryClient.setQueryData<SelectItem[]>(["/api/my-items"], (old) =>
+        old?.map((item) =>
+          item.id === itemId ? { ...item, isSwappable } : item
+        )
+      );
+      return { previousItems };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousItems) {
+        queryClient.setQueryData(["/api/my-items"], context.previousItems);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
     },
   });
 

@@ -233,6 +233,14 @@ export function SwapInventorySelector({
                   Continue
                 </Button>
               </div>
+              <Button
+                variant="outline"
+                className="w-full mt-2"
+                onClick={() => (window.location.href = "/lend")}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add an item
+              </Button>
             </>
           )}
         </div>

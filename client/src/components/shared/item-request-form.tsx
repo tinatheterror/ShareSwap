@@ -64,16 +64,29 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
       ` for a few days`;
 
     let message = "";
+    const myItemName = swapOfferItem?.name || "my item";
     
     switch (templateType) {
       case 'quick':
-        message = `Hi ${ownerName}! I would like to ${action} your ${itemName}${dateRange}. 😊😊`;
+        if (requestType === "SWAP") {
+          message = `Hi ${ownerName}! I would like to swap my "${myItemName}" for your "${itemName}" 😊😊`;
+        } else {
+          message = `Hi ${ownerName}! I would like to ${action} your ${itemName}${dateRange}. 😊😊`;
+        }
         break;
-      case 'polite': 
-        message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to ${action} your ${itemName}${dateRange}. Would this work for you?\n\nThank you so much! 😊😊`;
+      case 'polite':
+        if (requestType === "SWAP") {
+          message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to swap my "${myItemName}" for your "${itemName}". Would this work for you?\n\nThank you so much! 😊😊`;
+        } else {
+          message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to ${action} your ${itemName}${dateRange}. Would this work for you?\n\nThank you so much! 😊😊`;
+        }
         break;
       case 'detailed':
-        message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in your ${itemName}. I would like to ${action} it${dateRange}. I'll take great care of it and return it in perfect condition.\n\nPlease let me know if these dates work for you!\n\nBest regards! 😊😊`;
+        if (requestType === "SWAP") {
+          message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in swapping items with you. I would like to trade my "${myItemName}" for your "${itemName}". I'll make sure my item is in the condition stated.\n\nPlease let me know if this works for you!\n\nBest regards! 😊😊`;
+        } else {
+          message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in your ${itemName}. I would like to ${action} it${dateRange}. I'll take great care of it and return it in perfect condition.\n\nPlease let me know if these dates work for you!\n\nBest regards! 😊😊`;
+        }
         break;
     }
     

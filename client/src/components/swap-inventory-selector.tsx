@@ -62,9 +62,6 @@ export function SwapInventorySelector({
         queryClient.setQueryData(["/api/my-items"], context.previousItems);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
-    },
   });
 
   const targetTier = (targetItem as any).tier || 2;
@@ -221,11 +218,16 @@ export function SwapInventorySelector({
 
                       {/* Toggle for non-swappable items */}
                       {!canSelect && (
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div 
+                          className="flex items-center gap-2 flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <span className="text-xs text-gray-500">Swap it</span>
                           <Switch
-                            checked={false}
-                            onCheckedChange={() => toggleSwapMutation.mutate({ itemId: item.id, isSwappable: true })}
+                            checked={item.isSwappable ?? false}
+                            onCheckedChange={(checked) => {
+                              toggleSwapMutation.mutate({ itemId: item.id, isSwappable: checked });
+                            }}
                             disabled={toggleSwapMutation.isPending}
                           />
                         </div>

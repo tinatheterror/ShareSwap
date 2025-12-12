@@ -97,8 +97,8 @@ export function calculateSwap(yourTier: number, theirTier: number): SwapCalculat
       yourShareCoins,
       theirShareCoins,
       message: offsetDirection === 'you_pay' 
-        ? `You add +${offsetAmount} ShareCoins to balance the swap`
-        : `They add +${offsetAmount} ShareCoins to balance the swap`,
+        ? `You pay ${offsetAmount} ShareCoins to balance the swap`
+        : `You receive +${offsetAmount} ShareCoins to balance the swap`,
     };
   }
   

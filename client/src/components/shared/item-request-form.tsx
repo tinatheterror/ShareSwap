@@ -186,7 +186,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                 );
               } else if (swap.fairness === "offset_required") {
                 return (
-                  <div className="flex items-center gap-2 text-amber-600 text-sm bg-amber-50 p-2 rounded">
+                  <div className="flex items-center gap-2 text-[#0BB88C] text-sm bg-[#E6FBF5] p-2 rounded">
                     <Coins className="h-4 w-4" />
                     {swap.message}
                   </div>

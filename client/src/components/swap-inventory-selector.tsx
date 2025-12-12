@@ -115,8 +115,8 @@ export function SwapInventorySelector({
               <h2 className="text-xl font-bold truncate">
                 Swap for {targetItem.name}
               </h2>
-              <div className="flex items-center gap-1.5 mt-2 text-white/90 text-sm">
-                <span>Tier {targetTier} -</span>
+              <div className="flex items-center gap-1.5 mt-2 text-gray-800 text-sm">
+                <span>Tier {targetTier} –</span>
                 <Coins className="h-3.5 w-3.5" />
                 <span>{targetShareCoins} ShareCoins</span>
               </div>

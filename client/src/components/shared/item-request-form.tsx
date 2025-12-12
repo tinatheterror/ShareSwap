@@ -148,7 +148,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                     )}
                   </div>
                   <div className="min-w-0 max-w-[100px]">
-                    <p className="text-sm font-medium text-gray-900 truncate">{swapOfferItem.name}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate leading-normal">{swapOfferItem.name}</p>
                     <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((swapOfferItem as any).tier || 2)}
                     </Badge>
@@ -167,7 +167,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                     )}
                   </div>
                   <div className="min-w-0 max-w-[100px]">
-                    <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate leading-normal">{item.name}</p>
                     <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
                       {getSwapTierLabel((item as any).tier || 2)}
                     </Badge>

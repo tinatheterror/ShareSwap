@@ -13,7 +13,9 @@ import {
   DollarSign,
   Gift,
   Shield,
+  Star,
 } from "lucide-react";
+import { Link } from "wouter";
 
 export default function FAQPage() {
   return (
@@ -62,6 +64,41 @@ export default function FAQPage() {
                 <span className="text-sm font-medium text-gray-700">Gift</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* How ShareCoin Earning Works */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Coins className="h-5 w-5 text-teal-600" />
+              How ShareCoin Earning Works
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="earn-1">
+                <AccordionTrigger className="text-sm">When do I earn ShareCoins?</AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  ShareCoins are credited after successful completion. Your reward is guaranteed when the item is safely returned.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="earn-2">
+                <AccordionTrigger className="text-sm">How much do I earn?</AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Reward amount varies by item value and lending duration. Higher value items and longer periods earn more.
+                  <Link href="/sharecoins-info" className="text-teal-600 hover:text-teal-700 ml-1 font-medium">
+                    Learn more
+                  </Link>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="earn-3">
+                <AccordionTrigger className="text-sm">Bonus opportunities</AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Earn extra ShareCoins for urgent requests. Each successful lending also increases your community standing.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
 

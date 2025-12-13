@@ -60,6 +60,7 @@ function Router() {
       <Route path="/sharecoins-info" component={ShareCoinsInfoPage} />
       <ProtectedRoute path="/premium" component={PremiumPage} />
       <Route path="/help" component={FAQPage} />
+      <Route path="/faq" component={FAQPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />

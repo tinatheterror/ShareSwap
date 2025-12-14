@@ -13,9 +13,7 @@ import {
   DollarSign,
   Gift,
   Shield,
-  Star,
 } from "lucide-react";
-import { Link } from "wouter";
 
 export default function FAQPage() {
   return (
@@ -27,8 +25,7 @@ export default function FAQPage() {
             Help & FAQ
           </h1>
           <p className="text-gray-600">
-            Everything you need to know about to use the platform with
-            confidence
+            Quick reference guide for using the platform
           </p>
         </div>
 
@@ -39,7 +36,6 @@ export default function FAQPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
                 <ArrowLeftRight className="h-4 w-4 text-white" />
               </div>
-
               <span className="font-normal text-gray-800">
                 What is ShareSwap?
               </span>
@@ -85,35 +81,40 @@ export default function FAQPage() {
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="earn-1">
                 <AccordionTrigger className="text-sm">
-                  When do I earn ShareCoins?
+                  What actions earn ShareCoins?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  ShareCoins are credited after successful completion. Your
-                  reward is guaranteed when the item is safely returned.
+                  <ul className="space-y-1">
+                    <li>Completed swaps, rentals, and gifts</li>
+                    <li>Helping with urgent wishlist requests</li>
+                    <li>Playing sponsored games</li>
+                    <li>Referring friends who complete a transaction</li>
+                    <li>Leveling up your neighbour status</li>
+                  </ul>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="earn-2">
                 <AccordionTrigger className="text-sm">
-                  How much do I earn?
+                  Are rewards fixed?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Reward amount varies by item value and lending duration.
-                  Higher value items and longer periods earn more.
-                  <Link
-                    href="/sharecoins-info"
-                    className="text-teal-600 hover:text-teal-700 ml-1 font-medium"
-                  >
-                    Learn more
-                  </Link>
+                  Yes. Each action has a set reward amount. Rewards are not negotiable and are credited automatically upon completion.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="earn-3">
                 <AccordionTrigger className="text-sm">
-                  Bonus opportunities
+                  Are there any limits?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Earn extra ShareCoins for urgent requests. Each successful
-                  lending also increases your community standing.
+                  Some activities have daily or per-request limits to keep things fair. Sponsored games can be played once per day. Urgent request bonuses apply once per request.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="earn-4">
+                <AccordionTrigger className="text-sm">
+                  One-time bonuses
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Earn bonus ShareCoins for completing your first swap, gift, rent, or borrow. You also get a one-time bonus for completing your profile with verification, photo, and bio.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -234,19 +235,19 @@ export default function FAQPage() {
                     <div className="grid grid-cols-4 gap-2 text-center text-xs">
                       <div className="bg-[#E6FBF5] rounded p-2">
                         <div className="font-semibold">Tier 1</div>
-                        <div className="text-[#0DCEA1]">5 SC</div>
+                        <div className="text-[#0DCEA1]">5 ShareCoins</div>
                       </div>
                       <div className="bg-[#E6FBF5] rounded p-2">
                         <div className="font-semibold">Tier 2</div>
-                        <div className="text-[#0DCEA1]">10 SC</div>
+                        <div className="text-[#0DCEA1]">10 ShareCoins</div>
                       </div>
                       <div className="bg-[#E6FBF5] rounded p-2">
                         <div className="font-semibold">Tier 3</div>
-                        <div className="text-[#0DCEA1]">20 SC</div>
+                        <div className="text-[#0DCEA1]">20 ShareCoins</div>
                       </div>
                       <div className="bg-[#E6FBF5] rounded p-2">
                         <div className="font-semibold">Tier 4</div>
-                        <div className="text-[#0DCEA1]">40 SC</div>
+                        <div className="text-[#0DCEA1]">40 ShareCoins</div>
                       </div>
                     </div>
                     <div className="space-y-1 text-sm">
@@ -291,11 +292,10 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="gift-2">
                 <AccordionTrigger className="text-sm">
-                  Optional ShareCoin reward
+                  ShareCoin reward
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Recipients can choose to tip ShareCoins as a thank you. This
-                  is optional and not expected.
+                  Both the giver and receiver earn ShareCoins when a gift is completed.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -332,12 +332,10 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="trust-3">
                 <AccordionTrigger className="text-sm">
-                  Abuse prevention
+                  Keeping the community fair
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  We detect unusual patterns like frequent cancellations or
-                  ShareCoin farming. Accounts with suspicious activity may be
-                  restricted.
+                  We monitor activity to ensure a positive experience for everyone. Accounts with unusual patterns may be reviewed.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

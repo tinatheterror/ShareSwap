@@ -27,7 +27,8 @@ export default function FAQPage() {
             Help & FAQ
           </h1>
           <p className="text-gray-600">
-            Quick reference guide for using the platform
+            Everything you need to know about to use the platform with
+            confidence
           </p>
         </div>
 
@@ -38,18 +39,23 @@ export default function FAQPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
                 <ArrowLeftRight className="h-4 w-4 text-white" />
               </div>
-              <span className="font-bold text-teal-600">ShareSwap</span>
-              <span className="font-normal text-gray-800">What is ShareSwap?</span>
+
+              <span className="font-normal text-gray-800">
+                What is ShareSwap?
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 mb-4">
-              A community platform where neighbours share items through borrowing, renting, swapping, or gifting.
+              A community platform where neighbours share items through
+              borrowing, renting, swapping, or gifting.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="flex items-center gap-2 bg-amber-50 rounded-lg p-3">
                 <Coins className="h-5 w-5 text-amber-500 flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-700">Borrow</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Borrow & Lend
+                </span>
               </div>
               <div className="flex items-center gap-2 bg-green-50 rounded-lg p-3">
                 <DollarSign className="h-5 w-5 text-green-500 flex-shrink-0" />
@@ -78,24 +84,36 @@ export default function FAQPage() {
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="earn-1">
-                <AccordionTrigger className="text-sm">When do I earn ShareCoins?</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  When do I earn ShareCoins?
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  ShareCoins are credited after successful completion. Your reward is guaranteed when the item is safely returned.
+                  ShareCoins are credited after successful completion. Your
+                  reward is guaranteed when the item is safely returned.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="earn-2">
-                <AccordionTrigger className="text-sm">How much do I earn?</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  How much do I earn?
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Reward amount varies by item value and lending duration. Higher value items and longer periods earn more.
-                  <Link href="/sharecoins-info" className="text-teal-600 hover:text-teal-700 ml-1 font-medium">
+                  Reward amount varies by item value and lending duration.
+                  Higher value items and longer periods earn more.
+                  <Link
+                    href="/sharecoins-info"
+                    className="text-teal-600 hover:text-teal-700 ml-1 font-medium"
+                  >
                     Learn more
                   </Link>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="earn-3">
-                <AccordionTrigger className="text-sm">Bonus opportunities</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Bonus opportunities
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Earn extra ShareCoins for urgent requests. Each successful lending also increases your community standing.
+                  Earn extra ShareCoins for urgent requests. Each successful
+                  lending also increases your community standing.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -113,21 +131,33 @@ export default function FAQPage() {
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="borrow-1">
-                <AccordionTrigger className="text-sm">How borrowing works</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  How borrowing works
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Request an item, pay ShareCoins, and pick it up. Return it by the agreed date. The lender earns ShareCoins when the item is returned safely.
+                  Request an item, pay ShareCoins, and pick it up. Return it by
+                  the agreed date. The lender earns ShareCoins when the item is
+                  returned safely.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="borrow-2">
-                <AccordionTrigger className="text-sm">ShareCoins explanation</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  ShareCoins explanation
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  ShareCoins are the platform currency. Earn them by lending items. Spend them to borrow. No real money changes hands for borrowing.
+                  ShareCoins are the platform currency. Earn them by lending
+                  items. Spend them to borrow. No real money changes hands for
+                  borrowing.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="borrow-3">
-                <AccordionTrigger className="text-sm">Trust-based security deposits</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Trust-based security deposits
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Deposits are based on item value and your trust score. Higher trust means lower deposits. Fully refundable when items return in good condition.
+                  Deposits are based on item value and your trust score. Higher
+                  trust means lower deposits. Fully refundable when items return
+                  in good condition.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -145,21 +175,31 @@ export default function FAQPage() {
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="rent-1">
-                <AccordionTrigger className="text-sm">Renting vs borrowing</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Renting vs borrowing
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Renting uses real money. Borrowing uses ShareCoins. Choose renting if you want to earn cash from your items.
+                  Renting uses real money. Borrowing uses ShareCoins. Choose
+                  renting if you want to earn cash from your items.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="rent-2">
-                <AccordionTrigger className="text-sm">Suggested pricing</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Suggested pricing
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  We suggest weekly rates based on item category. You can adjust the rate and deposit. Platform fee is 0% for 2025, only 3% payment processing.
+                  We suggest weekly rates based on item category. You can adjust
+                  the rate and deposit. Platform fee is 0% for 2025, only 3%
+                  payment processing.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="rent-3">
-                <AccordionTrigger className="text-sm">Cash security deposits</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Cash security deposits
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Owners set the deposit amount. Deposits are held until the item is returned. Protects against damage or non-return.
+                  Owners set the deposit amount. Deposits are held until the
+                  item is returned. Protects against damage or non-return.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -177,13 +217,18 @@ export default function FAQPage() {
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="swap-1">
-                <AccordionTrigger className="text-sm">What is swapping</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  What is swapping
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  A direct item-for-item trade. No cash. No deposits. Value differences are balanced with ShareCoins.
+                  A direct item-for-item trade. No cash. No deposits. Value
+                  differences are balanced with ShareCoins.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="swap-2">
-                <AccordionTrigger className="text-sm">Tiers & swap rules</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Tiers & swap rules
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <div className="space-y-3">
                     <div className="grid grid-cols-4 gap-2 text-center text-xs">
@@ -236,15 +281,21 @@ export default function FAQPage() {
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="gift-1">
-                <AccordionTrigger className="text-sm">What gifting means</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  What gifting means
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Give away items you no longer need. The recipient keeps the item permanently. No payments or deposits required.
+                  Give away items you no longer need. The recipient keeps the
+                  item permanently. No payments or deposits required.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="gift-2">
-                <AccordionTrigger className="text-sm">Optional ShareCoin reward</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Optional ShareCoin reward
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Recipients can choose to tip ShareCoins as a thank you. This is optional and not expected.
+                  Recipients can choose to tip ShareCoins as a thank you. This
+                  is optional and not expected.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -262,21 +313,31 @@ export default function FAQPage() {
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="trust-1">
-                <AccordionTrigger className="text-sm">Verified profiles</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Verified profiles
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Verify your identity with government ID and payment method. Verified users get a badge and access to higher-value items.
+                  Verify your identity with government ID and payment method.
+                  Verified users get a badge and access to higher-value items.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="trust-2">
-                <AccordionTrigger className="text-sm">Trust score affects deposits</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Trust score affects deposits
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Your trust score is built through successful transactions. Higher scores mean lower deposit requirements for borrowing.
+                  Your trust score is built through successful transactions.
+                  Higher scores mean lower deposit requirements for borrowing.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="trust-3">
-                <AccordionTrigger className="text-sm">Abuse prevention</AccordionTrigger>
+                <AccordionTrigger className="text-sm">
+                  Abuse prevention
+                </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  We detect unusual patterns like frequent cancellations or ShareCoin farming. Accounts with suspicious activity may be restricted.
+                  We detect unusual patterns like frequent cancellations or
+                  ShareCoin farming. Accounts with suspicious activity may be
+                  restricted.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

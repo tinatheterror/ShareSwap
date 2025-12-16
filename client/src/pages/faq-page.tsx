@@ -86,87 +86,90 @@ export default function FAQPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {/* Swaps */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center">
-                    <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
                   </div>
-                  <span className="font-semibold text-[#0BB88C]">+1</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Completed Swap</p>
+                    <p className="text-xs text-gray-500">Each party earns</p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700">Completed Swap</p>
-                <p className="text-xs text-gray-500">Each party earns</p>
               </div>
 
               {/* Rentals */}
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center">
-                    <DollarSign className="h-4 w-4 text-green-600" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="h-5 w-5 text-green-600" />
                   </div>
-                  <span className="font-semibold text-green-600">+1</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Completed Rental</p>
+                    <p className="text-xs text-gray-500">Owner & renter each</p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700">Completed Rental</p>
-                <p className="text-xs text-gray-500">Owner & renter each</p>
               </div>
 
               {/* Gifts */}
               <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 border border-pink-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 bg-pink-200 rounded-lg flex items-center justify-center">
-                    <Gift className="h-4 w-4 text-pink-500" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-pink-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Gift className="h-5 w-5 text-pink-500" />
                   </div>
-                  <span className="font-semibold text-pink-500">+1</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Gift Given/Received</p>
+                    <p className="text-xs text-gray-500">Both parties earn</p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700">Gift Given/Received</p>
-                <p className="text-xs text-gray-500">Both parties earn</p>
               </div>
 
               {/* Urgent Help */}
               <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 bg-amber-200 rounded-lg flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-amber-600" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Clock className="h-5 w-5 text-amber-600" />
                   </div>
-                  <span className="font-semibold text-amber-600">+2</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Urgent Wishlist Help</p>
+                    <p className="text-xs text-gray-500">When fulfilled in time</p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700">Urgent Wishlist Help</p>
-                <p className="text-xs text-gray-500">When fulfilled in time</p>
               </div>
 
               {/* Sponsored Games */}
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 bg-purple-200 rounded-lg flex items-center justify-center">
-                    <Gamepad2 className="h-4 w-4 text-purple-600" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Gamepad2 className="h-5 w-5 text-purple-600" />
                   </div>
-                  <span className="font-semibold text-purple-600">+3</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Sponsored Games</p>
+                    <p className="text-xs text-gray-500">Daily play limit</p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700">Sponsored Games</p>
-                <p className="text-xs text-gray-500">Daily play limit</p>
               </div>
 
               {/* Referrals */}
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 bg-blue-200 rounded-lg flex items-center justify-center">
-                    <Users className="h-4 w-4 text-blue-600" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Users className="h-5 w-5 text-blue-600" />
                   </div>
-                  <span className="font-semibold text-blue-600">+10</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Friend Referral</p>
+                    <p className="text-xs text-gray-500">After first transaction</p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700">Friend Referral</p>
-                <p className="text-xs text-gray-500">After first transaction</p>
               </div>
 
               {/* Level Up */}
               <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4 border border-teal-200 md:col-span-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-teal-200 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="h-4 w-4 text-teal-600" />
+                  <div className="w-10 h-10 bg-teal-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="h-5 w-5 text-teal-600" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-gray-700">Neighbour Level Up</p>
-                      <span className="font-semibold text-teal-600">+5 per level</span>
-                    </div>
+                    <p className="text-sm font-medium text-gray-700">Neighbour Level Up</p>
                     <p className="text-xs text-gray-500">Grow your community standing</p>
                   </div>
                 </div>

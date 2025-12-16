@@ -87,6 +87,19 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {/* Lending */}
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <HandHeart className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Lending Out</p>
+                    <p className="text-xs text-gray-500">When item is returned</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Swaps */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
                 <div className="flex items-center gap-3">
@@ -127,10 +140,10 @@ export default function FAQPage() {
               </div>
 
               {/* Urgent Help */}
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Clock className="h-5 w-5 text-amber-600" />
+                  <div className="w-10 h-10 bg-orange-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Clock className="h-5 w-5 text-orange-600" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-700">Urgent Wishlist Help</p>

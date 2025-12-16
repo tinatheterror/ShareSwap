@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Clock,
   HelpCircle,
+  Package,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -74,6 +75,70 @@ export default function FAQPage() {
           </CardContent>
         </Card>
 
+        {/* What are ShareCoins? */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Coins className="h-5 w-5 text-teal-600" />
+              What are ShareCoins?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4 border border-teal-200">
+              <p className="text-gray-700 text-sm">
+                ShareCoins are our community currency. They help keep sharing fair and accessible for everyone.
+              </p>
+              <p className="text-red-600 font-medium text-sm mt-2">
+                They do NOT convert to real money.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* How ShareCoins Are Spent */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <div className="flex items-center">
+                <span className="text-orange-500 font-bold text-lg mr-0.5">
+                  −
+                </span>
+                <Coins className="h-5 w-5 text-orange-500" />
+              </div>
+              How ShareCoins Are Spent
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Borrowing Items */}
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Package className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Borrowing Items</p>
+                    <p className="text-xs text-gray-500">Pay to borrow</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Swap Offset */}
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <ArrowLeftRight className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Swap Tier Offset</p>
+                    <p className="text-xs text-gray-500">Balance value differences</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* How ShareCoins Are Earned - Visual Cards */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -99,9 +164,7 @@ export default function FAQPage() {
                     <p className="text-sm font-medium text-gray-700">
                       Lending Out
                     </p>
-                    <p className="text-xs text-gray-500">
-                      Earn when you lend
-                    </p>
+                    <p className="text-xs text-gray-500">Earn when you lend</p>
                   </div>
                 </div>
               </div>

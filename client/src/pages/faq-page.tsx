@@ -79,7 +79,9 @@ export default function FAQPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <div className="flex items-center">
-                <span className="text-teal-600 font-bold text-lg mr-0.5">+</span>
+                <span className="text-teal-600 font-bold text-lg mr-0.5">
+                  +
+                </span>
                 <Coins className="h-5 w-5 text-teal-600" />
               </div>
               How ShareCoins Are Earned
@@ -94,8 +96,12 @@ export default function FAQPage() {
                     <HandHeart className="h-5 w-5 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Lending Out</p>
-                    <p className="text-xs text-gray-500">When item is returned</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Lending Out
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Earn when you lend
+                    </p>
                   </div>
                 </div>
               </div>
@@ -107,7 +113,9 @@ export default function FAQPage() {
                     <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Completed Swap</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Completed Swap
+                    </p>
                     <p className="text-xs text-gray-500">Each party earns</p>
                   </div>
                 </div>
@@ -120,7 +128,9 @@ export default function FAQPage() {
                     <DollarSign className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Completed Rental</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Completed Rental
+                    </p>
                     <p className="text-xs text-gray-500">Owner & renter each</p>
                   </div>
                 </div>
@@ -133,7 +143,9 @@ export default function FAQPage() {
                     <Gift className="h-5 w-5 text-pink-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Gift Given/Received</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Gift Given/Received
+                    </p>
                     <p className="text-xs text-gray-500">Both parties earn</p>
                   </div>
                 </div>
@@ -146,8 +158,12 @@ export default function FAQPage() {
                     <Clock className="h-5 w-5 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Urgent Wishlist Help</p>
-                    <p className="text-xs text-gray-500">When fulfilled in time</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Urgent Wishlist Help
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      When fulfilled in time
+                    </p>
                   </div>
                 </div>
               </div>
@@ -159,7 +175,9 @@ export default function FAQPage() {
                     <Gamepad2 className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Sponsored Games</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Sponsored Games
+                    </p>
                     <p className="text-xs text-gray-500">Daily play limit</p>
                   </div>
                 </div>
@@ -172,8 +190,12 @@ export default function FAQPage() {
                     <Users className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Friend Referral</p>
-                    <p className="text-xs text-gray-500">After first transaction</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Friend Referral
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      When friend completes first transaction
+                    </p>
                   </div>
                 </div>
               </div>
@@ -185,8 +207,12 @@ export default function FAQPage() {
                     <TrendingUp className="h-5 w-5 text-teal-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Neighbour Level Up</p>
-                    <p className="text-xs text-gray-500">Grow your community standing</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Neighbour Level Up
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Grow your community standing
+                    </p>
                   </div>
                 </div>
               </div>
@@ -368,7 +394,8 @@ export default function FAQPage() {
                   ShareCoin reward
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Both the giver and receiver earn ShareCoins when a gift is completed.
+                  Both the giver and receiver earn ShareCoins when a gift is
+                  completed.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -408,7 +435,8 @@ export default function FAQPage() {
                   Keeping the community fair
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  We monitor activity to ensure a positive experience for everyone. Accounts with unusual patterns may be reviewed.
+                  We monitor activity to ensure a positive experience for
+                  everyone. Accounts with unusual patterns may be reviewed.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -430,7 +458,8 @@ export default function FAQPage() {
                   Are rewards fixed?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Yes. Each action has a set reward amount. Rewards are not negotiable and are credited automatically upon completion.
+                  Yes. Each action has a set reward amount. Rewards are not
+                  negotiable and are credited automatically upon completion.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-faq-2">
@@ -438,7 +467,9 @@ export default function FAQPage() {
                   Are there any limits?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Some activities have daily or per-request limits to keep things fair. Sponsored games can be played once per day. Urgent request bonuses apply once per request.
+                  Some activities have daily or per-request limits to keep
+                  things fair. Sponsored games can be played once per day.
+                  Urgent request bonuses apply once per request.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-faq-3">
@@ -446,7 +477,9 @@ export default function FAQPage() {
                   One-time bonuses
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Earn bonus ShareCoins for completing your first swap, gift, rent, or borrow. You also get a one-time bonus for completing your profile with verification, photo, and bio.
+                  Earn bonus ShareCoins for completing your first swap, gift,
+                  rent, or borrow. You also get a one-time bonus for completing
+                  your profile with verification, photo, and bio.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

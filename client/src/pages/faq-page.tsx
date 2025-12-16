@@ -84,204 +84,177 @@ export default function FAQPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4 border border-teal-200">
-              <p className="text-gray-700 text-sm">
-                ShareCoins are our community currency. They help keep sharing fair and accessible for everyone.
-              </p>
-              <p className="text-red-600 font-medium text-sm mt-2">
-                They do NOT convert to real money.
-              </p>
-            </div>
+            <p className="text-gray-700 text-sm">
+              ShareCoins are our community currency. They help keep sharing fair
+              and accessible for everyone.They do not convert to real money.
+            </p>
           </CardContent>
         </Card>
 
-        {/* How ShareCoins Are Spent */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <div className="flex items-center">
-                <span className="text-orange-500 font-bold text-lg mr-0.5">
-                  −
-                </span>
-                <Coins className="h-5 w-5 text-orange-500" />
-              </div>
-              How ShareCoins Are Spent
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              {/* Borrowing Items */}
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Package className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Borrowing Items</p>
-                    <p className="text-xs text-gray-500">Pay to borrow</p>
+        {/* Spent & Earned Side by Side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* How ShareCoins Are Spent */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="flex items-center">
+                  <span className="text-orange-500 font-bold text-lg mr-0.5">−</span>
+                  <Coins className="h-5 w-5 text-orange-500" />
+                </div>
+                How ShareCoins Are Spent
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {/* Borrowing Items */}
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Package className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Borrowing Items</p>
+                      <p className="text-xs text-gray-500">Pay to borrow</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Swap Offset */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <ArrowLeftRight className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Swap Tier Offset</p>
-                    <p className="text-xs text-gray-500">Balance value differences</p>
+                {/* Swap Offset */}
+                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Swap Tier Offset</p>
+                      <p className="text-xs text-gray-500">Balance value differences</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* How ShareCoins Are Earned - Visual Cards */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <div className="flex items-center">
-                <span className="text-teal-600 font-bold text-lg mr-0.5">
-                  +
-                </span>
-                <Coins className="h-5 w-5 text-teal-600" />
-              </div>
-              How ShareCoins Are Earned
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {/* Lending */}
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <HandHeart className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Lending Out
-                    </p>
-                    <p className="text-xs text-gray-500">Earn when you lend</p>
+          {/* How ShareCoins Are Earned */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="flex items-center">
+                  <span className="text-teal-600 font-bold text-lg mr-0.5">+</span>
+                  <Coins className="h-5 w-5 text-teal-600" />
+                </div>
+                How ShareCoins Are Earned
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2">
+                {/* Lending */}
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <HandHeart className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Lending Out</p>
+                      <p className="text-[10px] text-gray-500">Earn when you lend</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Swaps */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Completed Swap
-                    </p>
-                    <p className="text-xs text-gray-500">Each party earns</p>
+                {/* Swaps */}
+                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-3 border border-[#0DCEA1]/20">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Completed Swap</p>
+                      <p className="text-[10px] text-gray-500">Each party earns</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Rentals */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Completed Rental
-                    </p>
-                    <p className="text-xs text-gray-500">Owner & renter each</p>
+                {/* Rentals */}
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 border border-green-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Completed Rental</p>
+                      <p className="text-[10px] text-gray-500">Owner & renter each</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Gifts */}
-              <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 border border-pink-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-pink-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Gift className="h-5 w-5 text-pink-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Gift Given/Received
-                    </p>
-                    <p className="text-xs text-gray-500">Both parties earn</p>
+                {/* Gifts */}
+                <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-3 border border-pink-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-pink-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Gift className="h-4 w-4 text-pink-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Gift Given/Received</p>
+                      <p className="text-[10px] text-gray-500">Both parties earn</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Urgent Help */}
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 border border-orange-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Clock className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Urgent Wishlist Help
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      When fulfilled in time
-                    </p>
+                {/* Urgent Help */}
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-3 border border-orange-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-orange-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Urgent Help</p>
+                      <p className="text-[10px] text-gray-500">Fulfilled in time</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Sponsored Games */}
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Gamepad2 className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Sponsored Games
-                    </p>
-                    <p className="text-xs text-gray-500">Daily play limit</p>
+                {/* Sponsored Games */}
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Gamepad2 className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Sponsored Games</p>
+                      <p className="text-[10px] text-gray-500">Daily play limit</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Referrals */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Users className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Friend Referral
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      When friend completes first transaction
-                    </p>
+                {/* Referrals */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Users className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Friend Referral</p>
+                      <p className="text-[10px] text-gray-500">Friend's first transaction</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Level Up */}
-              <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4 border border-teal-200 md:col-span-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-teal-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="h-5 w-5 text-teal-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Neighbour Level Up
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Grow your community standing
-                    </p>
+                {/* Level Up */}
+                <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-3 border border-teal-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-teal-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <TrendingUp className="h-4 w-4 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-700">Level Up</p>
+                      <p className="text-[10px] text-gray-500">Community standing</p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Borrowing & Lending */}
         <Card className="mb-6">

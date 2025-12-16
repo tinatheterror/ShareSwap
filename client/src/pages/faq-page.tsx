@@ -105,35 +105,29 @@ export default function FAQPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Borrowing Items */}
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Package className="h-5 w-5 text-amber-600" />
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Package className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        Borrowing Items
-                      </p>
-                      <p className="text-xs text-gray-500">Pay to borrow</p>
+                      <p className="text-xs font-medium text-gray-700">Borrowing Items</p>
+                      <p className="text-[10px] text-gray-500">Pay to borrow</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Swap Offset */}
-                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
+                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-3 border border-[#0DCEA1]/20">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">
-                        Swap Tier Offset
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Balance value differences
-                      </p>
+                      <p className="text-xs font-medium text-gray-700">Swap Tier Offset</p>
+                      <p className="text-[10px] text-gray-500">Balance value differences</p>
                     </div>
                   </div>
                 </div>

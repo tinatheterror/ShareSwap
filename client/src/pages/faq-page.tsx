@@ -42,9 +42,7 @@ export default function FAQPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
                 <ArrowLeftRight className="h-4 w-4 text-white" />
               </div>
-              <span className="font-normal text-gray-800">
-                What is ShareSwap?
-              </span>
+              What is ShareSwap?
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -98,7 +96,9 @@ export default function FAQPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="flex items-center">
-                  <span className="text-orange-500 font-bold text-lg mr-0.5">−</span>
+                  <span className="text-orange-500 font-bold text-lg mr-0.5">
+                    −
+                  </span>
                   <Coins className="h-5 w-5 text-orange-500" />
                 </div>
                 How ShareCoins Are Spent
@@ -113,7 +113,9 @@ export default function FAQPage() {
                       <Package className="h-5 w-5 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Borrowing Items</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Borrowing Items
+                      </p>
                       <p className="text-xs text-gray-500">Pay to borrow</p>
                     </div>
                   </div>
@@ -126,8 +128,12 @@ export default function FAQPage() {
                       <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Swap Tier Offset</p>
-                      <p className="text-xs text-gray-500">Balance value differences</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Swap Tier Offset
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Balance value differences
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -140,7 +146,9 @@ export default function FAQPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="flex items-center">
-                  <span className="text-teal-600 font-bold text-lg mr-0.5">+</span>
+                  <span className="text-teal-600 font-bold text-lg mr-0.5">
+                    +
+                  </span>
                   <Coins className="h-5 w-5 text-teal-600" />
                 </div>
                 How ShareCoins Are Earned
@@ -155,8 +163,12 @@ export default function FAQPage() {
                       <HandHeart className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Lending Out</p>
-                      <p className="text-[10px] text-gray-500">Earn when you lend</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Lending Out
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Earn when you lend
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -168,8 +180,12 @@ export default function FAQPage() {
                       <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Completed Swap</p>
-                      <p className="text-[10px] text-gray-500">Each party earns</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Completed Swap
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Each party earns
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -181,8 +197,12 @@ export default function FAQPage() {
                       <DollarSign className="h-4 w-4 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Completed Rental</p>
-                      <p className="text-[10px] text-gray-500">Owner & renter each</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Completed Rental
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Owner & renter each
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -194,8 +214,12 @@ export default function FAQPage() {
                       <Gift className="h-4 w-4 text-pink-500" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Gift Given/Received</p>
-                      <p className="text-[10px] text-gray-500">Both parties earn</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Gift Given/Received
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Both parties earn
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -207,8 +231,12 @@ export default function FAQPage() {
                       <Clock className="h-4 w-4 text-orange-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Urgent Help</p>
-                      <p className="text-[10px] text-gray-500">Fulfilled in time</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Urgent Help
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Fulfilled in time
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -220,8 +248,12 @@ export default function FAQPage() {
                       <Gamepad2 className="h-4 w-4 text-purple-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Sponsored Games</p>
-                      <p className="text-[10px] text-gray-500">Daily play limit</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Sponsored Games
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Daily play limit
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -233,8 +265,12 @@ export default function FAQPage() {
                       <Users className="h-4 w-4 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Friend Referral</p>
-                      <p className="text-[10px] text-gray-500">Friend's first transaction</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Friend Referral
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Friend's first transaction
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -246,8 +282,12 @@ export default function FAQPage() {
                       <TrendingUp className="h-4 w-4 text-teal-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Level Up</p>
-                      <p className="text-[10px] text-gray-500">Community standing</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Level Up
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Community standing
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -310,54 +350,77 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm mb-4">
-              A swap is a direct item-for-item trade between neighbours. No cash. No deposits. Just swap. Value differences are balanced with ShareCoins. Our tier system ensures fair exchanges.
+              A swap is a direct item-for-item trade between neighbours. No
+              cash. No deposits. Just swap. Value differences are balanced with
+              ShareCoins. Our tier system ensures fair exchanges.
             </p>
 
             {/* Tiers & ShareCoin Values */}
             <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 mb-4">
-              <p className="text-[#0DCEA1] font-medium text-sm mb-3">Tiers & ShareCoin Values</p>
+              <p className="text-[#0DCEA1] font-medium text-sm mb-3">
+                Tiers & ShareCoin Values
+              </p>
               <div className="grid grid-cols-4 gap-2">
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 1</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">5 ShareCoins</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm">
+                    5 ShareCoins
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 2</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">10 ShareCoins</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm">
+                    10 ShareCoins
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 3</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">20 ShareCoins</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm">
+                    20 ShareCoins
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 4</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">40 ShareCoins</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm">
+                    40 ShareCoins
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Swap Rules */}
             <div>
-              <p className="font-medium text-gray-800 text-sm mb-3">Swap Rules</p>
+              <p className="font-medium text-gray-800 text-sm mb-3">
+                Swap Rules
+              </p>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
                   <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Same-tier swaps</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Same-tier swaps
+                    </p>
                     <p className="text-xs text-gray-500">Direct swaps.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">One-tier difference</p>
-                    <p className="text-xs text-gray-500">The person with the lower-tier item adds ShareCoins to balance the value.</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      One-tier difference
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      The person with the lower-tier item adds ShareCoins to
+                      balance the value.
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Two or more tier difference</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Two tier difference
+                    </p>
                     <p className="text-xs text-gray-500">Not allowed.</p>
                   </div>
                 </div>
@@ -366,109 +429,34 @@ export default function FAQPage() {
           </CardContent>
         </Card>
 
-        {/* Renting (Cash) */}
+        {/* How Renting Works */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <DollarSign className="h-5 w-5 text-green-600" />
-              Renting (Cash)
+              How Renting Works
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="rent-1">
-                <AccordionTrigger className="text-sm">
-                  Renting vs borrowing
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Renting uses real money. Borrowing uses ShareCoins. Choose
-                  renting if you want to earn cash from your items.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="rent-2">
-                <AccordionTrigger className="text-sm">
-                  Suggested pricing
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  We suggest weekly rates based on item category. You can adjust
-                  the rate and deposit. Platform fee is 0% for 2025, only 3%
-                  payment processing.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="rent-3">
-                <AccordionTrigger className="text-sm">
-                  Cash security deposits
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Owners set the deposit amount. Deposits are held until the
-                  item is returned. Protects against damage or non-return.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+          <CardContent>
+            <p className="text-gray-700 text-sm mb-4">
+              Renting uses real money instead of ShareCoins. Choose renting if you want to earn cash from your items.
+            </p>
 
-        {/* Swapping */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
-              Swapping
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="swap-1">
-                <AccordionTrigger className="text-sm">
-                  What is swapping
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  A direct item-for-item trade. No cash. No deposits. Value
-                  differences are balanced with ShareCoins.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="swap-2">
-                <AccordionTrigger className="text-sm">
-                  Tiers & swap rules
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      <div className="bg-[#E6FBF5] rounded p-2">
-                        <div className="font-semibold">Tier 1</div>
-                        <div className="text-[#0DCEA1]">5 ShareCoins</div>
-                      </div>
-                      <div className="bg-[#E6FBF5] rounded p-2">
-                        <div className="font-semibold">Tier 2</div>
-                        <div className="text-[#0DCEA1]">10 ShareCoins</div>
-                      </div>
-                      <div className="bg-[#E6FBF5] rounded p-2">
-                        <div className="font-semibold">Tier 3</div>
-                        <div className="text-[#0DCEA1]">20 ShareCoins</div>
-                      </div>
-                      <div className="bg-[#E6FBF5] rounded p-2">
-                        <div className="font-semibold">Tier 4</div>
-                        <div className="text-[#0DCEA1]">40 ShareCoins</div>
-                      </div>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                        <span>Same tier: Direct swap</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                        <span>1 tier apart: Lower tier adds ShareCoins</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-red-400 rounded-full"></span>
-                        <span>2+ tiers apart: Not allowed</span>
-                      </div>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            {/* Key Info Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                <p className="text-sm font-medium text-gray-700 mb-1">Suggested Pricing</p>
+                <p className="text-xs text-gray-500">Weekly rates based on item category. You can adjust the rate.</p>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                <p className="text-sm font-medium text-gray-700 mb-1">Platform Fees</p>
+                <p className="text-xs text-gray-500">0% platform fee for 2025. Only 3% payment processing.</p>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                <p className="text-sm font-medium text-gray-700 mb-1">Security Deposits</p>
+                <p className="text-xs text-gray-500">Owners set the deposit. Held until item is returned safely.</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

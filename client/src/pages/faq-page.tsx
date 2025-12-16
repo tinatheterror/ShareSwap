@@ -78,7 +78,10 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Coins className="h-5 w-5 text-teal-600" />
+              <div className="flex items-center">
+                <span className="text-teal-600 font-bold text-lg mr-0.5">+</span>
+                <Coins className="h-5 w-5 text-teal-600" />
+              </div>
               How ShareCoins Are Earned
             </CardTitle>
           </CardHeader>

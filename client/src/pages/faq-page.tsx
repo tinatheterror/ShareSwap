@@ -19,6 +19,10 @@ import {
   Clock,
   HelpCircle,
   Package,
+  Wallet,
+  Sparkles,
+  UserCheck,
+  Leaf,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -35,6 +39,71 @@ export default function FAQPage() {
           </p>
         </div>
 
+        {/* Why ShareSwap? */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-[#0DCEA1]" />
+              Why ShareSwap?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Save Money or Earn Money */}
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Wallet className="h-5 w-5 text-[#0DCEA1]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Save Money or Earn Money</p>
+                    <p className="text-xs text-gray-500">Borrow what you need for a fraction of the cost or even free. Rent out items you already have for extra cash.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Turn Unused Items Into Value */}
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="h-5 w-5 text-[#0DCEA1]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Turn Unused Items Into Value</p>
+                    <p className="text-xs text-gray-500">Most items sit idle. ShareSwap turns unused stuff into value without selling it or throwing it out.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Built on Local Trust */}
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <UserCheck className="h-5 w-5 text-[#0DCEA1]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Built on Local Trust</p>
+                    <p className="text-xs text-gray-500">Verified profiles, trust scores, and fair rules make sharing with neighbours safe and predictable.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reduce Waste Effortlessly */}
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Leaf className="h-5 w-5 text-[#0DCEA1]" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Reduce Waste Effortlessly</p>
+                    <p className="text-xs text-gray-500">Sharing means fewer purchases, less clutter, and less environmental impact with no extra effort required.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* What is ShareSwap */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -47,29 +116,73 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 mb-4">
-              A community platform where neighbours share items through
-              borrowing, renting, swapping, or gifting.
+              A community platform where neighbours share their own items
+              through borrowing, renting, swapping, or gifting.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="flex items-center gap-2 bg-amber-50 rounded-lg p-3">
-                <Coins className="h-5 w-5 text-amber-500 flex-shrink-0" />
+              <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
+                <HandHeart className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
                 <span className="text-sm font-medium text-gray-700">
                   Borrow & Lend
                 </span>
               </div>
-              <div className="flex items-center gap-2 bg-green-50 rounded-lg p-3">
-                <DollarSign className="h-5 w-5 text-green-500 flex-shrink-0" />
+              <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
+                <DollarSign className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
                 <span className="text-sm font-medium text-gray-700">Rent</span>
               </div>
               <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
                 <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
                 <span className="text-sm font-medium text-gray-700">Swap</span>
               </div>
-              <div className="flex items-center gap-2 bg-pink-50 rounded-lg p-3">
-                <Gift className="h-5 w-5 text-pink-500 flex-shrink-0" />
+              <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
+                <Gift className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
                 <span className="text-sm font-medium text-gray-700">Gift</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Borrowing & Lending */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <HandHeart className="h-5 w-5 text-teal-600" />
+              Borrowing & Lending
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="borrow-1">
+                <AccordionTrigger className="text-sm">
+                  How borrowing works
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Request an item, pay ShareCoins, and pick it up. Return it by
+                  the agreed date. The lender earns ShareCoins when the item is
+                  returned safely.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="borrow-2">
+                <AccordionTrigger className="text-sm">
+                  ShareCoins explanation
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  ShareCoins are the platform currency. Earn them by lending
+                  items. Spend them to borrow. No real money changes hands for
+                  borrowing.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="borrow-3">
+                <AccordionTrigger className="text-sm">
+                  Trust-based security deposits
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Deposits are based on item value and your trust score. Higher
+                  trust means lower deposits. Fully refundable when items return
+                  in good condition.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
 
@@ -110,10 +223,12 @@ export default function FAQPage() {
                 <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Package className="h-4 w-4 text-amber-600" />
+                      <HandHeart className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Borrowing Items</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Borrowing Items
+                      </p>
                       <p className="text-[10px] text-gray-500">Pay to borrow</p>
                     </div>
                   </div>
@@ -126,8 +241,12 @@ export default function FAQPage() {
                       <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-700">Swap Tier Offset</p>
-                      <p className="text-[10px] text-gray-500">Balance value differences</p>
+                      <p className="text-xs font-medium text-gray-700">
+                        Swap Tier Offset
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        Balance value differences
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -158,7 +277,7 @@ export default function FAQPage() {
                     </div>
                     <div>
                       <p className="text-xs font-medium text-gray-700">
-                        Lending Out
+                        Lending Items
                       </p>
                       <p className="text-[10px] text-gray-500">
                         Earn when you lend
@@ -290,50 +409,6 @@ export default function FAQPage() {
           </Card>
         </div>
 
-        {/* Borrowing & Lending */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <HandHeart className="h-5 w-5 text-teal-600" />
-              Borrowing & Lending
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="borrow-1">
-                <AccordionTrigger className="text-sm">
-                  How borrowing works
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Request an item, pay ShareCoins, and pick it up. Return it by
-                  the agreed date. The lender earns ShareCoins when the item is
-                  returned safely.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="borrow-2">
-                <AccordionTrigger className="text-sm">
-                  ShareCoins explanation
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  ShareCoins are the platform currency. Earn them by lending
-                  items. Spend them to borrow. No real money changes hands for
-                  borrowing.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="borrow-3">
-                <AccordionTrigger className="text-sm">
-                  Trust-based security deposits
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Deposits are based on item value and your trust score. Higher
-                  trust means lower deposits. Fully refundable when items return
-                  in good condition.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
         {/* How Swaps Work */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -433,22 +508,35 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm mb-4">
-              Renting uses real money instead of ShareCoins. Choose renting if you want to earn cash from your items.
+              Renting uses real money instead of ShareCoins. Choose renting if
+              you want to earn cash from your items.
             </p>
 
             {/* Key Info Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <p className="text-sm font-medium text-gray-700 mb-1">Suggested Pricing</p>
-                <p className="text-xs text-gray-500">Weekly rates based on item category. You can adjust the rate.</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Suggested Pricing
+                </p>
+                <p className="text-xs text-gray-500">
+                  Weekly rates based on item category. You can adjust the rate.
+                </p>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <p className="text-sm font-medium text-gray-700 mb-1">Platform Fees</p>
-                <p className="text-xs text-gray-500">0% platform fee for 2025. Only 3% payment processing.</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Platform Fees
+                </p>
+                <p className="text-xs text-gray-500">
+                  0% platform fee for 2025. Only 3% payment processing.
+                </p>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <p className="text-sm font-medium text-gray-700 mb-1">Security Deposits</p>
-                <p className="text-xs text-gray-500">Owners set the deposit. Held until item is returned safely.</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Security Deposits
+                </p>
+                <p className="text-xs text-gray-500">
+                  Owners set the deposit. Held until item is returned safely.
+                </p>
               </div>
             </div>
           </CardContent>
@@ -539,7 +627,7 @@ export default function FAQPage() {
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="sc-faq-1">
                 <AccordionTrigger className="text-sm">
-                  Are rewards fixed?
+                  Are ShareCoin rewards fixed?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   Yes. Each action has a set reward amount. Rewards are not
@@ -548,7 +636,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="sc-faq-2">
                 <AccordionTrigger className="text-sm">
-                  Are there any limits?
+                  Are there any limits on ShareCoin rewards?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   Some activities have daily or per-request limits to keep
@@ -558,7 +646,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="sc-faq-3">
                 <AccordionTrigger className="text-sm">
-                  One-time bonuses
+                  One-time ShareCoin bonuses
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   Earn bonus ShareCoins for completing your first swap, gift,

@@ -64,7 +64,9 @@ export default function FAQPage() {
                       {/* Center circle with $ */}
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-4 h-4 bg-[#2E8B57] rounded-full flex items-center justify-center">
-                          <span className="text-[10px] text-[#90EE90] font-bold">$</span>
+                          <span className="text-[10px] text-[#90EE90] font-bold">
+                            $
+                          </span>
                         </div>
                       </div>
                       {/* Corner dots */}
@@ -103,7 +105,9 @@ export default function FAQPage() {
                       <div className="w-0.5 h-2 bg-amber-600 mx-auto"></div>
                       <div className="w-5 h-6 bg-amber-100 border-2 border-amber-400 rounded-sm shadow-sm -mt-0.5">
                         <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-amber-400 rounded-full"></div>
-                        <div className="flex items-center justify-center h-full text-[10px] text-amber-700 font-bold mt-0.5">$</div>
+                        <div className="flex items-center justify-center h-full text-[10px] text-amber-700 font-bold mt-0.5">
+                          $
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -175,10 +179,11 @@ export default function FAQPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 mb-4">
+            <p className="text-gray-700 text-sm mb-4">
               A community platform where neighbours share their own items
               through borrowing, renting, swapping, or gifting.
             </p>
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
                 <HandHeart className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />

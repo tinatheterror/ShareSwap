@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeftRight,
   Coins,
@@ -182,75 +183,219 @@ export default function FAQPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 text-sm">
+            <p className="text-gray-700 text-sm mb-6">
               A community platform where neighbours share their own items
               through borrowing, renting, swapping, or gifting.
             </p>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
-                <HandHeart className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-700">
-                  Borrow & Lend
-                </span>
-              </div>
-              <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
-                <DollarSign className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-700">Rent</span>
-              </div>
-              <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
-                <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-700">Swap</span>
-              </div>
-              <div className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3">
-                <Gift className="h-5 w-5 text-[#0DCEA1] flex-shrink-0" />
-                <span className="text-sm font-medium text-gray-700">Gift</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Tabs defaultValue="borrow" className="w-full">
+              <TabsList className="grid grid-cols-4 gap-2 h-auto bg-transparent p-0 mb-4">
+                <TabsTrigger 
+                  value="borrow" 
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                >
+                  <HandHeart className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm font-medium hidden md:inline">Borrow & Lend</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="rent" 
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                >
+                  <DollarSign className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm font-medium hidden md:inline">Rent</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="swap" 
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                >
+                  <ArrowLeftRight className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm font-medium hidden md:inline">Swap</span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="gift" 
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                >
+                  <Gift className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm font-medium hidden md:inline">Gift</span>
+                </TabsTrigger>
+              </TabsList>
 
-        {/* Borrowing & Lending */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <HandHeart className="h-5 w-5 text-teal-600" />
-              Borrowing & Lending
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="borrow-1">
-                <AccordionTrigger className="text-sm">
-                  How borrowing works
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Request an item, pay ShareCoins, and pick it up. Return it by
-                  the agreed date. The lender earns ShareCoins when the item is
-                  returned safely.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="borrow-2">
-                <AccordionTrigger className="text-sm">
-                  ShareCoins explanation
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  ShareCoins are the platform currency. Earn them by lending
-                  items. Spend them to borrow. No real money changes hands for
-                  borrowing.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="borrow-3">
-                <AccordionTrigger className="text-sm">
-                  Trust-based security deposits
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Deposits are based on item value and your trust score. Higher
-                  trust means lower deposits. Fully refundable when items return
-                  in good condition.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+              {/* Borrow & Lend Tab Content */}
+              <TabsContent value="borrow" className="mt-0">
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="borrow-1">
+                    <AccordionTrigger className="text-sm">
+                      How borrowing works
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-600">
+                      Request an item, pay ShareCoins, and pick it up. Return it by
+                      the agreed date. The lender earns ShareCoins when the item is
+                      returned safely.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="borrow-2">
+                    <AccordionTrigger className="text-sm">
+                      ShareCoins explanation
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-600">
+                      ShareCoins are the platform currency. Earn them by lending
+                      items. Spend them to borrow. No real money changes hands for
+                      borrowing.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="borrow-3">
+                    <AccordionTrigger className="text-sm">
+                      Trust-based security deposits
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-600">
+                      Deposits are based on item value and your trust score. Higher
+                      trust means lower deposits. Fully refundable when items return
+                      in good condition.
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </TabsContent>
+
+              {/* Rent Tab Content */}
+              <TabsContent value="rent" className="mt-0">
+                <p className="text-gray-700 text-sm mb-4">
+                  Renting uses real money instead of ShareCoins. Choose renting if
+                  you want to earn cash from your items.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Suggested Pricing
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Weekly rental rates and security deposits are suggested based
+                      on item category. You can adjust the rate and security deposit
+                      to your desire.
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Platform Fees
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      0% platform fee for 2025. Only 3% payment processing.
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Security Deposits
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Owners can adjust the suggested deposit amount. Held until
+                      item is returned safely.
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Swap Tab Content */}
+              <TabsContent value="swap" className="mt-0">
+                <p className="text-gray-700 text-sm mb-4">
+                  A swap is a direct item-for-item trade between neighbours. No
+                  cash. No deposits. Just swap. Value differences are balanced with
+                  ShareCoins. Our tier system ensures fair exchanges.
+                </p>
+
+                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 mb-4">
+                  <p className="text-[#0DCEA1] font-medium text-sm mb-3">
+                    Tiers & ShareCoin Values
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                      <p className="text-sm font-medium text-gray-700">Tier 1</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm">
+                        5 ShareCoins
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                      <p className="text-sm font-medium text-gray-700">Tier 2</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm">
+                        10 ShareCoins
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                      <p className="text-sm font-medium text-gray-700">Tier 3</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm">
+                        20 ShareCoins
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                      <p className="text-sm font-medium text-gray-700">Tier 4</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm">
+                        40 ShareCoins
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="font-medium text-gray-800 text-sm mb-3">
+                    Swap Rules
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          Same-tier swaps
+                        </p>
+                        <p className="text-xs text-gray-500">Direct swaps.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          One-tier difference
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          The person with the lower-tier item adds ShareCoins to
+                          balance the value.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          Two tier difference
+                        </p>
+                        <p className="text-xs text-gray-500">Not allowed.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Gift Tab Content */}
+              <TabsContent value="gift" className="mt-0">
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="gift-1">
+                    <AccordionTrigger className="text-sm">
+                      What gifting means
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-600">
+                      Give away items you no longer need. The recipient keeps the
+                      item permanently. No payments or deposits required.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="gift-2">
+                    <AccordionTrigger className="text-sm">
+                      ShareCoin reward
+                    </AccordionTrigger>
+                    <AccordionContent className="text-gray-600">
+                      Both the giver and receiver earn ShareCoins when a gift is
+                      completed.
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
@@ -264,8 +409,8 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm">
-              ShareCoins are our community currency. They help keep sharing fair
-              and accessible for everyone. They do not convert to real money.
+              ShareCoins are the currency of our marketplace. They help keep sharing fair
+              and accessible for everyone. They do not convert to real money. They mainly reward lending, and help build community reputation.
             </p>
           </CardContent>
         </Card>
@@ -476,174 +621,6 @@ export default function FAQPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* How Swaps Work */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]" />
-              How Swaps Work
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700 text-sm mb-4">
-              A swap is a direct item-for-item trade between neighbours. No
-              cash. No deposits. Just swap. Value differences are balanced with
-              ShareCoins. Our tier system ensures fair exchanges.
-            </p>
-
-            {/* Tiers & ShareCoin Values */}
-            <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 mb-4">
-              <p className="text-[#0DCEA1] font-medium text-sm mb-3">
-                Tiers & ShareCoin Values
-              </p>
-              <div className="grid grid-cols-4 gap-2">
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                  <p className="text-sm font-medium text-gray-700">Tier 1</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">
-                    5 ShareCoins
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                  <p className="text-sm font-medium text-gray-700">Tier 2</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">
-                    10 ShareCoins
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                  <p className="text-sm font-medium text-gray-700">Tier 3</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">
-                    20 ShareCoins
-                  </p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                  <p className="text-sm font-medium text-gray-700">Tier 4</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm">
-                    40 ShareCoins
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Swap Rules */}
-            <div>
-              <p className="font-medium text-gray-800 text-sm mb-3">
-                Swap Rules
-              </p>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Same-tier swaps
-                    </p>
-                    <p className="text-xs text-gray-500">Direct swaps.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      One-tier difference
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      The person with the lower-tier item adds ShareCoins to
-                      balance the value.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Two tier difference
-                    </p>
-                    <p className="text-xs text-gray-500">Not allowed.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* How Renting Works */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              How Renting Works
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700 text-sm mb-4">
-              Renting uses real money instead of ShareCoins. Choose renting if
-              you want to earn cash from your items.
-            </p>
-
-            {/* Key Info Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  Suggested Pricing
-                </p>
-                <p className="text-xs text-gray-500">
-                  Weekly rental rates and security deposits are suggested based
-                  on item category. You can adjust the rate and security deposit
-                  to your desire.
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  Platform Fees
-                </p>
-                <p className="text-xs text-gray-500">
-                  0% platform fee for 2025. Only 3% payment processing.
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-                <p className="text-sm font-medium text-gray-700 mb-1">
-                  Security Deposits
-                </p>
-                <p className="text-xs text-gray-500">
-                  Owners can adjust the suggested deposit amount. Held until
-                  item is returned safely.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Gifting */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Gift className="h-5 w-5 text-pink-500" />
-              Gifting
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="gift-1">
-                <AccordionTrigger className="text-sm">
-                  What gifting means
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Give away items you no longer need. The recipient keeps the
-                  item permanently. No payments or deposits required.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="gift-2">
-                <AccordionTrigger className="text-sm">
-                  ShareCoin reward
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Both the giver and receiver earn ShareCoins when a gift is
-                  completed.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
 
         {/* Trust & Safety */}
         <Card className="mb-6">

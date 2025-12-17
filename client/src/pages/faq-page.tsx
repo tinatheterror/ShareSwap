@@ -51,10 +51,15 @@ export default function FAQPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {/* Save Money or Earn Money */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#0DCEA1] to-[#0BA882] rounded-2xl rotate-3"></div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#10E6B0] to-[#0DCEA1] rounded-2xl -rotate-3 flex items-center justify-center">
-                    <Wallet className="h-7 w-7 text-white" />
+                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                  {/* Coin stack illustration */}
+                  <div className="absolute bottom-3 left-3 w-6 h-4 bg-amber-400 rounded-sm rotate-[-8deg] border border-amber-500"></div>
+                  <div className="absolute bottom-4 left-4 w-6 h-4 bg-amber-300 rounded-sm rotate-[-5deg] border border-amber-400"></div>
+                  <div className="absolute bottom-5 left-5 w-6 h-4 bg-amber-200 rounded-sm border border-amber-300 flex items-center justify-center">
+                    <span className="text-[8px] text-amber-700 font-bold">$</span>
+                  </div>
+                  <div className="absolute top-3 right-3 w-5 h-5 bg-[#0DCEA1] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <DollarSign className="h-3 w-3 text-white" />
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">Save or Earn Money</p>
@@ -63,14 +68,16 @@ export default function FAQPage() {
 
               {/* Turn Unused Items Into Value */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#0DCEA1] to-[#0BA882] rounded-full"></div>
-                  <div className="absolute inset-1 bg-gradient-to-br from-[#10E6B0] to-[#0DCEA1] rounded-full flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-white" />
+                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                  {/* Box with sparkle illustration */}
+                  <div className="w-8 h-7 bg-[#B8860B] rounded-sm relative">
+                    <div className="absolute inset-x-0 top-0 h-2 bg-[#DAA520] rounded-t-sm"></div>
+                    <div className="absolute inset-x-1 top-1 h-0.5 bg-[#B8860B]"></div>
                   </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                    <Sparkles className="h-2.5 w-2.5 text-yellow-700" />
+                  <div className="absolute top-2 right-3 w-4 h-4 bg-[#0DCEA1] rounded-full flex items-center justify-center">
+                    <Sparkles className="h-2.5 w-2.5 text-white" />
                   </div>
+                  <div className="absolute bottom-4 left-3 w-2 h-2 bg-[#0DCEA1]/60 rounded-full"></div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">Turn Idle Into Value</p>
                 <p className="text-[11px] text-gray-500 leading-tight">Your unused items can help others.</p>
@@ -78,13 +85,18 @@ export default function FAQPage() {
 
               {/* Built on Local Trust */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#0DCEA1] to-[#0BA882] rounded-xl"></div>
-                  <div className="absolute inset-0.5 bg-gradient-to-br from-[#10E6B0] to-[#0DCEA1] rounded-xl flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-white" />
+                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                  {/* ID card with shield illustration */}
+                  <div className="w-8 h-6 bg-[#87CEEB] rounded-sm border border-[#5F9EA0] rotate-[-5deg] absolute left-3">
+                    <div className="absolute top-1 left-1 w-2 h-2 bg-white/60 rounded-full"></div>
+                    <div className="absolute bottom-1 left-1 right-1 h-0.5 bg-white/40"></div>
+                    <div className="absolute bottom-2 left-1 right-2 h-0.5 bg-white/40"></div>
                   </div>
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white rounded-full px-1.5 py-0.5 shadow-sm border border-[#0DCEA1]/30">
-                    <UserCheck className="h-3 w-3 text-[#0DCEA1]" />
+                  <div className="absolute right-3 bottom-3">
+                    <Shield className="h-5 w-5 text-gray-400 fill-gray-100" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-1.5 h-2 bg-gray-400 rounded-sm mt-0.5"></div>
+                    </div>
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">Built on Local Trust</p>
@@ -93,13 +105,16 @@ export default function FAQPage() {
 
               {/* Reduce Waste Effortlessly */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 relative">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-green-500 to-[#0DCEA1] rounded-full"></div>
-                  <div className="absolute inset-1.5 bg-gradient-to-br from-[#10E6B0] to-green-400 rounded-full flex items-center justify-center">
-                    <Leaf className="h-6 w-6 text-white" />
+                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                  {/* Earth with leaf illustration */}
+                  <div className="w-9 h-9 bg-[#87CEEB] rounded-full border-2 border-[#5F9EA0] relative overflow-hidden">
+                    <div className="absolute bottom-0 left-1 w-4 h-3 bg-[#228B22] rounded-t-full"></div>
+                    <div className="absolute top-1 right-1 w-3 h-2 bg-[#228B22] rounded-full"></div>
                   </div>
-                  <div className="absolute top-0 right-0 w-3 h-3 bg-green-300 rounded-full"></div>
-                  <div className="absolute bottom-1 left-0 w-2 h-2 bg-[#0DCEA1] rounded-full"></div>
+                  <div className="absolute -top-0.5 right-3">
+                    <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />
+                  </div>
+                  <div className="absolute bottom-3 left-3 w-2 h-2 bg-[#90EE90] rounded-full"></div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">Reduce Waste</p>
                 <p className="text-[11px] text-gray-500 leading-tight">Less buying, less clutter, less impact.</p>

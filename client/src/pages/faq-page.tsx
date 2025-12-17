@@ -89,9 +89,9 @@ export default function FAQPage() {
                     <div className="absolute right-1 -bottom-1 w-1 h-1 bg-[#8B7355] rounded-sm"></div>
                   </div>
                   {/* Price tag */}
-                  <div className="absolute top-2 right-2 w-5 h-6 bg-white border border-gray-300 rounded-sm rotate-[15deg] shadow-sm">
-                    <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-gray-400 rounded-full"></div>
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[6px] text-[#0DCEA1] font-bold">$</div>
+                  <div className="absolute top-1.5 right-1.5 w-6 h-8 bg-amber-100 border-2 border-amber-400 rounded rotate-[12deg] shadow-md">
+                    <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+                    <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] text-amber-700 font-bold">$</div>
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">

@@ -189,39 +189,39 @@ export default function FAQPage() {
             </p>
 
             <Tabs defaultValue="borrow" className="w-full">
-              <TabsList className="flex h-auto bg-transparent p-0 gap-0 border-b border-gray-200">
+              <TabsList className="grid grid-cols-4 gap-2 h-auto bg-transparent p-0 mb-4">
                 <TabsTrigger 
                   value="borrow" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-t-lg border border-b-0 border-transparent bg-transparent text-gray-600 data-[state=active]:bg-white data-[state=active]:border-gray-200 data-[state=active]:text-[#0DCEA1] data-[state=active]:shadow-sm data-[state=active]:relative data-[state=active]:z-10 data-[state=active]:-mb-px"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
-                  <HandHeart className="h-4 w-4 flex-shrink-0" />
+                  <HandHeart className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">Borrow & Lend</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="rent" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-t-lg border border-b-0 border-transparent bg-transparent text-gray-600 data-[state=active]:bg-white data-[state=active]:border-gray-200 data-[state=active]:text-[#0DCEA1] data-[state=active]:shadow-sm data-[state=active]:relative data-[state=active]:z-10 data-[state=active]:-mb-px"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
-                  <DollarSign className="h-4 w-4 flex-shrink-0" />
+                  <DollarSign className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">Rent</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="swap" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-t-lg border border-b-0 border-transparent bg-transparent text-gray-600 data-[state=active]:bg-white data-[state=active]:border-gray-200 data-[state=active]:text-[#0DCEA1] data-[state=active]:shadow-sm data-[state=active]:relative data-[state=active]:z-10 data-[state=active]:-mb-px"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
-                  <ArrowLeftRight className="h-4 w-4 flex-shrink-0" />
+                  <ArrowLeftRight className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">Swap</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="gift" 
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-t-lg border border-b-0 border-transparent bg-transparent text-gray-600 data-[state=active]:bg-white data-[state=active]:border-gray-200 data-[state=active]:text-[#0DCEA1] data-[state=active]:shadow-sm data-[state=active]:relative data-[state=active]:z-10 data-[state=active]:-mb-px"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
-                  <Gift className="h-4 w-4 flex-shrink-0" />
+                  <Gift className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">Gift</span>
                 </TabsTrigger>
               </TabsList>
 
               {/* Borrow & Lend Tab Content */}
-              <TabsContent value="borrow" className="mt-0 pt-4 border-x border-b border-gray-200 rounded-b-lg p-4 bg-white">
+              <TabsContent value="borrow" className="mt-0">
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="borrow-1">
                     <AccordionTrigger className="text-sm">
@@ -257,7 +257,7 @@ export default function FAQPage() {
               </TabsContent>
 
               {/* Rent Tab Content */}
-              <TabsContent value="rent" className="mt-0 pt-4 border-x border-b border-gray-200 rounded-b-lg p-4 bg-white">
+              <TabsContent value="rent" className="mt-0">
                 <p className="text-gray-700 text-sm mb-4">
                   Renting uses real money instead of ShareCoins. Choose renting if
                   you want to earn cash from your items.
@@ -294,7 +294,7 @@ export default function FAQPage() {
               </TabsContent>
 
               {/* Swap Tab Content */}
-              <TabsContent value="swap" className="mt-0 pt-4 border-x border-b border-gray-200 rounded-b-lg p-4 bg-white">
+              <TabsContent value="swap" className="mt-0">
                 <p className="text-gray-700 text-sm mb-4">
                   A swap is a direct item-for-item trade between neighbours. No
                   cash. No deposits. Just swap. Value differences are balanced with
@@ -373,7 +373,7 @@ export default function FAQPage() {
               </TabsContent>
 
               {/* Gift Tab Content */}
-              <TabsContent value="gift" className="mt-0 pt-4 border-x border-b border-gray-200 rounded-b-lg p-4 bg-white">
+              <TabsContent value="gift" className="mt-0">
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="gift-1">
                     <AccordionTrigger className="text-sm">

@@ -76,20 +76,20 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Sofa with price tag illustration */}
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+                  <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2">
                     {/* Sofa body */}
-                    <div className="w-12 h-5 bg-[#7C9EB2] rounded-t-lg border border-[#5A7A8A]"></div>
+                    <div className="w-10 h-4 bg-[#7C9EB2] rounded-t-lg border border-[#5A7A8A]"></div>
                     {/* Sofa back */}
-                    <div className="w-12 h-3.5 bg-[#5A7A8A] rounded-t-md -mt-4 mx-auto"></div>
+                    <div className="w-10 h-3 bg-[#5A7A8A] rounded-t-md -mt-3.5 mx-auto"></div>
                     {/* Sofa arms */}
-                    <div className="absolute -left-2 bottom-0 w-2.5 h-4 bg-[#7C9EB2] rounded-l-md border border-[#5A7A8A]"></div>
-                    <div className="absolute -right-2 bottom-0 w-2.5 h-4 bg-[#7C9EB2] rounded-r-md border border-[#5A7A8A]"></div>
+                    <div className="absolute -left-1.5 bottom-0 w-2 h-3.5 bg-[#7C9EB2] rounded-l-md border border-[#5A7A8A]"></div>
+                    <div className="absolute -right-1.5 bottom-0 w-2 h-3.5 bg-[#7C9EB2] rounded-r-md border border-[#5A7A8A]"></div>
                     {/* Sofa legs */}
-                    <div className="absolute left-2 -bottom-1.5 w-1.5 h-1.5 bg-[#8B7355] rounded-sm"></div>
-                    <div className="absolute right-2 -bottom-1.5 w-1.5 h-1.5 bg-[#8B7355] rounded-sm"></div>
+                    <div className="absolute left-1.5 -bottom-1 w-1 h-1 bg-[#8B7355] rounded-sm"></div>
+                    <div className="absolute right-1.5 -bottom-1 w-1 h-1 bg-[#8B7355] rounded-sm"></div>
                     {/* Price tag hanging from arm */}
-                    <div className="absolute -right-4 -top-2">
-                      <div className="w-0.5 h-2.5 bg-amber-600 mx-auto"></div>
+                    <div className="absolute -right-3 -top-1">
+                      <div className="w-0.5 h-2 bg-amber-600 mx-auto"></div>
                       <div className="w-5 h-6 bg-amber-100 border-2 border-amber-400 rounded-sm shadow-sm -mt-0.5">
                         <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-amber-400 rounded-full"></div>
                         <div className="flex items-center justify-center h-full text-[10px] text-amber-700 font-bold mt-0.5">$</div>

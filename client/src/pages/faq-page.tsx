@@ -75,16 +75,23 @@ export default function FAQPage() {
               {/* Turn Unused Items Into Value */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
-                  {/* Stacked items with coins illustration */}
-                  <div className="absolute bottom-4 left-3 w-5 h-4 bg-[#E8D5B7] rounded-sm border border-[#C4A574] rotate-[-3deg]"></div>
-                  <div className="absolute bottom-5 left-4 w-5 h-5 bg-[#A8D5E5] rounded-sm border border-[#7BB8CC] rotate-[2deg]"></div>
-                  <div className="absolute bottom-6 left-5 w-5 h-4 bg-[#F5C6D0] rounded-sm border border-[#E8A0B0]"></div>
-                  {/* Coins */}
-                  <div className="absolute top-3 right-2 w-4 h-4 bg-amber-400 rounded-full border border-amber-500 flex items-center justify-center shadow-sm">
-                    <span className="text-[7px] text-amber-700 font-bold">$</span>
+                  {/* Sofa with price tag illustration */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                    {/* Sofa body */}
+                    <div className="w-9 h-4 bg-[#7C9EB2] rounded-t-lg border border-[#5A7A8A]"></div>
+                    {/* Sofa back */}
+                    <div className="w-9 h-2.5 bg-[#5A7A8A] rounded-t-md -mt-3 mx-auto"></div>
+                    {/* Sofa arms */}
+                    <div className="absolute -left-1 bottom-0 w-1.5 h-3 bg-[#7C9EB2] rounded-l border border-[#5A7A8A]"></div>
+                    <div className="absolute -right-1 bottom-0 w-1.5 h-3 bg-[#7C9EB2] rounded-r border border-[#5A7A8A]"></div>
+                    {/* Sofa legs */}
+                    <div className="absolute left-1 -bottom-1 w-1 h-1 bg-[#8B7355] rounded-sm"></div>
+                    <div className="absolute right-1 -bottom-1 w-1 h-1 bg-[#8B7355] rounded-sm"></div>
                   </div>
-                  <div className="absolute top-5 right-4 w-3.5 h-3.5 bg-amber-300 rounded-full border border-amber-400 flex items-center justify-center">
-                    <span className="text-[6px] text-amber-600 font-bold">$</span>
+                  {/* Price tag */}
+                  <div className="absolute top-2 right-2 w-5 h-6 bg-white border border-gray-300 rounded-sm rotate-[15deg] shadow-sm">
+                    <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-gray-400 rounded-full"></div>
+                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[6px] text-[#0DCEA1] font-bold">$</div>
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">

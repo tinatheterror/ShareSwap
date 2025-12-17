@@ -35,7 +35,8 @@ export default function FAQPage() {
             Help & FAQ
           </h1>
           <p className="text-gray-600">
-            Quick reference guide for using the platform
+            Everything you need to know about to use the platform with
+            confidences
           </p>
         </div>
 
@@ -179,7 +180,7 @@ export default function FAQPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 text-sm mb-4">
+            <p className="text-gray-700 text-sm mb-6">
               A community platform where neighbours share their own items
               through borrowing, renting, swapping, or gifting.
             </p>
@@ -584,7 +585,9 @@ export default function FAQPage() {
                   Suggested Pricing
                 </p>
                 <p className="text-xs text-gray-500">
-                  Weekly rates based on item category. You can adjust the rate.
+                  Weekly rental rates and security deposits are suggested based
+                  on item category. You can adjust the rate and security deposit
+                  to your desire.
                 </p>
               </div>
               <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
@@ -600,7 +603,8 @@ export default function FAQPage() {
                   Security Deposits
                 </p>
                 <p className="text-xs text-gray-500">
-                  Owners set the deposit. Held until item is returned safely.
+                  Owners can adjust the suggested deposit amount. Held until
+                  item is returned safely.
                 </p>
               </div>
             </div>

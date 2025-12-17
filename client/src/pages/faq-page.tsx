@@ -51,7 +51,7 @@ export default function FAQPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {/* Save Money or Earn Money */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Coin stack illustration */}
                   <div className="absolute bottom-3 left-3 w-6 h-4 bg-amber-400 rounded-sm rotate-[-8deg] border border-amber-500"></div>
                   <div className="absolute bottom-4 left-4 w-6 h-4 bg-amber-300 rounded-sm rotate-[-5deg] border border-amber-400"></div>
@@ -68,7 +68,7 @@ export default function FAQPage() {
 
               {/* Turn Unused Items Into Value */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Box with sparkle illustration */}
                   <div className="w-8 h-7 bg-[#B8860B] rounded-sm relative">
                     <div className="absolute inset-x-0 top-0 h-2 bg-[#DAA520] rounded-t-sm"></div>
@@ -85,7 +85,7 @@ export default function FAQPage() {
 
               {/* Built on Local Trust */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* ID card with shield illustration */}
                   <div className="w-8 h-6 bg-[#87CEEB] rounded-sm border border-[#5F9EA0] rotate-[-5deg] absolute left-3">
                     <div className="absolute top-1 left-1 w-2 h-2 bg-white/60 rounded-full"></div>
@@ -105,7 +105,7 @@ export default function FAQPage() {
 
               {/* Reduce Waste Effortlessly */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-[#F5F0E8] rounded-full flex items-center justify-center relative">
+                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Earth with leaf illustration */}
                   <div className="w-9 h-9 bg-[#87CEEB] rounded-full border-2 border-[#5F9EA0] relative overflow-hidden">
                     <div className="absolute bottom-0 left-1 w-4 h-3 bg-[#228B22] rounded-t-full"></div>

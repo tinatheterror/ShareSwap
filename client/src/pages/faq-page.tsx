@@ -50,24 +50,30 @@ export default function FAQPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {/* Save Money or Earn Money */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Coin stack illustration */}
                   <div className="absolute bottom-3 left-3 w-6 h-4 bg-amber-400 rounded-sm rotate-[-8deg] border border-amber-500"></div>
                   <div className="absolute bottom-4 left-4 w-6 h-4 bg-amber-300 rounded-sm rotate-[-5deg] border border-amber-400"></div>
                   <div className="absolute bottom-5 left-5 w-6 h-4 bg-amber-200 rounded-sm border border-amber-300 flex items-center justify-center">
-                    <span className="text-[8px] text-amber-700 font-bold">$</span>
+                    <span className="text-[8px] text-amber-700 font-bold">
+                      $
+                    </span>
                   </div>
                   <div className="absolute top-3 right-3 w-5 h-5 bg-[#0DCEA1] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     <DollarSign className="h-3 w-3 text-white" />
                   </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Save or Earn Money</p>
-                <p className="text-[11px] text-gray-500 leading-tight">Borrow for less or rent out for extra cash.</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Save or Earn Money
+                </p>
+                <p className="text-[11px] text-gray-500 leading-tight">
+                  Borrow for less or rent out for extra cash.
+                </p>
               </div>
 
               {/* Turn Unused Items Into Value */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Box with sparkle illustration */}
                   <div className="w-8 h-7 bg-[#B8860B] rounded-sm relative">
@@ -79,12 +85,16 @@ export default function FAQPage() {
                   </div>
                   <div className="absolute bottom-4 left-3 w-2 h-2 bg-[#0DCEA1]/60 rounded-full"></div>
                 </div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Turn Idle Into Value</p>
-                <p className="text-[11px] text-gray-500 leading-tight">Your unused items can help others.</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Turn Idle Into Value
+                </p>
+                <p className="text-[11px] text-gray-500 leading-tight">
+                  Your unused items can help others.
+                </p>
               </div>
 
               {/* Built on Local Trust */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* ID card with shield illustration */}
                   <div className="w-8 h-6 bg-[#87CEEB] rounded-sm border border-[#5F9EA0] rotate-[-5deg] absolute left-3">
@@ -99,12 +109,16 @@ export default function FAQPage() {
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Built on Local Trust</p>
-                <p className="text-[11px] text-gray-500 leading-tight">Verified profiles and fair rules.</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Built on Local Trust
+                </p>
+                <p className="text-[11px] text-gray-500 leading-tight">
+                  Verified profiles and fair rules.
+                </p>
               </div>
 
               {/* Reduce Waste Effortlessly */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Earth with leaf illustration */}
                   <div className="w-9 h-9 bg-[#87CEEB] rounded-full border-2 border-[#5F9EA0] relative overflow-hidden">
@@ -116,8 +130,12 @@ export default function FAQPage() {
                   </div>
                   <div className="absolute bottom-3 left-3 w-2 h-2 bg-[#90EE90] rounded-full"></div>
                 </div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Reduce Waste</p>
-                <p className="text-[11px] text-gray-500 leading-tight">Less buying, less clutter, less impact.</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">
+                  Reduce Waste
+                </p>
+                <p className="text-[11px] text-gray-500 leading-tight">
+                  Less buying, less clutter, less impact.
+                </p>
               </div>
             </div>
           </CardContent>

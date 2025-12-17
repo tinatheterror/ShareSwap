@@ -173,14 +173,16 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
-                <ArrowLeftRight className="h-4 w-4 text-white" />
-              </div>
+              <img 
+                src="/attached_assets/Artboard_1_copy_9_1766003236858.jpeg" 
+                alt="ShareSwap Logo" 
+                className="w-8 h-8 rounded-lg"
+              />
               What is ShareSwap?
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 text-sm mb-6">
+            <p className="text-gray-700 text-sm">
               A community platform where neighbours share their own items
               through borrowing, renting, swapping, or gifting.
             </p>

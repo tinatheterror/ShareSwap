@@ -143,20 +143,15 @@ export default function FAQPage() {
               {/* Reduce Waste Effortlessly */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
-                  {/* Recycling arrows with leaf illustration */}
-                  <div className="relative w-10 h-10">
-                    {/* Three curved arrows forming recycle symbol */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-4 border-t-2 border-r-2 border-[#0DCEA1] rounded-tr-full"></div>
-                    <div className="absolute top-1 right-0.5 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-[#0DCEA1] rotate-[45deg]"></div>
-                    <div className="absolute bottom-1 left-0 w-3 h-4 border-b-2 border-l-2 border-[#0DCEA1] rounded-bl-full"></div>
-                    <div className="absolute bottom-0 left-2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-[#0DCEA1] rotate-[-90deg]"></div>
-                    <div className="absolute bottom-1 right-0 w-3 h-4 border-b-2 border-r-2 border-[#0DCEA1] rounded-br-full"></div>
-                    <div className="absolute bottom-3 right-0.5 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-[#0DCEA1] rotate-[180deg]"></div>
-                    {/* Center leaf */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />
-                    </div>
+                  {/* Earth with leaf illustration */}
+                  <div className="w-9 h-9 bg-[#87CEEB] rounded-full border-2 border-[#5F9EA0] relative overflow-hidden">
+                    <div className="absolute bottom-0 left-1 w-4 h-3 bg-[#228B22] rounded-t-full"></div>
+                    <div className="absolute top-1 right-1 w-3 h-2 bg-[#228B22] rounded-full"></div>
                   </div>
+                  <div className="absolute -top-0.5 right-3">
+                    <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />
+                  </div>
+                  <div className="absolute bottom-3 left-3 w-2 h-2 bg-[#90EE90] rounded-full"></div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
                   Reduce Waste

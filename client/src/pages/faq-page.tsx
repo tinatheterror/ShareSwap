@@ -48,57 +48,61 @@ export default function FAQPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {/* Save Money or Earn Money */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Wallet className="h-5 w-5 text-[#0DCEA1]" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Save Money or Earn Money</p>
-                    <p className="text-xs text-gray-500">Borrow what you need for a fraction of the cost or even free. Rent out items you already have for extra cash.</p>
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+                <div className="w-14 h-14 mx-auto mb-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0DCEA1] to-[#0BA882] rounded-2xl rotate-3"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#10E6B0] to-[#0DCEA1] rounded-2xl -rotate-3 flex items-center justify-center">
+                    <Wallet className="h-7 w-7 text-white" />
                   </div>
                 </div>
+                <p className="text-sm font-medium text-gray-700 mb-1">Save or Earn Money</p>
+                <p className="text-[11px] text-gray-500 leading-tight">Borrow for less or rent out for extra cash.</p>
               </div>
 
               {/* Turn Unused Items Into Value */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <TrendingUp className="h-5 w-5 text-[#0DCEA1]" />
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+                <div className="w-14 h-14 mx-auto mb-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0DCEA1] to-[#0BA882] rounded-full"></div>
+                  <div className="absolute inset-1 bg-gradient-to-br from-[#10E6B0] to-[#0DCEA1] rounded-full flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-white" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Turn Unused Items Into Value</p>
-                    <p className="text-xs text-gray-500">Most items sit idle. ShareSwap turns unused stuff into value without selling it or throwing it out.</p>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                    <Sparkles className="h-2.5 w-2.5 text-yellow-700" />
                   </div>
                 </div>
+                <p className="text-sm font-medium text-gray-700 mb-1">Turn Idle Into Value</p>
+                <p className="text-[11px] text-gray-500 leading-tight">Your unused items can help others.</p>
               </div>
 
               {/* Built on Local Trust */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <UserCheck className="h-5 w-5 text-[#0DCEA1]" />
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+                <div className="w-14 h-14 mx-auto mb-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#0DCEA1] to-[#0BA882] rounded-xl"></div>
+                  <div className="absolute inset-0.5 bg-gradient-to-br from-[#10E6B0] to-[#0DCEA1] rounded-xl flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-white" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Built on Local Trust</p>
-                    <p className="text-xs text-gray-500">Verified profiles, trust scores, and fair rules make sharing with neighbours safe and predictable.</p>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white rounded-full px-1.5 py-0.5 shadow-sm border border-[#0DCEA1]/30">
+                    <UserCheck className="h-3 w-3 text-[#0DCEA1]" />
                   </div>
                 </div>
+                <p className="text-sm font-medium text-gray-700 mb-1">Built on Local Trust</p>
+                <p className="text-[11px] text-gray-500 leading-tight">Verified profiles and fair rules.</p>
               </div>
 
               {/* Reduce Waste Effortlessly */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Leaf className="h-5 w-5 text-[#0DCEA1]" />
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 text-center">
+                <div className="w-14 h-14 mx-auto mb-3 relative">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-green-500 to-[#0DCEA1] rounded-full"></div>
+                  <div className="absolute inset-1.5 bg-gradient-to-br from-[#10E6B0] to-green-400 rounded-full flex items-center justify-center">
+                    <Leaf className="h-6 w-6 text-white" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Reduce Waste Effortlessly</p>
-                    <p className="text-xs text-gray-500">Sharing means fewer purchases, less clutter, and less environmental impact with no extra effort required.</p>
-                  </div>
+                  <div className="absolute top-0 right-0 w-3 h-3 bg-green-300 rounded-full"></div>
+                  <div className="absolute bottom-1 left-0 w-2 h-2 bg-[#0DCEA1] rounded-full"></div>
                 </div>
+                <p className="text-sm font-medium text-gray-700 mb-1">Reduce Waste</p>
+                <p className="text-[11px] text-gray-500 leading-tight">Less buying, less clutter, less impact.</p>
               </div>
             </div>
           </CardContent>

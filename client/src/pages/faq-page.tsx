@@ -174,7 +174,7 @@ export default function FAQPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <img 
-                src="/attached_assets/Artboard_1_copy_9_1766003236858.jpeg" 
+                src="/shareswap-logo.jpeg" 
                 alt="ShareSwap Logo" 
                 className="w-8 h-8 rounded-lg"
               />

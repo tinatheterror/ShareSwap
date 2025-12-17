@@ -52,16 +52,26 @@ export default function FAQPage() {
               {/* Save Money or Earn Money */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
-                  {/* Coin stack illustration */}
-                  <div className="absolute bottom-3 left-3 w-6 h-4 bg-amber-400 rounded-sm rotate-[-8deg] border border-amber-500"></div>
-                  <div className="absolute bottom-4 left-4 w-6 h-4 bg-amber-300 rounded-sm rotate-[-5deg] border border-amber-400"></div>
-                  <div className="absolute bottom-5 left-5 w-6 h-4 bg-amber-200 rounded-sm border border-amber-300 flex items-center justify-center">
-                    <span className="text-[8px] text-amber-700 font-bold">
-                      $
-                    </span>
+                  {/* Paper money stack illustration */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                    {/* Back bill */}
+                    <div className="absolute -left-1 -top-1 w-10 h-5 bg-[#85BB65] rounded-sm border border-[#5A8F3E] rotate-[-5deg]"></div>
+                    {/* Middle bill */}
+                    <div className="absolute left-0 top-0 w-10 h-5 bg-[#90C76A] rounded-sm border border-[#6B9F4A] rotate-[2deg]"></div>
+                    {/* Front bill */}
+                    <div className="w-10 h-5 bg-[#9ED47B] rounded-sm border border-[#7DB85C] relative">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-3 h-3 rounded-full border border-[#6B9F4A] flex items-center justify-center">
+                          <span className="text-[8px] text-[#5A8F3E] font-bold">$</span>
+                        </div>
+                      </div>
+                      <div className="absolute left-0.5 top-0.5 w-1 h-1 bg-[#7DB85C] rounded-full"></div>
+                      <div className="absolute right-0.5 bottom-0.5 w-1 h-1 bg-[#7DB85C] rounded-full"></div>
+                    </div>
                   </div>
-                  <div className="absolute top-3 right-3 w-5 h-5 bg-[#0DCEA1] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                    <DollarSign className="h-3 w-3 text-white" />
+                  {/* Plus sign for earning */}
+                  <div className="absolute top-2 right-2 w-4 h-4 bg-[#0DCEA1] rounded-full flex items-center justify-center shadow-sm">
+                    <span className="text-white text-[10px] font-bold">+</span>
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">

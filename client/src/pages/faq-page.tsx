@@ -53,25 +53,26 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Paper money stack illustration */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     {/* Back bill */}
-                    <div className="absolute -left-1 -top-1 w-10 h-5 bg-[#85BB65] rounded-sm border border-[#5A8F3E] rotate-[-5deg]"></div>
-                    {/* Middle bill */}
-                    <div className="absolute left-0 top-0 w-10 h-5 bg-[#90C76A] rounded-sm border border-[#6B9F4A] rotate-[2deg]"></div>
+                    <div className="absolute -left-0.5 top-1 w-11 h-6 bg-[#2E8B57] rounded-md rotate-[-8deg]">
+                      <div className="absolute left-1 top-1 w-1.5 h-1.5 bg-[#3CB371] rounded-full opacity-60"></div>
+                      <div className="absolute right-1 bottom-1 w-1.5 h-1.5 bg-[#3CB371] rounded-full opacity-60"></div>
+                    </div>
                     {/* Front bill */}
-                    <div className="w-10 h-5 bg-[#9ED47B] rounded-sm border border-[#7DB85C] relative">
+                    <div className="w-11 h-6 bg-[#3CB371] rounded-md relative rotate-[5deg]">
+                      {/* Center circle with $ */}
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-3 h-3 rounded-full border border-[#6B9F4A] flex items-center justify-center">
-                          <span className="text-[8px] text-[#5A8F3E] font-bold">$</span>
+                        <div className="w-4 h-4 bg-[#2E8B57] rounded-full flex items-center justify-center">
+                          <span className="text-[10px] text-[#90EE90] font-bold">$</span>
                         </div>
                       </div>
-                      <div className="absolute left-0.5 top-0.5 w-1 h-1 bg-[#7DB85C] rounded-full"></div>
-                      <div className="absolute right-0.5 bottom-0.5 w-1 h-1 bg-[#7DB85C] rounded-full"></div>
+                      {/* Corner dots */}
+                      <div className="absolute left-1 top-1 w-1.5 h-1.5 bg-[#2E8B57] rounded-full opacity-50"></div>
+                      <div className="absolute right-1 top-1 w-1.5 h-1.5 bg-[#2E8B57] rounded-full opacity-50"></div>
+                      <div className="absolute left-1 bottom-1 w-1.5 h-1.5 bg-[#2E8B57] rounded-full opacity-50"></div>
+                      <div className="absolute right-1 bottom-1 w-1.5 h-1.5 bg-[#2E8B57] rounded-full opacity-50"></div>
                     </div>
-                  </div>
-                  {/* Plus sign for earning */}
-                  <div className="absolute top-2 right-2 w-4 h-4 bg-[#0DCEA1] rounded-full flex items-center justify-center shadow-sm">
-                    <span className="text-white text-[10px] font-bold">+</span>
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">

@@ -75,15 +75,17 @@ export default function FAQPage() {
               {/* Turn Unused Items Into Value */}
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
-                  {/* Box with sparkle illustration */}
-                  <div className="w-8 h-7 bg-[#B8860B] rounded-sm relative">
-                    <div className="absolute inset-x-0 top-0 h-2 bg-[#DAA520] rounded-t-sm"></div>
-                    <div className="absolute inset-x-1 top-1 h-0.5 bg-[#B8860B]"></div>
+                  {/* Stacked items with coins illustration */}
+                  <div className="absolute bottom-4 left-3 w-5 h-4 bg-[#E8D5B7] rounded-sm border border-[#C4A574] rotate-[-3deg]"></div>
+                  <div className="absolute bottom-5 left-4 w-5 h-5 bg-[#A8D5E5] rounded-sm border border-[#7BB8CC] rotate-[2deg]"></div>
+                  <div className="absolute bottom-6 left-5 w-5 h-4 bg-[#F5C6D0] rounded-sm border border-[#E8A0B0]"></div>
+                  {/* Coins */}
+                  <div className="absolute top-3 right-2 w-4 h-4 bg-amber-400 rounded-full border border-amber-500 flex items-center justify-center shadow-sm">
+                    <span className="text-[7px] text-amber-700 font-bold">$</span>
                   </div>
-                  <div className="absolute top-2 right-3 w-4 h-4 bg-[#0DCEA1] rounded-full flex items-center justify-center">
-                    <Sparkles className="h-2.5 w-2.5 text-white" />
+                  <div className="absolute top-5 right-4 w-3.5 h-3.5 bg-amber-300 rounded-full border border-amber-400 flex items-center justify-center">
+                    <span className="text-[6px] text-amber-600 font-bold">$</span>
                   </div>
-                  <div className="absolute bottom-4 left-3 w-2 h-2 bg-[#0DCEA1]/60 rounded-full"></div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
                   Turn Idle Into Value

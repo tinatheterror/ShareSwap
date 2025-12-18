@@ -36,8 +36,7 @@ export default function FAQPage() {
             Help & FAQ
           </h1>
           <p className="text-gray-600">
-            Everything you need to know about to use the platform with
-            confidences
+            Everything you need to know to use the platform with confidence
           </p>
         </div>
 
@@ -150,9 +149,11 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Earth with leaf illustration */}
-                  <div className="w-9 h-9 bg-[#87CEEB] rounded-full border-2 border-[#5F9EA0] relative overflow-hidden">
-                    <div className="absolute bottom-0 left-1 w-4 h-3 bg-[#228B22] rounded-t-full"></div>
-                    <div className="absolute top-1 right-1 w-3 h-2 bg-[#228B22] rounded-full"></div>
+                  <div className="w-9 h-9 bg-[#87CEEB] rounded-full relative overflow-hidden">
+                    <div className="absolute bottom-0 left-0 w-5 h-4 bg-[#228B22] rounded-t-full"></div>
+                    <div className="absolute top-1 right-0 w-4 h-3 bg-[#228B22] rounded-full"></div>
+                    <div className="absolute top-3 left-2 w-3 h-2 bg-[#3CB371] rounded-full"></div>
+                    <div className="absolute bottom-2 right-1 w-2 h-2 bg-[#2E8B57] rounded-full"></div>
                   </div>
                   <div className="absolute -top-0.5 right-3">
                     <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />
@@ -174,10 +175,10 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <img 
-                src="/shareswap-logo.jpeg" 
-                alt="ShareSwap Logo" 
-                className="w-8 h-8 rounded-lg"
+              <img
+                src="/shareswap-logo.jpeg"
+                alt="ShareSwap Logo"
+                className="w-9 h-9 rounded-lg"
               />
               What is ShareSwap?
             </CardTitle>
@@ -190,33 +191,41 @@ export default function FAQPage() {
 
             <Tabs defaultValue="borrow" className="w-full">
               <TabsList className="grid grid-cols-4 gap-2 h-auto bg-transparent p-0 mb-4">
-                <TabsTrigger 
-                  value="borrow" 
+                <TabsTrigger
+                  value="borrow"
                   className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <HandHeart className="h-5 w-5 flex-shrink-0" />
-                  <span className="text-sm font-medium hidden md:inline">Borrow & Lend</span>
+                  <span className="text-sm font-medium hidden md:inline">
+                    Borrow & Lend
+                  </span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="rent" 
+                <TabsTrigger
+                  value="rent"
                   className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <DollarSign className="h-5 w-5 flex-shrink-0" />
-                  <span className="text-sm font-medium hidden md:inline">Rent</span>
+                  <span className="text-sm font-medium hidden md:inline">
+                    Rent
+                  </span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="swap" 
+                <TabsTrigger
+                  value="swap"
                   className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <ArrowLeftRight className="h-5 w-5 flex-shrink-0" />
-                  <span className="text-sm font-medium hidden md:inline">Swap</span>
+                  <span className="text-sm font-medium hidden md:inline">
+                    Swap
+                  </span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="gift" 
+                <TabsTrigger
+                  value="gift"
                   className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <Gift className="h-5 w-5 flex-shrink-0" />
-                  <span className="text-sm font-medium hidden md:inline">Gift</span>
+                  <span className="text-sm font-medium hidden md:inline">
+                    Gift
+                  </span>
                 </TabsTrigger>
               </TabsList>
 
@@ -228,9 +237,9 @@ export default function FAQPage() {
                       How borrowing works
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
-                      Request an item, pay ShareCoins, and pick it up. Return it by
-                      the agreed date. The lender earns ShareCoins when the item is
-                      returned safely.
+                      Request an item, pay ShareCoins, and pick it up. Return it
+                      by the agreed date. The lender earns ShareCoins when the
+                      item is returned safely.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="borrow-2">
@@ -239,8 +248,8 @@ export default function FAQPage() {
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
                       ShareCoins are the platform currency. Earn them by lending
-                      items. Spend them to borrow. No real money changes hands for
-                      borrowing.
+                      items. Spend them to borrow. No real money changes hands
+                      for borrowing.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="borrow-3">
@@ -248,9 +257,9 @@ export default function FAQPage() {
                       Trust-based security deposits
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
-                      Deposits are based on item value and your trust score. Higher
-                      trust means lower deposits. Fully refundable when items return
-                      in good condition.
+                      Deposits are based on item value and your trust score.
+                      Higher trust means lower deposits. Fully refundable when
+                      items return in good condition.
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -259,8 +268,8 @@ export default function FAQPage() {
               {/* Rent Tab Content */}
               <TabsContent value="rent" className="mt-0">
                 <p className="text-gray-700 text-sm mb-4">
-                  Renting uses real money instead of ShareCoins. Choose renting if
-                  you want to earn cash from your items.
+                  Renting uses real money instead of ShareCoins. Choose renting
+                  if you want to earn cash from your items.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
@@ -268,9 +277,9 @@ export default function FAQPage() {
                       Suggested Pricing
                     </p>
                     <p className="text-xs text-gray-500">
-                      Weekly rental rates and security deposits are suggested based
-                      on item category. You can adjust the rate and security deposit
-                      to your desire.
+                      Weekly rental rates and security deposits are suggested
+                      based on item category. You can adjust the rate and
+                      security deposit to your desire.
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
@@ -297,8 +306,8 @@ export default function FAQPage() {
               <TabsContent value="swap" className="mt-0">
                 <p className="text-gray-700 text-sm mb-4">
                   A swap is a direct item-for-item trade between neighbours. No
-                  cash. No deposits. Just swap. Value differences are balanced with
-                  ShareCoins. Our tier system ensures fair exchanges.
+                  cash. No deposits. Just swap. Value differences are balanced
+                  with ShareCoins. Our tier system ensures fair exchanges.
                 </p>
 
                 <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 mb-4">
@@ -307,25 +316,33 @@ export default function FAQPage() {
                   </p>
                   <div className="grid grid-cols-4 gap-2">
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">Tier 1</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Tier 1
+                      </p>
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         5 ShareCoins
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">Tier 2</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Tier 2
+                      </p>
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         10 ShareCoins
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">Tier 3</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Tier 3
+                      </p>
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         20 ShareCoins
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">Tier 4</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Tier 4
+                      </p>
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         40 ShareCoins
                       </p>
@@ -380,8 +397,8 @@ export default function FAQPage() {
                       What gifting means
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
-                      Give away items you no longer need. The recipient keeps the
-                      item permanently. No payments or deposits required.
+                      Give away items you no longer need. The recipient keeps
+                      the item permanently. No payments or deposits required.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="gift-2">
@@ -409,8 +426,10 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm">
-              ShareCoins are the currency of our marketplace. They help keep sharing fair
-              and accessible for everyone. They do not convert to real money. They mainly reward lending, and help build community reputation.
+              ShareCoins are the currency of our marketplace. They help keep
+              sharing fair and accessible for everyone. ShareCoins do not
+              convert to real money. They mainly reward lending, but also
+              encourage sharing and help build community. reputation.
             </p>
           </CardContent>
         </Card>

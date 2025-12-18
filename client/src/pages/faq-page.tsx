@@ -151,14 +151,14 @@ export default function FAQPage() {
                   {/* Earth with leaf illustration */}
                   <div className="w-9 h-9 bg-[#87CEEB] rounded-full relative overflow-hidden">
                     {/* North America */}
-                    <div className="absolute top-1 left-0.5 w-3 h-2.5 bg-[#3CB371] rounded-sm rotate-[-10deg]"></div>
+                    <div className="absolute top-1.5 left-1 w-2.5 h-2 bg-[#3CB371] rounded-full rotate-[-15deg]"></div>
                     {/* South America */}
-                    <div className="absolute bottom-1 left-1 w-2 h-3 bg-[#3CB371] rounded-b-full rounded-t-sm"></div>
+                    <div className="absolute bottom-1.5 left-1.5 w-1.5 h-2.5 bg-[#3CB371] rounded-full"></div>
                     {/* Europe/Africa */}
-                    <div className="absolute top-2 right-1 w-2 h-4 bg-[#3CB371] rounded-sm"></div>
-                    {/* Asia/Australia */}
-                    <div className="absolute top-1 right-0 w-1.5 h-2 bg-[#3CB371] rounded-sm"></div>
-                    <div className="absolute bottom-1.5 right-1.5 w-1.5 h-1.5 bg-[#3CB371] rounded-sm"></div>
+                    <div className="absolute top-1.5 right-1.5 w-1.5 h-1 bg-[#3CB371] rounded-full"></div>
+                    <div className="absolute top-3 right-1 w-2 h-3 bg-[#3CB371] rounded-full"></div>
+                    {/* Australia */}
+                    <div className="absolute bottom-1 right-1 w-1.5 h-1 bg-[#3CB371] rounded-full"></div>
                   </div>
                   <div className="absolute -top-0.5 right-3">
                     <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />

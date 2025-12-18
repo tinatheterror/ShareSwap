@@ -150,15 +150,14 @@ export default function FAQPage() {
                 <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
                   {/* Earth with leaf illustration */}
                   <div className="w-9 h-9 bg-[#87CEEB] rounded-full relative overflow-hidden">
-                    {/* North America */}
-                    <div className="absolute top-1.5 left-1 w-2.5 h-2 bg-[#3CB371] rounded-full rotate-[-15deg]"></div>
-                    {/* South America */}
-                    <div className="absolute bottom-1.5 left-1.5 w-1.5 h-2.5 bg-[#3CB371] rounded-full"></div>
-                    {/* Europe/Africa */}
-                    <div className="absolute top-1.5 right-1.5 w-1.5 h-1 bg-[#3CB371] rounded-full"></div>
-                    <div className="absolute top-3 right-1 w-2 h-3 bg-[#3CB371] rounded-full"></div>
-                    {/* Australia */}
-                    <div className="absolute bottom-1 right-1 w-1.5 h-1 bg-[#3CB371] rounded-full"></div>
+                    {/* North America - wider at top, narrower at bottom */}
+                    <div className="absolute top-0.5 left-0 w-3.5 h-3 bg-[#3CB371]" style={{borderRadius: '40% 60% 30% 70%'}}></div>
+                    {/* South America - elongated, tapers down */}
+                    <div className="absolute bottom-0 left-1 w-2 h-3 bg-[#3CB371]" style={{borderRadius: '50% 50% 30% 70%'}}></div>
+                    {/* Africa - large, elongated */}
+                    <div className="absolute top-2 right-0.5 w-2.5 h-4 bg-[#3CB371]" style={{borderRadius: '60% 40% 50% 50%'}}></div>
+                    {/* Europe - small blob above Africa */}
+                    <div className="absolute top-0.5 right-1 w-2 h-1.5 bg-[#3CB371]" style={{borderRadius: '50% 50% 60% 40%'}}></div>
                   </div>
                   <div className="absolute -top-0.5 right-3">
                     <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />

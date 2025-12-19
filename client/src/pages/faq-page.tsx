@@ -235,6 +235,7 @@ export default function FAQPage() {
 
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
+                <h3 className="font-semibold text-gray-800 mb-3">How Borrowing & Lending Works</h3>
                 <p className="text-gray-700 text-sm mb-4">
                   Request an item, pay ShareCoins, and pick it up. Return it
                   by the agreed date. The lender earns ShareCoins when the
@@ -264,6 +265,7 @@ export default function FAQPage() {
 
               {/* Rent Tab Content */}
               <TabsContent value="rent" className="mt-0">
+                <h3 className="font-semibold text-gray-800 mb-3">How Renting Works</h3>
                 <p className="text-gray-700 text-sm mb-4">
                   Renting uses real money instead of ShareCoins. Choose renting
                   if you want to earn cash from your items.
@@ -301,6 +303,7 @@ export default function FAQPage() {
 
               {/* Swap Tab Content */}
               <TabsContent value="swap" className="mt-0">
+                <h3 className="font-semibold text-gray-800 mb-3">How Swapping Works</h3>
                 <p className="text-gray-700 text-sm mb-4">
                   A swap is a direct item-for-item trade between neighbours. No
                   cash. No deposits. Just swap. Value differences are balanced
@@ -388,6 +391,7 @@ export default function FAQPage() {
 
               {/* Gift Tab Content */}
               <TabsContent value="gift" className="mt-0">
+                <h3 className="font-semibold text-gray-800 mb-3">How Gifting Works</h3>
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="gift-1">
                     <AccordionTrigger className="text-sm">

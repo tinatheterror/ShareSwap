@@ -9,8 +9,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeftRight,
+  Calendar,
+  CheckCircle,
   Coins,
   HandHeart,
+  HandHelping,
   DollarSign,
   Gift,
   Shield,
@@ -22,6 +25,7 @@ import {
   Package,
   Wallet,
   Sparkles,
+  Star,
   UserCheck,
   Leaf,
 } from "lucide-react";
@@ -236,30 +240,79 @@ export default function FAQPage() {
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
                 <h3 className="font-semibold text-gray-800 mb-3">How Borrowing & Lending Works</h3>
-                <p className="text-gray-700 text-sm mb-4">
-                  Request an item, pay ShareCoins, and pick it up. Return it
-                  by the agreed date. The lender earns ShareCoins when the
-                  item is returned safely.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* Borrow Section */}
                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      ShareCoins
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Platform currency. Earn by lending, spend to borrow.
-                      No real money changes hands for borrowing.
-                    </p>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                        <HandHelping className="h-4 w-4 text-white" />
+                      </div>
+                      <p className="font-semibold text-gray-800">Borrow</p>
+                    </div>
+                    <ul className="space-y-2">
+                      <li className="flex items-start gap-2">
+                        <Coins className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">Request items using ShareCoins</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Shield className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">A refundable, trust-based deposit may apply</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Star className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">Higher trust = lower deposits</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">Return on time and in good condition to get your deposit back</span>
+                      </li>
+                    </ul>
                   </div>
-                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Trust-Based Deposits
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Deposits based on item tier and your trust score.
-                      Higher trust means lower deposits. Fully refundable.
-                    </p>
+
+                  {/* Lend Section */}
+                  <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4 border border-teal-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center">
+                        <Package className="h-4 w-4 text-white" />
+                      </div>
+                      <p className="font-semibold text-gray-800">Lend</p>
+                    </div>
+                    <ul className="space-y-2">
+                      <li className="flex items-start gap-2">
+                        <Package className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">List items you're willing to share</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Coins className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">Earn ShareCoins when neighbours borrow</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Calendar className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+                        <span className="text-xs text-gray-600">Set availability and sharing options</span>
+                      </li>
+                    </ul>
                   </div>
+                </div>
+
+                {/* Built for Trust Section */}
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                      <Shield className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="font-semibold text-gray-800">Built for Trust</p>
+                  </div>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2">
+                      <Coins className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-xs text-gray-600">ShareCoin values are set automatically by item tier and duration</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Star className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-xs text-gray-600">Trust scores reduce risk and lower deposit requirements over time</span>
+                    </li>
+                  </ul>
                 </div>
               </TabsContent>
 

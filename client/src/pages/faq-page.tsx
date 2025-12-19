@@ -235,38 +235,31 @@ export default function FAQPage() {
 
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="borrow-1">
-                    <AccordionTrigger className="text-sm">
-                      How borrowing works
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-600">
-                      Request an item, pay ShareCoins, and pick it up. Return it
-                      by the agreed date. The lender earns ShareCoins when the
-                      item is returned safely.
-                    </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="borrow-2">
-                    <AccordionTrigger className="text-sm">
-                      ShareCoins explanation
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-600">
-                      ShareCoins are the platform currency. Earn them by lending
-                      items. Spend them to borrow. No real money changes hands
-                      for borrowing.
-                    </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="borrow-3">
-                    <AccordionTrigger className="text-sm">
-                      Trust-based security deposits
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-600">
-                      Deposits are based on item value and your trust score.
-                      Higher trust means lower deposits. Fully refundable when
-                      items return in good condition.
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                <p className="text-gray-700 text-sm mb-4">
+                  Request an item, pay ShareCoins, and pick it up. Return it
+                  by the agreed date. The lender earns ShareCoins when the
+                  item is returned safely.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      ShareCoins
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Platform currency. Earn by lending, spend to borrow.
+                      No real money changes hands for borrowing.
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Trust-Based Deposits
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Deposits based on item tier and your trust score.
+                      Higher trust means lower deposits. Fully refundable.
+                    </p>
+                  </div>
+                </div>
               </TabsContent>
 
               {/* Rent Tab Content */}

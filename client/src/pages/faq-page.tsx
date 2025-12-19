@@ -151,13 +151,25 @@ export default function FAQPage() {
                   {/* Earth with leaf illustration */}
                   <div className="w-9 h-9 bg-[#87CEEB] rounded-full relative overflow-hidden">
                     {/* North America - wider at top, narrower at bottom */}
-                    <div className="absolute top-0.5 left-0 w-3.5 h-3 bg-[#3CB371]" style={{borderRadius: '40% 60% 30% 70%'}}></div>
+                    <div
+                      className="absolute top-0.5 left-0 w-3.5 h-3 bg-[#3CB371]"
+                      style={{ borderRadius: "40% 60% 30% 70%" }}
+                    ></div>
                     {/* South America - elongated, tapers down */}
-                    <div className="absolute bottom-0 left-1 w-2 h-3 bg-[#3CB371]" style={{borderRadius: '50% 50% 30% 70%'}}></div>
+                    <div
+                      className="absolute bottom-0 left-1 w-2 h-3 bg-[#3CB371]"
+                      style={{ borderRadius: "50% 50% 30% 70%" }}
+                    ></div>
                     {/* Africa - large, elongated */}
-                    <div className="absolute top-2 right-0.5 w-2.5 h-4 bg-[#3CB371]" style={{borderRadius: '60% 40% 50% 50%'}}></div>
+                    <div
+                      className="absolute top-2 right-0.5 w-2.5 h-4 bg-[#3CB371]"
+                      style={{ borderRadius: "60% 40% 50% 50%" }}
+                    ></div>
                     {/* Europe - small blob above Africa */}
-                    <div className="absolute top-0.5 right-1 w-2 h-1.5 bg-[#3CB371]" style={{borderRadius: '50% 50% 60% 40%'}}></div>
+                    <div
+                      className="absolute top-0.5 right-1 w-2 h-1.5 bg-[#3CB371]"
+                      style={{ borderRadius: "50% 50% 60% 40%" }}
+                    ></div>
                   </div>
                   <div className="absolute -top-0.5 right-3">
                     <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />
@@ -235,37 +247,44 @@ export default function FAQPage() {
 
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-3">How Borrowing & Lending Works</h3>
+                <h3 className="font-semibold text-gray-800 mb-3">
+                  How Borrowing & Lending Works
+                </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  Request an item, pay ShareCoins, and pick it up. Return it
-                  by the agreed date. The lender earns ShareCoins when the
-                  item is returned safely.
+                  Request an item, pay ShareCoins, and pick it up. Return it by
+                  the agreed date. The lender earns ShareCoins when the item is
+                  returned safely.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
                     <p className="text-sm font-medium text-gray-700 mb-1">
-                      ShareCoins
+                      Borrow
                     </p>
-                    <p className="text-xs text-gray-500">
-                      Platform currency. Earn by lending, spend to borrow.
-                      No real money changes hands for borrowing.
-                    </p>
+                    <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
+                      <li>Request items using ShareCoins</li>
+                      <li>A refundable, trust-based deposit may apply</li>
+                      <li>Higher trust = lower deposits</li>
+                      <li>Return on time and in good condition to get your deposit back</li>
+                    </ul>
                   </div>
                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
                     <p className="text-sm font-medium text-gray-700 mb-1">
-                      Trust-Based Deposits
+                      Lend
                     </p>
-                    <p className="text-xs text-gray-500">
-                      Deposits based on item tier and your trust score.
-                      Higher trust means lower deposits. Fully refundable.
-                    </p>
+                    <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
+                      <li>List items you’re willing to share</li>
+                      <li>Earn ShareCoins when neighbours borrow</li>
+                      <li>Set availability and sharing options</li>
+                    </ul>
                   </div>
                 </div>
               </TabsContent>
 
               {/* Rent Tab Content */}
               <TabsContent value="rent" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-3">How Renting Works</h3>
+                <h3 className="font-semibold text-gray-800 mb-3">
+                  How Renting Works
+                </h3>
                 <p className="text-gray-700 text-sm mb-4">
                   Renting uses real money instead of ShareCoins. Choose renting
                   if you want to earn cash from your items.
@@ -303,7 +322,9 @@ export default function FAQPage() {
 
               {/* Swap Tab Content */}
               <TabsContent value="swap" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-3">How Swapping Works</h3>
+                <h3 className="font-semibold text-gray-800 mb-3">
+                  How Swapping Works
+                </h3>
                 <p className="text-gray-700 text-sm mb-4">
                   A swap is a direct item-for-item trade between neighbours. No
                   cash. No deposits. Just swap. Value differences are balanced
@@ -391,7 +412,9 @@ export default function FAQPage() {
 
               {/* Gift Tab Content */}
               <TabsContent value="gift" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-3">How Gifting Works</h3>
+                <h3 className="font-semibold text-gray-800 mb-3">
+                  How Gifting Works
+                </h3>
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="gift-1">
                     <AccordionTrigger className="text-sm">

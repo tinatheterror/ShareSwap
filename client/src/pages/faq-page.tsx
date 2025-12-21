@@ -270,9 +270,9 @@ export default function FAQPage() {
                       {[
                         { icon: Search, label: "Find Item" },
                         { icon: Send, label: "Send Request" },
-                        { icon: Coins, label: "Pay in ShareCoins" },
                         { icon: Lock, label: "Give Real Money Trust-Deposit" },
                         { icon: MapPin, label: "Item Handoff" },
+                        { icon: Coins, label: "ShareCoins charged upon item pickup" },
                         { icon: Package, label: "Use Item" },
                         { icon: CheckCircle, label: "Return Item" },
                         { icon: Wallet, label: "Receive Deposit Back" },
@@ -300,7 +300,7 @@ export default function FAQPage() {
                         { icon: ThumbsUp, label: "Approve Request" },
                         { icon: Lock, label: "Collect Trust-Deposit" },
                         { icon: MapPin, label: "Item Handoff" },
-                        { icon: Coins, label: "Earn ShareCoins" },
+                        { icon: Coins, label: "ShareCoins earned upon delivery to borrower" },
                         { icon: RotateCcw, label: "Item Returned" },
                       ].map((step, i, arr) => (
                         <div key={i} className="flex items-center gap-3">

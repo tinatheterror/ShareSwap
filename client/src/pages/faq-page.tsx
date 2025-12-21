@@ -33,6 +33,7 @@ import {
   ChevronRight,
   ChevronDown,
   MapPin,
+  Send,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -269,7 +270,7 @@ export default function FAQPage() {
                     <div className="flex flex-col gap-2 md:hidden">
                       {[
                         { icon: Search, label: "Find Item" },
-                        { icon: HandHeart, label: "Send Request" },
+                        { icon: Send, label: "Send Request" },
                         { icon: Coins, label: "Pay ShareCoins" },
                         { icon: Lock, label: "Trust Deposit" },
                         { icon: MapPin, label: "Meet Up" },
@@ -293,7 +294,7 @@ export default function FAQPage() {
                     <div className="hidden md:flex flex-wrap justify-center items-center gap-1">
                       {[
                         { icon: Search, label: "Find Item" },
-                        { icon: HandHeart, label: "Send Request" },
+                        { icon: Send, label: "Send Request" },
                         { icon: Coins, label: "Pay ShareCoins" },
                         { icon: Lock, label: "Trust Deposit" },
                         { icon: MapPin, label: "Meet Up" },

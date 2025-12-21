@@ -270,12 +270,12 @@ export default function FAQPage() {
                       {[
                         { icon: Search, label: "Find Item" },
                         { icon: Send, label: "Send Request" },
-                        { icon: Coins, label: "Pay ShareCoins" },
-                        { icon: Lock, label: "Trust Deposit" },
-                        { icon: MapPin, label: "Meet Up" },
+                        { icon: Coins, label: "Pay in ShareCoins" },
+                        { icon: Lock, label: "Give Trust-Deposit" },
+                        { icon: MapPin, label: "Item Handoff" },
                         { icon: Package, label: "Use Item" },
                         { icon: CheckCircle, label: "Return Item" },
-                        { icon: Wallet, label: "Deposit Back" },
+                        { icon: Wallet, label: "Receive Deposit Back" },
                       ].map((step, i, arr) => (
                         <div key={i} className="flex items-center gap-3">
                           <div className="flex flex-col items-center">
@@ -297,9 +297,9 @@ export default function FAQPage() {
                     <div className="flex flex-col gap-1">
                       {[
                         { icon: Camera, label: "List Item" },
-                        { icon: Clock, label: "Set Availability" },
                         { icon: ThumbsUp, label: "Approve Request" },
-                        { icon: MapPin, label: "Meet Up" },
+                        { icon: Lock, label: "Collect Trust-Deposit" },
+                        { icon: MapPin, label: "Item Handoff" },
                         { icon: Coins, label: "Earn ShareCoins" },
                         { icon: RotateCcw, label: "Item Returned" },
                       ].map((step, i, arr) => (

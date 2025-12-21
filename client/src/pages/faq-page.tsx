@@ -32,6 +32,7 @@ import {
   ThumbsUp,
   ChevronRight,
   ChevronDown,
+  MapPin,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -271,6 +272,7 @@ export default function FAQPage() {
                         { icon: HandHeart, label: "Send Request" },
                         { icon: Coins, label: "Pay ShareCoins" },
                         { icon: Lock, label: "Trust Deposit" },
+                        { icon: MapPin, label: "Meet Up" },
                         { icon: Package, label: "Use Item" },
                         { icon: CheckCircle, label: "Return Item" },
                         { icon: Wallet, label: "Deposit Back" },
@@ -294,6 +296,7 @@ export default function FAQPage() {
                         { icon: HandHeart, label: "Send Request" },
                         { icon: Coins, label: "Pay ShareCoins" },
                         { icon: Lock, label: "Trust Deposit" },
+                        { icon: MapPin, label: "Meet Up" },
                         { icon: Package, label: "Use Item" },
                         { icon: CheckCircle, label: "Return Item" },
                         { icon: Wallet, label: "Deposit Back" },
@@ -321,6 +324,7 @@ export default function FAQPage() {
                         { icon: Camera, label: "List Item" },
                         { icon: Clock, label: "Set Availability" },
                         { icon: ThumbsUp, label: "Approve Request" },
+                        { icon: MapPin, label: "Meet Up" },
                         { icon: Coins, label: "Earn ShareCoins" },
                         { icon: RotateCcw, label: "Item Returned" },
                       ].map((step, i, arr) => (
@@ -342,6 +346,7 @@ export default function FAQPage() {
                         { icon: Camera, label: "List Item" },
                         { icon: Clock, label: "Set Availability" },
                         { icon: ThumbsUp, label: "Approve Request" },
+                        { icon: MapPin, label: "Meet Up" },
                         { icon: Coins, label: "Earn ShareCoins" },
                         { icon: RotateCcw, label: "Item Returned" },
                       ].map((step, i, arr) => (

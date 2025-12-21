@@ -271,7 +271,7 @@ export default function FAQPage() {
                         { icon: Search, label: "Find Item" },
                         { icon: Send, label: "Send Request" },
                         { icon: Coins, label: "Pay in ShareCoins" },
-                        { icon: Lock, label: "Give Trust-Deposit" },
+                        { icon: Lock, label: "Give Real Money Trust-Deposit" },
                         { icon: MapPin, label: "Item Handoff" },
                         { icon: Package, label: "Use Item" },
                         { icon: CheckCircle, label: "Return Item" },

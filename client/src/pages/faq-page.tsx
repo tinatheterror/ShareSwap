@@ -266,8 +266,7 @@ export default function FAQPage() {
                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
                     <p className="text-sm font-semibold text-gray-800 mb-3 text-center">Borrow</p>
                     
-                    {/* Mobile: Vertical flow */}
-                    <div className="flex flex-col gap-2 md:hidden">
+                    <div className="flex flex-col gap-1">
                       {[
                         { icon: Search, label: "Find Item" },
                         { icon: Send, label: "Send Request" },
@@ -278,38 +277,14 @@ export default function FAQPage() {
                         { icon: CheckCircle, label: "Return Item" },
                         { icon: Wallet, label: "Deposit Back" },
                       ].map((step, i, arr) => (
-                        <div key={i} className="flex items-center gap-2">
+                        <div key={i} className="flex items-center gap-3">
                           <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
-                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
+                            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-4 w-4 text-[#0DCEA1]" />
                             </div>
-                            {i < arr.length - 1 && <ChevronDown className="h-4 w-4 text-[#0DCEA1] my-1" />}
+                            {i < arr.length - 1 && <div className="w-0.5 h-3 bg-[#0DCEA1]/30"></div>}
                           </div>
                           <span className="text-xs font-medium text-gray-700">{step.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Desktop: Horizontal flow with wrapping */}
-                    <div className="hidden md:flex flex-wrap justify-center items-center gap-1">
-                      {[
-                        { icon: Search, label: "Find Item" },
-                        { icon: Send, label: "Send Request" },
-                        { icon: Coins, label: "Pay ShareCoins" },
-                        { icon: Lock, label: "Trust Deposit" },
-                        { icon: MapPin, label: "Meet Up" },
-                        { icon: Package, label: "Use Item" },
-                        { icon: CheckCircle, label: "Return Item" },
-                        { icon: Wallet, label: "Deposit Back" },
-                      ].map((step, i, arr) => (
-                        <div key={i} className="flex items-center">
-                          <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
-                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
-                            </div>
-                            <span className="text-[10px] font-medium text-gray-600 mt-1 text-center w-14">{step.label}</span>
-                          </div>
-                          {i < arr.length - 1 && <ChevronRight className="h-4 w-4 text-[#0DCEA1] mx-0.5 mt-[-16px]" />}
                         </div>
                       ))}
                     </div>
@@ -319,8 +294,7 @@ export default function FAQPage() {
                   <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
                     <p className="text-sm font-semibold text-gray-800 mb-3 text-center">Lend</p>
                     
-                    {/* Mobile: Vertical flow */}
-                    <div className="flex flex-col gap-2 md:hidden">
+                    <div className="flex flex-col gap-1">
                       {[
                         { icon: Camera, label: "List Item" },
                         { icon: Clock, label: "Set Availability" },
@@ -329,36 +303,14 @@ export default function FAQPage() {
                         { icon: Coins, label: "Earn ShareCoins" },
                         { icon: RotateCcw, label: "Item Returned" },
                       ].map((step, i, arr) => (
-                        <div key={i} className="flex items-center gap-2">
+                        <div key={i} className="flex items-center gap-3">
                           <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
-                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
+                            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-4 w-4 text-[#0DCEA1]" />
                             </div>
-                            {i < arr.length - 1 && <ChevronDown className="h-4 w-4 text-[#0DCEA1] my-1" />}
+                            {i < arr.length - 1 && <div className="w-0.5 h-3 bg-[#0DCEA1]/30"></div>}
                           </div>
                           <span className="text-xs font-medium text-gray-700">{step.label}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Desktop: Horizontal flow */}
-                    <div className="hidden md:flex flex-wrap justify-center items-center gap-1">
-                      {[
-                        { icon: Camera, label: "List Item" },
-                        { icon: Clock, label: "Set Availability" },
-                        { icon: ThumbsUp, label: "Approve Request" },
-                        { icon: MapPin, label: "Meet Up" },
-                        { icon: Coins, label: "Earn ShareCoins" },
-                        { icon: RotateCcw, label: "Item Returned" },
-                      ].map((step, i, arr) => (
-                        <div key={i} className="flex items-center">
-                          <div className="flex flex-col items-center">
-                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
-                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
-                            </div>
-                            <span className="text-[10px] font-medium text-gray-600 mt-1 text-center w-14">{step.label}</span>
-                          </div>
-                          {i < arr.length - 1 && <ChevronRight className="h-4 w-4 text-[#0DCEA1] mx-0.5 mt-[-16px]" />}
                         </div>
                       ))}
                     </div>

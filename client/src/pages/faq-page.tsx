@@ -24,6 +24,14 @@ import {
   Sparkles,
   UserCheck,
   Leaf,
+  Search,
+  Lock,
+  CheckCircle,
+  RotateCcw,
+  Camera,
+  ThumbsUp,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -247,35 +255,118 @@ export default function FAQPage() {
 
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-3">
+                <h3 className="font-semibold text-gray-800 mb-4">
                   How Borrowing & Lending Works
                 </h3>
-                <p className="text-gray-700 text-sm mb-4">
-                  Request an item, pay ShareCoins, and pick it up. Return it by
-                  the agreed date. The lender earns ShareCoins when the item is
-                  returned safely.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Borrow Flow */}
                   <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Borrow
-                    </p>
-                    <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
-                      <li>Request items using ShareCoins</li>
-                      <li>A refundable, trust-based deposit may apply</li>
-                      <li>Higher trust = lower deposits</li>
-                      <li>Return on time and in good condition to get your deposit back</li>
-                    </ul>
+                    <p className="text-sm font-semibold text-gray-800 mb-3 text-center">Borrow</p>
+                    
+                    {/* Mobile: Vertical flow */}
+                    <div className="flex flex-col gap-2 md:hidden">
+                      {[
+                        { icon: Search, label: "Find Item" },
+                        { icon: HandHeart, label: "Send Request" },
+                        { icon: Coins, label: "Pay ShareCoins" },
+                        { icon: Lock, label: "Trust Deposit" },
+                        { icon: Package, label: "Use Item" },
+                        { icon: CheckCircle, label: "Return Item" },
+                        { icon: Wallet, label: "Deposit Back" },
+                      ].map((step, i, arr) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
+                            </div>
+                            {i < arr.length - 1 && <ChevronDown className="h-4 w-4 text-[#0DCEA1] my-1" />}
+                          </div>
+                          <span className="text-xs font-medium text-gray-700">{step.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Desktop: Horizontal flow with wrapping */}
+                    <div className="hidden md:flex flex-wrap justify-center items-center gap-1">
+                      {[
+                        { icon: Search, label: "Find Item" },
+                        { icon: HandHeart, label: "Send Request" },
+                        { icon: Coins, label: "Pay ShareCoins" },
+                        { icon: Lock, label: "Trust Deposit" },
+                        { icon: Package, label: "Use Item" },
+                        { icon: CheckCircle, label: "Return Item" },
+                        { icon: Wallet, label: "Deposit Back" },
+                      ].map((step, i, arr) => (
+                        <div key={i} className="flex items-center">
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
+                            </div>
+                            <span className="text-[10px] font-medium text-gray-600 mt-1 text-center w-14">{step.label}</span>
+                          </div>
+                          {i < arr.length - 1 && <ChevronRight className="h-4 w-4 text-[#0DCEA1] mx-0.5 mt-[-16px]" />}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Lend
-                    </p>
-                    <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
-                      <li>List items you’re willing to share</li>
-                      <li>Earn ShareCoins when neighbours borrow</li>
-                      <li>Set availability and sharing options</li>
-                    </ul>
+                  
+                  {/* Lend Flow */}
+                  <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
+                    <p className="text-sm font-semibold text-gray-800 mb-3 text-center">Lend</p>
+                    
+                    {/* Mobile: Vertical flow */}
+                    <div className="flex flex-col gap-2 md:hidden">
+                      {[
+                        { icon: Camera, label: "List Item" },
+                        { icon: Clock, label: "Set Availability" },
+                        { icon: ThumbsUp, label: "Approve Request" },
+                        { icon: Coins, label: "Earn ShareCoins" },
+                        { icon: RotateCcw, label: "Item Returned" },
+                      ].map((step, i, arr) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
+                            </div>
+                            {i < arr.length - 1 && <ChevronDown className="h-4 w-4 text-[#0DCEA1] my-1" />}
+                          </div>
+                          <span className="text-xs font-medium text-gray-700">{step.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Desktop: Horizontal flow */}
+                    <div className="hidden md:flex flex-wrap justify-center items-center gap-1">
+                      {[
+                        { icon: Camera, label: "List Item" },
+                        { icon: Clock, label: "Set Availability" },
+                        { icon: ThumbsUp, label: "Approve Request" },
+                        { icon: Coins, label: "Earn ShareCoins" },
+                        { icon: RotateCcw, label: "Item Returned" },
+                      ].map((step, i, arr) => (
+                        <div key={i} className="flex items-center">
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-5 w-5 text-[#0DCEA1]" />
+                            </div>
+                            <span className="text-[10px] font-medium text-gray-600 mt-1 text-center w-14">{step.label}</span>
+                          </div>
+                          {i < arr.length - 1 && <ChevronRight className="h-4 w-4 text-[#0DCEA1] mx-0.5 mt-[-16px]" />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Trust Callout */}
+                <div className="mt-4 bg-white rounded-lg p-3 border border-gray-200 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#E6FBF5] flex items-center justify-center flex-shrink-0">
+                    <Shield className="h-4 w-4 text-[#0DCEA1]" />
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                    <span>Higher trust score = lower deposit</span>
+                    <span>Deposits are always refundable</span>
                   </div>
                 </div>
               </TabsContent>
@@ -444,7 +535,7 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Coins className="h-5 w-5 text-teal-600" />
+              <Coins className="h-5 w-5 text-[#0DCEA1]" />
               What are ShareCoins?
             </CardTitle>
           </CardHeader>
@@ -669,7 +760,7 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="h-5 w-5 text-teal-600" />
+              <Shield className="h-5 w-5 text-[#0DCEA1]" />
               Trust & Safety
             </CardTitle>
           </CardHeader>

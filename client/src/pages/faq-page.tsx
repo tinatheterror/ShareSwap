@@ -61,8 +61,8 @@ export default function FAQPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {/* Save Money or Earn Money */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* Paper money stack illustration */}
                   <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     {/* Back bill */}
@@ -97,8 +97,8 @@ export default function FAQPage() {
               </div>
 
               {/* Turn Unused Items Into Value */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* Sofa with price tag illustration */}
                   <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2">
                     {/* Sofa body */}
@@ -132,8 +132,8 @@ export default function FAQPage() {
               </div>
 
               {/* Built on Local Trust */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* ID card with shield illustration */}
                   <div className="w-8 h-6 bg-[#87CEEB] rounded-sm border border-[#5F9EA0] rotate-[-5deg] absolute left-3">
                     <div className="absolute top-1 left-1 w-2 h-2 bg-white/60 rounded-full"></div>
@@ -156,8 +156,8 @@ export default function FAQPage() {
               </div>
 
               {/* Reduce Waste Effortlessly */}
-              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 text-center">
-                <div className="w-16 h-16 mx-auto mb-3 bg-white rounded-full flex items-center justify-center relative">
+              <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
+                <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* Earth with leaf illustration */}
                   <div className="w-9 h-9 bg-[#87CEEB] rounded-full relative overflow-hidden">
                     {/* North America - wider at top, narrower at bottom */}

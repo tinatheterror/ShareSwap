@@ -465,26 +465,22 @@ export default function FAQPage() {
                 <h3 className="font-semibold text-gray-800 mb-3">
                   How Gifting Works
                 </h3>
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="gift-1">
-                    <AccordionTrigger className="text-sm">
-                      What gifting means
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-600">
+                <div className="space-y-3">
+                  <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 border border-pink-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">What gifting means</p>
+                    <p className="text-xs text-gray-600">
                       Give away items you no longer need. The recipient keeps
                       the item permanently. No payments or deposits required.
-                    </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="gift-2">
-                    <AccordionTrigger className="text-sm">
-                      ShareCoin reward
-                    </AccordionTrigger>
-                    <AccordionContent className="text-gray-600">
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 border border-pink-200">
+                    <p className="text-sm font-medium text-gray-700 mb-1">ShareCoin reward</p>
+                    <p className="text-xs text-gray-600">
                       Both the giver and receiver earn ShareCoins when a gift is
                       completed.
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+                    </p>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

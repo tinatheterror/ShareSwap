@@ -135,16 +135,13 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* ID card with shield illustration */}
-                  <div className="w-10 h-7 bg-[#87CEEB] rounded-sm border border-[#5F9EA0] rotate-[-5deg] absolute left-2.5 top-4">
-                    <div className="absolute top-1 left-1 w-2.5 h-2.5 bg-white/60 rounded-full"></div>
-                    <div className="absolute bottom-1 left-1 right-1 h-0.5 bg-white/40"></div>
-                    <div className="absolute bottom-2.5 left-1 right-2 h-0.5 bg-white/40"></div>
+                  <div className="w-11 h-8 bg-[#87CEEB] rounded-md border border-[#5F9EA0] absolute">
+                    <div className="absolute top-1.5 left-1.5 w-3 h-3 bg-white/60 rounded-full"></div>
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 h-0.5 bg-white/40 rounded"></div>
+                    <div className="absolute bottom-3 left-1.5 right-3 h-0.5 bg-white/40 rounded"></div>
                   </div>
-                  <div className="absolute right-2.5 bottom-3">
-                    <Shield className="h-6 w-6 text-gray-400 fill-gray-100" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-2 h-2.5 bg-gray-400 rounded-sm mt-0.5"></div>
-                    </div>
+                  <div className="absolute right-4 bottom-4">
+                    <Shield className="h-5 w-5 text-[#5F9EA0] fill-[#E0F4F4]" />
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
@@ -159,32 +156,16 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* Earth with leaf illustration */}
-                  <div className="w-11 h-11 bg-[#87CEEB] rounded-full relative overflow-hidden">
-                    {/* North America - wider at top, narrower at bottom */}
-                    <div
-                      className="absolute top-1 left-0 w-4 h-3.5 bg-[#3CB371]"
-                      style={{ borderRadius: "40% 60% 30% 70%" }}
-                    ></div>
-                    {/* South America - elongated, tapers down */}
-                    <div
-                      className="absolute bottom-0 left-1 w-2.5 h-4 bg-[#3CB371]"
-                      style={{ borderRadius: "50% 50% 30% 70%" }}
-                    ></div>
-                    {/* Africa - large, elongated */}
-                    <div
-                      className="absolute top-2.5 right-0.5 w-3 h-5 bg-[#3CB371]"
-                      style={{ borderRadius: "60% 40% 50% 50%" }}
-                    ></div>
-                    {/* Europe - small blob above Africa */}
-                    <div
-                      className="absolute top-1 right-1.5 w-2.5 h-2 bg-[#3CB371]"
-                      style={{ borderRadius: "50% 50% 60% 40%" }}
-                    ></div>
+                  <div className="w-10 h-10 bg-[#7DD3C0] rounded-full relative overflow-hidden">
+                    {/* Land masses - green spots */}
+                    <div className="absolute top-1 left-1.5 w-3 h-2.5 bg-[#4CAF7C] rounded-full"></div>
+                    <div className="absolute top-3.5 right-1 w-2.5 h-3 bg-[#4CAF7C] rounded-full"></div>
+                    <div className="absolute bottom-1 left-2 w-2 h-2 bg-[#4CAF7C] rounded-full"></div>
+                    <div className="absolute bottom-2.5 right-2.5 w-1.5 h-1.5 bg-[#4CAF7C] rounded-full"></div>
                   </div>
-                  <div className="absolute top-1 right-2">
-                    <Leaf className="h-5 w-5 text-[#228B22] fill-[#90EE90]" />
+                  <div className="absolute top-2 right-3">
+                    <Leaf className="h-5 w-5 text-[#22C55E] fill-[#86EFAC]" />
                   </div>
-                  <div className="absolute bottom-3 left-2.5 w-2.5 h-2.5 bg-[#90EE90] rounded-full"></div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
                   Reduce Waste

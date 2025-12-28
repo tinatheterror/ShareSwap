@@ -64,7 +64,7 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* Paper money stack illustration */}
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-125">
                     {/* Back bill */}
                     <div className="absolute -left-0.5 top-1 w-11 h-6 bg-[#2E8B57] rounded-md rotate-[-8deg]">
                       <div className="absolute left-1 top-1 w-1.5 h-1.5 bg-[#3CB371] rounded-full opacity-60"></div>
@@ -100,7 +100,7 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* Sofa with price tag illustration */}
-                  <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2">
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 scale-125">
                     {/* Sofa body */}
                     <div className="w-10 h-4 bg-[#7C9EB2] rounded-t-lg border border-[#5A7A8A]"></div>
                     {/* Sofa back */}
@@ -135,15 +135,15 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* ID card with shield illustration */}
-                  <div className="w-8 h-6 bg-[#87CEEB] rounded-sm border border-[#5F9EA0] rotate-[-5deg] absolute left-3">
-                    <div className="absolute top-1 left-1 w-2 h-2 bg-white/60 rounded-full"></div>
+                  <div className="w-10 h-7 bg-[#87CEEB] rounded-sm border border-[#5F9EA0] rotate-[-5deg] absolute left-2.5 top-4">
+                    <div className="absolute top-1 left-1 w-2.5 h-2.5 bg-white/60 rounded-full"></div>
                     <div className="absolute bottom-1 left-1 right-1 h-0.5 bg-white/40"></div>
-                    <div className="absolute bottom-2 left-1 right-2 h-0.5 bg-white/40"></div>
+                    <div className="absolute bottom-2.5 left-1 right-2 h-0.5 bg-white/40"></div>
                   </div>
-                  <div className="absolute right-3 bottom-3">
-                    <Shield className="h-5 w-5 text-gray-400 fill-gray-100" />
+                  <div className="absolute right-2.5 bottom-3">
+                    <Shield className="h-6 w-6 text-gray-400 fill-gray-100" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-1.5 h-2 bg-gray-400 rounded-sm mt-0.5"></div>
+                      <div className="w-2 h-2.5 bg-gray-400 rounded-sm mt-0.5"></div>
                     </div>
                   </div>
                 </div>
@@ -159,32 +159,32 @@ export default function FAQPage() {
               <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-5 py-6 text-center">
                 <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center relative">
                   {/* Earth with leaf illustration */}
-                  <div className="w-9 h-9 bg-[#87CEEB] rounded-full relative overflow-hidden">
+                  <div className="w-11 h-11 bg-[#87CEEB] rounded-full relative overflow-hidden">
                     {/* North America - wider at top, narrower at bottom */}
                     <div
-                      className="absolute top-0.5 left-0 w-3.5 h-3 bg-[#3CB371]"
+                      className="absolute top-1 left-0 w-4 h-3.5 bg-[#3CB371]"
                       style={{ borderRadius: "40% 60% 30% 70%" }}
                     ></div>
                     {/* South America - elongated, tapers down */}
                     <div
-                      className="absolute bottom-0 left-1 w-2 h-3 bg-[#3CB371]"
+                      className="absolute bottom-0 left-1 w-2.5 h-4 bg-[#3CB371]"
                       style={{ borderRadius: "50% 50% 30% 70%" }}
                     ></div>
                     {/* Africa - large, elongated */}
                     <div
-                      className="absolute top-2 right-0.5 w-2.5 h-4 bg-[#3CB371]"
+                      className="absolute top-2.5 right-0.5 w-3 h-5 bg-[#3CB371]"
                       style={{ borderRadius: "60% 40% 50% 50%" }}
                     ></div>
                     {/* Europe - small blob above Africa */}
                     <div
-                      className="absolute top-0.5 right-1 w-2 h-1.5 bg-[#3CB371]"
+                      className="absolute top-1 right-1.5 w-2.5 h-2 bg-[#3CB371]"
                       style={{ borderRadius: "50% 50% 60% 40%" }}
                     ></div>
                   </div>
-                  <div className="absolute -top-0.5 right-3">
-                    <Leaf className="h-4 w-4 text-[#228B22] fill-[#90EE90]" />
+                  <div className="absolute top-1 right-2">
+                    <Leaf className="h-5 w-5 text-[#228B22] fill-[#90EE90]" />
                   </div>
-                  <div className="absolute bottom-3 left-3 w-2 h-2 bg-[#90EE90] rounded-full"></div>
+                  <div className="absolute bottom-3 left-2.5 w-2.5 h-2.5 bg-[#90EE90] rounded-full"></div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
                   Reduce Waste

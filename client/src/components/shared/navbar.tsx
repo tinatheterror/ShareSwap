@@ -169,7 +169,7 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto pl-0 pr-4 sm:pr-6 lg:pr-8">
         <div className="flex justify-between h-16 items-center">
           <Link href="/">
-            <div className="flex items-center cursor-pointer pl-0">
+            <div className="flex items-center cursor-pointer -ml-4">
               <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-[48px] w-auto" />
             </div>
           </Link>

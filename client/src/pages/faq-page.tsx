@@ -295,7 +295,7 @@ export default function FAQPage() {
                         { icon: ThumbsUp, label: "Approve Request" },
                         {
                           icon: Lock,
-                          label: "Refundable cash Trust-deposit placed",
+                          label: "Refundable cash Trust-deposit held",
                         },
                         { icon: MapPin, label: "Item Handoff" },
                         {
@@ -303,10 +303,7 @@ export default function FAQPage() {
                           label: "ShareCoins earned upon delivery",
                         },
                         { icon: RotateCcw, label: "Item Returned" },
-                        {
-                          icon: Wallet,
-                          label: "Refundable cash Trust-deposit held",
-                        },
+                        { icon: Wallet, label: "Give Deposit Back" },
                       ].map((step, i, arr) => (
                         <div key={i} className="flex items-center gap-3">
                           <div className="flex flex-col items-center">
@@ -863,6 +860,52 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600">
                   We monitor activity to ensure a positive experience for
                   everyone. Accounts with unusual patterns may be reviewed.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="trust-deposits">
+                <AccordionTrigger className="text-sm">
+                  How do Trust-Deposits work for Borrowing and Lending?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">Security deposits help protect lenders and are fully refundable when items are returned safely.</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Deposit amounts automatically decrease as your trust score improves</li>
+                    <li>New members may be asked for a standard deposit</li>
+                    <li>Highly trusted members receive significant discounts</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="trust-score">
+                <AccordionTrigger className="text-sm">
+                  How do you improve your trust score?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">Your trust score increases by:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Returning items on time</li>
+                    <li>Communicating clearly</li>
+                    <li>Completing successful transactions</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-handoff">
+                <AccordionTrigger className="text-sm">
+                  How does Item Handoff work?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-3">When a borrow request is accepted, you'll choose how to exchange the item:</p>
+                  <div className="space-y-3">
+                    <div className="bg-[#E6FBF5] rounded-lg p-3">
+                      <p className="font-medium text-gray-800 text-sm">In-App (Recommended)</p>
+                      <p className="text-sm text-gray-600">ShareSwap manages the security deposit and optional delivery</p>
+                      <p className="text-xs text-gray-500 italic mt-1">A small service fee applies</p>
+                    </div>
+                    <div className="bg-gray-100 rounded-lg p-3">
+                      <p className="font-medium text-gray-800 text-sm">In Person (Free)</p>
+                      <p className="text-sm text-gray-600">Exchange the item and deposit directly with your neighbour</p>
+                      <p className="text-xs text-gray-500 italic mt-1">No fees. You handle it yourselves.</p>
+                    </div>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

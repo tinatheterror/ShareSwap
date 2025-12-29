@@ -335,6 +335,47 @@ export default function FAQPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Item Handoff */}
+                <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin className="h-5 w-5 text-[#0DCEA1]" />
+                    <h4 className="font-semibold text-gray-800 text-sm">Item Handoff</h4>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-3">
+                    When a borrow request is accepted, you'll choose how to exchange the item:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-lg p-3 border border-[#0DCEA1]/20">
+                      <p className="text-sm font-medium text-gray-800 mb-1">In-App (Recommended)</p>
+                      <p className="text-xs text-gray-600 mb-2">ShareSwap manages the security deposit and optional delivery</p>
+                      <p className="text-xs text-gray-500 italic">A small service fee applies</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <p className="text-sm font-medium text-gray-800 mb-1">In Person (Free)</p>
+                      <p className="text-xs text-gray-600 mb-2">Exchange the item and deposit directly with your neighbour</p>
+                      <p className="text-xs text-gray-500 italic">No fees. You handle it yourselves.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Built for Trust */}
+                <div className="mt-4 bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="h-5 w-5 text-[#0DCEA1]" />
+                    <h4 className="font-semibold text-gray-800 text-sm">Built for Trust</h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <Coins className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-600">ShareCoin values are set automatically based on item tier and duration</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Shield className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-600">Trust scores reduce risk and lower deposit requirements over time</p>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
 
               {/* Rent Tab Content */}

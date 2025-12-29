@@ -299,14 +299,40 @@ export default function FAQPage() {
                   </div>
                 </div>
                 
-                {/* Trust Callout */}
-                <div className="mt-4 bg-white rounded-lg p-3 border border-gray-200 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#E6FBF5] flex items-center justify-center flex-shrink-0">
-                    <Shield className="h-4 w-4 text-[#0DCEA1]" />
+                {/* How Trust-Based Security Deposits Work */}
+                <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="h-5 w-5 text-[#0DCEA1]" />
+                    <h4 className="font-semibold text-gray-800 text-sm">How Trust-Based Security Deposits Work</h4>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
-                    <span>Higher trust score = lower deposit</span>
-                    <span>Deposits are always refundable</span>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Security deposits help protect lenders and are fully refundable when items are returned safely.
+                  </p>
+                  <div className="space-y-2 mb-3">
+                    <div className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>
+                      <p className="text-xs text-gray-600">Deposit amounts automatically decrease as your trust score improves</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>
+                      <p className="text-xs text-gray-600">New members may be asked for a standard deposit</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>
+                      <p className="text-xs text-gray-600">Highly trusted members receive significant discounts</p>
+                    </div>
+                  </div>
+                  <p className="text-xs font-medium text-gray-700 mb-2">Your trust score increases by:</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1 bg-[#E6FBF5] text-[#0DCEA1] text-xs px-2 py-1 rounded-full">
+                      <CheckCircle className="h-3 w-3" /> Returning items on time
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-[#E6FBF5] text-[#0DCEA1] text-xs px-2 py-1 rounded-full">
+                      <CheckCircle className="h-3 w-3" /> Communicating clearly
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-[#E6FBF5] text-[#0DCEA1] text-xs px-2 py-1 rounded-full">
+                      <CheckCircle className="h-3 w-3" /> Completing successful transactions
+                    </span>
                   </div>
                 </div>
               </TabsContent>

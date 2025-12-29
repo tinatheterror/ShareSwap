@@ -251,11 +251,10 @@ export default function FAQPage() {
 
                     <div className="flex flex-col gap-1">
                       {[
-                        { icon: Search, label: "Find Item" },
-                        { icon: Send, label: "Send Request" },
+                        { icon: Search, label: "Find Item & Send Request" },
                         {
                           icon: Lock,
-                          label: "Refundable cash Trust-deposit placed",
+                          label: "Refundable cash Trust-Deposit placed",
                         },
                         { icon: MapPin, label: "Item Pickup" },
                         {
@@ -295,7 +294,7 @@ export default function FAQPage() {
                         { icon: ThumbsUp, label: "Approve Request" },
                         {
                           icon: Lock,
-                          label: "Refundable cash Trust-deposit held",
+                          label: "Refundable cash Trust-Deposit held",
                         },
                         { icon: MapPin, label: "Item Handoff" },
                         {
@@ -319,122 +318,6 @@ export default function FAQPage() {
                           </span>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* How Trust-Based Security Deposits Work */}
-                <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="h-5 w-5 text-[#0DCEA1]" />
-                    <h4 className="font-semibold text-gray-800 text-sm">
-                      How Trust-Deposits Work
-                    </h4>
-                  </div>
-                  <p className="text-xs text-gray-600 mb-3">
-                    Trust based security deposits help protect lenders and are
-                    fully refundable when items are returned safely.
-                  </p>
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>
-                      <p className="text-xs text-gray-600">
-                        Deposit amounts decrease as your trust score improves
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>
-                      <p className="text-xs text-gray-600">
-                        New members may be asked for a standard deposit
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>
-                      <p className="text-xs text-gray-600">
-                        Highly trusted members receive significant discounts
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs font-medium text-gray-700 mb-2">
-                    Your trust score increases by:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1 bg-[#E6FBF5] text-[#0DCEA1] text-xs px-2 py-1 rounded-full">
-                      <CheckCircle className="h-3 w-3" /> Returning items on
-                      time
-                    </span>
-                    <span className="inline-flex items-center gap-1 bg-[#E6FBF5] text-[#0DCEA1] text-xs px-2 py-1 rounded-full">
-                      <CheckCircle className="h-3 w-3" /> Communicating clearly
-                    </span>
-                    <span className="inline-flex items-center gap-1 bg-[#E6FBF5] text-[#0DCEA1] text-xs px-2 py-1 rounded-full">
-                      <CheckCircle className="h-3 w-3" /> Completing successful
-                      transactions
-                    </span>
-                  </div>
-                </div>
-
-                {/* Item Handoff */}
-                <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MapPin className="h-5 w-5 text-[#0DCEA1]" />
-                    <h4 className="font-semibold text-gray-800 text-sm">
-                      Item Handoff
-                    </h4>
-                  </div>
-                  <p className="text-xs text-gray-600 mb-3">
-                    When a borrow request is accepted, you'll choose how to
-                    exchange the item:
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-lg p-3 border border-[#0DCEA1]/20">
-                      <p className="text-sm font-medium text-gray-800 mb-1">
-                        In-App (Recommended)
-                      </p>
-                      <p className="text-xs text-gray-600 mb-2">
-                        ShareSwap manages the security deposit and optional
-                        delivery
-                      </p>
-                      <p className="text-xs text-gray-500 italic">
-                        A small service fee applies
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <p className="text-sm font-medium text-gray-800 mb-1">
-                        In Person (Free)
-                      </p>
-                      <p className="text-xs text-gray-600 mb-2">
-                        Exchange the item and deposit directly with your
-                        neighbour
-                      </p>
-                      <p className="text-xs text-gray-500 italic">
-                        No fees. You handle it yourselves.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Built for Trust */}
-                <div className="mt-4 bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="h-5 w-5 text-[#0DCEA1]" />
-                    <h4 className="font-semibold text-gray-800 text-sm">
-                      Built for Trust
-                    </h4>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2">
-                      <Coins className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-gray-600">
-                        ShareCoin values are set automatically based on item
-                        tier and duration
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <Shield className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-gray-600">
-                        Trust scores reduce risk and lower deposit requirements
-                        over time
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -860,52 +743,6 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600">
                   We monitor activity to ensure a positive experience for
                   everyone. Accounts with unusual patterns may be reviewed.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trust-deposits">
-                <AccordionTrigger className="text-sm">
-                  How do Trust-Deposits work for Borrowing and Lending?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Security deposits help protect lenders and are fully refundable when items are returned safely.</p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Deposit amounts automatically decrease as your trust score improves</li>
-                    <li>New members may be asked for a standard deposit</li>
-                    <li>Highly trusted members receive significant discounts</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trust-score">
-                <AccordionTrigger className="text-sm">
-                  How do you improve your trust score?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Your trust score increases by:</p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Returning items on time</li>
-                    <li>Communicating clearly</li>
-                    <li>Completing successful transactions</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-handoff">
-                <AccordionTrigger className="text-sm">
-                  How does Item Handoff work?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-3">When a borrow request is accepted, you'll choose how to exchange the item:</p>
-                  <div className="space-y-3">
-                    <div className="bg-[#E6FBF5] rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm">In-App (Recommended)</p>
-                      <p className="text-sm text-gray-600">ShareSwap manages the security deposit and optional delivery</p>
-                      <p className="text-xs text-gray-500 italic mt-1">A small service fee applies</p>
-                    </div>
-                    <div className="bg-gray-100 rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm">In Person (Free)</p>
-                      <p className="text-sm text-gray-600">Exchange the item and deposit directly with your neighbour</p>
-                      <p className="text-xs text-gray-500 italic mt-1">No fees. You handle it yourselves.</p>
-                    </div>
-                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

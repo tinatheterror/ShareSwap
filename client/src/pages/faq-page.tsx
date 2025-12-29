@@ -124,7 +124,7 @@ export default function FAQPage() {
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
-                  Turn Idle Into Value
+                  Turn Idle Items Into Value
                 </p>
                 <p className="text-[11px] text-gray-500 leading-tight">
                   Your unused items can help others.
@@ -238,9 +238,12 @@ export default function FAQPage() {
 
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-4">
+                <h3 className="font-semibold text-gray-800 mb-2">
                   How Borrowing & Lending Works
                 </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Use ShareCoins to borrow from your neighbours. ShareCoin prices are set automatically based on item tier and duration.
+                </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Borrow Flow */}

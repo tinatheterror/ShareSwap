@@ -251,10 +251,11 @@ export default function FAQPage() {
 
                     <div className="flex flex-col gap-1">
                       {[
-                        { icon: Search, label: "Find Item & Send Request" },
+                        { icon: Search, label: "Find Item" },
+                        { icon: Send, label: "Send Request" },
                         {
                           icon: Lock,
-                          label: "Refundable cash Trust-Deposit placed",
+                          label: "Cash Trust-Deposit placed",
                         },
                         { icon: MapPin, label: "Item Pickup" },
                         {
@@ -294,7 +295,7 @@ export default function FAQPage() {
                         { icon: ThumbsUp, label: "Approve Request" },
                         {
                           icon: Lock,
-                          label: "Refundable cash Trust-Deposit held",
+                          label: "Cash Trust-Deposit held",
                         },
                         { icon: MapPin, label: "Item Handoff" },
                         {

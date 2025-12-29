@@ -244,15 +244,14 @@ export default function FAQPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Borrow Flow */}
-                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
-                    <p className="text-sm font-semibold text-gray-800 mb-3 text-center">
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
+                    <p className="text-sm font-semibold text-gray-800 mb-2 text-center">
                       Borrow
                     </p>
 
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-0.5">
                       {[
-                        { icon: Search, label: "Find Item" },
-                        { icon: Send, label: "Send Request" },
+                        { icon: Search, label: "Find Item & Send Request" },
                         {
                           icon: Lock,
                           label: "Cash Trust-Deposit placed",
@@ -266,13 +265,13 @@ export default function FAQPage() {
                         { icon: CheckCircle, label: "Return Item" },
                         { icon: Wallet, label: "Receive Deposit Back" },
                       ].map((step, i, arr) => (
-                        <div key={i} className="flex items-center gap-3">
+                        <div key={i} className="flex items-center gap-2">
                           <div className="flex flex-col items-center">
-                            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
-                              <step.icon className="h-4 w-4 text-[#0DCEA1]" />
+                            <div className="w-6 h-6 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-3 w-3 text-[#0DCEA1]" />
                             </div>
                             {i < arr.length - 1 && (
-                              <div className="w-0.5 h-3 bg-[#0DCEA1]/30"></div>
+                              <div className="w-0.5 h-2 bg-[#0DCEA1]/30"></div>
                             )}
                           </div>
                           <span className="text-xs font-medium text-gray-700">
@@ -284,12 +283,12 @@ export default function FAQPage() {
                   </div>
 
                   {/* Lend Flow */}
-                  <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20">
-                    <p className="text-sm font-semibold text-gray-800 mb-3 text-center">
+                  <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-3 border border-[#0DCEA1]/20">
+                    <p className="text-sm font-semibold text-gray-800 mb-2 text-center">
                       Lend
                     </p>
 
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-0.5">
                       {[
                         { icon: Camera, label: "List Item" },
                         { icon: ThumbsUp, label: "Approve Request" },
@@ -305,13 +304,13 @@ export default function FAQPage() {
                         { icon: RotateCcw, label: "Item Returned" },
                         { icon: Wallet, label: "Give Deposit Back" },
                       ].map((step, i, arr) => (
-                        <div key={i} className="flex items-center gap-3">
+                        <div key={i} className="flex items-center gap-2">
                           <div className="flex flex-col items-center">
-                            <div className="w-8 h-8 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
-                              <step.icon className="h-4 w-4 text-[#0DCEA1]" />
+                            <div className="w-6 h-6 rounded-full bg-white border-2 border-[#0DCEA1] flex items-center justify-center">
+                              <step.icon className="h-3 w-3 text-[#0DCEA1]" />
                             </div>
                             {i < arr.length - 1 && (
-                              <div className="w-0.5 h-3 bg-[#0DCEA1]/30"></div>
+                              <div className="w-0.5 h-2 bg-[#0DCEA1]/30"></div>
                             )}
                           </div>
                           <span className="text-xs font-medium text-gray-700">
@@ -334,7 +333,7 @@ export default function FAQPage() {
                   if you want to earn cash from your items.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
                     <p className="text-sm font-medium text-gray-700 mb-1">
                       Suggested Pricing
                     </p>
@@ -344,7 +343,7 @@ export default function FAQPage() {
                       security deposit to your desire.
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
                     <p className="text-sm font-medium text-gray-700 mb-1">
                       Platform Fees
                     </p>
@@ -352,7 +351,7 @@ export default function FAQPage() {
                       0% platform fee for 2025. Only 3% payment processing.
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
+                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
                     <p className="text-sm font-medium text-gray-700 mb-1">
                       Security Deposits
                     </p>
@@ -460,7 +459,7 @@ export default function FAQPage() {
                   How Gifting Works
                 </h3>
                 <div className="space-y-3">
-                  <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 border border-pink-200">
+                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
                     <p className="text-sm font-medium text-gray-700 mb-1">
                       What gifting means
                     </p>
@@ -469,7 +468,7 @@ export default function FAQPage() {
                       the item permanently. No payments or deposits required.
                     </p>
                   </div>
-                  <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 border border-pink-200">
+                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
                     <p className="text-sm font-medium text-gray-700 mb-1">
                       ShareCoin reward
                     </p>
@@ -751,11 +750,19 @@ export default function FAQPage() {
                   How do Trust-Deposits work for Borrowing and Lending?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Security deposits help protect lenders and are fully refundable when items are returned safely.</p>
+                  <p className="mb-2">
+                    Security deposits help protect lenders and are fully
+                    refundable when items are returned safely.
+                  </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Deposit amounts automatically decrease as your trust score improves</li>
+                    <li>
+                      Deposit amounts automatically decrease as your trust score
+                      improves
+                    </li>
                     <li>New members may be asked for a standard deposit</li>
-                    <li>Highly trusted members receive significant discounts</li>
+                    <li>
+                      Highly trusted members receive significant discounts
+                    </li>
                   </ul>
                 </AccordionContent>
               </AccordionItem>
@@ -777,17 +784,34 @@ export default function FAQPage() {
                   How does Item Handoff work?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  <p className="mb-3">When a borrow request is accepted, you'll choose how to exchange the item:</p>
+                  <p className="mb-3">
+                    When a borrow request is accepted, you'll choose how to
+                    exchange the item:
+                  </p>
                   <div className="space-y-3">
                     <div className="bg-[#E6FBF5] rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm">In-App (Recommended)</p>
-                      <p className="text-sm text-gray-600">ShareSwap manages the security deposit and optional delivery</p>
-                      <p className="text-xs text-gray-500 italic mt-1">A small service fee applies</p>
+                      <p className="font-medium text-gray-800 text-sm">
+                        In-App (Recommended)
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        ShareSwap manages the security deposit and optional
+                        delivery
+                      </p>
+                      <p className="text-xs text-gray-500 italic mt-1">
+                        A small service fee applies
+                      </p>
                     </div>
                     <div className="bg-gray-100 rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm">In Person (Free)</p>
-                      <p className="text-sm text-gray-600">Exchange the item and deposit directly with your neighbour</p>
-                      <p className="text-xs text-gray-500 italic mt-1">No fees. You handle it yourselves.</p>
+                      <p className="font-medium text-gray-800 text-sm">
+                        In Person (Free)
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Exchange the item and deposit directly with your
+                        neighbour
+                      </p>
+                      <p className="text-xs text-gray-500 italic mt-1">
+                        No fees. You handle it yourselves.
+                      </p>
                     </div>
                   </div>
                 </AccordionContent>

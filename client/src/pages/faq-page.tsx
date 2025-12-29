@@ -249,8 +249,7 @@ export default function FAQPage() {
                     
                     <div className="flex flex-col gap-1">
                       {[
-                        { icon: Search, label: "Find Item" },
-                        { icon: Send, label: "Send Request" },
+                        { icon: Search, label: "Find Item & Send Request" },
                         { icon: Lock, label: "Give Real Money Trust-Deposit" },
                         { icon: MapPin, label: "Item Pickup" },
                         { icon: Coins, label: "ShareCoins charged upon pickup" },
@@ -303,15 +302,15 @@ export default function FAQPage() {
                 <div className="mt-4 bg-white rounded-xl p-4 border border-gray-200">
                   <div className="flex items-center gap-2 mb-3">
                     <Shield className="h-5 w-5 text-[#0DCEA1]" />
-                    <h4 className="font-semibold text-gray-800 text-sm">How Trust-Based Security Deposits Work</h4>
+                    <h4 className="font-semibold text-gray-800 text-sm">How Trust-Deposits Work</h4>
                   </div>
                   <p className="text-xs text-gray-600 mb-3">
-                    Security deposits help protect lenders and are fully refundable when items are returned safely.
+                    Trust based security deposits help protect lenders and are fully refundable when items are returned safely.
                   </p>
                   <div className="space-y-2 mb-3">
                     <div className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>
-                      <p className="text-xs text-gray-600">Deposit amounts automatically decrease as your trust score improves</p>
+                      <p className="text-xs text-gray-600">Deposit amounts decrease as your trust score improves</p>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#0DCEA1] mt-1.5 flex-shrink-0"></div>

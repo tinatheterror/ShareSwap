@@ -336,32 +336,23 @@ export default function FAQPage() {
                   Use real money to rent items. Choose renting if you want to
                   earn cash from your items.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Suggested Pricing
-                    </p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Suggested Pricing</p>
                     <p className="text-xs text-gray-500">
-                      Weekly rental rates and security deposits are suggested
-                      based on item category. You can adjust the rate and
-                      security deposit to your desire.
+                      Weekly rental rates and security deposits are suggested based on item category. You can adjust the rate and security deposit to your desire.
                     </p>
                   </div>
-                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Platform Fees
-                    </p>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Platform Fees</p>
                     <p className="text-xs text-gray-500">
                       0% platform fee for 2025. Only 3% payment processing.
                     </p>
                   </div>
-                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Security Deposits
-                    </p>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Security Deposits</p>
                     <p className="text-xs text-gray-500">
-                      Owners can adjust the suggested deposit amount. Held until
-                      item is returned safely.
+                      Owners can adjust the suggested deposit amount. Held until item is returned safely.
                     </p>
                   </div>
                 </div>
@@ -463,18 +454,9 @@ export default function FAQPage() {
                   How Gifting Works
                 </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  Give away items you no longer need. The recipient keeps
-                  the item permanently. No payments or deposits required.
+                  Give away items you no longer need. The recipient keeps the
+                  item permanently. No payments or deposits required.
                 </p>
-                <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
-                  <p className="text-sm font-medium text-gray-700 mb-1">
-                    ShareCoin reward
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    Both the giver and receiver earn ShareCoins when a gift is
-                    completed.
-                  </p>
-                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

@@ -938,6 +938,183 @@ export default function FAQPage() {
             </Accordion>
           </CardContent>
         </Card>
+
+        {/* Common Questions */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <HelpCircle className="h-5 w-5 text-[#0DCEA1]" />
+              Common Questions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="common-1">
+                <AccordionTrigger className="text-sm">
+                  What is the Security Deposit for Borrowing?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">Borrowing uses a trust-based deposit:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Your trust score lowers the deposit</li>
+                    <li>Higher trust = smaller deposit</li>
+                    <li>Each Tier has a base deposit percentage</li>
+                    <li>Trust score discount is applied on top</li>
+                  </ul>
+                  <p className="mt-2 text-sm italic">This keeps borrowing safe without punishing good users.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-2">
+                <AccordionTrigger className="text-sm">
+                  What is the Security Deposit for Renting?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">Renting uses cash deposits (not ShareCoins). The app calculates:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Item value (AI estimate)</li>
+                    <li>Rental price</li>
+                    <li>Deposit amount</li>
+                  </ul>
+                  <p className="mt-2 text-sm italic">You can edit rental price, but deposit is fixed for safety.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-3">
+                <AccordionTrigger className="text-sm">
+                  What is the difference between Borrowing and Renting?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <div className="space-y-3">
+                    <div className="bg-[#E6FBF5] rounded-lg p-3">
+                      <p className="font-medium text-gray-800 text-sm mb-2">Borrowing (ShareCoins)</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li>Community-based</li>
+                        <li>Low cost</li>
+                        <li>Trust-based deposit</li>
+                        <li>Good for helping neighbors</li>
+                        <li>No cash earnings</li>
+                      </ul>
+                    </div>
+                    <div className="bg-amber-50 rounded-lg p-3">
+                      <p className="font-medium text-gray-800 text-sm mb-2">Renting (Cash)</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li>Peer-to-peer income</li>
+                        <li>Cash earnings</li>
+                        <li>Cash deposit required</li>
+                        <li>Ideal for side hustle vibes</li>
+                      </ul>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-4">
+                <AccordionTrigger className="text-sm">
+                  Why do I need photos?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">Photos help AI:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Verify the item</li>
+                    <li>Estimate value</li>
+                    <li>Place it in the right Tier</li>
+                    <li>Calculate fair rates</li>
+                  </ul>
+                  <p className="mt-2 text-sm italic">At least one photo is required. Clear photos = accurate pricing.</p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-5">
+                <AccordionTrigger className="text-sm">
+                  Can I change the Tier or ShareCoin value?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  No. That's locked to keep the system fair for everyone.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-6">
+                <AccordionTrigger className="text-sm">
+                  Can I edit rental prices?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Yes. Rental prices are fully customizable (within platform limits).
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-7">
+                <AccordionTrigger className="text-sm">
+                  What if someone damages my item?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">Every transaction has a deposit. If damage is reported:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>The deposit is held</li>
+                    <li>Support reviews both sides</li>
+                    <li>Funds go to the lender if damage is confirmed</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-8">
+                <AccordionTrigger className="text-sm">
+                  What if someone doesn't return my item?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  The deposit covers non-return. If the deposit isn't enough, the user's account is frozen until resolved.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-9">
+                <AccordionTrigger className="text-sm">
+                  How do I earn ShareCoins?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Lend items</li>
+                    <li>Gift items</li>
+                    <li>Complete swaps</li>
+                    <li>Receive good reviews</li>
+                    <li>Maintain a high trust score</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-10">
+                <AccordionTrigger className="text-sm">
+                  Can I farm ShareCoins with a friend or partner?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  No. We detect repeated transactions between the same two accounts. Suspicious activity reduces trust scores and ShareCoin earnings.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-11">
+                <AccordionTrigger className="text-sm">
+                  Is my address shown to other users?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  No. Only approximate neighborhood is shown. Exact address is shared only when both sides accept a transaction.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-12">
+                <AccordionTrigger className="text-sm">
+                  Can I list items I want to borrow?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Yes — use the Wishlist to request items you need.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-13">
+                <AccordionTrigger className="text-sm">
+                  Do I need to meet people in person?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Usually yes — pick-up or drop-off. You can choose a public meeting spot if you prefer.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="common-14">
+                <AccordionTrigger className="text-sm">
+                  What if I want to delete my account?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  You can delete it anytime in settings. Your items, messages, and balance will be removed.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

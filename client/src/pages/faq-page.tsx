@@ -413,36 +413,20 @@ export default function FAQPage() {
                   <p className="font-medium text-gray-800 text-sm mb-3">
                     Swap Rules
                   </p>
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          Same-tier swaps
-                        </p>
-                        <p className="text-xs text-gray-500">Direct swaps.</p>
-                      </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Same-tier swaps</p>
+                      <p className="text-xs text-gray-500">Direct swaps.</p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          One-tier difference
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          The person with the lower-tier item adds ShareCoins to
-                          balance the value.
-                        </p>
-                      </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">One-tier difference</p>
+                      <p className="text-xs text-gray-500">
+                        The person with the lower-tier item adds ShareCoins to balance the value.
+                      </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          Two tier difference
-                        </p>
-                        <p className="text-xs text-gray-500">Not allowed.</p>
-                      </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Two tier difference</p>
+                      <p className="text-xs text-gray-500">Not allowed.</p>
                     </div>
                   </div>
                 </div>

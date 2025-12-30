@@ -493,12 +493,12 @@ export default function FAQPage() {
           {/* How ShareCoins Are Spent */}
           <Card className="md:col-span-1">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className="flex items-center gap-2 text-base whitespace-nowrap">
                 <div className="flex items-center">
-                  <span className="text-orange-500 font-bold text-lg mr-0.5">
+                  <span className="text-orange-500 font-bold text-base mr-0.5">
                     −
                   </span>
-                  <Coins className="h-5 w-5 text-orange-500" />
+                  <Coins className="h-4 w-4 text-orange-500" />
                 </div>
                 How ShareCoins Are Spent
               </CardTitle>

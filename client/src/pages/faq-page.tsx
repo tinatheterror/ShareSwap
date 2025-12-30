@@ -758,7 +758,6 @@ export default function FAQPage() {
                 <li>ShareCoin value</li>
                 <li>Swap eligibility & offsets</li>
                 <li>Security Deposit and Trust-Deposit amounts</li>
-                <li>Value protection</li>
               </ul>
             </div>
           </CardContent>
@@ -961,7 +960,9 @@ export default function FAQPage() {
                     <li>Each Tier has a base deposit percentage</li>
                     <li>Trust score discount is applied on top</li>
                   </ul>
-                  <p className="mt-2 text-sm italic">This keeps borrowing safe without punishing good users.</p>
+                  <p className="mt-2 text-sm italic">
+                    This keeps borrowing safe without punishing good users.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-2">
@@ -969,13 +970,18 @@ export default function FAQPage() {
                   What is the Security Deposit for Renting?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Renting uses cash deposits (not ShareCoins). The app calculates:</p>
+                  <p className="mb-2">
+                    Renting uses cash deposits (not ShareCoins). The app
+                    calculates:
+                  </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>Item value (AI estimate)</li>
                     <li>Rental price</li>
                     <li>Deposit amount</li>
                   </ul>
-                  <p className="mt-2 text-sm italic">You can edit rental price, but deposit is fixed for safety.</p>
+                  <p className="mt-2 text-sm italic">
+                    You can edit rental price, but deposit is fixed for safety.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-3">
@@ -985,7 +991,9 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600">
                   <div className="space-y-3">
                     <div className="bg-[#E6FBF5] rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm mb-2">Borrowing (ShareCoins)</p>
+                      <p className="font-medium text-gray-800 text-sm mb-2">
+                        Borrowing (ShareCoins)
+                      </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Community-based</li>
                         <li>Low cost</li>
@@ -995,7 +1003,9 @@ export default function FAQPage() {
                       </ul>
                     </div>
                     <div className="bg-[#C8EFE4] rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm mb-2">Renting (Cash)</p>
+                      <p className="font-medium text-gray-800 text-sm mb-2">
+                        Renting (Cash)
+                      </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Peer-to-peer income</li>
                         <li>Cash earnings</li>
@@ -1018,7 +1028,10 @@ export default function FAQPage() {
                     <li>Place it in the right Tier</li>
                     <li>Calculate fair rates</li>
                   </ul>
-                  <p className="mt-2 text-sm italic">At least one photo is required. Clear photos = accurate pricing.</p>
+                  <p className="mt-2 text-sm italic">
+                    At least one photo is required. Clear photos = accurate
+                    pricing.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-5">
@@ -1034,7 +1047,8 @@ export default function FAQPage() {
                   Can I edit rental prices?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Yes. Rental prices are fully customizable (within platform limits).
+                  Yes. Rental prices are fully customizable (within platform
+                  limits).
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-7">
@@ -1042,7 +1056,9 @@ export default function FAQPage() {
                   What if someone damages my item?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Every transaction has a deposit. If damage is reported:</p>
+                  <p className="mb-2">
+                    Every transaction has a deposit. If damage is reported:
+                  </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>The deposit is held</li>
                     <li>Support reviews both sides</li>
@@ -1055,7 +1071,8 @@ export default function FAQPage() {
                   What if someone doesn't return my item?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  The deposit covers non-return. If the deposit isn't enough, the user's account is frozen until resolved.
+                  The deposit covers non-return. If the deposit isn't enough,
+                  the user's account is frozen until resolved.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-9">
@@ -1077,7 +1094,9 @@ export default function FAQPage() {
                   Can I farm ShareCoins with a friend or partner?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. We detect repeated transactions between the same two accounts. Suspicious activity reduces trust scores and ShareCoin earnings.
+                  No. We detect repeated transactions between the same two
+                  accounts. Suspicious activity reduces trust scores and
+                  ShareCoin earnings.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-11">
@@ -1085,7 +1104,8 @@ export default function FAQPage() {
                   Is my address shown to other users?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. Only approximate neighborhood is shown. Exact address is shared only when both sides accept a transaction.
+                  No. Only approximate neighborhood is shown. Exact address is
+                  shared only when both sides accept a transaction.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-12">
@@ -1101,7 +1121,8 @@ export default function FAQPage() {
                   Do I need to meet people in person?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Usually yes — pick-up or drop-off. You can choose a public meeting spot if you prefer.
+                  Usually yes — pick-up or drop-off. You can choose a public
+                  meeting spot if you prefer.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="common-14">
@@ -1109,7 +1130,8 @@ export default function FAQPage() {
                   What if I want to delete my account?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  You can delete it anytime in settings. Your items, messages, and balance will be removed.
+                  You can delete it anytime in settings. Your items, messages,
+                  and balance will be removed.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

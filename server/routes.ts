@@ -22,7 +22,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions } from "@db/schema";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
@@ -247,6 +247,66 @@ export function registerRoutes(app: Express): Server {
       .limit(1);
 
     res.json(verification || { status: "not_submitted" });
+  });
+
+  // Admin: Approve user verification (for demo/testing - auto-approve own verification)
+  app.post("/api/verify/approve", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const userId = req.user.id;
+      
+      // Check if user has a pending verification
+      const [verification] = await db
+        .select()
+        .from(verifications)
+        .where(eq(verifications.userId, userId))
+        .orderBy(desc(verifications.createdAt))
+        .limit(1);
+
+      if (!verification || verification.status === "approved") {
+        return res.status(400).json({ error: "No pending verification found" });
+      }
+
+      // Update verification status
+      await db
+        .update(verifications)
+        .set({ status: "approved" })
+        .where(eq(verifications.id, verification.id));
+
+      // VERIFICATION REWARDS:
+      // 1. Set isVerified = true and verifiedAt timestamp
+      // 2. Boost trust/reputation score significantly (+50 points)
+      const VERIFICATION_TRUST_BOOST = 50;
+      
+      await db
+        .update(users)
+        .set({
+          isVerified: true,
+          verifiedAt: new Date(),
+          reputationScore: sql`COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST}`,
+        })
+        .where(eq(users.id, userId));
+
+      // Log the reputation activity
+      await db.insert(reputationActivities).values({
+        userId: userId,
+        activityType: "VERIFICATION_APPROVED",
+        points: VERIFICATION_TRUST_BOOST,
+        description: "Account verified with ID and payment method",
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Verification approved! You received a trust score boost.",
+        trustBoost: VERIFICATION_TRUST_BOOST 
+      });
+    } catch (error) {
+      console.error("Error approving verification:", error);
+      res.status(500).json({ error: "Failed to approve verification" });
+    }
   });
 
   // SmartScan endpoints
@@ -1238,7 +1298,14 @@ Respond with ONLY the category name, nothing else.`
           ),
         }))
         .filter((item) => item.distance <= radiusKm)
-        .sort((a, b) => a.distance - b.distance);
+        .sort((a, b) => {
+          // Verified users get slight priority boost
+          const aVerified = a.owner?.isVerified ? 1 : 0;
+          const bVerified = b.owner?.isVerified ? 1 : 0;
+          if (bVerified !== aVerified) return bVerified - aVerified;
+          // Then sort by distance
+          return a.distance - b.distance;
+        });
 
       res.json(nearbyItems);
     } catch (error) {
@@ -1284,7 +1351,17 @@ Respond with ONLY the category name, nothing else.`
         }
       });
 
-      res.json(allItems);
+      // Sort to prioritize items from verified users (slight boost in feed priority)
+      const sortedItems = allItems.sort((a, b) => {
+        // Verified users get priority
+        const aVerified = a.owner?.isVerified ? 1 : 0;
+        const bVerified = b.owner?.isVerified ? 1 : 0;
+        if (bVerified !== aVerified) return bVerified - aVerified;
+        // Then sort by creation date
+        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+      });
+
+      res.json(sortedItems);
     } catch (error) {
       console.error("Error fetching items:", error);
       res.status(500).json({ error: "Failed to fetch items" });
@@ -1339,6 +1416,116 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error getting seasonal recommendations:", error);
       res.status(500).json({ error: "Failed to get seasonal recommendations" });
+    }
+  });
+
+  // Wishlist endpoints
+  app.get("/api/wishlists", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Get all active wishlists with user info
+      const allWishlists = await db
+        .select({
+          id: wishlists.id,
+          userId: wishlists.userId,
+          itemName: wishlists.itemName,
+          description: wishlists.description,
+          category: wishlists.category,
+          maxShareCoinPrice: wishlists.maxShareCoinPrice,
+          maxDollarPrice: wishlists.maxDollarPrice,
+          preferredLocation: wishlists.preferredLocation,
+          urgency: wishlists.urgency,
+          isActive: wishlists.isActive,
+          createdAt: wishlists.createdAt,
+          username: users.username,
+          isVerified: users.isVerified,
+          reputationLevel: users.reputationLevel,
+        })
+        .from(wishlists)
+        .innerJoin(users, eq(users.id, wishlists.userId))
+        .where(eq(wishlists.isActive, true))
+        .orderBy(desc(wishlists.createdAt));
+
+      // For urgent wishlists, highlight verified users
+      const wishlistsWithHighlight = allWishlists.map(w => ({
+        ...w,
+        // Verified users are highlighted in urgent wishlists
+        highlightVerified: (w.urgency === 'urgent' || w.urgency === 'high') && w.isVerified,
+      }));
+
+      // Sort: urgent first, then verified users, then by date
+      const sortedWishlists = wishlistsWithHighlight.sort((a, b) => {
+        const urgencyOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+        const aUrgency = urgencyOrder[a.urgency || 'normal'] ?? 2;
+        const bUrgency = urgencyOrder[b.urgency || 'normal'] ?? 2;
+        if (aUrgency !== bUrgency) return aUrgency - bUrgency;
+        // Within same urgency, verified users first
+        if (a.isVerified !== b.isVerified) return a.isVerified ? -1 : 1;
+        // Then by date
+        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+      });
+
+      res.json(sortedWishlists);
+    } catch (error) {
+      console.error("Error fetching wishlists:", error);
+      res.status(500).json({ error: "Failed to fetch wishlists" });
+    }
+  });
+
+  // Create wishlist item
+  app.post("/api/wishlists", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { itemName, description, category, maxShareCoinPrice, maxDollarPrice, preferredLocation, urgency } = req.body;
+
+      if (!itemName) {
+        return res.status(400).json({ error: "Item name is required" });
+      }
+
+      const [newWishlist] = await db
+        .insert(wishlists)
+        .values({
+          userId: req.user.id,
+          itemName,
+          description,
+          category,
+          maxShareCoinPrice,
+          maxDollarPrice,
+          preferredLocation,
+          urgency: urgency || 'normal',
+        })
+        .returning();
+
+      res.status(201).json(newWishlist);
+    } catch (error) {
+      console.error("Error creating wishlist:", error);
+      res.status(500).json({ error: "Failed to create wishlist item" });
+    }
+  });
+
+  // Get my wishlists
+  app.get("/api/my-wishlists", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const myWishlists = await db
+        .select()
+        .from(wishlists)
+        .where(eq(wishlists.userId, req.user.id))
+        .orderBy(desc(wishlists.createdAt));
+
+      res.json(myWishlists);
+    } catch (error) {
+      console.error("Error fetching my wishlists:", error);
+      res.status(500).json({ error: "Failed to fetch your wishlists" });
     }
   });
 

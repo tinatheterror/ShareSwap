@@ -338,21 +338,30 @@ export default function FAQPage() {
                 </p>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Suggested Pricing</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Suggested Pricing
+                    </p>
                     <p className="text-xs text-gray-500">
-                      Weekly rental rates and security deposits are suggested based on item category. You can adjust the rate and security deposit to your desire.
+                      Weekly rental rates and security deposits are suggested
+                      based on item category. You can adjust the rate and
+                      security deposit to your desire.
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Platform Fees</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Platform Fees
+                    </p>
                     <p className="text-xs text-gray-500">
                       0% platform fee for 2025. Only 3% payment processing.
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Security Deposits</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      Security Deposits
+                    </p>
                     <p className="text-xs text-gray-500">
-                      Owners can adjust the suggested deposit amount. Held until item is returned safely.
+                      Owners can adjust the suggested deposit amount. Held until
+                      item is returned safely.
                     </p>
                   </div>
                 </div>
@@ -369,7 +378,7 @@ export default function FAQPage() {
                   tier system ensures fair exchanges.
                 </p>
 
-                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 mb-4">
+                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
                   <p className="text-[#0DCEA1] font-medium text-sm mb-3">
                     Tiers & ShareCoin Values
                   </p>
@@ -413,27 +422,34 @@ export default function FAQPage() {
                   <p className="font-medium text-gray-800 text-sm mb-3">
                     Swap Rules
                   </p>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Same-tier swaps</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Same-tier swaps
+                        </p>
                         <p className="text-xs text-gray-500">Direct swaps.</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">One-tier difference</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          One-tier difference
+                        </p>
                         <p className="text-xs text-gray-500">
-                          The person with the lower-tier item adds ShareCoins to balance the value.
+                          The person with the lower-tier item adds ShareCoins to
+                          balance the value.
                         </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Two tier difference</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Two tier difference
+                        </p>
                         <p className="text-xs text-gray-500">Not allowed.</p>
                       </div>
                     </div>

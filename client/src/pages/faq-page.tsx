@@ -389,6 +389,7 @@ export default function FAQPage() {
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         5 ShareCoins
                       </p>
+                      <p className="text-xs text-gray-500 mt-1">Everyday items</p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
@@ -397,6 +398,7 @@ export default function FAQPage() {
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         10 ShareCoins
                       </p>
+                      <p className="text-xs text-gray-500 mt-1">Mid-value items</p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
@@ -405,6 +407,7 @@ export default function FAQPage() {
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         20 ShareCoins
                       </p>
+                      <p className="text-xs text-gray-500 mt-1">High-value items</p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
@@ -413,6 +416,7 @@ export default function FAQPage() {
                       <p className="text-[#0DCEA1] font-medium text-sm">
                         40 ShareCoins
                       </p>
+                      <p className="text-xs text-gray-500 mt-1">Premium items</p>
                     </div>
                   </div>
                 </div>
@@ -705,7 +709,9 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm mb-4">
-              Tiers group items by overall value so borrowing, swapping, and pricing stay fair. The app uses your photos + details to assign the item to:
+              Tiers group items by overall value so borrowing, swapping, and
+              pricing stay fair. The app uses your photos and details to assign
+              the item to:
             </p>
 
             <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 mb-4">
@@ -744,20 +750,40 @@ export default function FAQPage() {
                     </p>
                     <div className="grid grid-cols-4 gap-2">
                       <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">Tier 1</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">5 ShareCoins</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Tier 1
+                        </p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">
+                          5 ShareCoins
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Everyday items</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">Tier 2</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">10 ShareCoins</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Tier 2
+                        </p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">
+                          10 ShareCoins
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Mid-value items</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">Tier 3</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">20 ShareCoins</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Tier 3
+                        </p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">
+                          20 ShareCoins
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">High-value items</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">Tier 4</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">40 ShareCoins</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Tier 4
+                        </p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">
+                          40 ShareCoins
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Premium items</p>
                       </div>
                     </div>
                   </div>
@@ -766,11 +792,19 @@ export default function FAQPage() {
             </Accordion>
 
             <div>
-              <p className="font-medium text-gray-800 text-sm mb-2">Tiers decide:</p>
+              <p className="font-medium text-gray-800 text-sm mb-2">
+                Tiers decide:
+              </p>
               <div className="flex flex-wrap gap-2">
-                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">ShareCoin cost</span>
-                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">Security deposit</span>
-                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">Value protection</span>
+                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
+                  ShareCoin cost
+                </span>
+                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
+                  Security deposit
+                </span>
+                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
+                  Value protection
+                </span>
               </div>
             </div>
           </CardContent>
@@ -932,7 +966,9 @@ export default function FAQPage() {
                   Who assigns the item Tiers?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  <p className="mb-2">The system assigns it automatically based on:</p>
+                  <p className="mb-2">
+                    The system assigns it automatically based on:
+                  </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>Photos</li>
                     <li>Brand</li>
@@ -940,7 +976,9 @@ export default function FAQPage() {
                     <li>Condition</li>
                     <li>Typical price range</li>
                   </ul>
-                  <p className="mt-2 text-sm italic">You don't have to calculate anything.</p>
+                  <p className="mt-2 text-sm italic">
+                    You don't have to calculate anything.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

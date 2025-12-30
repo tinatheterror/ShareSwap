@@ -418,7 +418,7 @@ export default function FAQPage() {
                   </div>
                 </div>
 
-                <div>
+                <div className="mt-4">
                   <p className="font-medium text-gray-800 text-sm mb-3">
                     Swap Rules
                   </p>

@@ -386,37 +386,37 @@ export default function FAQPage() {
                       <p className="text-sm font-medium text-gray-700">
                         Tier 1
                       </p>
-                      <p className="text-[#0DCEA1] font-medium text-sm">
+                      <p className="text-xs text-gray-500">Everyday items</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                         5 ShareCoins
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">Everyday items</p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
                         Tier 2
                       </p>
-                      <p className="text-[#0DCEA1] font-medium text-sm">
+                      <p className="text-xs text-gray-500">Mid-value items</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                         10 ShareCoins
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">Mid-value items</p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
                         Tier 3
                       </p>
-                      <p className="text-[#0DCEA1] font-medium text-sm">
+                      <p className="text-xs text-gray-500">High-value items</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                         20 ShareCoins
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">High-value items</p>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
                         Tier 4
                       </p>
-                      <p className="text-[#0DCEA1] font-medium text-sm">
+                      <p className="text-xs text-gray-500">Premium items</p>
+                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                         40 ShareCoins
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">Premium items</p>
                     </div>
                   </div>
                 </div>
@@ -753,37 +753,37 @@ export default function FAQPage() {
                         <p className="text-sm font-medium text-gray-700">
                           Tier 1
                         </p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">
+                        <p className="text-xs text-gray-500">Everyday items</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                           5 ShareCoins
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">Everyday items</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                         <p className="text-sm font-medium text-gray-700">
                           Tier 2
                         </p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">
+                        <p className="text-xs text-gray-500">Mid-value items</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                           10 ShareCoins
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">Mid-value items</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                         <p className="text-sm font-medium text-gray-700">
                           Tier 3
                         </p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">
+                        <p className="text-xs text-gray-500">High-value items</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                           20 ShareCoins
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">High-value items</p>
                       </div>
                       <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                         <p className="text-sm font-medium text-gray-700">
                           Tier 4
                         </p>
-                        <p className="text-[#0DCEA1] font-medium text-sm">
+                        <p className="text-xs text-gray-500">Premium items</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
                           40 ShareCoins
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">Premium items</p>
                       </div>
                     </div>
                   </div>

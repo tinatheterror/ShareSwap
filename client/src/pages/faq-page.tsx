@@ -695,6 +695,87 @@ export default function FAQPage() {
           </Card>
         </div>
 
+        {/* What are Tiers? */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Package className="h-5 w-5 text-[#0DCEA1]" />
+              What are Tiers?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 text-sm mb-4">
+              Tiers group items by overall value so borrowing, swapping, and pricing stay fair. The app uses your photos + details to assign the item to:
+            </p>
+
+            <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 mb-4">
+              <div className="grid grid-cols-4 gap-2">
+                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                  <p className="text-sm font-medium text-gray-700">Tier 1</p>
+                  <p className="text-xs text-gray-500">Everyday items</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                  <p className="text-sm font-medium text-gray-700">Tier 2</p>
+                  <p className="text-xs text-gray-500">Mid-value items</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                  <p className="text-sm font-medium text-gray-700">Tier 3</p>
+                  <p className="text-xs text-gray-500">High-value items</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                  <p className="text-sm font-medium text-gray-700">Tier 4</p>
+                  <p className="text-xs text-gray-500">Premium items</p>
+                </div>
+              </div>
+            </div>
+
+            <Accordion type="single" collapsible className="w-full mb-4">
+              <AccordionItem value="tier-values" className="border-0">
+                <AccordionTrigger className="text-sm text-[#0DCEA1] hover:no-underline py-2">
+                  <span className="flex items-center gap-1">
+                    See full Tier & ShareCoin values
+                    <ChevronRight className="h-4 w-4" />
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
+                    <p className="text-[#0DCEA1] font-medium text-sm mb-3">
+                      Tiers & ShareCoin Values
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                        <p className="text-sm font-medium text-gray-700">Tier 1</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">5 ShareCoins</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                        <p className="text-sm font-medium text-gray-700">Tier 2</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">10 ShareCoins</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                        <p className="text-sm font-medium text-gray-700">Tier 3</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">20 ShareCoins</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                        <p className="text-sm font-medium text-gray-700">Tier 4</p>
+                        <p className="text-[#0DCEA1] font-medium text-sm">40 ShareCoins</p>
+                      </div>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+            <div>
+              <p className="font-medium text-gray-800 text-sm mb-2">Tiers decide:</p>
+              <div className="flex flex-wrap gap-2">
+                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">ShareCoin cost</span>
+                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">Security deposit</span>
+                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">Value protection</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Trust & Safety */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -844,6 +925,22 @@ export default function FAQPage() {
                   Earn bonus ShareCoins for completing your first swap, gift,
                   rent, or borrow. You also get a one-time bonus for completing
                   your profile with verification, photo, and bio.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="sc-faq-4">
+                <AccordionTrigger className="text-sm">
+                  Who assigns the item Tiers?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">The system assigns it automatically based on:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Photos</li>
+                    <li>Brand</li>
+                    <li>Category</li>
+                    <li>Condition</li>
+                    <li>Typical price range</li>
+                  </ul>
+                  <p className="mt-2 text-sm italic">You don't have to calculate anything.</p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

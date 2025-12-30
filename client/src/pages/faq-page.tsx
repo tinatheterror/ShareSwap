@@ -342,8 +342,9 @@ export default function FAQPage() {
                       Suggested Pricing
                     </p>
                     <p className="text-xs text-gray-500">
-                      Rental rates and security deposits are suggested based on
-                      item category, but owners can adjust them.
+                      Weekly rental rates and security deposits are suggested
+                      based on item category. You can adjust the rate and
+                      security deposit to your desire.
                     </p>
                   </div>
                   <div>
@@ -359,8 +360,8 @@ export default function FAQPage() {
                       Security Deposits
                     </p>
                     <p className="text-xs text-gray-500">
-                      Rental deposits are cash-based and returned when the item
-                      is returned in good condition.
+                      Owners can adjust the suggested deposit amount. Held until
+                      item is returned safely.
                     </p>
                   </div>
                 </div>
@@ -483,28 +484,28 @@ export default function FAQPage() {
               ShareCoins are the currency of our marketplace. They help keep
               sharing fair and accessible for everyone. ShareCoins do not
               convert to real money. They mainly reward lending, but also
-              encourage sharing and help build community reputation.
+              encourage sharing and help build community. reputation.
             </p>
           </CardContent>
         </Card>
 
         {/* Spent & Earned Side by Side */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* How ShareCoins Are Spent */}
-          <Card className="md:col-span-1">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base whitespace-nowrap">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="flex items-center">
-                  <span className="text-orange-500 font-bold text-base mr-0.5">
+                  <span className="text-orange-500 font-bold text-lg mr-0.5">
                     −
                   </span>
-                  <Coins className="h-4 w-4 text-orange-500" />
+                  <Coins className="h-5 w-5 text-orange-500" />
                 </div>
                 How ShareCoins Are Spent
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Borrowing Items */}
                 <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
                   <div className="flex items-center gap-2">
@@ -541,7 +542,7 @@ export default function FAQPage() {
           </Card>
 
           {/* How ShareCoins Are Earned */}
-          <Card className="md:col-span-2">
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="flex items-center">
@@ -554,7 +555,7 @@ export default function FAQPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Lending */}
                 <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
                   <div className="flex items-center gap-2">
@@ -614,10 +615,10 @@ export default function FAQPage() {
                     </div>
                     <div>
                       <p className="text-xs font-medium text-gray-700">
-                        Completed Gift
+                        Gift Given/Received
                       </p>
                       <p className="text-[10px] text-gray-500">
-                        Giver and receiver earn
+                        Both parties earn
                       </p>
                     </div>
                   </div>

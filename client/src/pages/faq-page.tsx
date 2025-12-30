@@ -994,7 +994,7 @@ export default function FAQPage() {
                         <li>No cash earnings</li>
                       </ul>
                     </div>
-                    <div className="bg-amber-50 rounded-lg p-3">
+                    <div className="bg-[#C8EFE4] rounded-lg p-3">
                       <p className="font-medium text-gray-800 text-sm mb-2">Renting (Cash)</p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Peer-to-peer income</li>

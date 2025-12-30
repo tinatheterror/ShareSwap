@@ -756,10 +756,10 @@ export default function FAQPage() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
-                  ShareCoin cost
+                  ShareCoin value
                 </span>
                 <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
-                  Security deposit
+                  Security Deposit and Trust-Deposit amounts
                 </span>
                 <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
                   Value protection

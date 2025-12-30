@@ -714,84 +714,43 @@ export default function FAQPage() {
               the item to:
             </p>
 
-            <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 mb-4">
+            <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
+              <p className="text-[#0DCEA1] font-medium text-sm mb-3">
+                Tiers & ShareCoin Values
+              </p>
               <div className="grid grid-cols-4 gap-2">
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 1</p>
                   <p className="text-xs text-gray-500">Everyday items</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
+                    5 ShareCoins
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 2</p>
                   <p className="text-xs text-gray-500">Mid-value items</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
+                    10 ShareCoins
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 3</p>
                   <p className="text-xs text-gray-500">High-value items</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
+                    20 ShareCoins
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 4</p>
                   <p className="text-xs text-gray-500">Premium items</p>
+                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
+                    40 ShareCoins
+                  </p>
                 </div>
               </div>
             </div>
 
-            <Accordion type="single" collapsible className="w-full mb-4">
-              <AccordionItem value="tier-values" className="border-0">
-                <AccordionTrigger className="text-sm text-[#0DCEA1] hover:no-underline py-2">
-                  <span className="flex items-center gap-1">
-                    See full Tier & ShareCoin values
-                    <ChevronRight className="h-4 w-4" />
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
-                    <p className="text-[#0DCEA1] font-medium text-sm mb-3">
-                      Tiers & ShareCoin Values
-                    </p>
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">
-                          Tier 1
-                        </p>
-                        <p className="text-xs text-gray-500">Everyday items</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                          5 ShareCoins
-                        </p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">
-                          Tier 2
-                        </p>
-                        <p className="text-xs text-gray-500">Mid-value items</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                          10 ShareCoins
-                        </p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">
-                          Tier 3
-                        </p>
-                        <p className="text-xs text-gray-500">High-value items</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                          20 ShareCoins
-                        </p>
-                      </div>
-                      <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
-                        <p className="text-sm font-medium text-gray-700">
-                          Tier 4
-                        </p>
-                        <p className="text-xs text-gray-500">Premium items</p>
-                        <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                          40 ShareCoins
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-
-            <div>
+            <div className="mt-4">
               <p className="font-medium text-gray-800 text-sm mb-2">
                 Tiers decide:
               </p>

@@ -336,7 +336,7 @@ export default function FAQPage() {
                   Use real money to rent items. Choose renting if you want to
                   earn cash from your items.
                 </p>
-                <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-700">Suggested Pricing</p>
                     <p className="text-xs text-gray-500">

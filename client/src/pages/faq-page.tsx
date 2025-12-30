@@ -778,8 +778,13 @@ export default function FAQPage() {
                   Verified profiles
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Verify your identity with government ID and payment method.
-                  Verified users get a badge and access to higher-value items.
+                  <p className="mb-2">Verify your identity with government ID and payment method. Verified users get:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Significant increase in trust score</li>
+                    <li>Verified badge on profile</li>
+                    <li>Slight boost in search / feed priority</li>
+                    <li>Highlighted in urgent wishlists</li>
+                  </ul>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="trust-2">

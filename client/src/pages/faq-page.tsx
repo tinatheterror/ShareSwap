@@ -754,20 +754,12 @@ export default function FAQPage() {
               <p className="font-medium text-gray-800 text-sm mb-2">
                 Tiers decide:
               </p>
-              <div className="flex flex-wrap gap-2">
-                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
-                  ShareCoin value
-                </span>
-                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
-                  Swap eligibility & offsets
-                </span>
-                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
-                  Security Deposit and Trust-Deposit amounts
-                </span>
-                <span className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full">
-                  Value protection
-                </span>
-              </div>
+              <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                <li>ShareCoin value</li>
+                <li>Swap eligibility & offsets</li>
+                <li>Security Deposit and Trust-Deposit amounts</li>
+                <li>Value protection</li>
+              </ul>
             </div>
           </CardContent>
         </Card>

@@ -242,7 +242,8 @@ export default function FAQPage() {
                   How Borrowing & Lending Works
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Use ShareCoins to borrow from your neighbours. ShareCoin prices are set automatically based on item tier and duration.
+                  Use ShareCoins to borrow from neighbours. ShareCoin prices are
+                  set based on item tier and duration.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -332,8 +333,8 @@ export default function FAQPage() {
                   How Renting Works
                 </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  Renting uses real money instead of ShareCoins. Choose renting
-                  if you want to earn cash from your items.
+                  Use real money to rent items. Choose renting if you want to
+                  earn cash from your items.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
@@ -372,9 +373,9 @@ export default function FAQPage() {
                   How Swapping Works
                 </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  A swap is a direct item-for-item trade between neighbours. No
-                  cash. No deposits. Just swap. Value differences are balanced
-                  with ShareCoins. Our tier system ensures fair exchanges.
+                  Trade item-for-item between neighbours. No cash. No deposits.
+                  Just swap. Value differences are balanced with ShareCoins. Our
+                  tier system ensures fair exchanges.
                 </p>
 
                 <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 border border-[#0DCEA1]/20 mb-4">
@@ -461,25 +462,18 @@ export default function FAQPage() {
                 <h3 className="font-semibold text-gray-800 mb-3">
                   How Gifting Works
                 </h3>
-                <div className="space-y-3">
-                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      What gifting means
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Give away items you no longer need. The recipient keeps
-                      the item permanently. No payments or deposits required.
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      ShareCoin reward
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Both the giver and receiver earn ShareCoins when a gift is
-                      completed.
-                    </p>
-                  </div>
+                <p className="text-gray-700 text-sm mb-4">
+                  Give away items you no longer need. The recipient keeps
+                  the item permanently. No payments or deposits required.
+                </p>
+                <div className="bg-white rounded-xl p-4 border border-[#0DCEA1]/20">
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    ShareCoin reward
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Both the giver and receiver earn ShareCoins when a gift is
+                    completed.
+                  </p>
                 </div>
               </TabsContent>
             </Tabs>

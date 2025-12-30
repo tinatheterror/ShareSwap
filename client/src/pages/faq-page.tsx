@@ -614,10 +614,10 @@ export default function FAQPage() {
                     </div>
                     <div>
                       <p className="text-xs font-medium text-gray-700">
-                        Gift Given/Received
+                        Completed Gift
                       </p>
                       <p className="text-[10px] text-gray-500">
-                        Both parties earn
+                        Giver and receiver earn
                       </p>
                     </div>
                   </div>

@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   phoneNumber: text("phone_number").unique(),
   phoneVerified: boolean("phone_verified").default(false),
   isVerified: boolean("is_verified").default(false),
+  verifiedAt: timestamp("verified_at"),
   shareCoins: decimal("share_coins", { precision: 10, scale: 2 }).default("0.00"),
   reputationScore: integer("reputation_score").default(0),
   reputationLevel: text("reputation_level").default("Newcomer"),

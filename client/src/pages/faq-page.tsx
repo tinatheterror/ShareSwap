@@ -342,9 +342,8 @@ export default function FAQPage() {
                       Suggested Pricing
                     </p>
                     <p className="text-xs text-gray-500">
-                      Weekly rental rates and security deposits are suggested
-                      based on item category. You can adjust the rate and
-                      security deposit to your desire.
+                      Rental rates and security deposits are suggested based on
+                      item category, but owners can adjust them.
                     </p>
                   </div>
                   <div>
@@ -360,8 +359,8 @@ export default function FAQPage() {
                       Security Deposits
                     </p>
                     <p className="text-xs text-gray-500">
-                      Owners can adjust the suggested deposit amount. Held until
-                      item is returned safely.
+                      Rental deposits are cash-based and returned when the item
+                      is returned in good condition.
                     </p>
                   </div>
                 </div>
@@ -484,15 +483,15 @@ export default function FAQPage() {
               ShareCoins are the currency of our marketplace. They help keep
               sharing fair and accessible for everyone. ShareCoins do not
               convert to real money. They mainly reward lending, but also
-              encourage sharing and help build community. reputation.
+              encourage sharing and help build community reputation.
             </p>
           </CardContent>
         </Card>
 
         {/* Spent & Earned Side by Side */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {/* How ShareCoins Are Spent */}
-          <Card>
+          <Card className="md:col-span-1">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="flex items-center">
@@ -542,7 +541,7 @@ export default function FAQPage() {
           </Card>
 
           {/* How ShareCoins Are Earned */}
-          <Card>
+          <Card className="md:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="flex items-center">

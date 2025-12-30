@@ -480,12 +480,27 @@ export default function FAQPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700 text-sm">
+            <p className="text-gray-700 text-sm mb-4">
               ShareCoins are the currency of our marketplace. They help keep
               sharing fair and accessible for everyone. ShareCoins do not
               convert to real money. They mainly reward lending, but also
-              encourage sharing and help build community. reputation.
+              encourage sharing and help build community reputation.
             </p>
+            
+            <div>
+              <p className="font-medium text-gray-800 text-sm mb-2">How do ShareCoins work?</p>
+              <p className="text-gray-600 text-sm mb-3">Each item is placed into a Tier based on value:</p>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <p className="text-xs text-gray-600">Tier 1 → lowest value</p>
+                <p className="text-xs text-gray-600">Tier 4 → highest value</p>
+              </div>
+              <p className="text-gray-600 text-sm mb-2">
+                Each Tier has a fixed weekly ShareCoin rate. When you borrow something, you pay that rate.
+              </p>
+              <p className="text-gray-500 text-xs italic">
+                You cannot change the ShareCoin value — it's automatic.
+              </p>
+            </div>
           </CardContent>
         </Card>
 

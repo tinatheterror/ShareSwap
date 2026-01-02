@@ -880,17 +880,33 @@ export default function FAQPage() {
           </CardContent>
         </Card>
 
-        {/* ShareCoin FAQ - Moved to bottom */}
+        {/* FAQ */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <HelpCircle className="h-5 w-5 text-gray-500" />
-              ShareCoin FAQ
+              <HelpCircle className="h-5 w-5 text-[#0DCEA1]" />
+              FAQ
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="sc-faq-1">
+              {/* ShareCoin Questions */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-2">ShareCoin Questions</p>
+              <AccordionItem value="sc-1">
+                <AccordionTrigger className="text-sm">
+                  How do I earn ShareCoins?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Lend items</li>
+                    <li>Gift items</li>
+                    <li>Complete swaps</li>
+                    <li>Receive good reviews</li>
+                    <li>Maintain a high trust score</li>
+                  </ul>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="sc-2">
                 <AccordionTrigger className="text-sm">
                   Are ShareCoin rewards fixed?
                 </AccordionTrigger>
@@ -899,7 +915,7 @@ export default function FAQPage() {
                   negotiable and are credited automatically upon completion.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="sc-faq-2">
+              <AccordionItem value="sc-3">
                 <AccordionTrigger className="text-sm">
                   Are there any limits on ShareCoin rewards?
                 </AccordionTrigger>
@@ -909,7 +925,7 @@ export default function FAQPage() {
                   Urgent request bonuses apply once per request.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="sc-faq-3">
+              <AccordionItem value="sc-4">
                 <AccordionTrigger className="text-sm">
                   One-time ShareCoin bonuses
                 </AccordionTrigger>
@@ -919,7 +935,20 @@ export default function FAQPage() {
                   your profile with verification, photo, and bio.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="sc-faq-4">
+              <AccordionItem value="sc-5">
+                <AccordionTrigger className="text-sm">
+                  Can I farm ShareCoins with a friend or partner?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  No. We detect repeated transactions between the same two
+                  accounts. Suspicious activity reduces trust scores and
+                  ShareCoin earnings.
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Tiers & Pricing Questions */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">Tiers & Pricing</p>
+              <AccordionItem value="tier-1">
                 <AccordionTrigger className="text-sm">
                   Who assigns the item Tiers?
                 </AccordionTrigger>
@@ -939,21 +968,45 @@ export default function FAQPage() {
                   </p>
                 </AccordionContent>
               </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
+              <AccordionItem value="tier-2">
+                <AccordionTrigger className="text-sm">
+                  Can I change the Tier or ShareCoin value?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  No. That's locked to keep the system fair for everyone.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="tier-3">
+                <AccordionTrigger className="text-sm">
+                  Why do I need photos?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p className="mb-2">Photos help AI:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Verify the item</li>
+                    <li>Estimate value</li>
+                    <li>Place it in the right Tier</li>
+                    <li>Calculate fair rates</li>
+                  </ul>
+                  <p className="mt-2 text-sm italic">
+                    At least one photo is required. Clear photos = accurate
+                    pricing.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="tier-4">
+                <AccordionTrigger className="text-sm">
+                  Can I edit rental prices?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  Yes. Rental prices are fully customizable (within platform
+                  limits).
+                </AccordionContent>
+              </AccordionItem>
 
-        {/* Common Questions */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <HelpCircle className="h-5 w-5 text-[#0DCEA1]" />
-              Common Questions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="common-1">
+              {/* Deposits & Protection Questions */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">Deposits & Protection</p>
+              <AccordionItem value="deposit-1">
                 <AccordionTrigger className="text-sm">
                   What is the Security Deposit for Borrowing?
                 </AccordionTrigger>
@@ -970,7 +1023,7 @@ export default function FAQPage() {
                   </p>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-2">
+              <AccordionItem value="deposit-2">
                 <AccordionTrigger className="text-sm">
                   What is the Security Deposit for Renting?
                 </AccordionTrigger>
@@ -989,7 +1042,7 @@ export default function FAQPage() {
                   </p>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-3">
+              <AccordionItem value="deposit-3">
                 <AccordionTrigger className="text-sm">
                   What is the difference between Borrowing and Renting?
                 </AccordionTrigger>
@@ -1021,42 +1074,7 @@ export default function FAQPage() {
                   </div>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-4">
-                <AccordionTrigger className="text-sm">
-                  Why do I need photos?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Photos help AI:</p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Verify the item</li>
-                    <li>Estimate value</li>
-                    <li>Place it in the right Tier</li>
-                    <li>Calculate fair rates</li>
-                  </ul>
-                  <p className="mt-2 text-sm italic">
-                    At least one photo is required. Clear photos = accurate
-                    pricing.
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="common-5">
-                <AccordionTrigger className="text-sm">
-                  Can I change the Tier or ShareCoin value?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  No. That's locked to keep the system fair for everyone.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="common-6">
-                <AccordionTrigger className="text-sm">
-                  Can I edit rental prices?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Yes. Rental prices are fully customizable (within platform
-                  limits).
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="common-7">
+              <AccordionItem value="deposit-4">
                 <AccordionTrigger className="text-sm">
                   What if someone damages my item?
                 </AccordionTrigger>
@@ -1071,7 +1089,7 @@ export default function FAQPage() {
                   </ul>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-8">
+              <AccordionItem value="deposit-5">
                 <AccordionTrigger className="text-sm">
                   What if someone doesn't return my item?
                 </AccordionTrigger>
@@ -1080,31 +1098,10 @@ export default function FAQPage() {
                   the user's account is frozen until resolved.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-9">
-                <AccordionTrigger className="text-sm">
-                  How do I earn ShareCoins?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Lend items</li>
-                    <li>Gift items</li>
-                    <li>Complete swaps</li>
-                    <li>Receive good reviews</li>
-                    <li>Maintain a high trust score</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="common-10">
-                <AccordionTrigger className="text-sm">
-                  Can I farm ShareCoins with a friend or partner?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  No. We detect repeated transactions between the same two
-                  accounts. Suspicious activity reduces trust scores and
-                  ShareCoin earnings.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="common-11">
+
+              {/* Privacy & Account Questions */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">Privacy & Account</p>
+              <AccordionItem value="privacy-1">
                 <AccordionTrigger className="text-sm">
                   Is my address shown to other users?
                 </AccordionTrigger>
@@ -1113,7 +1110,7 @@ export default function FAQPage() {
                   shared only when both sides accept a transaction.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-12">
+              <AccordionItem value="privacy-2">
                 <AccordionTrigger className="text-sm">
                   Can I list items I want to borrow?
                 </AccordionTrigger>
@@ -1121,7 +1118,7 @@ export default function FAQPage() {
                   Yes — use the Wishlist to request items you need.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-13">
+              <AccordionItem value="privacy-3">
                 <AccordionTrigger className="text-sm">
                   Do I need to meet people in person?
                 </AccordionTrigger>
@@ -1130,7 +1127,7 @@ export default function FAQPage() {
                   meeting spot if you prefer.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="common-14">
+              <AccordionItem value="privacy-4">
                 <AccordionTrigger className="text-sm">
                   What if I want to delete my account?
                 </AccordionTrigger>

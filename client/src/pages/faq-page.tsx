@@ -769,65 +769,65 @@ export default function FAQPage() {
 
         {/* Trust & Safety */}
         <Card className="mb-6">
-          <CardHeader className="pb-4">
+          <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Shield className="h-5 w-5 text-gray-600" />
               Trust & Safety
             </CardTitle>
-            <p className="text-gray-500 text-sm mt-2">
+            <p className="text-gray-500 text-sm mt-1">
               A safe, accountable community built on transparency and mutual respect.
             </p>
           </CardHeader>
-          <CardContent className="pt-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <CardContent className="pt-1 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Identity Verification */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
-                    <BadgeCheck className="h-5 w-5 text-gray-500" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <BadgeCheck className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800">Identity verification and accountability</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">Identity verification and accountability</h3>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                <p className="text-xs text-gray-600 leading-relaxed pl-10">
                   Every member can verify their identity. Verified profiles are clearly marked, creating a foundation of real-world accountability.
                 </p>
               </div>
 
               {/* Trust & Reviews */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
-                    <Star className="h-5 w-5 text-gray-500" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <Star className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800">Trust scores and neighbour reviews</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">Trust scores and neighbour reviews</h3>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                <p className="text-xs text-gray-600 leading-relaxed pl-10">
                   Reputation is earned through positive interactions. Reviews from neighbours help everyone make informed decisions about who to share with.
                 </p>
               </div>
 
               {/* Security Deposits */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
-                    <ShieldCheck className="h-5 w-5 text-gray-500" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800">Security deposits and dispute resolution</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">Security deposits and dispute resolution</h3>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                <p className="text-xs text-gray-600 leading-relaxed pl-10">
                   Deposits protect both parties during a transaction. If something goes wrong, we provide fair and transparent resolution.
                 </p>
               </div>
 
               {/* Reporting & Moderation */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
-                    <Flag className="h-5 w-5 text-gray-500" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <Flag className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800">Reporting and moderation tools</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">Reporting and moderation tools</h3>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                <p className="text-xs text-gray-600 leading-relaxed pl-10">
                   Community members can report concerns at any time. Our moderation team reviews issues promptly and takes appropriate action.
                 </p>
               </div>

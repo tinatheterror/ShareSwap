@@ -34,6 +34,10 @@ import {
   ChevronDown,
   MapPin,
   Send,
+  BadgeCheck,
+  Star,
+  ShieldCheck,
+  Flag,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -765,118 +769,69 @@ export default function FAQPage() {
 
         {/* Trust & Safety */}
         <Card className="mb-6">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="h-5 w-5 text-[#0DCEA1]" />
+              <Shield className="h-5 w-5 text-gray-600" />
               Trust & Safety
             </CardTitle>
+            <p className="text-gray-500 text-sm mt-2">
+              A safe, accountable community built on transparency and mutual respect.
+            </p>
           </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="trust-1">
-                <AccordionTrigger className="text-sm">
-                  Verified profiles
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Verify your identity with government ID and payment method. Verified users get:</p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Significant increase in trust score</li>
-                    <li>Verified badge on profile</li>
-                    <li>Slight boost in search / feed priority</li>
-                    <li>Highlighted in urgent wishlists</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trust-2">
-                <AccordionTrigger className="text-sm">
-                  Trust score affects deposits
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Your trust score is built through successful transactions.
-                  Higher scores mean lower deposit requirements for borrowing.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trust-3">
-                <AccordionTrigger className="text-sm">
-                  Keeping the community fair
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  We monitor activity to ensure a positive experience for
-                  everyone. Accounts with unusual patterns may be reviewed.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trust-deposits">
-                <AccordionTrigger className="text-sm">
-                  How do Trust-Deposits work for Borrowing and Lending?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">
-                    Security deposits help protect lenders and are fully
-                    refundable when items are returned safely.
-                  </p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>
-                      Deposit amounts automatically decrease as your trust score
-                      improves
-                    </li>
-                    <li>New members may be asked for a standard deposit</li>
-                    <li>
-                      Highly trusted members receive significant discounts
-                    </li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trust-score">
-                <AccordionTrigger className="text-sm">
-                  How do you improve your trust score?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Your trust score increases by:</p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Returning items on time</li>
-                    <li>Communicating clearly</li>
-                    <li>Completing successful transactions</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-handoff">
-                <AccordionTrigger className="text-sm">
-                  How does Item Handoff work?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-3">
-                    When a borrow request is accepted, you'll choose how to
-                    exchange the item:
-                  </p>
-                  <div className="space-y-3">
-                    <div className="bg-[#E6FBF5] rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm">
-                        In-App (Recommended)
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        ShareSwap manages the security deposit and optional
-                        delivery
-                      </p>
-                      <p className="text-xs text-gray-500 italic mt-1">
-                        A small service fee applies
-                      </p>
-                    </div>
-                    <div className="bg-gray-100 rounded-lg p-3">
-                      <p className="font-medium text-gray-800 text-sm">
-                        In Person (Free)
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Exchange the item and deposit directly with your
-                        neighbour
-                      </p>
-                      <p className="text-xs text-gray-500 italic mt-1">
-                        No fees. You handle it yourselves.
-                      </p>
-                    </div>
+          <CardContent className="pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Identity Verification */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <BadgeCheck className="h-5 w-5 text-gray-500" />
                   </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+                  <h3 className="font-medium text-gray-800">Identity verification and accountability</h3>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                  Every member can verify their identity. Verified profiles are clearly marked, creating a foundation of real-world accountability.
+                </p>
+              </div>
+
+              {/* Trust & Reviews */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <Star className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <h3 className="font-medium text-gray-800">Trust scores and neighbour reviews</h3>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                  Reputation is earned through positive interactions. Reviews from neighbours help everyone make informed decisions about who to share with.
+                </p>
+              </div>
+
+              {/* Security Deposits */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <h3 className="font-medium text-gray-800">Security deposits and dispute resolution</h3>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                  Deposits protect both parties during a transaction. If something goes wrong, we provide fair and transparent resolution.
+                </p>
+              </div>
+
+              {/* Reporting & Moderation */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    <Flag className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <h3 className="font-medium text-gray-800">Reporting and moderation tools</h3>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed pl-[52px]">
+                  Community members can report concerns at any time. Our moderation team reviews issues promptly and takes appropriate action.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

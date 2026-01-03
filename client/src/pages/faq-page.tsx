@@ -488,10 +488,7 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm">
-              ShareCoins are the currency of our marketplace. They help keep
-              sharing fair and accessible for everyone. ShareCoins do not
-              convert to real money. They mainly reward lending, but also
-              encourage sharing and help build community reputation.
+              ShareCoins are our <span className="font-semibold">community currency</span>. They help keep sharing <span className="font-semibold">fair and accessible</span> for everyone. They mainly <span className="font-semibold">reward lending</span>, but also encourage sharing and help build <span className="font-semibold">community reputation</span>.
             </p>
           </CardContent>
         </Card>
@@ -871,8 +868,7 @@ export default function FAQPage() {
                   Are ShareCoin rewards fixed?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Yes. Each action has a set reward amount. Rewards are not
-                  negotiable and are credited automatically upon completion.
+                  Yes. Each action has a <span className="font-semibold">set reward amount</span>. Rewards are <span className="font-semibold">not negotiable</span> and are credited <span className="font-semibold">automatically</span> upon completion.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-2">
@@ -880,9 +876,7 @@ export default function FAQPage() {
                   Are there any limits on ShareCoin rewards?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Some activities have daily or per-request limits to keep
-                  things fair. Sponsored games can be played once per day.
-                  Urgent request bonuses apply once per request.
+                  Some activities have <span className="font-semibold">daily or per-request limits</span> to keep things fair. Sponsored games can be played <span className="font-semibold">once per day</span>. Urgent request bonuses apply <span className="font-semibold">once per request</span>.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-3">
@@ -890,9 +884,7 @@ export default function FAQPage() {
                   One-time ShareCoin bonuses
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Earn bonus ShareCoins for completing your first swap, gift,
-                  rent, or borrow. You also get a one-time bonus for completing
-                  your profile with verification, photo, and bio.
+                  Earn <span className="font-semibold">bonus ShareCoins</span> for completing your <span className="font-semibold">first swap, gift, rent, or borrow</span>. You also get a one-time bonus for <span className="font-semibold">completing your profile</span> with verification, photo, and bio.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-4">
@@ -900,9 +892,7 @@ export default function FAQPage() {
                   Can I farm ShareCoins with a friend or partner?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. We detect repeated transactions between the same two
-                  accounts. Suspicious activity reduces trust scores and
-                  ShareCoin earnings.
+                  No. We <span className="font-semibold">detect repeated transactions</span> between the same two accounts. Suspicious activity <span className="font-semibold">reduces trust scores</span> and ShareCoin earnings.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-5">
@@ -910,8 +900,7 @@ export default function FAQPage() {
                   Do ShareCoins convert to real money?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. ShareCoins are community credits used only within ShareSwap. 
-                  They cannot be withdrawn, sold, or exchanged for cash.
+                  No. ShareCoins are <span className="font-semibold">community credits</span> used only within ShareSwap. They <span className="font-semibold">cannot be withdrawn, sold, or exchanged</span> for cash.
                 </AccordionContent>
               </AccordionItem>
 
@@ -944,7 +933,7 @@ export default function FAQPage() {
                   Can I change the Tier or ShareCoin value?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. That's locked to keep the system fair for everyone.
+                  No. That's <span className="font-semibold">locked</span> to keep the system <span className="font-semibold">fair for everyone</span>.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="tier-3">
@@ -970,8 +959,7 @@ export default function FAQPage() {
                   Can I edit rental prices?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Yes. Rental prices are fully customizable (within platform
-                  limits).
+                  Yes. Rental prices are <span className="font-semibold">fully customizable</span> (within platform limits).
                 </AccordionContent>
               </AccordionItem>
 
@@ -1067,8 +1055,7 @@ export default function FAQPage() {
                   What if someone doesn't return my item?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  The deposit covers non-return. If the deposit isn't enough,
-                  the user's account is frozen until resolved.
+                  The <span className="font-semibold">deposit covers non-return</span>. If the deposit isn't enough, the user's <span className="font-semibold">account is frozen</span> until resolved.
                 </AccordionContent>
               </AccordionItem>
 

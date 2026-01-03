@@ -95,7 +95,7 @@ export default function ItemDetailsPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            ${Number(item.securityDeposit).toFixed(2)} deposit
+            Trust-Deposit: ${Number(item.securityDeposit).toFixed(0)}
           </p>
           {hasValidReplacementValue(itemReplacementValue) && (
             <p className="text-xs text-gray-500 mt-1">

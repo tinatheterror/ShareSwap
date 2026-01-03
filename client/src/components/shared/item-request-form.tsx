@@ -141,11 +141,6 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
       <DialogContent className="sm:max-w-[425px] bg-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="truncate pr-6">Request to {requestType.toLowerCase()} {item.name}</DialogTitle>
-          {requestType !== "SWAP" && (
-            <DialogDescription>
-              Send a message to the owner explaining why you'd like to {requestType.toLowerCase()} this item.
-            </DialogDescription>
-          )}
         </DialogHeader>
 
         {requestType === "SWAP" && swapOfferItem && (
@@ -389,7 +384,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                     <Textarea 
                       {...field} 
                       rows={6}
-                      placeholder={requestType === "SWAP" ? "Send a message to the owner explaining why you'd like to swap items, or use the quick messages above..." : "Type your message here, or use the Quick Messages above..."}
+                      placeholder={requestType === "SWAP" ? "Send a message to the owner explaining why you'd like to swap items..." : "Send a message to the owner explaining why you'd like to borrow this item..."}
                     />
                   </FormControl>
                   <FormMessage />

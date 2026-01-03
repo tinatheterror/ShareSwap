@@ -252,14 +252,14 @@ export default function FAQPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Borrow Flow */}
-                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
+                  <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3">
                     <p className="text-sm font-semibold text-gray-800 mb-2 text-center">
                       Borrow
                     </p>
 
                     <div className="flex flex-col gap-0.5">
                       {[
-                        { icon: Search, label: "Find Item & Send Request" },
+                        { icon: Search, label: "Find & Request Item" },
                         {
                           icon: Lock,
                           label: "Cash Trust-Deposit placed",
@@ -269,7 +269,7 @@ export default function FAQPage() {
                           icon: Coins,
                           label: "ShareCoins charged upon pickup",
                         },
-                        { icon: Package, label: "Use Item" },
+                        { icon: Package, label: "Use Item With Care" },
                         { icon: CheckCircle, label: "Return Item" },
                         { icon: Wallet, label: "Receive Deposit Back" },
                       ].map((step, i, arr) => (
@@ -291,7 +291,7 @@ export default function FAQPage() {
                   </div>
 
                   {/* Lend Flow */}
-                  <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-3 border border-[#0DCEA1]/20">
+                  <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-3">
                     <p className="text-sm font-semibold text-gray-800 mb-2 text-center">
                       Lend
                     </p>
@@ -775,7 +775,8 @@ export default function FAQPage() {
               Trust & Safety
             </CardTitle>
             <p className="text-gray-500 text-sm mt-1">
-              A safe, accountable community built on transparency and mutual respect.
+              A safe, accountable community built on transparency and mutual
+              respect.
             </p>
           </CardHeader>
           <CardContent className="pt-1 pb-4">
@@ -786,10 +787,14 @@ export default function FAQPage() {
                   <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
                     <BadgeCheck className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800 text-sm">Identity verification and accountability</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">
+                    Identity verification and accountability
+                  </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Every member can verify their identity. Verified profiles are clearly marked, creating a foundation of real-world accountability.
+                  Every member can verify their identity. Verified profiles are
+                  clearly marked, creating a foundation of real-world
+                  accountability.
                 </p>
               </div>
 
@@ -799,10 +804,14 @@ export default function FAQPage() {
                   <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
                     <Star className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800 text-sm">Trust scores and neighbour reviews</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">
+                    Trust scores and neighbour reviews
+                  </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Reputation is earned through positive interactions. Reviews from neighbours help everyone make informed decisions about who to share with.
+                  Reputation is earned through positive interactions. Reviews
+                  from neighbours help everyone make informed decisions about
+                  who to share with.
                 </p>
               </div>
 
@@ -812,10 +821,14 @@ export default function FAQPage() {
                   <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
                     <ShieldCheck className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800 text-sm">Security deposits and dispute resolution</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">
+                    Security deposits and dispute resolution
+                  </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Deposits protect both parties during a transaction. If something goes wrong, we provide fair and transparent resolution.
+                  Deposits protect both parties during a transaction. If
+                  something goes wrong, we provide fair and transparent
+                  resolution.
                 </p>
               </div>
 
@@ -825,10 +838,14 @@ export default function FAQPage() {
                   <div className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center flex-shrink-0">
                     <Flag className="h-4 w-4 text-gray-500" />
                   </div>
-                  <h3 className="font-medium text-gray-800 text-sm">Reporting and moderation tools</h3>
+                  <h3 className="font-medium text-gray-800 text-sm">
+                    Reporting and moderation tools
+                  </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Community members can report concerns at any time. Our moderation team reviews issues promptly and takes appropriate action.
+                  Community members can report concerns at any time. Our
+                  moderation team reviews issues promptly and takes appropriate
+                  action.
                 </p>
               </div>
             </div>
@@ -846,22 +863,10 @@ export default function FAQPage() {
           <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
               {/* ShareCoin Questions */}
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-2">ShareCoin Questions</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-2">
+                ShareCoin Questions
+              </p>
               <AccordionItem value="sc-1">
-                <AccordionTrigger className="text-sm">
-                  How do I earn ShareCoins?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Lend items</li>
-                    <li>Gift items</li>
-                    <li>Complete swaps</li>
-                    <li>Receive good reviews</li>
-                    <li>Maintain a high trust score</li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="sc-2">
                 <AccordionTrigger className="text-sm">
                   Are ShareCoin rewards fixed?
                 </AccordionTrigger>
@@ -870,7 +875,7 @@ export default function FAQPage() {
                   negotiable and are credited automatically upon completion.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="sc-3">
+              <AccordionItem value="sc-2">
                 <AccordionTrigger className="text-sm">
                   Are there any limits on ShareCoin rewards?
                 </AccordionTrigger>
@@ -880,7 +885,7 @@ export default function FAQPage() {
                   Urgent request bonuses apply once per request.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="sc-4">
+              <AccordionItem value="sc-3">
                 <AccordionTrigger className="text-sm">
                   One-time ShareCoin bonuses
                 </AccordionTrigger>
@@ -890,7 +895,7 @@ export default function FAQPage() {
                   your profile with verification, photo, and bio.
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="sc-5">
+              <AccordionItem value="sc-4">
                 <AccordionTrigger className="text-sm">
                   Can I farm ShareCoins with a friend or partner?
                 </AccordionTrigger>
@@ -900,9 +905,20 @@ export default function FAQPage() {
                   ShareCoin earnings.
                 </AccordionContent>
               </AccordionItem>
+              <AccordionItem value="sc-5">
+                <AccordionTrigger className="text-sm">
+                  Do ShareCoins convert to real money?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  No. ShareCoins are community credits used only within ShareSwap. 
+                  They cannot be withdrawn, sold, or exchanged for cash.
+                </AccordionContent>
+              </AccordionItem>
 
               {/* Tiers & Pricing Questions */}
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">Tiers & Pricing</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">
+                Tiers & Pricing
+              </p>
               <AccordionItem value="tier-1">
                 <AccordionTrigger className="text-sm">
                   Who assigns the item Tiers?
@@ -960,7 +976,9 @@ export default function FAQPage() {
               </AccordionItem>
 
               {/* Deposits & Protection Questions */}
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">Deposits & Protection</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">
+                Deposits & Protection
+              </p>
               <AccordionItem value="deposit-1">
                 <AccordionTrigger className="text-sm">
                   What is the Security Deposit for Borrowing?
@@ -1055,7 +1073,9 @@ export default function FAQPage() {
               </AccordionItem>
 
               {/* Privacy & Account Questions */}
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">Privacy & Account</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">
+                Privacy & Account
+              </p>
               <AccordionItem value="privacy-1">
                 <AccordionTrigger className="text-sm">
                   Is my address shown to other users?

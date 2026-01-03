@@ -196,7 +196,8 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm mb-6">
-              A community platform where neighbours share their own items
+              A community platform where neighbours{" "}
+              <span className="font-semibold">share their own items </span>
               through borrowing, renting, swapping, or gifting.
             </p>
 
@@ -246,8 +247,9 @@ export default function FAQPage() {
                   How Borrowing & Lending Works
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Use ShareCoins to borrow from neighbours. ShareCoin prices are
-                  set based on item tier and duration.
+                  Use <span className="font-bold">ShareCoins</span> to borrow
+                  from neighbours. ShareCoin prices are set based on item tier
+                  and duration.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -337,8 +339,9 @@ export default function FAQPage() {
                   How Renting Works
                 </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  Use real money to rent items. Choose renting if you want to
-                  earn cash from your items.
+                  Use <span className="font-bold">real money</span> to rent
+                  items. Choose renting if you want to earn cash from your
+                  items.
                 </p>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
@@ -488,7 +491,11 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm">
-              ShareCoins are our <span className="font-semibold">community currency</span>. They help keep sharing <span className="font-semibold">fair and accessible</span> for everyone. They mainly <span className="font-semibold">reward lending</span>, but also encourage sharing and help build <span className="font-semibold">community reputation</span>.
+              ShareCoins are our{" "}
+              <span className="font-bold">community currency</span>. They help
+              keep sharing fair and accessible for everyone. They mainly{" "}
+              <span className="font-bold">reward lending</span>, but also
+              encourage sharing and help build community reputation.
             </p>
           </CardContent>
         </Card>
@@ -710,7 +717,8 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm mb-4">
-              Tiers group items by overall value so borrowing, swapping, and
+Tiers {" "}
+              <span className="font-bold">group items by overall value</span> so borrowing, swapping, and
               pricing stay fair. The app uses your photos and details to assign
               the item to:
             </p>
@@ -868,7 +876,12 @@ export default function FAQPage() {
                   Are ShareCoin rewards fixed?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Yes. Each action has a <span className="font-semibold">set reward amount</span>. Rewards are <span className="font-semibold">not negotiable</span> and are credited <span className="font-semibold">automatically</span> upon completion.
+                  Yes. Each action has a{" "}
+                  <span className="font-semibold">set reward amount</span>.
+                  Rewards are{" "}
+                  <span className="font-semibold">not negotiable</span> and are
+                  credited <span className="font-semibold">automatically</span>{" "}
+                  upon completion.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-2">
@@ -876,7 +889,14 @@ export default function FAQPage() {
                   Are there any limits on ShareCoin rewards?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Some activities have <span className="font-semibold">daily or per-request limits</span> to keep things fair. Sponsored games can be played <span className="font-semibold">once per day</span>. Urgent request bonuses apply <span className="font-semibold">once per request</span>.
+                  Some activities have{" "}
+                  <span className="font-semibold">
+                    daily or per-request limits
+                  </span>{" "}
+                  to keep things fair. Sponsored games can be played{" "}
+                  <span className="font-semibold">once per day</span>. Urgent
+                  request bonuses apply{" "}
+                  <span className="font-semibold">once per request</span>.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-3">
@@ -884,7 +904,14 @@ export default function FAQPage() {
                   One-time ShareCoin bonuses
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Earn <span className="font-semibold">bonus ShareCoins</span> for completing your <span className="font-semibold">first swap, gift, rent, or borrow</span>. You also get a one-time bonus for <span className="font-semibold">completing your profile</span> with verification, photo, and bio.
+                  Earn <span className="font-semibold">bonus ShareCoins</span>{" "}
+                  for completing your{" "}
+                  <span className="font-semibold">
+                    first swap, gift, rent, or borrow
+                  </span>
+                  . You also get a one-time bonus for{" "}
+                  <span className="font-semibold">completing your profile</span>{" "}
+                  with verification, photo, and bio.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-4">
@@ -892,7 +919,13 @@ export default function FAQPage() {
                   Can I farm ShareCoins with a friend or partner?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. We <span className="font-semibold">detect repeated transactions</span> between the same two accounts. Suspicious activity <span className="font-semibold">reduces trust scores</span> and ShareCoin earnings.
+                  No. We{" "}
+                  <span className="font-semibold">
+                    detect repeated transactions
+                  </span>{" "}
+                  between the same two accounts. Suspicious activity{" "}
+                  <span className="font-semibold">reduces trust scores</span>{" "}
+                  and ShareCoin earnings.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="sc-5">
@@ -900,7 +933,13 @@ export default function FAQPage() {
                   Do ShareCoins convert to real money?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. ShareCoins are <span className="font-semibold">community credits</span> used only within ShareSwap. They <span className="font-semibold">cannot be withdrawn, sold, or exchanged</span> for cash.
+                  No. ShareCoins are{" "}
+                  <span className="font-semibold">community credits</span> used
+                  only within ShareSwap. They{" "}
+                  <span className="font-semibold">
+                    cannot be withdrawn, sold, or exchanged
+                  </span>{" "}
+                  for cash.
                 </AccordionContent>
               </AccordionItem>
 
@@ -933,7 +972,9 @@ export default function FAQPage() {
                   Can I change the Tier or ShareCoin value?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. That's <span className="font-semibold">locked</span> to keep the system <span className="font-semibold">fair for everyone</span>.
+                  No. That's <span className="font-semibold">locked</span> to
+                  keep the system{" "}
+                  <span className="font-semibold">fair for everyone</span>.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="tier-3">
@@ -959,7 +1000,9 @@ export default function FAQPage() {
                   Can I edit rental prices?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  Yes. Rental prices are <span className="font-semibold">fully customizable</span> (within platform limits).
+                  Yes. Rental prices are{" "}
+                  <span className="font-semibold">fully customizable</span>{" "}
+                  (within platform limits).
                 </AccordionContent>
               </AccordionItem>
 
@@ -969,7 +1012,7 @@ export default function FAQPage() {
               </p>
               <AccordionItem value="deposit-1">
                 <AccordionTrigger className="text-sm">
-                  What is the Security Deposit for Borrowing?
+                  What is the Trust-Deposit for Borrowing?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <p className="mb-2">Borrowing uses a trust-based deposit:</p>
@@ -1055,7 +1098,13 @@ export default function FAQPage() {
                   What if someone doesn't return my item?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  The <span className="font-semibold">deposit covers non-return</span>. If the deposit isn't enough, the user's <span className="font-semibold">account is frozen</span> until resolved.
+                  The{" "}
+                  <span className="font-semibold">
+                    deposit covers non-return
+                  </span>
+                  . If the deposit isn't enough, the user's{" "}
+                  <span className="font-semibold">account is frozen</span> until
+                  resolved.
                 </AccordionContent>
               </AccordionItem>
 

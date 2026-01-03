@@ -82,6 +82,7 @@ export const items = pgTable("items", {
   shareCoinPrice: decimal("share_coin_price", { precision: 10, scale: 2 }),
   dollarsPrice: decimal("dollars_price", { precision: 10, scale: 2 }),
   estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
+  replacementValue: integer("replacement_value"),
   isAvailable: boolean("is_available").default(true),
   isConditionVerified: boolean("is_condition_verified").default(false),
   wasSmartScanned: boolean("was_smart_scanned").default(false),

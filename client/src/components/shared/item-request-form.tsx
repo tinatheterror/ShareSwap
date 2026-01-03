@@ -258,16 +258,29 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
               </div>
             )}
 
-            {/* Replacement Value Acknowledgment - Only for BORROW */}
+            {/* Non-Return Charge Acknowledgment - Only for BORROW */}
             {requestType === "BORROW" && hasValidReplacementValue((item as any).replacementValue) && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2 text-amber-700 font-medium">
-                  <Shield className="h-4 w-4" />
-                  Replacement Value: {formatReplacementValue((item as any).replacementValue)}
+              <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 text-gray-700 font-medium">
+                  <Shield className="h-4 w-4 text-gray-500" />
+                  Maximum Charge if Item Is Not Returned: ${(item as any).replacementValue}
                 </div>
-                <p className="text-sm text-amber-600">
-                  This is the maximum amount that may be charged if the item is not returned.
+                <p className="text-sm text-gray-600">
+                  You'll only be charged this amount if the item is not returned.
+                  If the item is returned safely, you won't be charged.
                 </p>
+                
+                <div className="bg-gray-50 rounded-md p-3 space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-500">🟢</span>
+                    <span className="text-gray-600"><span className="font-medium">Trust Deposit</span> — temporarily held and fully refunded after a safe return</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500">🔴</span>
+                    <span className="text-gray-600"><span className="font-medium">Non-Return Charge</span> — only applied if the item is not returned</span>
+                  </div>
+                </div>
+
                 <FormField
                   control={form.control}
                   name="replacementValueAcknowledged"
@@ -278,17 +291,21 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                           type="checkbox"
                           checked={field.value}
                           onChange={field.onChange}
-                          className="h-4 w-4 mt-0.5 accent-amber-600"
+                          className="h-4 w-4 mt-0.5 accent-teal-600"
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-normal cursor-pointer text-amber-700">
-                          I understand and acknowledge the Replacement Value
+                        <FormLabel className="text-sm font-normal cursor-pointer text-gray-700">
+                          I understand I may be charged up to ${(item as any).replacementValue} if the item is not returned.
                         </FormLabel>
                       </div>
                     </FormItem>
                   )}
                 />
+                
+                <a href="/faq#deposits-coverage" className="text-xs text-teal-600 hover:text-teal-700 hover:underline inline-block">
+                  Learn how deposits and replacement coverage work
+                </a>
               </div>
             )}
 

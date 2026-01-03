@@ -773,7 +773,7 @@ Tiers {" "}
         </Card>
 
         {/* Trust & Safety */}
-        <Card className="mb-6">
+        <Card id="deposits-coverage" className="mb-6 scroll-mt-20">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Shield className="h-5 w-5 text-gray-600" />

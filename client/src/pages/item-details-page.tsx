@@ -100,7 +100,7 @@ export default function ItemDetailsPage() {
           </p>
           {hasValidReplacementValue(itemReplacementValue) && (
             <p className="text-xs text-gray-500 mt-1">
-              Replacement Value: {formatReplacementValue(itemReplacementValue)}
+              Max charge if not returned: ${itemReplacementValue}
             </p>
           )}
         </div>

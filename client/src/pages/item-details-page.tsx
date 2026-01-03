@@ -19,6 +19,7 @@ import {
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
 import { getSwapTierLabel } from "@/lib/swap-calculator";
+import { formatReplacementValue, hasValidReplacementValue } from "@/lib/replacement-value";
 import {
   Tooltip,
   TooltipContent,
@@ -82,6 +83,7 @@ export default function ItemDetailsPage() {
 
   // Create ordered sharing options based on context
   const getSharingOptions = () => {
+    const itemReplacementValue = (item as any).replacementValue;
     const borrowOption = item.isLendable ? (
       <div key="borrow" className="flex justify-between items-center">
         <div>
@@ -96,6 +98,11 @@ export default function ItemDetailsPage() {
             {item.lendingDuration} days · $
             {Number(item.securityDeposit).toFixed(2)} deposit
           </p>
+          {hasValidReplacementValue(itemReplacementValue) && (
+            <p className="text-xs text-gray-500 mt-1">
+              Replacement Value: {formatReplacementValue(itemReplacementValue)}
+            </p>
+          )}
         </div>
         {hasPendingBorrow ? (
           <Button disabled className="w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
@@ -106,7 +113,7 @@ export default function ItemDetailsPage() {
           <Button 
             onClick={() => setRequestType("BORROW")} 
             className="w-40"
-            disabled={hasAnyPending}
+            disabled={hasAnyPending || !hasValidReplacementValue(itemReplacementValue)}
           >
             <HandHeart className="h-4 w-4 mr-1" />
             Request to Borrow

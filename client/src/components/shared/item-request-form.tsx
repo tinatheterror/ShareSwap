@@ -9,7 +9,8 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Calendar, ArrowLeftRight, Camera, Coins, Check } from "lucide-react";
+import { Sparkles, Calendar, ArrowLeftRight, Camera, Coins, Check, Shield } from "lucide-react";
+import { formatReplacementValue, hasValidReplacementValue } from "@/lib/replacement-value";
 import { useState } from "react";
 import * as z from "zod";
 import type { SelectItem } from "@db/schema";
@@ -20,6 +21,7 @@ const formSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   conditionConfirmed: z.boolean().optional(),
+  replacementValueAcknowledged: z.boolean().optional(),
 });
 
 type Props = {
@@ -47,6 +49,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
       startDate: "",
       endDate: "",
       conditionConfirmed: false,
+      replacementValueAcknowledged: false,
     },
   });
 
@@ -255,6 +258,40 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
               </div>
             )}
 
+            {/* Replacement Value Acknowledgment - Only for BORROW */}
+            {requestType === "BORROW" && hasValidReplacementValue((item as any).replacementValue) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 text-amber-700 font-medium">
+                  <Shield className="h-4 w-4" />
+                  Replacement Value: {formatReplacementValue((item as any).replacementValue)}
+                </div>
+                <p className="text-sm text-amber-600">
+                  This is the maximum amount that may be charged if the item is not returned.
+                </p>
+                <FormField
+                  control={form.control}
+                  name="replacementValueAcknowledged"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="h-4 w-4 mt-0.5 accent-amber-600"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-normal cursor-pointer text-amber-700">
+                          I understand and acknowledge the Replacement Value
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
             {/* Condition Confirmation - Only for SWAP */}
             {requestType === "SWAP" && (
               <FormField
@@ -349,7 +386,10 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
               </Button>
               <Button 
                 type="submit"
-                disabled={createRequestMutation.isPending}
+                disabled={
+                  createRequestMutation.isPending || 
+                  (requestType === "BORROW" && hasValidReplacementValue((item as any).replacementValue) && !form.watch("replacementValueAcknowledged"))
+                }
               >
                 Send Request
               </Button>

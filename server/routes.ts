@@ -36,6 +36,7 @@ import { csrfProtection, setCsrfToken } from "./csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
+import { calculateReplacementValue } from "./replacement-value";
 
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -999,6 +1000,9 @@ Respond with ONLY the category name, nothing else.`
       shareCoinsReward = 5; // Fallback to base reward
     }
 
+    // Calculate replacement value for borrowable items (locked at listing time)
+    const replacementValue = isLendable ? calculateReplacementValue(tier) : null;
+
     const itemData: InsertItem = {
       name: req.body.name,
       description: req.body.description,
@@ -1024,6 +1028,7 @@ Respond with ONLY the category name, nothing else.`
       lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
       shareCoinsReward: shareCoinsReward.toString(),
       estimatedValue: req.body.estimatedValue || null,
+      replacementValue: replacementValue,
       isAvailable: true,
       isConditionVerified: false,
       wasSmartScanned: wasSmartScanned,
@@ -2205,6 +2210,13 @@ Respond with ONLY the category name, nothing else.`
       return res
         .status(404)
         .send("Item not found or not available for this type of request");
+    }
+
+    // Prevent borrowing if Replacement Value is missing
+    if (requestType === "BORROW" && !item.replacementValue) {
+      return res
+        .status(400)
+        .send("This item cannot be borrowed because it does not have a Replacement Value set.");
     }
 
     // Create the request

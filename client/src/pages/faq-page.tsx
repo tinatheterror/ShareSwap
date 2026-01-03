@@ -196,8 +196,7 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm mb-6">
-              A community platform where neighbours{" "}
-              <span className="font-semibold">share their own items </span>
+              A community platform where neighbours share their own items
               through borrowing, renting, swapping, or gifting.
             </p>
 
@@ -717,10 +716,10 @@ export default function FAQPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 text-sm mb-4">
-Tiers {" "}
-              <span className="font-bold">group items by overall value</span> so borrowing, swapping, and
-              pricing stay fair. The app uses your photos and details to assign
-              the item to:
+              Tiers{" "}
+              <span className="font-bold">group items by overall value</span> so
+              borrowing, swapping, and pricing stay fair. The app uses your
+              photos and details to assign the item to:
             </p>
 
             <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">

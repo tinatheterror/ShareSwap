@@ -1723,6 +1723,7 @@ Respond with ONLY the category name, nothing else.`
         isConditionVerified: items.isConditionVerified,
         wasSmartScanned: items.wasSmartScanned,
         securityDeposit: items.securityDeposit,
+        replacementValue: items.replacementValue,
         ownerId: items.ownerId,
         createdAt: items.createdAt,
         owner: {

@@ -38,7 +38,6 @@ import {
   Star,
   ShieldCheck,
   Flag,
-  Heart,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -264,7 +263,7 @@ export default function FAQPage() {
                         { icon: Search, label: "Find & Request Item" },
                         {
                           icon: Lock,
-                          label: "Cash Trust-Deposit placed",
+                          label: "Cash Trust Deposit placed",
                         },
                         { icon: MapPin, label: "Item Pickup" },
                         {
@@ -304,7 +303,7 @@ export default function FAQPage() {
                         { icon: ThumbsUp, label: "Approve Request" },
                         {
                           icon: Lock,
-                          label: "Cash Trust-Deposit held",
+                          label: "Cash Trust Deposit held",
                         },
                         { icon: MapPin, label: "Item Handoff" },
                         {
@@ -766,7 +765,7 @@ export default function FAQPage() {
               <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
                 <li>ShareCoin value</li>
                 <li>Swap eligibility & offsets</li>
-                <li>Security Deposit and Trust-Deposit amounts</li>
+                <li>Security Deposit and Trust Deposit amounts</li>
               </ul>
             </div>
           </CardContent>
@@ -857,40 +856,51 @@ export default function FAQPage() {
           </CardContent>
         </Card>
 
-        {/* Deposits & Protection */}
+        {/* FAQ */}
         <Card id="deposits-coverage" className="mb-6 scroll-mt-20">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Lock className="h-5 w-5 text-gray-600" />
-              Deposits & Protection
+              <HelpCircle className="h-5 w-5 text-[#0DCEA1]" />
+              FAQ
             </CardTitle>
-            <p className="text-gray-500 text-sm mt-1">
-              How we keep borrowing safe, fair, and stress-free.
-            </p>
           </CardHeader>
-          <CardContent className="pt-1 pb-4">
+          <CardContent className="pt-0">
             <Accordion type="single" collapsible className="w-full">
+              {/* Deposits & Protection */}
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-2">
+                Deposits & Protection
+              </p>
               <AccordionItem value="dep-1">
                 <AccordionTrigger className="text-sm">
-                  What is a trust deposit?
+                  How do trust deposits work?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
                     A <span className="font-semibold">trust deposit</span> is real money temporarily held when you borrow an item.
-                    It's there to protect the lender — and it's <span className="font-semibold">fully refunded</span> when the item is returned on time and in good condition.
-                  </p>
-                  <p className="text-sm italic text-gray-500">
-                    Think of it like borrowing a friend's dress: you're trusted, but there's accountability.
+                    It protects the lender and is <span className="font-semibold">fully refunded</span> when the item is returned on time and in good condition.
                   </p>
                   <div className="bg-[#E6FBF5] rounded-lg p-3 text-sm">
-                    <span className="font-medium text-[#0BB88C]">Your deposit is not a fee</span> — it's a temporary hold.
+                    <span className="font-medium text-[#0BB88C]">Your deposit is not a fee</span> — it's a temporary hold that you get back.
                   </div>
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="dep-2">
                 <AccordionTrigger className="text-sm">
-                  What happens when the item is returned?
+                  What is replacement coverage?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 space-y-3">
+                  <p>
+                    <span className="font-semibold">Replacement coverage</span> is the maximum amount that may be charged <span className="font-semibold">only if an item is not returned</span>.
+                    It's shown clearly before you send a request, and you must acknowledge it before borrowing.
+                  </p>
+                  <p className="font-medium text-gray-700">If the item is returned, you're not charged. No surprises.</p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="dep-3">
+                <AccordionTrigger className="text-sm">
+                  What happens when I return an item?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <ul className="space-y-2">
@@ -910,55 +920,29 @@ export default function FAQPage() {
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="dep-3">
+              <AccordionItem value="dep-4">
                 <AccordionTrigger className="text-sm">
-                  What if the item isn't returned?
+                  What if an item isn't returned?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>If an item isn't returned:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>The trust deposit is applied first</li>
-                    <li>If needed, an additional charge may cover the remaining replacement value</li>
+                    <li>If needed, an additional charge covers the remaining replacement value</li>
                     <li>The <span className="font-semibold">total charge will never exceed</span> the listed replacement value</li>
                   </ul>
                   <p className="text-sm text-gray-500">
-                    This ensures lenders are protected without overcharging borrowers.
+                    Lenders are protected without overcharging borrowers.
                   </p>
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="dep-4">
-                <AccordionTrigger className="text-sm">
-                  What is replacement coverage?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600 space-y-3">
-                  <p>
-                    <span className="font-semibold">Replacement coverage</span> is the maximum amount that may be charged <span className="font-semibold">only if an item is not returned</span>.
-                  </p>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>It's shown clearly before you send a request</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>You must acknowledge it before borrowing</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>If the item is returned, you're not charged</span>
-                    </li>
-                  </ul>
-                  <p className="font-medium text-gray-700">No surprises. Ever.</p>
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="dep-5">
                 <AccordionTrigger className="text-sm">
-                  In-app or in-person — your choice
+                  Can I handle deposits in person instead?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
-                  <p>You can exchange items and deposits in two ways:</p>
+                  <p>Yes! You can exchange items and deposits in two ways:</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="bg-[#E6FBF5] rounded-lg p-3">
                       <p className="font-medium text-[#0BB88C] mb-2">In-App (Recommended)</p>
@@ -971,56 +955,17 @@ export default function FAQPage() {
                     <div className="bg-gray-100 rounded-lg p-3">
                       <p className="font-medium text-gray-700 mb-2">In Person (Free)</p>
                       <ul className="text-sm space-y-1">
-                        <li>• Exchange items and deposits directly</li>
+                        <li>• Exchange deposits directly</li>
                         <li>• No platform fees</li>
-                        <li>• You handle the handoff yourselves</li>
+                        <li>• You handle the handoff</li>
                       </ul>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500">Same protections. Different convenience levels.</p>
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="dep-6">
-                <AccordionTrigger className="text-sm">
-                  Why this system works
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <ul className="space-y-2">
-                    <li className="flex items-start gap-2">
-                      <Shield className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span><span className="font-semibold">Protects lenders</span></span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Star className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span><span className="font-semibold">Rewards trustworthy borrowers</span></span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Heart className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>Keeps sharing <span className="font-semibold">fair, simple, and low-stress</span></span>
-                    </li>
-                  </ul>
-                  <p className="mt-3 text-sm font-medium text-gray-700">
-                    No insurance drama. No fine print games.
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-
-        {/* FAQ */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <HelpCircle className="h-5 w-5 text-[#0DCEA1]" />
-              FAQ
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Accordion type="single" collapsible className="w-full">
               {/* ShareCoin Questions */}
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">
                 ShareCoin Questions
               </p>
               <AccordionItem value="sc-1">

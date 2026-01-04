@@ -1,16 +1,40 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Calendar, ArrowLeftRight, Camera, Coins, Check, Shield } from "lucide-react";
-import { formatReplacementValue, hasValidReplacementValue } from "@/lib/replacement-value";
+import {
+  Sparkles,
+  Calendar,
+  ArrowLeftRight,
+  Camera,
+  Coins,
+  Check,
+  Shield,
+} from "lucide-react";
+import {
+  formatReplacementValue,
+  hasValidReplacementValue,
+} from "@/lib/replacement-value";
 import { useState } from "react";
 import * as z from "zod";
 import type { SelectItem } from "@db/schema";
@@ -32,14 +56,20 @@ type Props = {
   swapOfferItem?: SelectItem | null;
 };
 
-export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferItem }: Props) {
+export function ItemRequestForm({
+  item,
+  requestType,
+  isOpen,
+  onClose,
+  swapOfferItem,
+}: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showTemplates, setShowTemplates] = useState(false);
-  
+
   // Get current user info for personalized messages
   const { data: user } = useQuery({
-    queryKey: ['/api/user'],
+    queryKey: ["/api/user"],
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -54,38 +84,41 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
   });
 
   // Generate automated message templates
-  const generateAutomatedMessage = (templateType: 'quick' | 'polite' | 'detailed') => {
+  const generateAutomatedMessage = (
+    templateType: "quick" | "polite" | "detailed",
+  ) => {
     const ownerName = "there"; // Will be populated with actual owner name from API
     const itemName = item.name;
     const action = requestType.toLowerCase();
     const userName = (user as any)?.username || "I";
-    
+
     // Get dates for the message
-    const startDate = form.getValues('startDate');
-    const endDate = form.getValues('endDate');
-    const dateRange = startDate && endDate ? 
-      ` from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}` : 
-      ` for a few days`;
+    const startDate = form.getValues("startDate");
+    const endDate = form.getValues("endDate");
+    const dateRange =
+      startDate && endDate
+        ? ` from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`
+        : ` for a few days`;
 
     let message = "";
     const myItemName = swapOfferItem?.name || "my item";
-    
+
     switch (templateType) {
-      case 'quick':
+      case "quick":
         if (requestType === "SWAP") {
           message = `Hi ${ownerName}! I would like to swap my ${myItemName} for your ${itemName} 😊😊`;
         } else {
           message = `Hi ${ownerName}! I would like to ${action} your ${itemName}${dateRange}. 😊😊`;
         }
         break;
-      case 'polite':
+      case "polite":
         if (requestType === "SWAP") {
           message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to swap my ${myItemName} for your ${itemName}. Would this work for you?\n\nThank you so much! 😊😊`;
         } else {
           message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to ${action} your ${itemName}${dateRange}. Would this work for you?\n\nThank you so much! 😊😊`;
         }
         break;
-      case 'detailed':
+      case "detailed":
         if (requestType === "SWAP") {
           message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in swapping items with you. I would like to trade my ${myItemName} for your ${itemName}. I'll make sure my item is in the condition stated.\n\nPlease let me know if this works for you!\n\nBest regards! 😊😊`;
         } else {
@@ -93,8 +126,8 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
         }
         break;
     }
-    
-    form.setValue('message', message);
+
+    form.setValue("message", message);
     setShowTemplates(false);
   };
 
@@ -105,9 +138,9 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
     start.setDate(today.getDate() + 1); // Start tomorrow
     const end = new Date(start);
     end.setDate(start.getDate() + days - 1);
-    
-    form.setValue('startDate', start.toISOString().split('T')[0]);
-    form.setValue('endDate', end.toISOString().split('T')[0]);
+
+    form.setValue("startDate", start.toISOString().split("T")[0]);
+    form.setValue("endDate", end.toISOString().split("T")[0]);
   };
 
   const createRequestMutation = useMutation({
@@ -120,7 +153,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/requests'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       toast({
         title: "Request Sent!",
         description: "The owner will be notified of your request.",
@@ -140,7 +173,9 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] bg-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="truncate pr-6">Request to {requestType.toLowerCase()} {item.name}</DialogTitle>
+          <DialogTitle className="truncate pr-6">
+            Request to {requestType.toLowerCase()} {item.name}
+          </DialogTitle>
         </DialogHeader>
 
         {requestType === "SWAP" && swapOfferItem && (
@@ -151,18 +186,34 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
             </div>
             <div className="flex items-center gap-4">
               <div className="flex-1">
-                <div className="text-xs text-[#0DCEA1] mb-1">You're offering:</div>
+                <div className="text-xs text-[#0DCEA1] mb-1">
+                  You're offering:
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                     {swapOfferItem.photos?.[0] ? (
-                      <img src={swapOfferItem.photos[0]} alt={swapOfferItem.name} className="w-full h-full object-cover" />
+                      <img
+                        src={swapOfferItem.photos[0]}
+                        alt={swapOfferItem.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Camera className="h-4 w-4 text-gray-400" />
+                      </div>
                     )}
                   </div>
                   <div className="min-w-0 max-w-[100px] overflow-visible">
-                    <p className="text-sm font-medium text-gray-900 truncate" style={{ lineHeight: '1.4' }}>{swapOfferItem.name}</p>
-                    <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
+                    <p
+                      className="text-sm font-medium text-gray-900 truncate"
+                      style={{ lineHeight: "1.4" }}
+                    >
+                      {swapOfferItem.name}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]"
+                    >
                       {getSwapTierLabel((swapOfferItem as any).tier || 2)}
                     </Badge>
                   </div>
@@ -174,14 +225,28 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                     {item.photos?.[0] ? (
-                      <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                      <img
+                        src={item.photos[0]}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center"><Camera className="h-4 w-4 text-gray-400" /></div>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Camera className="h-4 w-4 text-gray-400" />
+                      </div>
                     )}
                   </div>
                   <div className="min-w-0 max-w-[100px] overflow-visible">
-                    <p className="text-sm font-medium text-gray-900 truncate" style={{ lineHeight: '1.4' }}>{item.name}</p>
-                    <Badge variant="outline" className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]">
+                    <p
+                      className="text-sm font-medium text-gray-900 truncate"
+                      style={{ lineHeight: "1.4" }}
+                    >
+                      {item.name}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]"
+                    >
                       {getSwapTierLabel((item as any).tier || 2)}
                     </Badge>
                   </div>
@@ -207,7 +272,9 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
 
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) => createRequestMutation.mutate(data))}
+            onSubmit={form.handleSubmit((data) =>
+              createRequestMutation.mutate(data),
+            )}
             className="space-y-4 mt-4"
           >
             {/* Date Selection - Hide for SWAP */}
@@ -223,10 +290,10 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                         Start Date
                       </FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                          min={new Date().toISOString().split('T')[0]}
+                        <Input
+                          type="date"
+                          {...field}
+                          min={new Date().toISOString().split("T")[0]}
                         />
                       </FormControl>
                       <FormMessage />
@@ -240,10 +307,13 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                     <FormItem>
                       <FormLabel>End Date</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                          min={form.watch('startDate') || new Date().toISOString().split('T')[0]}
+                        <Input
+                          type="date"
+                          {...field}
+                          min={
+                            form.watch("startDate") ||
+                            new Date().toISOString().split("T")[0]
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -254,55 +324,70 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
             )}
 
             {/* Non-Return Charge Acknowledgment - Only for BORROW */}
-            {requestType === "BORROW" && hasValidReplacementValue((item as any).replacementValue) && (
-              <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2 text-gray-700 font-medium">
-                  <Shield className="h-4 w-4 text-gray-500" />
-                  Maximum Charge if Item Is Not Returned: ${(item as any).replacementValue}
-                </div>
-                <p className="text-sm text-gray-600">
-                  You'll only be charged this amount if the item is not returned.
-                  If the item is returned safely, you won't be charged.
-                </p>
-                
-                <div className="bg-gray-50 rounded-md p-3 space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-500">🟢</span>
-                    <span className="text-gray-600"><span className="font-medium">Trust Deposit</span> — temporarily held and fully refunded after a safe return</span>
+            {requestType === "BORROW" &&
+              hasValidReplacementValue((item as any).replacementValue) && (
+                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-gray-700 font-medium">
+                    <Shield className="h-4 w-4 text-gray-500" />
+                    Maximum Charge if Item Is Not Returned: $
+                    {(item as any).replacementValue}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-red-500">🔴</span>
-                    <span className="text-gray-600"><span className="font-medium">Non-Return Charge</span> — only applied if the item is not returned</span>
-                  </div>
-                </div>
+                  <p className="text-sm text-gray-600">
+                    You'll only be charged this amount if the item is not
+                    returned. If the item is returned safely, you won't be
+                    charged.
+                  </p>
+                  <p className="text-xs text-gray-400">Most borrowers never pay this.</p>
 
-                <FormField
-                  control={form.control}
-                  name="replacementValueAcknowledged"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="h-4 w-4 mt-0.5 accent-teal-600"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-normal cursor-pointer text-gray-700">
-                          I understand I may be charged up to ${(item as any).replacementValue} if the item is not returned.
-                        </FormLabel>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-                
-                <a href="/faq#deposits-coverage" className="text-xs text-teal-600 hover:text-teal-700 hover:underline inline-block">
-                  Learn how deposits and replacement coverage work
-                </a>
-              </div>
-            )}
+                  <div className="bg-gray-50 rounded-md p-3 space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-500">🟢</span>
+                      <span className="text-gray-600">
+                        <span className="font-medium">Trust Deposit</span> —
+                        temporarily held and fully refunded after a safe return
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-500">🟠</span>
+                      <span className="text-gray-600">
+                        <span className="font-medium">Non-Return Charge</span> —
+                        only applied if the item is not returned
+                      </span>
+                    </div>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="replacementValueAcknowledged"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4 mt-0.5 accent-teal-600"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-normal cursor-pointer text-gray-700">
+                            I understand I may be charged up to $
+                            {(item as any).replacementValue} only if the item is
+                            not returned.
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <a
+                    href="/faq#deposits-coverage"
+                    className="text-xs text-teal-600 hover:text-teal-700 hover:underline inline-block"
+                  >
+                    How protection works
+                  </a>
+                </div>
+              )}
 
             {/* Condition Confirmation - Only for SWAP */}
             {requestType === "SWAP" && (
@@ -351,7 +436,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => generateAutomatedMessage('quick')}
+                    onClick={() => generateAutomatedMessage("quick")}
                   >
                     Quick & Friendly
                   </Button>
@@ -359,7 +444,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => generateAutomatedMessage('polite')}
+                    onClick={() => generateAutomatedMessage("polite")}
                   >
                     Polite & Formal
                   </Button>
@@ -367,7 +452,7 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => generateAutomatedMessage('detailed')}
+                    onClick={() => generateAutomatedMessage("detailed")}
                   >
                     Detailed & Personal
                   </Button>
@@ -381,10 +466,14 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <Textarea 
-                      {...field} 
+                    <Textarea
+                      {...field}
                       rows={6}
-                      placeholder={requestType === "SWAP" ? "Send a message to the owner explaining why you'd like to swap items..." : "Send a message to the owner explaining why you'd like to borrow this item..."}
+                      placeholder={
+                        requestType === "SWAP"
+                          ? "Send a message to the owner explaining why you'd like to swap items..."
+                          : "Send a message to the owner explaining why you'd like to borrow this item..."
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -396,11 +485,13 @@ export function ItemRequestForm({ item, requestType, isOpen, onClose, swapOfferI
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 type="submit"
                 disabled={
-                  createRequestMutation.isPending || 
-                  (requestType === "BORROW" && hasValidReplacementValue((item as any).replacementValue) && !form.watch("replacementValueAcknowledged"))
+                  createRequestMutation.isPending ||
+                  (requestType === "BORROW" &&
+                    hasValidReplacementValue((item as any).replacementValue) &&
+                    !form.watch("replacementValueAcknowledged"))
                 }
               >
                 Send Request

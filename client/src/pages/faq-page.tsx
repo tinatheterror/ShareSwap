@@ -1161,15 +1161,39 @@ export default function FAQPage() {
                 <AccordionTrigger className="text-sm">
                   What if someone damages my item?
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">
-                    Every transaction has a deposit. If damage is reported:
-                  </p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>The deposit is held</li>
-                    <li>Support reviews both sides</li>
-                    <li>Funds go to the lender if damage is confirmed</li>
+                <AccordionContent className="text-gray-600 space-y-3">
+                  <p>Accidents happen. Here's how ShareSwap handles damage fairly:</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <span>A trust deposit is held during each borrowing transaction</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <span>Normal wear is expected and isn't considered damage</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <span>If damage is reported, the deposit is temporarily held</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <span>Both parties share details and photos</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <span>Support reviews the case if needed</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <span>If damage is confirmed, funds may be used to cover repair or replacement costs</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
+                      <span>If no damage is found, the full deposit is returned</span>
+                    </li>
                   </ul>
+                  <p className="font-medium text-gray-700">You're never charged more than the item's replacement value.</p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="deposit-9">

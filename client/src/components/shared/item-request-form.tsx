@@ -326,32 +326,27 @@ export function ItemRequestForm({
             {/* Non-Return Charge Acknowledgment - Only for BORROW */}
             {requestType === "BORROW" &&
               hasValidReplacementValue((item as any).replacementValue) && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-gray-700 font-medium">
-                    <Shield className="h-4 w-4 text-gray-500" />
-                    Maximum Charge if Item Is Not Returned: $
-                    {(item as any).replacementValue}
+                <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                    <Shield className="h-3.5 w-3.5 text-gray-500" />
+                    Maximum Charge if Item Is Not Returned: ${(item as any).replacementValue}
                   </div>
-                  <p className="text-sm text-gray-600">
-                    You'll only be charged this amount if the item is not
-                    returned. If the item is returned safely, you won't be
-                    charged.
+                  <p className="text-xs text-gray-600">
+                    You'll only be charged this amount if the item is not returned. If the item is returned safely, you won't be charged.
                   </p>
                   <p className="text-xs text-gray-400">Most borrowers never pay this.</p>
 
-                  <div className="bg-gray-50 rounded-md p-3 space-y-2 text-sm">
+                  <div className="bg-gray-50 rounded-md p-2 space-y-1.5 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="text-green-500">🟢</span>
                       <span className="text-gray-600">
-                        <span className="font-medium">Trust Deposit</span> —
-                        temporarily held and fully refunded after a safe return
+                        <span className="font-medium">Trust Deposit</span> — temporarily held and fully refunded after a safe return
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-red-500">🟠</span>
+                      <span className="text-orange-500">🟠</span>
                       <span className="text-gray-600">
-                        <span className="font-medium">Non-Return Charge</span> —
-                        only applied if the item is not returned
+                        <span className="font-medium">Non-Return Charge</span> — only applied if the item is not returned
                       </span>
                     </div>
                   </div>
@@ -366,14 +361,12 @@ export function ItemRequestForm({
                             type="checkbox"
                             checked={field.value}
                             onChange={field.onChange}
-                            className="h-4 w-4 mt-0.5 accent-teal-600"
+                            className="h-3.5 w-3.5 mt-0.5 accent-teal-600"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm font-normal cursor-pointer text-gray-700">
-                            I understand I may be charged up to $
-                            {(item as any).replacementValue} only if the item is
-                            not returned.
+                          <FormLabel className="text-xs font-normal cursor-pointer text-gray-700">
+                            I understand I may be charged up to ${(item as any).replacementValue} only if the item is not returned.
                           </FormLabel>
                         </div>
                       </FormItem>

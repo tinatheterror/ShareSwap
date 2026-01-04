@@ -329,24 +329,30 @@ export function ItemRequestForm({
                 <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-2">
                   <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
                     <Shield className="h-3.5 w-3.5 text-gray-500" />
-                    Maximum Charge if Item Is Not Returned: ${(item as any).replacementValue}
+                    Maximum Charge if Item Is Not Returned: $
+                    {(item as any).replacementValue}
                   </div>
                   <p className="text-xs text-gray-600">
-                    You'll only be charged this amount if the item is not returned. If the item is returned safely, you won't be charged.
+                    You’re only charged if the item isn’t returned. Safe returns
+                    aren’t charged.
                   </p>
-                  <p className="text-xs text-gray-400">Most borrowers never pay this.</p>
+                  <p className="text-[10px] text-gray-400">
+                    Most borrowers never pay this.
+                  </p>
 
                   <div className="bg-gray-50 rounded-md p-2 space-y-1.5 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="text-green-500">🟢</span>
                       <span className="text-gray-600">
-                        <span className="font-medium">Trust Deposit</span> — temporarily held and fully refunded after a safe return
+                        <span className="font-medium">Trust Deposit</span> —
+                        temporarily held and fully refunded after a safe return
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-orange-500">🟠</span>
                       <span className="text-gray-600">
-                        <span className="font-medium">Non-Return Charge</span> — only applied if the item is not returned
+                        <span className="font-medium">Non-Return Charge</span> —
+                        only applied if the item is not returned
                       </span>
                     </div>
                   </div>
@@ -366,7 +372,9 @@ export function ItemRequestForm({
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-xs font-normal cursor-pointer text-gray-700">
-                            I understand I may be charged up to ${(item as any).replacementValue} only if the item is not returned.
+                            I understand I may be charged up to $
+                            {(item as any).replacementValue} only if the item is
+                            not returned.
                           </FormLabel>
                         </div>
                       </FormItem>

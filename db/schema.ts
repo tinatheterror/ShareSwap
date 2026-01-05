@@ -233,6 +233,12 @@ export const itemRequests = pgTable("item_requests", {
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   matchScore: integer("match_score"), // AI matching score for swap requests
+  deliveryMethod: text("delivery_method").default("in_person"), // 'in_person' | 'courier'
+  deliveryConfirmed: boolean("delivery_confirmed").default(false),
+  deliveryConfirmedAt: timestamp("delivery_confirmed_at"),
+  courierBookedBy: text("courier_booked_by"), // 'requester' | 'owner' - who booked the courier
+  courierIssue: boolean("courier_issue").default(false), // true if item lost/damaged during courier delivery
+  courierIssueNote: text("courier_issue_note"), // description of the courier issue
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   itemIdx: index("item_requests_item_id_idx").on(table.itemId),

@@ -30,7 +30,10 @@ import {
   Coins,
   Check,
   Shield,
+  Truck,
+  MapPin,
 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   formatReplacementValue,
   hasValidReplacementValue,
@@ -46,6 +49,7 @@ const formSchema = z.object({
   endDate: z.string().optional(),
   conditionConfirmed: z.boolean().optional(),
   replacementValueAcknowledged: z.boolean().optional(),
+  deliveryMethod: z.enum(["in_person", "courier"]).default("in_person"),
 });
 
 type Props = {
@@ -80,6 +84,7 @@ export function ItemRequestForm({
       endDate: "",
       conditionConfirmed: false,
       replacementValueAcknowledged: false,
+      deliveryMethod: "in_person",
     },
   });
 
@@ -149,6 +154,7 @@ export function ItemRequestForm({
         ...data,
         requestType,
         swapOfferItemId: swapOfferItem?.id,
+        deliveryMethod: data.deliveryMethod,
       });
       return res.json();
     },
@@ -322,6 +328,61 @@ export function ItemRequestForm({
                 />
               </div>
             )}
+
+            {/* Delivery Method Selection */}
+            <FormField
+              control={form.control}
+              name="deliveryMethod"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    How would you like to receive this item?
+                  </FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className="flex flex-col space-y-2"
+                    >
+                      <div className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="in_person" id="in_person" className="mt-0.5" />
+                        <div className="flex-1">
+                          <label htmlFor="in_person" className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+                            <MapPin className="h-4 w-4 text-teal-600" />
+                            Pick Up Yourself
+                            <span className="text-xs text-green-600 font-normal ml-1">Free</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Meet the owner to pick up the item. Responsibility transfers at handoff.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="courier" id="courier" className="mt-0.5" />
+                        <div className="flex-1">
+                          <label htmlFor="courier" className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+                            <Truck className="h-4 w-4 text-blue-600" />
+                            Uber Direct Delivery
+                            <span className="text-xs text-gray-500 font-normal ml-1">+$15</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Courier delivers to you. The party who books the courier is responsible for any delivery issues.
+                          </p>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  {form.watch("deliveryMethod") === "courier" && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-800">
+                      <strong>Note:</strong> If you book the courier, you handle any courier issues (lost/damaged in transit). 
+                      Trust-deposit only activates after successful delivery confirmation.
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Non-Return Charge Acknowledgment - Only for BORROW */}
             {requestType === "BORROW" &&

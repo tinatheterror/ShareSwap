@@ -39,6 +39,7 @@ import {
   ShieldCheck,
   Flag,
   Heart,
+  Truck,
 } from "lucide-react";
 
 export default function FAQPage() {
@@ -1369,6 +1370,52 @@ export default function FAQPage() {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="privacy-4">
+                <AccordionTrigger className="text-sm">
+                  Who is responsible during delivery?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 space-y-3">
+                  <p>
+                    Responsibility depends on your delivery method and who books
+                    the courier:
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-[#E6FBF5] rounded-lg p-3">
+                      <p className="font-medium text-[#0BB88C] mb-2 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Pick Up Yourself
+                      </p>
+                      <ul className="text-sm space-y-1">
+                        <li>• Responsibility transfers at handoff</li>
+                        <li>• Both parties confirm in-person</li>
+                        <li>• Trust-deposit active immediately</li>
+                      </ul>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <p className="font-medium text-blue-700 mb-2 flex items-center gap-2">
+                        <Truck className="h-4 w-4" />
+                        Uber Direct Courier
+                      </p>
+                      <ul className="text-sm space-y-1">
+                        <li>• Whoever books courier handles courier issues</li>
+                        <li>• Trust-deposit activates after delivery confirmation</li>
+                        <li>• Courier issues ≠ borrower responsibility</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm">
+                    <p className="font-medium text-amber-800 mb-1">
+                      What happens if the courier loses or damages the item?
+                    </p>
+                    <p className="text-amber-700">
+                      The party who booked the courier handles the claim with the
+                      delivery service. The trust-deposit is <strong>not</strong>{" "}
+                      charged for courier issues — only for issues after successful
+                      delivery.
+                    </p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="privacy-5">
                 <AccordionTrigger className="text-sm">
                   What if I want to delete my account?
                 </AccordionTrigger>

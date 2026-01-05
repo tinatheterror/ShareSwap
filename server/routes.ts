@@ -2271,7 +2271,13 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const itemId = parseInt(req.params.itemId);
-    const { requestType, message, startDate, endDate } = req.body;
+    const { requestType, message, startDate, endDate, deliveryMethod } = req.body;
+
+    // Validate deliveryMethod
+    const validDeliveryMethods = ["in_person", "courier"];
+    const validatedDeliveryMethod = validDeliveryMethods.includes(deliveryMethod) 
+      ? deliveryMethod 
+      : "in_person";
 
     // Check if item exists and is available
     const [item] = await db
@@ -2315,6 +2321,8 @@ Respond with ONLY the category name, nothing else.`
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         status: "PENDING",
+        deliveryMethod: validatedDeliveryMethod,
+        deliveryConfirmed: false,
       })
       .returning();
 
@@ -2358,6 +2366,12 @@ Respond with ONLY the category name, nothing else.`
         startDate: itemRequests.startDate,
         endDate: itemRequests.endDate,
         createdAt: itemRequests.createdAt,
+        deliveryMethod: itemRequests.deliveryMethod,
+        deliveryConfirmed: itemRequests.deliveryConfirmed,
+        deliveryConfirmedAt: itemRequests.deliveryConfirmedAt,
+        courierBookedBy: itemRequests.courierBookedBy,
+        courierIssue: itemRequests.courierIssue,
+        courierIssueNote: itemRequests.courierIssueNote,
         item: {
           id: items.id,
           name: items.name,
@@ -3310,6 +3324,219 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Confirm item delivery (recipient confirms they received the item)
+  app.post("/api/requests/:requestId/confirm-delivery", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+
+    // Get the request
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).send("Request not found");
+    }
+
+    // Only the recipient (requester) can confirm delivery
+    if (request.item_requests.requesterId !== req.user.id) {
+      return res.status(403).send("Only the recipient can confirm delivery");
+    }
+
+    // Only accepted requests can have delivery confirmed
+    if (request.item_requests.status !== "ACCEPTED") {
+      return res.status(400).send("Request must be accepted to confirm delivery");
+    }
+
+    // For in-person, delivery confirmation is automatic at handoff (no-op if already confirmed)
+    if (request.item_requests.deliveryMethod === "in_person") {
+      if (request.item_requests.deliveryConfirmed) {
+        return res.json({ 
+          success: true, 
+          message: "Delivery already confirmed for in-person handoff.",
+          request: request.item_requests 
+        });
+      }
+    }
+
+    // Prevent duplicate confirmations
+    if (request.item_requests.deliveryConfirmed) {
+      return res.status(400).send("Delivery has already been confirmed");
+    }
+
+    // Update delivery confirmation
+    const [updated] = await db
+      .update(itemRequests)
+      .set({ 
+        deliveryConfirmed: true,
+        deliveryConfirmedAt: new Date()
+      })
+      .where(eq(itemRequests.id, requestId))
+      .returning();
+
+    // Create notification for item owner
+    await db.insert(notifications).values({
+      userId: request.items.ownerId!,
+      type: "delivery_confirmed",
+      title: "Delivery Confirmed",
+      message: `Your item "${request.items.name}" has been received successfully.`,
+      itemId: request.items.id,
+      requestId: requestId,
+      isRead: false,
+    });
+
+    const depositMessage = request.item_requests.deliveryMethod === "courier" 
+      ? "Delivery confirmed. Trust-deposit is now active."
+      : "Handoff confirmed. Trust-deposit is active.";
+
+    res.json({ 
+      success: true, 
+      message: depositMessage,
+      request: updated 
+    });
+  });
+
+  // Report courier issue (item lost/damaged during courier delivery)
+  app.post("/api/requests/:requestId/courier-issue", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const { issueNote } = req.body;
+
+    // Get the request
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).send("Request not found");
+    }
+
+    // Only courier deliveries can have courier issues
+    if (request.item_requests.deliveryMethod !== "courier") {
+      return res.status(400).send("Courier issues only apply to courier deliveries");
+    }
+
+    // Request must be accepted first
+    if (request.item_requests.status !== "ACCEPTED") {
+      return res.status(400).send("Request must be accepted to report courier issues");
+    }
+
+    // Courier booking info should be present for proper responsibility assignment
+    if (!request.item_requests.courierBookedBy) {
+      return res.status(400).send("Courier booking information must be recorded before reporting issues");
+    }
+
+    // Prevent duplicate issue reports
+    if (request.item_requests.courierIssue) {
+      return res.status(400).send("A courier issue has already been reported for this request");
+    }
+
+    // Either party can report a courier issue
+    const isOwner = request.items.ownerId === req.user.id;
+    const isRequester = request.item_requests.requesterId === req.user.id;
+    
+    if (!isOwner && !isRequester) {
+      return res.status(403).send("Only parties involved in this transaction can report issues");
+    }
+
+    // Update courier issue status - this voids any trust-deposit charges
+    // When courierIssue is true, trust-deposit should not be activated or charged
+    const [updated] = await db
+      .update(itemRequests)
+      .set({ 
+        courierIssue: true,
+        courierIssueNote: issueNote || "Item lost or damaged during courier delivery",
+        // Clear delivery confirmation since delivery didn't complete successfully
+        deliveryConfirmed: false,
+        deliveryConfirmedAt: null
+      })
+      .where(eq(itemRequests.id, requestId))
+      .returning();
+
+    // Notify both parties
+    const notifyUserId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
+    const courierBooker = request.item_requests.courierBookedBy;
+    const bookerLabel = courierBooker === 'requester' ? 'borrower/renter' : 'owner';
+    
+    if (notifyUserId) {
+      await db.insert(notifications).values({
+        userId: notifyUserId,
+        type: "courier_issue",
+        title: "Courier Issue Reported",
+        message: `A courier issue has been reported for "${request.items.name}". The ${bookerLabel} who booked the courier will handle this with the delivery service. Trust-deposit will NOT be charged.`,
+        itemId: request.items.id,
+        requestId: requestId,
+        isRead: false,
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Courier issue reported. Trust-deposit will NOT be charged. The ${bookerLabel} who booked the courier is responsible for resolving this with the delivery service.`,
+      request: updated,
+      responsibleParty: courierBooker
+    });
+  });
+
+  // Update who booked the courier
+  app.patch("/api/requests/:requestId/courier-booker", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const { bookedBy } = req.body; // 'requester' | 'owner'
+
+    if (!['requester', 'owner'].includes(bookedBy)) {
+      return res.status(400).send("bookedBy must be 'requester' or 'owner'");
+    }
+
+    // Get the request
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).send("Request not found");
+    }
+
+    // Only allow if user is involved in the transaction
+    const isOwner = request.items.ownerId === req.user.id;
+    const isRequester = request.item_requests.requesterId === req.user.id;
+    
+    if (!isOwner && !isRequester) {
+      return res.status(403).send("Not authorized");
+    }
+
+    // Only courier deliveries need this
+    if (request.item_requests.deliveryMethod !== "courier") {
+      return res.status(400).send("Only courier deliveries track who booked");
+    }
+
+    const [updated] = await db
+      .update(itemRequests)
+      .set({ courierBookedBy: bookedBy })
+      .where(eq(itemRequests.id, requestId))
+      .returning();
+
+    res.json({ success: true, request: updated });
+  });
+
   // Create delivery arrangement
   app.post("/api/requests/:requestId/delivery", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -3320,8 +3547,8 @@ Respond with ONLY the category name, nothing else.`
     const { deliveryType, deliveryAddress, deliveryDate, securityDeposit } =
       req.body;
 
-    // Calculate delivery fee for in-app service
-    const deliveryFee = deliveryType === "IN_APP_SERVICE" ? "10.00" : "0.00";
+    // Calculate delivery fee for courier service (Uber Direct = $15)
+    const deliveryFee = deliveryType === "IN_APP_SERVICE" || deliveryType === "courier" ? "15.00" : "0.00";
 
     const [arrangement] = await db
       .insert(deliveryArrangements)

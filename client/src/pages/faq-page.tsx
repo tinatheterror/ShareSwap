@@ -1007,24 +1007,30 @@ export default function FAQPage() {
               </AccordionItem>
 
               {/* Deposits & Protection Questions */}
-              <p id="deposits-coverage" className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2 scroll-mt-24">
+              <p
+                id="deposits-coverage"
+                className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2 scroll-mt-24"
+              >
                 Deposits & Protection
               </p>
               <AccordionItem value="deposit-1">
                 <AccordionTrigger className="text-sm">
-                  What is a trust deposit?
+                  What is a trust deposit for borrowing?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    A <span className="font-semibold">trust deposit</span> is real money temporarily held when you borrow an item.
-                    It's there to protect the lender — and it's <span className="font-semibold">fully refunded</span> when the item is returned on time and in good condition.
+                    A <span className="font-semibold">trust deposit</span> is
+                    real money temporarily held when you borrow an item. It's
+                    there to protect the lender — and it's{" "}
+                    <span className="font-semibold">fully refunded</span> when
+                    the item is returned on time and in good condition.
                   </p>
                   <p className="text-sm italic text-gray-500">
-                    Think of it like borrowing a friend's dress: you're trusted, but there's accountability.
+                    <span className="font-medium text-[#0BB88C]">
+                      Your deposit is not a fee
+                    </span>{" "}
+                    — it's a temporary hold.
                   </p>
-                  <div className="bg-[#E6FBF5] rounded-lg p-3 text-sm">
-                    <span className="font-medium text-[#0BB88C]">Your deposit is not a fee</span> — it's a temporary hold.
-                  </div>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="deposit-2">
@@ -1032,7 +1038,6 @@ export default function FAQPage() {
                   How are trust deposits calculated?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  <p className="mb-2">Borrowing uses a trust-based deposit:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>Your trust score lowers the deposit</li>
                     <li>Higher trust = smaller deposit</li>
@@ -1054,12 +1059,11 @@ export default function FAQPage() {
                     calculates:
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Item value (AI estimate)</li>
                     <li>Rental price</li>
                     <li>Deposit amount</li>
                   </ul>
                   <p className="mt-2 text-sm italic">
-                    You can edit rental price, but deposit is fixed for safety.
+                    You can edit rental price and deposit amount within is fixed for safety.
                   </p>
                 </AccordionContent>
               </AccordionItem>
@@ -1075,8 +1079,8 @@ export default function FAQPage() {
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Community-based</li>
-                        <li>Low cost</li>
-                        <li>Trust-based deposit</li>
+                        <li>Payin borrow rates in ShareCoins</li>
+                        <li>Lower cash trust-based deposit</li>
                         <li>Good for helping neighbors</li>
                         <li>No cash earnings</li>
                       </ul>
@@ -1087,8 +1091,8 @@ export default function FAQPage() {
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Peer-to-peer income</li>
-                        <li>Cash earnings</li>
-                        <li>Cash deposit required</li>
+                        <li>Paying rental rates in cash</li>
+                        <li>Security deposit</li>
                         <li>Ideal for side hustle vibes</li>
                       </ul>
                     </div>
@@ -1101,7 +1105,12 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    <span className="font-semibold">Replacement coverage</span> is the maximum amount that may be charged <span className="font-semibold">only if an item is not returned</span>.
+                    <span className="font-semibold">Replacement coverage</span>{" "}
+                    is the maximum amount that may be charged{" "}
+                    <span className="font-semibold">
+                      only if an item is not returned
+                    </span>
+                    .
                   </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
@@ -1117,7 +1126,9 @@ export default function FAQPage() {
                       <span>If the item is returned, you're not charged</span>
                     </li>
                   </ul>
-                  <p className="font-medium text-gray-700">No surprises. Ever.</p>
+                  <p className="font-medium text-gray-700">
+                    No surprises. Ever.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="deposit-6">
@@ -1128,7 +1139,9 @@ export default function FAQPage() {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span>The lender confirms the item is returned safely</span>
+                      <span>
+                        The lender confirms the item is returned safely
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
@@ -1136,7 +1149,11 @@ export default function FAQPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span><span className="font-semibold">No extra charges. No hidden fees.</span></span>
+                      <span>
+                        <span className="font-semibold">
+                          No extra charges. No hidden fees.
+                        </span>
+                      </span>
                     </li>
                   </ul>
                 </AccordionContent>
@@ -1149,11 +1166,21 @@ export default function FAQPage() {
                   <p>If an item isn't returned:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>The trust deposit is applied first</li>
-                    <li>If needed, an additional charge may cover the remaining replacement value</li>
-                    <li>The <span className="font-semibold">total charge will never exceed</span> the listed replacement value</li>
+                    <li>
+                      If needed, an additional charge may cover the remaining
+                      replacement value
+                    </li>
+                    <li>
+                      The{" "}
+                      <span className="font-semibold">
+                        total charge will never exceed
+                      </span>{" "}
+                      the listed replacement value
+                    </li>
                   </ul>
                   <p className="text-sm text-gray-500">
-                    This ensures lenders are protected without overcharging borrowers.
+                    This ensures lenders are protected without overcharging
+                    borrowers.
                   </p>
                 </AccordionContent>
               </AccordionItem>
@@ -1162,19 +1189,29 @@ export default function FAQPage() {
                   What if someone damages my item?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
-                  <p>Accidents happen. Here's how ShareSwap handles damage fairly:</p>
+                  <p>
+                    Accidents happen. Here's how ShareSwap handles damage
+                    fairly:
+                  </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>A trust deposit is held during each borrowing transaction</span>
+                      <span>
+                        A trust deposit is held during each borrowing
+                        transaction
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>Normal wear is expected and isn't considered damage</span>
+                      <span>
+                        Normal wear is expected and isn't considered damage
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>If damage is reported, the deposit is temporarily held</span>
+                      <span>
+                        If damage is reported, the deposit is temporarily held
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
@@ -1186,14 +1223,21 @@ export default function FAQPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>If damage is confirmed, funds may be used to cover repair or replacement costs</span>
+                      <span>
+                        If damage is confirmed, funds may be used to cover
+                        repair or replacement costs
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>If no damage is found, the full deposit is returned</span>
+                      <span>
+                        If no damage is found, the full deposit is returned
+                      </span>
                     </li>
                   </ul>
-                  <p className="font-medium text-gray-700">You're never charged more than the item's replacement value.</p>
+                  <p className="font-medium text-gray-700">
+                    You're never charged more than the item's replacement value.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="deposit-9">
@@ -1204,7 +1248,9 @@ export default function FAQPage() {
                   <p>You can exchange items and deposits in two ways:</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="bg-[#E6FBF5] rounded-lg p-3">
-                      <p className="font-medium text-[#0BB88C] mb-2">In-App (Recommended)</p>
+                      <p className="font-medium text-[#0BB88C] mb-2">
+                        In-App (Recommended)
+                      </p>
                       <ul className="text-sm space-y-1">
                         <li>• Secure payment handling</li>
                         <li>• Automatic deposit tracking</li>
@@ -1212,7 +1258,9 @@ export default function FAQPage() {
                       </ul>
                     </div>
                     <div className="bg-gray-100 rounded-lg p-3">
-                      <p className="font-medium text-gray-700 mb-2">In Person (Free)</p>
+                      <p className="font-medium text-gray-700 mb-2">
+                        In Person (Free)
+                      </p>
                       <ul className="text-sm space-y-1">
                         <li>• Exchange items and deposits directly</li>
                         <li>• No platform fees</li>
@@ -1220,7 +1268,9 @@ export default function FAQPage() {
                       </ul>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500">Same protections. Different convenience levels.</p>
+                  <p className="text-sm text-gray-500">
+                    Same protections. Different convenience levels.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="deposit-10">
@@ -1231,15 +1281,26 @@ export default function FAQPage() {
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
                       <Shield className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span><span className="font-semibold">Protects lenders</span></span>
+                      <span>
+                        <span className="font-semibold">Protects lenders</span>
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Star className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span><span className="font-semibold">Rewards trustworthy borrowers</span></span>
+                      <span>
+                        <span className="font-semibold">
+                          Rewards trustworthy borrowers
+                        </span>
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Heart className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
-                      <span>Keeps sharing <span className="font-semibold">fair, simple, and low-stress</span></span>
+                      <span>
+                        Keeps sharing{" "}
+                        <span className="font-semibold">
+                          fair, simple, and low-stress
+                        </span>
+                      </span>
                     </li>
                   </ul>
                   <p className="mt-3 text-sm font-medium text-gray-700">

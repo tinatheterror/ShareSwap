@@ -364,10 +364,29 @@ export function registerRoutes(app: Express): Server {
         description: "Account verified with ID and payment method",
       });
 
+      // Award 5 ShareCoins for profile verification
+      const VERIFICATION_SHARECOIN_REWARD = 5;
+      await db.insert(shareCoinsTransactions).values({
+        userId: userId,
+        amount: VERIFICATION_SHARECOIN_REWARD.toString(),
+        description: "Profile Verification Bonus",
+        transactionType: "EARNED",
+      });
+
+      await db
+        .update(users)
+        .set({
+          shareCoins: sql`share_coins + ${VERIFICATION_SHARECOIN_REWARD}`,
+        })
+        .where(eq(users.id, userId));
+
+      console.log(`✅ Awarded ${VERIFICATION_SHARECOIN_REWARD} ShareCoins to user ${userId} for profile verification`);
+
       res.json({ 
         success: true, 
-        message: "Verification approved! You received a trust score boost.",
-        trustBoost: VERIFICATION_TRUST_BOOST 
+        message: "Verification approved! You received a trust score boost and 5 ShareCoins.",
+        trustBoost: VERIFICATION_TRUST_BOOST,
+        shareCoinsAwarded: VERIFICATION_SHARECOIN_REWARD
       });
     } catch (error) {
       console.error("Error approving verification:", error);

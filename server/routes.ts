@@ -3073,22 +3073,13 @@ Respond with ONLY the category name, nothing else.`
       const rentalPrice = parseFloat(rental.items.dollarsPrice || "0");
       const commissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
 
-      // Record rental return
-      await db.insert(rentalReturns).values({
-        requestId,
-        itemId: rental.items.id,
-        renterId: rental.item_requests.requesterId,
-        ownerId: rental.items.ownerId,
-        commissionCharged: commissionDetails.commissionAmount.toString(),
-        shareCoinsAwarded: platformConfig.shareCoinsRewards.successfulRental * 2, // Both users get rewards
-        status,
-        notes,
-      });
-
       // Award ShareCoins to both users for successful rental completion
       const shareCoinsReward = platformConfig.shareCoinsRewards.successfulRental;
       const renterId = rental.item_requests.requesterId;
       const ownerId = rental.items.ownerId;
+
+      let renterShareCoins = 0;
+      let ownerShareCoins = 0;
 
       if (shareCoinsReward > 0) {
         // Award to renter with first-time bonus
@@ -3098,6 +3089,7 @@ Respond with ONLY the category name, nothing else.`
           rental.items.name,
           shareCoinsReward
         );
+        renterShareCoins = renterResult.totalAwarded;
 
         // Award to owner (lender) with first-time bonus
         const ownerResult = await awardShareCoinsWithFirstTimeBonus(
@@ -3106,10 +3098,23 @@ Respond with ONLY the category name, nothing else.`
           rental.items.name,
           shareCoinsReward
         );
+        ownerShareCoins = ownerResult.totalAwarded;
 
         console.log(`✅ ${platformConfig.messaging.shareCoinsReward}`);
         console.log(`Rental completion: Renter=${renterResult.totalAwarded} (first-time: ${renterResult.isFirstTime}), Owner/Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
       }
+
+      // Record rental return with actual ShareCoins awarded (after calculation)
+      await db.insert(rentalReturns).values({
+        requestId,
+        itemId: rental.items.id,
+        renterId,
+        ownerId,
+        commissionCharged: commissionDetails.commissionAmount.toString(),
+        shareCoinsAwarded: renterShareCoins + ownerShareCoins,
+        status,
+        notes,
+      });
 
       // Award additional ShareCoins from user reward fund
       if (commissionDetails.shareCoinsFromReward > 0) {
@@ -3158,7 +3163,8 @@ Respond with ONLY the category name, nothing else.`
       res.json({
         success: true,
         message: "Rental marked as returned successfully",
-        shareCoinsAwarded: shareCoinsReward,
+        renterShareCoins,
+        ownerShareCoins,
         communityBonusAwarded: Math.floor(commissionDetails.shareCoinsFromReward / 2),
       });
 

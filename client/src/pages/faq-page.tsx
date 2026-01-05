@@ -1419,9 +1419,24 @@ export default function FAQPage() {
                 <AccordionTrigger className="text-sm">
                   What if I want to delete my account?
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  You can delete it anytime in settings. Your items, messages,
-                  and balance will be removed.
+                <AccordionContent className="text-gray-600 space-y-2">
+                  <p>
+                    To delete your account, please contact our support team at{" "}
+                    <a 
+                      href="mailto:support@shareswap.com" 
+                      className="text-[#0BB88C] hover:underline font-medium"
+                    >
+                      support@shareswap.com
+                    </a>
+                    .
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    When you delete your account, all your items, messages,
+                    ShareCoin balance, and transaction history will be
+                    permanently removed. Make sure to complete any active
+                    transactions and withdraw any ShareCoins before requesting
+                    deletion.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

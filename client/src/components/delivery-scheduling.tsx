@@ -152,7 +152,7 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                 <Label htmlFor="uber_send" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2 font-medium">
                     <Truck className="h-4 w-4 text-primary" />
-                    Uber Send Items
+                    Uber Direct
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Have Uber deliver the item directly to your address. +${uberDeliveryFee} delivery fee
@@ -232,7 +232,7 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                 <div className="flex items-start gap-3">
                   <Truck className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-blue-800">
-                    <p className="font-medium">Uber Send Items</p>
+                    <p className="font-medium">Uber Direct</p>
                     <p className="mt-1">A courier will pick up the item from the owner and deliver it to your address. Delivery fee: <span className="font-semibold">${uberDeliveryFee}</span></p>
                   </div>
                 </div>

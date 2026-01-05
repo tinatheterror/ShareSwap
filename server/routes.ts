@@ -2486,6 +2486,23 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // Award ShareCoins for accepted gift requests (gifter gets rewarded for generosity)
+    if (status === "ACCEPTED" && request.item_requests.requestType === "GIFT") {
+      try {
+        // Award ShareCoins to the gifter (owner) for their generosity
+        const gifterResult = await awardShareCoinsWithFirstTimeBonus(
+          req.user.id,
+          'GIFT',
+          request.items.name,
+          1
+        );
+        
+        console.log(`✅ Awarded ShareCoins for gift: Gifter=${gifterResult.totalAwarded} (first-time: ${gifterResult.isFirstTime})`);
+      } catch (error) {
+        console.error("Error processing gift reward:", error);
+      }
+    }
+
     // Handle commission for rental transactions
     if (status === "ACCEPTED" && request.item_requests.requestType === "RENT") {
       try {
@@ -3074,38 +3091,24 @@ Respond with ONLY the category name, nothing else.`
       const ownerId = rental.items.ownerId;
 
       if (shareCoinsReward > 0) {
-        // Award to renter
-        await db.insert(shareCoinsTransactions).values({
-          userId: renterId,
-          amount: shareCoinsReward.toString(),
-          description: `Earned ${shareCoinsReward} ShareCoin for completed rental: ${rental.items.name}`,
-          transactionType: "EARNED",
-        });
+        // Award to renter with first-time bonus
+        const renterResult = await awardShareCoinsWithFirstTimeBonus(
+          renterId,
+          'RENT',
+          rental.items.name,
+          shareCoinsReward
+        );
 
-        await db
-          .update(users)
-          .set({
-            shareCoins: sql`share_coins + ${shareCoinsReward}`,
-          })
-          .where(sql`${users.id} = ${renterId}`);
-
-        // Award to owner
-        await db.insert(shareCoinsTransactions).values({
-          userId: ownerId,
-          amount: shareCoinsReward.toString(),
-          description: `Earned ${shareCoinsReward} ShareCoin for completed rental: ${rental.items.name}`,
-          transactionType: "EARNED",
-        });
-
-        await db
-          .update(users)
-          .set({
-            shareCoins: sql`share_coins + ${shareCoinsReward}`,
-          })
-          .where(sql`${users.id} = ${ownerId}`);
+        // Award to owner (lender) with first-time bonus
+        const ownerResult = await awardShareCoinsWithFirstTimeBonus(
+          ownerId,
+          'LEND',
+          rental.items.name,
+          shareCoinsReward
+        );
 
         console.log(`✅ ${platformConfig.messaging.shareCoinsReward}`);
-        console.log(`Awarded ${shareCoinsReward} ShareCoins to both users for rental completion`);
+        console.log(`Rental completion: Renter=${renterResult.totalAwarded} (first-time: ${renterResult.isFirstTime}), Owner/Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
       }
 
       // Award additional ShareCoins from user reward fund
@@ -3162,6 +3165,81 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error processing rental return:", error);
       res.status(500).json({ error: "Failed to process rental return" });
+    }
+  });
+
+  // Mark borrow as returned and award ShareCoins
+  app.post("/api/borrows/:requestId/return", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+
+    try {
+      // Get borrow request details
+      const [borrow] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            eq(itemRequests.id, requestId),
+            eq(itemRequests.requestType, "BORROW"),
+            eq(itemRequests.status, "ACCEPTED")
+          )
+        )
+        .limit(1);
+
+      if (!borrow) {
+        return res.status(404).json({ error: "Borrow not found or not in progress" });
+      }
+
+      // Only owner or borrower can mark as returned
+      const isOwner = borrow.items.ownerId === req.user.id;
+      const isBorrower = borrow.item_requests.requesterId === req.user.id;
+
+      if (!isOwner && !isBorrower) {
+        return res.status(403).json({ error: "Not authorized to mark this borrow as returned" });
+      }
+
+      const borrowerId = borrow.item_requests.requesterId;
+      const ownerId = borrow.items.ownerId;
+
+      // Award ShareCoins to borrower with first-time bonus
+      const borrowerResult = await awardShareCoinsWithFirstTimeBonus(
+        borrowerId,
+        'BORROW',
+        borrow.items.name,
+        1
+      );
+
+      // Award ShareCoins to owner (lender) with first-time bonus
+      const ownerResult = await awardShareCoinsWithFirstTimeBonus(
+        ownerId,
+        'LEND',
+        borrow.items.name,
+        1
+      );
+
+      console.log(`✅ Borrow completion: Borrower=${borrowerResult.totalAwarded} (first-time: ${borrowerResult.isFirstTime}), Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
+
+      // Update request status to COMPLETED
+      await db
+        .update(itemRequests)
+        .set({ status: "COMPLETED" })
+        .where(eq(itemRequests.id, requestId));
+
+      res.json({
+        success: true,
+        message: "Borrow marked as returned successfully",
+        borrowerShareCoins: borrowerResult.totalAwarded,
+        lenderShareCoins: ownerResult.totalAwarded,
+      });
+
+    } catch (error) {
+      console.error("Error processing borrow return:", error);
+      res.status(500).json({ error: "Failed to process borrow return" });
     }
   });
 

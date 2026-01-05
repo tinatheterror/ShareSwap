@@ -1347,9 +1347,25 @@ export default function FAQPage() {
                 <AccordionTrigger className="text-sm">
                   Do I need to meet people in person?
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Usually yes — pick-up or drop-off. You can choose a public
-                  meeting spot if you prefer.
+                <AccordionContent className="text-gray-600 space-y-2">
+                  <p>
+                    <span className="font-semibold">Not necessarily!</span> You
+                    have two options:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>
+                      <span className="font-medium">Pick up yourself</span> —
+                      Meet at a public location you both agree on (free)
+                    </li>
+                    <li>
+                      <span className="font-medium">Uber Direct</span> — A
+                      courier picks up the item and delivers it to you (small
+                      fee applies)
+                    </li>
+                  </ul>
+                  <p className="text-sm italic text-gray-500">
+                    Choose whatever feels most comfortable for you.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="privacy-4">

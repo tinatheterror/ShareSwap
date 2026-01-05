@@ -38,6 +38,71 @@ import Stripe from "stripe";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
 import { calculateReplacementValue } from "./replacement-value";
 
+// Helper function to award ShareCoins with first-time bonus handling
+async function awardShareCoinsWithFirstTimeBonus(
+  userId: number,
+  actionType: 'RENT' | 'LEND' | 'SWAP' | 'GIFT' | 'BORROW',
+  itemName: string,
+  baseReward: number = 1
+): Promise<{ totalAwarded: number; isFirstTime: boolean }> {
+  // Map action type to user field
+  const fieldMap: Record<string, keyof typeof users> = {
+    'RENT': 'hasCompletedFirstRent',
+    'LEND': 'hasCompletedFirstLend', 
+    'SWAP': 'hasCompletedFirstSwap',
+    'GIFT': 'hasCompletedFirstGift',
+    'BORROW': 'hasCompletedFirstBorrow',
+  };
+  
+  const field = fieldMap[actionType];
+  
+  // Check if user has completed this action before
+  const [user] = await db
+    .select({ hasCompleted: users[field] as any })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  
+  const isFirstTime = !user?.hasCompleted;
+  let totalAwarded = 0;
+  
+  // Award first-time bonus if applicable
+  if (isFirstTime) {
+    await db.insert(shareCoinsTransactions).values({
+      userId,
+      amount: "1",
+      description: `First Time ${actionType.charAt(0) + actionType.slice(1).toLowerCase()} Bonus`,
+      transactionType: "EARNED",
+    });
+    totalAwarded += 1;
+    
+    // Mark user as having completed first action
+    await db
+      .update(users)
+      .set({ [field]: true })
+      .where(eq(users.id, userId));
+  }
+  
+  // Award base completion reward
+  await db.insert(shareCoinsTransactions).values({
+    userId,
+    amount: baseReward.toString(),
+    description: `Successful ${actionType.charAt(0) + actionType.slice(1).toLowerCase()}: ${itemName}`,
+    transactionType: "EARNED",
+  });
+  totalAwarded += baseReward;
+  
+  // Update user's ShareCoins balance
+  await db
+    .update(users)
+    .set({
+      shareCoins: sql`share_coins + ${totalAwarded}`,
+    })
+    .where(eq(users.id, userId));
+  
+  return { totalAwarded, isFirstTime };
+}
+
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -2394,39 +2459,23 @@ Respond with ONLY the category name, nothing else.`
         
         // Award ShareCoins only if not flagged as farming
         if (measures.awardShareCoins) {
-          const shareCoinReward = 1;
-          
-          // Award 1 ShareCoin to the item owner (current user)
-          await db.insert(shareCoinsTransactions).values({
-            userId: req.user.id,
-            amount: shareCoinReward.toString(),
-            description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
-            transactionType: "EARNED",
-          });
-          
-          await db
-            .update(users)
-            .set({
-              shareCoins: sql`share_coins + ${shareCoinReward}`,
-            })
-            .where(eq(users.id, req.user.id));
+          // Award ShareCoins to the item owner (current user) with first-time bonus
+          const ownerResult = await awardShareCoinsWithFirstTimeBonus(
+            req.user.id,
+            'SWAP',
+            request.items.name,
+            1
+          );
 
-          // Award 1 ShareCoin to the requester
-          await db.insert(shareCoinsTransactions).values({
-            userId: request.item_requests.requesterId,
-            amount: shareCoinReward.toString(),
-            description: `Earned 1 ShareCoin for successful swap: ${request.items.name}`,
-            transactionType: "EARNED",
-          });
-          
-          await db
-            .update(users)
-            .set({
-              shareCoins: sql`share_coins + ${shareCoinReward}`,
-            })
-            .where(eq(users.id, request.item_requests.requesterId));
+          // Award ShareCoins to the requester with first-time bonus
+          const requesterResult = await awardShareCoinsWithFirstTimeBonus(
+            request.item_requests.requesterId,
+            'SWAP',
+            request.items.name,
+            1
+          );
             
-          console.log(`✅ Awarded ${shareCoinReward} ShareCoins to both users for legitimate swap`);
+          console.log(`✅ Awarded ShareCoins for swap: Owner=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime}), Requester=${requesterResult.totalAwarded} (first-time: ${requesterResult.isFirstTime})`);
         } else {
           console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
         }

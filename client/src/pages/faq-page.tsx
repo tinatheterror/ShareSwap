@@ -997,12 +997,22 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="tier-4">
                 <AccordionTrigger className="text-sm">
-                  Can I edit rental prices?
+                  Can I edit rental prices and deposits?
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  Yes. Rental prices are{" "}
-                  <span className="font-semibold">fully customizable</span>{" "}
-                  (within platform limits).
+                <AccordionContent className="text-gray-600 space-y-2">
+                  <p>
+                    Yes! Both rental prices and security deposits are{" "}
+                    <span className="font-semibold">fully customizable</span> by
+                    the owner.
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>AI suggests a starting price based on item value</li>
+                    <li>You can adjust the weekly rental rate to any amount</li>
+                    <li>You can set your own security deposit amount</li>
+                  </ul>
+                  <p className="text-sm italic text-gray-500">
+                    Set prices that work for you and your community.
+                  </p>
                 </AccordionContent>
               </AccordionItem>
 
@@ -1053,17 +1063,22 @@ export default function FAQPage() {
                 <AccordionTrigger className="text-sm">
                   What is the security deposit for renting?
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p className="mb-2">
-                    Renting uses cash deposits (not ShareCoins). The app
-                    calculates:
+                <AccordionContent className="text-gray-600 space-y-2">
+                  <p>
+                    A <span className="font-semibold">security deposit</span> is
+                    cash held during a rental to protect the owner. It's{" "}
+                    <span className="font-semibold">fully refunded</span> when
+                    the item is returned in good condition.
                   </p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>Rental price</li>
-                    <li>Deposit amount</li>
-                  </ul>
-                  <p className="mt-2 text-sm italic">
-                    You can edit rental price and deposit amount within is fixed for safety.
+                  <p className="text-sm">
+                    <span className="font-medium">Owner control:</span> You set
+                    both the weekly rental price and deposit amount when listing
+                    your item. AI provides a suggestion, but the final price is
+                    up to you.
+                  </p>
+                  <p className="text-sm italic text-gray-500">
+                    Deposits are held via payment authorization, not charged
+                    upfront.
                   </p>
                 </AccordionContent>
               </AccordionItem>

@@ -107,10 +107,15 @@ export default function DeliveryArrangementsPage() {
     
     arrangements?.forEach(arr => {
       // Delivery/Pickup event
+      const getTitle = () => {
+        if (arr.deliveryType === 'pickup') return 'Pickup';
+        if (arr.deliveryType === 'uber_send') return 'Uber Delivery';
+        return 'Delivery';
+      };
       events.push({
-        title: `${arr.deliveryType === 'pickup' ? 'Pickup' : arr.deliveryType === 'self_delivery' ? 'Self-Delivery' : 'Delivery'}: ${arr.request.item.name}`,
+        title: `${getTitle()}: ${arr.request.item.name}`,
         start: new Date(arr.deliveryDate),
-        color: arr.deliveryType === 'self_delivery' ? '#f59e0b' : '#3b82f6',
+        color: arr.deliveryType === 'uber_send' ? '#3b82f6' : '#10b981',
         extendedProps: {
           arrangement: arr,
           eventType: 'delivery'
@@ -144,7 +149,7 @@ export default function DeliveryArrangementsPage() {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
     
-    const title = `${arrangement.deliveryType === 'pickup' ? 'Pickup' : 'Delivery'}: ${arrangement.request.item.name}`;
+    const title = `${arrangement.deliveryType === 'pickup' ? 'Pickup' : arrangement.deliveryType === 'uber_send' ? 'Uber Delivery' : 'Delivery'}: ${arrangement.request.item.name}`;
     const description = `Item: ${arrangement.request.item.name}%0AAddress: ${arrangement.deliveryAddress}%0AType: ${arrangement.deliveryType}${arrangement.specialInstructions ? '%0AInstructions: ' + arrangement.specialInstructions : ''}`;
     
     const icsContent = [

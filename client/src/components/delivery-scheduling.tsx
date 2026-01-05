@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, CreditCard, Truck, Car, AlertTriangle, Shield, MapPin, CalendarDays } from "lucide-react";
+import { Calendar, CreditCard, Truck, AlertTriangle, Shield, MapPin, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -23,7 +22,7 @@ interface DeliverySchedulingProps {
 }
 
 export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onComplete }: DeliverySchedulingProps) {
-  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'delivery' | 'self_delivery'>('pickup');
+  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'uber_send'>('pickup');
   const [depositMethod, setDepositMethod] = useState<'credit_card' | 'self_facilitated'>('credit_card');
   const [scheduledDate, setScheduledDate] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
   const [scheduledTime, setScheduledTime] = useState('');
@@ -32,8 +31,6 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [selfFacilitatedAgreement, setSelfFacilitatedAgreement] = useState(false);
-  const [selfDeliveryRiskAccepted, setSelfDeliveryRiskAccepted] = useState(false);
-  const [deliveryService, setDeliveryService] = useState('');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,13 +57,7 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
   });
 
   const suggestedDepositAmount = Math.min(itemValue * 0.2, 500); // 20% of item value, max $500
-
-  const deliveryServices = [
-    { value: 'uber', label: 'Uber Direct', fee: 15 },
-    { value: 'doordash', label: 'DoorDash Drive', fee: 12 },
-    { value: 'postmates', label: 'Postmates', fee: 18 },
-    { value: 'local_courier', label: 'Local Courier', fee: 25 },
-  ];
+  const uberDeliveryFee = 15; // Uber Send Items fee
 
   const handleSubmit = () => {
     if (!scheduledTime) {
@@ -87,19 +78,10 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
       return;
     }
 
-    if (deliveryMethod === 'delivery' && (!deliveryAddress || !deliveryService)) {
+    if (deliveryMethod === 'uber_send' && !deliveryAddress) {
       toast({
         title: "Missing Information",
-        description: "Please provide delivery address and select a delivery service.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (deliveryMethod === 'self_delivery' && (!deliveryAddress || !selfDeliveryRiskAccepted)) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide delivery address and accept the risk disclaimer for self-delivery.",
+        description: "Please provide a delivery address for Uber Send.",
         variant: "destructive",
       });
       return;
@@ -122,11 +104,11 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
       scheduledTime,
       returnDate,
       pickupLocation: deliveryMethod === 'pickup' ? pickupLocation : null,
-      deliveryAddress: deliveryMethod === 'delivery' || deliveryMethod === 'self_delivery' ? deliveryAddress : null,
-      deliveryService: deliveryMethod === 'delivery' ? deliveryService : null,
+      deliveryAddress: deliveryMethod === 'uber_send' ? deliveryAddress : null,
+      deliveryService: deliveryMethod === 'uber_send' ? 'uber' : null,
+      deliveryFee: deliveryMethod === 'uber_send' ? uberDeliveryFee : 0,
       specialInstructions,
       suggestedDepositAmount,
-      riskAccepted: deliveryMethod === 'self_delivery' ? selfDeliveryRiskAccepted : false,
     };
 
     createArrangementMutation.mutate(arrangementData);
@@ -151,27 +133,30 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
 
           {/* Delivery Method */}
           <div>
-            <Label className="text-base font-semibold mb-3 block">Delivery Method</Label>
-            <RadioGroup value={deliveryMethod} onValueChange={(value: any) => setDeliveryMethod(value)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="pickup" id="pickup" />
-                <Label htmlFor="pickup" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  Self Pickup (Free)
+            <Label className="text-base font-semibold mb-3 block">How will the item be picked up?</Label>
+            <RadioGroup value={deliveryMethod} onValueChange={(value: any) => setDeliveryMethod(value)} className="space-y-3">
+              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="pickup" id="pickup" className="mt-0.5" />
+                <Label htmlFor="pickup" className="flex-1 cursor-pointer">
+                  <div className="flex items-center gap-2 font-medium">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Pick Up Yourself
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Meet the owner at an agreed location to pick up the item. Free!
+                  </p>
                 </Label>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="delivery" id="delivery" />
-                <Label htmlFor="delivery" className="flex items-center gap-2">
-                  <Truck className="h-4 w-4" />
-                  Delivery Service (Additional fees apply)
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="self_delivery" id="self_delivery" />
-                <Label htmlFor="self_delivery" className="flex items-center gap-2">
-                  <Car className="h-4 w-4" />
-                  Self Delivery (I'll handle delivery myself)
+              <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                <RadioGroupItem value="uber_send" id="uber_send" className="mt-0.5" />
+                <Label htmlFor="uber_send" className="flex-1 cursor-pointer">
+                  <div className="flex items-center gap-2 font-medium">
+                    <Truck className="h-4 w-4 text-primary" />
+                    Uber Send Items
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Have Uber deliver the item directly to your address. +${uberDeliveryFee} delivery fee
+                  </p>
                 </Label>
               </div>
             </RadioGroup>
@@ -228,68 +213,27 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                 value={pickupLocation}
                 onChange={(e) => setPickupLocation(e.target.value)}
               />
-            </div>
-          ) : deliveryMethod === 'delivery' ? (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="delivery-address">Delivery Address</Label>
-                <Input
-                  id="delivery-address"
-                  placeholder="Enter your delivery address"
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label>Delivery Service</Label>
-                <Select value={deliveryService} onValueChange={setDeliveryService}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose delivery service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {deliveryServices.map((service) => (
-                      <SelectItem key={service.value} value={service.value}>
-                        {service.label} (+${service.fee} commission)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Suggest a safe, public location to meet the owner
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <Label htmlFor="self-delivery-address">Delivery Address</Label>
+                <Label htmlFor="delivery-address">Your Delivery Address</Label>
                 <Input
-                  id="self-delivery-address"
-                  placeholder="Enter delivery address"
+                  id="delivery-address"
+                  placeholder="Enter your full delivery address"
                   value={deliveryAddress}
                   onChange={(e) => setDeliveryAddress(e.target.value)}
                 />
               </div>
-              
-              {/* Risk Warning for Self Delivery */}
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-teal-900">Self-Delivery Risk Warning</h4>
-                    <div className="text-sm text-teal-800 space-y-1">
-                      <p>• You are responsible for safe transportation and delivery</p>
-                      <p>• No platform protection for loss or damage during transit</p>
-                      <p>• Consider insurance and proper packaging</p>
-                      <p>• QR code verification required upon delivery</p>
-                    </div>
-                    <div className="flex items-center space-x-2 mt-3">
-                      <Checkbox
-                        id="self-delivery-risk"
-                        checked={selfDeliveryRiskAccepted}
-                        onCheckedChange={(checked) => setSelfDeliveryRiskAccepted(!!checked)}
-                      />
-                      <Label htmlFor="self-delivery-risk" className="text-sm font-medium text-teal-900">
-                        I understand and accept the risks of self-delivery
-                      </Label>
-                    </div>
+                  <Truck className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium">Uber Send Items</p>
+                    <p className="mt-1">A courier will pick up the item from the owner and deliver it to your address. Delivery fee: <span className="font-semibold">${uberDeliveryFee}</span></p>
                   </div>
                 </div>
               </div>

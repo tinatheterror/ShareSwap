@@ -997,18 +997,17 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="tier-4">
                 <AccordionTrigger className="text-sm">
-                  Can I edit rental prices and deposits?
+                  Can I edit rental prices?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    Yes! Both rental prices and security deposits are{" "}
+                    Yes! Both rental prices{" "}
                     <span className="font-semibold">fully customizable</span> by
                     the owner.
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>AI suggests a starting price based on item value</li>
+                    <li>AI suggests a starting price based on item details</li>
                     <li>You can adjust the weekly rental rate to any amount</li>
-                    <li>You can set your own security deposit amount</li>
                   </ul>
                   <p className="text-sm italic text-gray-500">
                     Set prices that work for you and your community.
@@ -1072,9 +1071,8 @@ export default function FAQPage() {
                   </p>
                   <p className="text-sm">
                     <span className="font-medium">Owner control:</span> You set
-                    both the weekly rental price and deposit amount when listing
-                    your item. AI provides a suggestion, but the final price is
-                    up to you.
+                    deposit amount when listing your item. AI provides a
+                    suggestion that reflects the replacement coverage, but the final price is up to you.
                   </p>
                   <p className="text-sm italic text-gray-500">
                     Deposits are held via payment authorization, not charged
@@ -1094,7 +1092,7 @@ export default function FAQPage() {
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Community-based</li>
-                        <li>Payin borrow rates in ShareCoins</li>
+                        <li>Pay in ShareCoins</li>
                         <li>Lower cash trust-based deposit</li>
                         <li>Good for helping neighbors</li>
                         <li>No cash earnings</li>
@@ -1106,7 +1104,7 @@ export default function FAQPage() {
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Peer-to-peer income</li>
-                        <li>Paying rental rates in cash</li>
+                        <li>Pay in cash</li>
                         <li>Security deposit</li>
                         <li>Ideal for side hustle vibes</li>
                       </ul>
@@ -1120,8 +1118,9 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    <span className="font-semibold">Replacement coverage</span>{" "}
-                    is the maximum amount that may be charged{" "}
+                    Replacement coverage is the{" "}
+                    <span className="font-semibold">maximum amount</span> that
+                    may be charged{" "}
                     <span className="font-semibold">
                       only if an item is not returned
                     </span>
@@ -1153,17 +1152,17 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600">
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
                         The lender confirms the item is returned safely
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>Your trust deposit is released back to you</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
                         <span className="font-semibold">
                           No extra charges. No hidden fees.
@@ -1333,8 +1332,7 @@ export default function FAQPage() {
                   Is my address shown to other users?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. Only approximate neighborhood is shown. Exact address is
-                  shared only when both sides accept a transaction.
+                  No. Only approximate neighborhood is shown.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="privacy-2">

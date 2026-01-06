@@ -1031,12 +1031,12 @@ export default function FAQPage() {
                   <p>
                     A <span className="font-semibold">trust deposit</span> is
                     real money temporarily held when you borrow an item. It's
-                    there to protect the lender — and it's{" "}
+                    there to protect the lender and it's{" "}
                     <span className="font-semibold">fully refunded</span> when
                     the item is returned on time and in good condition.
                   </p>
                   <p className="text-sm italic text-gray-500">
-                    <span className="font-medium text-[#0BB88C]">
+                    <span className="font-medium">
                       Your deposit is not a fee
                     </span>{" "}
                     — it's a temporary hold.
@@ -1065,7 +1065,7 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    A security deposit is
+                    A security deposit is{" "}
                     <span className="font-semibold">
                       cash held during a rental
                     </span>{" "}
@@ -1089,9 +1089,12 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <div className="space-y-3">
-                    <div className="bg-[#E6FBF5] rounded-lg p-3">
+                    <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-gray-800 text-sm mb-2">
-                        Borrowing (ShareCoins)
+                        Borrowing{" "}
+                        <p className="text-sm italic text-gray-500">
+                          (ShareCoins)
+                        </p>
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Community-based</li>
@@ -1101,9 +1104,10 @@ export default function FAQPage() {
                         <li>No cash earnings</li>
                       </ul>
                     </div>
-                    <div className="bg-[#C8EFE4] rounded-lg p-3">
+                    <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-gray-800 text-sm mb-2">
-                        Renting (Cash)
+                        Renting{" "}
+                        <p className="text-sm italic text-gray-500">(Cash)</p>
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Peer-to-peer income</li>
@@ -1398,11 +1402,18 @@ export default function FAQPage() {
                         Uber Direct Courier
                       </p>
                       <ul className="text-sm space-y-1">
-                        <li>• Whoever books courier handles courier issues</li>
+                        <li>
+                          • Any loss or damage during transit is the
+                          responsibility of the courier service
+                        </li>
+                        <li>• Sender handles courier issues</li>
                         <li>
                           • Trust-deposit activates after delivery confirmation
                         </li>
-                        <li>• Courier issues ≠ borrower responsibility</li>
+                        <li>
+                          • ShareSwap does not cover courier-related loss or
+                          damage
+                        </li>
                       </ul>
                     </div>
                   </div>
@@ -1441,8 +1452,7 @@ export default function FAQPage() {
                   </div>
                   <p className="text-sm text-gray-500">
                     Want to come back? Simply log in again with your credentials
-                    and you can instantly reactivate your
-                    account.
+                    and you can instantly reactivate your account.
                   </p>
                   <div className="bg-blue-50 rounded-lg p-3">
                     <p className="text-sm text-blue-800">
@@ -1460,8 +1470,8 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
                     You can request permanent deletion, but it isn't instant.
-                    ShareSwap keeps a short cooling-off period to ensure
-                    safety and unresolved issues.
+                    ShareSwap keeps a short cooling-off period to ensure safety
+                    and unresolved issues.
                   </p>
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                     <p className="font-medium text-gray-800">
@@ -1490,11 +1500,11 @@ export default function FAQPage() {
                     </p>
                   </div>
                   <p className="text-sm text-gray-500">
-                    <strong>Why the delay?</strong> To protect users and
-                    ensure deposits, disputes, and safety checks are fully
-                    resolved before anything disappears. If you change your mind
-                    during the cooling-off period, you can reactivate your
-                    account instantly.
+                    <strong>Why the delay?</strong> To protect users and ensure
+                    deposits, disputes, and safety checks are fully resolved
+                    before anything disappears. If you change your mind during
+                    the cooling-off period, you can reactivate your account
+                    instantly.
                   </p>
                 </AccordionContent>
               </AccordionItem>

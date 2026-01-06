@@ -355,9 +355,9 @@ export function ItemRequestForm({
                           <label htmlFor="in_person" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
                             <MapPin className="h-4 w-4 text-teal-600" />
                             Pick Up Yourself
-                            <span className="text-xs text-green-600 font-normal">Free</span>
                           </label>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-green-600 font-medium mt-0.5">Free</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
                             Meet the owner to pick up the item
                           </p>
                         </div>
@@ -368,9 +368,9 @@ export function ItemRequestForm({
                           <label htmlFor="courier" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
                             <Truck className="h-4 w-4 text-blue-600" />
                             Uber Direct
-                            <span className="text-xs text-gray-500 font-normal">+$15</span>
                           </label>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">+$15</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
                             Courier delivers to you
                           </p>
                         </div>
@@ -417,9 +417,9 @@ export function ItemRequestForm({
                               <label htmlFor="deposit_in_app" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
                                 <Shield className="h-4 w-4 text-teal-600" />
                                 In-app
-                                <span className="text-xs text-teal-600 font-normal">(recommended)</span>
                               </label>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-teal-600 font-medium mt-0.5">Recommended</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
                                 Held securely, auto-refunded
                               </p>
                             </div>
@@ -438,9 +438,9 @@ export function ItemRequestForm({
                               >
                                 <MapPin className="h-4 w-4 text-gray-500" />
                                 In person
-                                <span className="text-xs text-gray-500 font-normal">(no fees)</span>
                               </label>
-                              <p className="text-xs text-gray-500 mt-1">
+                              <p className="text-xs text-gray-500 font-medium mt-0.5">No fees</p>
+                              <p className="text-xs text-gray-500 mt-0.5">
                                 Handled directly with neighbor
                               </p>
                             </div>

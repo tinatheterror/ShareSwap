@@ -357,7 +357,7 @@ export function ItemRequestForm({
                             Pick Up Yourself
                           </label>
                           <p className="text-xs text-green-600 font-medium mt-0.5">Free</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-[10px] text-gray-400 mt-0.5">
                             Meet the owner to pick up the item
                           </p>
                         </div>
@@ -370,7 +370,7 @@ export function ItemRequestForm({
                             Uber Direct
                           </label>
                           <p className="text-xs text-gray-500 font-medium mt-0.5">+$15</p>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-[10px] text-gray-400 mt-0.5">
                             Courier delivers to you
                           </p>
                         </div>
@@ -419,7 +419,7 @@ export function ItemRequestForm({
                                 In-app
                               </label>
                               <p className="text-xs text-teal-600 font-medium mt-0.5">Recommended</p>
-                              <p className="text-xs text-gray-500 mt-0.5">
+                              <p className="text-[10px] text-gray-400 mt-0.5">
                                 Held securely, auto-refunded
                               </p>
                             </div>
@@ -440,7 +440,7 @@ export function ItemRequestForm({
                                 In person
                               </label>
                               <p className="text-xs text-gray-500 font-medium mt-0.5">No fees</p>
-                              <p className="text-xs text-gray-500 mt-0.5">
+                              <p className="text-[10px] text-gray-400 mt-0.5">
                                 Handled directly with neighbor
                               </p>
                             </div>

@@ -1179,23 +1179,26 @@ export default function LendPage() {
                             <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100 col-start-1">
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <Coins className="h-4 w-4 text-teal-600" />
-                                <span className="font-semibold text-teal-800 text-sm">
-                                  {valuationResult ? (
-                                    <>{valuationResult.shareCoinsValue}</>
-                                  ) : isLoadingValuation ? (
-                                    <span className="text-gray-500">...</span>
-                                  ) : (
-                                    <>
-                                      {
-                                        TIER_WEEKLY_BANDS[calculatedTier]
-                                          .display
-                                      }
-                                    </>
-                                  )}
-                                  <span className="font-normal text-teal-700">
-                                    {" "}
-                                    ShareCoins/week
-                                  </span>
+                                <span className="text-xs text-teal-700">
+                                  Borrow Rate
+                                </span>
+                              </div>
+                              <div className="text-sm font-semibold text-gray-800">
+                                {valuationResult ? (
+                                  <>{valuationResult.shareCoinsValue}</>
+                                ) : isLoadingValuation ? (
+                                  <span className="text-gray-500">...</span>
+                                ) : (
+                                  <>
+                                    {
+                                      TIER_WEEKLY_BANDS[calculatedTier]
+                                        .display
+                                    }
+                                  </>
+                                )}
+                                <span className="font-normal text-teal-700">
+                                  {" "}
+                                  ShareCoins/week
                                 </span>
                               </div>
                               {(() => {
@@ -1213,13 +1216,17 @@ export default function LendPage() {
                                 );
                                 return (
                                   <div className="mt-2 pt-2 border-t border-teal-100">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-medium text-gray-700">
-                                        Trust-Based Deposit:
-                                      </span>
+                                    <div className="text-xs font-medium text-gray-700">
+                                      Trust-Based Deposit:
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                      <span className="text-gray-500">$</span>
                                       <span className="text-sm font-semibold text-gray-800">
-                                        {formatDeposit(depositCalc.finalDeposit)}
+                                        {Math.round(depositCalc.finalDeposit)}
                                       </span>
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 mt-0.5">
+                                      AI suggested: ${Math.round(depositCalc.baseDeposit)}
                                     </div>
                                     {depositCalc.discountPercentage > 0 && (
                                       <div className="text-teal-600 text-[10px] mt-0.5">
@@ -1343,18 +1350,6 @@ export default function LendPage() {
                                         <span className="font-medium text-emerald-600">
                                           0% for 2025
                                         </span>
-                                      </div>
-                                      <div className="flex justify-between text-xs mt-1">
-                                        <span className="text-gray-600">
-                                          Payment processing:
-                                        </span>
-                                        <span className="font-medium text-gray-700">
-                                          3%
-                                        </span>
-                                      </div>
-                                      <div className="text-[10px] text-gray-400 mt-1.5">
-                                        You receive: $
-                                        {Math.round(displayRate * 0.97)}/week
                                       </div>
                                     </div>
                                   </>
@@ -1677,7 +1672,10 @@ export default function LendPage() {
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm text-green-600">
                             <Check className="w-4 h-4" />
-                            <span>{selectedPhotos.length} photo{selectedPhotos.length > 1 ? 's' : ''} added</span>
+                            <span>
+                              {selectedPhotos.length} photo
+                              {selectedPhotos.length > 1 ? "s" : ""} added
+                            </span>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {selectedPhotos.map((photo, idx) => (
@@ -1706,7 +1704,10 @@ export default function LendPage() {
                                 )}
                               </div>
                             ))}
-                            <label htmlFor="photos-add" className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                            <label
+                              htmlFor="photos-add"
+                              className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
+                            >
                               <Plus className="w-5 h-5 text-gray-400" />
                             </label>
                             <Input

@@ -393,10 +393,6 @@ export function ItemRequestForm({
                     Maximum Charge if Item Is Not Returned: $
                     {(item as any).replacementValue}
                   </div>
-                  <p className="text-xs text-gray-600">
-                    You’re only charged if the item isn’t returned. Safe returns
-                    aren’t charged.
-                  </p>
                   <p className="text-[10px] text-gray-400">
                     Most borrowers never pay this.
                   </p>

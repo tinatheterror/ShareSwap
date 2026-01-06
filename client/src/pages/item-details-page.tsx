@@ -112,7 +112,12 @@ export default function ItemDetailsPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex items-center gap-1.5 cursor-help">
-                      <span className="line-through text-teal-500">${depositCalc.baseDeposit}</span>
+                      <span className="relative text-black">
+                        <span className="absolute inset-0 flex items-center">
+                          <span className="w-full h-[2px] bg-teal-500"></span>
+                        </span>
+                        ${depositCalc.baseDeposit}
+                      </span>
                       <span className="font-semibold text-teal-600">${depositCalc.finalDeposit}</span>
                     </span>
                   </TooltipTrigger>

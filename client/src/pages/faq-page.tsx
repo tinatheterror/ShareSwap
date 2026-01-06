@@ -142,10 +142,10 @@ export default function FAQPage() {
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
-                  Turn Idle Items Into Value
+                  Turn Unused Items Into Value
                 </p>
                 <p className="text-[11px] text-gray-500 leading-tight">
-                  Your unused items can help others.
+                  Your idle items can help others.
                 </p>
               </div>
 
@@ -1088,7 +1088,7 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    A security deposit is
+                    A security deposit is{" "}
                     <span className="font-semibold">
                       cash held during a rental
                     </span>{" "}
@@ -1115,9 +1115,9 @@ export default function FAQPage() {
                     <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-gray-800 text-sm mb-2">
                         Borrowing{" "}
-                        <p className="text-sm italic text-gray-500">
+                        <span className="text-sm italic text-gray-500">
                           (ShareCoins)
-                        </p>
+                        </span>
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Community-based</li>
@@ -1130,7 +1130,7 @@ export default function FAQPage() {
                     <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-gray-800 text-sm mb-2">
                         Renting{" "}
-                        <p className="text-sm italic text-gray-500">(Cash)</p>
+                        <span className="text-sm italic text-gray-500">(Cash)</span>
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Peer-to-peer income</li>

@@ -424,7 +424,7 @@ export function ItemRequestForm({
                               In person
                               <span className="text-xs text-gray-500 font-normal ml-1">(no fees)</span>
                               <span className="text-xs text-gray-400 font-normal ml-auto">
-                                {isCourier ? 'Not available with courier' : 'Handled directly with neighbor'}
+                                Handled directly with neighbor
                               </span>
                             </label>
                           </div>

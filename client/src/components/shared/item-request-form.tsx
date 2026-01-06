@@ -40,6 +40,7 @@ import {
 } from "@/lib/replacement-value";
 import { useState } from "react";
 import * as z from "zod";
+import { Link } from "wouter";
 import type { SelectItem } from "@db/schema";
 import { calculateSwap, getSwapTierLabel } from "@/lib/swap-calculator";
 
@@ -438,12 +439,12 @@ export function ItemRequestForm({
                     )}
                   />
 
-                  <a
+                  <Link
                     href="/faq#deposits-coverage"
                     className="text-xs text-teal-600 hover:text-teal-700 hover:underline inline-block"
                   >
                     How protection works
-                  </a>
+                  </Link>
                 </div>
               )}
 

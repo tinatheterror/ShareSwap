@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -43,6 +44,17 @@ import {
 } from "lucide-react";
 
 export default function FAQPage() {
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.substring(1);
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />

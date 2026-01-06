@@ -1202,17 +1202,11 @@ export default function LendPage() {
                                 </span>
                               </div>
                               {(() => {
-                                const reputationScore =
-                                  user?.reputationScore || 0;
-                                const trustScore = Math.min(
-                                  100,
-                                  Math.round((reputationScore / 500) * 100) +
-                                    50,
-                                );
+                                // Show base deposit without discount - owner doesn't get discount on their own item
                                 const depositCalc = calculateSecurityDeposit(
                                   calculatedTier,
                                   watchOriginalValue,
-                                  trustScore,
+                                  0, // No trust score applied for owner's own item
                                 );
                                 return (
                                   <div className="mt-2 pt-2 border-t border-teal-100">
@@ -1222,18 +1216,12 @@ export default function LendPage() {
                                     <div className="flex items-center gap-1 mt-0.5">
                                       <span className="text-gray-500">$</span>
                                       <span className="text-sm font-semibold text-gray-800">
-                                        {Math.round(depositCalc.finalDeposit)}
+                                        {Math.round(depositCalc.baseDeposit)}
                                       </span>
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-0.5">
-                                      AI suggested: ${Math.round(depositCalc.baseDeposit)}
+                                      Borrowers may see lower deposits based on their trust score
                                     </div>
-                                    {depositCalc.discountPercentage > 0 && (
-                                      <div className="text-teal-600 text-[10px] mt-0.5">
-                                        Your trust score reduced the deposit by{" "}
-                                        {depositCalc.discountPercentage}%
-                                      </div>
-                                    )}
                                   </div>
                                 );
                               })()}

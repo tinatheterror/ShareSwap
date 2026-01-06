@@ -56,6 +56,8 @@ import {
   Coins,
   AlertTriangle,
   Info,
+  Plus,
+  Check,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -690,8 +692,17 @@ export default function LendPage() {
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setSelectedPhotos(Array.from(e.target.files));
+      const newFiles = Array.from(e.target.files);
+      setSelectedPhotos((prev) => [...prev, ...newFiles]);
     }
+  };
+
+  const removePhoto = (index: number) => {
+    setSelectedPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getPhotoPreviewUrl = (file: File): string => {
+    return URL.createObjectURL(file);
   };
 
   const watchIsLendable = form.watch("isLendable");
@@ -1643,29 +1654,72 @@ export default function LendPage() {
                     </TabsContent>
 
                     <TabsContent value="manual" className="mt-4">
-                      <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          className="hidden"
-                          id="photos"
-                          onChange={handlePhotoChange}
-                        />
-                        <label htmlFor="photos">
-                          <div className="cursor-pointer">
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                              Click to upload photos
-                            </p>
+                      {selectedPhotos.length === 0 ? (
+                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            id="photos"
+                            onChange={handlePhotoChange}
+                          />
+                          <label htmlFor="photos">
+                            <div className="cursor-pointer">
+                              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground">
+                                Click to upload photos
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <Check className="w-4 h-4" />
+                            <span>{selectedPhotos.length} photo{selectedPhotos.length > 1 ? 's' : ''} added</span>
                           </div>
-                        </label>
-                        {selectedPhotos.length > 0 && (
-                          <p className="mt-2 text-sm">
-                            {selectedPhotos.length} photos selected
-                          </p>
-                        )}
-                      </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedPhotos.map((photo, idx) => (
+                              <div
+                                key={idx}
+                                className="relative group w-16 h-16"
+                              >
+                                <img
+                                  src={getPhotoPreviewUrl(photo)}
+                                  alt={`Photo ${idx + 1}`}
+                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                                />
+                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => removePhoto(idx)}
+                                    className="p-1 bg-white rounded-full hover:bg-gray-100"
+                                  >
+                                    <X className="w-3 h-3 text-gray-700" />
+                                  </button>
+                                </div>
+                                {idx === 0 && (
+                                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            <label htmlFor="photos-add" className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                              <Plus className="w-5 h-5 text-gray-400" />
+                            </label>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              id="photos-add"
+                              onChange={handlePhotoChange}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </TabsContent>
                   </Tabs>
 

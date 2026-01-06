@@ -20,6 +20,8 @@ import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
 import { getSwapTierLabel } from "@/lib/swap-calculator";
 import { formatReplacementValue, hasValidReplacementValue } from "@/lib/replacement-value";
+import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +44,7 @@ export default function ItemDetailsPage() {
   const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem | null>(null);
   const [location] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Extract item ID from URL
   const itemId = location.split("/").pop();
@@ -84,6 +87,14 @@ export default function ItemDetailsPage() {
   // Create ordered sharing options based on context
   const getSharingOptions = () => {
     const itemReplacementValue = (item as any).replacementValue;
+    const itemTier = (item as any).tier || 2;
+    const itemOriginalValue = (item as any).originalValue || "$50–$150";
+    
+    // Calculate personalized trust-based deposit for the viewer
+    const reputationScore = user?.reputationScore || 0;
+    const viewerTrustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+    const depositCalc = calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);
+    
     const borrowOption = item.isLendable ? (
       <div key="borrow" className="flex justify-between items-center">
         <div>
@@ -94,9 +105,26 @@ export default function ItemDetailsPage() {
               {item.shareCoinPrice || 5} ShareCoins
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Trust-Deposit: ${Number(item.securityDeposit).toFixed(0)}
-          </p>
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            <span>Trust-Deposit:</span>
+            {depositCalc.discountPercentage > 0 ? (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex items-center gap-1.5 cursor-help">
+                      <span className="line-through text-teal-500">${depositCalc.baseDeposit}</span>
+                      <span className="font-semibold text-teal-600">${depositCalc.finalDeposit}</span>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-teal-50 border-teal-200 text-teal-700">
+                    Discounted {depositCalc.discountPercentage}% by your trust score
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <span>${depositCalc.finalDeposit}</span>
+            )}
+          </div>
           {hasValidReplacementValue(itemReplacementValue) && (
             <p className="text-[10px] text-gray-400 mt-1">
               Max charge if not returned: ${itemReplacementValue}
@@ -152,7 +180,6 @@ export default function ItemDetailsPage() {
       </div>
     ) : null;
 
-    const itemTier = (item as any).tier || 2;
     const swapOption = item.isSwappable ? (
       <div key="swap" className="space-y-2">
         <div className="flex justify-between items-center">

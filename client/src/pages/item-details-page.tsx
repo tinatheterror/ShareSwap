@@ -98,7 +98,7 @@ export default function ItemDetailsPage() {
             Trust-Deposit: ${Number(item.securityDeposit).toFixed(0)}
           </p>
           {hasValidReplacementValue(itemReplacementValue) && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-[10px] text-gray-400 mt-1">
               Max charge if not returned: ${itemReplacementValue}
             </p>
           )}

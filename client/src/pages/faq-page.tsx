@@ -806,7 +806,7 @@ export default function FAQPage() {
                     <BadgeCheck className="h-4 w-4 text-gray-500" />
                   </div>
                   <h3 className="font-medium text-gray-800 text-sm">
-                    Identity verification & accountability
+                    Identity verification
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
@@ -823,7 +823,7 @@ export default function FAQPage() {
                     <Star className="h-4 w-4 text-gray-500" />
                   </div>
                   <h3 className="font-medium text-gray-800 text-sm">
-                    Trust scores & neighbour reviews
+                    Trust scores & reviews
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
@@ -857,13 +857,14 @@ export default function FAQPage() {
                     <Flag className="h-4 w-4 text-gray-500" />
                   </div>
                   <h3 className="font-medium text-gray-800 text-sm">
-                    Reporting and moderation tools
+                    Reporting & accountability
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
                   Report concerns anytime. Our moderation team reviews issues
                   and takes action when community rules aren’t followed.
                 </p>
+                ``
               </div>
             </div>
           </CardContent>

@@ -199,7 +199,10 @@ export default function FAQPage() {
           <CardContent>
             <p className="text-gray-700 text-sm mb-6">
               A community platform where neighbours share their own items
-              through borrowing, renting, swapping, or gifting.
+              through{" "}
+              <span className="font-semibold">
+                borrowing, renting, swapping, or gifting.
+              </span>
             </p>
 
             <Tabs defaultValue="borrow" className="w-full">
@@ -244,10 +247,10 @@ export default function FAQPage() {
 
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-2">
+                <h3 className="font-semibold text-gray-800 mb-3">
                   How Borrowing & Lending Works
                 </h3>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-gray-700 text-sm mb-4">
                   Use <span className="font-bold">ShareCoins</span> to borrow
                   from neighbours. ShareCoin prices are set based on item tier
                   and duration.
@@ -1065,7 +1068,7 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    A security deposit is{" "}
+                    A security deposit is
                     <span className="font-semibold">
                       cash held during a rental
                     </span>{" "}

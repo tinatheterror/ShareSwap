@@ -131,7 +131,7 @@ export default function ItemDetailsPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            ${Number(item.securityDeposit).toFixed(2)} deposit required
+            Security Deposit: ${Number(item.securityDeposit).toFixed(2)}
           </p>
         </div>
         {hasPendingRent ? (

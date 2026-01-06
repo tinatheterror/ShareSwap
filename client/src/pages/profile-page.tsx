@@ -796,10 +796,12 @@ export default function ProfilePage() {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Account Settings
-                </Button>
+                <Link href="/settings">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Account Settings
+                  </Button>
+                </Link>
                 <Button variant="outline" className="w-full justify-start">
                   <Bell className="h-4 w-4 mr-2" />
                   Notifications

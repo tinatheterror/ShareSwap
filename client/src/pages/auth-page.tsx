@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, RotateCcw, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import {
   Dialog,
@@ -22,6 +22,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showReactivate, setShowReactivate] = useState(false);
   const { toast } = useToast();
 
   // Fetch platform statistics
@@ -34,6 +35,35 @@ export default function AuthPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: async (credentials: { username: string; password: string }) => {
+      const response = await fetch("/api/reactivate-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Reactivation failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Welcome back!",
+        description: "Your account has been reactivated successfully.",
+      });
+      window.location.href = "/";
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Reactivation failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
       const response = await fetch("/api/login", {
@@ -43,6 +73,9 @@ export default function AuthPage() {
       });
       if (!response.ok) {
         const error = await response.json();
+        if (response.status === 403 && error.accountStatus === 'deactivated') {
+          throw { ...error, isDeactivated: true };
+        }
         throw new Error(error.message || "Login failed");
       }
       return response.json();
@@ -50,7 +83,11 @@ export default function AuthPage() {
     onSuccess: () => {
       window.location.href = "/";
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      if (error.isDeactivated) {
+        setShowReactivate(true);
+        return;
+      }
       toast({
         title: "Login failed",
         description: error.message,
@@ -229,6 +266,49 @@ export default function AuthPage() {
               </button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showReactivate} onOpenChange={setShowReactivate}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              Account Deactivated
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-gray-600">
+              Your account has been deactivated. Your profile and listings are currently hidden from other users.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 font-medium mb-1">Want to come back?</p>
+              <p className="text-sm text-blue-700">
+                Click the button below to instantly reactivate your account and restore your profile.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowReactivate(false);
+                  setEmail("");
+                  setPassword("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => reactivateMutation.mutate({ username: email, password })}
+                disabled={reactivateMutation.isPending}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                {reactivateMutation.isPending ? "Reactivating..." : "Reactivate Account"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

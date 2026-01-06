@@ -7,7 +7,7 @@ import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type SelectUser } from "@db/schema";
+import { users, items, insertUserSchema, type SelectUser } from "@db/schema";
 import { db, pool } from "@db";
 import { eq, or } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
@@ -191,11 +191,60 @@ export function setupAuth(app: Express) {
       if (!user) {
         return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
+      // Check if account is deactivated
+      if ((user as any).accountStatus === 'deactivated') {
+        return res.status(403).json({ 
+          message: "Account deactivated",
+          accountStatus: 'deactivated',
+          deactivatedAt: (user as any).deactivatedAt,
+          userId: user.id
+        });
+      }
       req.login(user, (err) => {
         if (err) return next(err);
         res.json(user);
       });
     })(req, res, next);
+  });
+
+  // Reactivate a deactivated account
+  app.post("/api/reactivate-account", authLimiter, async (req, res, next) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password required" });
+    }
+    try {
+      const [user] = await getUserByUsername(username);
+      if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+      if ((user as any).accountStatus !== 'deactivated') {
+        return res.status(400).json({ message: "Account is not deactivated" });
+      }
+      // Reactivate the account
+      await db
+        .update(users)
+        .set({ 
+          accountStatus: 'active',
+          deactivatedAt: null
+        } as any)
+        .where(eq(users.id, user.id));
+      
+      // Restore user's items (make them available again)
+      await db
+        .update(items)
+        .set({ isAvailable: true })
+        .where(eq(items.ownerId, user.id));
+      
+      // Login the user
+      req.login({ ...user, accountStatus: 'active', deactivatedAt: null } as any, (err) => {
+        if (err) return next(err);
+        res.json({ message: "Account reactivated successfully", user: { ...user, accountStatus: 'active' } });
+      });
+    } catch (error) {
+      console.error("Reactivation error:", error);
+      next(error);
+    }
   });
 
   // Security: Apply rate limiting to register endpoint

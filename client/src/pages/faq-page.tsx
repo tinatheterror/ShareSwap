@@ -1417,11 +1417,38 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="privacy-5">
                 <AccordionTrigger className="text-sm">
-                  What if I want to delete my account?
+                  Can I deactivate my account?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 space-y-3">
+                  <p>
+                    Yes! Go to <strong>Profile → Settings</strong> and select "Deactivate Account".
+                  </p>
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <p className="font-medium text-gray-800">When you deactivate:</p>
+                    <ul className="text-sm space-y-1">
+                      <li>• Your profile is hidden from discovery</li>
+                      <li>• All your listings are archived</li>
+                      <li>• You can't send or receive new requests</li>
+                      <li>• Your trust score and reputation are frozen</li>
+                    </ul>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      <strong>Your data is preserved:</strong> Transaction history, messages, and reviews are retained for trust, safety, and legal compliance.
+                    </p>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Want to come back? Simply log in again with your credentials and you'll have the option to instantly reactivate your account.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="privacy-6">
+                <AccordionTrigger className="text-sm">
+                  What if I want to permanently delete my account?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    To delete your account, please contact our support team at{" "}
+                    For permanent account deletion, please contact our support team at{" "}
                     <a 
                       href="mailto:support@shareswap.com" 
                       className="text-[#0BB88C] hover:underline font-medium"
@@ -1431,11 +1458,7 @@ export default function FAQPage() {
                     .
                   </p>
                   <p className="text-sm text-gray-500">
-                    When you delete your account, all your items, messages,
-                    ShareCoin balance, and transaction history will be
-                    permanently removed. Make sure to complete any active
-                    transactions and withdraw any ShareCoins before requesting
-                    deletion.
+                    Account deletion permanently removes all your items, messages, and ShareCoin balance. Make sure to complete any active transactions first. Note that some data may be retained for legal compliance.
                   </p>
                 </AccordionContent>
               </AccordionItem>

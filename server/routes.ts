@@ -1370,13 +1370,19 @@ Respond with ONLY the category name, nothing else.`
               username: true,
               isVerified: true,
               reputationLevel: true,
+              accountStatus: true,
             }
           }
         }
       });
 
+      // Filter out items from deactivated users (defense in depth)
+      const activeItems = boundedItems.filter(
+        (item) => (item.owner as any)?.accountStatus !== 'deactivated'
+      );
+
       // Calculate exact distance and filter by radius
-      const nearbyItems = boundedItems
+      const nearbyItems = activeItems
         .map((item) => ({
           ...item,
           distance: calculateDistance(
@@ -1435,13 +1441,19 @@ Respond with ONLY the category name, nothing else.`
               username: true,
               isVerified: true,
               reputationLevel: true,
+              accountStatus: true,
             }
           }
         }
       });
 
+      // Filter out items from deactivated users (defense in depth)
+      const activeItems = allItems.filter(
+        (item) => (item.owner as any)?.accountStatus !== 'deactivated'
+      );
+
       // Sort to prioritize items from verified users (slight boost in feed priority)
-      const sortedItems = allItems.sort((a, b) => {
+      const sortedItems = activeItems.sort((a, b) => {
         // Verified users get priority
         const aVerified = a.owner?.isVerified ? 1 : 0;
         const bVerified = b.owner?.isVerified ? 1 : 0;
@@ -4233,6 +4245,100 @@ Respond with ONLY the category name, nothing else.`
       console.error("WebSocket error for user:", userId, error);
       if (userId) connectedClients.delete(userId);
     });
+  });
+
+  // Account Deactivation endpoint
+  app.post("/api/account/deactivate", csrfProtection, async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    const { confirmDeactivation } = req.body;
+    if (!confirmDeactivation) {
+      return res.status(400).json({ message: "Confirmation required" });
+    }
+    
+    try {
+      const userId = req.user.id;
+      
+      // Check for active transactions (pending requests) - user is requester or owns the item
+      const activeRequests = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(itemRequests.itemId, items.id))
+        .where(
+          and(
+            or(
+              eq(itemRequests.requesterId, userId),
+              eq(items.ownerId, userId)
+            ),
+            or(
+              eq(itemRequests.status, 'PENDING'),
+              eq(itemRequests.status, 'ACCEPTED')
+            )
+          )
+        )
+        .limit(1);
+      
+      if (activeRequests.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot deactivate account with active transactions. Please complete or cancel pending requests first."
+        });
+      }
+      
+      // Deactivate user account
+      await db
+        .update(users)
+        .set({
+          accountStatus: 'deactivated',
+          deactivatedAt: new Date(),
+        } as any)
+        .where(eq(users.id, userId));
+      
+      // Archive all user items (mark as unavailable)
+      await db
+        .update(items)
+        .set({ isAvailable: false })
+        .where(eq(items.ownerId, userId));
+      
+      // Log the user out
+      req.logout((err) => {
+        if (err) {
+          console.error("Logout error during deactivation:", err);
+        }
+        res.json({ 
+          message: "Account deactivated successfully",
+          status: "deactivated"
+        });
+      });
+    } catch (error) {
+      console.error("Account deactivation error:", error);
+      res.status(500).json({ message: "Failed to deactivate account" });
+    }
+  });
+
+  // Get account status
+  app.get("/api/account/status", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const [user] = await db
+        .select({
+          accountStatus: users.accountStatus,
+          deactivatedAt: users.deactivatedAt,
+          deletionRequestedAt: users.deletionRequestedAt,
+        } as any)
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      
+      res.json(user || { accountStatus: 'active' });
+    } catch (error) {
+      console.error("Account status error:", error);
+      res.status(500).json({ message: "Failed to get account status" });
+    }
   });
 
   setupAuth(app);

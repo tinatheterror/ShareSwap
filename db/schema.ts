@@ -26,6 +26,9 @@ export const users = pgTable("users", {
   hasCompletedFirstSwap: boolean("has_completed_first_swap").default(false),
   hasCompletedFirstGift: boolean("has_completed_first_gift").default(false),
   hasCompletedFirstBorrow: boolean("has_completed_first_borrow").default(false),
+  accountStatus: text("account_status").default("active"), // 'active', 'deactivated', 'pending_deletion'
+  deactivatedAt: timestamp("deactivated_at"),
+  deletionRequestedAt: timestamp("deletion_requested_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

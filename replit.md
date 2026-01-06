@@ -85,6 +85,12 @@ Key architectural decisions and features include:
 - **Follow System**: Allows users to follow neighbors to see their items in a personalized feed, promoting community.
 - **No Results Wishlist Prompt**: When search returns no results on Borrow, Rent, or Swap pages, users see an attractive empty state with an "Add to Wishlist" button. This converts potentially frustrating experiences into demand signals, building community-driven inventory while keeping users engaged.
 - **Automated Return Reminders**: Intelligent notification system that automatically reminds borrowers/renters about upcoming item returns. Sends reminders 1 day before the return date, on the return date, and daily for overdue items. Features a notification bell in the navbar with unread count badge, polling every 2 minutes for new notifications, and automatic reminder generation every 15 minutes. The system uses optimized queries (only checking items due within 2 days) to minimize server load. Return reminder notifications include distinct icons (clock for upcoming, alert for overdue) and relative timestamps for better user experience. Note: Current implementation uses client-side polling; for production scale, consider migrating to server-side background job scheduler (e.g., node-cron or Bull queue) to reduce redundant calculations and improve efficiency.
+- **Account Deactivation System**: Self-service account deactivation that hides profile and listings while preserving all transaction history, messages, and reviews for trust/safety/legal compliance. Features include:
+    - **Deactivation**: Settings page with confirmation modal requiring explicit checkbox acknowledgment; validates no active transactions before allowing deactivation
+    - **Data Preservation**: accountStatus field ('active', 'deactivated', 'pending_deletion') with timestamps; items marked unavailable during deactivation
+    - **Reactivation**: Instant reactivation on login with automatic item restoration; deactivated users see reactivation prompt instead of login error
+    - **Discovery Filtering**: Defense-in-depth filtering excludes deactivated users' items from all browse/search queries
+    - **Permanent Deletion**: Requires contacting support@shareswap.com (not self-service) to ensure proper data handling
 - **Security**: Comprehensive CSRF protection using a double-submit cookie pattern.
 - **Database Optimization**: Strategic composite indexes for improved query performance.
 

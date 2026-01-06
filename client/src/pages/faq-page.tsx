@@ -200,7 +200,7 @@ export default function FAQPage() {
             <p className="text-gray-700 text-sm mb-6">
               A community platform where neighbours share their own items
               through{" "}
-              <span className="font-semibold">
+              <span className="font-;789bold">
                 borrowing, renting, swapping, or gifting.
               </span>
             </p>
@@ -247,10 +247,10 @@ export default function FAQPage() {
 
               {/* Borrow & Lend Tab Content */}
               <TabsContent value="borrow" className="mt-0">
-                <h3 className="font-semibold text-gray-800 mb-3">
+                <h3 className="font-semibold text-gray-800 mb-2">
                   How Borrowing & Lending Works
                 </h3>
-                <p className="text-gray-700 text-sm mb-4">
+                <p className="text-sm text-gray-600 mb-4">
                   Use <span className="font-bold">ShareCoins</span> to borrow
                   from neighbours. ShareCoin prices are set based on item tier
                   and duration.
@@ -430,6 +430,15 @@ export default function FAQPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-4">
+                  <p className="font-medium text-gray-800 text-sm mb-3">
+                    Swap Tier Offset
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Balance value differences to how ShareCoins are earned.
+                  </p>
                 </div>
 
                 <div className="mt-4">

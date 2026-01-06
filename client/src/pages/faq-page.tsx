@@ -876,7 +876,6 @@ export default function FAQPage() {
                   Report concerns anytime. Our moderation team reviews issues
                   and takes action when community rules aren’t followed.
                 </p>
-                ``
               </div>
             </div>
           </CardContent>

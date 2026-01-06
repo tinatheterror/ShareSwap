@@ -251,8 +251,14 @@ export default function LendPage() {
   const watchDescription = form.watch("description");
   const watchConditionRating = form.watch("conditionRating");
 
+  // Check if we have at least one photo (used for tier calculation and validation)
+  const hasPhotos =
+    selectedPhotos.length > 0 ||
+    smartScanPhotos.length > 0 ||
+    existingPhotos.length > 0;
+
   const calculatedTier =
-    watchCondition && watchOriginalValue
+    watchCondition && watchOriginalValue && watchItemType && hasPhotos
       ? calculateTier(watchOriginalValue, watchCondition)
       : null;
 
@@ -277,12 +283,6 @@ export default function LendPage() {
   const [rentalDepositWarning, setRentalDepositWarning] = useState<
     string | null
   >(null);
-
-  // Check if we have at least one photo
-  const hasPhotos =
-    selectedPhotos.length > 0 ||
-    smartScanPhotos.length > 0 ||
-    existingPhotos.length > 0;
 
   // Populate form when editing an existing item
   useEffect(() => {

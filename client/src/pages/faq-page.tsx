@@ -209,7 +209,7 @@ export default function FAQPage() {
               <TabsList className="grid grid-cols-4 gap-2 h-auto bg-transparent p-0 mb-4">
                 <TabsTrigger
                   value="borrow"
-                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 text-black data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <HandHeart className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">
@@ -218,7 +218,7 @@ export default function FAQPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="rent"
-                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 text-black data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <DollarSign className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">
@@ -227,7 +227,7 @@ export default function FAQPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="swap"
-                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 text-black data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <ArrowLeftRight className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">
@@ -236,7 +236,7 @@ export default function FAQPage() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="gift"
-                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
+                  className="flex items-center gap-2 bg-[#E6FBF5] rounded-lg p-3 text-black data-[state=active]:bg-[#0DCEA1] data-[state=active]:text-white"
                 >
                   <Gift className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium hidden md:inline">
@@ -793,8 +793,8 @@ export default function FAQPage() {
               Trust & Safety
             </CardTitle>
             <p className="text-gray-500 text-sm mt-1">
-              A safe, accountable community built on transparency and mutual
-              respect.
+              Real people. Real accountability. Built-in protection for both
+              sides of every exchange.
             </p>
           </CardHeader>
           <CardContent className="pt-1 pb-4">
@@ -806,13 +806,13 @@ export default function FAQPage() {
                     <BadgeCheck className="h-4 w-4 text-gray-500" />
                   </div>
                   <h3 className="font-medium text-gray-800 text-sm">
-                    Identity verification and accountability
+                    Identity verification & accountability
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Every member can verify their identity. Verified profiles are
-                  clearly marked, creating a foundation of real-world
-                  accountability.
+                  Members can verify their identity, and verified profiles are
+                  clearly marked. This keeps interactions tied to real people
+                  and not anonymous accounts.
                 </p>
               </div>
 
@@ -823,13 +823,13 @@ export default function FAQPage() {
                     <Star className="h-4 w-4 text-gray-500" />
                   </div>
                   <h3 className="font-medium text-gray-800 text-sm">
-                    Trust scores and neighbour reviews
+                    Trust scores & neighbour reviews
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Reputation is earned through positive interactions. Reviews
-                  from neighbours help everyone make informed decisions about
-                  who to share with.
+                  Reputation is earned through completed transactions. Reviews
+                  from neighbours help you decide who to borrow from, rent to,
+                  or swap with.
                 </p>
               </div>
 
@@ -840,13 +840,13 @@ export default function FAQPage() {
                     <ShieldCheck className="h-4 w-4 text-gray-500" />
                   </div>
                   <h3 className="font-medium text-gray-800 text-sm">
-                    Security deposits and dispute resolution
+                    Security deposits & dispute resolution
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Deposits protect both parties during a transaction. If
-                  something goes wrong, we provide fair and transparent
-                  resolution.
+                  Deposits help protect items during borrowing and renting. If
+                  something goes wrong, we provide a clear, fair process to
+                  review and resolve issues.
                 </p>
               </div>
 
@@ -861,9 +861,8 @@ export default function FAQPage() {
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Community members can report concerns at any time. Our
-                  moderation team reviews issues promptly and takes appropriate
-                  action.
+                  Report concerns anytime. Our moderation team reviews issues
+                  and takes action when community rules aren’t followed.
                 </p>
               </div>
             </div>
@@ -1275,10 +1274,10 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="deposit-9">
                 <AccordionTrigger className="text-sm">
-                  In-app or in-person — your choice
+                  Deposit Exchange Options
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
-                  <p>You can exchange items and deposits in two ways:</p>
+                  <p>You can exchange deposits in two ways:</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="bg-[#E6FBF5] rounded-lg p-3">
                       <p className="font-medium text-[#0BB88C] mb-2">
@@ -1364,13 +1363,10 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="privacy-3">
                 <AccordionTrigger className="text-sm">
-                  Do I need to meet people in person?
+                  Item Exchange Options
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
-                  <p>
-                    <span className="font-semibold">Not necessarily!</span> You
-                    have two options:
-                  </p>
+                  <p>You have two options:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>
                       <span className="font-medium">Pick up yourself</span> —

@@ -1002,7 +1002,7 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    Yes! Both rental prices{" "}
+                    Yes! Rental prices{" "}
                     <span className="font-semibold">fully customizable</span> by
                     the owner.
                   </p>
@@ -1065,16 +1065,17 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    A <span className="font-semibold">security deposit</span> is
-                    cash held during a rental to protect the owner. It's{" "}
+                    A security deposit is
+                    <span className="font-semibold">
+                      cash held during a rental
+                    </span>{" "}
+                    to protect the owner. It's{" "}
                     <span className="font-semibold">fully refunded</span> when
                     the item is returned in good condition.
                   </p>
                   <p className="text-sm">
-                    <span className="font-medium">Owner control:</span> You set
-                    deposit amount when listing your item. AI provides a
-                    suggestion that reflects the replacement coverage, but the
-                    final price is up to you.
+                    AI provides a suggestion that reflects the replacement
+                    coverage, but the final price is up to you.
                   </p>
                   <p className="text-sm italic text-gray-500">
                     Deposits are held via payment authorization, not charged
@@ -1424,7 +1425,7 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    Yes! Go to <strong>Profile → Settings</strong> and select
+                    Yes. Go to <strong>Profile → Settings</strong> and select
                     "Deactivate Account".
                   </p>
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
@@ -1438,6 +1439,11 @@ export default function FAQPage() {
                       <li>• Your trust score and reputation are frozen</li>
                     </ul>
                   </div>
+                  <p className="text-sm text-gray-500">
+                    Want to come back? Simply log in again with your credentials
+                    and you can instantly reactivate your
+                    account.
+                  </p>
                   <div className="bg-blue-50 rounded-lg p-3">
                     <p className="text-sm text-blue-800">
                       <strong>Your data is preserved:</strong> Transaction
@@ -1445,11 +1451,6 @@ export default function FAQPage() {
                       safety, and legal compliance.
                     </p>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    Want to come back? Simply log in again with your credentials
-                    and you'll have the option to instantly reactivate your
-                    account.
-                  </p>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="privacy-6">
@@ -1459,30 +1460,41 @@ export default function FAQPage() {
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
                     You can request permanent deletion, but it isn't instant.
-                    ShareSwap keeps a short cooling-off period to protect trust,
-                    safety, and unresolved issues—kind of like returning the
-                    dress after the party, not mid-dance.
+                    ShareSwap keeps a short cooling-off period to ensure
+                    safety and unresolved issues.
                   </p>
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <p className="font-medium text-gray-800">Here's how it works:</p>
+                    <p className="font-medium text-gray-800">
+                      Here's how it works:
+                    </p>
                     <ul className="text-sm space-y-1">
-                      <li>• You must have no active transactions, disputes, or pending balances</li>
-                      <li>• Your account is first deactivated (hidden and inactive)</li>
-                      <li>• After the cooling-off period, your account data is permanently deleted</li>
+                      <li>
+                        • You must have no active transactions, disputes, or
+                        pending balances
+                      </li>
+                      <li>
+                        • Your account is first deactivated (hidden and
+                        inactive)
+                      </li>
+                      <li>
+                        • After the cooling-off period, your account data is
+                        permanently deleted
+                      </li>
                       <li>• This action cannot be undone</li>
                     </ul>
                   </div>
                   <div className="bg-amber-50 rounded-lg p-3">
                     <p className="text-sm text-amber-800">
-                      <strong>Note:</strong> Some data may be retained for legal compliance.
+                      <strong>Note:</strong> Some data may be retained for legal
+                      compliance.
                     </p>
                   </div>
                   <p className="text-sm text-gray-500">
-                    <strong>Why the delay?</strong> Because trust platforms don't do impulsive
-                    breakups. This ensures deposits, disputes, and safety checks
-                    are fully resolved before anything disappears. If you change
-                    your mind during the cooling-off period, you can reactivate
-                    your account instantly.
+                    <strong>Why the delay?</strong> To protect users and
+                    ensure deposits, disputes, and safety checks are fully
+                    resolved before anything disappears. If you change your mind
+                    during the cooling-off period, you can reactivate your
+                    account instantly.
                   </p>
                 </AccordionContent>
               </AccordionItem>

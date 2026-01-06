@@ -1073,7 +1073,8 @@ export default function FAQPage() {
                   <p className="text-sm">
                     <span className="font-medium">Owner control:</span> You set
                     deposit amount when listing your item. AI provides a
-                    suggestion that reflects the replacement coverage, but the final price is up to you.
+                    suggestion that reflects the replacement coverage, but the
+                    final price is up to you.
                   </p>
                   <p className="text-sm italic text-gray-500">
                     Deposits are held via payment authorization, not charged
@@ -1379,7 +1380,7 @@ export default function FAQPage() {
                     the courier:
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="bg-[#E6FBF5] rounded-lg p-3">
+                    <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-[#0BB88C] mb-2 flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
                         Pick Up Yourself
@@ -1390,27 +1391,29 @@ export default function FAQPage() {
                         <li>• Trust-deposit active immediately</li>
                       </ul>
                     </div>
-                    <div className="bg-blue-50 rounded-lg p-3">
+                    <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-blue-700 mb-2 flex items-center gap-2">
                         <Truck className="h-4 w-4" />
                         Uber Direct Courier
                       </p>
                       <ul className="text-sm space-y-1">
                         <li>• Whoever books courier handles courier issues</li>
-                        <li>• Trust-deposit activates after delivery confirmation</li>
+                        <li>
+                          • Trust-deposit activates after delivery confirmation
+                        </li>
                         <li>• Courier issues ≠ borrower responsibility</li>
                       </ul>
                     </div>
                   </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm">
+                  <div className="bg-white border border-amber-200 rounded-md p-3 text-sm">
                     <p className="font-medium text-amber-800 mb-1">
                       What happens if the courier loses or damages the item?
                     </p>
                     <p className="text-amber-700">
-                      The party who booked the courier handles the claim with the
-                      delivery service. The trust-deposit is <strong>not</strong>{" "}
-                      charged for courier issues — only for issues after successful
-                      delivery.
+                      The party who booked the courier handles the claim with
+                      the delivery service. The trust-deposit is{" "}
+                      <strong>not</strong> charged for courier issues — only for
+                      issues after successful delivery.
                     </p>
                   </div>
                 </AccordionContent>
@@ -1421,10 +1424,13 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    Yes! Go to <strong>Profile → Settings</strong> and select "Deactivate Account".
+                    Yes! Go to <strong>Profile → Settings</strong> and select
+                    "Deactivate Account".
                   </p>
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <p className="font-medium text-gray-800">When you deactivate:</p>
+                    <p className="font-medium text-gray-800">
+                      When you deactivate:
+                    </p>
                     <ul className="text-sm space-y-1">
                       <li>• Your profile is hidden from discovery</li>
                       <li>• All your listings are archived</li>
@@ -1434,11 +1440,15 @@ export default function FAQPage() {
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3">
                     <p className="text-sm text-blue-800">
-                      <strong>Your data is preserved:</strong> Transaction history, messages, and reviews are retained for trust, safety, and legal compliance.
+                      <strong>Your data is preserved:</strong> Transaction
+                      history, messages, and reviews are retained for trust,
+                      safety, and legal compliance.
                     </p>
                   </div>
                   <p className="text-sm text-gray-500">
-                    Want to come back? Simply log in again with your credentials and you'll have the option to instantly reactivate your account.
+                    Want to come back? Simply log in again with your credentials
+                    and you'll have the option to instantly reactivate your
+                    account.
                   </p>
                 </AccordionContent>
               </AccordionItem>
@@ -1446,19 +1456,33 @@ export default function FAQPage() {
                 <AccordionTrigger className="text-sm">
                   What if I want to permanently delete my account?
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600 space-y-2">
+                <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    For permanent account deletion, please contact our support team at{" "}
-                    <a 
-                      href="mailto:support@shareswap.com" 
-                      className="text-[#0BB88C] hover:underline font-medium"
-                    >
-                      support@shareswap.com
-                    </a>
-                    .
+                    You can request permanent deletion, but it isn't instant.
+                    ShareSwap keeps a short cooling-off period to protect trust,
+                    safety, and unresolved issues—kind of like returning the
+                    dress after the party, not mid-dance.
                   </p>
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <p className="font-medium text-gray-800">Here's how it works:</p>
+                    <ul className="text-sm space-y-1">
+                      <li>• You must have no active transactions, disputes, or pending balances</li>
+                      <li>• Your account is first deactivated (hidden and inactive)</li>
+                      <li>• After the cooling-off period, your account data is permanently deleted</li>
+                      <li>• This action cannot be undone</li>
+                    </ul>
+                  </div>
+                  <div className="bg-amber-50 rounded-lg p-3">
+                    <p className="text-sm text-amber-800">
+                      <strong>Note:</strong> Some data may be retained for legal compliance.
+                    </p>
+                  </div>
                   <p className="text-sm text-gray-500">
-                    Account deletion permanently removes all your items, messages, and ShareCoin balance. Make sure to complete any active transactions first. Note that some data may be retained for legal compliance.
+                    <strong>Why the delay?</strong> Because trust platforms don't do impulsive
+                    breakups. This ensures deposits, disputes, and safety checks
+                    are fully resolved before anything disappears. If you change
+                    your mind during the cooling-off period, you can reactivate
+                    your account instantly.
                   </p>
                 </AccordionContent>
               </AccordionItem>

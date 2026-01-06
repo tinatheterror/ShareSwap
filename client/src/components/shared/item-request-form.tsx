@@ -349,21 +349,31 @@ export function ItemRequestForm({
                       defaultValue={field.value}
                       className="grid grid-cols-2 gap-2"
                     >
-                      <div className="flex items-center space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                        <RadioGroupItem value="in_person" id="in_person" />
-                        <label htmlFor="in_person" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
-                          <MapPin className="h-4 w-4 text-teal-600" />
-                          Pick Up
-                          <span className="text-xs text-green-600 font-normal">Free</span>
-                        </label>
+                      <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="in_person" id="in_person" className="mt-0.5" />
+                        <div className="flex-1">
+                          <label htmlFor="in_person" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
+                            <MapPin className="h-4 w-4 text-teal-600" />
+                            Pick Up Yourself
+                            <span className="text-xs text-green-600 font-normal">Free</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Meet the owner to pick up the item
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                        <RadioGroupItem value="courier" id="courier" />
-                        <label htmlFor="courier" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
-                          <Truck className="h-4 w-4 text-blue-600" />
-                          Courier
-                          <span className="text-xs text-gray-500 font-normal">+$15</span>
-                        </label>
+                      <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem value="courier" id="courier" className="mt-0.5" />
+                        <div className="flex-1">
+                          <label htmlFor="courier" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
+                            <Truck className="h-4 w-4 text-blue-600" />
+                            Uber Direct
+                            <span className="text-xs text-gray-500 font-normal">+$15</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Courier delivers to you
+                          </p>
+                        </div>
                       </div>
                     </RadioGroup>
                   </FormControl>
@@ -401,28 +411,39 @@ export function ItemRequestForm({
                           value={isCourier ? "in_app" : field.value}
                           className="grid grid-cols-2 gap-2"
                         >
-                          <div className="flex items-center space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                            <RadioGroupItem value="in_app" id="deposit_in_app" />
-                            <label htmlFor="deposit_in_app" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
-                              <Shield className="h-4 w-4 text-teal-600" />
-                              In-app
-                              <span className="text-xs text-teal-600 font-normal">(recommended)</span>
-                            </label>
+                          <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
+                            <RadioGroupItem value="in_app" id="deposit_in_app" className="mt-0.5" />
+                            <div className="flex-1">
+                              <label htmlFor="deposit_in_app" className="flex items-center gap-1.5 cursor-pointer font-medium text-sm">
+                                <Shield className="h-4 w-4 text-teal-600" />
+                                In-app
+                                <span className="text-xs text-teal-600 font-normal">(recommended)</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Held securely, auto-refunded
+                              </p>
+                            </div>
                           </div>
-                          <div className={`flex items-center space-x-2 border rounded-lg p-2.5 ${isCourier ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
+                          <div className={`flex items-start space-x-2 border rounded-lg p-2.5 ${isCourier ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
                             <RadioGroupItem 
                               value="in_person" 
                               id="deposit_in_person" 
                               disabled={isCourier}
+                              className="mt-0.5"
                             />
-                            <label 
-                              htmlFor="deposit_in_person" 
-                              className={`flex items-center gap-1.5 font-medium text-sm ${isCourier ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-                            >
-                              <MapPin className="h-4 w-4 text-gray-500" />
-                              In person
-                              <span className="text-xs text-gray-500 font-normal">(no fees)</span>
-                            </label>
+                            <div className="flex-1">
+                              <label 
+                                htmlFor="deposit_in_person" 
+                                className={`flex items-center gap-1.5 font-medium text-sm ${isCourier ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                              >
+                                <MapPin className="h-4 w-4 text-gray-500" />
+                                In person
+                                <span className="text-xs text-gray-500 font-normal">(no fees)</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Handled directly with neighbor
+                              </p>
+                            </div>
                           </div>
                         </RadioGroup>
                       </FormControl>

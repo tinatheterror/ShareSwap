@@ -51,6 +51,7 @@ const formSchema = z.object({
   conditionConfirmed: z.boolean().optional(),
   replacementValueAcknowledged: z.boolean().optional(),
   deliveryMethod: z.enum(["in_person", "courier"]).default("in_person"),
+  depositMethod: z.enum(["in_app", "in_person"]).default("in_app"),
 });
 
 type Props = {
@@ -86,6 +87,7 @@ export function ItemRequestForm({
       conditionConfirmed: false,
       replacementValueAcknowledged: false,
       deliveryMethod: "in_person",
+      depositMethod: "in_app",
     },
   });
 
@@ -156,6 +158,7 @@ export function ItemRequestForm({
         requestType,
         swapOfferItemId: swapOfferItem?.id,
         deliveryMethod: data.deliveryMethod,
+        depositMethod: data.depositMethod,
       });
       return res.json();
     },
@@ -384,6 +387,77 @@ export function ItemRequestForm({
                 </FormItem>
               )}
             />
+
+            {/* Deposit Handoff Method - Only for BORROW and RENT */}
+            {(requestType === "BORROW" || requestType === "RENT") && (
+              <FormField
+                control={form.control}
+                name="depositMethod"
+                render={({ field }) => {
+                  const isCourier = form.watch("deliveryMethod") === "courier";
+                  // Auto-lock to in_app when courier is selected
+                  if (isCourier && field.value !== "in_app") {
+                    field.onChange("in_app");
+                  }
+                  return (
+                    <FormItem className="space-y-3">
+                      <FormLabel className="flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        How would you like to handle the deposit?
+                      </FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={isCourier ? "in_app" : field.value}
+                          className="flex flex-col space-y-2"
+                        >
+                          <div className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-gray-50">
+                            <RadioGroupItem value="in_app" id="deposit_in_app" className="mt-0.5" />
+                            <div className="flex-1">
+                              <label htmlFor="deposit_in_app" className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+                                <Shield className="h-4 w-4 text-teal-600" />
+                                In-app
+                                <span className="text-xs text-teal-600 font-normal ml-1">(recommended)</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Held securely, auto-refunded when item is returned
+                              </p>
+                            </div>
+                          </div>
+                          <div className={`flex items-start space-x-3 border rounded-lg p-3 ${isCourier ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
+                            <RadioGroupItem 
+                              value="in_person" 
+                              id="deposit_in_person" 
+                              className="mt-0.5" 
+                              disabled={isCourier}
+                            />
+                            <div className="flex-1">
+                              <label 
+                                htmlFor="deposit_in_person" 
+                                className={`flex items-center gap-2 font-medium text-sm ${isCourier ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                              >
+                                <MapPin className="h-4 w-4 text-gray-500" />
+                                In person
+                                <span className="text-xs text-gray-500 font-normal ml-1">(no fees)</span>
+                              </label>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Handled directly with your neighbor at handoff
+                              </p>
+                              {isCourier && (
+                                <p className="text-xs text-orange-600 mt-1">
+                                  Not available with courier delivery
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
 
             {/* Non-Return Charge Acknowledgment - Only for BORROW */}
             {requestType === "BORROW" &&

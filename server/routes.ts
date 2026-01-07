@@ -3132,10 +3132,10 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
-      // No-show is logged but not penalized (minor violations removed)
+      // No-show acknowledged but not logged or penalized (minor violations removed)
       res.json({
         success: true,
-        message: "No-show reported and logged.",
+        message: "No-show reported.",
       });
     } catch (error: any) {
       console.error("Error reporting no-show:", error);

@@ -104,7 +104,7 @@ Key architectural decisions and features include:
     - **What Can Lower Your Score**:
       - Not returning a borrowed item or confirmed damage are serious issues that significantly impact trust.
       - Returning items late without giving advance notice, or cancelling after a transaction is accepted.
-      - Note: Minor issues like slow replies or missed pickups are logged but don't affect your score.
+      - Note: Minor issues like slow replies or missed pickups don't affect your score.
     - **Grace Pass**: First-time issues may receive a warning instead of affecting your score (30-day lookback).
     - **Trust Score Floor**: Your score cannot go below zero.
     - **Communication Matters**: If you know you'll be late returning an item, notify the lender before the due date to avoid any score impact.

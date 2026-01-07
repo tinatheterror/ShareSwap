@@ -408,8 +408,101 @@ export function ItemRequestForm({
               )}
             />
 
-            {/* Deposit Handoff Method - Only for BORROW and RENT */}
-            {(requestType === "BORROW" || requestType === "RENT") && (
+            {/* Rental Cost Breakdown - Only for RENT */}
+            {requestType === "RENT" && (
+              (() => {
+                const startDate = form.watch("startDate");
+                const endDate = form.watch("endDate");
+                const deliveryMethod = form.watch("deliveryMethod");
+                
+                // Calculate rental days
+                let rentalDays = 0;
+                if (startDate && endDate) {
+                  const start = new Date(startDate);
+                  const end = new Date(endDate);
+                  rentalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                }
+                
+                // Get rental rate from item (weekly rate)
+                const weeklyRate = (item as any).rentalRate || 10;
+                const dailyRate = Math.max(1, Math.round(weeklyRate / 7));
+                const rentalCost = rentalDays > 0 ? dailyRate * rentalDays : 0;
+                
+                // Platform fee (0% for 2025, but show the line)
+                const platformFeePercent = 0;
+                const platformFee = Math.round(rentalCost * platformFeePercent);
+                
+                // Processing fee (3%)
+                const processingFeePercent = 0.03;
+                const processingFee = Math.round(rentalCost * processingFeePercent);
+                
+                // Delivery cost
+                const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
+                
+                // Deposit (from item)
+                const deposit = (item as any).rentalDeposit || Math.round(((item as any).aiValuation || 50) * 0.3);
+                
+                // Total due now (rental + fees + delivery)
+                const totalDueNow = rentalCost + platformFee + processingFee + deliveryCost;
+                
+                return (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                      <Coins className="h-4 w-4 text-teal-600" />
+                      Cost Breakdown
+                    </div>
+                    
+                    {rentalDays > 0 ? (
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Rental ({rentalDays} {rentalDays === 1 ? 'day' : 'days'} × ${dailyRate}/day)</span>
+                          <span className="font-medium">${rentalCost}</span>
+                        </div>
+                        {deliveryCost > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Courier delivery</span>
+                            <span className="font-medium">${deliveryCost}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Platform fee (0% for 2025)</span>
+                          <span className="font-medium text-green-600">Free</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Payment processing (3%)</span>
+                          <span className="font-medium">${processingFee}</span>
+                        </div>
+                        
+                        <div className="border-t border-gray-200 pt-1.5 mt-1.5">
+                          <div className="flex justify-between font-medium">
+                            <span className="text-gray-700">Total due now</span>
+                            <span className="text-teal-600">${totalDueNow}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="border-t border-gray-200 pt-1.5 mt-1.5">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 flex items-center gap-1">
+                              <Shield className="h-3 w-3" />
+                              Security deposit (refundable)
+                            </span>
+                            <span className="font-medium">${deposit}</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Held securely, auto-refunded on return
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">Select dates to see cost breakdown</p>
+                    )}
+                  </div>
+                );
+              })()
+            )}
+
+            {/* Deposit Handoff Method - Only for BORROW */}
+            {requestType === "BORROW" && (
               <FormField
                 control={form.control}
                 name="depositMethod"

@@ -233,7 +233,7 @@ export default function AchievementsPage() {
         {/* Main 2-Column Layout: Left (Trust/Level/Milestones) + Right (Badges) */}
         <div className="grid lg:grid-cols-[1fr,200px] gap-6">
           {/* Left Column */}
-          <div className="space-y-4">
+          <div className="space-y-4 lg:pt-9">
             {/* Community Trust - Visual Ring */}
             <Card className="overflow-hidden">
               <CardContent className="py-4 px-5">

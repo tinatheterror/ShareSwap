@@ -232,16 +232,54 @@ export const itemRequests = pgTable("item_requests", {
   requesterId: serial("requester_id").references(() => users.id),
   requestType: text("request_type").notNull(),
   status: text("status").default("PENDING").notNull(),
+  // Extended status for transaction lifecycle:
+  // PENDING -> ACCEPTED -> DEPOSIT_PENDING -> DEPOSIT_CONFIRMED -> COURIER_PENDING (if courier) -> 
+  // HANDOFF_CONFIRMED -> IN_PROGRESS -> RETURN_REQUESTED -> RETURN_CONFIRMED -> COMPLETED
+  // Or: REJECTED, CANCELLED, DEPOSIT_FAILED
   message: text("message"),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   matchScore: integer("match_score"), // AI matching score for swap requests
   deliveryMethod: text("delivery_method").default("in_person"), // 'in_person' | 'courier'
+  depositMethod: text("deposit_method").default("in_app"), // 'in_app' | 'in_person' (borrow only)
   deliveryConfirmed: boolean("delivery_confirmed").default(false),
   deliveryConfirmedAt: timestamp("delivery_confirmed_at"),
   courierBookedBy: text("courier_booked_by"), // 'requester' | 'owner' - who booked the courier
   courierIssue: boolean("courier_issue").default(false), // true if item lost/damaged during courier delivery
   courierIssueNote: text("courier_issue_note"), // description of the courier issue
+  
+  // Deposit tracking
+  trustDepositAmount: decimal("trust_deposit_amount", { precision: 10, scale: 2 }), // calculated deposit after trust discount
+  trustDepositBaseAmount: decimal("trust_deposit_base_amount", { precision: 10, scale: 2 }), // original deposit before discount
+  trustDiscountPercentage: integer("trust_discount_percentage"), // e.g., 20, 40, 60
+  requesterTrustScoreSnapshot: integer("requester_trust_score_snapshot"), // trust score at time of request
+  depositStatus: text("deposit_status"), // 'pending' | 'authorized' | 'held' | 'released' | 'captured' | 'failed'
+  depositPaymentIntentId: text("deposit_payment_intent_id"), // Stripe payment intent ID
+  depositAuthorizedAt: timestamp("deposit_authorized_at"),
+  depositReleasedAt: timestamp("deposit_released_at"),
+  
+  // ShareCoin tracking for borrow
+  shareCoinAmount: decimal("share_coin_amount", { precision: 10, scale: 2 }), // ShareCoins to be charged
+  shareCoinsCharged: boolean("share_coins_charged").default(false),
+  shareCoinsChargedAt: timestamp("share_coins_charged_at"),
+  
+  // Courier booking
+  courierAddress: text("courier_address"), // confirmed pickup/delivery address
+  courierPickupWindow: text("courier_pickup_window"), // e.g., '9am-12pm', '12pm-3pm', '3pm-6pm'
+  courierBookingId: text("courier_booking_id"), // external courier booking reference
+  courierBookedAt: timestamp("courier_booked_at"),
+  courierStatus: text("courier_status"), // 'pending' | 'booked' | 'picked_up' | 'delivered' | 'cancelled'
+  
+  // Handoff tracking
+  handoffConfirmedAt: timestamp("handoff_confirmed_at"),
+  borrowPeriodStartedAt: timestamp("borrow_period_started_at"),
+  
+  // Return tracking
+  returnRequestedAt: timestamp("return_requested_at"),
+  returnConfirmedAt: timestamp("return_confirmed_at"),
+  returnConditionNotes: text("return_condition_notes"),
+  returnConditionRating: integer("return_condition_rating"), // 1-5 rating of return condition
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   itemIdx: index("item_requests_item_id_idx").on(table.itemId),

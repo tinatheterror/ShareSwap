@@ -2702,6 +2702,522 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // =====================================
+  // BORROW TRANSACTION LIFECYCLE ENDPOINTS
+  // =====================================
+
+  // Get request details for deposit modal (after acceptance)
+  app.get("/api/requests/:requestId/deposit-details", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      
+      const [request] = await db
+        .select({
+          request: itemRequests,
+          item: items,
+          requester: {
+            id: users.id,
+            username: users.username,
+            reputationScore: users.reputationScore,
+          },
+        })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .innerJoin(users, eq(users.id, itemRequests.requesterId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Check if user is the requester
+      if (request.request.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Calculate trust score based on reputation
+      const reputationScore = request.requester.reputationScore || 0;
+      const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+      
+      res.json({
+        request: request.request,
+        item: request.item,
+        trustScore,
+        deliveryMethod: request.request.deliveryMethod,
+        depositMethod: request.request.depositMethod,
+      });
+    } catch (error: any) {
+      console.error("Error fetching deposit details:", error);
+      res.status(500).json({ error: "Failed to fetch deposit details" });
+    }
+  });
+
+  // Pay trust deposit (step 1 after acceptance)
+  app.post("/api/requests/:requestId/pay-deposit", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { 
+        depositAmount, 
+        baseDepositAmount, 
+        discountPercentage, 
+        trustScore,
+        paymentIntentId,
+        shareCoinAmount 
+      } = req.body;
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Must be the requester
+      if (request.item_requests.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Request must be ACCEPTED
+      if (request.item_requests.status !== "ACCEPTED") {
+        return res.status(400).json({ error: "Request must be accepted before paying deposit" });
+      }
+
+      // Update request with deposit info
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "DEPOSIT_CONFIRMED",
+          trustDepositAmount: depositAmount.toString(),
+          trustDepositBaseAmount: baseDepositAmount?.toString(),
+          trustDiscountPercentage: discountPercentage,
+          requesterTrustScoreSnapshot: trustScore,
+          depositStatus: "authorized",
+          depositPaymentIntentId: paymentIntentId,
+          depositAuthorizedAt: new Date(),
+          shareCoinAmount: shareCoinAmount?.toString(),
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      res.json({
+        success: true,
+        request: updated,
+        nextStep: request.item_requests.deliveryMethod === "courier" ? "book_courier" : "await_handoff",
+      });
+    } catch (error: any) {
+      console.error("Error processing deposit payment:", error);
+      res.status(500).json({ error: "Failed to process deposit payment" });
+    }
+  });
+
+  // Book courier (step 2 if courier was selected)
+  app.post("/api/requests/:requestId/book-courier", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { address, pickupWindow } = req.body;
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Must be the requester (borrower is responsible for courier)
+      if (request.item_requests.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Deposit must be confirmed first (CRITICAL: never book courier if deposit failed)
+      if (request.item_requests.status !== "DEPOSIT_CONFIRMED") {
+        return res.status(400).json({ error: "Deposit must be confirmed before booking courier" });
+      }
+
+      // Generate a simulated courier booking ID (in production, this would call Uber Direct API)
+      const courierBookingId = `COURIER-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+
+      // Update request with courier info
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "COURIER_PENDING",
+          courierAddress: address,
+          courierPickupWindow: pickupWindow,
+          courierBookingId: courierBookingId,
+          courierBookedAt: new Date(),
+          courierStatus: "booked",
+          courierBookedBy: "requester",
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      res.json({
+        success: true,
+        request: updated,
+        courierBookingId,
+        message: "Courier booked successfully. Awaiting pickup.",
+      });
+    } catch (error: any) {
+      console.error("Error booking courier:", error);
+      res.status(500).json({ error: "Failed to book courier" });
+    }
+  });
+
+  // Cancel courier booking (transaction pauses, nothing breaks)
+  app.post("/api/requests/:requestId/cancel-courier", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      if (request.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Update status back to deposit confirmed (paused state)
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "DEPOSIT_CONFIRMED",
+          courierStatus: "cancelled",
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      res.json({
+        success: true,
+        request: updated,
+        message: "Courier booking cancelled. You can rebook anytime.",
+      });
+    } catch (error: any) {
+      console.error("Error cancelling courier:", error);
+      res.status(500).json({ error: "Failed to cancel courier" });
+    }
+  });
+
+  // Confirm handoff (item exchanged - charges ShareCoins, starts borrow period)
+  app.post("/api/requests/:requestId/handoff", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { confirmedBy } = req.body; // 'owner' or 'requester'
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Check authorization (either owner or requester can confirm)
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      
+      if (!isOwner && !isRequester) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Validate status (must be DEPOSIT_CONFIRMED or COURIER_PENDING for courier deliveries)
+      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING"];
+      if (!validStatuses.includes(request.item_requests.status)) {
+        return res.status(400).json({ error: "Request is not ready for handoff" });
+      }
+
+      // Charge ShareCoins from borrower
+      const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+      
+      if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
+        // Get borrower's current ShareCoin balance
+        const [borrower] = await db
+          .select({ shareCoins: users.shareCoins })
+          .from(users)
+          .where(eq(users.id, request.item_requests.requesterId))
+          .limit(1);
+
+        const currentBalance = parseFloat(borrower?.shareCoins || "0");
+        
+        if (currentBalance < shareCoinAmount) {
+          return res.status(400).json({ error: "Insufficient ShareCoins balance" });
+        }
+
+        // Deduct ShareCoins from borrower
+        await db
+          .update(users)
+          .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
+          .where(eq(users.id, request.item_requests.requesterId));
+
+        // Record the transaction
+        await db.insert(shareCoinsTransactions).values({
+          userId: request.item_requests.requesterId,
+          amount: (-shareCoinAmount).toString(),
+          description: `Borrowed: ${request.items.name}`,
+          transactionType: "BORROW_CHARGE",
+        });
+
+        // Award ShareCoins to lender
+        if (request.items.ownerId) {
+          const [lender] = await db
+            .select({ shareCoins: users.shareCoins })
+            .from(users)
+            .where(eq(users.id, request.items.ownerId))
+            .limit(1);
+
+          const lenderBalance = parseFloat(lender?.shareCoins || "0");
+          await db
+            .update(users)
+            .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
+            .where(eq(users.id, request.items.ownerId));
+
+          await db.insert(shareCoinsTransactions).values({
+            userId: request.items.ownerId,
+            amount: shareCoinAmount.toString(),
+            description: `Lent: ${request.items.name}`,
+            transactionType: "LEND_REWARD",
+          });
+        }
+      }
+
+      // Update request status
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "IN_PROGRESS",
+          handoffConfirmedAt: new Date(),
+          borrowPeriodStartedAt: new Date(),
+          shareCoinsCharged: true,
+          shareCoinsChargedAt: new Date(),
+          depositStatus: "held",
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      // Mark item as unavailable
+      await db
+        .update(items)
+        .set({ isAvailable: false })
+        .where(eq(items.id, request.items.id));
+
+      res.json({
+        success: true,
+        request: updated,
+        shareCoinsCharged: shareCoinAmount,
+        message: "Handoff confirmed! Borrow period has started.",
+      });
+    } catch (error: any) {
+      console.error("Error confirming handoff:", error);
+      res.status(500).json({ error: "Failed to confirm handoff" });
+    }
+  });
+
+  // Borrower initiates return
+  app.post("/api/requests/:requestId/return", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Must be the borrower
+      if (request.item_requests.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Must be in progress
+      if (request.item_requests.status !== "IN_PROGRESS") {
+        return res.status(400).json({ error: "Request is not in progress" });
+      }
+
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "RETURN_REQUESTED",
+          returnRequestedAt: new Date(),
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      res.json({
+        success: true,
+        request: updated,
+        message: "Return initiated. Waiting for lender confirmation.",
+      });
+    } catch (error: any) {
+      console.error("Error initiating return:", error);
+      res.status(500).json({ error: "Failed to initiate return" });
+    }
+  });
+
+  // Lender confirms return (releases deposit, updates trust score)
+  app.post("/api/requests/:requestId/confirm-return", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { conditionRating, conditionNotes } = req.body;
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Must be the owner
+      if (request.items.ownerId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Must be return requested
+      if (request.item_requests.status !== "RETURN_REQUESTED") {
+        return res.status(400).json({ error: "No return pending" });
+      }
+
+      // Release the deposit via Stripe
+      if (request.item_requests.depositPaymentIntentId) {
+        try {
+          await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
+        } catch (stripeError: any) {
+          console.error("Error releasing deposit:", stripeError);
+          // Continue even if Stripe fails - we don't want to block the return
+        }
+      }
+
+      // Update request to completed
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "COMPLETED",
+          returnConfirmedAt: new Date(),
+          returnConditionRating: conditionRating || 5,
+          returnConditionNotes: conditionNotes,
+          depositStatus: "released",
+          depositReleasedAt: new Date(),
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      // Mark item as available again
+      await db
+        .update(items)
+        .set({ isAvailable: true })
+        .where(eq(items.id, request.items.id));
+
+      // Update borrower's trust/reputation score
+      const reputationPoints = conditionRating >= 4 ? 10 : conditionRating >= 3 ? 5 : 0;
+      
+      if (reputationPoints > 0) {
+        // Add reputation activity
+        await db.insert(reputationActivities).values({
+          userId: request.item_requests.requesterId,
+          activityType: "BORROW_COMPLETED",
+          points: reputationPoints,
+          itemId: request.items.id,
+          description: `Successfully returned: ${request.items.name}`,
+        });
+
+        // Update user's reputation score
+        const [borrower] = await db
+          .select({ reputationScore: users.reputationScore })
+          .from(users)
+          .where(eq(users.id, request.item_requests.requesterId))
+          .limit(1);
+
+        await db
+          .update(users)
+          .set({ reputationScore: (borrower?.reputationScore || 0) + reputationPoints })
+          .where(eq(users.id, request.item_requests.requesterId));
+      }
+
+      // Also update lender's reputation
+      await db.insert(reputationActivities).values({
+        userId: request.items.ownerId,
+        activityType: "LEND_COMPLETED",
+        points: 10,
+        itemId: request.items.id,
+        description: `Lending completed: ${request.items.name}`,
+      });
+
+      const [lender] = await db
+        .select({ reputationScore: users.reputationScore })
+        .from(users)
+        .where(eq(users.id, request.items.ownerId))
+        .limit(1);
+
+      await db
+        .update(users)
+        .set({ reputationScore: (lender?.reputationScore || 0) + 10 })
+        .where(eq(users.id, request.items.ownerId));
+
+      res.json({
+        success: true,
+        request: updated,
+        depositReleased: true,
+        message: "Return confirmed! Deposit has been released.",
+      });
+    } catch (error: any) {
+      console.error("Error confirming return:", error);
+      res.status(500).json({ error: "Failed to confirm return" });
+    }
+  });
+
   // Create or update delivery arrangement with delivery/deposit method choices
   app.post("/api/delivery-arrangements", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -3137,16 +3653,18 @@ Respond with ONLY the category name, nothing else.`
         renterShareCoins = renterResult.totalAwarded;
 
         // Award to owner (lender) with first-time bonus
-        const ownerResult = await awardShareCoinsWithFirstTimeBonus(
-          ownerId,
-          'LEND',
-          rental.items.name,
-          shareCoinsReward
-        );
-        ownerShareCoins = ownerResult.totalAwarded;
+        if (ownerId) {
+          const ownerResult = await awardShareCoinsWithFirstTimeBonus(
+            ownerId,
+            'LEND',
+            rental.items.name,
+            shareCoinsReward
+          );
+          ownerShareCoins = ownerResult.totalAwarded;
 
-        console.log(`✅ ${platformConfig.messaging.shareCoinsReward}`);
-        console.log(`Rental completion: Renter=${renterResult.totalAwarded} (first-time: ${renterResult.isFirstTime}), Owner/Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
+          console.log(`✅ ${platformConfig.messaging.shareCoinsReward}`);
+          console.log(`Rental completion: Renter=${renterResult.totalAwarded} (first-time: ${renterResult.isFirstTime}), Owner/Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
+        }
       }
 
       // Record rental return with actual ShareCoins awarded (after calculation)
@@ -3266,12 +3784,15 @@ Respond with ONLY the category name, nothing else.`
       );
 
       // Award ShareCoins to owner (lender) with first-time bonus
-      const ownerResult = await awardShareCoinsWithFirstTimeBonus(
-        ownerId,
-        'LEND',
-        borrow.items.name,
-        1
-      );
+      let ownerResult = { totalAwarded: 0, isFirstTime: false };
+      if (ownerId) {
+        ownerResult = await awardShareCoinsWithFirstTimeBonus(
+          ownerId,
+          'LEND',
+          borrow.items.name,
+          1
+        );
+      }
 
       console.log(`✅ Borrow completion: Borrower=${borrowerResult.totalAwarded} (first-time: ${borrowerResult.isFirstTime}), Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
 

@@ -1583,10 +1583,6 @@ Respond with ONLY the category name, nothing else.`
         return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
       });
 
-      // Debug log to check dates
-      if (sortedWishlists.length > 0) {
-        console.log("Wishlist dates check:", sortedWishlists[0].neededDate, sortedWishlists[0].returnDate);
-      }
       res.json(sortedWishlists);
     } catch (error) {
       console.error("Error fetching wishlists:", error);
@@ -1618,8 +1614,8 @@ Respond with ONLY the category name, nothing else.`
           maxShareCoinPrice,
           maxDollarPrice,
           preferredLocation,
-          neededDate: neededDate ? new Date(neededDate) : null,
-          returnDate: returnDate ? new Date(returnDate) : null,
+          neededDate: neededDate || null,
+          returnDate: returnDate || null,
           urgency: urgency || 'normal',
         })
         .returning();
@@ -1665,8 +1661,8 @@ Respond with ONLY the category name, nothing else.`
           maxShareCoinPrice: maxShareCoinPrice !== undefined ? maxShareCoinPrice : existing.maxShareCoinPrice,
           maxDollarPrice: maxDollarPrice !== undefined ? maxDollarPrice : existing.maxDollarPrice,
           preferredLocation: preferredLocation ?? existing.preferredLocation,
-          neededDate: neededDate ? new Date(neededDate) : existing.neededDate,
-          returnDate: returnDate ? new Date(returnDate) : existing.returnDate,
+          neededDate: neededDate !== undefined ? neededDate : existing.neededDate,
+          returnDate: returnDate !== undefined ? returnDate : existing.returnDate,
           urgency: urgency ?? existing.urgency,
         })
         .where(eq(wishlists.id, wishlistId))

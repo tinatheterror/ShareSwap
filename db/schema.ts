@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, date } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -380,8 +380,8 @@ export const wishlists = pgTable("wishlists", {
   maxShareCoinPrice: decimal("max_share_coin_price", { precision: 10, scale: 2 }),
   maxDollarPrice: decimal("max_dollar_price", { precision: 10, scale: 2 }),
   preferredLocation: text("preferred_location"),
-  neededDate: timestamp("needed_date"),
-  returnDate: timestamp("return_date"),
+  neededDate: date("needed_date"),
+  returnDate: date("return_date"),
   urgency: text("urgency").default("normal"), // 'low', 'normal', 'high', 'urgent'
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),

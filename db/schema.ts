@@ -48,6 +48,7 @@ export const userReviews = pgTable("user_reviews", {
   reviewedUserId: integer("reviewed_user_id").references(() => users.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
+  feedbackTags: text("feedback_tags").array(), // ['reliable', 'on_time', 'as_described']
   transactionId: integer("transaction_id").references(() => itemRequests.id),
   createdAt: timestamp("created_at").defaultNow(),
 });

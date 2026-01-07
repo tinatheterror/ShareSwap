@@ -35,6 +35,7 @@ import { CooldownChecker } from "./cooldown-checker";
 import { csrfProtection, setCsrfToken } from "./csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
+import { awardBorrowReturnPoints, awardSwapCompletionPoints, awardRentalCompletionPoints, awardGiftingPoints, awardFeedbackPoints, TRUST_POINTS } from "./trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
 import { calculateReplacementValue } from "./replacement-value";
 
@@ -2521,6 +2522,20 @@ Respond with ONLY the category name, nothing else.`
           );
             
           console.log(`✅ Awarded ShareCoins for swap: Owner=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime}), Requester=${requesterResult.totalAwarded} (first-time: ${requesterResult.isFirstTime})`);
+          
+          // Award trust points for successful swap completion (+30 each)
+          try {
+            await awardSwapCompletionPoints(
+              req.user.id,
+              request.item_requests.requesterId,
+              requestId,
+              request.items.id,
+              request.items.id // Both users get points for the same transaction
+            );
+            console.log(`✅ Awarded trust points for swap completion`);
+          } catch (trustError) {
+            console.error("Error awarding swap trust points:", trustError);
+          }
         } else {
           console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
         }
@@ -2543,6 +2558,19 @@ Respond with ONLY the category name, nothing else.`
         );
         
         console.log(`✅ Awarded ShareCoins for gift: Gifter=${gifterResult.totalAwarded} (first-time: ${gifterResult.isFirstTime})`);
+        
+        // Award trust points for gifting (+6 to giver)
+        try {
+          await awardGiftingPoints(
+            req.user.id,
+            request.item_requests.requesterId,
+            requestId,
+            request.items.id
+          );
+          console.log(`✅ Awarded trust points for gifting`);
+        } catch (trustError) {
+          console.error("Error awarding gifting trust points:", trustError);
+        }
       } catch (error) {
         console.error("Error processing gift reward:", error);
       }
@@ -3160,51 +3188,24 @@ Respond with ONLY the category name, nothing else.`
         .set({ isAvailable: true })
         .where(eq(items.id, request.items.id));
 
-      // Update borrower's trust/reputation score
-      const reputationPoints = conditionRating >= 4 ? 10 : conditionRating >= 3 ? 5 : 0;
+      // Award trust points using the new tiered system
+      // Check if return was on time (before or on the end date)
+      const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
+      const wasOnTime = endDate ? new Date() <= endDate : true;
       
-      if (reputationPoints > 0) {
-        // Add reputation activity
-        await db.insert(reputationActivities).values({
-          userId: request.item_requests.requesterId,
-          activityType: "BORROW_COMPLETED",
-          points: reputationPoints,
-          itemId: request.items.id,
-          description: `Successfully returned: ${request.items.name}`,
-        });
-
-        // Update user's reputation score
-        const [borrower] = await db
-          .select({ reputationScore: users.reputationScore })
-          .from(users)
-          .where(eq(users.id, request.item_requests.requesterId))
-          .limit(1);
-
-        await db
-          .update(users)
-          .set({ reputationScore: (borrower?.reputationScore || 0) + reputationPoints })
-          .where(eq(users.id, request.item_requests.requesterId));
+      try {
+        await awardBorrowReturnPoints(
+          request.item_requests.requesterId,
+          request.items.ownerId!,
+          requestId,
+          request.items.id,
+          conditionRating || 5,
+          wasOnTime
+        );
+      } catch (trustError) {
+        console.error("Error awarding trust points:", trustError);
+        // Don't fail the return if trust scoring fails
       }
-
-      // Also update lender's reputation
-      await db.insert(reputationActivities).values({
-        userId: request.items.ownerId,
-        activityType: "LEND_COMPLETED",
-        points: 10,
-        itemId: request.items.id,
-        description: `Lending completed: ${request.items.name}`,
-      });
-
-      const [lender] = await db
-        .select({ reputationScore: users.reputationScore })
-        .from(users)
-        .where(eq(users.id, request.items.ownerId))
-        .limit(1);
-
-      await db
-        .update(users)
-        .set({ reputationScore: (lender?.reputationScore || 0) + 10 })
-        .where(eq(users.id, request.items.ownerId));
 
       res.json({
         success: true,
@@ -3723,6 +3724,19 @@ Respond with ONLY the category name, nothing else.`
         .set({ status: "COMPLETED" })
         .where(eq(itemRequests.id, requestId));
 
+      // Award trust points for rental completion (no disputes means it completed smoothly)
+      try {
+        await awardRentalCompletionPoints(
+          renterId,
+          ownerId!,
+          requestId,
+          rental.items.id,
+          false // hadDispute - completed rentals are dispute-free
+        );
+      } catch (trustError) {
+        console.error("Error awarding rental trust points:", trustError);
+      }
+
       res.json({
         success: true,
         message: "Rental marked as returned successfully",
@@ -4160,7 +4174,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const reviewedUserId = parseInt(req.params.userId);
-    const { rating, comment, transactionId } = req.body;
+    const { rating, comment, transactionId, feedbackTags } = req.body;
 
     // Verify the transaction exists and involves both users
     const [transaction] = await db
@@ -4204,6 +4218,10 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).send("You have already reviewed this transaction");
     }
 
+    // Validate feedback tags
+    const validTags = ["reliable", "on_time", "as_described"];
+    const cleanedTags = feedbackTags?.filter((tag: string) => validTags.includes(tag)) || [];
+
     // Create the review
     const [review] = await db
       .insert(userReviews)
@@ -4212,6 +4230,7 @@ Respond with ONLY the category name, nothing else.`
         reviewedUserId,
         rating,
         comment,
+        feedbackTags: cleanedTags.length > 0 ? cleanedTags : null,
         transactionId,
       })
       .returning();
@@ -4242,6 +4261,20 @@ Respond with ONLY the category name, nothing else.`
           END`,
         })
         .where(eq(users.id, reviewedUserId));
+    }
+
+    // Award trust points for positive feedback tags (+12 each for reliable/on_time/as_described)
+    if (cleanedTags.length > 0) {
+      try {
+        await awardFeedbackPoints(
+          reviewedUserId,
+          transactionId,
+          cleanedTags as ("reliable" | "on_time" | "as_described")[]
+        );
+        console.log(`✅ Awarded trust points for feedback tags: ${cleanedTags.join(", ")}`);
+      } catch (trustError) {
+        console.error("Error awarding feedback trust points:", trustError);
+      }
     }
 
     res.status(201).json(review);

@@ -355,73 +355,76 @@ export default function AchievementsPage() {
           </Card>
         </div>
 
-        {/* Badges - Full Width Row */}
-        <div className="mb-5">
-          <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <Star className="h-4 w-4 text-teal-500" />
-            Your Badges
-          </h2>
-          <div className="grid grid-cols-5 lg:grid-cols-10 gap-2">
-            {badges.map((badge) => (
-              <div
-                key={badge.id}
-                className={`p-2.5 rounded-lg border-2 text-center transition-all ${
-                  badge.earned
-                    ? badge.color
-                    : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"
-                }`}
-              >
-                <div className="flex justify-center mb-1">
-                  {badge.icon}
+        {/* Badges and Milestones Side by Side */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Badges */}
+          <div>
+            <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <Star className="h-4 w-4 text-teal-500" />
+              Your Badges
+            </h2>
+            <div className="grid grid-cols-5 gap-2">
+              {badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+                    badge.earned
+                      ? badge.color
+                      : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"
+                  }`}
+                >
+                  <div className="flex justify-center mb-1">
+                    {badge.icon}
+                  </div>
+                  <div className="text-[10px] font-medium leading-tight">
+                    {badge.name}
+                  </div>
                 </div>
-                <div className="text-[10px] font-medium leading-tight">
-                  {badge.name}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Milestones - 3 Columns */}
-        <div>
-          <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-teal-500" />
-            Milestones
-          </h2>
-          <div className="grid md:grid-cols-3 gap-2">
-            {milestones.map((milestone) => (
-              <div
-                key={milestone.id}
-                className={`p-3 rounded-lg border flex items-center gap-2.5 transition-all ${
-                  milestone.achieved
-                    ? "bg-teal-50 border-teal-200"
-                    : "bg-slate-50 border-slate-200 opacity-60"
-                }`}
-              >
-                <div className={`p-1.5 rounded-md ${
-                  milestone.achieved 
-                    ? "bg-teal-100 text-teal-600" 
-                    : "bg-slate-200 text-slate-400"
-                }`}>
-                  {milestone.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className={`text-sm font-medium truncate ${
-                    milestone.achieved ? "text-teal-800" : "text-slate-500"
+          {/* Milestones */}
+          <div>
+            <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-teal-500" />
+              Milestones
+            </h2>
+            <div className="grid grid-cols-2 gap-2">
+              {milestones.map((milestone) => (
+                <div
+                  key={milestone.id}
+                  className={`p-3 rounded-lg border flex items-center gap-2.5 transition-all ${
+                    milestone.achieved
+                      ? "bg-teal-50 border-teal-200"
+                      : "bg-slate-50 border-slate-200 opacity-60"
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-md ${
+                    milestone.achieved 
+                      ? "bg-teal-100 text-teal-600" 
+                      : "bg-slate-200 text-slate-400"
                   }`}>
-                    {milestone.title}
-                  </h3>
-                  <p className={`text-xs truncate ${
-                    milestone.achieved ? "text-teal-600" : "text-slate-400"
-                  }`}>
-                    {milestone.description}
-                  </p>
+                    {milestone.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`text-sm font-medium truncate ${
+                      milestone.achieved ? "text-teal-800" : "text-slate-500"
+                    }`}>
+                      {milestone.title}
+                    </h3>
+                    <p className={`text-xs truncate ${
+                      milestone.achieved ? "text-teal-600" : "text-slate-400"
+                    }`}>
+                      {milestone.description}
+                    </p>
+                  </div>
+                  {milestone.achieved && (
+                    <CheckCircle className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                  )}
                 </div>
-                {milestone.achieved && (
-                  <CheckCircle className="h-4 w-4 text-teal-500 flex-shrink-0" />
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 

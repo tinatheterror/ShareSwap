@@ -1583,6 +1583,10 @@ Respond with ONLY the category name, nothing else.`
         return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
       });
 
+      // Debug log to check dates
+      if (sortedWishlists.length > 0) {
+        console.log("Wishlist dates check:", sortedWishlists[0].neededDate, sortedWishlists[0].returnDate);
+      }
       res.json(sortedWishlists);
     } catch (error) {
       console.error("Error fetching wishlists:", error);

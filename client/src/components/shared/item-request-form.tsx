@@ -447,8 +447,7 @@ export function ItemRequestForm({
                 
                 return (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                    <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                      <Coins className="h-4 w-4 text-teal-600" />
+                    <div className="text-gray-700 font-medium text-sm">
                       Cost Breakdown
                     </div>
                     

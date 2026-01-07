@@ -1130,7 +1130,9 @@ export default function FAQPage() {
                     <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-gray-800 text-sm mb-2">
                         Renting{" "}
-                        <span className="text-sm italic text-gray-500">(Cash)</span>
+                        <span className="text-sm italic text-gray-500">
+                          (Cash)
+                        </span>
                       </p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         <li>Peer-to-peer income</li>
@@ -1286,10 +1288,10 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="deposit-9">
                 <AccordionTrigger className="text-sm">
-                  Deposit Exchange Options
+                  Trust Deposit Exchange Options
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
-                  <p>You can exchange deposits in two ways:</p>
+                  <p>You can exchange trust deposits in two ways:</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="bg-[#E6FBF5] rounded-lg p-3">
                       <p className="font-medium text-[#0BB88C] mb-2">

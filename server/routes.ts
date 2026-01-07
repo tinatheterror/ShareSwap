@@ -1546,9 +1546,12 @@ Respond with ONLY the category name, nothing else.`
           itemName: wishlists.itemName,
           description: wishlists.description,
           category: wishlists.category,
+          needType: wishlists.needType,
           maxShareCoinPrice: wishlists.maxShareCoinPrice,
           maxDollarPrice: wishlists.maxDollarPrice,
           preferredLocation: wishlists.preferredLocation,
+          neededDate: wishlists.neededDate,
+          returnDate: wishlists.returnDate,
           urgency: wishlists.urgency,
           isActive: wishlists.isActive,
           createdAt: wishlists.createdAt,
@@ -1594,7 +1597,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     try {
-      const { itemName, description, category, maxShareCoinPrice, maxDollarPrice, preferredLocation, urgency } = req.body;
+      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency } = req.body;
 
       if (!itemName) {
         return res.status(400).json({ error: "Item name is required" });
@@ -1607,9 +1610,12 @@ Respond with ONLY the category name, nothing else.`
           itemName,
           description,
           category,
+          needType: needType || 'borrow',
           maxShareCoinPrice,
           maxDollarPrice,
           preferredLocation,
+          neededDate: neededDate ? new Date(neededDate) : null,
+          returnDate: returnDate ? new Date(returnDate) : null,
           urgency: urgency || 'normal',
         })
         .returning();
@@ -1618,6 +1624,85 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error creating wishlist:", error);
       res.status(500).json({ error: "Failed to create wishlist item" });
+    }
+  });
+
+  // Update wishlist item
+  app.patch("/api/wishlists/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const wishlistId = parseInt(req.params.id);
+      if (isNaN(wishlistId)) {
+        return res.status(400).json({ error: "Invalid wishlist ID" });
+      }
+
+      // Check ownership
+      const [existing] = await db
+        .select()
+        .from(wishlists)
+        .where(and(eq(wishlists.id, wishlistId), eq(wishlists.userId, req.user.id)));
+
+      if (!existing) {
+        return res.status(404).json({ error: "Wishlist item not found" });
+      }
+
+      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency } = req.body;
+
+      const [updated] = await db
+        .update(wishlists)
+        .set({
+          itemName: itemName ?? existing.itemName,
+          description: description ?? existing.description,
+          category: category ?? existing.category,
+          needType: needType ?? existing.needType,
+          maxShareCoinPrice: maxShareCoinPrice !== undefined ? maxShareCoinPrice : existing.maxShareCoinPrice,
+          maxDollarPrice: maxDollarPrice !== undefined ? maxDollarPrice : existing.maxDollarPrice,
+          preferredLocation: preferredLocation ?? existing.preferredLocation,
+          neededDate: neededDate ? new Date(neededDate) : existing.neededDate,
+          returnDate: returnDate ? new Date(returnDate) : existing.returnDate,
+          urgency: urgency ?? existing.urgency,
+        })
+        .where(eq(wishlists.id, wishlistId))
+        .returning();
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating wishlist:", error);
+      res.status(500).json({ error: "Failed to update wishlist item" });
+    }
+  });
+
+  // Delete wishlist item
+  app.delete("/api/wishlists/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const wishlistId = parseInt(req.params.id);
+      if (isNaN(wishlistId)) {
+        return res.status(400).json({ error: "Invalid wishlist ID" });
+      }
+
+      // Check ownership
+      const [existing] = await db
+        .select()
+        .from(wishlists)
+        .where(and(eq(wishlists.id, wishlistId), eq(wishlists.userId, req.user.id)));
+
+      if (!existing) {
+        return res.status(404).json({ error: "Wishlist item not found" });
+      }
+
+      await db.delete(wishlists).where(eq(wishlists.id, wishlistId));
+
+      res.json({ success: true, message: "Wishlist item deleted" });
+    } catch (error) {
+      console.error("Error deleting wishlist:", error);
+      res.status(500).json({ error: "Failed to delete wishlist item" });
     }
   });
 

@@ -16,6 +16,10 @@ import {
   Users,
   ArrowLeftRight,
   Crown,
+  Medal,
+  Gem,
+  TrendingUp,
+  Package,
 } from "lucide-react";
 
 interface UserStats {
@@ -122,6 +126,46 @@ export default function AchievementsPage() {
       description: "Growing our neighbourhood together",
       earned: (stats?.referrals || 0) >= 1 || (stats?.totalSwaps || 0) >= 3,
       color: "bg-green-100 text-green-700 border-green-200",
+    },
+    {
+      id: "super-lender",
+      name: "Super Lender",
+      icon: <Package className="h-6 w-6" />,
+      description: "Lent 10+ items to neighbours",
+      earned: (stats?.totalLent || 0) >= 10,
+      color: "bg-purple-100 text-purple-700 border-purple-200",
+    },
+    {
+      id: "swap-star",
+      name: "Swap Star",
+      icon: <ArrowLeftRight className="h-6 w-6" />,
+      description: "Completed 5+ successful swaps",
+      earned: (stats?.totalSwaps || 0) >= 5,
+      color: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    },
+    {
+      id: "neighbourhood-hero",
+      name: "Neighbourhood Hero",
+      icon: <Medal className="h-6 w-6" />,
+      description: "Achieved outstanding trust score",
+      earned: reputationScore >= 300,
+      color: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    },
+    {
+      id: "rising-star",
+      name: "Rising Star",
+      icon: <TrendingUp className="h-6 w-6" />,
+      description: "Growing your community impact",
+      earned: (stats?.successfulHandoffs || 0) >= 20,
+      color: "bg-orange-100 text-orange-700 border-orange-200",
+    },
+    {
+      id: "shareswap-legend",
+      name: "ShareSwap Legend",
+      icon: <Gem className="h-6 w-6" />,
+      description: "The ultimate community member",
+      earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20,
+      color: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-300",
     },
   ];
 

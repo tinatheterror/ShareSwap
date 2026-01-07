@@ -8,7 +8,7 @@ export default function ShareOptionsPage() {
   const [, navigate] = useLocation();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
       <main className="max-w-4xl mx-auto px-4 py-12">
         <div className="text-center mb-8">

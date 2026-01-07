@@ -116,7 +116,7 @@ export default function SettingsPage() {
 
   if (isDeactivated) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
           <CardHeader>
             <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
@@ -151,7 +151,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
       <main className="container mx-auto px-4 py-6 max-w-2xl">
         <Button

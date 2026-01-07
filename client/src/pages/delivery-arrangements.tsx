@@ -185,7 +185,7 @@ export default function DeliveryArrangementsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-[#F3F4F6]">
         <Navbar />
         <main className="max-w-7xl mx-auto px-4 py-12">
           <div className="flex items-center justify-center min-h-[400px]">
@@ -197,7 +197,7 @@ export default function DeliveryArrangementsPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-8">

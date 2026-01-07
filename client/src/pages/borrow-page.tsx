@@ -223,7 +223,7 @@ export default function BorrowPage() {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
 
       {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}

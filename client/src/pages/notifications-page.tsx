@@ -76,7 +76,7 @@ export default function NotificationsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-[#F3F4F6]">
         <Navbar />
         <main className="max-w-4xl mx-auto px-4 py-8">
           <div className="animate-pulse space-y-4">
@@ -90,7 +90,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">

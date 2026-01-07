@@ -712,7 +712,7 @@ export default function LendPage() {
   const watchPostalCode = form.watch("postalCode");
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
 
       {/* Hero Section - Same style as Browse page */}

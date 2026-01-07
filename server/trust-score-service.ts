@@ -39,7 +39,7 @@ export const TRUST_POINTS = {
 };
 
 // Minimum trust score floor (can go negative to signal risk)
-export const TRUST_SCORE_FLOOR = -100;
+export const TRUST_SCORE_FLOOR = 0;
 
 // Grace pass configuration
 export const GRACE_PASS_CONFIG = {
@@ -84,7 +84,7 @@ export type TrustActivityType =
   // Grace pass (no points deducted, just warning)
   | "grace_pass_warning";
 
-export type PenaltyType = 
+export type PenaltyType =
   | "item_not_returned"
   | "damage_confirmed"
   | "deposit_claimed"
@@ -114,7 +114,7 @@ export async function awardTrustPoints(
   userId: number,
   activityType: TrustActivityType,
   points: number,
-  metadata: TrustActivityMetadata = {}
+  metadata: TrustActivityMetadata = {},
 ): Promise<{ newScore: number; pointsAwarded: number }> {
   const [user] = await db
     .select({ reputationScore: users.reputationScore })
@@ -149,7 +149,10 @@ export async function awardTrustPoints(
   return { newScore, pointsAwarded: points };
 }
 
-function buildActivityDescription(activityType: TrustActivityType, metadata: TrustActivityMetadata): string {
+function buildActivityDescription(
+  activityType: TrustActivityType,
+  metadata: TrustActivityMetadata,
+): string {
   switch (activityType) {
     // Positive activities
     case "borrow_return_perfect":
@@ -213,7 +216,7 @@ export async function awardBorrowReturnPoints(
   requestId: number,
   itemId: number,
   conditionRating: number,
-  wasOnTime: boolean
+  wasOnTime: boolean,
 ): Promise<void> {
   let borrowerPoints = 0;
   let borrowerActivityType: TrustActivityType;
@@ -254,7 +257,7 @@ export async function awardSwapCompletionPoints(
   user2Id: number,
   requestId: number,
   item1Id: number,
-  item2Id: number
+  item2Id: number,
 ): Promise<void> {
   const points = TRUST_POINTS.MAJOR.SWAP_COMPLETED;
   const metadata = { requestId, swapItems: [item1Id, item2Id] };
@@ -276,7 +279,7 @@ export async function awardRentalCompletionPoints(
   ownerId: number,
   requestId: number,
   itemId: number,
-  hadDispute: boolean
+  hadDispute: boolean,
 ): Promise<void> {
   if (hadDispute) return;
 
@@ -299,7 +302,7 @@ export async function awardGiftingPoints(
   giverId: number,
   receiverId: number,
   requestId: number,
-  itemId: number
+  itemId: number,
 ): Promise<void> {
   const points = TRUST_POINTS.MICRO.GIFTING_COMPLETED;
 
@@ -314,21 +317,26 @@ export async function awardCommunicationPoints(
   userId: number,
   requestId: number,
   responseTimeMs: number,
-  slaThresholdMs: number = 4 * 60 * 60 * 1000
+  slaThresholdMs: number = 4 * 60 * 60 * 1000,
 ): Promise<void> {
   if (responseTimeMs <= slaThresholdMs) {
-    await awardTrustPoints(userId, "timely_communication", TRUST_POINTS.MEDIUM.TIMELY_COMMUNICATION, {
-      requestId,
-      responseTimeMs,
-      slaThresholdMs,
-    });
+    await awardTrustPoints(
+      userId,
+      "timely_communication",
+      TRUST_POINTS.MEDIUM.TIMELY_COMMUNICATION,
+      {
+        requestId,
+        responseTimeMs,
+        slaThresholdMs,
+      },
+    );
   }
 }
 
 export async function awardFeedbackPoints(
   userId: number,
   requestId: number,
-  feedbackTags: ("reliable" | "on_time" | "as_described")[]
+  feedbackTags: ("reliable" | "on_time" | "as_described")[],
 ): Promise<void> {
   let totalPoints = 0;
 
@@ -364,7 +372,8 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
   deposit_claimed: TRUST_POINTS.PENALTIES.DEPOSIT_CLAIMED,
   fraud_abuse: TRUST_POINTS.PENALTIES.FRAUD_ABUSE,
   repeated_no_shows: TRUST_POINTS.PENALTIES.REPEATED_NO_SHOWS,
-  late_return_no_communication: TRUST_POINTS.PENALTIES.LATE_RETURN_NO_COMMUNICATION,
+  late_return_no_communication:
+    TRUST_POINTS.PENALTIES.LATE_RETURN_NO_COMMUNICATION,
   cancel_after_acceptance: TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
   ignoring_messages: TRUST_POINTS.PENALTIES.IGNORING_MESSAGES,
   slow_replies: TRUST_POINTS.PENALTIES.SLOW_REPLIES,
@@ -374,17 +383,20 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
 
 async function checkGracePassEligibility(
   userId: number,
-  penaltyType: PenaltyType
+  penaltyType: PenaltyType,
 ): Promise<boolean> {
   // Only certain penalty types are eligible for grace pass
-  const graceEligible = GRACE_PASS_CONFIG.ENABLED_PENALTY_TYPES as readonly string[];
+  const graceEligible =
+    GRACE_PASS_CONFIG.ENABLED_PENALTY_TYPES as readonly string[];
   if (!graceEligible.includes(penaltyType)) {
     return false;
   }
 
   // Check if user has any prior penalties of this type in the lookback period
   const lookbackDate = new Date();
-  lookbackDate.setDate(lookbackDate.getDate() - GRACE_PASS_CONFIG.LOOKBACK_DAYS);
+  lookbackDate.setDate(
+    lookbackDate.getDate() - GRACE_PASS_CONFIG.LOOKBACK_DAYS,
+  );
 
   const priorPenalties = await db
     .select()
@@ -393,8 +405,8 @@ async function checkGracePassEligibility(
       and(
         eq(reputationActivities.userId, userId),
         eq(reputationActivities.activityType, penaltyType),
-        gte(reputationActivities.createdAt, lookbackDate)
-      )
+        gte(reputationActivities.createdAt, lookbackDate),
+      ),
     );
 
   // Also check for prior grace pass warnings for this type
@@ -405,13 +417,13 @@ async function checkGracePassEligibility(
       and(
         eq(reputationActivities.userId, userId),
         eq(reputationActivities.activityType, "grace_pass_warning"),
-        gte(reputationActivities.createdAt, lookbackDate)
-      )
+        gte(reputationActivities.createdAt, lookbackDate),
+      ),
     );
 
   // Filter warnings that match this penalty type (stored in description)
-  const relevantWarnings = priorWarnings.filter(
-    (w) => w.description?.includes(penaltyType)
+  const relevantWarnings = priorWarnings.filter((w) =>
+    w.description?.includes(penaltyType),
   );
 
   // Eligible for grace pass if no prior penalties and no prior warnings for this type
@@ -421,7 +433,7 @@ async function checkGracePassEligibility(
 export async function applyTrustPenalty(
   userId: number,
   penaltyType: PenaltyType,
-  metadata: TrustActivityMetadata = {}
+  metadata: TrustActivityMetadata = {},
 ): Promise<{
   applied: boolean;
   wasGracePass: boolean;
@@ -446,7 +458,9 @@ export async function applyTrustPenalty(
       .from(users)
       .where(eq(users.id, userId));
 
-    console.log(`⚠️ Grace pass issued for user ${userId}: ${penaltyType} (first offense)`);
+    console.log(
+      `⚠️ Grace pass issued for user ${userId}: ${penaltyType} (first offense)`,
+    );
 
     return {
       applied: false,
@@ -459,7 +473,9 @@ export async function applyTrustPenalty(
   // Apply the penalty
   const result = await awardTrustPoints(userId, penaltyType, points, metadata);
 
-  console.log(`🚨 Trust penalty applied to user ${userId}: ${penaltyType} (${points} points)`);
+  console.log(
+    `🚨 Trust penalty applied to user ${userId}: ${penaltyType} (${points} points)`,
+  );
 
   return {
     applied: true,
@@ -475,19 +491,25 @@ export async function applyLateReturnPenalty(
   requestId: number,
   itemId: number,
   daysLate: number,
-  hadCommunication: boolean
+  hadCommunication: boolean,
 ): Promise<{ applied: boolean; wasGracePass: boolean }> {
   // Don't penalize if they communicated in advance
   if (hadCommunication) {
-    console.log(`ℹ️ Late return for user ${userId} not penalized - prior communication noted`);
+    console.log(
+      `ℹ️ Late return for user ${userId} not penalized - prior communication noted`,
+    );
     return { applied: false, wasGracePass: false };
   }
 
-  const result = await applyTrustPenalty(userId, "late_return_no_communication", {
-    requestId,
-    itemId,
-    daysLate,
-  });
+  const result = await applyTrustPenalty(
+    userId,
+    "late_return_no_communication",
+    {
+      requestId,
+      itemId,
+      daysLate,
+    },
+  );
 
   return { applied: result.applied, wasGracePass: result.wasGracePass };
 }
@@ -495,7 +517,7 @@ export async function applyLateReturnPenalty(
 export async function applyCancellationPenalty(
   userId: number,
   requestId: number,
-  itemId: number
+  itemId: number,
 ): Promise<{ applied: boolean; wasGracePass: boolean }> {
   const result = await applyTrustPenalty(userId, "cancel_after_acceptance", {
     requestId,
@@ -508,7 +530,7 @@ export async function applyCancellationPenalty(
 export async function applyNoShowPenalty(
   userId: number,
   requestId: number,
-  itemId: number
+  itemId: number,
 ): Promise<{ applied: boolean; wasGracePass: boolean }> {
   const result = await applyTrustPenalty(userId, "missed_pickup", {
     requestId,
@@ -521,7 +543,7 @@ export async function applyNoShowPenalty(
 export async function applyDepositClaimedPenalty(
   userId: number,
   requestId: number,
-  itemId: number
+  itemId: number,
 ): Promise<{ applied: boolean }> {
   // Deposit claimed is a major penalty - no grace pass
   const result = await applyTrustPenalty(userId, "deposit_claimed", {
@@ -535,7 +557,7 @@ export async function applyDepositClaimedPenalty(
 export async function applyItemNotReturnedPenalty(
   userId: number,
   requestId: number,
-  itemId: number
+  itemId: number,
 ): Promise<{ applied: boolean }> {
   // Item not returned is a major penalty - no grace pass
   const result = await applyTrustPenalty(userId, "item_not_returned", {
@@ -549,7 +571,7 @@ export async function applyItemNotReturnedPenalty(
 export async function applyDamageConfirmedPenalty(
   userId: number,
   requestId: number,
-  itemId: number
+  itemId: number,
 ): Promise<{ applied: boolean }> {
   // Damage confirmed is a major penalty - no grace pass
   const result = await applyTrustPenalty(userId, "damage_confirmed", {

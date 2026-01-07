@@ -103,7 +103,7 @@ Key architectural decisions and features include:
       - Medium: Late return without communication (-25), Cancel after acceptance (-20), Ignoring messages (-18)
       - Minor: Slow replies (-8), Missed pickup (-8), Minor rule violation (-6)
     - **Grace Pass System**: First-time offenders for medium/minor penalties receive a warning instead of a penalty (30-day lookback)
-    - **Trust Score Floor**: -100 (can go negative to signal high-risk users)
+    - **Trust Score Floor**: 0 (trust score cannot go below zero)
     - **Communication Tracking**: Borrowers can notify about delays before due date via `/api/requests/:id/notify-delay` to avoid late return penalties
     - **What NOT to Penalize**: Honest accidents with fast resolution, first-time mistakes (grace pass), disputes resolved fairly
 

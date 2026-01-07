@@ -230,144 +230,187 @@ export default function AchievementsPage() {
           </p>
         </div>
 
-        {/* Top Row: Trust Ring + Level Side by Side */}
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          {/* Community Trust - Visual Ring */}
-          <Card className="overflow-hidden">
-            <CardContent className="py-4 px-5">
-              <div className="flex items-center gap-5">
-                {/* Trust Ring - Smaller */}
-                <div className="relative w-28 h-28 flex-shrink-0">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    fill="none"
-                    stroke="#e2e8f0"
-                    strokeWidth="8"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="42"
-                    fill="none"
-                    stroke="url(#trustGradient)"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${trustPercentage * 2.64} 264`}
-                    className="transition-all duration-1000 ease-out"
-                  />
-                  <defs>
-                    <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#0DCEA1" />
-                      <stop offset="100%" stopColor="#10B981" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Shield className="h-8 w-8 text-teal-500 mb-1" />
-                  <span className="text-sm font-medium text-slate-600">Community</span>
-                  <span className="text-sm font-medium text-slate-600">Trust</span>
-                </div>
-              </div>
+        {/* Main 2-Column Layout: Left (Trust/Level/Milestones) + Right (Badges) */}
+        <div className="grid lg:grid-cols-[1fr,200px] gap-6">
+          {/* Left Column */}
+          <div className="space-y-4">
+            {/* Community Trust - Visual Ring */}
+            <Card className="overflow-hidden">
+              <CardContent className="py-4 px-5">
+                <div className="flex items-center gap-5">
+                  {/* Trust Ring */}
+                  <div className="relative w-28 h-28 flex-shrink-0">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        fill="none"
+                        stroke="#e2e8f0"
+                        strokeWidth="8"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="42"
+                        fill="none"
+                        stroke="url(#trustGradient)"
+                        strokeWidth="8"
+                        strokeLinecap="round"
+                        strokeDasharray={`${trustPercentage * 2.64} 264`}
+                        className="transition-all duration-1000 ease-out"
+                      />
+                      <defs>
+                        <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#0DCEA1" />
+                          <stop offset="100%" stopColor="#10B981" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <Shield className="h-8 w-8 text-teal-500 mb-1" />
+                      <span className="text-sm font-medium text-slate-600">Community</span>
+                      <span className="text-sm font-medium text-slate-600">Trust</span>
+                    </div>
+                  </div>
 
-              {/* Trust Message */}
-              <div className="flex-1">
-                <h2 className="text-lg font-semibold text-slate-800 mb-1">
-                  {trustPercentage >= 80 
-                    ? "You're a trusted neighbour!" 
-                    : trustPercentage >= 50 
-                      ? "You're doing great!"
-                      : trustPercentage >= 25
-                        ? "You're on your way!"
-                        : "Welcome to the community!"}
-                </h2>
-                <p className="text-slate-600 text-sm mb-2">
-                  {trustPercentage >= 80 
-                    ? "Your neighbours trust you with their items."
-                    : trustPercentage >= 50 
-                      ? "Building a solid reputation."
-                      : trustPercentage >= 25
-                        ? "Each exchange builds more trust."
-                        : "Start sharing to build trust."}
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {user?.isVerified && (
-                    <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Verified
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-slate-600 text-xs">
-                    {earnedBadges.length} badge{earnedBadges.length !== 1 ? 's' : ''}
-                  </Badge>
+                  {/* Trust Message */}
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-1">
+                      {trustPercentage >= 80 
+                        ? "You're a trusted neighbour!" 
+                        : trustPercentage >= 50 
+                          ? "You're doing great!"
+                          : trustPercentage >= 25
+                            ? "You're on your way!"
+                            : "Welcome to the community!"}
+                    </h2>
+                    <p className="text-slate-600 text-sm mb-2">
+                      {trustPercentage >= 80 
+                        ? "Your neighbours trust you with their items."
+                        : trustPercentage >= 50 
+                          ? "Building a solid reputation."
+                          : trustPercentage >= 25
+                            ? "Each exchange builds more trust."
+                            : "Start sharing to build trust with your neighbours."}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {user?.isVerified && (
+                        <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Verified
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-slate-600 text-xs">
+                        {earnedBadges.length} badge{earnedBadges.length !== 1 ? 's' : ''} earned
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Neighbour Level */}
+            <Card>
+              <CardContent className="py-4 px-5">
+                <div className="flex items-center gap-4">
+                  <div className={`p-2.5 rounded-xl bg-gradient-to-br ${currentLevel.color}`}>
+                    <Crown className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-base font-semibold text-slate-800">
+                        {currentLevel.name}
+                      </h3>
+                      <Badge variant="outline" className="text-xs">
+                        Level {currentLevelIndex + 1}
+                      </Badge>
+                    </div>
+                    
+                    {/* Perks */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 mb-2">
+                      {currentLevel.perks.map((perk, i) => (
+                        <span key={i} className="flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3 text-teal-500" />
+                          {perk}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Progress bar */}
+                    {nextLevel && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`}
+                            style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500 whitespace-nowrap">
+                          Next: {nextLevel.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Milestones */}
+            <div>
+              <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-teal-500" />
+                Milestones
+              </h2>
+              <div className="grid grid-cols-2 gap-2">
+                {milestones.map((milestone) => (
+                  <div
+                    key={milestone.id}
+                    className={`p-3 rounded-lg border flex items-center gap-2.5 transition-all ${
+                      milestone.achieved
+                        ? "bg-teal-50 border-teal-200"
+                        : "bg-slate-50 border-slate-200 opacity-60"
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-md ${
+                      milestone.achieved 
+                        ? "bg-teal-100 text-teal-600" 
+                        : "bg-slate-200 text-slate-400"
+                    }`}>
+                      {milestone.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-sm font-medium truncate ${
+                        milestone.achieved ? "text-teal-800" : "text-slate-500"
+                      }`}>
+                        {milestone.title}
+                      </h3>
+                      <p className={`text-xs truncate ${
+                        milestone.achieved ? "text-teal-600" : "text-slate-400"
+                      }`}>
+                        {milestone.description}
+                      </p>
+                    </div>
+                    {milestone.achieved && (
+                      <CheckCircle className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-          {/* Neighbour Level */}
-          <Card>
-            <CardContent className="py-4 px-5">
-              <div className="flex items-center gap-4">
-                <div className={`p-2.5 rounded-xl bg-gradient-to-br ${currentLevel.color}`}>
-                  <Crown className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-base font-semibold text-slate-800">
-                      {currentLevel.name}
-                    </h3>
-                    <Badge variant="outline" className="text-xs">
-                      Level {currentLevelIndex + 1}
-                    </Badge>
-                  </div>
-                  
-                  {/* Perks - Compact */}
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 mb-2">
-                    {currentLevel.perks.map((perk, i) => (
-                      <span key={i} className="flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3 text-teal-500" />
-                        {perk}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Progress bar */}
-                  {nextLevel && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`}
-                          style={{ width: `${Math.min(progressToNext, 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-slate-500 whitespace-nowrap">
-                        {progressToNext >= 75 ? `Almost ${nextLevel.name}!` : `Next: ${nextLevel.name}`}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Badges and Milestones Side by Side */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Badges */}
+          {/* Right Column - Badges */}
           <div>
             <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
               <Star className="h-4 w-4 text-teal-500" />
               Your Badges
             </h2>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="space-y-2">
               {badges.map((badge) => (
                 <div
                   key={badge.id}
-                  className={`p-2.5 rounded-lg border-2 text-center transition-all ${
+                  className={`p-3 rounded-lg border-2 text-center transition-all ${
                     badge.earned
                       ? badge.color
                       : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"
@@ -376,52 +419,9 @@ export default function AchievementsPage() {
                   <div className="flex justify-center mb-1">
                     {badge.icon}
                   </div>
-                  <div className="text-[10px] font-medium leading-tight">
+                  <div className="text-xs font-medium leading-tight">
                     {badge.name}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Milestones */}
-          <div>
-            <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-teal-500" />
-              Milestones
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              {milestones.map((milestone) => (
-                <div
-                  key={milestone.id}
-                  className={`p-3 rounded-lg border flex items-center gap-2.5 transition-all ${
-                    milestone.achieved
-                      ? "bg-teal-50 border-teal-200"
-                      : "bg-slate-50 border-slate-200 opacity-60"
-                  }`}
-                >
-                  <div className={`p-1.5 rounded-md ${
-                    milestone.achieved 
-                      ? "bg-teal-100 text-teal-600" 
-                      : "bg-slate-200 text-slate-400"
-                  }`}>
-                    {milestone.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`text-sm font-medium truncate ${
-                      milestone.achieved ? "text-teal-800" : "text-slate-500"
-                    }`}>
-                      {milestone.title}
-                    </h3>
-                    <p className={`text-xs truncate ${
-                      milestone.achieved ? "text-teal-600" : "text-slate-400"
-                    }`}>
-                      {milestone.description}
-                    </p>
-                  </div>
-                  {milestone.achieved && (
-                    <CheckCircle className="h-4 w-4 text-teal-500 flex-shrink-0" />
-                  )}
                 </div>
               ))}
             </div>

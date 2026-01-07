@@ -38,6 +38,7 @@ import {
   Zap,
   Gift,
   Check,
+  Headphones,
 } from "lucide-react";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 import { UserBadges } from "@/components/user-badges";
@@ -780,8 +781,7 @@ export default function ProfilePage() {
                       Priority Access
                     </h4>
                     <p className="text-xs text-gray-500">
-                      Get first dibs on the most popular items before they're
-                      fully booked
+                      Get first dibs on the most popular items
                     </p>
                   </div>
                   <div className="text-center">
@@ -790,20 +790,18 @@ export default function ProfilePage() {
                     </div>
                     <h4 className="font-semibold text-sm mb-1">Lower Fees</h4>
                     <p className="text-xs text-gray-500">
-                      Save money with reduced transaction fees on all your
-                      borrowing and lending
+                      Reduced transaction fees on all your sharing activities
                     </p>
                   </div>
                   <div className="text-center">
                     <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-teal-600" />
+                      <Headphones className="h-5 w-5 text-teal-600" />
                     </div>
                     <h4 className="font-semibold text-sm mb-1">
                       Premium Support
                     </h4>
                     <p className="text-xs text-gray-500">
-                      Get faster response times and dedicated support when you
-                      need help
+                      Get faster responses and dedicated support from our team
                     </p>
                   </div>
                 </div>
@@ -831,7 +829,7 @@ export default function ProfilePage() {
                     Notifications
                   </Button>
                 </Link>
-                <Link href="/verify">
+                <Link href="/settings">
                   <Button variant="outline" className="w-full justify-start">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Payment Methods

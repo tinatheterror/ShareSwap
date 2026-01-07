@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,18 +10,71 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Settings, Shield, AlertTriangle, UserX, Mail } from "lucide-react";
+import { ArrowLeft, Settings, Shield, AlertTriangle, UserX, Mail, Camera, User, Coins } from "lucide-react";
 import { Navbar } from "@/components/shared/navbar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export default function SettingsPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [isDeactivated, setIsDeactivated] = useState(false);
+
+  const profilePhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("profilePhoto", file);
+      
+      const res = await fetch("/api/users/profile-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to upload photo");
+      }
+      
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({
+        title: data.isFirstUpload ? "Photo Uploaded!" : "Photo Updated!",
+        description: data.isFirstUpload 
+          ? "You earned 1 ShareCoin for adding a profile photo!" 
+          : "Your profile photo has been updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload profile photo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image under 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      profilePhotoMutation.mutate(file);
+    }
+  };
 
   const deactivateMutation = useMutation({
     mutationFn: async () => {
@@ -114,6 +167,49 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Avatar className="h-16 w-16 border-2 border-gray-200">
+                    <AvatarImage src={(user as any)?.profilePhoto} alt={user?.username} />
+                    <AvatarFallback className="bg-[#0BB88C]/10 text-[#0BB88C] text-lg font-medium">
+                      {user?.username?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 p-1.5 bg-[#0BB88C] rounded-full text-white hover:bg-[#0AA77B] transition-colors shadow-md"
+                    disabled={profilePhotoMutation.isPending}
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </div>
+                <div>
+                  <p className="font-medium">Profile Photo</p>
+                  <p className="text-sm text-gray-500">
+                    {profilePhotoMutation.isPending 
+                      ? "Uploading..." 
+                      : (user as any)?.profilePhoto 
+                        ? "Click the camera to change" 
+                        : "Add a photo to personalize your profile"}
+                  </p>
+                  {!(user as any)?.hasUploadedProfilePhoto && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
+                      <Coins className="h-3 w-3" />
+                      <span>Earn 1 ShareCoin</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Separator />
             <div className="flex items-center justify-between py-2">
               <div>
                 <p className="font-medium">Username</p>

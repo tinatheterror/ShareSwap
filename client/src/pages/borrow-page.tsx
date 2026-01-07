@@ -160,10 +160,9 @@ export default function BorrowPage() {
   });
 
   // Query for all items (used when searching)
-  const {
-    data: allItems = [],
-    isLoading: allItemsLoading,
-  } = useQuery<ItemWithDistance[]>({
+  const { data: allItems = [], isLoading: allItemsLoading } = useQuery<
+    ItemWithDistance[]
+  >({
     queryKey: ["/api/items", "borrow", "all"],
     queryFn: async () => {
       const response = await fetch("/api/items?type=borrow");
@@ -230,11 +229,11 @@ export default function BorrowPage() {
       {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
       <div
         className="w-full relative"
-        style={{ 
+        style={{
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          borderBottomRightRadius: "32px"
+          borderBottomRightRadius: "32px",
         }}
       >
         <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
@@ -244,7 +243,8 @@ export default function BorrowPage() {
                 Browse the community ShareChest
               </h1>
               <p className="text-black/90">
-                Items available {userPostalCode && ` near ${userPostalCode}`}
+                A trusted collection of items available{" "}
+                {userPostalCode && ` near ${userPostalCode}`}
               </p>
             </div>
 
@@ -303,7 +303,9 @@ export default function BorrowPage() {
               <div className="p-2 bg-gradient-to-br from-pink-100 to-pink-200 rounded-lg">
                 <Gift className="h-4 w-4 text-pink-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800">Free Gifts</h3>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Free Gifts
+              </h3>
               <Badge className="bg-pink-100 text-pink-800 border-pink-200">
                 {filteredGiftItems.length} available
               </Badge>
@@ -378,7 +380,10 @@ export default function BorrowPage() {
                 >
                   <Heart className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold mb-2" style={{ color: "#0D9488" }}>
+                <h3
+                  className="text-2xl font-bold mb-2"
+                  style={{ color: "#0D9488" }}
+                >
                   No "{searchQuery}" found
                 </h3>
                 <p className="text-gray-700 mb-6">
@@ -393,7 +398,8 @@ export default function BorrowPage() {
                     if (!user) {
                       toast({
                         title: "Sign in required",
-                        description: "Please sign in to add items to your wishlist.",
+                        description:
+                          "Please sign in to add items to your wishlist.",
                         variant: "destructive",
                       });
                       navigate("/auth");

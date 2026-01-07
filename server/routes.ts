@@ -460,6 +460,75 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Profile photo upload endpoint
+  app.post("/api/users/profile-photo", upload.single("profilePhoto"), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Profile photo is required" });
+      }
+
+      const photoUrl = `/uploads/${req.file.filename}`;
+      const userId = req.user.id;
+
+      // Get user to check if this is first photo upload
+      const [user] = await db
+        .select({ hasUploadedProfilePhoto: users.hasUploadedProfilePhoto })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const isFirstUpload = !user?.hasUploadedProfilePhoto;
+
+      // Update user profile photo
+      await db
+        .update(users)
+        .set({
+          profilePhoto: photoUrl,
+          hasUploadedProfilePhoto: true,
+        })
+        .where(eq(users.id, userId));
+
+      // Award one-time bonus for first profile photo upload
+      let shareCoinsAwarded = 0;
+      if (isFirstUpload) {
+        shareCoinsAwarded = 1;
+        
+        await db.insert(shareCoinsTransactions).values({
+          userId,
+          amount: "1",
+          description: "Profile Photo Upload Bonus",
+          transactionType: "EARNED",
+        });
+
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`share_coins + 1`,
+          })
+          .where(eq(users.id, userId));
+
+        console.log(`✅ Awarded 1 ShareCoin to user ${userId} for uploading profile photo`);
+      }
+
+      res.json({
+        success: true,
+        profilePhoto: photoUrl,
+        isFirstUpload,
+        shareCoinsAwarded,
+        message: isFirstUpload 
+          ? "Profile photo uploaded! You earned 1 ShareCoin." 
+          : "Profile photo updated!",
+      });
+    } catch (error) {
+      console.error("Error uploading profile photo:", error);
+      res.status(500).json({ error: "Failed to upload profile photo" });
+    }
+  });
+
   // SmartScan endpoints
   app.get("/api/smartscan/usage", async (req, res) => {
     if (!req.isAuthenticated()) {

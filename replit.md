@@ -100,6 +100,7 @@ Key architectural decisions and features include:
 - **Security**: Comprehensive CSRF protection using a double-submit cookie pattern.
 - **Database Optimization**: Strategic composite indexes for improved query performance.
 - **Referral System**: Users can share their referral code with friends. When a new user registers with a referral code and completes their first transaction (borrow, rent, swap, or gift), the referrer receives 10 ShareCoins. Only the referrer gets rewarded (not the referred user). The referral is tracked via the `referrals` table which stores referrer ID, referred user ID, and completion status.
+- **Profile Photos**: Users can upload profile photos from the Settings page. First-time upload rewards +1 ShareCoin (one-time bonus). Profile photos are stored in `/uploads/` and displayed on the user's avatar throughout the app.
 - **Trust Score System** (server/trust-score-service.ts): Your trust score reflects how reliable you are as a community member.
     - **How to Build Your Trust Score** (biggest impact first):
       - **Borrowing & Returning Safely**: The #1 way to build trust. Returning items on time and in great condition has the highest positive impact on your score.

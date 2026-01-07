@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, ClipboardList } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -231,6 +231,14 @@ export function Navbar() {
                       <Button variant="ghost" className="flex items-center gap-2 hover:text-primary" data-tutorial="sharechest">
                         <Package className="h-5 w-5" />
                         <span>My Shared Items</span>
+                      </Button>
+                    </Link>
+                  </NavigationMenuItem>
+                  <NavigationMenuItem>
+                    <Link href="/requests">
+                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
+                        <ClipboardList className="h-5 w-5" />
+                        <span>Requests</span>
                       </Button>
                     </Link>
                   </NavigationMenuItem>

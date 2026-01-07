@@ -121,8 +121,11 @@ export default function ItemDetailsPage() {
                       <span className="font-semibold text-teal-600">${depositCalc.finalDeposit}</span>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-teal-50 border-teal-200 text-teal-700">
-                    Discounted {depositCalc.discountPercentage}% by your trust score
+                  <TooltipContent side="bottom" className="p-0 border-0 bg-transparent shadow-none">
+                    <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
+                      <Info className="h-3 w-3 inline mr-1" />
+                      Discounted {depositCalc.discountPercentage}% by your trust score
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

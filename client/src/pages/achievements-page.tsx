@@ -10,6 +10,7 @@ import {
   Zap,
   Sprout,
   CheckCircle,
+  Check,
   Heart,
   Sparkles,
   Star,
@@ -469,48 +470,35 @@ export default function AchievementsPage() {
                 <Sparkles className="h-4 w-4 text-teal-500" />
                 Milestones
               </h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
                 {milestones.map((milestone) => (
                   <div
                     key={milestone.id}
-                    className={`p-3 rounded-lg border flex items-center gap-2.5 transition-all ${
-                      milestone.achieved
-                        ? "bg-teal-50 border-teal-200"
-                        : "bg-slate-50 border-slate-200 opacity-60"
-                    }`}
+                    className="flex items-start gap-3"
                   >
-                    <div
-                      className={`p-1.5 rounded-md ${
-                        milestone.achieved
-                          ? "bg-teal-100 text-teal-600"
-                          : "bg-slate-200 text-slate-400"
-                      }`}
-                    >
-                      {milestone.icon}
+                    <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      milestone.achieved
+                        ? "bg-teal-500 border-teal-500"
+                        : "border-slate-300 bg-white"
+                    }`}>
+                      {milestone.achieved && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3
-                        className={`text-sm font-medium truncate ${
+                        className={`text-sm font-medium ${
                           milestone.achieved
-                            ? "text-teal-800"
+                            ? "text-slate-800"
                             : "text-slate-500"
                         }`}
                       >
                         {milestone.title}
                       </h3>
-                      <p
-                        className={`text-xs truncate ${
-                          milestone.achieved
-                            ? "text-teal-600"
-                            : "text-slate-400"
-                        }`}
-                      >
+                      <p className="text-xs text-slate-400">
                         {milestone.description}
                       </p>
                     </div>
-                    {milestone.achieved && (
-                      <CheckCircle className="h-4 w-4 text-teal-500 flex-shrink-0" />
-                    )}
                   </div>
                 ))}
               </div>

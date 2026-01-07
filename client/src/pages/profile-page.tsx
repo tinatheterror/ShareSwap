@@ -825,7 +825,7 @@ export default function ProfilePage() {
                     Account Settings
                   </Button>
                 </Link>
-                <Link href="/settings">
+                <Link href="/notifications">
                   <Button variant="outline" className="w-full justify-start">
                     <Bell className="h-4 w-4 mr-2" />
                     Notifications
@@ -837,7 +837,7 @@ export default function ProfilePage() {
                     Payment Methods
                   </Button>
                 </Link>
-                <Link href="/settings">
+                <Link href="/verify">
                   <Button variant="outline" className="w-full justify-start">
                     <Shield className="h-4 w-4 mr-2" />
                     Verification Status

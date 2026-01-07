@@ -459,7 +459,7 @@ export default function ProfilePage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Main Profile Card */}
             <Card className="border-2 border-teal-100 overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-teal-600 via-teal-400 to-teal-100">
+              <CardHeader className="bg-[#D4F7F1]">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
@@ -831,7 +831,7 @@ export default function ProfilePage() {
                     Notifications
                   </Button>
                 </Link>
-                <Link href="/settings">
+                <Link href="/verify">
                   <Button variant="outline" className="w-full justify-start">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Payment Methods
@@ -850,7 +850,6 @@ export default function ProfilePage() {
             <Card style={{ backgroundColor: "#D4F7F1" }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5 text-teal-600" />
                   Community Connections
                 </CardTitle>
               </CardHeader>
@@ -882,35 +881,49 @@ export default function ProfilePage() {
                       <Crown className="h-4 w-4 text-teal-500" />
                       <span className="text-sm text-slate-600">Level</span>
                     </div>
-                    <span className="font-semibold text-teal-700">{currentLevel.name}</span>
+                    <span className="font-semibold text-teal-700">
+                      {currentLevel.name}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Coins className="h-4 w-4 text-teal-500" />
                       <span className="text-sm text-slate-600">ShareCoins</span>
                     </div>
-                    <span className="font-semibold text-teal-700">{profile?.shareCoins || 0}</span>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.shareCoins || 0}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-teal-500" />
-                      <span className="text-sm text-slate-600">Items Shared</span>
+                      <span className="text-sm text-slate-600">
+                        Items Shared
+                      </span>
                     </div>
-                    <span className="font-semibold text-teal-700">{profile?.itemsShared || 0}</span>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.itemsShared || 0}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Heart className="h-4 w-4 text-teal-500" />
-                      <span className="text-sm text-slate-600">Items Borrowed</span>
+                      <span className="text-sm text-slate-600">
+                        Items Borrowed
+                      </span>
                     </div>
-                    <span className="font-semibold text-teal-700">{profile?.itemsBorrowed || 0}</span>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.itemsBorrowed || 0}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Star className="h-4 w-4 text-teal-500" />
                       <span className="text-sm text-slate-600">Rating</span>
                     </div>
-                    <span className="font-semibold text-teal-700">{profile?.rating || 0}</span>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.rating || 0}
+                    </span>
                   </div>
                 </div>
               </CardContent>

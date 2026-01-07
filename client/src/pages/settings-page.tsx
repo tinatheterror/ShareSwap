@@ -173,32 +173,29 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
+        <Card className="mb-4">
+          <CardHeader className="py-3 pb-2">
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-[#0BB88C]" />
-              <CardTitle className="text-lg">Account</CardTitle>
+              <Shield className="h-4 w-4 text-[#0BB88C]" />
+              <CardTitle className="text-base">Account</CardTitle>
             </div>
-            <CardDescription>
-              Manage your account settings and preferences
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-4">
+          <CardContent className="space-y-2 py-2">
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-3">
                 <div className="relative">
-                  <Avatar className="h-16 w-16 border-2 border-gray-200">
+                  <Avatar className="h-12 w-12 border-2 border-gray-200">
                     <AvatarImage src={(user as any)?.profilePhoto} alt={user?.username} />
-                    <AvatarFallback className="bg-[#0BB88C]/10 text-[#0BB88C] text-lg font-medium">
+                    <AvatarFallback className="bg-[#0BB88C]/10 text-[#0BB88C] text-sm font-medium">
                       {user?.username?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-1 -right-1 p-1.5 bg-[#0BB88C] rounded-full text-white hover:bg-[#0AA77B] transition-colors shadow-md"
+                    className="absolute -bottom-0.5 -right-0.5 p-1 bg-[#0BB88C] rounded-full text-white hover:bg-[#0AA77B] transition-colors shadow-md"
                     disabled={profilePhotoMutation.isPending}
                   >
-                    <Camera className="h-3.5 w-3.5" />
+                    <Camera className="h-3 w-3" />
                   </button>
                   <input
                     ref={fileInputRef}
@@ -209,16 +206,16 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <p className="font-medium">Profile Photo</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm font-medium">Profile Photo</p>
+                  <p className="text-xs text-gray-500">
                     {profilePhotoMutation.isPending 
                       ? "Uploading..." 
                       : (user as any)?.profilePhoto 
-                        ? "Click the camera to change" 
-                        : "Add a photo to personalize your profile"}
+                        ? "Click camera to change" 
+                        : "Add a photo"}
                   </p>
                   {!(user as any)?.hasUploadedProfilePhoto && (
-                    <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
+                    <div className="flex items-center gap-1 mt-0.5 text-xs text-amber-600">
                       <Coins className="h-3 w-3" />
                       <span>Earn 1 ShareCoin</span>
                     </div>
@@ -227,46 +224,42 @@ export default function SettingsPage() {
               </div>
             </div>
             <Separator />
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-1">
               <div>
-                <p className="font-medium">Username</p>
-                <p className="text-sm text-gray-500">{user?.username}</p>
+                <p className="text-sm font-medium">Username</p>
+                <p className="text-xs text-gray-500">{user?.username}</p>
               </div>
             </div>
             <Separator />
-            <div className="flex items-center justify-between py-2">
+            <div className="flex items-center justify-between py-1">
               <div>
-                <p className="font-medium">Account Status</p>
-                <p className="text-sm text-gray-500">Active</p>
+                <p className="text-sm font-medium">Account Status</p>
               </div>
-              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                 Active
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-red-200">
-          <CardHeader>
+        <Card className="border-gray-200">
+          <CardHeader className="py-3">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              <CardTitle className="text-lg text-red-700">Danger Zone</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-gray-400" />
+              <CardTitle className="text-sm font-medium text-gray-600">Account Actions</CardTitle>
             </div>
-            <CardDescription>
-              Irreversible and destructive actions
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 py-3">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <p className="font-medium text-gray-900">Deactivate Account</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Hide your profile and listings from other users. You can reactivate anytime by logging back in.
+                <p className="text-sm font-medium text-gray-700">Deactivate Account</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Hide your profile and listings. Reactivate anytime by logging back in.
                 </p>
               </div>
               <Dialog open={isDeactivateOpen} onOpenChange={setIsDeactivateOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+                  <Button variant="outline" size="sm" className="text-gray-600 hover:bg-gray-50">
                     Deactivate
                   </Button>
                 </DialogTrigger>
@@ -344,13 +337,14 @@ export default function SettingsPage() {
             
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <p className="font-medium text-gray-900">Delete Account</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Permanently delete your account and all associated data. This action cannot be undone.
+                <p className="text-sm font-medium text-gray-700">Delete Account</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Permanently delete your account and data.
                 </p>
               </div>
               <Button 
                 variant="ghost" 
+                size="sm"
                 className="text-gray-400 hover:text-gray-600"
                 onClick={() => {
                   toast({
@@ -364,7 +358,7 @@ export default function SettingsPage() {
                   });
                 }}
               >
-                Request Deletion
+                Contact Support
               </Button>
             </div>
           </CardContent>

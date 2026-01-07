@@ -1,246 +1,401 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/shared/navbar";
-import { Trophy, Award, Star, Users, Gift } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Shield,
+  Handshake,
+  Gift,
+  Zap,
+  Sprout,
+  CheckCircle,
+  Heart,
+  Sparkles,
+  Star,
+  Users,
+  ArrowLeftRight,
+  Crown,
+} from "lucide-react";
 
-interface Achievement {
-  id: number;
-  name: string;
-  description: string;
-  badgeIcon: string;
-  badgeColor: string;
-  pointsRequired?: number;
-  category: string;
-  isActive: boolean;
+interface UserStats {
+  totalBorrowed: number;
+  totalLent: number;
+  totalSwaps: number;
+  totalGifts: number;
+  successfulHandoffs: number;
+  referrals: number;
+  helpedUrgent: number;
 }
 
-interface UserAchievement {
-  id: number;
-  userId: number;
-  achievementId: number;
-  earnedAt: string;
-  progress: number;
-  isCompleted: boolean;
-  achievement: Achievement;
-}
+const LEVELS = [
+  { 
+    name: "Newcomer", 
+    minScore: 0, 
+    perks: ["Access to community ShareChest", "Browse and request items"],
+    color: "from-slate-400 to-slate-500"
+  },
+  { 
+    name: "Neighbour", 
+    minScore: 50, 
+    perks: ["Reduced deposit requirements", "Priority in item requests"],
+    color: "from-teal-400 to-teal-500"
+  },
+  { 
+    name: "Trusted Member", 
+    minScore: 150, 
+    perks: ["Lower deposits on high-value items", "Access to premium items"],
+    color: "from-teal-500 to-emerald-500"
+  },
+  { 
+    name: "Community Pillar", 
+    minScore: 300, 
+    perks: ["Minimal deposits", "Featured profile", "Early access to new features"],
+    color: "from-emerald-500 to-green-500"
+  },
+  { 
+    name: "ShareSwap Champion", 
+    minScore: 500, 
+    perks: ["No deposits required", "Verified badge", "Community ambassador status"],
+    color: "from-amber-400 to-yellow-500"
+  },
+];
 
 export default function AchievementsPage() {
-  const { data: achievements, isLoading: achievementsLoading } = useQuery<Achievement[]>({
-    queryKey: ['/api/achievements'],
+  const { user } = useAuth();
+
+  const { data: stats } = useQuery<UserStats>({
+    queryKey: ["/api/user-stats"],
   });
 
-  const { data: userAchievements, isLoading: userAchievementsLoading } = useQuery<UserAchievement[]>({
-    queryKey: ['/api/user-achievements'],
-  });
-
-  const completedAchievements = userAchievements?.filter(ua => ua.isCompleted) || [];
-  const inProgressAchievements = userAchievements?.filter(ua => !ua.isCompleted && ua.progress > 0) || [];
+  const reputationScore = user?.reputationScore || 0;
+  const trustPercentage = Math.min(100, Math.round((reputationScore / 500) * 100));
   
-  // Group achievements by category
-  const achievementsByCategory = achievements?.reduce((acc, achievement) => {
-    if (!acc[achievement.category]) {
-      acc[achievement.category] = [];
-    }
-    acc[achievement.category].push(achievement);
-    return acc;
-  }, {} as Record<string, Achievement[]>) || {};
+  const currentLevelIndex = LEVELS.findIndex((level, index) => {
+    const nextLevel = LEVELS[index + 1];
+    return !nextLevel || reputationScore < nextLevel.minScore;
+  });
+  const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
+  const nextLevel = LEVELS[currentLevelIndex + 1];
+  
+  const progressToNext = nextLevel 
+    ? ((reputationScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100
+    : 100;
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'milestone': return <Trophy className="h-5 w-5" />;
-      case 'social': return <Users className="h-5 w-5" />;
-      case 'lending': return <Gift className="h-5 w-5" />;
-      case 'borrowing': return <Award className="h-5 w-5" />;
-      default: return <Star className="h-5 w-5" />;
-    }
-  };
+  const badges = [
+    {
+      id: "verified",
+      name: "Verified Neighbour",
+      icon: <Shield className="h-6 w-6" />,
+      description: "Identity verified and trusted",
+      earned: user?.isVerified || false,
+      color: "bg-teal-100 text-teal-700 border-teal-200",
+    },
+    {
+      id: "reliable",
+      name: "Reliable Borrower",
+      icon: <Handshake className="h-6 w-6" />,
+      description: "Returns items on time, every time",
+      earned: (stats?.successfulHandoffs || 0) >= 5,
+      color: "bg-blue-100 text-blue-700 border-blue-200",
+    },
+    {
+      id: "generous",
+      name: "Generous Gifter",
+      icon: <Gift className="h-6 w-6" />,
+      description: "Shared items freely with neighbours",
+      earned: (stats?.totalGifts || 0) >= 1,
+      color: "bg-pink-100 text-pink-700 border-pink-200",
+    },
+    {
+      id: "urgent",
+      name: "Urgent Helper",
+      icon: <Zap className="h-6 w-6" />,
+      description: "Helped neighbours in a pinch",
+      earned: (stats?.helpedUrgent || 0) >= 1,
+      color: "bg-amber-100 text-amber-700 border-amber-200",
+    },
+    {
+      id: "builder",
+      name: "Community Builder",
+      icon: <Sprout className="h-6 w-6" />,
+      description: "Growing our neighbourhood together",
+      earned: (stats?.referrals || 0) >= 1 || (stats?.totalSwaps || 0) >= 3,
+      color: "bg-green-100 text-green-700 border-green-200",
+    },
+  ];
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'milestone': return 'text-teal-600';
-      case 'social': return 'text-teal-600';
-      case 'lending': return 'text-teal-600';
-      case 'borrowing': return 'text-teal-600';
-      default: return 'text-gray-600';
-    }
-  };
+  const milestones = [
+    {
+      id: "first-borrow",
+      title: "First time borrowing",
+      description: "Started your sharing journey",
+      achieved: (stats?.totalBorrowed || 0) >= 1,
+      icon: <Heart className="h-5 w-5" />,
+    },
+    {
+      id: "first-lend",
+      title: "First item shared",
+      description: "Opened your ShareChest to neighbours",
+      achieved: (stats?.totalLent || 0) >= 1,
+      icon: <Gift className="h-5 w-5" />,
+    },
+    {
+      id: "first-swap",
+      title: "First swap completed",
+      description: "Made a fair exchange",
+      achieved: (stats?.totalSwaps || 0) >= 1,
+      icon: <ArrowLeftRight className="h-5 w-5" />,
+    },
+    {
+      id: "ten-handoffs",
+      title: "10 successful handoffs",
+      description: "Building trust one exchange at a time",
+      achieved: (stats?.successfulHandoffs || 0) >= 10,
+      icon: <Handshake className="h-5 w-5" />,
+    },
+    {
+      id: "helped-neighbour",
+      title: "Helped a neighbour in need",
+      description: "Responded to an urgent request",
+      achieved: (stats?.helpedUrgent || 0) >= 1,
+      icon: <Sparkles className="h-5 w-5" />,
+    },
+    {
+      id: "level-up",
+      title: `Reached ${currentLevel.name}`,
+      description: "Your reputation is growing",
+      achieved: currentLevelIndex >= 1,
+      icon: <Star className="h-5 w-5" />,
+    },
+  ];
 
-  if (achievementsLoading || userAchievementsLoading) {
-    return (
-      <div className="min-h-screen">
-        <Navbar />
-        <main className="max-w-7xl mx-auto px-4 py-12">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const earnedBadges = badges.filter(b => b.earned);
+  const achievedMilestones = milestones.filter(m => m.achieved);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-            <Trophy className="h-8 w-8 text-primary" />
-            Your Achievements
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+            Your Community Journey
           </h1>
+          <p className="text-slate-600">
+            Every share makes our neighbourhood stronger
+          </p>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-teal-600">{completedAchievements.length}</p>
-                  <p className="text-sm text-muted-foreground">Achievements Earned</p>
+        {/* Community Trust - Visual Ring */}
+        <Card className="mb-8 overflow-hidden">
+          <CardContent className="pt-8 pb-6">
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              {/* Trust Ring */}
+              <div className="relative w-40 h-40 flex-shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="#e2e8f0"
+                    strokeWidth="8"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="42"
+                    fill="none"
+                    stroke="url(#trustGradient)"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${trustPercentage * 2.64} 264`}
+                    className="transition-all duration-1000 ease-out"
+                  />
+                  <defs>
+                    <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#0DCEA1" />
+                      <stop offset="100%" stopColor="#10B981" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <Shield className="h-8 w-8 text-teal-500 mb-1" />
+                  <span className="text-sm font-medium text-slate-600">Community</span>
+                  <span className="text-sm font-medium text-slate-600">Trust</span>
                 </div>
-                <Trophy className="h-8 w-8 text-teal-600" />
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-teal-600">{inProgressAchievements.length}</p>
-                  <p className="text-sm text-muted-foreground">In Progress</p>
-                </div>
-                <Award className="h-8 w-8 text-teal-600" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-bold text-teal-600">{achievements?.length || 0}</p>
-                  <p className="text-sm text-muted-foreground">Total Available</p>
-                </div>
-                <Star className="h-8 w-8 text-teal-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Completed Achievements */}
-        {completedAchievements.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-teal-600" />
-                Completed Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {completedAchievements.map((userAchievement) => (
-                  <div
-                    key={userAchievement.id}
-                    className="p-4 rounded-lg border bg-teal-50 border-teal-200"
-                  >
-                    <div className="flex items-start gap-3">
+              {/* Trust Message */}
+              <div className="flex-1 text-center md:text-left">
+                <h2 className="text-xl font-semibold text-slate-800 mb-2">
+                  {trustPercentage >= 80 
+                    ? "You're a trusted neighbour!" 
+                    : trustPercentage >= 50 
+                      ? "You're doing great!"
+                      : trustPercentage >= 25
+                        ? "You're on your way!"
+                        : "Welcome to the community!"}
+                </h2>
+                <p className="text-slate-600 mb-4">
+                  {trustPercentage >= 80 
+                    ? "Your neighbours trust you with their items. Keep sharing!"
+                    : trustPercentage >= 50 
+                      ? "You're building a solid reputation in the community."
+                      : trustPercentage >= 25
+                        ? "Each successful exchange builds more trust."
+                        : "Start sharing to build trust with your neighbours."}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {user?.isVerified && (
+                    <Badge className="bg-teal-100 text-teal-700 border-teal-200">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Verified
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="text-slate-600">
+                    {earnedBadges.length} badge{earnedBadges.length !== 1 ? 's' : ''} earned
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Neighbour Level */}
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className={`p-3 rounded-xl bg-gradient-to-br ${currentLevel.color}`}>
+                <Crown className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-semibold text-slate-800">
+                    {currentLevel.name}
+                  </h3>
+                  <Badge variant="outline" className="text-xs">
+                    Level {currentLevelIndex + 1}
+                  </Badge>
+                </div>
+                
+                {/* Perks */}
+                <div className="space-y-1 mb-4">
+                  {currentLevel.perks.map((perk, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                      <CheckCircle className="h-3.5 w-3.5 text-teal-500" />
+                      {perk}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Subtle progress hint */}
+                {nextLevel && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <div 
-                        className="text-2xl p-2 rounded-full"
-                        style={{ backgroundColor: userAchievement.achievement.badgeColor + '20' }}
-                      >
-                        {userAchievement.achievement.badgeIcon}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-teal-800">{userAchievement.achievement.name}</h3>
-                        <p className="text-sm text-teal-600 mb-2">
-                          {userAchievement.achievement.description}
-                        </p>
-                        <Badge variant="secondary" className="bg-teal-100 text-teal-800">
-                          Completed {new Date(userAchievement.earnedAt).toLocaleDateString()}
-                        </Badge>
-                      </div>
+                        className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`}
+                        style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                      />
                     </div>
+                    <span className="text-xs text-slate-500 whitespace-nowrap">
+                      {progressToNext >= 75 
+                        ? `Almost ${nextLevel.name}!`
+                        : progressToNext >= 50
+                          ? `Getting closer`
+                          : `Next: ${nextLevel.name}`}
+                    </span>
                   </div>
-                ))}
+                )}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Achievement Categories */}
-        {Object.entries(achievementsByCategory).map(([category, categoryAchievements]) => (
-          <Card key={category} className="mb-6">
-            <CardHeader>
-              <CardTitle className={`flex items-center gap-2 capitalize ${getCategoryColor(category)}`}>
-                {getCategoryIcon(category)}
-                {category} Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {categoryAchievements.map((achievement) => {
-                  const userAchievement = userAchievements?.find(ua => ua.achievementId === achievement.id);
-                  const isCompleted = userAchievement?.isCompleted || false;
-                  const progress = userAchievement?.progress || 0;
-                  const progressPercentage = achievement.pointsRequired 
-                    ? Math.min((progress / achievement.pointsRequired) * 100, 100)
-                    : isCompleted ? 100 : 0;
-
-                  return (
-                    <div
-                      key={achievement.id}
-                      className={`p-4 rounded-lg border transition-colors ${
-                        isCompleted 
-                          ? 'bg-teal-50 border-teal-200' 
-                          : progress > 0 
-                            ? 'bg-teal-50/50 border-teal-100' 
-                            : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div 
-                          className={`text-2xl p-2 rounded-full ${
-                            isCompleted ? 'opacity-100' : 'opacity-50'
-                          }`}
-                          style={{ backgroundColor: achievement.badgeColor + '20' }}
-                        >
-                          {achievement.badgeIcon}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className={`font-semibold ${isCompleted ? 'text-teal-800' : 'text-gray-800'}`}>
-                            {achievement.name}
-                          </h3>
-                          <p className={`text-sm mb-3 ${isCompleted ? 'text-teal-600' : 'text-gray-600'}`}>
-                            {achievement.description}
-                          </p>
-                          
-                          {achievement.pointsRequired && !isCompleted && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Progress</span>
-                                <span>{progress}/{achievement.pointsRequired}</span>
-                              </div>
-                              <Progress value={progressPercentage} className="h-2" />
-                            </div>
-                          )}
-                          
-                          {isCompleted && (
-                            <Badge variant="secondary" className="bg-teal-100 text-teal-800">
-                              ✓ Completed
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Badges */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <Star className="h-5 w-5 text-teal-500" />
+            Your Badges
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {badges.map((badge) => (
+              <div
+                key={badge.id}
+                className={`p-4 rounded-xl border-2 text-center transition-all ${
+                  badge.earned
+                    ? badge.color
+                    : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"
+                }`}
+              >
+                <div className="flex justify-center mb-2">
+                  {badge.icon}
+                </div>
+                <div className="text-xs font-medium leading-tight">
+                  {badge.name}
+                </div>
+                {badge.earned && (
+                  <div className="mt-1">
+                    <CheckCircle className="h-3 w-3 mx-auto text-current opacity-70" />
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            ))}
+          </div>
+        </div>
+
+        {/* Milestones */}
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-teal-500" />
+            Milestones
+          </h2>
+          <div className="grid md:grid-cols-2 gap-3">
+            {milestones.map((milestone) => (
+              <div
+                key={milestone.id}
+                className={`p-4 rounded-xl border flex items-start gap-3 transition-all ${
+                  milestone.achieved
+                    ? "bg-teal-50 border-teal-200"
+                    : "bg-slate-50 border-slate-200 opacity-60"
+                }`}
+              >
+                <div className={`p-2 rounded-lg ${
+                  milestone.achieved 
+                    ? "bg-teal-100 text-teal-600" 
+                    : "bg-slate-200 text-slate-400"
+                }`}>
+                  {milestone.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className={`font-medium ${
+                      milestone.achieved ? "text-teal-800" : "text-slate-500"
+                    }`}>
+                      {milestone.title}
+                    </h3>
+                    {milestone.achieved && (
+                      <CheckCircle className="h-4 w-4 text-teal-500" />
+                    )}
+                  </div>
+                  <p className={`text-sm ${
+                    milestone.achieved ? "text-teal-600" : "text-slate-400"
+                  }`}>
+                    {milestone.description}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Encouraging Footer */}
+        <div className="mt-12 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-full text-teal-700 text-sm">
+            <Users className="h-4 w-4" />
+            <span>You're part of a growing community of sharers</span>
+          </div>
+        </div>
       </main>
     </div>
   );

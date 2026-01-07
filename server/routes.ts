@@ -22,7 +22,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists } from "@db/schema";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
@@ -3982,6 +3982,105 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).send("Error fetching platform statistics");
+    }
+  });
+
+  // Get user stats for achievements page
+  app.get("/api/user-stats", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const userId = req.user.id;
+
+      // Count items borrowed (as requester with BORROW type and COMPLETED status)
+      const [borrowedCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.requesterId, userId),
+          eq(itemRequests.requestType, "BORROW"),
+          eq(itemRequests.status, "COMPLETED")
+        ));
+
+      // Count items lent (as owner with COMPLETED status)
+      const [lentCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(
+          eq(items.ownerId, userId),
+          eq(itemRequests.status, "COMPLETED")
+        ));
+
+      // Count swaps completed
+      const [swapCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(and(
+          or(
+            eq(itemRequests.requesterId, userId),
+            sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
+          ),
+          eq(itemRequests.requestType, "SWAP"),
+          eq(itemRequests.status, "COMPLETED")
+        ));
+
+      // Count gifts given (as owner with GIFT type)
+      const [giftCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(
+          eq(items.ownerId, userId),
+          eq(itemRequests.requestType, "GIFT"),
+          eq(itemRequests.status, "COMPLETED")
+        ));
+
+      // Count successful handoffs (only COMPLETED transactions)
+      const [handoffCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(and(
+          or(
+            eq(itemRequests.requesterId, userId),
+            sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
+          ),
+          eq(itemRequests.status, "COMPLETED")
+        ));
+
+      // Count referrals
+      const [referralCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(referrals)
+        .where(eq(referrals.referrerId, userId));
+
+      // Count urgent requests helped (responded to high urgency wishlists within 24 hours)
+      // For now, count if user has lent to requests that came from wishlists
+      const [urgentCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .innerJoin(wishlists, sql`${wishlists.itemName} ILIKE '%' || ${items.name} || '%'`)
+        .where(and(
+          eq(items.ownerId, userId),
+          eq(itemRequests.status, "COMPLETED"),
+          eq(wishlists.urgency, "urgent")
+        ));
+
+      res.json({
+        totalBorrowed: Number(borrowedCount?.count || 0),
+        totalLent: Number(lentCount?.count || 0),
+        totalSwaps: Number(swapCount?.count || 0),
+        totalGifts: Number(giftCount?.count || 0),
+        successfulHandoffs: Number(handoffCount?.count || 0),
+        referrals: Number(referralCount?.count || 0),
+        helpedUrgent: Math.min(Number(urgentCount?.count || 0), 1), // Cap at 1 for milestone
+      });
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ error: "Failed to fetch user stats" });
     }
   });
 

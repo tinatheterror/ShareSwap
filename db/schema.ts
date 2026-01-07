@@ -285,6 +285,11 @@ export const itemRequests = pgTable("item_requests", {
   returnDelayNotifiedAt: timestamp("return_delay_notified_at"),
   returnDelayReason: text("return_delay_reason"),
   
+  // Rental-specific fields
+  rentalAmount: decimal("rental_amount", { precision: 10, scale: 2 }), // rental fee in dollars
+  rentalProcessingFee: decimal("rental_processing_fee", { precision: 10, scale: 2 }), // 3% processing fee
+  rentalPlatformFee: decimal("rental_platform_fee", { precision: 10, scale: 2 }), // platform commission (0% for 2025)
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   itemIdx: index("item_requests_item_id_idx").on(table.itemId),

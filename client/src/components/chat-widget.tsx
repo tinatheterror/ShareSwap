@@ -30,6 +30,7 @@ import {
 import { format } from "date-fns";
 import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
+import { RentalDepositModal } from "@/components/rental/rental-deposit-modal";
 import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
@@ -177,6 +178,7 @@ export function ChatWidget() {
   const [depositClientSecret, setDepositClientSecret] = useState<string | null>(null);
   const [pendingDeliveryData, setPendingDeliveryData] = useState<any>(null);
   const [showTrustDepositModal, setShowTrustDepositModal] = useState(false);
+  const [showRentalDepositModal, setShowRentalDepositModal] = useState(false);
   const [showCourierModal, setShowCourierModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -475,13 +477,52 @@ export function ChatWidget() {
                 </>
               )}
 
-              {/* Borrower actions */}
+              {/* Borrower actions (ShareCoins) */}
               {isBorrower && request.requestType === "BORROW" && (
                 <>
                   {request.status === "ACCEPTED" && (
                     <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700" onClick={() => { setSelectedRequest(request); setShowTrustDepositModal(true); }}>
                       <Shield className="h-3 w-3 mr-1" />
                       Pay Deposit
+                    </Button>
+                  )}
+
+                  {request.status === "DEPOSIT_CONFIRMED" && request.deliveryMethod === "courier" && (
+                    <Button size="sm" className="h-7 text-xs bg-orange-600 hover:bg-orange-700" onClick={() => { setSelectedRequest(request); setShowCourierModal(true); }}>
+                      <Truck className="h-3 w-3 mr-1" />
+                      Book Courier
+                    </Button>
+                  )}
+
+                  {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING") && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelectedRequest(request); setShowHandoffModal(true); }}>
+                      <HandMetal className="h-3 w-3 mr-1" />
+                      Confirm Received
+                    </Button>
+                  )}
+
+                  {request.status === "IN_PROGRESS" && (
+                    <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => { setSelectedRequest(request); setShowReturnModal(true); }}>
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Return Item
+                    </Button>
+                  )}
+
+                  {request.status === "RETURN_REQUESTED" && (
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-[10px]">
+                      Awaiting confirmation
+                    </Badge>
+                  )}
+                </>
+              )}
+
+              {/* Renter actions (Cash payment) */}
+              {isBorrower && request.requestType === "RENT" && (
+                <>
+                  {request.status === "ACCEPTED" && (
+                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => { setSelectedRequest(request); setShowRentalDepositModal(true); }}>
+                      <Shield className="h-3 w-3 mr-1" />
+                      Pay Rental Deposit
                     </Button>
                   )}
 
@@ -875,6 +916,38 @@ export function ChatWidget() {
             } else {
               setSelectedRequest(null);
               toast({ title: "Ready for handoff!", description: "Coordinate with the lender to pick up your item." });
+            }
+          }}
+        />
+      )}
+
+      {selectedRequest && showRentalDepositModal && (
+        <RentalDepositModal
+          isOpen={showRentalDepositModal}
+          onClose={() => { setShowRentalDepositModal(false); setSelectedRequest(null); }}
+          request={{
+            id: selectedRequest.id,
+            itemId: selectedRequest.itemId,
+            deliveryMethod: selectedRequest.deliveryMethod || "in_person",
+            startDate: selectedRequest.startDate,
+            endDate: selectedRequest.endDate,
+          }}
+          item={{
+            name: selectedRequest.item.name,
+            tier: selectedRequest.item.tier || 2,
+            category: (selectedRequest.item as any).category || "Home & Kitchen",
+            estimatedValue: selectedRequest.item.estimatedValue || "100",
+            dollarsPrice: (selectedRequest.item as any).dollarsPrice,
+            photos: selectedRequest.item.photos,
+          }}
+          courierFee={selectedRequest.deliveryMethod === "courier" ? 8.99 : 0}
+          onSuccess={(nextStep) => {
+            setShowRentalDepositModal(false);
+            if (nextStep === "book_courier") {
+              setShowCourierModal(true);
+            } else {
+              setSelectedRequest(null);
+              toast({ title: "Rental deposit secured!", description: "Coordinate with the owner to pick up your rental." });
             }
           }}
         />

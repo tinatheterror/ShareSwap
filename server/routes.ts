@@ -2765,6 +2765,154 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // =====================================
+  // RENTAL TRANSACTION LIFECYCLE ENDPOINTS
+  // =====================================
+
+  // Create rental payment hold (deposit + rental fee authorization)
+  app.post("/api/rentals/create-payment-hold", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { requestId, depositAmount, rentalAmount, processingFee, platformFee, courierFee } = req.body;
+
+      if (!requestId || !depositAmount || depositAmount <= 0) {
+        return res.status(400).json({ error: "Invalid request parameters" });
+      }
+
+      // Verify request belongs to this user and is in ACCEPTED state
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request || request.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (request.status !== "ACCEPTED") {
+        return res.status(400).json({ error: "Request is not in accepted state" });
+      }
+
+      // Total amount to authorize (deposit + processing fee + courier if applicable)
+      // Rental fee will be charged on handoff, deposit is held
+      const totalHoldAmount = depositAmount + (processingFee || 0) + (courierFee || 0);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(totalHoldAmount * 100),
+        currency: "usd",
+        capture_method: "manual",
+        metadata: {
+          type: "rental_deposit",
+          requestId: requestId.toString(),
+          userId: req.user.id.toString(),
+          depositAmount: depositAmount.toString(),
+          rentalAmount: (rentalAmount || 0).toString(),
+          processingFee: (processingFee || 0).toString(),
+          platformFee: (platformFee || 0).toString(),
+        },
+      });
+
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
+        depositAmount,
+        rentalAmount,
+        totalHoldAmount,
+      });
+    } catch (error: any) {
+      console.error("Error creating rental payment hold:", error);
+      res.status(500).json({ error: "Failed to create rental payment: " + error.message });
+    }
+  });
+
+  // Confirm rental deposit payment
+  app.post("/api/requests/:requestId/confirm-rental-deposit", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { paymentIntentId, depositAmount, rentalAmount, processingFee, platformFee } = req.body;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ error: "Payment intent ID is required" });
+      }
+
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      if (request.item_requests.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      if (request.item_requests.status !== "ACCEPTED") {
+        return res.status(400).json({ error: "Request is not in accepted state" });
+      }
+
+      // Verify the PaymentIntent with Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      // Verify payment intent is in the correct state (requires_capture = authorized but not captured)
+      if (paymentIntent.status !== "requires_capture") {
+        return res.status(400).json({ 
+          error: "Payment has not been authorized correctly",
+          status: paymentIntent.status
+        });
+      }
+
+      // Verify the payment intent belongs to this request
+      if (paymentIntent.metadata.requestId !== requestId.toString()) {
+        return res.status(400).json({ error: "Payment intent does not match this request" });
+      }
+
+      // Verify the payment intent belongs to this user
+      if (paymentIntent.metadata.userId !== req.user.id.toString()) {
+        return res.status(403).json({ error: "Payment intent does not belong to this user" });
+      }
+
+      // Update request with rental deposit info
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "DEPOSIT_CONFIRMED",
+          depositPaymentIntentId: paymentIntentId,
+          trustDepositAmount: depositAmount?.toString(),
+          depositStatus: "authorized",
+          depositAuthorizedAt: new Date(),
+          rentalAmount: rentalAmount?.toString(),
+          rentalProcessingFee: processingFee?.toString(),
+          rentalPlatformFee: platformFee?.toString(),
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      const nextStep = request.item_requests.deliveryMethod === "courier" ? "book_courier" : "await_handoff";
+
+      res.json({
+        success: true,
+        request: updated,
+        nextStep,
+        message: "Rental deposit authorized successfully",
+      });
+    } catch (error: any) {
+      console.error("Error confirming rental deposit:", error);
+      res.status(500).json({ error: "Failed to confirm rental deposit" });
+    }
+  });
+
+  // =====================================
   // BORROW TRANSACTION LIFECYCLE ENDPOINTS
   // =====================================
 

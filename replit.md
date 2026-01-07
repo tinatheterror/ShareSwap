@@ -77,9 +77,15 @@ Key architectural decisions and features include:
     - Professional teal color scheme.
 - **Transactional System**:
     - In-app scheduling for pickup/delivery, celebration animations for transaction acceptance.
-    - Flexible commission system for rentals (e.g., 5% standard) with platform sustainability and user reward fund components (ShareCoins).
+    - Flexible commission system for rentals (0% platform fee for 2025, 3% payment processing fee always applies).
     - Security deposit options (Stripe payment authorization holds vs. self-arranged).
     - Anti-farming system for ShareCoin exploitation detection.
+    - **Distinct Transaction Flows**:
+      - **Borrow Flow** (ShareCoins): ACCEPTED → Pay Trust Deposit (with trust discounts) → DEPOSIT_CONFIRMED → [Book Courier if applicable] → Confirm Handoff (ShareCoins charged) → IN_PROGRESS → Return Item → Confirm Return (deposit released) → COMPLETED
+      - **Rent Flow** (Cash): ACCEPTED → Pay Rental Deposit (NO trust discounts, in-app only) → DEPOSIT_CONFIRMED → [Book Courier if applicable] → Confirm Handoff (NO ShareCoins charged) → IN_PROGRESS → Return Item → Confirm Return (deposit released) → COMPLETED
+      - **Swap Flow**: ACCEPTED (instant completion, both parties get ShareCoins + trust points, no deposits)
+      - **Gift Flow**: ACCEPTED (instant completion, gifter gets ShareCoins + trust points, no deposits)
+    - **Unified Inbox**: Chat widget includes Messages | Requests tabs, with inline action buttons for all transaction lifecycle actions.
 - **Messaging**: Automated messaging system for item requests with template generation and date range selection.
 - **Inventory Management**: "My ShareChest" for intuitive inventory management with filtering and item actions.
 - **Follow System**: Allows users to follow neighbors to see their items in a personalized feed, promoting community.

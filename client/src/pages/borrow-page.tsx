@@ -123,10 +123,11 @@ export default function BorrowPage() {
     }
   }, []);
 
+  // Query for nearby items (location-based)
   const {
-    data: items = [],
-    error,
-    isLoading,
+    data: nearbyItems = [],
+    error: nearbyError,
+    isLoading: nearbyLoading,
   } = useQuery<ItemWithDistance[]>({
     queryKey: userLocation
       ? [
@@ -144,14 +145,12 @@ export default function BorrowPage() {
         );
         if (!response.ok) {
           console.error("Nearby items API failed, falling back to all items");
-          // Fall back to all borrow items if nearby fails
           const fallbackResponse = await fetch("/api/items?type=borrow");
           if (!fallbackResponse.ok) throw new Error("Failed to fetch items");
           return fallbackResponse.json();
         }
         return response.json();
       } else {
-        // Fallback to all borrow items if no location
         const response = await fetch("/api/items?type=borrow");
         if (!response.ok) throw new Error("Failed to fetch items");
         return response.json();
@@ -159,6 +158,25 @@ export default function BorrowPage() {
     },
     retry: 1,
   });
+
+  // Query for all items (used when searching)
+  const {
+    data: allItems = [],
+    isLoading: allItemsLoading,
+  } = useQuery<ItemWithDistance[]>({
+    queryKey: ["/api/items", "borrow", "all"],
+    queryFn: async () => {
+      const response = await fetch("/api/items?type=borrow");
+      if (!response.ok) throw new Error("Failed to fetch items");
+      return response.json();
+    },
+    enabled: !!searchQuery, // Only fetch when searching
+  });
+
+  // Use all items when searching, nearby items otherwise
+  const items = searchQuery ? allItems : nearbyItems;
+  const error = nearbyError;
+  const isLoading = searchQuery ? allItemsLoading : nearbyLoading;
 
   // Query for gift items (free items)
   const { data: giftItems = [] } = useQuery<ItemWithDistance[]>({

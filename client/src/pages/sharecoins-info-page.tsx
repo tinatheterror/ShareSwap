@@ -6,7 +6,7 @@ import { Coins, CheckCircle, ArrowRight, Star, Shield, TrendingUp } from "lucide
 
 export default function ShareCoinsInfoPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <Navbar />
       <main className="max-w-5xl mx-auto px-4 py-12">
         {/* Hero Section */}

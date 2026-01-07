@@ -196,7 +196,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
         <Navbar />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
@@ -213,7 +213,7 @@ export default function ProfilePage() {
   if (!isOwnProfile) {
     if (isLoadingPublicProfile) {
       return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
           <Navbar />
           <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="text-center">
@@ -228,7 +228,7 @@ export default function ProfilePage() {
 
     if (!publicProfile) {
       return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
           <Navbar />
           <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="text-center">
@@ -245,7 +245,7 @@ export default function ProfilePage() {
     }
 
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
         <Navbar />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
@@ -451,7 +451,7 @@ export default function ProfilePage() {
 
   // Show own profile if viewing logged-in user's profile
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-3 gap-8">

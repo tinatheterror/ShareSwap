@@ -143,7 +143,7 @@ export default function RentPage() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 py-8">
         <div className="text-center mb-8">

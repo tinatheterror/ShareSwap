@@ -279,7 +279,7 @@ export default function RequestsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Loading requests...</div>
@@ -289,7 +289,7 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">

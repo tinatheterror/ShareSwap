@@ -728,7 +728,7 @@ export default function LendPage() {
         <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold mb-3 text-black">
+              <h1 className="text-4xl font-bold mb-1 text-black">
                 {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
               <p className="text-black/90">

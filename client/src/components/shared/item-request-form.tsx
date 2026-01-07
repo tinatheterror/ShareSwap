@@ -464,7 +464,7 @@ export function ItemRequestForm({
                         )}
                         <div className="flex justify-between">
                           <span className="text-gray-600">Platform fee (0% for 2025)</span>
-                          <span className="font-medium text-green-600">Free</span>
+                          <span className="font-medium text-black">Free</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Payment processing (3%)</span>

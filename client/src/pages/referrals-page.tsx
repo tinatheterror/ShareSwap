@@ -12,10 +12,10 @@ import { useState } from "react";
 export default function ReferralsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [referralCode, setReferralCode] = useState('');
+  const [referralCode, setReferralCode] = useState("");
 
   const { data: user } = useQuery<any>({
-    queryKey: ['/api/user'],
+    queryKey: ["/api/user"],
   });
 
   const generateCodeMutation = useMutation({
@@ -25,7 +25,7 @@ export default function ReferralsPage() {
     },
     onSuccess: (data) => {
       setReferralCode(data.referralCode);
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Referral code generated!",
         description: "Share this code with friends to earn ShareCoins.",
@@ -56,7 +56,7 @@ export default function ReferralsPage() {
     if (code && navigator.share) {
       try {
         await navigator.share({
-          title: 'Join ShareSpace',
+          title: "Join ShareSpace",
           text: `Join me on ShareSpace with code ${code} and we both get 10 ShareCoins!`,
           url: `${window.location.origin}/register?ref=${code}`,
         });
@@ -79,7 +79,8 @@ export default function ReferralsPage() {
             Invite Friends
           </h1>
           <p className="text-muted-foreground">
-            Earn 10 ShareCoins everytime a friend joins and completes their first transaction
+            Earn 10 ShareCoins everytime a friend joins and completes their
+            first transaction
           </p>
         </div>
 
@@ -109,26 +110,34 @@ export default function ReferralsPage() {
                     Share
                   </Button>
                 </div>
-                
+
                 <div className="bg-teal-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-teal-800 mb-2">How it works:</h3>
+                  <h3 className="font-semibold text-teal-800 mb-2">
+                    How it works:
+                  </h3>
                   <ul className="text-sm text-teal-700 space-y-1">
                     <li>• Share your code with friends</li>
                     <li>• They sign up using your code</li>
-                    <li>• When they complete their first transaction, you both get 10 ShareCoins!</li>
+                    <li>
+                      • When they complete their first transaction, you get 10
+                      ShareCoins!
+                    </li>
                   </ul>
                 </div>
               </div>
             ) : (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">
-                  When neighbours sign up using your code you'll earn ShareCoins to use on future rentals or requests.
+                  When neighbours sign up using your code you'll earn ShareCoins
+                  to use on future rentals or requests.
                 </p>
-                <Button 
+                <Button
                   onClick={() => generateCodeMutation.mutate()}
                   disabled={generateCodeMutation.isPending}
                 >
-                  {generateCodeMutation.isPending ? 'Generating...' : 'Generate Referral Code'}
+                  {generateCodeMutation.isPending
+                    ? "Generating..."
+                    : "Generate Referral Code"}
                 </Button>
               </div>
             )}
@@ -151,14 +160,14 @@ export default function ReferralsPage() {
                   Get 10 ShareCoins for each successful referral
                 </p>
               </div>
-              
+
               <div className="text-center">
                 <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users className="h-8 w-8 text-teal-600" />
                 </div>
                 <h3 className="font-semibold mb-2">Build Community</h3>
                 <p className="text-sm text-muted-foreground">
-                  Help grow the sharing economy in your neighborhood
+                  Strengthen the connections your neighborhood
                 </p>
               </div>
             </div>

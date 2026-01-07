@@ -45,12 +45,29 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({
-        title: data.isFirstUpload ? "Photo Uploaded!" : "Photo Updated!",
-        description: data.isFirstUpload 
-          ? "You earned 1 ShareCoin for adding a profile photo!" 
-          : "Your profile photo has been updated.",
-      });
+      
+      if (data.shareCoinsAwarded > 0) {
+        toast({
+          title: "Photo Approved!",
+          description: "You earned 1 ShareCoin for adding a profile photo!",
+        });
+      } else if (data.hasAlreadyEarnedBonus) {
+        toast({
+          title: "Photo Updated!",
+          description: "Your profile photo has been updated.",
+        });
+      } else if (data.validationStatus === "rejected") {
+        toast({
+          title: "Photo Saved",
+          description: data.validationReason || "We couldn't verify a clear face. Try another photo to earn 1 ShareCoin.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Photo Updated!",
+          description: "Your profile photo has been updated.",
+        });
+      }
     },
     onError: (error: any) => {
       toast({

@@ -106,8 +106,8 @@ export function WishlistFulfillmentPopup({
               Fulfill a Wishlist + Earn ShareCoins✨
             </DialogTitle>
             <p className="text-slate-600 text-lg">
-              Neighbours need these items!! Lend, rent, or swap it out to them.
-              You'll earn ShareCoins, and strengthen connections.
+              Neighbours need these items!! Lend, rent, or swap out to them.
+              You'll earn ShareCoins.
             </p>
           </div>
         </DialogHeader>
@@ -225,7 +225,8 @@ export function WishlistFulfillmentPopup({
                     <Link href="/lend">
                       <Button
                         size="lg"
-                        className="w-full text-black font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200" style={{ backgroundColor: "#0DCEA1" }}
+                        className="w-full text-black font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                        style={{ backgroundColor: "#0DCEA1" }}
                       >
                         I Have This Item!
                       </Button>
@@ -262,7 +263,8 @@ export function WishlistFulfillmentPopup({
             <Link href="/lend" className="block">
               <Button
                 size="lg"
-                className="w-full h-14  font-semibold shadow-lg" style={{ backgroundColor: "#0DCEA1" }}
+                className="w-full h-14  font-semibold shadow-lg"
+                style={{ backgroundColor: "#0DCEA1" }}
               >
                 Share an Item Now
               </Button>

@@ -14,6 +14,8 @@ export const users = pgTable("users", {
   verifiedAt: timestamp("verified_at"),
   profilePhoto: text("profile_photo"), // URL to uploaded profile photo
   hasUploadedProfilePhoto: boolean("has_uploaded_profile_photo").default(false), // For one-time bonus tracking
+  profilePhotoValidationStatus: text("profile_photo_validation_status"), // 'approved', 'rejected', 'pending'
+  profilePhotoValidationReason: text("profile_photo_validation_reason"), // Reason for rejection or notes
   shareCoins: decimal("share_coins", { precision: 10, scale: 2 }).default("0.00"),
   reputationScore: integer("reputation_score").default(0),
   reputationLevel: text("reputation_level").default("Newcomer"),

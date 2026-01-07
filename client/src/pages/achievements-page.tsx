@@ -23,6 +23,7 @@ import {
   Package,
   MessageSquare,
   Quote,
+  Trophy,
 } from "lucide-react";
 
 interface UserStats {
@@ -256,10 +257,11 @@ export default function AchievementsPage() {
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-slate-800 mb-1">
+          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
+            <Trophy className="h-8 w-8 text-primary" />
             Your Community Journey
           </h1>
-          <p className="text-slate-600 text-sm">
+          <p className="text-muted-foreground">
             Every share makes our neighbourhood stronger
           </p>
         </div>
@@ -458,7 +460,8 @@ export default function AchievementsPage() {
                 <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 text-center">
                   <Quote className="h-6 w-6 text-slate-300 mx-auto mb-2" />
                   <p className="text-sm text-slate-500">
-                    No reviews yet. Complete transactions to receive feedback from neighbours!
+                    No reviews yet. Complete transactions to receive feedback
+                    from neighbours!
                   </p>
                 </div>
               )}
@@ -472,15 +475,14 @@ export default function AchievementsPage() {
               </h2>
               <div className="space-y-2">
                 {milestones.map((milestone) => (
-                  <div
-                    key={milestone.id}
-                    className="flex items-start gap-3"
-                  >
-                    <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                      milestone.achieved
-                        ? "bg-teal-500 border-teal-500"
-                        : "border-slate-300 bg-white"
-                    }`}>
+                  <div key={milestone.id} className="flex items-start gap-3">
+                    <div
+                      className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                        milestone.achieved
+                          ? "bg-teal-500 border-teal-500"
+                          : "border-slate-300 bg-white"
+                      }`}
+                    >
                       {milestone.achieved && (
                         <Check className="h-3 w-3 text-white" />
                       )}

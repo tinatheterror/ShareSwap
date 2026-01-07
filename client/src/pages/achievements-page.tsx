@@ -220,22 +220,24 @@ export default function AchievementsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-slate-800 mb-1">
             Your Community Journey
           </h1>
-          <p className="text-slate-600">
+          <p className="text-slate-600 text-sm">
             Every share makes our neighbourhood stronger
           </p>
         </div>
 
-        {/* Community Trust - Visual Ring */}
-        <Card className="mb-8 overflow-hidden">
-          <CardContent className="pt-8 pb-6">
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              {/* Trust Ring */}
-              <div className="relative w-40 h-40 flex-shrink-0">
+        {/* Top Row: Trust Ring + Level Side by Side */}
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          {/* Community Trust - Visual Ring */}
+          <Card className="overflow-hidden">
+            <CardContent className="py-4 px-5">
+              <div className="flex items-center gap-5">
+                {/* Trust Ring - Smaller */}
+                <div className="relative w-28 h-28 flex-shrink-0">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                   <circle
                     cx="50"
@@ -271,8 +273,8 @@ export default function AchievementsPage() {
               </div>
 
               {/* Trust Message */}
-              <div className="flex-1 text-center md:text-left">
-                <h2 className="text-xl font-semibold text-slate-800 mb-2">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-slate-800 mb-1">
                   {trustPercentage >= 80 
                     ? "You're a trusted neighbour!" 
                     : trustPercentage >= 50 
@@ -281,24 +283,24 @@ export default function AchievementsPage() {
                         ? "You're on your way!"
                         : "Welcome to the community!"}
                 </h2>
-                <p className="text-slate-600 mb-4">
+                <p className="text-slate-600 text-sm mb-2">
                   {trustPercentage >= 80 
-                    ? "Your neighbours trust you with their items. Keep sharing!"
+                    ? "Your neighbours trust you with their items."
                     : trustPercentage >= 50 
-                      ? "You're building a solid reputation in the community."
+                      ? "Building a solid reputation."
                       : trustPercentage >= 25
-                        ? "Each successful exchange builds more trust."
-                        : "Start sharing to build trust with your neighbours."}
+                        ? "Each exchange builds more trust."
+                        : "Start sharing to build trust."}
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1">
                   {user?.isVerified && (
-                    <Badge className="bg-teal-100 text-teal-700 border-teal-200">
+                    <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Verified
                     </Badge>
                   )}
-                  <Badge variant="outline" className="text-slate-600">
-                    {earnedBadges.length} badge{earnedBadges.length !== 1 ? 's' : ''} earned
+                  <Badge variant="outline" className="text-slate-600 text-xs">
+                    {earnedBadges.length} badge{earnedBadges.length !== 1 ? 's' : ''}
                   </Badge>
                 </div>
               </div>
@@ -306,137 +308,127 @@ export default function AchievementsPage() {
           </CardContent>
         </Card>
 
-        {/* Neighbour Level */}
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${currentLevel.color}`}>
-                <Crown className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    {currentLevel.name}
-                  </h3>
-                  <Badge variant="outline" className="text-xs">
-                    Level {currentLevelIndex + 1}
-                  </Badge>
+          {/* Neighbour Level */}
+          <Card>
+            <CardContent className="py-4 px-5">
+              <div className="flex items-center gap-4">
+                <div className={`p-2.5 rounded-xl bg-gradient-to-br ${currentLevel.color}`}>
+                  <Crown className="h-5 w-5 text-white" />
                 </div>
-                
-                {/* Perks */}
-                <div className="space-y-1 mb-4">
-                  {currentLevel.perks.map((perk, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
-                      <CheckCircle className="h-3.5 w-3.5 text-teal-500" />
-                      {perk}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Subtle progress hint */}
-                {nextLevel && (
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`}
-                        style={{ width: `${Math.min(progressToNext, 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-slate-500 whitespace-nowrap">
-                      {progressToNext >= 75 
-                        ? `Almost ${nextLevel.name}!`
-                        : progressToNext >= 50
-                          ? `Getting closer`
-                          : `Next: ${nextLevel.name}`}
-                    </span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-base font-semibold text-slate-800">
+                      {currentLevel.name}
+                    </h3>
+                    <Badge variant="outline" className="text-xs">
+                      Level {currentLevelIndex + 1}
+                    </Badge>
                   </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                  
+                  {/* Perks - Compact */}
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 mb-2">
+                    {currentLevel.perks.map((perk, i) => (
+                      <span key={i} className="flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-teal-500" />
+                        {perk}
+                      </span>
+                    ))}
+                  </div>
 
-        {/* Badges */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Star className="h-5 w-5 text-teal-500" />
+                  {/* Progress bar */}
+                  {nextLevel && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`}
+                          style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500 whitespace-nowrap">
+                        {progressToNext >= 75 ? `Almost ${nextLevel.name}!` : `Next: ${nextLevel.name}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Badges - Full Width Row */}
+        <div className="mb-5">
+          <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <Star className="h-4 w-4 text-teal-500" />
             Your Badges
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-5 lg:grid-cols-10 gap-2">
             {badges.map((badge) => (
               <div
                 key={badge.id}
-                className={`p-4 rounded-xl border-2 text-center transition-all ${
+                className={`p-2.5 rounded-lg border-2 text-center transition-all ${
                   badge.earned
                     ? badge.color
                     : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"
                 }`}
               >
-                <div className="flex justify-center mb-2">
+                <div className="flex justify-center mb-1">
                   {badge.icon}
                 </div>
-                <div className="text-xs font-medium leading-tight">
+                <div className="text-[10px] font-medium leading-tight">
                   {badge.name}
                 </div>
-                {badge.earned && (
-                  <div className="mt-1">
-                    <CheckCircle className="h-3 w-3 mx-auto text-current opacity-70" />
-                  </div>
-                )}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Milestones */}
+        {/* Milestones - 3 Columns */}
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-teal-500" />
+          <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-teal-500" />
             Milestones
           </h2>
-          <div className="grid md:grid-cols-2 gap-3">
+          <div className="grid md:grid-cols-3 gap-2">
             {milestones.map((milestone) => (
               <div
                 key={milestone.id}
-                className={`p-4 rounded-xl border flex items-start gap-3 transition-all ${
+                className={`p-3 rounded-lg border flex items-center gap-2.5 transition-all ${
                   milestone.achieved
                     ? "bg-teal-50 border-teal-200"
                     : "bg-slate-50 border-slate-200 opacity-60"
                 }`}
               >
-                <div className={`p-2 rounded-lg ${
+                <div className={`p-1.5 rounded-md ${
                   milestone.achieved 
                     ? "bg-teal-100 text-teal-600" 
                     : "bg-slate-200 text-slate-400"
                 }`}>
                   {milestone.icon}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className={`font-medium ${
-                      milestone.achieved ? "text-teal-800" : "text-slate-500"
-                    }`}>
-                      {milestone.title}
-                    </h3>
-                    {milestone.achieved && (
-                      <CheckCircle className="h-4 w-4 text-teal-500" />
-                    )}
-                  </div>
-                  <p className={`text-sm ${
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-sm font-medium truncate ${
+                    milestone.achieved ? "text-teal-800" : "text-slate-500"
+                  }`}>
+                    {milestone.title}
+                  </h3>
+                  <p className={`text-xs truncate ${
                     milestone.achieved ? "text-teal-600" : "text-slate-400"
                   }`}>
                     {milestone.description}
                   </p>
                 </div>
+                {milestone.achieved && (
+                  <CheckCircle className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                )}
               </div>
             ))}
           </div>
         </div>
 
         {/* Encouraging Footer */}
-        <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 rounded-full text-teal-700 text-sm">
-            <Users className="h-4 w-4" />
+        <div className="mt-6 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-teal-50 rounded-full text-teal-700 text-xs">
+            <Users className="h-3.5 w-3.5" />
             <span>You're part of a growing community of sharers</span>
           </div>
         </div>

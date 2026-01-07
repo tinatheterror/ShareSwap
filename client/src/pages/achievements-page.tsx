@@ -20,6 +20,8 @@ import {
   Gem,
   TrendingUp,
   Package,
+  MessageSquare,
+  Quote,
 } from "lucide-react";
 
 interface UserStats {
@@ -30,6 +32,18 @@ interface UserStats {
   successfulHandoffs: number;
   referrals: number;
   helpedUrgent: number;
+}
+
+interface Review {
+  id: number;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  reviewer: {
+    id: number;
+    username: string;
+    profilePhoto?: string;
+  };
 }
 
 const LEVELS = [
@@ -78,6 +92,11 @@ export default function AchievementsPage() {
 
   const { data: stats } = useQuery<UserStats>({
     queryKey: ["/api/user-stats"],
+  });
+
+  const { data: reviews } = useQuery<Review[]>({
+    queryKey: ["/api/users", user?.id, "reviews"],
+    enabled: !!user?.id,
   });
 
   const reputationScore = user?.reputationScore || 0;
@@ -390,6 +409,52 @@ export default function AchievementsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Reviews */}
+            {reviews && reviews.length > 0 && (
+              <div>
+                <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-teal-500" />
+                  What Neighbours Say
+                </h2>
+                <div className="space-y-2">
+                  {reviews.slice(0, 3).map((review) => (
+                    <div
+                      key={review.id}
+                      className="p-3 rounded-lg bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Quote className="h-4 w-4 text-teal-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          {review.comment && (
+                            <p className="text-sm text-slate-700 italic mb-2 line-clamp-2">
+                              "{review.comment}"
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">
+                              — {review.reviewer.username}
+                            </span>
+                            <div className="flex items-center gap-0.5">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-3 w-3 ${
+                                    i < review.rating
+                                      ? "text-amber-400 fill-amber-400"
+                                      : "text-slate-200"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Milestones */}
             <div>

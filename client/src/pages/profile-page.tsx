@@ -825,18 +825,24 @@ export default function ProfilePage() {
                     Account Settings
                   </Button>
                 </Link>
-                <Button variant="outline" className="w-full justify-start">
-                  <Bell className="h-4 w-4 mr-2" />
-                  Notifications
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Payment Methods
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Verification Status
-                </Button>
+                <Link href="/settings">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Bell className="h-4 w-4 mr-2" />
+                    Notifications
+                  </Button>
+                </Link>
+                <Link href="/settings">
+                  <Button variant="outline" className="w-full justify-start">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Payment Methods
+                  </Button>
+                </Link>
+                <Link href="/settings">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Verification Status
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 

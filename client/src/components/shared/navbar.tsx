@@ -235,14 +235,6 @@ export function Navbar() {
                     </Link>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <Link href="/requests">
-                      <Button variant="ghost" className="flex items-center gap-2 hover:text-primary">
-                        <ClipboardList className="h-5 w-5" />
-                        <span>Requests</span>
-                      </Button>
-                    </Link>
-                  </NavigationMenuItem>
-                  <NavigationMenuItem>
                     <Link href="/wishlists">
                       <Button variant="ghost" className="flex items-center gap-2 hover:text-primary" data-tutorial="wishlist">
                         <Heart className="h-5 w-5" />

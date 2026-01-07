@@ -7,9 +7,9 @@ import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, items, insertUserSchema, type SelectUser } from "@db/schema";
+import { users, items, referrals, insertUserSchema, type SelectUser } from "@db/schema";
 import { db, pool } from "@db";
-import { eq, or } from "drizzle-orm";
+import { eq, or, and } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 
 // Security: Rate limiter for authentication endpoints
@@ -261,13 +261,43 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
+      // Check if a referral code was provided
+      const { referralCode } = req.body;
+      let referrerId: number | null = null;
+
+      if (referralCode) {
+        // Find the user who owns this referral code
+        const [referrer] = await db
+          .select()
+          .from(users)
+          .where(eq(users.referralCode, referralCode))
+          .limit(1);
+
+        if (referrer) {
+          referrerId = referrer.id;
+        }
+      }
+
       const [user] = await db
         .insert(users)
         .values({
           ...result.data,
           password: result.data.password ? await hashPassword(result.data.password) : null,
+          referredBy: referrerId,
         })
         .returning();
+
+      // Create referral record if user was referred
+      if (referrerId && referralCode) {
+        await db.insert(referrals).values({
+          referrerId: referrerId,
+          referredUserId: user.id,
+          referralCode: referralCode,
+          rewardAmount: "10.00",
+          isRewardClaimed: false,
+          completedFirstTransaction: false,
+        });
+      }
 
       req.login(user, (err) => {
         if (err) return next(err);

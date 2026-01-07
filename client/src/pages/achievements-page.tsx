@@ -33,35 +33,43 @@ interface UserStats {
 }
 
 const LEVELS = [
-  { 
-    name: "Newcomer", 
-    minScore: 0, 
+  {
+    name: "Newcomer",
+    minScore: 0,
     perks: ["Access to community ShareChest", "Browse and request items"],
-    color: "from-slate-400 to-slate-500"
+    color: "from-slate-400 to-slate-500",
   },
-  { 
-    name: "Neighbour", 
-    minScore: 50, 
+  {
+    name: "Neighbour",
+    minScore: 50,
     perks: ["Reduced deposit requirements", "Priority in item requests"],
-    color: "from-teal-400 to-teal-500"
+    color: "from-teal-400 to-teal-500",
   },
-  { 
-    name: "Trusted Member", 
-    minScore: 150, 
+  {
+    name: "Trusted Member",
+    minScore: 150,
     perks: ["Lower deposits on high-value items", "Access to premium items"],
-    color: "from-teal-500 to-emerald-500"
+    color: "from-teal-500 to-emerald-500",
   },
-  { 
-    name: "Community Pillar", 
-    minScore: 300, 
-    perks: ["Minimal deposits", "Featured profile", "Early access to new features"],
-    color: "from-emerald-500 to-green-500"
+  {
+    name: "Community Pillar",
+    minScore: 300,
+    perks: [
+      "Minimal deposits",
+      "Featured profile",
+      "Early access to new features",
+    ],
+    color: "from-emerald-500 to-green-500",
   },
-  { 
-    name: "ShareSwap Champion", 
-    minScore: 500, 
-    perks: ["No deposits required", "Verified badge", "Community ambassador status"],
-    color: "from-amber-400 to-yellow-500"
+  {
+    name: "ShareSwap Champion",
+    minScore: 500,
+    perks: [
+      "No deposits required",
+      "Verified badge",
+      "Community ambassador status",
+    ],
+    color: "from-amber-400 to-yellow-500",
   },
 ];
 
@@ -73,17 +81,22 @@ export default function AchievementsPage() {
   });
 
   const reputationScore = user?.reputationScore || 0;
-  const trustPercentage = Math.min(100, Math.round((reputationScore / 500) * 100));
-  
+  const trustPercentage = Math.min(
+    100,
+    Math.round((reputationScore / 500) * 100),
+  );
+
   const currentLevelIndex = LEVELS.findIndex((level, index) => {
     const nextLevel = LEVELS[index + 1];
     return !nextLevel || reputationScore < nextLevel.minScore;
   });
   const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
   const nextLevel = LEVELS[currentLevelIndex + 1];
-  
-  const progressToNext = nextLevel 
-    ? ((reputationScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100
+
+  const progressToNext = nextLevel
+    ? ((reputationScore - currentLevel.minScore) /
+        (nextLevel.minScore - currentLevel.minScore)) *
+      100
     : 100;
 
   const badges = [
@@ -165,7 +178,8 @@ export default function AchievementsPage() {
       icon: <Gem className="h-6 w-6" />,
       description: "The ultimate community member",
       earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20,
-      color: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-300",
+      color:
+        "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-300",
     },
   ];
 
@@ -214,8 +228,8 @@ export default function AchievementsPage() {
     },
   ];
 
-  const earnedBadges = badges.filter(b => b.earned);
-  const achievedMilestones = milestones.filter(m => m.achieved);
+  const earnedBadges = badges.filter((b) => b.earned);
+  const achievedMilestones = milestones.filter((m) => m.achieved);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -240,7 +254,10 @@ export default function AchievementsPage() {
                 <div className="flex items-center gap-5">
                   {/* Trust Ring */}
                   <div className="relative w-28 h-28 flex-shrink-0">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <svg
+                      className="w-full h-full transform -rotate-90"
+                      viewBox="0 0 100 100"
+                    >
                       <circle
                         cx="50"
                         cy="50"
@@ -261,7 +278,13 @@ export default function AchievementsPage() {
                         className="transition-all duration-1000 ease-out"
                       />
                       <defs>
-                        <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <linearGradient
+                          id="trustGradient"
+                          x1="0%"
+                          y1="0%"
+                          x2="100%"
+                          y2="0%"
+                        >
                           <stop offset="0%" stopColor="#0DCEA1" />
                           <stop offset="100%" stopColor="#10B981" />
                         </linearGradient>
@@ -269,26 +292,30 @@ export default function AchievementsPage() {
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <Shield className="h-8 w-8 text-teal-500 mb-1" />
-                      <span className="text-sm font-medium text-slate-600">Community</span>
-                      <span className="text-sm font-medium text-slate-600">Trust</span>
+                      <span className="text-sm font-medium text-slate-600">
+                        Community
+                      </span>
+                      <span className="text-sm font-medium text-slate-600">
+                        Trust
+                      </span>
                     </div>
                   </div>
 
                   {/* Trust Message */}
                   <div className="flex-1">
                     <h2 className="text-lg font-semibold text-slate-800 mb-1">
-                      {trustPercentage >= 80 
-                        ? "You're a trusted neighbour!" 
-                        : trustPercentage >= 50 
+                      {trustPercentage >= 80
+                        ? "You're a trusted neighbour!"
+                        : trustPercentage >= 50
                           ? "You're doing great!"
                           : trustPercentage >= 25
                             ? "You're on your way!"
                             : "Welcome to the community!"}
                     </h2>
                     <p className="text-slate-600 text-sm mb-2">
-                      {trustPercentage >= 80 
+                      {trustPercentage >= 80
                         ? "Your neighbours trust you with their items."
-                        : trustPercentage >= 50 
+                        : trustPercentage >= 50
                           ? "Building a solid reputation."
                           : trustPercentage >= 25
                             ? "Each exchange builds more trust."
@@ -301,8 +328,12 @@ export default function AchievementsPage() {
                           Verified
                         </Badge>
                       )}
-                      <Badge variant="outline" className="text-slate-600 text-xs">
-                        {earnedBadges.length} badge{earnedBadges.length !== 1 ? 's' : ''} earned
+                      <Badge
+                        variant="outline"
+                        className="text-slate-600 text-xs"
+                      >
+                        {earnedBadges.length} badge
+                        {earnedBadges.length !== 1 ? "s" : ""} earned
                       </Badge>
                     </div>
                   </div>
@@ -314,7 +345,9 @@ export default function AchievementsPage() {
             <Card>
               <CardContent className="py-4 px-5">
                 <div className="flex items-center gap-4">
-                  <div className={`p-2.5 rounded-xl bg-gradient-to-br ${currentLevel.color}`}>
+                  <div
+                    className={`p-2.5 rounded-xl bg-gradient-to-br ${currentLevel.color}`}
+                  >
                     <Crown className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
@@ -326,7 +359,7 @@ export default function AchievementsPage() {
                         Level {currentLevelIndex + 1}
                       </Badge>
                     </div>
-                    
+
                     {/* Perks */}
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 mb-2">
                       {currentLevel.perks.map((perk, i) => (
@@ -341,9 +374,11 @@ export default function AchievementsPage() {
                     {nextLevel && (
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
+                          <div
                             className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`}
-                            style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                            style={{
+                              width: `${Math.min(progressToNext, 100)}%`,
+                            }}
                           />
                         </div>
                         <span className="text-xs text-slate-500 whitespace-nowrap">
@@ -372,22 +407,32 @@ export default function AchievementsPage() {
                         : "bg-slate-50 border-slate-200 opacity-60"
                     }`}
                   >
-                    <div className={`p-1.5 rounded-md ${
-                      milestone.achieved 
-                        ? "bg-teal-100 text-teal-600" 
-                        : "bg-slate-200 text-slate-400"
-                    }`}>
+                    <div
+                      className={`p-1.5 rounded-md ${
+                        milestone.achieved
+                          ? "bg-teal-100 text-teal-600"
+                          : "bg-slate-200 text-slate-400"
+                      }`}
+                    >
                       {milestone.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`text-sm font-medium truncate ${
-                        milestone.achieved ? "text-teal-800" : "text-slate-500"
-                      }`}>
+                      <h3
+                        className={`text-sm font-medium truncate ${
+                          milestone.achieved
+                            ? "text-teal-800"
+                            : "text-slate-500"
+                        }`}
+                      >
                         {milestone.title}
                       </h3>
-                      <p className={`text-xs truncate ${
-                        milestone.achieved ? "text-teal-600" : "text-slate-400"
-                      }`}>
+                      <p
+                        className={`text-xs truncate ${
+                          milestone.achieved
+                            ? "text-teal-600"
+                            : "text-slate-400"
+                        }`}
+                      >
                         {milestone.description}
                       </p>
                     </div>
@@ -416,9 +461,7 @@ export default function AchievementsPage() {
                       : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"
                   }`}
                 >
-                  <div className="flex justify-center mb-1">
-                    {badge.icon}
-                  </div>
+                  <div className="flex justify-center mb-1">{badge.icon}</div>
                   <div className="text-xs font-medium leading-tight">
                     {badge.name}
                   </div>
@@ -430,10 +473,7 @@ export default function AchievementsPage() {
 
         {/* Encouraging Footer */}
         <div className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-teal-50 rounded-full text-teal-700 text-xs">
-            <Users className="h-3.5 w-3.5" />
-            <span>You're part of a growing community of sharers</span>
-          </div>
+          <span>You're part of a growing community of sharers.</span>
         </div>
       </main>
     </div>

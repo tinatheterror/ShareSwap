@@ -114,6 +114,61 @@ async function awardShareCoinsWithFirstTimeBonus(
   return { totalAwarded, isFirstTime };
 }
 
+// Helper function to check and award referral bonus when a referred user completes their first transaction
+async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: boolean; referrerId?: number }> {
+  try {
+    // Find a referral record for this user that hasn't been rewarded yet
+    const [referral] = await db
+      .select()
+      .from(referrals)
+      .where(
+        and(
+          eq(referrals.referredUserId, userId),
+          eq(referrals.completedFirstTransaction, false),
+          eq(referrals.isRewardClaimed, false)
+        )
+      )
+      .limit(1);
+
+    if (!referral || !referral.referrerId) {
+      return { awarded: false };
+    }
+
+    // Award 10 ShareCoins to the referrer
+    const rewardAmount = 10;
+
+    await db.insert(shareCoinsTransactions).values({
+      userId: referral.referrerId,
+      amount: rewardAmount.toString(),
+      description: "Referral bonus: Friend completed their first transaction",
+      transactionType: "EARNED",
+    });
+
+    await db
+      .update(users)
+      .set({
+        shareCoins: sql`share_coins + ${rewardAmount}`,
+      })
+      .where(eq(users.id, referral.referrerId));
+
+    // Mark the referral as completed and rewarded
+    await db
+      .update(referrals)
+      .set({
+        completedFirstTransaction: true,
+        isRewardClaimed: true,
+      })
+      .where(eq(referrals.id, referral.id));
+
+    console.log(`🎉 Referral bonus: Awarded ${rewardAmount} ShareCoins to user ${referral.referrerId} for referring user ${userId}`);
+
+    return { awarded: true, referrerId: referral.referrerId };
+  } catch (error) {
+    console.error("Error checking/awarding referral bonus:", error);
+    return { awarded: false };
+  }
+}
+
 // Initialize Stripe
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
@@ -2631,6 +2686,10 @@ Respond with ONLY the category name, nothing else.`
           } catch (trustError) {
             console.error("Error awarding swap trust points:", trustError);
           }
+
+          // Check and award referral bonus for both users (first transaction completion)
+          await checkAndAwardReferralBonus(req.user.id);
+          await checkAndAwardReferralBonus(request.item_requests.requesterId);
         } else {
           console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
         }
@@ -2666,6 +2725,10 @@ Respond with ONLY the category name, nothing else.`
         } catch (trustError) {
           console.error("Error awarding gifting trust points:", trustError);
         }
+
+        // Check and award referral bonus for both users (first transaction completion)
+        await checkAndAwardReferralBonus(req.user.id);
+        await checkAndAwardReferralBonus(request.item_requests.requesterId);
       } catch (error) {
         console.error("Error processing gift reward:", error);
       }
@@ -3712,6 +3775,10 @@ Respond with ONLY the category name, nothing else.`
         // Don't fail the return if trust scoring fails
       }
 
+      // Check and award referral bonus for both users (first transaction completion)
+      await checkAndAwardReferralBonus(request.item_requests.requesterId);
+      await checkAndAwardReferralBonus(request.items.ownerId!);
+
       res.json({
         success: true,
         request: updated,
@@ -4341,6 +4408,10 @@ Respond with ONLY the category name, nothing else.`
         console.error("Error awarding rental trust points:", trustError);
       }
 
+      // Check and award referral bonus for both users (first transaction completion)
+      await checkAndAwardReferralBonus(renterId);
+      if (ownerId) await checkAndAwardReferralBonus(ownerId);
+
       res.json({
         success: true,
         message: "Rental marked as returned successfully",
@@ -4419,6 +4490,10 @@ Respond with ONLY the category name, nothing else.`
         .update(itemRequests)
         .set({ status: "COMPLETED" })
         .where(eq(itemRequests.id, requestId));
+
+      // Check and award referral bonus for both users (first transaction completion)
+      await checkAndAwardReferralBonus(borrowerId);
+      if (ownerId) await checkAndAwardReferralBonus(ownerId);
 
       res.json({
         success: true,

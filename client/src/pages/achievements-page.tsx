@@ -411,12 +411,12 @@ export default function AchievementsPage() {
             </Card>
 
             {/* Reviews */}
-            {reviews && reviews.length > 0 && (
-              <div>
-                <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-teal-500" />
-                  What Neighbours Say
-                </h2>
+            <div>
+              <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-teal-500" />
+                What Neighbours Say
+              </h2>
+              {reviews && reviews.length > 0 ? (
                 <div className="space-y-2">
                   {reviews.slice(0, 3).map((review) => (
                     <div
@@ -453,8 +453,15 @@ export default function AchievementsPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 text-center">
+                  <Quote className="h-6 w-6 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">
+                    No reviews yet. Complete transactions to receive feedback from neighbours!
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Milestones */}
             <div>

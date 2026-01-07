@@ -69,6 +69,14 @@ interface LocationAlert {
   isActive: boolean;
 }
 
+const LEVELS = [
+  { name: "Newcomer", minScore: 0 },
+  { name: "Neighbour", minScore: 50 },
+  { name: "Trusted Member", minScore: 150 },
+  { name: "Community Pillar", minScore: 300 },
+  { name: "ShareSwap Champion", minScore: 500 },
+];
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -164,6 +172,14 @@ export default function ProfilePage() {
       phone: "",
     });
   };
+
+  // Calculate current level based on reputation score
+  const reputationScore = user?.reputationScore || 0;
+  const currentLevelIndex = LEVELS.findIndex((level, index) => {
+    const nextLevel = LEVELS[index + 1];
+    return !nextLevel || reputationScore < nextLevel.minScore;
+  });
+  const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
 
   // Check if the tutorial has been seen before
   const hasSeenTutorial =
@@ -855,6 +871,13 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">Level</span>
+                    </div>
+                    <span className="font-semibold text-teal-700">{currentLevel.name}</span>
+                  </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Coins className="h-4 w-4 text-teal-500" />

@@ -1,6 +1,6 @@
 import { db } from "@db";
 import { users, reputationActivities } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 
 export const TRUST_POINTS = {
   MAJOR: {
@@ -21,14 +21,41 @@ export const TRUST_POINTS = {
     GIFTING_COMPLETED: 6,
   },
   PENALTIES: {
-    LATE_RETURN: -15,
-    DAMAGED_ITEM: -25,
-    DISPUTE_OPENED: -20,
-    NO_SHOW: -30,
+    // Major penalties (big drops)
+    ITEM_NOT_RETURNED: -60,
+    DAMAGE_CONFIRMED: -45,
+    DEPOSIT_CLAIMED: -50,
+    FRAUD_ABUSE: -100,
+    REPEATED_NO_SHOWS: -35,
+    // Medium penalties
+    LATE_RETURN_NO_COMMUNICATION: -25,
+    CANCEL_AFTER_ACCEPTANCE: -20,
+    IGNORING_MESSAGES: -18,
+    // Minor penalties
+    SLOW_REPLIES: -8,
+    MISSED_PICKUP: -8,
+    MINOR_RULE_VIOLATION: -6,
   },
 };
 
+// Minimum trust score floor (can go negative to signal risk)
+export const TRUST_SCORE_FLOOR = -100;
+
+// Grace pass configuration
+export const GRACE_PASS_CONFIG = {
+  ENABLED_PENALTY_TYPES: [
+    "late_return_no_communication",
+    "cancel_after_acceptance",
+    "missed_pickup",
+    "slow_replies",
+    "minor_rule_violation",
+  ] as const,
+  // Period to check for prior offenses (30 days)
+  LOOKBACK_DAYS: 30,
+};
+
 export type TrustActivityType =
+  // Positive activities
   | "borrow_return_perfect"
   | "borrow_return_good"
   | "borrow_return_late"
@@ -39,11 +66,36 @@ export type TrustActivityType =
   | "positive_feedback"
   | "rental_dispute_free"
   | "gifting_completed"
-  | "late_return_penalty"
-  | "damaged_item_penalty"
-  | "dispute_penalty"
-  | "no_show_penalty"
-  | "verification_approved";
+  | "verification_approved"
+  // Major penalty activities
+  | "item_not_returned"
+  | "damage_confirmed"
+  | "deposit_claimed"
+  | "fraud_abuse"
+  | "repeated_no_shows"
+  // Medium penalty activities
+  | "late_return_no_communication"
+  | "cancel_after_acceptance"
+  | "ignoring_messages"
+  // Minor penalty activities
+  | "slow_replies"
+  | "missed_pickup"
+  | "minor_rule_violation"
+  // Grace pass (no points deducted, just warning)
+  | "grace_pass_warning";
+
+export type PenaltyType = 
+  | "item_not_returned"
+  | "damage_confirmed"
+  | "deposit_claimed"
+  | "fraud_abuse"
+  | "repeated_no_shows"
+  | "late_return_no_communication"
+  | "cancel_after_acceptance"
+  | "ignoring_messages"
+  | "slow_replies"
+  | "missed_pickup"
+  | "minor_rule_violation";
 
 interface TrustActivityMetadata {
   requestId?: number;
@@ -53,6 +105,8 @@ interface TrustActivityMetadata {
   daysLate?: number;
   feedbackTags?: string[];
   responseTimeMs?: number;
+  originalPenaltyType?: string;
+  wasGracePass?: boolean;
   [key: string]: any;
 }
 
@@ -72,7 +126,7 @@ export async function awardTrustPoints(
   }
 
   const currentScore = user.reputationScore || 0;
-  const newScore = Math.max(0, currentScore + points);
+  const newScore = Math.max(TRUST_SCORE_FLOOR, currentScore + points);
 
   const description = buildActivityDescription(activityType, metadata);
 
@@ -97,6 +151,7 @@ export async function awardTrustPoints(
 
 function buildActivityDescription(activityType: TrustActivityType, metadata: TrustActivityMetadata): string {
   switch (activityType) {
+    // Positive activities
     case "borrow_return_perfect":
       return "Returned borrowed item on time and in perfect condition";
     case "borrow_return_good":
@@ -119,6 +174,34 @@ function buildActivityDescription(activityType: TrustActivityType, metadata: Tru
       return "Gifted an item to a neighbor";
     case "verification_approved":
       return "Account verification approved";
+    // Major penalties
+    case "item_not_returned":
+      return "Failed to return borrowed item";
+    case "damage_confirmed":
+      return "Item damage confirmed by support";
+    case "deposit_claimed":
+      return "Security deposit was claimed due to violation";
+    case "fraud_abuse":
+      return "Account flagged for fraud or abuse";
+    case "repeated_no_shows":
+      return "Repeated no-shows for scheduled transactions";
+    // Medium penalties
+    case "late_return_no_communication":
+      return `Returned item ${metadata.daysLate || 0} days late without prior notice`;
+    case "cancel_after_acceptance":
+      return "Cancelled transaction after it was accepted";
+    case "ignoring_messages":
+      return "Failed to respond to messages during active transaction";
+    // Minor penalties
+    case "slow_replies":
+      return "Consistently slow response times";
+    case "missed_pickup":
+      return "Missed scheduled pickup window";
+    case "minor_rule_violation":
+      return "Minor platform rule violation";
+    // Grace pass
+    case "grace_pass_warning":
+      return `First-time warning issued for: ${metadata.originalPenaltyType || "violation"}`;
     default:
       return `Trust activity: ${activityType}`;
   }
@@ -146,7 +229,7 @@ export async function awardBorrowReturnPoints(
     borrowerPoints = TRUST_POINTS.MAJOR.BORROW_RETURN_LATE;
     borrowerActivityType = "borrow_return_late";
   } else {
-    borrowerPoints = TRUST_POINTS.PENALTIES.DAMAGED_ITEM;
+    borrowerPoints = TRUST_POINTS.PENALTIES.DAMAGE_CONFIRMED;
     borrowerActivityType = "borrow_return_damaged";
     lenderPoints = 0;
   }
@@ -269,4 +352,210 @@ export async function awardFeedbackPoints(
       feedbackTags,
     });
   }
+}
+
+// ============================================
+// PENALTY SYSTEM
+// ============================================
+
+const PENALTY_POINTS: Record<PenaltyType, number> = {
+  item_not_returned: TRUST_POINTS.PENALTIES.ITEM_NOT_RETURNED,
+  damage_confirmed: TRUST_POINTS.PENALTIES.DAMAGE_CONFIRMED,
+  deposit_claimed: TRUST_POINTS.PENALTIES.DEPOSIT_CLAIMED,
+  fraud_abuse: TRUST_POINTS.PENALTIES.FRAUD_ABUSE,
+  repeated_no_shows: TRUST_POINTS.PENALTIES.REPEATED_NO_SHOWS,
+  late_return_no_communication: TRUST_POINTS.PENALTIES.LATE_RETURN_NO_COMMUNICATION,
+  cancel_after_acceptance: TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
+  ignoring_messages: TRUST_POINTS.PENALTIES.IGNORING_MESSAGES,
+  slow_replies: TRUST_POINTS.PENALTIES.SLOW_REPLIES,
+  missed_pickup: TRUST_POINTS.PENALTIES.MISSED_PICKUP,
+  minor_rule_violation: TRUST_POINTS.PENALTIES.MINOR_RULE_VIOLATION,
+};
+
+async function checkGracePassEligibility(
+  userId: number,
+  penaltyType: PenaltyType
+): Promise<boolean> {
+  // Only certain penalty types are eligible for grace pass
+  const graceEligible = GRACE_PASS_CONFIG.ENABLED_PENALTY_TYPES as readonly string[];
+  if (!graceEligible.includes(penaltyType)) {
+    return false;
+  }
+
+  // Check if user has any prior penalties of this type in the lookback period
+  const lookbackDate = new Date();
+  lookbackDate.setDate(lookbackDate.getDate() - GRACE_PASS_CONFIG.LOOKBACK_DAYS);
+
+  const priorPenalties = await db
+    .select()
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, userId),
+        eq(reputationActivities.activityType, penaltyType),
+        gte(reputationActivities.createdAt, lookbackDate)
+      )
+    );
+
+  // Also check for prior grace pass warnings for this type
+  const priorWarnings = await db
+    .select()
+    .from(reputationActivities)
+    .where(
+      and(
+        eq(reputationActivities.userId, userId),
+        eq(reputationActivities.activityType, "grace_pass_warning"),
+        gte(reputationActivities.createdAt, lookbackDate)
+      )
+    );
+
+  // Filter warnings that match this penalty type (stored in description)
+  const relevantWarnings = priorWarnings.filter(
+    (w) => w.description?.includes(penaltyType)
+  );
+
+  // Eligible for grace pass if no prior penalties and no prior warnings for this type
+  return priorPenalties.length === 0 && relevantWarnings.length === 0;
+}
+
+export async function applyTrustPenalty(
+  userId: number,
+  penaltyType: PenaltyType,
+  metadata: TrustActivityMetadata = {}
+): Promise<{
+  applied: boolean;
+  wasGracePass: boolean;
+  pointsDeducted: number;
+  newScore: number;
+}> {
+  const points = PENALTY_POINTS[penaltyType];
+
+  // Check if eligible for grace pass
+  const isGraceEligible = await checkGracePassEligibility(userId, penaltyType);
+
+  if (isGraceEligible) {
+    // Issue a grace pass warning (no points deducted)
+    await awardTrustPoints(userId, "grace_pass_warning", 0, {
+      ...metadata,
+      originalPenaltyType: penaltyType,
+      wasGracePass: true,
+    });
+
+    const [user] = await db
+      .select({ reputationScore: users.reputationScore })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    console.log(`⚠️ Grace pass issued for user ${userId}: ${penaltyType} (first offense)`);
+
+    return {
+      applied: false,
+      wasGracePass: true,
+      pointsDeducted: 0,
+      newScore: user?.reputationScore || 0,
+    };
+  }
+
+  // Apply the penalty
+  const result = await awardTrustPoints(userId, penaltyType, points, metadata);
+
+  console.log(`🚨 Trust penalty applied to user ${userId}: ${penaltyType} (${points} points)`);
+
+  return {
+    applied: true,
+    wasGracePass: false,
+    pointsDeducted: Math.abs(points),
+    newScore: result.newScore,
+  };
+}
+
+// Convenience functions for specific penalty types
+export async function applyLateReturnPenalty(
+  userId: number,
+  requestId: number,
+  itemId: number,
+  daysLate: number,
+  hadCommunication: boolean
+): Promise<{ applied: boolean; wasGracePass: boolean }> {
+  // Don't penalize if they communicated in advance
+  if (hadCommunication) {
+    console.log(`ℹ️ Late return for user ${userId} not penalized - prior communication noted`);
+    return { applied: false, wasGracePass: false };
+  }
+
+  const result = await applyTrustPenalty(userId, "late_return_no_communication", {
+    requestId,
+    itemId,
+    daysLate,
+  });
+
+  return { applied: result.applied, wasGracePass: result.wasGracePass };
+}
+
+export async function applyCancellationPenalty(
+  userId: number,
+  requestId: number,
+  itemId: number
+): Promise<{ applied: boolean; wasGracePass: boolean }> {
+  const result = await applyTrustPenalty(userId, "cancel_after_acceptance", {
+    requestId,
+    itemId,
+  });
+
+  return { applied: result.applied, wasGracePass: result.wasGracePass };
+}
+
+export async function applyNoShowPenalty(
+  userId: number,
+  requestId: number,
+  itemId: number
+): Promise<{ applied: boolean; wasGracePass: boolean }> {
+  const result = await applyTrustPenalty(userId, "missed_pickup", {
+    requestId,
+    itemId,
+  });
+
+  return { applied: result.applied, wasGracePass: result.wasGracePass };
+}
+
+export async function applyDepositClaimedPenalty(
+  userId: number,
+  requestId: number,
+  itemId: number
+): Promise<{ applied: boolean }> {
+  // Deposit claimed is a major penalty - no grace pass
+  const result = await applyTrustPenalty(userId, "deposit_claimed", {
+    requestId,
+    itemId,
+  });
+
+  return { applied: result.applied };
+}
+
+export async function applyItemNotReturnedPenalty(
+  userId: number,
+  requestId: number,
+  itemId: number
+): Promise<{ applied: boolean }> {
+  // Item not returned is a major penalty - no grace pass
+  const result = await applyTrustPenalty(userId, "item_not_returned", {
+    requestId,
+    itemId,
+  });
+
+  return { applied: result.applied };
+}
+
+export async function applyDamageConfirmedPenalty(
+  userId: number,
+  requestId: number,
+  itemId: number
+): Promise<{ applied: boolean }> {
+  // Damage confirmed is a major penalty - no grace pass
+  const result = await applyTrustPenalty(userId, "damage_confirmed", {
+    requestId,
+    itemId,
+  });
+
+  return { applied: result.applied };
 }

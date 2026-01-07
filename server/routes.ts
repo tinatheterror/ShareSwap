@@ -35,7 +35,18 @@ import { CooldownChecker } from "./cooldown-checker";
 import { csrfProtection, setCsrfToken } from "./csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
-import { awardBorrowReturnPoints, awardSwapCompletionPoints, awardRentalCompletionPoints, awardGiftingPoints, awardFeedbackPoints, TRUST_POINTS } from "./trust-score-service";
+import { 
+  awardBorrowReturnPoints, 
+  awardSwapCompletionPoints, 
+  awardRentalCompletionPoints, 
+  awardGiftingPoints, 
+  awardFeedbackPoints, 
+  TRUST_POINTS,
+  applyLateReturnPenalty,
+  applyCancellationPenalty,
+  applyNoShowPenalty,
+  applyDepositClaimedPenalty
+} from "./trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
 import { calculateReplacementValue } from "./replacement-value";
 
@@ -2680,7 +2691,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     try {
-      const { paymentIntentId, reason, amount } = req.body;
+      const { paymentIntentId, reason, amount, requestId } = req.body;
 
       if (!paymentIntentId) {
         return res.status(400).json({ error: "Payment intent ID required" });
@@ -2690,6 +2701,30 @@ Respond with ONLY the category name, nothing else.`
       const capturedPayment = await stripe.paymentIntents.capture(paymentIntentId, {
         amount_to_capture: amount ? Math.round(amount * 100) : undefined,
       });
+
+      // Apply deposit claimed penalty to the borrower/renter
+      if (capturedPayment.status === "succeeded" && requestId) {
+        try {
+          const [request] = await db
+            .select()
+            .from(itemRequests)
+            .innerJoin(items, eq(items.id, itemRequests.itemId))
+            .where(eq(itemRequests.id, parseInt(requestId)))
+            .limit(1);
+          
+          if (request) {
+            await applyDepositClaimedPenalty(
+              request.item_requests.requesterId,
+              parseInt(requestId),
+              request.items.id
+            );
+            console.log(`🚨 Deposit claimed penalty applied to user ${request.item_requests.requesterId}`);
+          }
+        } catch (penaltyError) {
+          console.error("Error applying deposit claimed penalty:", penaltyError);
+          // Don't fail the capture if penalty fails
+        }
+      }
 
       res.json({
         success: true,
@@ -2956,6 +2991,176 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Cancel request after acceptance (applies penalty with grace pass for first offense)
+  app.post("/api/requests/:requestId/cancel", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { reason } = req.body;
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Check if user is involved in this request
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      
+      if (!isOwner && !isRequester) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Can only cancel if status is ACCEPTED or beyond (but not COMPLETED)
+      const cancelableStatuses = ["ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
+      if (!cancelableStatuses.includes(request.item_requests.status)) {
+        return res.status(400).json({ 
+          error: "Cannot cancel request in current status",
+          currentStatus: request.item_requests.status
+        });
+      }
+
+      // Release any held deposit via Stripe before cancelling
+      if (request.item_requests.depositPaymentIntentId) {
+        try {
+          await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
+        } catch (stripeError: any) {
+          console.error("Error releasing deposit on cancel:", stripeError);
+          // Continue with cancellation even if Stripe fails
+        }
+      }
+
+      // Update request status to CANCELLED
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          status: "CANCELLED",
+          depositStatus: request.item_requests.depositPaymentIntentId ? "released" : null,
+          depositReleasedAt: request.item_requests.depositPaymentIntentId ? new Date() : null,
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      // Make item available again
+      await db
+        .update(items)
+        .set({ isAvailable: true })
+        .where(eq(items.id, request.items.id));
+
+      // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
+      let penaltyResult = { applied: false, wasGracePass: false };
+      try {
+        penaltyResult = await applyCancellationPenalty(
+          req.user.id,
+          requestId,
+          request.items.id
+        );
+      } catch (penaltyError) {
+        console.error("Error applying cancellation penalty:", penaltyError);
+        // Don't fail the cancellation if penalty fails
+      }
+
+      res.json({
+        success: true,
+        request: updated,
+        depositReleased: !!request.item_requests.depositPaymentIntentId,
+        message: penaltyResult.wasGracePass 
+          ? "Request cancelled. This is your first cancellation - no penalty applied, but future cancellations will affect your trust score."
+          : penaltyResult.applied 
+            ? "Request cancelled. A trust score penalty has been applied."
+            : "Request cancelled successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error cancelling request:", error);
+      res.status(500).json({ error: "Failed to cancel request" });
+    }
+  });
+
+  // Report no-show (missed pickup window - applies penalty with grace pass)
+  app.post("/api/requests/:requestId/report-no-show", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { reportedUserId, description } = req.body;
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Check if reporter is involved in this request
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      
+      if (!isOwner && !isRequester) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Can't report yourself
+      if (reportedUserId === req.user.id) {
+        return res.status(400).json({ error: "Cannot report yourself" });
+      }
+
+      // Verify the reported user is involved in this request
+      if (reportedUserId !== request.items.ownerId && reportedUserId !== request.item_requests.requesterId) {
+        return res.status(400).json({ error: "Reported user is not part of this transaction" });
+      }
+
+      // Only apply no-show penalty to valid statuses
+      const noShowStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
+      if (!noShowStatuses.includes(request.item_requests.status)) {
+        return res.status(400).json({ 
+          error: "Cannot report no-show in current status",
+          currentStatus: request.item_requests.status
+        });
+      }
+
+      // Apply no-show penalty (with grace pass for first offense)
+      let penaltyResult = { applied: false, wasGracePass: false };
+      try {
+        penaltyResult = await applyNoShowPenalty(
+          reportedUserId,
+          requestId,
+          request.items.id
+        );
+      } catch (penaltyError) {
+        console.error("Error applying no-show penalty:", penaltyError);
+      }
+
+      res.json({
+        success: true,
+        penaltyApplied: penaltyResult.applied,
+        wasGracePass: penaltyResult.wasGracePass,
+        message: penaltyResult.wasGracePass 
+          ? "No-show reported. This is the user's first offense - a warning has been issued."
+          : penaltyResult.applied 
+            ? "No-show reported. A trust score penalty has been applied to the user."
+            : "No-show reported and logged.",
+      });
+    } catch (error: any) {
+      console.error("Error reporting no-show:", error);
+      res.status(500).json({ error: "Failed to report no-show" });
+    }
+  });
+
   // Confirm handoff (item exchanged - charges ShareCoins, starts borrow period)
   app.post("/api/requests/:requestId/handoff", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -3077,6 +3282,71 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Borrower notifies about expected late return (avoids penalty when communicating in advance)
+  // IMPORTANT: Must be called BEFORE the due date to avoid penalties - post-facto notifications are rejected
+  app.post("/api/requests/:requestId/notify-delay", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { reason } = req.body;
+      
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // Must be the borrower/requester
+      if (request.requesterId !== req.user.id) {
+        return res.status(403).json({ error: "Only the borrower can notify about delays" });
+      }
+
+      // Must be in a valid state for delay notification
+      const validStatuses = ["IN_PROGRESS"];
+      if (!validStatuses.includes(request.status)) {
+        return res.status(400).json({ error: "Cannot notify delay in current status" });
+      }
+
+      // CRITICAL: Can only notify BEFORE the due date
+      // Post-facto notifications don't count - must communicate in advance
+      const now = new Date();
+      const endDate = request.endDate ? new Date(request.endDate) : null;
+      
+      if (endDate && now >= endDate) {
+        return res.status(400).json({ 
+          error: "Cannot notify about delay after the due date. To avoid penalties, please communicate before the return date.",
+          alreadyOverdue: true
+        });
+      }
+
+      // Update the request with delay notification
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          returnDelayNotifiedAt: new Date(),
+          returnDelayReason: reason || "Borrower notified about expected delay",
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      res.json({
+        success: true,
+        request: updated,
+        message: "Delay notification recorded. Thank you for communicating - this will help avoid trust score penalties.",
+      });
+    } catch (error: any) {
+      console.error("Error recording delay notification:", error);
+      res.status(500).json({ error: "Failed to record delay notification" });
+    }
+  });
+
   // Borrower initiates return
   app.post("/api/requests/:requestId/return", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -3191,7 +3461,14 @@ Respond with ONLY the category name, nothing else.`
       // Award trust points using the new tiered system
       // Check if return was on time (before or on the end date)
       const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
-      const wasOnTime = endDate ? new Date() <= endDate : true;
+      const now = new Date();
+      const wasOnTime = endDate ? now <= endDate : true;
+      
+      // Calculate days late for penalty purposes
+      let daysLate = 0;
+      if (!wasOnTime && endDate) {
+        daysLate = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+      }
       
       try {
         await awardBorrowReturnPoints(
@@ -3202,6 +3479,19 @@ Respond with ONLY the category name, nothing else.`
           conditionRating || 5,
           wasOnTime
         );
+        
+        // Apply late return penalty if applicable (with grace pass for first-time offenders)
+        // Only penalize if borrower didn't notify about the delay in advance
+        if (!wasOnTime && daysLate >= 1) {
+          const hadCommunication = !!request.item_requests.returnDelayNotifiedAt;
+          await applyLateReturnPenalty(
+            request.item_requests.requesterId,
+            requestId,
+            request.items.id,
+            daysLate,
+            hadCommunication
+          );
+        }
       } catch (trustError) {
         console.error("Error awarding trust points:", trustError);
         // Don't fail the return if trust scoring fails

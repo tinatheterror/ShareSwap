@@ -281,6 +281,10 @@ export const itemRequests = pgTable("item_requests", {
   returnConditionNotes: text("return_condition_notes"),
   returnConditionRating: integer("return_condition_rating"), // 1-5 rating of return condition
   
+  // Delay notification tracking (for avoiding late return penalties when borrower communicates)
+  returnDelayNotifiedAt: timestamp("return_delay_notified_at"),
+  returnDelayReason: text("return_delay_reason"),
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   itemIdx: index("item_requests_item_id_idx").on(table.itemId),

@@ -93,6 +93,19 @@ Key architectural decisions and features include:
     - **Permanent Deletion**: Requires contacting support@shareswap.com (not self-service) to ensure proper data handling
 - **Security**: Comprehensive CSRF protection using a double-submit cookie pattern.
 - **Database Optimization**: Strategic composite indexes for improved query performance.
+- **Trust Score System** (server/trust-score-service.ts): Comprehensive tiered trust scoring with rewards and penalties.
+    - **Positive Points (Rewards)**:
+      - Major: Borrow return perfect (+40), Borrow return good (+25), Borrow return late (+10), Lending smooth (+30), Swap completed (+30)
+      - Medium: Positive feedback tags (+12 each for reliable/on_time/as_described), Timely communication (+15)
+      - Micro: Rental dispute-free (+8), Gifting completed (+6)
+    - **Negative Points (Penalties)**:
+      - Major: Item not returned (-60), Damage confirmed (-45), Deposit claimed (-50), Fraud/abuse (-100), Repeated no-shows (-35)
+      - Medium: Late return without communication (-25), Cancel after acceptance (-20), Ignoring messages (-18)
+      - Minor: Slow replies (-8), Missed pickup (-8), Minor rule violation (-6)
+    - **Grace Pass System**: First-time offenders for medium/minor penalties receive a warning instead of a penalty (30-day lookback)
+    - **Trust Score Floor**: -100 (can go negative to signal high-risk users)
+    - **Communication Tracking**: Borrowers can notify about delays before due date via `/api/requests/:id/notify-delay` to avoid late return penalties
+    - **What NOT to Penalize**: Honest accidents with fast resolution, first-time mistakes (grace pass), disputes resolved fairly
 
 ## External Dependencies
 - **Database**: PostgreSQL

@@ -423,9 +423,8 @@ export function ItemRequestForm({
                   rentalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
                 }
                 
-                // Get rental rate from item (weekly rate)
-                const weeklyRate = (item as any).rentalRate || 10;
-                const dailyRate = Math.max(1, Math.round(weeklyRate / 7));
+                // Get rental rate from item (daily rate stored in dollarsPrice)
+                const dailyRate = Number((item as any).dollarsPrice) || 10;
                 const rentalCost = rentalDays > 0 ? dailyRate * rentalDays : 0;
                 
                 // Platform fee (0% for 2025, but show the line)
@@ -434,13 +433,13 @@ export function ItemRequestForm({
                 
                 // Processing fee (3%)
                 const processingFeePercent = 0.03;
-                const processingFee = Math.round(rentalCost * processingFeePercent);
+                const processingFee = Math.round(rentalCost * processingFeePercent * 100) / 100;
                 
                 // Delivery cost
                 const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
                 
-                // Deposit (from item)
-                const deposit = (item as any).rentalDeposit || Math.round(((item as any).aiValuation || 50) * 0.3);
+                // Deposit (from item's securityDeposit field)
+                const deposit = Number((item as any).securityDeposit) || 25;
                 
                 // Total due now (rental + fees + delivery)
                 const totalDueNow = rentalCost + platformFee + processingFee + deliveryCost;
@@ -454,8 +453,8 @@ export function ItemRequestForm({
                     {rentalDays > 0 ? (
                       <div className="space-y-1.5 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Rental ({rentalDays} {rentalDays === 1 ? 'day' : 'days'} × ${dailyRate}/day)</span>
-                          <span className="font-medium">${rentalCost}</span>
+                          <span className="text-gray-600">Rental ({rentalDays} {rentalDays === 1 ? 'day' : 'days'} × ${dailyRate.toFixed(2)}/day)</span>
+                          <span className="font-medium">${rentalCost.toFixed(2)}</span>
                         </div>
                         {deliveryCost > 0 && (
                           <div className="flex justify-between">
@@ -469,13 +468,13 @@ export function ItemRequestForm({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Payment processing (3%)</span>
-                          <span className="font-medium">${processingFee}</span>
+                          <span className="font-medium">${processingFee.toFixed(2)}</span>
                         </div>
                         
                         <div className="border-t border-gray-200 pt-1.5 mt-1.5">
                           <div className="flex justify-between font-medium">
                             <span className="text-gray-700">Total due now</span>
-                            <span className="text-teal-600">${totalDueNow}</span>
+                            <span className="text-teal-600">${totalDueNow.toFixed(2)}</span>
                           </div>
                         </div>
                         
@@ -485,7 +484,7 @@ export function ItemRequestForm({
                               <Shield className="h-3 w-3" />
                               Security deposit (refundable)
                             </span>
-                            <span className="font-medium">${deposit}</span>
+                            <span className="font-medium">${deposit.toFixed(2)}</span>
                           </div>
                           <p className="text-[10px] text-gray-400 mt-0.5">
                             Held securely, auto-refunded on return

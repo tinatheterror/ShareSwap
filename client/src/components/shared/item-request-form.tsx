@@ -43,6 +43,7 @@ import * as z from "zod";
 import { Link } from "wouter";
 import type { SelectItem } from "@db/schema";
 import { calculateSwap, getSwapTierLabel } from "@/lib/swap-calculator";
+import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 
 const formSchema = z.object({
   message: z.string().min(1, "Please include a message to the owner"),
@@ -494,6 +495,74 @@ export function ItemRequestForm({
                     ) : (
                       <p className="text-xs text-gray-500">Select dates to see cost breakdown</p>
                     )}
+                  </div>
+                );
+              })()
+            )}
+
+            {/* Borrow Cost Breakdown - Only for BORROW */}
+            {requestType === "BORROW" && (
+              (() => {
+                // Get ShareCoin price from item
+                const shareCoinPrice = (item as any).shareCoinPrice || 5;
+                
+                // Calculate trust-based deposit
+                const itemTier = (item as any).tier || 2;
+                const itemOriginalValue = (item as any).originalValue || "$50–$150";
+                const reputationScore = (user as any)?.reputationScore || 0;
+                const viewerTrustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+                const depositCalc = calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);
+                
+                // Check if deposit is applicable (has valid replacement value)
+                const hasDeposit = hasValidReplacementValue((item as any).replacementValue);
+                
+                return (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                    <div className="text-gray-700 font-medium text-sm">
+                      Cost Breakdown
+                    </div>
+                    
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 flex items-center gap-1">
+                          <Coins className="h-3 w-3 text-teal-600" />
+                          ShareCoins required
+                        </span>
+                        <span className="font-medium">{shareCoinPrice} SC</span>
+                      </div>
+                      
+                      {hasDeposit && (
+                        <div className="border-t border-gray-200 pt-1.5 mt-1.5">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 flex items-center gap-1">
+                              <Shield className="h-3 w-3" />
+                              Trust-deposit (refundable)
+                            </span>
+                            {depositCalc.discountPercentage > 0 ? (
+                              <span className="font-medium flex items-center gap-1.5">
+                                <span className="relative text-gray-400">
+                                  <span className="absolute inset-0 flex items-center">
+                                    <span className="w-full h-[1px] bg-gray-400"></span>
+                                  </span>
+                                  ${depositCalc.baseDeposit}
+                                </span>
+                                <span className="text-teal-600">${depositCalc.finalDeposit}</span>
+                              </span>
+                            ) : (
+                              <span className="font-medium">${depositCalc.finalDeposit}</span>
+                            )}
+                          </div>
+                          {depositCalc.discountPercentage > 0 && (
+                            <p className="text-[10px] text-teal-600 mt-0.5">
+                              {depositCalc.discountPercentage}% discount from your trust score
+                            </p>
+                          )}
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Held securely, auto-refunded on return
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })()

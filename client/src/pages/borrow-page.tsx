@@ -212,7 +212,12 @@ export default function BorrowPage() {
       {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
       <div
         className="w-full relative"
-        style={{ backgroundColor: "#0DCEA1", borderBottomRightRadius: "32px" }}
+        style={{ 
+          backgroundImage: "url('/hero-banner.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          borderBottomRightRadius: "32px"
+        }}
       >
         <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">

@@ -21,34 +21,28 @@ export const TRUST_POINTS = {
     GIFTING_COMPLETED: 6,
   },
   PENALTIES: {
-    // Major penalties (big drops)
+    // Major penalties (significant trust impact)
     ITEM_NOT_RETURNED: -60,
     DAMAGE_CONFIRMED: -45,
     DEPOSIT_CLAIMED: -50,
     FRAUD_ABUSE: -100,
     REPEATED_NO_SHOWS: -35,
-    // Medium penalties
+    // Medium penalties (moderate trust impact)
     LATE_RETURN_NO_COMMUNICATION: -25,
     CANCEL_AFTER_ACCEPTANCE: -20,
     IGNORING_MESSAGES: -18,
-    // Minor penalties
-    SLOW_REPLIES: -8,
-    MISSED_PICKUP: -8,
-    MINOR_RULE_VIOLATION: -6,
+    // Minor penalties removed - we don't penalize for minor issues
   },
 };
 
 // Minimum trust score floor (can go negative to signal risk)
 export const TRUST_SCORE_FLOOR = 0;
 
-// Grace pass configuration
+// Grace pass configuration - first-time offenders get a warning instead of penalty
 export const GRACE_PASS_CONFIG = {
   ENABLED_PENALTY_TYPES: [
     "late_return_no_communication",
     "cancel_after_acceptance",
-    "missed_pickup",
-    "slow_replies",
-    "minor_rule_violation",
   ] as const,
   // Period to check for prior offenses (30 days)
   LOOKBACK_DAYS: 30,
@@ -77,10 +71,6 @@ export type TrustActivityType =
   | "late_return_no_communication"
   | "cancel_after_acceptance"
   | "ignoring_messages"
-  // Minor penalty activities
-  | "slow_replies"
-  | "missed_pickup"
-  | "minor_rule_violation"
   // Grace pass (no points deducted, just warning)
   | "grace_pass_warning";
 
@@ -92,10 +82,7 @@ export type PenaltyType =
   | "repeated_no_shows"
   | "late_return_no_communication"
   | "cancel_after_acceptance"
-  | "ignoring_messages"
-  | "slow_replies"
-  | "missed_pickup"
-  | "minor_rule_violation";
+  | "ignoring_messages";
 
 interface TrustActivityMetadata {
   requestId?: number;
@@ -153,60 +140,53 @@ function buildActivityDescription(
   activityType: TrustActivityType,
   metadata: TrustActivityMetadata,
 ): string {
+  // Use neutral wording for all activities
   switch (activityType) {
     // Positive activities
     case "borrow_return_perfect":
-      return "Returned borrowed item on time and in perfect condition";
+      return "Your trust score was adjusted based on this transaction.";
     case "borrow_return_good":
-      return "Returned borrowed item on time in good condition";
+      return "Your trust score was adjusted based on this transaction.";
     case "borrow_return_late":
-      return "Returned borrowed item late but in acceptable condition";
+      return "Your trust score was adjusted based on this transaction.";
     case "borrow_return_damaged":
-      return "Returned borrowed item with damage";
+      return "Your trust score was adjusted based on this transaction.";
     case "lending_smooth":
-      return "Completed lending transaction smoothly";
+      return "Your trust score was adjusted based on this transaction.";
     case "swap_completed":
-      return "Completed swap transaction successfully";
+      return "Your trust score was adjusted based on this transaction.";
     case "timely_communication":
-      return "Responded promptly within communication SLA";
+      return "Your trust score was adjusted based on this transaction.";
     case "positive_feedback":
-      return `Received positive feedback: ${metadata.feedbackTags?.join(", ") || ""}`;
+      return "Your trust score was adjusted based on this transaction.";
     case "rental_dispute_free":
-      return "Completed rental without disputes";
+      return "Your trust score was adjusted based on this transaction.";
     case "gifting_completed":
-      return "Gifted an item to a neighbor";
+      return "Your trust score was adjusted based on this transaction.";
     case "verification_approved":
-      return "Account verification approved";
-    // Major penalties
+      return "Your trust score was adjusted based on this transaction.";
+    // Penalty activities - same neutral wording
     case "item_not_returned":
-      return "Failed to return borrowed item";
+      return "Your trust score was adjusted based on this transaction.";
     case "damage_confirmed":
-      return "Item damage confirmed by support";
+      return "Your trust score was adjusted based on this transaction.";
     case "deposit_claimed":
-      return "Security deposit was claimed due to violation";
+      return "Your trust score was adjusted based on this transaction.";
     case "fraud_abuse":
-      return "Account flagged for fraud or abuse";
+      return "Your trust score was adjusted based on this transaction.";
     case "repeated_no_shows":
-      return "Repeated no-shows for scheduled transactions";
-    // Medium penalties
+      return "Your trust score was adjusted based on this transaction.";
     case "late_return_no_communication":
-      return `Returned item ${metadata.daysLate || 0} days late without prior notice`;
+      return "Your trust score was adjusted based on this transaction.";
     case "cancel_after_acceptance":
-      return "Cancelled transaction after it was accepted";
+      return "Your trust score was adjusted based on this transaction.";
     case "ignoring_messages":
-      return "Failed to respond to messages during active transaction";
-    // Minor penalties
-    case "slow_replies":
-      return "Consistently slow response times";
-    case "missed_pickup":
-      return "Missed scheduled pickup window";
-    case "minor_rule_violation":
-      return "Minor platform rule violation";
+      return "Your trust score was adjusted based on this transaction.";
     // Grace pass
     case "grace_pass_warning":
-      return `First-time warning issued for: ${metadata.originalPenaltyType || "violation"}`;
+      return "Your trust score was adjusted based on this transaction.";
     default:
-      return `Trust activity: ${activityType}`;
+      return "Your trust score was adjusted based on this transaction.";
   }
 }
 
@@ -376,9 +356,6 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
     TRUST_POINTS.PENALTIES.LATE_RETURN_NO_COMMUNICATION,
   cancel_after_acceptance: TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
   ignoring_messages: TRUST_POINTS.PENALTIES.IGNORING_MESSAGES,
-  slow_replies: TRUST_POINTS.PENALTIES.SLOW_REPLIES,
-  missed_pickup: TRUST_POINTS.PENALTIES.MISSED_PICKUP,
-  minor_rule_violation: TRUST_POINTS.PENALTIES.MINOR_RULE_VIOLATION,
 };
 
 async function checkGracePassEligibility(
@@ -527,18 +504,7 @@ export async function applyCancellationPenalty(
   return { applied: result.applied, wasGracePass: result.wasGracePass };
 }
 
-export async function applyNoShowPenalty(
-  userId: number,
-  requestId: number,
-  itemId: number,
-): Promise<{ applied: boolean; wasGracePass: boolean }> {
-  const result = await applyTrustPenalty(userId, "missed_pickup", {
-    requestId,
-    itemId,
-  });
-
-  return { applied: result.applied, wasGracePass: result.wasGracePass };
-}
+// Note: No-show/missed pickup is no longer penalized - removed minor penalties
 
 export async function applyDepositClaimedPenalty(
   userId: number,

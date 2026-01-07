@@ -44,7 +44,6 @@ import {
   TRUST_POINTS,
   applyLateReturnPenalty,
   applyCancellationPenalty,
-  applyNoShowPenalty,
   applyDepositClaimedPenalty
 } from "./trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
@@ -3133,27 +3132,10 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
-      // Apply no-show penalty (with grace pass for first offense)
-      let penaltyResult = { applied: false, wasGracePass: false };
-      try {
-        penaltyResult = await applyNoShowPenalty(
-          reportedUserId,
-          requestId,
-          request.items.id
-        );
-      } catch (penaltyError) {
-        console.error("Error applying no-show penalty:", penaltyError);
-      }
-
+      // No-show is logged but not penalized (minor violations removed)
       res.json({
         success: true,
-        penaltyApplied: penaltyResult.applied,
-        wasGracePass: penaltyResult.wasGracePass,
-        message: penaltyResult.wasGracePass 
-          ? "No-show reported. This is the user's first offense - a warning has been issued."
-          : penaltyResult.applied 
-            ? "No-show reported. A trust score penalty has been applied to the user."
-            : "No-show reported and logged.",
+        message: "No-show reported and logged.",
       });
     } catch (error: any) {
       console.error("Error reporting no-show:", error);

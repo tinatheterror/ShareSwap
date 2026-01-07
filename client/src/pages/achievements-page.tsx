@@ -95,8 +95,8 @@ export default function AchievementsPage() {
   });
 
   const { data: reviews } = useQuery<Review[]>({
-    queryKey: ["/api/users", user?.id, "reviews"],
-    enabled: !!user?.id,
+    queryKey: ["/api/users/username", user?.username, "reviews"],
+    enabled: !!user?.username,
   });
 
   const reputationScore = user?.reputationScore || 0;

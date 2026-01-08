@@ -33,6 +33,10 @@ export const users = pgTable("users", {
   accountStatus: text("account_status").default("active"), // 'active', 'deactivated', 'pending_deletion'
   deactivatedAt: timestamp("deactivated_at"),
   deletionRequestedAt: timestamp("deletion_requested_at"),
+  fullName: text("full_name"),
+  bio: text("bio"),
+  location: text("location"),
+  phone: text("phone"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

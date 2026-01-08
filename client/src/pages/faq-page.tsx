@@ -1117,16 +1117,6 @@ export default function FAQPage() {
                   </div>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="deposit-2b">
-                <AccordionTrigger className="text-sm">
-                  Why deposits don't increase for longer durations?
-                </AccordionTrigger>
-                <AccordionContent className="text-gray-600">
-                  <p>
-                    Deposits protect against loss or damage — risks that exist regardless of how long an item is borrowed or rented. For that reason, deposits are based on the item's value, not the borrow duration.
-                  </p>
-                </AccordionContent>
-              </AccordionItem>
               <AccordionItem value="deposit-3">
                 <AccordionTrigger className="text-sm">
                   What is the security deposit for renting?
@@ -1148,6 +1138,19 @@ export default function FAQPage() {
                   <p className="text-sm italic text-gray-500">
                     Deposits are held via payment authorization, not charged
                     upfront.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="deposit-2b">
+                <AccordionTrigger className="text-sm">
+                  Why deposits don't increase for longer durations?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p>
+                    Deposits protect against loss or damage — risks that exist
+                    regardless of how long an item is borrowed or rented. For
+                    that reason, deposits are based on the item's value, not the
+                    borrow duration.
                   </p>
                 </AccordionContent>
               </AccordionItem>

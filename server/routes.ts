@@ -4413,6 +4413,115 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Get user profile
+  app.get("/api/user-profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          bio: users.bio,
+          location: users.location,
+          phone: users.phone,
+          profilePhoto: users.profilePhoto,
+          isVerified: users.isVerified,
+          shareCoins: users.shareCoins,
+          reputationScore: users.reputationScore,
+          reputationLevel: users.reputationLevel,
+          isPremium: users.isPremium,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      res.status(500).json({ error: "Failed to fetch user profile" });
+    }
+  });
+
+  // Update user profile
+  app.patch("/api/user-profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const { fullName, bio, location, phone } = req.body;
+
+    // Build update object with only provided fields
+    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string }> = {};
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (bio !== undefined) updateData.bio = bio;
+    if (location !== undefined) updateData.location = location;
+    if (phone !== undefined) updateData.phone = phone;
+
+    // If no fields to update, just return current profile
+    if (Object.keys(updateData).length === 0) {
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          bio: users.bio,
+          location: users.location,
+          phone: users.phone,
+          profilePhoto: users.profilePhoto,
+          isVerified: users.isVerified,
+          shareCoins: users.shareCoins,
+          reputationScore: users.reputationScore,
+          reputationLevel: users.reputationLevel,
+          isPremium: users.isPremium,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      return res.json(user);
+    }
+
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, req.user.id))
+        .returning({
+          id: users.id,
+          username: users.username,
+          fullName: users.fullName,
+          bio: users.bio,
+          location: users.location,
+          phone: users.phone,
+          profilePhoto: users.profilePhoto,
+          isVerified: users.isVerified,
+          shareCoins: users.shareCoins,
+          reputationScore: users.reputationScore,
+          reputationLevel: users.reputationLevel,
+          isPremium: users.isPremium,
+          createdAt: users.createdAt,
+        });
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ error: "Failed to update user profile" });
+    }
+  });
+
   // Get current platform commission settings
   app.get("/api/platform/commission-config", async (req, res) => {
     if (!req.isAuthenticated()) {

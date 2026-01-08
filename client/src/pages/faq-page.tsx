@@ -1117,6 +1117,16 @@ export default function FAQPage() {
                   </div>
                 </AccordionContent>
               </AccordionItem>
+              <AccordionItem value="deposit-2b">
+                <AccordionTrigger className="text-sm">
+                  Why trust deposits don't increase for longer borrows?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600">
+                  <p>
+                    Trust deposits protect against loss or damage — risks that exist regardless of how long an item is borrowed. For that reason, deposits are based on the item's value, not the borrow duration.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
               <AccordionItem value="deposit-3">
                 <AccordionTrigger className="text-sm">
                   What is the security deposit for renting?

@@ -246,8 +246,8 @@ export default function PaymentMethodsPage() {
             <CreditCard className="h-6 w-6 text-gray-700" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Payment Method</h1>
-            <p className="text-gray-500">Manage your card on file</p>
+            <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
+            <p className="text-gray-500">For deposits and reimbursements</p>
           </div>
         </div>
 
@@ -296,7 +296,7 @@ export default function PaymentMethodsPage() {
               </div>
 
               <p className="text-sm text-gray-600 mb-6">
-                Used for deposits and reimbursements
+                Used for refundable security deposits and damage reimbursements only
               </p>
 
               <Separator className="my-4" />
@@ -332,7 +332,7 @@ export default function PaymentMethodsPage() {
                     <StatusIndicator status="missing" />
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    Add a card to enable deposits and reimbursements
+                    A payment method is required for borrowing and renting items
                   </p>
                 </div>
               </div>
@@ -340,7 +340,7 @@ export default function PaymentMethodsPage() {
               <Alert className="mb-6 bg-blue-50 border-blue-100">
                 <Shield className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800 text-sm">
-                  Adding a payment method helps verify your profile and increases trust with neighbours.
+                  Your card is used only for refundable security deposits when borrowing or renting items. Card details are securely handled by our payment provider.
                 </AlertDescription>
               </Alert>
 
@@ -355,7 +355,7 @@ export default function PaymentMethodsPage() {
         )}
 
         <p className="text-xs text-gray-400 text-center mt-6">
-          Your card is securely stored and only charged if necessary.
+          Card details are securely handled by our payment provider. Your card is only charged for security deposits (refunded upon safe return) or damage reimbursements.
         </p>
 
         <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>

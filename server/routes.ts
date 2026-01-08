@@ -375,10 +375,88 @@ export function registerRoutes(app: Express): Server {
       .select()
       .from(verifications)
       .where(eq(verifications.userId, req.user.id))
-      .orderBy(verifications.createdAt)
+      .orderBy(desc(verifications.createdAt))
       .limit(1);
 
-    res.json(verification || { status: "not_submitted" });
+    if (!verification) {
+      return res.json({
+        status: 'unverified',
+        legalFullName: null,
+        submittedAt: null,
+        verifiedAt: null,
+        failureReason: null,
+      });
+    }
+
+    // Map database status to frontend status
+    let status: 'unverified' | 'pending' | 'verified' | 'failed' = 'unverified';
+    if (verification.status === 'pending') status = 'pending';
+    else if (verification.status === 'approved') status = 'verified';
+    else if (verification.status === 'rejected') status = 'failed';
+
+    // Get verifiedAt from user record if verified
+    const [user] = await db
+      .select({ verifiedAt: users.verifiedAt })
+      .from(users)
+      .where(eq(users.id, req.user.id))
+      .limit(1);
+
+    res.json({
+      status,
+      legalFullName: verification.fullName,
+      submittedAt: verification.createdAt,
+      verifiedAt: user?.verifiedAt || null,
+      failureReason: status === 'failed' ? 'Document could not be verified. Please upload a clearer image.' : null,
+    });
+  });
+
+  // New identity-only verification endpoint (no card data)
+  app.post("/api/verify-identity", upload.single("idDocument"), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      if (!req.body.legalFullName || req.body.legalFullName.trim() === "") {
+        return res.status(400).json({ error: "Legal full name is required" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "ID document is required" });
+      }
+
+      // Check for existing pending verification
+      const [existing] = await db
+        .select()
+        .from(verifications)
+        .where(and(
+          eq(verifications.userId, req.user.id),
+          eq(verifications.status, "pending")
+        ))
+        .limit(1);
+
+      if (existing) {
+        return res.status(400).json({ error: "You already have a pending verification request" });
+      }
+
+      const verification = await db
+        .insert(verifications)
+        .values({
+          userId: req.user.id,
+          fullName: req.body.legalFullName,
+          idNumber: "ID_DOC_UPLOADED", // Placeholder since we're not collecting ID number anymore
+          status: "pending",
+        })
+        .returning();
+
+      res.status(201).json({
+        success: true,
+        status: 'pending',
+      });
+    } catch (error) {
+      console.error("Error creating verification:", error);
+      res.status(500).json({ error: "Failed to submit verification. Please try again." });
+    }
   });
 
   // Admin: Approve user verification (for demo/testing - auto-approve own verification)

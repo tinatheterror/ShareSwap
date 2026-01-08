@@ -1,8 +1,10 @@
 import { Navbar } from "@/components/shared/navbar";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import {
   Form,
   FormControl,
@@ -14,64 +16,77 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { useState, useRef } from "react";
-import { Loader2, Upload, Camera } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Upload, ArrowLeft, Shield, CheckCircle2, Clock, AlertTriangle, BadgeCheck, Star, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 
 const formSchema = z.object({
-  fullName: z.string().min(3),
-  idNumber: z.string().min(6),
-  cardNumber: z.string().min(16).max(16),
-  expiry: z.string().regex(/^(0[1-9]|1[0-2])\/([0-9]{2})$/),
-  cvv: z.string().length(3),
+  legalFullName: z.string().min(3, "Please enter your full legal name as it appears on your ID"),
 });
+
+type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'failed';
+
+interface VerificationData {
+  status: VerificationStatus;
+  legalFullName: string | null;
+  submittedAt: string | null;
+  verifiedAt: string | null;
+  failureReason: string | null;
+}
+
+function StatusBadge({ status }: { status: VerificationStatus }) {
+  if (status === 'verified') {
+    return (
+      <div className="flex items-center gap-2 text-green-700 bg-green-50 px-4 py-2 rounded-full text-sm font-medium">
+        <CheckCircle2 className="h-4 w-4" />
+        Verified
+      </div>
+    );
+  }
+
+  if (status === 'pending') {
+    return (
+      <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-full text-sm font-medium">
+        <Clock className="h-4 w-4" />
+        Under Review
+      </div>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <div className="flex items-center gap-2 text-red-700 bg-red-50 px-4 py-2 rounded-full text-sm font-medium">
+        <AlertTriangle className="h-4 w-4" />
+        Needs Attention
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-gray-600 bg-gray-100 px-4 py-2 rounded-full text-sm font-medium">
+      <Shield className="h-4 w-4" />
+      Not Verified
+    </div>
+  );
+}
 
 export default function VerificationPage() {
   const [selectedIdFile, setSelectedIdFile] = useState<File | null>(null);
-  const [isCameraMode, setIsCameraMode] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const cardCameraRef = useRef<HTMLInputElement>(null);
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleCardPhotoCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      toast({
-        title: "Card Photo Captured",
-        description: "Processing card information...",
-      });
-      
-      // Simulate card number extraction (in real app, use OCR service)
-      setTimeout(() => {
-        // Mock card data for demo - in production, use OCR to extract real data
-        form.setValue("cardNumber", "1234567890123456");
-        form.setValue("expiry", "12/25");
-        form.setValue("cvv", "123");
-        
-        toast({
-          title: "Card Information Extracted",
-          description: "Please verify the information is correct",
-        });
-      }, 2000);
-    }
-  };
+  const { data: verification, isLoading } = useQuery<VerificationData>({
+    queryKey: ["/api/verification-status"],
+  });
 
-  const triggerCardCamera = () => {
-    cardCameraRef.current?.click();
-  };
-  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      idNumber: "",
-      cardNumber: "",
-      expiry: "",
-      cvv: "",
+      legalFullName: "",
     },
   });
 
@@ -83,27 +98,24 @@ export default function VerificationPage() {
 
       const formData = new FormData();
       formData.append("idDocument", selectedIdFile);
-      formData.append("fullName", data.fullName);
-      formData.append("idNumber", data.idNumber);
-      formData.append("cardNumber", data.cardNumber);
-      formData.append("expiry", data.expiry);
-      formData.append("cvv", data.cvv);
+      formData.append("legalFullName", data.legalFullName);
 
-      const res = await apiRequest("POST", "/api/verify", formData);
+      const res = await apiRequest("POST", "/api/verify-identity", formData);
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/verification-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
-        title: "Verification Submitted Successfully!",
-        description: "Your account is now verified. You can now rent items securely.",
+        title: "Verification Submitted",
+        description: "We're reviewing your documents. This usually takes 1-2 business days.",
       });
-      setIsVerified(true);
       form.reset();
       setSelectedIdFile(null);
     },
     onError: (error: Error) => {
       toast({
-        title: "Verification Failed",
+        title: "Submission Failed",
         description: error.message,
         variant: "destructive",
       });
@@ -116,213 +128,263 @@ export default function VerificationPage() {
     }
   };
 
-  if (isVerified) {
-    return (
-      <div className="min-h-screen bg-[#F3F4F6]">
-        <Navbar />
-        <main className="max-w-2xl mx-auto px-4 py-12">
-          <div className="text-center">
-            <div className="bg-teal-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h1 className="text-3xl font-bold mb-2 text-teal-800">Verification Complete!</h1>
-            <p className="text-muted-foreground mb-8">
-              Your identity has been verified successfully. You can now rent and borrow items with confidence.
-            </p>
-            <div className="space-y-4">
-              <Button 
-                onClick={() => setLocation("/borrow")} 
-                className="w-full max-w-md"
-                size="lg"
-              >
-                Continue to Browse Items
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => setLocation("/")} 
-                className="w-full max-w-md"
-                size="lg"
-              >
-                Return to Home
-              </Button>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const isVerified = verification?.status === 'verified';
+  const isPending = verification?.status === 'pending';
+  const isFailed = verification?.status === 'failed';
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-12">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Verify Your Identity</h1>
-          <p className="text-muted-foreground mb-6">
-            We need to verify your identity to ensure a safe marketplace
-          </p>
-          
-          {/* Security Disclaimer */}
-          <div className="bg-teal-50 border border-teal-200 rounded-lg p-6 text-left max-w-2xl mx-auto">
-            <h3 className="font-semibold text-teal-900 mb-3">Why We Need This Information</h3>
-            <div className="space-y-2 text-sm text-teal-800">
-              <p><strong>Government ID:</strong> Verifies your identity to ensure only real people use our platform and helps prevent fraud.</p>
-              <p><strong>Credit Card Information:</strong> Enables secure transactions and protects all users by allowing us to:</p>
-              <ul className="ml-4 space-y-1 list-disc">
-                <li><strong>Security Deposits:</strong> Charge a refundable deposit when you borrow valuable items</li>
-                <li><strong>Damage Protection:</strong> Cover repair costs if borrowed items are returned damaged</li>
-                <li><strong>Non-Return Protection:</strong> Charge replacement cost if items aren't returned</li>
-                <li><strong>Trust & Accountability:</strong> Create a responsible community where users are accountable for borrowed items</li>
-              </ul>
-              <p className="mt-3 text-xs text-teal-600">
-                <strong>Security:</strong> All payment information is encrypted and stored securely. We only charge your card when necessary for deposits or damages as outlined in our terms of service.
-              </p>
-            </div>
+      <main className="container mx-auto px-4 py-6 max-w-2xl">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/profile")}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-teal-100 rounded-lg">
+            <Shield className="h-6 w-6 text-teal-700" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Verification Status</h1>
+            <p className="text-gray-500">Confirm your identity to build trust</p>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        {isLoading ? (
           <Card>
-            <CardContent className="pt-6">
-              <h2 className="text-xl font-semibold mb-4">Upload ID</h2>
-              <div className="space-y-4">
-                <div>
-                  <Label>Government ID</Label>
-                  <div className="mt-2 border-2 border-dashed rounded-lg p-6 text-center">
-                    <Input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="hidden"
-                      id="id-upload"
-                      onChange={handleIdFileChange}
-                    />
-                    <label htmlFor="id-upload">
-                      <div className="cursor-pointer">
-                        <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                        <Button variant="outline" type="button" className="pointer-events-none">
-                          Upload ID Document
-                        </Button>
-                      </div>
-                    </label>
-                    {selectedIdFile && (
-                      <p className="mt-2 text-sm text-teal-600">
-                        Selected: {selectedIdFile.name}
+            <CardContent className="p-8 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </CardContent>
+          </Card>
+        ) : isVerified ? (
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-green-100 rounded-full">
+                      <BadgeCheck className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Identity Verified</h3>
+                      <p className="text-sm text-gray-500">
+                        Verified on {verification.verifiedAt ? new Date(verification.verifiedAt).toLocaleDateString() : 'N/A'}
                       </p>
-                    )}
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Supported formats: JPG, PNG, PDF
-                    </p>
+                    </div>
+                  </div>
+                  <StatusBadge status="verified" />
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Legal Name</span>
+                    <span className="font-medium text-gray-900">{verification.legalFullName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">ID Document</span>
+                    <span className="font-medium text-gray-900">On file</span>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit((data) => verificationMutation.mutate(data))} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="idNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ID Number</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="cardNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Card Number</FormLabel>
-                        <div className="space-y-2">
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={triggerCardCamera}
-                            className="w-full"
-                          >
-                            <Camera className="mr-2 h-4 w-4" />
-                            Take Photo of Credit Card
-                          </Button>
-                          <input
-                            ref={cardCameraRef}
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={handleCardPhotoCapture}
-                            className="hidden"
-                          />
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="expiry"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Expiry (MM/YY)</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="MM/YY" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="cvv"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CVV</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+            <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-teal-900 mb-3">Your Verification Benefits</h3>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-1.5 bg-teal-100 rounded-full mt-0.5">
+                      <BadgeCheck className="h-4 w-4 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Verified Badge</p>
+                      <p className="text-sm text-gray-600">Your profile shows a verified badge, building instant trust</p>
+                    </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={verificationMutation.isPending}>
-                    {verificationMutation.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Submit Verification
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
+                  <div className="flex items-start gap-3">
+                    <div className="p-1.5 bg-teal-100 rounded-full mt-0.5">
+                      <Star className="h-4 w-4 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Improved Trust Score</p>
+                      <p className="text-sm text-gray-600">Verification contributes positively to your trust score</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="p-1.5 bg-teal-100 rounded-full mt-0.5">
+                      <Eye className="h-4 w-4 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Increased Visibility</p>
+                      <p className="text-sm text-gray-600">Verified users may be highlighted in urgent requests</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : isPending ? (
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-amber-100 rounded-full">
+                      <Clock className="h-6 w-6 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Under Review</h3>
+                      <p className="text-sm text-gray-500">
+                        Submitted on {verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <StatusBadge status="pending" />
+                </div>
+
+                <Alert className="bg-amber-50 border-amber-100">
+                  <AlertDescription className="text-amber-800 text-sm">
+                    We're reviewing your documents. This usually takes 1-2 business days. We'll notify you once complete.
+                  </AlertDescription>
+                </Alert>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Legal Name</span>
+                    <span className="font-medium text-gray-900">{verification.legalFullName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">ID Document</span>
+                    <span className="font-medium text-gray-900">Uploaded</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {isFailed && (
+              <Alert className="bg-red-50 border-red-100">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  {verification?.failureReason || "Your verification couldn't be completed. Please try again with a clearer image of your ID."}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-teal-900 mb-3">Why Verify Your Identity?</h3>
+                <div className="space-y-3 text-sm text-teal-800">
+                  <div className="flex items-start gap-2">
+                    <BadgeCheck className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Get a verified badge on your profile that builds instant trust with neighbors</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Star className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Improve your trust score, making you a preferred choice for sharing</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Eye className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>Verified users may be highlighted when responding to urgent requests</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Verify Your Identity</CardTitle>
+                <CardDescription>
+                  Upload a government-issued ID and confirm your legal name
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit((data) => verificationMutation.mutate(data))} className="space-y-6">
+                    <div>
+                      <Label className="text-sm font-medium">Government ID</Label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Driver's license, passport, or national ID card
+                      </p>
+                      <div className="mt-2 border-2 border-dashed rounded-lg p-6 text-center hover:border-teal-300 transition-colors">
+                        <Input
+                          type="file"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          id="id-upload"
+                          onChange={handleIdFileChange}
+                        />
+                        <label htmlFor="id-upload" className="cursor-pointer">
+                          <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          {selectedIdFile ? (
+                            <p className="text-sm text-teal-600 font-medium">
+                              {selectedIdFile.name}
+                            </p>
+                          ) : (
+                            <>
+                              <Button variant="outline" type="button" className="pointer-events-none">
+                                Choose File
+                              </Button>
+                              <p className="text-xs text-gray-400 mt-2">
+                                JPG, PNG, or PDF up to 10MB
+                              </p>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="legalFullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Legal Full Name</FormLabel>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Enter your name exactly as it appears on your ID
+                          </p>
+                          <FormControl>
+                            <Input placeholder="e.g. John Michael Smith" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={verificationMutation.isPending || !selectedIdFile}
+                    >
+                      {verificationMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit for Verification"
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+
+            <p className="text-xs text-gray-400 text-center">
+              Your ID is encrypted and stored securely. We only use it to verify your identity.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

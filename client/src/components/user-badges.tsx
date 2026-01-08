@@ -53,10 +53,7 @@ export function UserBadges({
   return (
     <div className="flex items-center gap-1">
       {isVerified && (
-        <Badge className={`bg-[#E6FBF5] text-[#0DCEA1] border-[#0DCEA1]/30 ${badgeSize}`}>
-          <BadgeCheck className={`${iconSize} ${showLabels ? "mr-1" : ""} fill-[#0DCEA1] stroke-white`} />
-          {showLabels && "Verified"}
-        </Badge>
+        <BadgeCheck className={`${iconSize} fill-[#0DCEA1] stroke-white hover:scale-110 transition-transform cursor-pointer`} />
       )}
       {reputationBadge && (
         <Badge className={`${reputationBadge.color} ${badgeSize}`}>

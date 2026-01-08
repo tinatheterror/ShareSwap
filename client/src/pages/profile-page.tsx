@@ -121,18 +121,21 @@ export default function ProfilePage() {
     enabled: !!usernameFromUrl && !isOwnProfile,
   });
 
-  const { data: profile } = useQuery<UserProfile | undefined>({
+  const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/user-profile"],
-    enabled: isOwnProfile,
+    enabled: !!isOwnProfile,
   });
 
   const { data: locationAlerts = [] } = useQuery<LocationAlert[]>({
     queryKey: ["/api/location-alerts"],
-    enabled: isOwnProfile,
+    enabled: !!isOwnProfile,
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/user-profile", "PATCH", data),
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", "/api/user-profile", data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
       setIsEditing(false);

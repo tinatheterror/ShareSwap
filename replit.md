@@ -1,130 +1,50 @@
 # Peer-to-Peer Sharing Marketplace
 
 ## Overview
-A comprehensive peer-to-peer sharing marketplace platform enabling secure and engaging item borrowing, lending, and swapping. The platform features an advanced verification system, robust real-time communication, and focuses on creating trust-driven item exchange experiences. It aims to connect neighbors and foster a community of shared resources, moving towards a vision of "Share more, own less." Key capabilities include AI-powered item recognition (SmartScan), intelligent matching for requests, a gamified user progression system, and a flexible commission structure.
+A comprehensive peer-to-peer sharing marketplace platform enabling secure and engaging item borrowing, lending, and swapping. The platform features an advanced verification system, robust real-time communication, and focuses on creating trust-driven item exchange experiences. It aims to connect neighbors and foster a community of shared resources, with a vision of "Share more, own less." Key capabilities include AI-powered item recognition (SmartScan), intelligent matching, a gamified user progression system, and a flexible commission structure.
 
 ## User Preferences
 - Keep original design (not the fresh green design)
 - Prefer the professional teal color scheme over vibrant alternatives
-
-## Authentication Setup
-- **Google OAuth**: Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables
-- **Phone Verification**: User dismissed Twilio integration setup. To enable phone auth in the future, either:
-  1. Set up Twilio connector via Replit integrations, OR
-  2. Manually add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER as secrets
-- **Current State**: Google OAuth ready to test once credentials are added; phone button is disabled placeholder
 - Minimize file count by collapsing similar components
 
 ## System Architecture
 The platform is a full-stack JavaScript application utilizing modern patterns. The frontend, built with React TypeScript and Wouter, handles most application logic, while the Express.js backend with TypeScript manages data persistence and API calls. PostgreSQL with Drizzle ORM is used for the database.
 
-Key architectural decisions and features include:
-- **Authentication**: Custom Passport-based system with multi-provider support (local, Google OAuth, phone - pending Twilio).
+**Key architectural decisions and features include:**
+- **Authentication**: Custom Passport-based system with multi-provider support (local, Google OAuth, and optional phone verification).
 - **Real-time Communication**: WebSocket server with reconnection strategies for chat.
-- **Verification System**: Dual verification requiring government ID and payment method (credit card), enabling security deposits and damage/non-return protection.
+- **Verification System**: Separate pages for identity verification (government ID upload) and payment methods (Stripe Elements for secure card entry), adhering to best practices.
 - **AI-Powered Features**:
-    - **SmartScan**: Uses GPT-4 Vision API for AI-powered item recognition from 360° photo scans, auto-filling item details. Offers 3 free scans/month, unlimited for Premium users, with premium users receiving AI value estimates.
-    - **Marketplace Import**: AI-powered listing import from Facebook Marketplace, Craigslist, and Facebook Groups. Users paste a URL and GPT-5 extracts item details (name, description, price, condition) to auto-fill the listing form. Features comprehensive security controls including HTTPS-only, domain allowlisting, SSRF protection, and rate limiting.
-    - **Item Category Detection**: AI-powered auto-categorization of items based on name. Uses GPT-4o-mini to detect item type (Baby & Kids, Clothing & Accessories, Electronics, Home & Kitchen, Tools & Equipment).
-    - **Item Recommendations**: AI-powered recommendations based on user behavior, categories, and seasonal relevance.
-    - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and automatically matches lenders/borrowers based on wishlists.
-- **Tier-Based Pricing System with AI Valuation**:
-    - **4 Required Questions**: Item Name, Item Type (AI auto-filled), Condition (4 options), Original Value (5 price ranges)
-    - **Automatic Tier Assignment with Weekly Bands**: 
-      - Tier 1 (Under $50) = 5 ShareCoins/week (fixed)
-      - Tier 2 ($50-$150) = 10-15 ShareCoins/week (AI-valued within band)
-      - Tier 3 ($150-$300) = 20-30 ShareCoins/week (AI-valued within band)
-      - Tier 4 ($300+) = 40-60 ShareCoins/week (AI-valued within band)
-    - **AI-Powered Internal Item Appraisal** (server/ai-valuation.ts): AI analyzes uploaded photos, category, condition, original value, market demand, and brands to determine internal item valuation (not displayed to users). This value drives:
-      - **ShareCoin Valuation**: Picks exact ShareCoin value within tier band
-      - **Trust-Based Borrow Deposits**: Tier-based percentages (10-40%) with trust score discounts
-      - **Rental Rate Calculation**: Category-based weekly percentages of item value
-      - **Rental Security Deposits**: Tier-based percentages (20-50%) with no trust discounts
-    - **Condition Impact**: Like New +20%, Good +10%, Used/Fair -10%, Heavily Used -20%
-    - **Brand Quality**: Luxury brands (Chanel, LV, Hermès, etc.) anchor at max, premium tech brands shift higher, generic shifts lower
-    - **Category Demand**: Baby gear → lower end, Tools → stable middle, Electronics → higher end
-    - **Fallback Valuation**: Deterministic calculation using the same factors if AI call fails
-    - **Condition Modifier**: Items in "Fair" or "Well Loved" condition drop 1 tier (minimum Tier 1)
-    - **Day Proration**: ShareCoin cost = (Weekly Rate ÷ 7) × days, rounded down with minimum 1 coin
-- **Rental Pricing System** (client/src/lib/rental-calculator.ts):
-    - **Category-Based Weekly Rental Rates** (% of AI-appraised item value):
-      - Baby & Kids: 12%
-      - Electronics: 16%
-      - Tools & Equipment: 10%
-      - Home & Kitchen: 10%
-      - Clothing & Accessories: 20%
-      - Hobbies & Collectibles: 6%
-    - **Editable Rental Rates**: Owners can adjust AI-suggested weekly rate (minimum $1), with warning if change exceeds ±20%
-    - **Tier-Based Rental Security Deposits** (editable ±20%):
-      - Tier 1: 20% of item value
-      - Tier 2: 30% of item value
-      - Tier 3: 40% of item value
-      - Tier 4: 50% of item value
-    - **Editable Security Deposits**: Owners can fully adjust deposit (no restrictions)
-    - **Platform Fees**: 0% platform fee for 2025, 3% payment processing fee always applies
-    - **UI Display**: Rental card positioned in middle column on lend page
-- **Swap System** (client/src/lib/swap-calculator.ts):
-    - **Tier-Based Fairness**: Swaps use fixed ShareCoin values per tier (5/10/20/40) as fairness measure
-    - **Same-Tier Swaps**: Free, no offset needed (Tier 2 ↔ Tier 2 = fair)
-    - **1-Tier Difference**: Allowed with ShareCoin offset (e.g., Tier 2 ↔ Tier 3 = +10 SC from lower tier)
-    - **2+ Tier Gap**: Not allowed - too risky for disputes
-    - **No Cash Offsets**: Only ShareCoins can balance value differences
-    - **No Deposits**: Swaps require no security deposits
-    - **UI Display**: Purple swap card shows tier, fair swap options, and rules legend
-- **UI/UX Decisions**:
-    - Focus on intuitive interfaces like swipeable cards for item requests, stacked card UI with animations, and in-app scheduling.
-    - Gamified Account Statistics section with gradients, animations, and progress bars to incentivize sharing behavior, leading to Community Impact Levels with associated benefits.
-    - Professional teal color scheme.
-- **Transactional System**:
-    - In-app scheduling for pickup/delivery, celebration animations for transaction acceptance.
-    - Flexible commission system for rentals (0% platform fee for 2025, 3% payment processing fee always applies).
-    - Security deposit options (Stripe payment authorization holds vs. self-arranged).
-    - Anti-farming system for ShareCoin exploitation detection.
-    - **Distinct Transaction Flows**:
-      - **Borrow Flow** (ShareCoins): ACCEPTED → Pay Trust Deposit (with trust discounts) → DEPOSIT_CONFIRMED → [Book Courier if applicable] → Confirm Handoff (ShareCoins charged) → IN_PROGRESS → Return Item → Confirm Return (deposit released) → COMPLETED
-      - **Rent Flow** (Cash): ACCEPTED → Pay Rental Deposit (NO trust discounts, in-app only) → DEPOSIT_CONFIRMED → [Book Courier if applicable] → Confirm Handoff (NO ShareCoins charged) → IN_PROGRESS → Return Item → Confirm Return (deposit released) → COMPLETED
-      - **Swap Flow**: ACCEPTED (instant completion, both parties get ShareCoins + trust points, no deposits)
-      - **Gift Flow**: ACCEPTED (instant completion, gifter gets ShareCoins + trust points, no deposits)
-    - **Unified Inbox**: Chat widget includes Messages | Requests tabs, with inline action buttons for all transaction lifecycle actions.
-- **Messaging**: Automated messaging system for item requests with template generation and date range selection.
-- **Inventory Management**: "My ShareChest" for intuitive inventory management with filtering and item actions.
-- **Follow System**: Allows users to follow neighbors to see their items in a personalized feed, promoting community.
-- **No Results Wishlist Prompt**: When search returns no results on Borrow, Rent, or Swap pages, users see an attractive empty state with an "Add to Wishlist" button. This converts potentially frustrating experiences into demand signals, building community-driven inventory while keeping users engaged.
-- **Automated Return Reminders**: Intelligent notification system that automatically reminds borrowers/renters about upcoming item returns. Sends reminders 1 day before the return date, on the return date, and daily for overdue items. Features a notification bell in the navbar with unread count badge, polling every 2 minutes for new notifications, and automatic reminder generation every 15 minutes. The system uses optimized queries (only checking items due within 2 days) to minimize server load. Return reminder notifications include distinct icons (clock for upcoming, alert for overdue) and relative timestamps for better user experience. Note: Current implementation uses client-side polling; for production scale, consider migrating to server-side background job scheduler (e.g., node-cron or Bull queue) to reduce redundant calculations and improve efficiency.
-- **Account Deactivation System**: Self-service account deactivation that hides profile and listings while preserving all transaction history, messages, and reviews for trust/safety/legal compliance. Features include:
-    - **Deactivation**: Settings page with confirmation modal requiring explicit checkbox acknowledgment; validates no active transactions before allowing deactivation
-    - **Data Preservation**: accountStatus field ('active', 'deactivated', 'pending_deletion') with timestamps; items marked unavailable during deactivation
-    - **Reactivation**: Instant reactivation on login with automatic item restoration; deactivated users see reactivation prompt instead of login error
-    - **Discovery Filtering**: Defense-in-depth filtering excludes deactivated users' items from all browse/search queries
-    - **Permanent Deletion**: Requires contacting support@shareswap.com (not self-service) to ensure proper data handling
+    - **SmartScan**: Uses GPT-4 Vision API for AI-powered item recognition from 360° photo scans, with auto-filling item details and AI value estimates for premium users.
+    - **Marketplace Import**: AI-powered listing import from external marketplaces (e.g., Facebook Marketplace) using GPT-5 to extract and auto-fill item details, with robust security controls.
+    - **Item Category Detection**: AI-powered auto-categorization of items using GPT-4o-mini.
+    - **Item Recommendations**: AI-powered recommendations based on user behavior and context.
+    - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and matches lenders/borrowers based on wishlists.
+- **Tier-Based Pricing System with AI Valuation**: Automatically assigns items to tiers based on original value, with AI-powered internal appraisal (using GPT-4 Vision and other factors) to determine ShareCoin valuation, trust-based borrow deposits, and rental rates. Includes condition modifiers and brand quality adjustments.
+- **Rental Pricing System**: Category-based weekly rental rates and tier-based rental security deposits, both adjustable by owners within certain parameters. Features a 0% platform fee for 2025 (3% payment processing fee applies).
+- **Swap System**: Uses fixed ShareCoin values per tier to ensure fairness, allowing 1-tier difference with ShareCoin offsets. Swaps do not involve cash offsets or security deposits.
+- **UI/UX Decisions**: Intuitive interfaces with swipeable cards, stacked card UI, in-app scheduling, and a professional teal color scheme. Gamified account statistics and community impact levels incentivize sharing.
+- **Transactional System**: Supports distinct transaction flows for Borrow (ShareCoins), Rent (Cash), Swap, and Gift. Includes in-app scheduling, security deposit options, and an anti-farming system for ShareCoin exploitation. All transaction lifecycle actions are managed through a unified inbox.
+- **Messaging**: Automated messaging system for item requests with template generation.
+- **Inventory Management**: "My ShareChest" for intuitive item management.
+- **Follow System**: Allows users to follow neighbors to see their items in a personalized feed.
+- **No Results Wishlist Prompt**: Engages users by prompting them to add to a wishlist when search yields no results.
+- **Automated Return Reminders**: Intelligent notification system for upcoming and overdue returns, with client-side polling and distinct notification icons.
+- **Account Deactivation System**: Self-service deactivation that hides user profiles and listings while preserving transaction history for compliance. Reactivation is instant. Permanent deletion requires contacting support.
 - **Security**: Comprehensive CSRF protection using a double-submit cookie pattern.
 - **Database Optimization**: Strategic composite indexes for improved query performance.
-- **Referral System**: Users can share their referral code with friends. When a new user registers with a referral code and completes their first transaction (borrow, rent, swap, or gift), the referrer receives 10 ShareCoins. Only the referrer gets rewarded (not the referred user). The referral is tracked via the `referrals` table which stores referrer ID, referred user ID, and completion status.
-- **Profile Photos**: Users can upload profile photos from the Settings page. Photos are validated using GPT-4 Vision to ensure a clear, visible human face before awarding the +1 ShareCoin bonus (one-time). Photos are always saved regardless of validation, but only photos with a clear face (not stock images, logos, pets-only, blurry, cropped, or AI-generated) receive the reward. Profile photos are stored in `/uploads/` and displayed on the user's avatar throughout the app.
-- **Trust Score System** (server/trust-score-service.ts): Your trust score reflects how reliable you are as a community member.
-    - **How to Build Your Trust Score** (biggest impact first):
-      - **Borrowing & Returning Safely**: The #1 way to build trust. Returning items on time and in great condition has the highest positive impact on your score.
-      - **Lending Items**: Successfully lending your items to others and completing transactions smoothly builds significant trust.
-      - **Completing Swaps**: Fair exchanges with other members strengthen your reputation.
-      - **Positive Reviews**: When other members leave you positive feedback (reliable, on time, item as described), your score improves.
-      - **Good Communication**: Responding promptly during transactions shows you're dependable.
-      - **Rentals & Gifting**: Completing rentals without issues and gifting items to neighbors also contribute positively.
-    - **What Can Lower Your Score**:
-      - Not returning a borrowed item or confirmed damage are serious issues that significantly impact trust.
-      - Returning items late without giving advance notice, or cancelling after a transaction is accepted.
-      - Note: Minor issues like slow replies or missed pickups don't affect your score.
-    - **Grace Pass**: First-time issues may receive a warning instead of affecting your score (30-day lookback).
-    - **Trust Score Floor**: Your score cannot go below zero.
-    - **Communication Matters**: If you know you'll be late returning an item, notify the lender before the due date to avoid any score impact.
-    - **UX Note**: Score changes are shown neutrally: "Your trust score was adjusted based on this transaction."
+- **Referral System**: Rewards referrers with 10 ShareCoins upon a new user's first transaction.
+- **Profile Photos**: Users can upload profile photos, with GPT-4 Vision validation for a +1 ShareCoin bonus for clear human faces.
+- **Trust Score System**: Reflects user reliability based on borrowing/returning behavior, lending, swaps, positive reviews, good communication, and rentals/gifting. Penalties apply for unreturned or damaged items, or late returns without notice.
 
 ## External Dependencies
 - **Database**: PostgreSQL
 - **ORM**: Drizzle ORM
-- **Authentication**: Passport.js (custom implementation), Google OAuth
-- **AI Integration**: OpenAI (GPT-4 Vision API via Replit AI Integrations)
-- **Payment Processing**: Stripe (for payment authorization holds)
+- **Authentication**: Passport.js, Google OAuth
+- **AI Integration**: OpenAI (GPT-4 Vision API)
+- **Payment Processing**: Stripe
 - **File Uploads**: Multer
-- **Routing**: Wouter (for React frontend)
+- **Routing**: Wouter
 - **Styling**: Tailwind CSS, shadcn UI components
-- **Delivery Service (Test Mode)**: Simulated Uber Direct (for testing user interest, not live integration)
+- **Delivery Service**: Simulated Uber Direct (for testing)

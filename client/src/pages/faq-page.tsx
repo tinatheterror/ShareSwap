@@ -1076,14 +1076,19 @@ export default function FAQPage() {
                     <li>Higher trust = smaller deposit</li>
                     <li>Each Tier has a base deposit percentage</li>
                     <li>Trust score discount is applied on top</li>
+                    <li>Minimum deposit is $5</li>
                   </ul>
                   <p className="mt-2 text-sm italic">
                     This keeps borrowing safe without punishing good users.
                   </p>
-                  
+
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <p className="font-medium text-gray-800 mb-3">Trust Deposit Exchange Options</p>
-                    <p className="mb-3">You can exchange trust deposits in two ways:</p>
+                    <p className="font-medium text-gray-800 mb-3">
+                      Trust Deposit Exchange Options
+                    </p>
+                    <p className="mb-3">
+                      You can exchange trust deposits in two ways:
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="bg-[#E6FBF5] rounded-lg p-3">
                         <p className="font-medium text-[#0BB88C] mb-2">
@@ -1365,54 +1370,62 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    Your trust score reflects how reliable you are as a community member. 
-                    Here's how to build it, from biggest impact to smallest:
+                    Your trust score reflects how reliable you are as a
+                    community member. Here's how to build it, from biggest
+                    impact to smallest:
                   </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        <span className="font-semibold">Borrowing & Returning Safely</span> — 
-                        The #1 way to build trust. Returning items on time and in great condition 
-                        has the highest positive impact.
+                        <span className="font-semibold">
+                          Borrowing & Returning Safely
+                        </span>{" "}
+                        — The #1 way to build trust. Returning items on time and
+                        in great condition has the highest positive impact.
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        <span className="font-semibold">Lending Items</span> — 
-                        Successfully lending your items to others and completing transactions 
-                        smoothly builds significant trust.
+                        <span className="font-semibold">Lending Items</span> —
+                        Successfully lending your items to others and completing
+                        transactions smoothly builds significant trust.
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        <span className="font-semibold">Completing Swaps</span> — 
-                        Fair exchanges with other members strengthen your reputation.
+                        <span className="font-semibold">Completing Swaps</span>{" "}
+                        — Fair exchanges with other members strengthen your
+                        reputation.
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        <span className="font-semibold">Positive Reviews</span> — 
-                        When other members leave you positive feedback (reliable, on time, 
-                        item as described), your score improves.
+                        <span className="font-semibold">Positive Reviews</span>{" "}
+                        — When other members leave you positive feedback
+                        (reliable, on time, item as described), your score
+                        improves.
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        <span className="font-semibold">Good Communication</span> — 
-                        Responding promptly during transactions shows you're dependable.
+                        <span className="font-semibold">
+                          Good Communication
+                        </span>{" "}
+                        — Responding promptly during transactions shows you're
+                        dependable.
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        <span className="font-semibold">Rentals & Gifting</span> — 
-                        Completing rentals without issues and gifting items to neighbors 
-                        also contribute positively.
+                        <span className="font-semibold">Rentals & Gifting</span>{" "}
+                        — Completing rentals without issues and gifting items to
+                        neighbors also contribute positively.
                       </span>
                     </li>
                   </ul>
@@ -1423,9 +1436,7 @@ export default function FAQPage() {
                   What can lower my trust score?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
-                  <p>
-                    Serious issues that impact trust include:
-                  </p>
+                  <p>Serious issues that impact trust include:</p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <Flag className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
@@ -1437,7 +1448,9 @@ export default function FAQPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <Flag className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                      <span>Returning items late without giving advance notice</span>
+                      <span>
+                        Returning items late without giving advance notice
+                      </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <Flag className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
@@ -1445,7 +1458,8 @@ export default function FAQPage() {
                     </li>
                   </ul>
                   <p className="text-sm italic text-gray-500 mt-2">
-                    Minor issues like slow replies or missed pickups don't affect your score.
+                    Minor issues like slow replies or missed pickups don't
+                    affect your score.
                   </p>
                 </AccordionContent>
               </AccordionItem>
@@ -1455,8 +1469,10 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    First-time issues may receive a <span className="font-semibold">warning</span> instead 
-                    of affecting your score. We look back 30 days to check for prior issues.
+                    First-time issues may receive a{" "}
+                    <span className="font-semibold">warning</span> instead of
+                    affecting your score. We look back 30 days to check for
+                    prior issues.
                   </p>
                   <p className="text-sm italic text-gray-500">
                     Everyone makes mistakes. We believe in second chances.
@@ -1469,12 +1485,16 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-2">
                   <p>
-                    If you know you'll be late returning an item, 
-                    <span className="font-semibold"> notify the lender before the due date</span>. 
-                    This helps avoid any score impact.
+                    If you know you'll be late returning an item,
+                    <span className="font-semibold">
+                      {" "}
+                      notify the lender before the due date
+                    </span>
+                    . This helps avoid any score impact.
                   </p>
                   <p className="text-sm italic text-gray-500">
-                    Communication matters. Late with notice is very different from late without warning.
+                    Communication matters. Late with notice is very different
+                    from late without warning.
                   </p>
                 </AccordionContent>
               </AccordionItem>

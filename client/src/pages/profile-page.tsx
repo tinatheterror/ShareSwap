@@ -39,6 +39,7 @@ import {
   Gift,
   Check,
   Headphones,
+  Percent,
 } from "lucide-react";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 import { UserBadges } from "@/components/user-badges";
@@ -786,7 +787,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="text-center">
                     <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Gift className="h-5 w-5 text-teal-600" />
+                      <Percent className="h-5 w-5 text-teal-600" />
                     </div>
                     <h4 className="font-semibold text-sm mb-1">Lower Fees</h4>
                     <p className="text-xs text-gray-500">

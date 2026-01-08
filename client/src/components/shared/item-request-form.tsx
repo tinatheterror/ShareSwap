@@ -736,7 +736,6 @@ export function ItemRequestForm({
               hasValidReplacementValue((item as any).replacementValue) && (
                 <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1">
                   <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-                    <Shield className="h-3.5 w-3.5 text-gray-500" />
                     Maximum Charge if Item Is Not Returned: $
                     {(item as any).replacementValue}
                   </div>

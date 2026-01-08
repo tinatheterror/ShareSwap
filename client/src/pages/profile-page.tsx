@@ -831,7 +831,7 @@ export default function ProfilePage() {
                     Notifications
                   </Button>
                 </Link>
-                <Link href="/settings">
+                <Link href="/payment-methods">
                   <Button variant="outline" className="w-full justify-start">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Payment Methods

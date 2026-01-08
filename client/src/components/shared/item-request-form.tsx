@@ -503,8 +503,28 @@ export function ItemRequestForm({
             {/* Borrow Cost Breakdown - Only for BORROW */}
             {requestType === "BORROW" && (
               (() => {
-                // Get ShareCoin price from item
-                const shareCoinPrice = (item as any).shareCoinPrice || 5;
+                // Get weekly ShareCoin rate from item
+                const weeklyRate = (item as any).shareCoinPrice || 5;
+                
+                // Watch dates and calculate days
+                const startDate = form.watch("startDate");
+                const endDate = form.watch("endDate");
+                const deliveryMethod = form.watch("deliveryMethod");
+                
+                let borrowDays = 0;
+                if (startDate && endDate) {
+                  const start = new Date(startDate);
+                  const end = new Date(endDate);
+                  borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                }
+                
+                // Calculate prorated ShareCoin cost: (Weekly Rate ÷ 7) × days, rounded down, minimum 1
+                const proratedCost = borrowDays > 0 
+                  ? Math.max(1, Math.floor((weeklyRate / 7) * borrowDays))
+                  : weeklyRate;
+                
+                // Delivery cost for courier
+                const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
                 
                 // Calculate trust-based deposit
                 const itemTier = (item as any).tier || 2;
@@ -522,47 +542,60 @@ export function ItemRequestForm({
                       Cost Breakdown
                     </div>
                     
-                    <div className="space-y-1.5 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 flex items-center gap-1">
-                          <Coins className="h-3 w-3 text-teal-600" />
-                          ShareCoins required
-                        </span>
-                        <span className="font-medium">{shareCoinPrice} SC</span>
-                      </div>
-                      
-                      {hasDeposit && (
-                        <div className="border-t border-gray-200 pt-1.5 mt-1.5">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600 flex items-center gap-1">
-                              <Shield className="h-3 w-3" />
-                              Trust-deposit (refundable)
-                            </span>
-                            {depositCalc.discountPercentage > 0 ? (
-                              <span className="font-medium flex items-center gap-1.5">
-                                <span className="relative text-gray-400">
-                                  <span className="absolute inset-0 flex items-center">
-                                    <span className="w-full h-[1px] bg-gray-400"></span>
-                                  </span>
-                                  ${depositCalc.baseDeposit}
-                                </span>
-                                <span className="text-teal-600">${depositCalc.finalDeposit}</span>
-                              </span>
-                            ) : (
-                              <span className="font-medium">${depositCalc.finalDeposit}</span>
-                            )}
-                          </div>
-                          {depositCalc.discountPercentage > 0 && (
-                            <p className="text-[10px] text-teal-600 mt-0.5">
-                              {depositCalc.discountPercentage}% discount from your trust score
-                            </p>
-                          )}
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            Held securely, auto-refunded on return
-                          </p>
+                    {borrowDays > 0 ? (
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 flex items-center gap-1">
+                            <Coins className="h-3 w-3 text-teal-600" />
+                            ShareCoins ({borrowDays} {borrowDays === 1 ? 'day' : 'days'})
+                          </span>
+                          <span className="font-medium">{proratedCost} SC</span>
                         </div>
-                      )}
-                    </div>
+                        <p className="text-[10px] text-gray-400">
+                          Weekly rate: {weeklyRate} SC/week
+                        </p>
+                        {deliveryCost > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Courier delivery</span>
+                            <span className="font-medium">${deliveryCost}</span>
+                          </div>
+                        )}
+                      
+                        {hasDeposit && (
+                          <div className="border-t border-gray-200 pt-1.5 mt-1.5">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 flex items-center gap-1">
+                                <Shield className="h-3 w-3" />
+                                Trust-deposit (refundable)
+                              </span>
+                              {depositCalc.discountPercentage > 0 ? (
+                                <span className="font-medium flex items-center gap-1.5">
+                                  <span className="relative text-gray-400">
+                                    <span className="absolute inset-0 flex items-center">
+                                      <span className="w-full h-[1px] bg-gray-400"></span>
+                                    </span>
+                                    ${depositCalc.baseDeposit}
+                                  </span>
+                                  <span className="text-teal-600">${depositCalc.finalDeposit}</span>
+                                </span>
+                              ) : (
+                                <span className="font-medium">${depositCalc.finalDeposit}</span>
+                              )}
+                            </div>
+                            {depositCalc.discountPercentage > 0 && (
+                              <p className="text-[10px] text-teal-600 mt-0.5">
+                                {depositCalc.discountPercentage}% discount from your trust score
+                              </p>
+                            )}
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              Held securely, auto-refunded on return
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">Select dates to see cost breakdown</p>
+                    )}
                   </div>
                 );
               })()

@@ -4644,11 +4644,46 @@ Respond with ONLY the category name, nothing else.`
     }
 
     try {
+      // Get user's Stripe customer ID and existing payment method
+      const [user] = await db
+        .select({
+          stripeCustomerId: users.stripeCustomerId,
+          existingPaymentMethodId: users.stripePaymentMethodId,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ error: "No Stripe customer found. Please try again." });
+      }
+
       // Retrieve payment method details from Stripe
       const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
 
       if (!paymentMethod.card) {
         return res.status(400).json({ error: "Invalid payment method" });
+      }
+
+      // Verify the payment method belongs to this user's Stripe customer
+      if (paymentMethod.customer !== user.stripeCustomerId) {
+        // If not attached, attach it to the customer
+        if (!paymentMethod.customer) {
+          await stripe.paymentMethods.attach(paymentMethodId, {
+            customer: user.stripeCustomerId,
+          });
+        } else {
+          return res.status(400).json({ error: "This payment method does not belong to your account" });
+        }
+      }
+
+      // Detach the previous payment method if one exists
+      if (user.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethodId) {
+        try {
+          await stripe.paymentMethods.detach(user.existingPaymentMethodId);
+        } catch (detachError) {
+          console.error("Error detaching previous payment method:", detachError);
+        }
       }
 
       // Update user with payment method details

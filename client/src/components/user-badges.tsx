@@ -1,4 +1,4 @@
-import { User, Award, Star, Crown, Sparkles } from "lucide-react";
+import { BadgeCheck, Award, Star, Crown, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface UserBadgesProps {
@@ -53,8 +53,8 @@ export function UserBadges({
   return (
     <div className="flex items-center gap-1">
       {isVerified && (
-        <Badge className={`bg-teal-100 text-teal-800 border-teal-200 ${badgeSize}`}>
-          <User className={`${iconSize} ${showLabels ? "mr-1" : ""} fill-current`} />
+        <Badge className={`bg-[#E6FBF5] text-[#0DCEA1] border-[#0DCEA1]/30 ${badgeSize}`}>
+          <BadgeCheck className={`${iconSize} ${showLabels ? "mr-1" : ""} fill-[#0DCEA1] stroke-white`} />
           {showLabels && "Verified"}
         </Badge>
       )}

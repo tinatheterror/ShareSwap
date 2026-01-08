@@ -4522,6 +4522,227 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Get user's payment method
+  app.get("/api/payment-method", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const [user] = await db
+        .select({
+          stripeCustomerId: users.stripeCustomerId,
+          stripePaymentMethodId: users.stripePaymentMethodId,
+          last4: users.paymentMethodLast4,
+          brand: users.paymentMethodBrand,
+          expMonth: users.paymentMethodExpMonth,
+          expYear: users.paymentMethodExpYear,
+          addedAt: users.paymentMethodAddedAt,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Check if payment method exists
+      const hasPaymentMethod = !!user.stripePaymentMethodId;
+      
+      // Check if card is expired
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const isExpired = user.expYear && user.expMonth && 
+        (user.expYear < currentYear || (user.expYear === currentYear && user.expMonth < currentMonth));
+
+      res.json({
+        hasPaymentMethod,
+        status: !hasPaymentMethod ? 'missing' : isExpired ? 'expired' : 'verified',
+        paymentMethod: hasPaymentMethod ? {
+          last4: user.last4,
+          brand: user.brand,
+          expMonth: user.expMonth,
+          expYear: user.expYear,
+          addedAt: user.addedAt,
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error fetching payment method:", error);
+      res.status(500).json({ error: "Failed to fetch payment method" });
+    }
+  });
+
+  // Create Stripe SetupIntent for adding a new payment method
+  app.post("/api/payment-method/setup-intent", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const [user] = await db
+        .select({
+          id: users.id,
+          stripeCustomerId: users.stripeCustomerId,
+          username: users.username,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      let customerId = user.stripeCustomerId;
+
+      // Create Stripe customer if doesn't exist
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          metadata: {
+            userId: user.id.toString(),
+            username: user.username,
+          },
+        });
+        customerId = customer.id;
+
+        await db
+          .update(users)
+          .set({ stripeCustomerId: customerId })
+          .where(eq(users.id, req.user.id));
+      }
+
+      // Create SetupIntent
+      const setupIntent = await stripe.setupIntents.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        metadata: {
+          userId: user.id.toString(),
+        },
+      });
+
+      res.json({
+        clientSecret: setupIntent.client_secret,
+      });
+    } catch (error) {
+      console.error("Error creating setup intent:", error);
+      res.status(500).json({ error: "Failed to create setup intent" });
+    }
+  });
+
+  // Save payment method after successful setup
+  app.post("/api/payment-method/save", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const { paymentMethodId } = req.body;
+
+    if (!paymentMethodId) {
+      return res.status(400).json({ error: "Payment method ID is required" });
+    }
+
+    try {
+      // Retrieve payment method details from Stripe
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+      if (!paymentMethod.card) {
+        return res.status(400).json({ error: "Invalid payment method" });
+      }
+
+      // Update user with payment method details
+      await db
+        .update(users)
+        .set({
+          stripePaymentMethodId: paymentMethodId,
+          paymentMethodLast4: paymentMethod.card.last4,
+          paymentMethodBrand: paymentMethod.card.brand,
+          paymentMethodExpMonth: paymentMethod.card.exp_month,
+          paymentMethodExpYear: paymentMethod.card.exp_year,
+          paymentMethodAddedAt: new Date(),
+        })
+        .where(eq(users.id, req.user.id));
+
+      res.json({
+        success: true,
+        paymentMethod: {
+          last4: paymentMethod.card.last4,
+          brand: paymentMethod.card.brand,
+          expMonth: paymentMethod.card.exp_month,
+          expYear: paymentMethod.card.exp_year,
+        },
+      });
+    } catch (error) {
+      console.error("Error saving payment method:", error);
+      res.status(500).json({ error: "Failed to save payment method" });
+    }
+  });
+
+  // Remove payment method
+  app.delete("/api/payment-method", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Check for active transactions before allowing removal
+      const activeTransactions = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            or(
+              eq(itemRequests.requesterId, req.user.id),
+              eq(items.ownerId, req.user.id)
+            ),
+            sql`${itemRequests.status} IN ('ACCEPTED', 'DEPOSIT_CONFIRMED', 'IN_PROGRESS')`
+          )
+        );
+
+      if (activeTransactions[0]?.count > 0) {
+        return res.status(400).json({ 
+          error: "Cannot remove payment method while you have active transactions. Complete or cancel them first.",
+          hasActiveTransactions: true,
+        });
+      }
+
+      const [user] = await db
+        .select({ stripePaymentMethodId: users.stripePaymentMethodId })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      // Detach from Stripe if exists
+      if (user?.stripePaymentMethodId) {
+        try {
+          await stripe.paymentMethods.detach(user.stripePaymentMethodId);
+        } catch (stripeError) {
+          console.error("Error detaching payment method from Stripe:", stripeError);
+        }
+      }
+
+      // Clear payment method from user record
+      await db
+        .update(users)
+        .set({
+          stripePaymentMethodId: null,
+          paymentMethodLast4: null,
+          paymentMethodBrand: null,
+          paymentMethodExpMonth: null,
+          paymentMethodExpYear: null,
+          paymentMethodAddedAt: null,
+        })
+        .where(eq(users.id, req.user.id));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing payment method:", error);
+      res.status(500).json({ error: "Failed to remove payment method" });
+    }
+  });
+
   // Get current platform commission settings
   app.get("/api/platform/commission-config", async (req, res) => {
     if (!req.isAuthenticated()) {

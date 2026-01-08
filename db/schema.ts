@@ -37,6 +37,13 @@ export const users = pgTable("users", {
   bio: text("bio"),
   location: text("location"),
   phone: text("phone"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripePaymentMethodId: text("stripe_payment_method_id"),
+  paymentMethodLast4: text("payment_method_last4"),
+  paymentMethodBrand: text("payment_method_brand"),
+  paymentMethodExpMonth: integer("payment_method_exp_month"),
+  paymentMethodExpYear: integer("payment_method_exp_year"),
+  paymentMethodAddedAt: timestamp("payment_method_added_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

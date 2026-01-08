@@ -40,6 +40,7 @@ import {
   Check,
   Headphones,
   Percent,
+  UserCheck,
 } from "lucide-react";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 import { UserBadges } from "@/components/user-badges";
@@ -776,7 +777,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Zap className="h-5 w-5 text-teal-600" />
+                      <UserCheck className="h-5 w-5 text-teal-600" />
                     </div>
                     <h4 className="font-semibold text-sm mb-1">
                       Priority Access

@@ -24,6 +24,7 @@ import {
   Bell,
   Settings,
   Shield,
+  BadgeCheck,
   CreditCard,
   Award,
   TrendingUp,
@@ -842,7 +843,7 @@ export default function ProfilePage() {
                 </Link>
                 <Link href="/verification">
                   <Button variant="outline" className="w-full justify-start">
-                    <Shield className="h-4 w-4 mr-2" />
+                    <BadgeCheck className="h-4 w-4 mr-2" />
                     Verification Status
                   </Button>
                 </Link>

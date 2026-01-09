@@ -840,7 +840,7 @@ export default function ProfilePage() {
                     Payment Methods
                   </Button>
                 </Link>
-                <Link href="/verification">
+                <Link href="/verify">
                   <Button variant="outline" className="w-full justify-start">
                     <Shield className="h-4 w-4 mr-2" />
                     Verification Status

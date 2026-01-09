@@ -353,8 +353,8 @@ export default function VerificationPage() {
                   <div className="flex items-start gap-2">
                     <Star className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <span>
-                      Improve your trust score, making you a preferred choice
-                      for sharing
+                      Improve your trust score and become a preferred choice for
+                      sharing
                     </span>
                   </div>
                   <div className="flex items-start gap-2">
@@ -411,7 +411,7 @@ export default function VerificationPage() {
                                 type="button"
                                 className="pointer-events-none"
                               >
-                                Choose File
+                                Add ID Photo
                               </Button>
                               <p className="text-xs text-gray-400 mt-2">
                                 JPG, PNG, or PDF up to 10MB
@@ -421,7 +421,7 @@ export default function VerificationPage() {
                         </label>
                       </div>
                       <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                        <Shield className="h-3 w-3" />
+                        <BadgeCheck className="h-3 w-3" />
                         We never share your ID. It's used only to confirm your identity.
                       </p>
                     </div>

@@ -265,10 +265,10 @@ export default function VerificationPage() {
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">
-                        Increased Visibility
+                        Priority Visibility
                       </p>
                       <p className="text-sm text-gray-600">
-                        Verified users may be highlighted in urgent requests
+                        Your items appear higher in search results, and your requests are prioritized in owners' inboxes
                       </p>
                     </div>
                   </div>

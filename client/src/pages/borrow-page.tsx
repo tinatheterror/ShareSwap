@@ -21,6 +21,7 @@ import {
   Sparkles,
   Gift,
   Heart,
+  BadgeCheck,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect } from "react";

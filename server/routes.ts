@@ -2801,6 +2801,8 @@ Respond with ONLY the category name, nothing else.`
         requester: {
           id: users.id,
           username: users.username,
+          isVerified: users.isVerified,
+          reputationLevel: users.reputationLevel,
         },
       })
       .from(itemRequests)
@@ -2814,7 +2816,19 @@ Respond with ONLY the category name, nothing else.`
       )
       .orderBy(desc(itemRequests.createdAt));
 
-    res.json(requests);
+    // Sort to prioritize verified requesters for pending requests (owner sees verified first)
+    const sortedRequests = requests.sort((a, b) => {
+      // Pending requests with verified requesters should appear first
+      if (a.status === 'PENDING' && b.status === 'PENDING') {
+        const aVerified = a.requester.isVerified ? 1 : 0;
+        const bVerified = b.requester.isVerified ? 1 : 0;
+        if (bVerified !== aVerified) return bVerified - aVerified;
+      }
+      // Then sort by creation date (most recent first)
+      return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+    });
+
+    res.json(sortedRequests);
   });
 
   // Update request status (accept/decline)

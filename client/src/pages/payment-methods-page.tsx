@@ -2,23 +2,49 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/shared/navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, CreditCard, CheckCircle2, AlertTriangle, XCircle, Shield, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CreditCard,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Shield,
+  Loader2,
+} from "lucide-react";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
 
 interface PaymentMethodData {
   hasPaymentMethod: boolean;
-  status: 'verified' | 'expired' | 'missing';
+  status: "verified" | "expired" | "missing";
   paymentMethod: {
     last4: string;
     brand: string;
@@ -28,7 +54,13 @@ interface PaymentMethodData {
   } | null;
 }
 
-function CardForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+function CardForm({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -44,7 +76,9 @@ function CardForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: ()
 
   const saveMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
-      const res = await apiRequest("POST", "/api/payment-method/save", { paymentMethodId });
+      const res = await apiRequest("POST", "/api/payment-method/save", {
+        paymentMethodId,
+      });
       return res.json();
     },
     onSuccess: () => {
@@ -81,11 +115,14 @@ function CardForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: ()
         throw new Error("Card element not found");
       }
 
-      const { setupIntent, error } = await stripe.confirmCardSetup(clientSecret, {
-        payment_method: {
-          card: cardElement,
+      const { setupIntent, error } = await stripe.confirmCardSetup(
+        clientSecret,
+        {
+          payment_method: {
+            card: cardElement,
+          },
         },
-      });
+      );
 
       if (error) {
         throw new Error(error.message);
@@ -155,8 +192,12 @@ function CardForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: ()
   );
 }
 
-function StatusIndicator({ status }: { status: 'verified' | 'expired' | 'missing' }) {
-  if (status === 'verified') {
+function StatusIndicator({
+  status,
+}: {
+  status: "verified" | "expired" | "missing";
+}) {
+  if (status === "verified") {
     return (
       <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-1.5 rounded-full text-sm font-medium">
         <CheckCircle2 className="h-4 w-4" />
@@ -165,7 +206,7 @@ function StatusIndicator({ status }: { status: 'verified' | 'expired' | 'missing
     );
   }
 
-  if (status === 'expired') {
+  if (status === "expired") {
     return (
       <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full text-sm font-medium">
         <AlertTriangle className="h-4 w-4" />
@@ -177,7 +218,7 @@ function StatusIndicator({ status }: { status: 'verified' | 'expired' | 'missing
   return (
     <div className="flex items-center gap-2 text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full text-sm font-medium">
       <XCircle className="h-4 w-4" />
-      Missing
+      Required
     </div>
   );
 }
@@ -246,8 +287,10 @@ export default function PaymentMethodsPage() {
             <CreditCard className="h-6 w-6 text-gray-700" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
-            <p className="text-gray-500">For deposits and reimbursements</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Payment Methods
+            </h1>
+            <p className="text-gray-500">For deposits and paid activity</p>
           </div>
         </div>
 
@@ -263,7 +306,7 @@ export default function PaymentMethodsPage() {
             <CardHeader>
               <CardTitle className="text-lg">Add Payment Method</CardTitle>
               <CardDescription>
-                Enter your credit or debit card details
+                Add a card via our secure payment provider
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -285,10 +328,12 @@ export default function PaymentMethodsPage() {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">
-                      {formatBrand(data.paymentMethod?.brand || "")} •••• {data.paymentMethod?.last4}
+                      {formatBrand(data.paymentMethod?.brand || "")} ••••{" "}
+                      {data.paymentMethod?.last4}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Expires {data.paymentMethod?.expMonth}/{data.paymentMethod?.expYear}
+                      Expires {data.paymentMethod?.expMonth}/
+                      {data.paymentMethod?.expYear}
                     </p>
                   </div>
                 </div>
@@ -296,7 +341,8 @@ export default function PaymentMethodsPage() {
               </div>
 
               <p className="text-sm text-gray-600 mb-6">
-                Used for refundable security deposits and damage reimbursements only
+                Used for refundable security deposits and damage reimbursements
+                only
               </p>
 
               <Separator className="my-4" />
@@ -337,17 +383,16 @@ export default function PaymentMethodsPage() {
                 </div>
               </div>
 
-              <Alert className="mb-6 bg-blue-50 border-blue-100">
-                <Shield className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 text-sm">
-                  Your card is used only for refundable security deposits when borrowing or renting items. Card details are securely handled by our payment provider.
+              <Alert className="mb-6 bg-white border-blue-100">
+                <Shield className="h-4 w-4 text-blue-500" />
+                <AlertDescription className="text-blue-600 text-xs">
+                  Your card is primarily used for refundable security deposits
+                  when borrowing or renting items. It may also be used for other
+                  paid activity when applicable.
                 </AlertDescription>
               </Alert>
 
-              <Button
-                onClick={() => setIsAddingCard(true)}
-                className="w-full"
-              >
+              <Button onClick={() => setIsAddingCard(true)} className="w-full">
                 Add payment method
               </Button>
             </CardContent>
@@ -355,7 +400,10 @@ export default function PaymentMethodsPage() {
         )}
 
         <p className="text-xs text-gray-400 text-center mt-6">
-          Card details are securely handled by our payment provider. Your card is only charged for security deposits (refunded upon safe return) or damage reimbursements.
+          Your card is securely handled by our payment provider. It may be used
+          for refundable deposits, paid transactions, subscriptions, or
+          reimbursements when applicable. You’re only charged when a payment is
+          required.
         </p>
 
         <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
@@ -363,7 +411,8 @@ export default function PaymentMethodsPage() {
             <DialogHeader>
               <DialogTitle>Remove payment method?</DialogTitle>
               <DialogDescription>
-                This will remove your card from your account. You may need to add a new payment method to use certain features.
+                This will remove your card from your account. You may need to
+                add a new payment method to use certain features.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

@@ -166,7 +166,7 @@ export default function VerificationPage() {
         </Button>
 
         <div className="flex items-center gap-3 mb-6">
-          <BadgeCheck className="h-8 w-8 text-teal-600" />
+          <BadgeCheck className="h-8 w-8" fill="#0D9488" stroke="white" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               Verification Status

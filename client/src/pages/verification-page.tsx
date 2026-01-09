@@ -340,28 +340,26 @@ export default function VerificationPage() {
 
             <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-teal-900 mb-3">
+                <h3 className="font-semibold text-teal-900 mb-4">
                   Why Verify Your Identity?
                 </h3>
-                <div className="space-y-3 text-sm text-teal-800">
-                  <div className="flex items-start gap-2">
-                    <BadgeCheck className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <div className="grid grid-cols-3 gap-4 text-sm text-teal-800">
+                  <div className="flex items-start gap-3">
+                    <BadgeCheck className="h-8 w-8 flex-shrink-0 text-teal-600" />
                     <span>
                       Verified badge that builds instant trust with neighbors
                     </span>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Star className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div className="flex items-start gap-3">
+                    <Star className="h-8 w-8 flex-shrink-0 text-teal-600" />
                     <span>
-                      Improve your trust score and become a preferred choice for
-                      sharing
+                      Improve your trust score and become a preferred choice for sharing
                     </span>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Eye className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div className="flex items-start gap-3">
+                    <Eye className="h-8 w-8 flex-shrink-0 text-teal-600" />
                     <span>
-                      Verified users are prioritized in urgent requests and
-                      search results.
+                      Verified users are prioritized in urgent requests and search results
                     </span>
                   </div>
                 </div>

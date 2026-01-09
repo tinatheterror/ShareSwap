@@ -167,7 +167,7 @@ export default function VerificationPage() {
 
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-teal-100 rounded-lg">
-            <Shield className="h-6 w-6 text-teal-700" />
+            <Shield className="h-6 w-6 text-teal-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">

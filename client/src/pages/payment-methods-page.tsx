@@ -384,8 +384,8 @@ export default function PaymentMethodsPage() {
               </div>
 
               <Alert className="mb-6 bg-white border-blue-100">
-                <Shield className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 text-sm font-small">
+                <Shield className="h-4 w-4 text-blue-500" />
+                <AlertDescription className="text-blue-600 text-xs">
                   Your card is primarily used for refundable security deposits
                   when borrowing or renting items. It may also be used for other
                   paid activity when applicable.

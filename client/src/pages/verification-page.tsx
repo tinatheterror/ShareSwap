@@ -167,7 +167,7 @@ export default function VerificationPage() {
 
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-teal-100 rounded-lg">
-            <Shield className="h-6 w-6 text-teal-600" />
+            <Shield className="h-6 w-6 text-teal-700" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -364,27 +364,6 @@ export default function VerificationPage() {
                       search results.
                     </span>
                   </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-teal-100">
-                  <div className="flex items-center gap-3 bg-white/60 rounded-lg p-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-semibold text-sm">
-                      SM
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-gray-900 text-sm">Sarah M.</span>
-                        <BadgeCheck className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-500">
-                        <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
-                        <span>Trust Score 92</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-teal-700 mt-2 text-center">
-                    This badge appears on your profile after verification.
-                  </p>
                 </div>
               </CardContent>
             </Card>

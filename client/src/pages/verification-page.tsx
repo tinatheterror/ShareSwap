@@ -360,7 +360,8 @@ export default function VerificationPage() {
                   <div className="flex items-start gap-2">
                     <Eye className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <span>
-                      Verified users are highlighted in urgent requests
+                      Verified users are prioritized in urgent requests and
+                      search results.
                     </span>
                   </div>
                 </div>
@@ -419,6 +420,10 @@ export default function VerificationPage() {
                           )}
                         </label>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        We never share your ID. It's used only to confirm your identity.
+                      </p>
                     </div>
 
                     <FormField

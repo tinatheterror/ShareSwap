@@ -343,23 +343,25 @@ export default function VerificationPage() {
                 <h3 className="font-semibold text-teal-900 mb-4">
                   Why Verify Your Identity?
                 </h3>
-                <div className="grid grid-cols-3 gap-4 text-sm text-teal-800">
+                <div className="grid grid-cols-3 gap-4 text-xs text-teal-800">
                   <div className="flex items-start gap-3">
-                    <BadgeCheck className="h-8 w-8 flex-shrink-0 text-teal-600" />
+                    <BadgeCheck className="h-12 w-12 flex-shrink-0 text-teal-600" />
                     <span>
-                      Verified badge that builds instant trust with neighbors
+                      A verified badge builds instant trust with neighbors
                     </span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Star className="h-8 w-8 flex-shrink-0 text-teal-600" />
+                    <Star className="h-12 w-12 flex-shrink-0 text-teal-600" />
                     <span>
-                      Improve your trust score and become a preferred choice for sharing
+                      Improve your trust score and become a preferred choice for
+                      sharing
                     </span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Eye className="h-8 w-8 flex-shrink-0 text-teal-600" />
+                    <Eye className="h-12 w-12 flex-shrink-0 text-teal-600" />
                     <span>
-                      Verified users are prioritized in urgent requests and search results
+                      Verified users are prioritized in urgent requests and
+                      search results
                     </span>
                   </div>
                 </div>
@@ -420,7 +422,8 @@ export default function VerificationPage() {
                       </div>
                       <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                         <BadgeCheck className="h-3 w-3" />
-                        We never share your ID. It's used only to confirm your identity.
+                        We never share your ID. It's used only to confirm your
+                        identity.
                       </p>
                     </div>
 

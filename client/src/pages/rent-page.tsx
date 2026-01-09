@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, Filter, MapPin, Coins, Camera, Heart, Sparkles } from "lucide-react";
+import { Search, Filter, MapPin, Coins, Camera, Heart, Sparkles, BadgeCheck } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -25,6 +25,12 @@ type ItemWithDistance = {
   isConditionVerified: boolean;
   distance?: number;
   isRentable: boolean;
+  owner?: {
+    id: number;
+    username: string;
+    isVerified: boolean;
+    reputationLevel: string;
+  };
 };
 
 export default function RentPage() {
@@ -212,7 +218,12 @@ export default function RentPage() {
                 </div>
                 
                 <div className="text-center mb-3">
-                  <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
+                    {item.owner?.isVerified && (
+                      <BadgeCheck className="h-4 w-4 text-teal-600 flex-shrink-0" />
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mb-1">
                     {item.isConditionVerified ? "Verified" : "Pending"}
                   </p>

@@ -1,5 +1,11 @@
 import { Navbar } from "@/components/shared/navbar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,17 +23,30 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useState } from "react";
-import { Loader2, Upload, ArrowLeft, Shield, CheckCircle2, Clock, AlertTriangle, BadgeCheck, Star, Eye } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  ArrowLeft,
+  Shield,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  BadgeCheck,
+  Star,
+  Eye,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 
 const formSchema = z.object({
-  legalFullName: z.string().min(3, "Please enter your full legal name as it appears on your ID"),
+  legalFullName: z
+    .string()
+    .min(3, "Please enter your full legal name as it appears on your ID"),
 });
 
-type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'failed';
+type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
 
 interface VerificationData {
   status: VerificationStatus;
@@ -38,7 +57,7 @@ interface VerificationData {
 }
 
 function StatusBadge({ status }: { status: VerificationStatus }) {
-  if (status === 'verified') {
+  if (status === "verified") {
     return (
       <div className="flex items-center gap-2 text-green-700 bg-green-50 px-4 py-2 rounded-full text-sm font-medium">
         <CheckCircle2 className="h-4 w-4" />
@@ -47,7 +66,7 @@ function StatusBadge({ status }: { status: VerificationStatus }) {
     );
   }
 
-  if (status === 'pending') {
+  if (status === "pending") {
     return (
       <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-4 py-2 rounded-full text-sm font-medium">
         <Clock className="h-4 w-4" />
@@ -56,7 +75,7 @@ function StatusBadge({ status }: { status: VerificationStatus }) {
     );
   }
 
-  if (status === 'failed') {
+  if (status === "failed") {
     return (
       <div className="flex items-center gap-2 text-red-700 bg-red-50 px-4 py-2 rounded-full text-sm font-medium">
         <AlertTriangle className="h-4 w-4" />
@@ -108,7 +127,8 @@ export default function VerificationPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Verification Submitted",
-        description: "We're reviewing your documents. This usually takes 1-2 business days.",
+        description:
+          "We're reviewing your documents. This usually takes 1-2 business days.",
       });
       form.reset();
       setSelectedIdFile(null);
@@ -128,9 +148,9 @@ export default function VerificationPage() {
     }
   };
 
-  const isVerified = verification?.status === 'verified';
-  const isPending = verification?.status === 'pending';
-  const isFailed = verification?.status === 'failed';
+  const isVerified = verification?.status === "verified";
+  const isPending = verification?.status === "pending";
+  const isFailed = verification?.status === "failed";
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
@@ -150,8 +170,10 @@ export default function VerificationPage() {
             <Shield className="h-6 w-6 text-teal-700" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Verification Status</h1>
-            <p className="text-gray-500">Confirm your identity to build trust</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Verification Status
+            </h1>
+            <p className="text-gray-500">Build trust with a verified profile</p>
           </div>
         </div>
 
@@ -171,9 +193,16 @@ export default function VerificationPage() {
                       <BadgeCheck className="h-6 w-6 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">Identity Verified</h3>
+                      <h3 className="font-semibold text-gray-900">
+                        Identity Verified
+                      </h3>
                       <p className="text-sm text-gray-500">
-                        Verified on {verification.verifiedAt ? new Date(verification.verifiedAt).toLocaleDateString() : 'N/A'}
+                        Verified on{" "}
+                        {verification.verifiedAt
+                          ? new Date(
+                              verification.verifiedAt,
+                            ).toLocaleDateString()
+                          : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -185,7 +214,9 @@ export default function VerificationPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Legal Name</span>
-                    <span className="font-medium text-gray-900">{verification.legalFullName}</span>
+                    <span className="font-medium text-gray-900">
+                      {verification.legalFullName}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">ID Document</span>
@@ -197,15 +228,22 @@ export default function VerificationPage() {
 
             <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-teal-900 mb-3">Your Verification Benefits</h3>
+                <h3 className="font-semibold text-teal-900 mb-3">
+                  Your Verification Benefits
+                </h3>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="p-1.5 bg-teal-100 rounded-full mt-0.5">
                       <BadgeCheck className="h-4 w-4 text-teal-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">Verified Badge</p>
-                      <p className="text-sm text-gray-600">Your profile shows a verified badge, building instant trust</p>
+                      <p className="font-medium text-gray-900">
+                        Verified Badge
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Your profile shows a verified badge, building instant
+                        trust
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -213,8 +251,12 @@ export default function VerificationPage() {
                       <Star className="h-4 w-4 text-teal-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">Improved Trust Score</p>
-                      <p className="text-sm text-gray-600">Verification contributes positively to your trust score</p>
+                      <p className="font-medium text-gray-900">
+                        Improved Trust Score
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Verification contributes positively to your trust score
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -222,8 +264,12 @@ export default function VerificationPage() {
                       <Eye className="h-4 w-4 text-teal-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">Increased Visibility</p>
-                      <p className="text-sm text-gray-600">Verified users may be highlighted in urgent requests</p>
+                      <p className="font-medium text-gray-900">
+                        Increased Visibility
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Verified users may be highlighted in urgent requests
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -240,9 +286,16 @@ export default function VerificationPage() {
                       <Clock className="h-6 w-6 text-amber-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">Under Review</h3>
+                      <h3 className="font-semibold text-gray-900">
+                        Under Review
+                      </h3>
                       <p className="text-sm text-gray-500">
-                        Submitted on {verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString() : 'N/A'}
+                        Submitted on{" "}
+                        {verification.submittedAt
+                          ? new Date(
+                              verification.submittedAt,
+                            ).toLocaleDateString()
+                          : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -251,7 +304,8 @@ export default function VerificationPage() {
 
                 <Alert className="bg-amber-50 border-amber-100">
                   <AlertDescription className="text-amber-800 text-sm">
-                    We're reviewing your documents. This usually takes 1-2 business days. We'll notify you once complete.
+                    We're reviewing your documents. This usually takes 1-2
+                    business days. We'll notify you once complete.
                   </AlertDescription>
                 </Alert>
 
@@ -260,7 +314,9 @@ export default function VerificationPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Legal Name</span>
-                    <span className="font-medium text-gray-900">{verification.legalFullName}</span>
+                    <span className="font-medium text-gray-900">
+                      {verification.legalFullName}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">ID Document</span>
@@ -276,26 +332,36 @@ export default function VerificationPage() {
               <Alert className="bg-red-50 border-red-100">
                 <AlertTriangle className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">
-                  {verification?.failureReason || "Your verification couldn't be completed. Please try again with a clearer image of your ID."}
+                  {verification?.failureReason ||
+                    "Your verification couldn't be completed. Please try again with a clearer image of your ID."}
                 </AlertDescription>
               </Alert>
             )}
 
             <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
               <CardContent className="p-6">
-                <h3 className="font-semibold text-teal-900 mb-3">Why Verify Your Identity?</h3>
+                <h3 className="font-semibold text-teal-900 mb-3">
+                  Why Verify Your Identity?
+                </h3>
                 <div className="space-y-3 text-sm text-teal-800">
                   <div className="flex items-start gap-2">
                     <BadgeCheck className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Get a verified badge on your profile that builds instant trust with neighbors</span>
+                    <span>
+                      Verified badge that builds instant trust with neighbors
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
                     <Star className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Improve your trust score, making you a preferred choice for sharing</span>
+                    <span>
+                      Improve your trust score, making you a preferred choice
+                      for sharing
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
                     <Eye className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>Verified users may be highlighted when responding to urgent requests</span>
+                    <span>
+                      Verified users are highlighted in urgent requests
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -310,9 +376,16 @@ export default function VerificationPage() {
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit((data) => verificationMutation.mutate(data))} className="space-y-6">
+                  <form
+                    onSubmit={form.handleSubmit((data) =>
+                      verificationMutation.mutate(data),
+                    )}
+                    className="space-y-6"
+                  >
                     <div>
-                      <Label className="text-sm font-medium">Government ID</Label>
+                      <Label className="text-sm font-medium">
+                        Government ID
+                      </Label>
                       <p className="text-xs text-gray-500 mb-2">
                         Driver's license, passport, or national ID card
                       </p>
@@ -332,7 +405,11 @@ export default function VerificationPage() {
                             </p>
                           ) : (
                             <>
-                              <Button variant="outline" type="button" className="pointer-events-none">
+                              <Button
+                                variant="outline"
+                                type="button"
+                                className="pointer-events-none"
+                              >
                                 Choose File
                               </Button>
                               <p className="text-xs text-gray-400 mt-2">
@@ -354,17 +431,22 @@ export default function VerificationPage() {
                             Enter your name exactly as it appears on your ID
                           </p>
                           <FormControl>
-                            <Input placeholder="e.g. John Michael Smith" {...field} />
+                            <Input
+                              placeholder="e.g. John Michael Smith"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <Button 
-                      type="submit" 
-                      className="w-full" 
-                      disabled={verificationMutation.isPending || !selectedIdFile}
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={
+                        verificationMutation.isPending || !selectedIdFile
+                      }
                     >
                       {verificationMutation.isPending ? (
                         <>
@@ -381,7 +463,8 @@ export default function VerificationPage() {
             </Card>
 
             <p className="text-xs text-gray-400 text-center">
-              Your ID is encrypted and stored securely. We only use it to verify your identity.
+              Your ID is encrypted and stored securely. We only use it to verify
+              your identity.
             </p>
           </div>
         )}

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { ArrowLeftRight, Search, Filter, Heart, Sparkles } from "lucide-react";
+import { ArrowLeftRight, Search, Filter, Heart, Sparkles, BadgeCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { SelectItem } from "@db/schema";
 import { useLocation } from "wouter";
@@ -18,6 +18,12 @@ import { SeasonalRecommendations } from "@/components/seasonal-recommendations";
 interface SwappableItem extends SelectItem {
   distance?: number;
   postalCode?: string;
+  owner?: {
+    id: number;
+    username: string;
+    isVerified: boolean;
+    reputationLevel: string;
+  };
 }
 
 export default function SwapPage() {
@@ -258,7 +264,12 @@ export default function SwapPage() {
                   </div>
                   
                   <div className="text-center mb-3">
-                    <h3 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h3>
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
+                      {item.owner?.isVerified && (
+                        <BadgeCheck className="h-4 w-4 text-teal-600 flex-shrink-0" />
+                      )}
+                    </div>
                     <div className="flex justify-center mb-2">
                       <Badge className="bg-teal-100 text-teal-800 text-xs">Swappable</Badge>
                     </div>

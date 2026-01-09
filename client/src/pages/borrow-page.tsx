@@ -44,6 +44,12 @@ import { WishlistFormDialog } from "@/components/wishlist-form-dialog";
 interface ItemWithDistance extends SelectItem {
   distance?: number;
   postalCode?: string;
+  owner?: {
+    id: number;
+    username: string;
+    isVerified: boolean;
+    reputationLevel: string;
+  };
 }
 
 export default function BorrowPage() {
@@ -440,9 +446,14 @@ export default function BorrowPage() {
                   </div>
 
                   <CardContent className="px-6 pt-0 pb-4">
-                    <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
-                      {item.name}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-xl text-slate-800 truncate">
+                        {item.name}
+                      </h3>
+                      {item.owner?.isVerified && (
+                        <BadgeCheck className="h-5 w-5 text-teal-600 flex-shrink-0" />
+                      )}
+                    </div>
 
                     <div className="space-y-0.5 mb-3">
                       <div className="flex items-center gap-2 text-slate-700">

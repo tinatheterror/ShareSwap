@@ -330,7 +330,7 @@ export default function RentPage() {
                 Browse Anyway
               </Button>
               <Button
-                onClick={() => navigate("/verify")}
+                onClick={() => navigate("/verification")}
                 className="flex-1"
               >
                 Complete Verification

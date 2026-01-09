@@ -41,7 +41,7 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/verify" component={VerificationPage} />
+      <ProtectedRoute path="/verification" component={VerificationPage} />
       <ProtectedRoute path="/share-options" component={ShareOptionsPage} />
       <ProtectedRoute path="/borrow" component={BorrowPage} />
       <ProtectedRoute path="/lend" component={LendPage} />

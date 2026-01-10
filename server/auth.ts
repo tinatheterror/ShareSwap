@@ -103,6 +103,13 @@ export function setupAuth(app: Express) {
     })
   );
 
+  // Helper to get the base URL from the request for OAuth callbacks
+  const getCallbackUrl = (req: any) => {
+    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('x-forwarded-host') || req.get('host');
+    return `${protocol}://${host}/api/auth/google/callback`;
+  };
+
   // Google OAuth Strategy
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(
@@ -110,7 +117,7 @@ export function setupAuth(app: Express) {
         {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: `/api/auth/google/callback`,
+          callbackURL: `https://${process.env.REPLIT_DEV_DOMAIN || 'localhost:5000'}/api/auth/google/callback`,
           passReqToCallback: false,
         } as any,
         async (accessToken, refreshToken, profile, done) => {
@@ -309,18 +316,25 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Google OAuth routes
-  app.get("/api/auth/google", authLimiter, 
-    passport.authenticate("google", { scope: ["profile", "email"] })
-  );
+  // Google OAuth routes - use dynamic callback URL based on request host
+  app.get("/api/auth/google", authLimiter, (req, res, next) => {
+    const callbackURL = getCallbackUrl(req);
+    (passport.authenticate as any)("google", { 
+      scope: ["profile", "email"],
+      callbackURL 
+    })(req, res, next);
+  });
 
-  app.get("/api/auth/google/callback", authLimiter,
-    passport.authenticate("google", { failureRedirect: "/auth" }),
-    (req, res) => {
-      // Successful authentication, redirect to home
+  app.get("/api/auth/google/callback", authLimiter, (req, res, next) => {
+    const callbackURL = getCallbackUrl(req);
+    (passport.authenticate as any)("google", { 
+      failureRedirect: "/auth",
+      callbackURL 
+    })(req, res, (err: any) => {
+      if (err) return next(err);
       res.redirect("/");
-    }
-  );
+    });
+  });
 
   app.post("/api/logout", (req, res, next) => {
     if (!req.user) {

@@ -163,16 +163,17 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
         />
       </AnimatePresence>
 
-      {/* Tutorial Card */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ duration: 0.3 }}
-          className="fixed z-[9999] pointer-events-auto w-[90%] max-w-md left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        >
+      {/* Tutorial Card - centered container */}
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+            className="pointer-events-auto w-[90%] max-w-md"
+          >
           <Card className="border-2 border-teal-500 shadow-2xl bg-white/95 backdrop-blur-sm">
             <CardContent className="p-6">
               {/* Close button */}
@@ -262,6 +263,7 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
           </Card>
         </motion.div>
       </AnimatePresence>
+      </div>
 
       {/* Highlight pulse effect */}
       {highlightedElement && (

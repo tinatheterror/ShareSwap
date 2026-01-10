@@ -315,6 +315,9 @@ export function setupAuth(app: Express) {
 
   // Google OAuth routes
   app.get("/api/auth/google", authLimiter, (req, res, next) => {
+    console.log("[Google OAuth] /api/auth/google hit");
+    console.log("[Google OAuth] Client ID exists:", !!process.env.GOOGLE_CLIENT_ID);
+    console.log("[Google OAuth] Client Secret exists:", !!process.env.GOOGLE_CLIENT_SECRET);
     passport.authenticate("google", { 
       scope: ["profile", "email"]
     })(req, res, next);

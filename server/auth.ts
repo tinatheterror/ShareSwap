@@ -319,6 +319,8 @@ export function setupAuth(app: Express) {
   // Google OAuth routes - use dynamic callback URL based on request host
   app.get("/api/auth/google", authLimiter, (req, res, next) => {
     const callbackURL = getCallbackUrl(req);
+    console.log("[Google OAuth] Initiating with callback URL:", callbackURL);
+    console.log("[Google OAuth] Request headers - host:", req.get('host'), "x-forwarded-host:", req.get('x-forwarded-host'), "x-forwarded-proto:", req.get('x-forwarded-proto'));
     (passport.authenticate as any)("google", { 
       scope: ["profile", "email"],
       callbackURL 

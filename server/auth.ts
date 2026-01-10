@@ -103,21 +103,18 @@ export function setupAuth(app: Express) {
     })
   );
 
-  // Helper to get the base URL from the request for OAuth callbacks
-  const getCallbackUrl = (req: any) => {
-    const protocol = req.get('x-forwarded-proto') || req.protocol || 'https';
-    const host = req.get('x-forwarded-host') || req.get('host');
-    return `${protocol}://${host}/api/auth/google/callback`;
-  };
-
-  // Google OAuth Strategy
+  // Google OAuth Strategy - use absolute production URL for callback
+  // This must match exactly what's configured in Google Cloud Console
+  const googleCallbackURL = 'https://share-swap-mvp.replit.app/api/auth/google/callback';
+  
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    console.log("[Google OAuth] Strategy configured with callback URL:", googleCallbackURL);
     passport.use(
       new GoogleStrategy(
         {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: `https://${process.env.REPLIT_DEV_DOMAIN || 'localhost:5000'}/api/auth/google/callback`,
+          callbackURL: googleCallbackURL,
           passReqToCallback: false,
         } as any,
         async (accessToken, refreshToken, profile, done) => {
@@ -316,22 +313,16 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Google OAuth routes - use dynamic callback URL based on request host
+  // Google OAuth routes
   app.get("/api/auth/google", authLimiter, (req, res, next) => {
-    const callbackURL = getCallbackUrl(req);
-    console.log("[Google OAuth] Initiating with callback URL:", callbackURL);
-    console.log("[Google OAuth] Request headers - host:", req.get('host'), "x-forwarded-host:", req.get('x-forwarded-host'), "x-forwarded-proto:", req.get('x-forwarded-proto'));
-    (passport.authenticate as any)("google", { 
-      scope: ["profile", "email"],
-      callbackURL 
+    passport.authenticate("google", { 
+      scope: ["profile", "email"]
     })(req, res, next);
   });
 
   app.get("/api/auth/google/callback", authLimiter, (req, res, next) => {
-    const callbackURL = getCallbackUrl(req);
-    (passport.authenticate as any)("google", { 
-      failureRedirect: "/auth",
-      callbackURL 
+    passport.authenticate("google", { 
+      failureRedirect: "/auth"
     })(req, res, (err: any) => {
       if (err) return next(err);
       res.redirect("/");

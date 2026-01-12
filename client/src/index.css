@@ -22,6 +22,44 @@
   }
 }
 
+@layer components {
+  .layout-container {
+    @apply w-full max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .layout-stack {
+    @apply flex flex-col gap-4 md:gap-6 lg:gap-8;
+  }
+  
+  .layout-grid {
+    @apply grid gap-4 md:gap-6 lg:gap-8;
+  }
+  
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8;
+  }
+  
+  .heading-xl {
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight;
+  }
+  
+  .heading-lg {
+    @apply text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight;
+  }
+  
+  .heading-md {
+    @apply text-lg sm:text-xl font-semibold;
+  }
+  
+  .heading-sm {
+    @apply text-base sm:text-lg font-medium;
+  }
+  
+  .btn-responsive {
+    @apply w-full sm:w-auto;
+  }
+}
+
 /* Tutorial highlight pulse animation */
 @keyframes pulse {
   0%, 100% {

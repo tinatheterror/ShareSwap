@@ -96,7 +96,7 @@ export default function ItemDetailsPage() {
     const depositCalc = calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);
     
     const borrowOption = item.isLendable ? (
-      <div key="borrow" className="flex justify-between items-center">
+      <div key="borrow" className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <p className="font-medium">Borrow</p>
           <div className="flex items-center gap-2 mb-1">
@@ -140,14 +140,14 @@ export default function ItemDetailsPage() {
           )}
         </div>
         {hasPendingBorrow ? (
-          <Button disabled className="w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+          <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
             <Clock className="h-4 w-4 mr-1" />
             Request Pending
           </Button>
         ) : (
           <Button 
             onClick={() => setRequestType("BORROW")} 
-            className="w-40"
+            className="w-full sm:w-40"
             disabled={hasAnyPending || !hasValidReplacementValue(itemReplacementValue)}
           >
             <HandHeart className="h-4 w-4 mr-1" />
@@ -158,7 +158,7 @@ export default function ItemDetailsPage() {
     ) : null;
 
     const rentOption = item.isRentable ? (
-      <div key="rent" className="flex justify-between items-center">
+      <div key="rent" className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <p className="font-medium">Rent</p>
           <div className="flex items-center gap-2 mb-1">
@@ -171,14 +171,14 @@ export default function ItemDetailsPage() {
           </p>
         </div>
         {hasPendingRent ? (
-          <Button disabled className="w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+          <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
             <Clock className="h-4 w-4 mr-1" />
             Request Pending
           </Button>
         ) : (
           <Button 
             onClick={() => setRequestType("RENT")} 
-            className="w-40"
+            className="w-full sm:w-40"
             disabled={hasAnyPending}
           >
             <DollarSign className="h-4 w-4 mr-1" />
@@ -190,7 +190,7 @@ export default function ItemDetailsPage() {
 
     const swapOption = item.isSwappable ? (
       <div key="swap" className="space-y-2">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <p className="font-medium">Swap</p>
             <div className="flex items-center gap-2 mb-1">
@@ -221,14 +221,14 @@ export default function ItemDetailsPage() {
             </TooltipProvider>
           </div>
           {hasPendingSwap ? (
-            <Button disabled className="w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+            <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
               <Clock className="h-4 w-4 mr-1" />
               Request Pending
             </Button>
           ) : (
             <Button
               onClick={() => setShowSwapSelector(true)}
-              className="w-40 bg-[#0DCEA1] hover:bg-[#0BB88C]"
+              className="w-full sm:w-40 bg-[#0DCEA1] hover:bg-[#0BB88C]"
               disabled={hasAnyPending}
             >
               <ArrowLeftRight className="h-4 w-4 mr-1" />
@@ -263,10 +263,10 @@ export default function ItemDetailsPage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <Card>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-2 gap-8">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
               <div>
                 <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                   {item.photos[0] && (

@@ -251,19 +251,19 @@ export default function BorrowPage() {
           borderBottomRightRadius: "32px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 sm:gap-6">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold mb-1 text-black">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 text-black">
                 Browse the community ShareChest
               </h1>
-              <p className="text-black/90">
+              <p className="text-sm sm:text-base text-black/90">
                 A trusted collection of items available{" "}
                 {userPostalCode && ` near ${userPostalCode}`}
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 md:w-72">
+            <div className="flex flex-col gap-2 sm:gap-3 w-full md:w-72">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                 <Input

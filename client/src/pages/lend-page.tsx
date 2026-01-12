@@ -734,10 +734,10 @@ export default function LendPage() {
           borderBottomRightRadius: "32px"
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 py-12 pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 sm:gap-6">
             <div className="flex-1">
-              <h1 className="text-4xl font-bold mb-1 text-black">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 text-black">
                 {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
               <p className="text-black/90">
@@ -748,23 +748,22 @@ export default function LendPage() {
             </div>
 
             {!isEditMode && (
-              <div className="flex flex-col gap-3 md:w-96">
+              <div className="flex flex-col gap-3 w-full md:w-96">
                 <div
-                  className="bg-white rounded-lg shadow-sm"
-                  style={{ height: "98px", padding: "10px" }}
+                  className="bg-white rounded-lg shadow-sm p-3"
                 >
-                  <div className="flex items-center gap-1.5 mb-1.5">
+                  <div className="flex items-center gap-1.5 mb-2">
                     <Download className="h-3.5 w-3.5 text-teal-600" />
                     <h3 className="font-medium text-xs text-black">
                       Import from Marketplace
                     </h3>
                   </div>
-                  <div className="flex gap-1.5 mb-2">
+                  <div className="flex flex-col sm:flex-row gap-2 mb-2">
                     <Input
                       placeholder="Paste listing URL..."
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
-                      className="flex-1 text-[11px] h-7 px-2"
+                      className="flex-1 text-xs h-9 px-3"
                     />
                     <Button
                       onClick={async () => {
@@ -814,13 +813,13 @@ export default function LendPage() {
                         }
                       }}
                       disabled={isImporting || !importUrl}
-                      className="text-white text-[11px] h-7 px-2.5"
+                      className="text-white text-xs h-9 px-4 w-full sm:w-auto"
                       style={{ backgroundColor: "#0DCEA1" }}
                     >
                       {isImporting ? "Importing..." : "Import"}
                     </Button>
                   </div>
-                  <p className="text-[10px] text-gray-400 pl-2">
+                  <p className="text-[10px] text-gray-400">
                     Facebook groups, Facebook marketplace & Craigslist
                   </p>
                 </div>
@@ -852,73 +851,69 @@ export default function LendPage() {
                 <CardContent className="pt-6 space-y-6">
                   {/* Question 1: Item Name with Item Type inline */}
                   <div className="space-y-4 border-t pt-4">
-                    <div className="flex items-start gap-2 flex-wrap">
-                      <h3 className="font-medium whitespace-nowrap pt-2">
-                        I'm Sharing my
-                      </h3>
-                      <div className="flex-1 flex gap-2 min-w-[300px]">
+                    <h3 className="font-medium">I'm Sharing my</h3>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="e.g., Baby Stroller, Power Drill..."
+                                onBlur={(e) => {
+                                  field.onBlur();
+                                  detectItemCategory(e.target.value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="flex flex-col sm:w-48">
                         <FormField
                           control={form.control}
-                          name="name"
+                          name="itemType"
                           render={({ field }) => (
-                            <FormItem className="flex-1">
+                            <FormItem>
                               <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder="e.g., Baby Stroller, Power Drill..."
-                                  onBlur={(e) => {
-                                    field.onBlur();
-                                    detectItemCategory(e.target.value);
-                                  }}
-                                />
+                                <Select
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger
+                                    className={`transition-all duration-500 ${
+                                      itemTypeGlow
+                                        ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
+                                        : ""
+                                    }`}
+                                  >
+                                    <SelectValue placeholder="Item type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {ITEM_TYPES.map((type) => (
+                                      <SelectItem key={type} value={type}>
+                                        {type}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        <div className="flex flex-col w-1/2">
-                          <FormField
-                            control={form.control}
-                            name="itemType"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormControl>
-                                  <Select
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                  >
-                                    <SelectTrigger
-                                      className={`transition-all duration-500 ${
-                                        itemTypeGlow
-                                          ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
-                                          : ""
-                                      }`}
-                                    >
-                                      <SelectValue placeholder="Item type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {ITEM_TYPES.map((type) => (
-                                        <SelectItem key={type} value={type}>
-                                          {type}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <p className="text-xs text-gray-400 mt-1 pl-3">
-                            {isDetectingCategory ? (
-                              <span className="text-teal-500 animate-pulse">
-                                AI detecting...
-                              </span>
-                            ) : (
-                              "AI will auto-detect"
-                            )}
-                          </p>
-                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {isDetectingCategory ? (
+                            <span className="text-teal-500 animate-pulse">
+                              AI detecting...
+                            </span>
+                          ) : (
+                            "AI will auto-detect"
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1116,11 +1111,11 @@ export default function LendPage() {
                   {/* Sharing options */}
                   <div className="space-y-3 border-t pt-4">
                     <h3 className="font-medium">Neighbours can</h3>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsLendable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsLendable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -1128,14 +1123,14 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <HandHeart className="h-4 w-4" />
-                        <span className="text-sm font-medium">Borrow It</span>
+                        <HandHeart className="h-4 w-4 shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium truncate">Borrow It</span>
                       </Button>
 
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsRentable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsRentable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -1143,14 +1138,14 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <DollarSign className="h-4 w-4" />
-                        <span className="text-sm font-medium">Rent It</span>
+                        <DollarSign className="h-4 w-4 shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium truncate">Rent It</span>
                       </Button>
 
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsSwappable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsSwappable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -1158,14 +1153,14 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <ArrowLeftRight className="h-4 w-4" />
-                        <span className="text-sm font-medium">Swap It</span>
+                        <ArrowLeftRight className="h-4 w-4 shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium truncate">Swap It</span>
                       </Button>
 
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-2 transition-all ${watchIsGift ? "bg-pink-500 hover:bg-pink-600 text-white border-pink-500" : "bg-white hover:bg-gray-50"}`}
+                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsGift ? "bg-pink-500 hover:bg-pink-600 text-white border-pink-500" : "bg-white hover:bg-gray-50"}`}
                         onClick={() => {
                           const newGiftValue = !watchIsGift;
                           form.setValue("isGift", newGiftValue);
@@ -1176,8 +1171,8 @@ export default function LendPage() {
                           }
                         }}
                       >
-                        <Gift className="h-4 w-4" />
-                        <span className="text-sm font-medium">Have It</span>
+                        <Gift className="h-4 w-4 shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium truncate">Have It</span>
                       </Button>
                     </div>
                     <p className="text-sm text-gray-400">
@@ -1187,10 +1182,10 @@ export default function LendPage() {
                     {/* Borrow, Rental, and Swap Cards - show side by side when selected */}
                     {(watchIsLendable || watchIsRentable || watchIsSwappable) &&
                       calculatedTier && (
-                        <div className="mt-4 grid grid-cols-4 gap-2">
-                          {/* Borrow Card - Column 1 */}
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {/* Borrow Card */}
                           {watchIsLendable && (
-                            <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100 col-start-1">
+                            <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 rounded-lg border border-teal-100">
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <Coins className="h-4 w-4 text-teal-600" />
                                 <span className="text-xs text-teal-700">
@@ -1242,9 +1237,9 @@ export default function LendPage() {
                             </div>
                           )}
 
-                          {/* Rental Card - Column 2 */}
+                          {/* Rental Card */}
                           {watchIsRentable && (
-                            <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100 col-start-2">
+                            <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
                               {(() => {
                                 const getEstimatedValue = () => {
                                   if (valuationResult?.internalItemValue) {
@@ -1360,9 +1355,9 @@ export default function LendPage() {
                             </div>
                           )}
 
-                          {/* Swap Card - Column 3 */}
+                          {/* Swap Card */}
                           {watchIsSwappable && (
-                            <div className="p-3 bg-gradient-to-r from-[#E6FBF5] to-teal-50 rounded-lg border border-[#0DCEA1]/20 col-start-3">
+                            <div className="p-3 bg-gradient-to-r from-[#E6FBF5] to-teal-50 rounded-lg border border-[#0DCEA1]/20">
                               {(() => {
                                 const tierSC =
                                   getTierShareCoins(calculatedTier);
@@ -1410,8 +1405,8 @@ export default function LendPage() {
                     <div className="space-y-4 border-t pt-4">
                       <h3 className="font-medium">Availability Period</h3>
 
-                      {/* Quick-select Buttons - all in 1 row, full width */}
-                      <div className="flex gap-2 w-full">
+                      {/* Quick-select Buttons - responsive wrap */}
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           type="button"
                           variant={

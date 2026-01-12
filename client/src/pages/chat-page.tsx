@@ -143,7 +143,7 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {!isConnected && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
@@ -153,8 +153,8 @@ export default function ChatPage() {
           </Alert>
         )}
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col h-[600px]">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col h-[calc(100vh-220px)] sm:h-[600px]">
               {isLoading ? (
                 <div className="flex-1 flex items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />

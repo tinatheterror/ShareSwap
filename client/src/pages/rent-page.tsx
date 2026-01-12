@@ -159,11 +159,11 @@ export default function RentPage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="text-center mb-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Rent Items</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Rent Items</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Browse items available for rental with daily pricing
               {userPostalCode && ` near ${userPostalCode}`}
             </p>
@@ -171,7 +171,7 @@ export default function RentPage() {
           <Button
             variant="outline"
             onClick={handleLocationChange}
-            className="mt-4 mr-4"
+            className="mt-4"
           >
             <MapPin className="h-4 w-4 mr-2" />
             {userPostalCode ? `Change Location (${userPostalCode})` : "Set Location"}
@@ -179,7 +179,7 @@ export default function RentPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex gap-4 mb-6 max-w-2xl mx-auto">
+        <div className="flex gap-2 sm:gap-4 mb-6 max-w-2xl mx-auto">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
@@ -205,9 +205,9 @@ export default function RentPage() {
         </div>
 
         {/* All Rentable Items Grid */}
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">All Items Available to Rent ({filteredItems.length})</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-6 sm:mt-8">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">All Items Available to Rent ({filteredItems.length})</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
           {filteredItems.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow bg-white rounded-xl overflow-hidden">
               <CardContent className="p-4">

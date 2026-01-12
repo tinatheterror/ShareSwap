@@ -516,33 +516,42 @@ export default function LendPage() {
         form.setValue("latitude", latitude);
         form.setValue("longitude", longitude);
 
-        // Get postal code from coordinates
+        // Get postal code from coordinates using OpenStreetMap Nominatim
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+            {
+              headers: {
+                'User-Agent': 'ShareSwap/1.0',
+              },
+            }
           );
+          
+          if (!response.ok) {
+            throw new Error(`Geocoding API returned ${response.status}`);
+          }
+          
           const data = await response.json();
-          if (data.address?.postcode) {
-            form.setValue("postalCode", data.address.postcode);
+          const postcode = data.address?.postcode || data.address?.postal_code;
+          
+          if (postcode) {
+            form.setValue("postalCode", postcode);
             toast({
               title: "Location Updated",
-              description: "Your postal code has been automatically filled.",
+              description: `Your postal code (${postcode}) has been automatically filled.`,
             });
           } else {
+            // Location found but no postal code - still useful, just prompt for postal code
             toast({
-              title: "Location Error",
-              description:
-                "Could not get your postal code. Please enter it manually.",
-              variant: "destructive",
+              title: "Location Found",
+              description: "We got your coordinates but couldn't find the postal code. Please enter it manually.",
             });
           }
         } catch (error) {
           console.error("Error getting postal code:", error);
           toast({
-            title: "Location Error",
-            description:
-              "Could not get your postal code. Please enter it manually.",
-            variant: "destructive",
+            title: "Location Found",
+            description: "We got your coordinates. Please enter your postal code manually.",
           });
         }
       } catch (error) {

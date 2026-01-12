@@ -104,14 +104,22 @@ export default function BorrowPage() {
             lon: longitude,
           });
 
-          // Get postal code from coordinates
+          // Get postal code from coordinates using OpenStreetMap Nominatim
           try {
             const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+              {
+                headers: {
+                  'User-Agent': 'ShareSwap/1.0',
+                },
+              }
             );
-            const data = await response.json();
-            if (data.address?.postcode) {
-              setUserPostalCode(data.address.postcode);
+            if (response.ok) {
+              const data = await response.json();
+              const postcode = data.address?.postcode || data.address?.postal_code;
+              if (postcode) {
+                setUserPostalCode(postcode);
+              }
             }
           } catch (error) {
             console.error("Error getting postal code:", error);

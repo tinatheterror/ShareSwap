@@ -454,8 +454,15 @@ export function ItemRequestForm({
             {/* Borrow Cost Breakdown - Only for BORROW */}
             {requestType === "BORROW" &&
               (() => {
-                // Get weekly ShareCoin rate from item
-                const weeklyRate = (item as any).shareCoinPrice || 5;
+                // Tier-based weekly ShareCoin borrow rates
+                const TIER_WEEKLY_RATES: Record<number, number> = {
+                  1: 2,   // Tier 1: Under $50 - 2 SC/week
+                  2: 5,   // Tier 2: $50-$150 - 5 SC/week
+                  3: 10,  // Tier 3: $150-$300 - 10 SC/week
+                  4: 20,  // Tier 4: $300+ - 20 SC/week
+                };
+                const itemTierForRate = (item as any).tier || 2;
+                const weeklyRate = TIER_WEEKLY_RATES[itemTierForRate] || 5;
 
                 // Watch dates and calculate days
                 const startDate = form.watch("startDate");

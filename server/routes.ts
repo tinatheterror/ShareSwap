@@ -1443,8 +1443,39 @@ Respond with ONLY the category name, nothing else.`
     // First insert the item
     const [item] = await db.insert(items).values(itemData).returning();
 
-    // Note: ShareCoins are NOT awarded on listing - they are earned when someone borrows the item
+    // Note: ShareCoins are NOT awarded on listing based on item value
     // The shareCoinsReward field stores the item's valuation for swap calculations
+    // However, we DO award a one-time +1 SC bonus for the user's FIRST listing
+
+    // Check if this is user's first listing and award bonus
+    let firstListingBonus = 0;
+    const [userRecord] = await db
+      .select({ hasCompletedFirstListing: users.hasCompletedFirstListing })
+      .from(users)
+      .where(eq(users.id, req.user.id))
+      .limit(1);
+
+    if (userRecord && !userRecord.hasCompletedFirstListing) {
+      firstListingBonus = 1;
+      
+      // Award 1 ShareCoin for first listing
+      await db.insert(shareCoinsTransactions).values({
+        userId: req.user.id,
+        amount: "1",
+        description: "First Listing Bonus",
+        transactionType: "EARNED",
+      });
+
+      await db
+        .update(users)
+        .set({
+          shareCoins: sql`share_coins + 1`,
+          hasCompletedFirstListing: true,
+        })
+        .where(eq(users.id, req.user.id));
+
+      console.log(`✅ Awarded 1 ShareCoin to user ${req.user.id} for first listing`);
+    }
 
     // Prepare response with AI valuation details
     const responseData: any = {

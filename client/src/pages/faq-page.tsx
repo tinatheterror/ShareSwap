@@ -931,7 +931,7 @@ export default function FAQPage() {
                   Earn <span className="font-semibold">bonus ShareCoins</span>{" "}
                   for completing your{" "}
                   <span className="font-semibold">
-                    first swap, gift, rent, or borrow
+                    first listing, swap, gift, rent, or borrow
                   </span>
                   . You also get a one-time bonus for{" "}
                   <span className="font-semibold">completing your profile</span>{" "}

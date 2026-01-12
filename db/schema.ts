@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   referredBy: integer("referred_by"),
   smartScansUsed: integer("smart_scans_used").default(0),
   smartScansResetDate: timestamp("smart_scans_reset_date").defaultNow(),
+  hasCompletedFirstListing: boolean("has_completed_first_listing").default(false),
   hasCompletedFirstRent: boolean("has_completed_first_rent").default(false),
   hasCompletedFirstLend: boolean("has_completed_first_lend").default(false),
   hasCompletedFirstSwap: boolean("has_completed_first_swap").default(false),

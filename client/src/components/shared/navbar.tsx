@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { Clock, AlertCircle } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { formatDistanceToNow } from "date-fns";
 
 interface Notification {
@@ -163,19 +164,21 @@ function NotificationBell() {
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <nav className="border-b bg-background">
-      <div className="max-w-7xl mx-auto pl-0 pr-4 sm:pr-6 lg:pr-8">
-        <div className="flex justify-between h-16 items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-14 sm:h-16 items-center">
           <Link href="/">
-            <div className="flex items-center cursor-pointer -ml-4">
-              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-[48px] w-auto" />
+            <div className="flex items-center cursor-pointer">
+              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-10 sm:h-12 w-auto" />
             </div>
           </Link>
 
-          <NavigationMenu>
-            <NavigationMenuList className="space-x-4">
+          {/* Desktop Navigation */}
+          <NavigationMenu className="hidden lg:flex">
+            <NavigationMenuList className="space-x-2">
               {user ? (
                 <>
                   <NavigationMenuItem>
@@ -242,7 +245,6 @@ export function Navbar() {
                       </Button>
                     </Link>
                   </NavigationMenuItem>
-
                   <NavigationMenuItem>
                     <Link href="/help">
                       <Button variant="ghost" className="flex items-center gap-2 hover:text-primary text-gray-500">
@@ -252,7 +254,7 @@ export function Navbar() {
                     </Link>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <NotificationBell />
                       <Link href="/profile">
                         <Avatar className="border-2 border-primary cursor-pointer hover:border-primary/80 transition-colors">
@@ -282,6 +284,117 @@ export function Navbar() {
               )}
             </NavigationMenuList>
           </NavigationMenu>
+
+          {/* Mobile Navigation */}
+          <div className="flex lg:hidden items-center gap-2">
+            {user && <NotificationBell />}
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                <div className="flex flex-col gap-4 mt-6">
+                  {user ? (
+                    <>
+                      {/* User Info */}
+                      <div className="flex items-center gap-3 pb-4 border-b">
+                        <Avatar className="h-12 w-12 border-2 border-primary">
+                          <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                            {user.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{user.username}</p>
+                          <p className="text-sm text-primary flex items-center gap-1">
+                            <Coins className="h-4 w-4" />
+                            {user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Navigation Links */}
+                      <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <Home className="h-5 w-5" />
+                          Home
+                        </Button>
+                      </Link>
+                      <Link href="/my-items" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3" data-tutorial="sharechest">
+                          <Package className="h-5 w-5" />
+                          My Shared Items
+                        </Button>
+                      </Link>
+                      <Link href="/wishlists" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3" data-tutorial="wishlist">
+                          <Heart className="h-5 w-5" />
+                          My Wishlist
+                        </Button>
+                      </Link>
+                      <Link href="/wallet" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <Coins className="h-5 w-5" />
+                          Wallet
+                        </Button>
+                      </Link>
+                      <Link href="/achievements" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <Trophy className="h-5 w-5" />
+                          Achievements
+                        </Button>
+                      </Link>
+                      <Link href="/games" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <Gamepad2 className="h-5 w-5" />
+                          Play Games
+                        </Button>
+                      </Link>
+                      <Link href="/referrals" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <Users className="h-5 w-5" />
+                          Invite Friends
+                        </Button>
+                      </Link>
+                      <Link href="/help" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <HelpCircle className="h-5 w-5" />
+                          How It Works
+                        </Button>
+                      </Link>
+                      <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <User className="h-5 w-5" />
+                          Profile
+                        </Button>
+                      </Link>
+
+                      <div className="border-t pt-4 mt-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            logoutMutation.mutate();
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full justify-start gap-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <LogOut className="h-5 w-5" />
+                          Logout
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>
+                      <Button className="w-full" style={{ backgroundColor: "#0DCEA1" }}>
+                        Login / Sign Up
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
       <WishlistFulfillmentPopup

@@ -150,7 +150,7 @@ export default function CommunityWishlistsPage() {
                     )}
                   </div>
 
-                  <Link href="/lend">
+                  <Link href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}>
                     <Button size="lg" className="w-full  text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200" style={{ backgroundColor: "#0DCEA1" }}>
                       I Have This Item!
                     </Button>

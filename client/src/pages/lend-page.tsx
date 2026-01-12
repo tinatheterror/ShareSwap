@@ -180,7 +180,9 @@ export default function LendPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const searchString = useSearch();
-  const editItemId = new URLSearchParams(searchString).get("edit");
+  const searchParams = new URLSearchParams(searchString);
+  const editItemId = searchParams.get("edit");
+  const prefillItemName = searchParams.get("prefill");
   const isEditMode = !!editItemId;
 
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
@@ -314,6 +316,13 @@ export default function LendPage() {
       }
     }
   }, [editItem, isEditMode]);
+
+  // Pre-fill item name when coming from wishlist "I Have This Item!" button
+  useEffect(() => {
+    if (prefillItemName && !isEditMode) {
+      form.setValue("name", prefillItemName);
+    }
+  }, [prefillItemName, isEditMode]);
 
   // Convert files to base64 for AI valuation
   const getPhotoDataUrls = async (): Promise<string[]> => {

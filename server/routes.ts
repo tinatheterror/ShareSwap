@@ -1443,37 +1443,8 @@ Respond with ONLY the category name, nothing else.`
     // First insert the item
     const [item] = await db.insert(items).values(itemData).returning();
 
-    // Build transaction description
-    let transactionDescription = `Earned for listing ${item.name}`;
-    if (aiValuationResult) {
-      const tierBand = aiValuationResult.tierBand;
-      transactionDescription += ` (AI-valued at ${shareCoinsReward} ShareCoins/week in Tier ${tier} band: ${tierBand.min}-${tierBand.max})`;
-    } else {
-      transactionDescription += ` (${[
-        isLendable && "Lending",
-        isSwappable && "Swapping",
-        isRentable && "Renting",
-        isGift && "Gifting",
-      ]
-        .filter(Boolean)
-        .join(", ")})`;
-    }
-
-    // Record the ShareCoins transaction
-    await db.insert(shareCoinsTransactions).values({
-      userId: req.user.id,
-      amount: shareCoinsReward.toString(),
-      description: transactionDescription,
-      transactionType: "EARNED",
-    });
-
-    // Update user's ShareCoins
-    await db
-      .update(users)
-      .set({
-        shareCoins: sql`share_coins + ${shareCoinsReward}`,
-      })
-      .where(eq(users.id, req.user.id));
+    // Note: ShareCoins are NOT awarded on listing - they are earned when someone borrows the item
+    // The shareCoinsReward field stores the item's valuation for swap calculations
 
     // Prepare response with AI valuation details
     const responseData: any = {

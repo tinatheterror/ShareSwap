@@ -144,13 +144,15 @@ function CardForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border rounded-lg bg-gray-50">
+      <div className="p-4 border rounded-lg bg-white min-h-[50px]">
         <CardElement
           options={{
             style: {
               base: {
                 fontSize: "16px",
                 color: "#374151",
+                fontFamily: "system-ui, -apple-system, sans-serif",
+                lineHeight: "24px",
                 "::placeholder": {
                   color: "#9CA3AF",
                 },
@@ -159,6 +161,7 @@ function CardForm({
                 color: "#EF4444",
               },
             },
+            hidePostalCode: true,
           }}
         />
       </div>

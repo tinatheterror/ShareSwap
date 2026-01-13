@@ -671,7 +671,7 @@ export function ItemRequestForm({
                                 No fees
                               </p>
                               <p className="text-[10px] text-gray-400 mt-0.5">
-                                Handled directly with neighbour
+                                Exchanged directly with neighbour
                               </p>
                             </div>
                           </div>

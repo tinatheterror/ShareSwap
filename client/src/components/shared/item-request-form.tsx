@@ -709,9 +709,9 @@ export function ItemRequestForm({
                         <div className="flex-1">
                           <label
                             htmlFor="in_person"
-                            className="flex items-center gap-1.5 cursor-pointer font-medium text-sm"
+                            className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
                           >
-                            <MapPin className="h-4 w-4 text-gray-500" />
+                            <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
                             Pick Up Yourself
                           </label>
                           <p className="text-xs text-green-600 font-medium mt-0.5">

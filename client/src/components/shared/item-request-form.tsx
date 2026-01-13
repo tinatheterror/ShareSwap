@@ -718,7 +718,7 @@ export function ItemRequestForm({
                             Free
                           </p>
                           <p className="text-[10px] text-gray-400 mt-0.5">
-                            Meet the owner to pick up the item
+                            Meet up with the owner
                           </p>
                         </div>
                       </div>

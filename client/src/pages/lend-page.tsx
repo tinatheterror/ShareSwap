@@ -747,13 +747,13 @@ export default function LendPage() {
           borderBottomRightRadius: "32px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 sm:gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-12 pb-4 sm:pb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-6">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 text-black">
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-bold mb-0.5 sm:mb-1 text-black">
                 {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
-              <p className="text-black/90">
+              <p className="text-black/90 text-sm sm:text-base">
                 {isEditMode
                   ? " "
                   : "Make your neighbourhood richer without spending a cent"}
@@ -761,20 +761,20 @@ export default function LendPage() {
             </div>
 
             {!isEditMode && (
-              <div className="flex flex-col gap-3 w-full md:w-96">
-                <div className="bg-white rounded-lg shadow-sm p-3">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Download className="h-3.5 w-3.5 text-teal-600" />
-                    <h3 className="font-medium text-xs text-black">
+              <div className="flex flex-col gap-2 w-full md:w-96">
+                <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3">
+                  <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
+                    <Download className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-600" />
+                    <h3 className="font-medium text-[10px] sm:text-xs text-black">
                       Import from Marketplace
                     </h3>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                  <div className="flex gap-2 mb-1 sm:mb-2">
                     <Input
                       placeholder="Paste listing URL..."
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
-                      className="flex-1 text-xs h-9 px-3"
+                      className="flex-1 text-xs h-8 sm:h-9 px-2 sm:px-3"
                     />
                     <Button
                       onClick={async () => {
@@ -824,14 +824,14 @@ export default function LendPage() {
                         }
                       }}
                       disabled={isImporting || !importUrl}
-                      className="text-white text-xs h-9 px-4 w-full sm:w-auto"
+                      className="text-white text-xs h-8 sm:h-9 px-3 sm:px-4 shrink-0"
                       style={{ backgroundColor: "#0DCEA1" }}
                     >
-                      {isImporting ? "Importing..." : "Import"}
+                      {isImporting ? "..." : "Import"}
                     </Button>
                   </div>
-                  <p className="text-[10px] text-gray-400">
-                    Facebook groups, Facebook marketplace & Craigslist
+                  <p className="text-[9px] sm:text-[10px] text-gray-400">
+                    Facebook, Marketplace & Craigslist
                   </p>
                 </div>
               </div>

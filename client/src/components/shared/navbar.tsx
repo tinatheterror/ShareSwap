@@ -223,7 +223,7 @@ export function Navbar() {
                           className="cursor-pointer hover:text-primary"
                           onClick={() => setShowWishlistPopup(true)}
                         >
-                          <HandHeart className="mr-2 h-4 w-4" />
+                          <Heart className="mr-2 h-4 w-4" />
                           <span>Help Neighbours</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>

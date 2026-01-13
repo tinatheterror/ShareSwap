@@ -910,7 +910,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="sc-2">
                 <AccordionTrigger className="text-sm">
-                  Are there any limits on ShareCoin rewards?
+                  Any limits on rewards?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   Some activities have{" "}
@@ -940,7 +940,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="sc-4">
                 <AccordionTrigger className="text-sm">
-                  Can I farm ShareCoins with a friend or partner?
+                  Can I farm ShareCoins?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   No. We{" "}
@@ -993,7 +993,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="tier-2">
                 <AccordionTrigger className="text-sm">
-                  Can I change the Tier or ShareCoin value?
+                  Can I change Tier or value?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   No. That's <span className="font-semibold">locked</span> to

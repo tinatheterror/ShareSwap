@@ -1690,6 +1690,35 @@ export default function FAQPage() {
             </Accordion>
           </CardContent>
         </Card>
+
+        {/* What's Coming Next */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg">
+            <CardTitle className="text-lg text-purple-800 flex items-center gap-2">
+              🚀 What's Coming Next
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="coming-1">
+                <AccordionTrigger className="text-sm">
+                  Optional Item Care Services
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 space-y-3">
+                  <p>
+                    We're exploring optional item care services for select categories in the future.
+                  </p>
+                  <p>
+                    This would allow users to choose professional cleaning for certain items before pickup or delivery. Participation would always be optional and clearly labeled.
+                  </p>
+                  <p>
+                    For now, item condition and cleanliness are managed directly between neighbours, supported by trust scores, reviews, and clear communication.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

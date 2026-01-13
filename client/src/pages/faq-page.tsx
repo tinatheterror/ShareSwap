@@ -404,41 +404,41 @@ export default function FAQPage() {
                   <p className="text-[#0DCEA1] font-medium text-sm mb-3">
                     Tiers & ShareCoin Values
                   </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
                         Tier 1
                       </p>
-                      <p className="text-xs text-gray-500">Everyday items</p>
-                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                        5 ShareCoins
+                      <p className="text-xs text-gray-500">Everyday</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                        5 SC
                       </p>
                     </div>
-                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                    <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
                         Tier 2
                       </p>
-                      <p className="text-xs text-gray-500">Mid-value items</p>
-                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                        10 ShareCoins
+                      <p className="text-xs text-gray-500">Mid-value</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                        10 SC
                       </p>
                     </div>
-                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                    <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
                         Tier 3
                       </p>
-                      <p className="text-xs text-gray-500">High-value items</p>
-                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                        20 ShareCoins
+                      <p className="text-xs text-gray-500">High-value</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                        20 SC
                       </p>
                     </div>
-                    <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                    <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-sm font-medium text-gray-700">
                         Tier 4
                       </p>
-                      <p className="text-xs text-gray-500">Premium items</p>
-                      <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                        40 ShareCoins
+                      <p className="text-xs text-gray-500">Premium</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                        40 SC
                       </p>
                     </div>
                   </div>
@@ -591,18 +591,18 @@ export default function FAQPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {/* Lending */}
                 <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 border border-amber-200">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-amber-200 rounded-lg flex items-center justify-center flex-shrink-0">
                       <HandHeart className="h-4 w-4 text-amber-600" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         Lending Items
                       </p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-gray-500 truncate">
                         Earn when you lend
                       </p>
                     </div>
@@ -615,11 +615,11 @@ export default function FAQPage() {
                     <div className="w-8 h-8 bg-[#0DCEA1]/20 rounded-lg flex items-center justify-center flex-shrink-0">
                       <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         Completed Swap
                       </p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-gray-500 truncate">
                         Each party earns
                       </p>
                     </div>
@@ -632,11 +632,11 @@ export default function FAQPage() {
                     <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center flex-shrink-0">
                       <DollarSign className="h-4 w-4 text-green-600" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         Completed Rental
                       </p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-gray-500 truncate">
                         Owner & renter each
                       </p>
                     </div>
@@ -649,12 +649,12 @@ export default function FAQPage() {
                     <div className="w-8 h-8 bg-pink-200 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Gift className="h-4 w-4 text-pink-500" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         Completed Gift
                       </p>
-                      <p className="text-[10px] text-gray-500">
-                        Giver and receiver earn
+                      <p className="text-[10px] text-gray-500 truncate">
+                        Giver & receiver earn
                       </p>
                     </div>
                   </div>
@@ -666,11 +666,11 @@ export default function FAQPage() {
                     <div className="w-8 h-8 bg-orange-200 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Clock className="h-4 w-4 text-orange-600" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         Urgent Help
                       </p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-gray-500 truncate">
                         Fulfilled in time
                       </p>
                     </div>
@@ -683,11 +683,11 @@ export default function FAQPage() {
                     <div className="w-8 h-8 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Gamepad2 className="h-4 w-4 text-purple-600" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
-                        Sponsored Games
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
+                        Games
                       </p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-gray-500 truncate">
                         Daily play limit
                       </p>
                     </div>
@@ -700,12 +700,12 @@ export default function FAQPage() {
                     <div className="w-8 h-8 bg-blue-200 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Users className="h-4 w-4 text-blue-600" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
-                        Friend Referral
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
+                        Referral
                       </p>
-                      <p className="text-[10px] text-gray-500">
-                        Friend's first transaction
+                      <p className="text-[10px] text-gray-500 truncate">
+                        Friend's first use
                       </p>
                     </div>
                   </div>
@@ -717,11 +717,11 @@ export default function FAQPage() {
                     <div className="w-8 h-8 bg-teal-200 rounded-lg flex items-center justify-center flex-shrink-0">
                       <TrendingUp className="h-4 w-4 text-teal-600" />
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-700">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         Level Up
                       </p>
-                      <p className="text-[10px] text-gray-500">
+                      <p className="text-[10px] text-gray-500 truncate">
                         Community standing
                       </p>
                     </div>
@@ -752,33 +752,33 @@ export default function FAQPage() {
               <p className="text-[#0DCEA1] font-medium text-sm mb-3">
                 Tiers & ShareCoin Values
               </p>
-              <div className="grid grid-cols-4 gap-2">
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 1</p>
-                  <p className="text-xs text-gray-500">Everyday items</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                    5 ShareCoins
+                  <p className="text-xs text-gray-500">Everyday</p>
+                  <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                    5 SC
                   </p>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 2</p>
-                  <p className="text-xs text-gray-500">Mid-value items</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                    10 ShareCoins
+                  <p className="text-xs text-gray-500">Mid-value</p>
+                  <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                    10 SC
                   </p>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 3</p>
-                  <p className="text-xs text-gray-500">High-value items</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                    20 ShareCoins
+                  <p className="text-xs text-gray-500">High-value</p>
+                  <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                    20 SC
                   </p>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-gray-100">
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 4</p>
-                  <p className="text-xs text-gray-500">Premium items</p>
-                  <p className="text-[#0DCEA1] font-medium text-sm mt-1">
-                    40 ShareCoins
+                  <p className="text-xs text-gray-500">Premium</p>
+                  <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
+                    40 SC
                   </p>
                 </div>
               </div>

@@ -533,18 +533,18 @@ export default function LendPage() {
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
             {
               headers: {
-                'User-Agent': 'ShareSwap/1.0',
+                "User-Agent": "ShareSwap/1.0",
               },
-            }
+            },
           );
-          
+
           if (!response.ok) {
             throw new Error(`Geocoding API returned ${response.status}`);
           }
-          
+
           const data = await response.json();
           const postcode = data.address?.postcode || data.address?.postal_code;
-          
+
           if (postcode) {
             form.setValue("postalCode", postcode);
             toast({
@@ -555,14 +555,16 @@ export default function LendPage() {
             // Location found but no postal code - still useful, just prompt for postal code
             toast({
               title: "Location Found",
-              description: "We got your coordinates but couldn't find the postal code. Please enter it manually.",
+              description:
+                "We got your coordinates but couldn't find the postal code. Please enter it manually.",
             });
           }
         } catch (error) {
           console.error("Error getting postal code:", error);
           toast({
             title: "Location Found",
-            description: "We got your coordinates. Please enter your postal code manually.",
+            description:
+              "We got your coordinates. Please enter your postal code manually.",
           });
         }
       } catch (error) {
@@ -738,11 +740,11 @@ export default function LendPage() {
       {/* Hero Section - Same style as Browse page */}
       <div
         className="w-full relative"
-        style={{ 
+        style={{
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          borderBottomRightRadius: "32px"
+          borderBottomRightRadius: "32px",
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">
@@ -760,9 +762,7 @@ export default function LendPage() {
 
             {!isEditMode && (
               <div className="flex flex-col gap-3 w-full md:w-96">
-                <div
-                  className="bg-white rounded-lg shadow-sm p-3"
-                >
+                <div className="bg-white rounded-lg shadow-sm p-3">
                   <div className="flex items-center gap-1.5 mb-2">
                     <Download className="h-3.5 w-3.5 text-teal-600" />
                     <h3 className="font-medium text-xs text-black">
@@ -1076,7 +1076,7 @@ export default function LendPage() {
                             {valuationResult && !isLoadingValuation ? (
                               <div className="flex items-center gap-1.5 text-sm">
                                 <Coins className="h-5 w-5 text-teal-600" />
-                                <span className="font-semibold text-teal-700 text-lg">
+                                <span className="font-semibold text-black-700 text-lg">
                                   {valuationResult.shareCoinsValue}{" "}
                                   ShareCoins/week
                                 </span>
@@ -1138,7 +1138,9 @@ export default function LendPage() {
                         }}
                       >
                         <HandHeart className="h-4 w-4 shrink-0" />
-                        <span className="text-xs sm:text-sm font-medium truncate">Borrow It</span>
+                        <span className="text-xs sm:text-sm font-medium truncate">
+                          Borrow It
+                        </span>
                       </Button>
 
                       <Button
@@ -1153,7 +1155,9 @@ export default function LendPage() {
                         }}
                       >
                         <DollarSign className="h-4 w-4 shrink-0" />
-                        <span className="text-xs sm:text-sm font-medium truncate">Rent It</span>
+                        <span className="text-xs sm:text-sm font-medium truncate">
+                          Rent It
+                        </span>
                       </Button>
 
                       <Button
@@ -1168,7 +1172,9 @@ export default function LendPage() {
                         }}
                       >
                         <ArrowLeftRight className="h-4 w-4 shrink-0" />
-                        <span className="text-xs sm:text-sm font-medium truncate">Swap It</span>
+                        <span className="text-xs sm:text-sm font-medium truncate">
+                          Swap It
+                        </span>
                       </Button>
 
                       <Button
@@ -1186,7 +1192,9 @@ export default function LendPage() {
                         }}
                       >
                         <Gift className="h-4 w-4 shrink-0" />
-                        <span className="text-xs sm:text-sm font-medium truncate">Have It</span>
+                        <span className="text-xs sm:text-sm font-medium truncate">
+                          Have It
+                        </span>
                       </Button>
                     </div>
                     <p className="text-sm text-gray-400">
@@ -1213,10 +1221,7 @@ export default function LendPage() {
                                   <span className="text-gray-500">...</span>
                                 ) : (
                                   <>
-                                    {
-                                      TIER_WEEKLY_BANDS[calculatedTier]
-                                        .display
-                                    }
+                                    {TIER_WEEKLY_BANDS[calculatedTier].display}
                                   </>
                                 )}
                                 <span className="font-normal text-teal-700">
@@ -1243,7 +1248,8 @@ export default function LendPage() {
                                       </span>
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-0.5">
-                                      Borrowers may see lower deposits based on their trust score
+                                      Borrowers may see lower deposits based on
+                                      their trust score
                                     </div>
                                   </div>
                                 );

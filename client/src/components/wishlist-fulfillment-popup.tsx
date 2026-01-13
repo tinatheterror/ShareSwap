@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Coins,
   Heart,
+  HandHeart,
   MapPin,
   Clock,
   ArrowLeftRight,
@@ -70,7 +71,7 @@ export function WishlistFulfillmentPopup({
   const getNeedTypeIcon = (needType: string) => {
     switch (needType) {
       case "borrow":
-        return <Heart className="h-3 w-3" />;
+        return <HandHeart className="h-3 w-3" />;
       case "rent":
         return <DollarSign className="h-3 w-3" />;
       case "swap":

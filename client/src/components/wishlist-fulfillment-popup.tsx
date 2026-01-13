@@ -222,11 +222,12 @@ export function WishlistFulfillmentPopup({
                       </div>
                     </div>
 
-                    <Link href="/lend">
+                    <Link href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}>
                       <Button
                         size="lg"
                         className="w-full text-black font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200"
                         style={{ backgroundColor: "#0DCEA1" }}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         I Have This Item!
                       </Button>

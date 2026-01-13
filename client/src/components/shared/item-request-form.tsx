@@ -443,6 +443,9 @@ export function ItemRequestForm({
                           <p className="text-[10px] text-gray-400 mt-0.5">
                             Held securely, auto-refunded on return
                           </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Processing fee: ${(deposit * 0.03).toFixed(2)}
+                          </p>
                         </div>
                       </div>
                     ) : (
@@ -575,6 +578,9 @@ export function ItemRequestForm({
                             <p className="text-[10px] text-gray-400 mt-0.5">
                               Held securely, auto-refunded on return
                             </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Processing fee: ${(depositCalc.finalDeposit * 0.03).toFixed(2)}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -598,6 +604,15 @@ export function ItemRequestForm({
                   if (isCourier && field.value !== "in_app") {
                     field.onChange("in_app");
                   }
+                  
+                  // Calculate deposit for processing fee display
+                  const itemTierForDeposit = (item as any).tier || 2;
+                  const itemOriginalValueForDeposit = (item as any).originalValue || "$50–$150";
+                  const reputationScoreForDeposit = (user as any)?.reputationScore || 0;
+                  const viewerTrustScoreForDeposit = Math.min(100, Math.round((reputationScoreForDeposit / 500) * 100) + 50);
+                  const depositCalcForFee = calculateSecurityDeposit(itemTierForDeposit, itemOriginalValueForDeposit, viewerTrustScoreForDeposit);
+                  const processingFee = (depositCalcForFee.finalDeposit * 0.03).toFixed(2);
+                  
                   return (
                     <FormItem className="space-y-3">
                       <FormLabel className="flex items-center gap-2">
@@ -629,6 +644,9 @@ export function ItemRequestForm({
                               </p>
                               <p className="text-[10px] text-gray-400 mt-0.5">
                                 Held securely, auto-refunded
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Processing fee: ${processingFee}
                               </p>
                             </div>
                           </div>

@@ -1044,13 +1044,18 @@ export default function LendPage() {
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-black font-medium">
-                                {TIER_NAMES[calculatedTier]}
-                              </span>
+                            <span className="text-black font-medium">
+                              {TIER_NAMES[calculatedTier]}
+                            </span>
+                            {valuationResult && !isLoadingValuation && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Sparkles className="h-4 w-4 text-teal-500 cursor-help" />
+                                  <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full cursor-help">
+                                    <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+                                    <span className="text-xs text-teal-700 font-medium">
+                                      AI valued
+                                    </span>
+                                  </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
                                   <p className="text-sm font-medium mb-1">
@@ -1062,14 +1067,6 @@ export default function LendPage() {
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
-                            </div>
-                            {valuationResult && !isLoadingValuation && (
-                              <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full">
-                                <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-                                <span className="text-xs text-teal-700 font-medium">
-                                  AI valued
-                                </span>
-                              </div>
                             )}
                           </div>
                           <div className="mt-2">

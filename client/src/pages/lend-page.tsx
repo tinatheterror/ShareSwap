@@ -519,7 +519,11 @@ export default function LendPage() {
       try {
         const position = await new Promise<GeolocationPosition>(
           (resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject);
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 300000,
+            });
           },
         );
 
@@ -527,44 +531,55 @@ export default function LendPage() {
         form.setValue("latitude", latitude);
         form.setValue("longitude", longitude);
 
-        // Get postal code from coordinates using OpenStreetMap Nominatim
+        let postcode: string | null = null;
+        let locality: string | null = null;
+
+        // Try BigDataCloud first (better postal code coverage, no API key needed)
         try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
-            {
-              headers: {
-                "User-Agent": "ShareSwap/1.0",
-              },
-            },
+          const bdcResponse = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
           );
-
-          if (!response.ok) {
-            throw new Error(`Geocoding API returned ${response.status}`);
+          if (bdcResponse.ok) {
+            const bdcData = await bdcResponse.json();
+            postcode = bdcData.postcode || null;
+            locality = bdcData.locality || bdcData.city || null;
           }
+        } catch (e) {
+          console.log("BigDataCloud failed, trying Nominatim...");
+        }
 
-          const data = await response.json();
-          const postcode = data.address?.postcode || data.address?.postal_code;
-
-          if (postcode) {
-            form.setValue("postalCode", postcode);
-            toast({
-              title: "Location Updated",
-              description: `Your postal code (${postcode}) has been automatically filled.`,
-            });
-          } else {
-            // Location found but no postal code - still useful, just prompt for postal code
-            toast({
-              title: "Location Found",
-              description:
-                "We got your coordinates but couldn't find the postal code. Please enter it manually.",
-            });
+        // Fallback to OpenStreetMap Nominatim if BigDataCloud didn't return postal code
+        if (!postcode) {
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+              {
+                headers: {
+                  "User-Agent": "ShareSwap/1.0",
+                },
+              },
+            );
+            if (response.ok) {
+              const data = await response.json();
+              postcode = data.address?.postcode || data.address?.postal_code || null;
+              locality = locality || data.address?.city || data.address?.town || data.address?.village || null;
+            }
+          } catch (e) {
+            console.log("Nominatim also failed");
           }
-        } catch (error) {
-          console.error("Error getting postal code:", error);
+        }
+
+        if (postcode) {
+          form.setValue("postalCode", postcode);
+          const locationName = locality ? ` (${locality})` : "";
           toast({
-            title: "Location Found",
-            description:
-              "We got your coordinates. Please enter your postal code manually.",
+            title: "Location Updated",
+            description: `Your postal code ${postcode}${locationName} has been filled.`,
+          });
+        } else {
+          toast({
+            title: "Postal Code Needed",
+            description: "We found your location but need your postal code for search.",
           });
         }
       } catch (error) {

@@ -35,6 +35,7 @@ import RequestsPage from "@/pages/requests-page";
 import DiscoverNeighborsPage from "@/pages/discover-neighbors-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentMethodsPage from "@/pages/payment-methods-page";
+import { VerificationNudge } from "@/components/verification-nudge";
 
 function Router() {
   return (
@@ -81,6 +82,7 @@ function App() {
       <AuthProvider>
         <Router />
         <ChatWidget />
+        <VerificationNudge />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>

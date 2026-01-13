@@ -17,6 +17,7 @@ import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
+import { useVerification } from "@/hooks/use-verification";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
@@ -135,6 +136,7 @@ export default function RequestsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { requireVerification, VerificationModal } = useVerification();
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -184,8 +186,10 @@ export default function RequestsPage() {
   });
 
   const handleAcceptClick = (request: ItemRequest) => {
-    setSelectedRequestId(request.id);
-    setShowDeliveryModal(true);
+    requireVerification(() => {
+      setSelectedRequestId(request.id);
+      setShowDeliveryModal(true);
+    });
   };
 
   const handleDeliveryDepositComplete = async (selections: any) => {
@@ -291,6 +295,7 @@ export default function RequestsPage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
+      <VerificationModal />
       
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6 text-teal-800">Item Requests</h1>

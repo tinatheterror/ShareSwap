@@ -4529,6 +4529,9 @@ Respond with ONLY the category name, nothing else.`
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
           createdAt: users.createdAt,
+          phoneVerified: users.phoneVerified,
+          googleId: users.googleId,
+          authProvider: users.authProvider,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
@@ -4538,7 +4541,10 @@ Respond with ONLY the category name, nothing else.`
         return res.status(404).json({ error: "User not found" });
       }
 
-      res.json(user);
+      res.json({
+        ...user,
+        emailVerified: !!user.googleId || user.authProvider === 'google',
+      });
     } catch (error) {
       console.error("Error fetching user profile:", error);
       res.status(500).json({ error: "Failed to fetch user profile" });
@@ -4613,6 +4619,55 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ error: "Failed to update user profile" });
+    }
+  });
+
+  // Get verification nudge status
+  app.get("/api/verification-nudge-status", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const [user] = await db
+        .select({
+          hasSeenNudge: users.hasSeenVerificationNudge,
+          isVerified: users.isVerified,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json({
+        hasSeenNudge: user.hasSeenNudge || false,
+        isVerified: user.isVerified || false,
+      });
+    } catch (error) {
+      console.error("Error fetching verification nudge status:", error);
+      res.status(500).json({ error: "Failed to fetch verification nudge status" });
+    }
+  });
+
+  // Dismiss verification nudge
+  app.post("/api/verification-nudge-dismiss", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      await db
+        .update(users)
+        .set({ hasSeenVerificationNudge: true })
+        .where(eq(users.id, req.user.id));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error dismissing verification nudge:", error);
+      res.status(500).json({ error: "Failed to dismiss verification nudge" });
     }
   });
 

@@ -77,6 +77,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
+import { useVerification } from "@/hooks/use-verification";
 
 const ITEM_TYPES = [
   "Baby & Kids",
@@ -179,6 +180,7 @@ export default function LendPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const { requireVerification, VerificationModal } = useVerification();
   const searchString = useSearch();
   const searchParams = new URLSearchParams(searchString);
   const editItemId = searchParams.get("edit");
@@ -844,14 +846,17 @@ export default function LendPage() {
         />
       </div>
 
+      <VerificationModal />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) =>
-              isEditMode
-                ? updateItemMutation.mutate(data)
-                : createItemMutation.mutate(data),
-            )}
+            onSubmit={form.handleSubmit((data) => {
+              if (isEditMode) {
+                updateItemMutation.mutate(data);
+              } else {
+                requireVerification(() => createItemMutation.mutate(data));
+              }
+            })}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
             {/* Left Column - Form Fields */}

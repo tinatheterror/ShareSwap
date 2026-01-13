@@ -44,6 +44,7 @@ import { Link } from "wouter";
 import type { SelectItem } from "@db/schema";
 import { calculateSwap, getSwapTierLabel } from "@/lib/swap-calculator";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
+import { useVerification } from "@/hooks/use-verification";
 
 const formSchema = z.object({
   message: z.string().min(1, "Please include a message to the owner"),
@@ -73,6 +74,7 @@ export function ItemRequestForm({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showTemplates, setShowTemplates] = useState(false);
+  const { requireVerification, VerificationModal } = useVerification();
 
   // Get current user info for personalized messages
   const { data: user } = useQuery({
@@ -281,11 +283,12 @@ export function ItemRequestForm({
           </div>
         )}
 
+        <VerificationModal />
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit((data) =>
-              createRequestMutation.mutate(data),
-            )}
+            onSubmit={form.handleSubmit((data) => {
+              requireVerification(() => createRequestMutation.mutate(data));
+            })}
             className="space-y-4 mt-4"
           >
             {/* Date Selection - Hide for SWAP */}

@@ -850,6 +850,68 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
+            {/* Verification Checklist */}
+            <Card className={profile?.isVerified ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-orange-600"}`} />
+                  Verification Status
+                  {!profile?.isVerified && (
+                    <Badge variant="outline" className="ml-auto bg-orange-100 text-orange-700 border-orange-300">
+                      Unverified
+                    </Badge>
+                  )}
+                  {profile?.isVerified && (
+                    <Badge variant="outline" className="ml-auto bg-green-100 text-green-700 border-green-300">
+                      Verified
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    {(profile as any)?.emailVerified ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <X className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={`text-sm ${(profile as any)?.emailVerified ? "text-green-700" : "text-gray-500"}`}>
+                      Email verified
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {(profile as any)?.phoneVerified ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <X className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={`text-sm ${(profile as any)?.phoneVerified ? "text-green-700" : "text-gray-500"}`}>
+                      Phone number verified
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {profile?.isVerified ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <X className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span className={`text-sm ${profile?.isVerified ? "text-green-700" : "text-gray-500"}`}>
+                      ID verification
+                    </span>
+                  </div>
+                </div>
+                {!profile?.isVerified && (
+                  <Link href="/profile/verification">
+                    <Button className="w-full bg-[#0BB88C] hover:bg-[#0BB88C]/90 text-white mt-2">
+                      <BadgeCheck className="h-4 w-4 mr-2" />
+                      Verify Profile
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Community Connections */}
             <Card style={{ backgroundColor: "#D4F7F1" }}>
               <CardHeader>

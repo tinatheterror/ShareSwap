@@ -110,13 +110,14 @@ export default function BorrowPage() {
               `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
               {
                 headers: {
-                  'User-Agent': 'ShareSwap/1.0',
+                  "User-Agent": "ShareSwap/1.0",
                 },
-              }
+              },
             );
             if (response.ok) {
               const data = await response.json();
-              const postcode = data.address?.postcode || data.address?.postal_code;
+              const postcode =
+                data.address?.postcode || data.address?.postal_code;
               if (postcode) {
                 setUserPostalCode(postcode);
               }
@@ -620,7 +621,7 @@ export default function BorrowPage() {
           }}
           targetSelector="[data-tutorial='wishlist']"
           title="Can't Find What You Need?"
-          description="Add items to your wishlist and we'll notify you when they become available in the community!"
+          description="Add it to your wishlist and get notified when it is available in the community!"
           actionLabel="View Wishlist"
           onAction={() => navigate("/wishlists")}
         />

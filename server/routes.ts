@@ -231,6 +231,18 @@ const stripe = {
       return s.paymentMethods.detach(...args);
     },
   },
+  checkout: {
+    sessions: {
+      create: async (...args: Parameters<Stripe['checkout']['sessions']['create']>) => {
+        const s = await getStripe();
+        return s.checkout.sessions.create(...args);
+      },
+      retrieve: async (...args: Parameters<Stripe['checkout']['sessions']['retrieve']>) => {
+        const s = await getStripe();
+        return s.checkout.sessions.retrieve(...args);
+      },
+    },
+  },
 };
 
 // Type extension for Passport.js session data
@@ -4858,6 +4870,155 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error creating setup intent:", error);
       res.status(500).json({ error: "Failed to create setup intent" });
+    }
+  });
+
+  // Create Stripe Checkout Session for adding payment method (hosted page)
+  app.post("/api/payment-method/create-checkout-session", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const [user] = await db
+        .select({
+          id: users.id,
+          stripeCustomerId: users.stripeCustomerId,
+          username: users.username,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      let customerId = user.stripeCustomerId;
+
+      // Get stripe instance
+      const stripeInstance = await getStripe();
+
+      // Create Stripe customer if doesn't exist
+      if (!customerId) {
+        const customer = await stripeInstance.customers.create({
+          metadata: {
+            userId: user.id.toString(),
+            username: user.username,
+          },
+        });
+        customerId = customer.id;
+
+        await db
+          .update(users)
+          .set({ stripeCustomerId: customerId })
+          .where(eq(users.id, req.user.id));
+      }
+
+      // Determine the base URL for redirects
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+
+      // Create Checkout Session in setup mode for saving payment method
+      const session = await stripeInstance.checkout.sessions.create({
+        mode: 'setup',
+        customer: customerId,
+        payment_method_types: ['card'],
+        success_url: `${baseUrl}/payment-methods?setup_success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/payment-methods?setup_success=false`,
+        metadata: {
+          userId: user.id.toString(),
+        },
+      });
+
+      res.json({
+        url: session.url,
+        sessionId: session.id,
+      });
+    } catch (error) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  // Complete payment method setup after Checkout Session
+  app.post("/api/payment-method/complete-setup", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: "Session ID is required" });
+    }
+
+    try {
+      // Retrieve the checkout session
+      const stripeInstance = await getStripe();
+      const session = await stripeInstance.checkout.sessions.retrieve(sessionId, {
+        expand: ['setup_intent', 'setup_intent.payment_method'],
+      });
+
+      if (!session.setup_intent || typeof session.setup_intent === 'string') {
+        return res.status(400).json({ error: "Invalid session" });
+      }
+
+      const setupIntent = session.setup_intent;
+      const paymentMethod = setupIntent.payment_method;
+
+      if (!paymentMethod || typeof paymentMethod === 'string') {
+        return res.status(400).json({ error: "No payment method found" });
+      }
+
+      if (!paymentMethod.card) {
+        return res.status(400).json({ error: "Invalid payment method type" });
+      }
+
+      // Get user's existing payment method
+      const [user] = await db
+        .select({
+          existingPaymentMethodId: users.stripePaymentMethodId,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      // Detach the previous payment method if one exists
+      if (user?.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethod.id) {
+        try {
+          await stripe.paymentMethods.detach(user.existingPaymentMethodId);
+        } catch (detachError) {
+          console.error("Error detaching previous payment method:", detachError);
+        }
+      }
+
+      // Update user with payment method details
+      await db
+        .update(users)
+        .set({
+          stripePaymentMethodId: paymentMethod.id,
+          paymentMethodLast4: paymentMethod.card.last4,
+          paymentMethodBrand: paymentMethod.card.brand,
+          paymentMethodExpMonth: paymentMethod.card.exp_month,
+          paymentMethodExpYear: paymentMethod.card.exp_year,
+          paymentMethodAddedAt: new Date(),
+        })
+        .where(eq(users.id, req.user.id));
+
+      res.json({
+        success: true,
+        paymentMethod: {
+          last4: paymentMethod.card.last4,
+          brand: paymentMethod.card.brand,
+          expMonth: paymentMethod.card.exp_month,
+          expYear: paymentMethod.card.exp_year,
+        },
+      });
+    } catch (error) {
+      console.error("Error completing setup:", error);
+      res.status(500).json({ error: "Failed to complete setup" });
     }
   });
 

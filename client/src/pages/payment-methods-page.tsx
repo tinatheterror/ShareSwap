@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { loadStripe, Stripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/shared/navbar";
@@ -38,26 +31,8 @@ import {
   XCircle,
   Shield,
   Loader2,
+  ExternalLink,
 } from "lucide-react";
-
-let stripePromiseCache: Promise<Stripe | null> | null = null;
-
-function getStripePromise(): Promise<Stripe | null> {
-  if (!stripePromiseCache) {
-    stripePromiseCache = fetch("/api/stripe/publishable-key")
-      .then((res) => res.json())
-      .then(({ publishableKey }) => {
-        console.log("[Stripe] Got publishable key:", publishableKey ? "yes" : "no");
-        if (!publishableKey) return null;
-        return loadStripe(publishableKey);
-      })
-      .catch((err) => {
-        console.error("[Stripe] Error loading:", err);
-        return null;
-      });
-  }
-  return stripePromiseCache;
-}
 
 interface PaymentMethodData {
   hasPaymentMethod: boolean;
@@ -69,118 +44,6 @@ interface PaymentMethodData {
     expYear: number;
     addedAt: string;
   } | null;
-}
-
-function PaymentForm({
-  onSuccess,
-  onCancel,
-}: {
-  onSuccess: () => void;
-  onCancel: () => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const saveMutation = useMutation({
-    mutationFn: async (paymentMethodId: string) => {
-      const res = await apiRequest("POST", "/api/payment-method/save", {
-        paymentMethodId,
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/payment-method"] });
-      toast({
-        title: "Payment method saved",
-        description: "Your card has been securely added to your account.",
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to save",
-        description: error.message || "Could not save your payment method.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      const { error, setupIntent } = await stripe.confirmSetup({
-        elements,
-        confirmParams: {
-          return_url: window.location.href,
-        },
-        redirect: "if_required",
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (setupIntent?.payment_method) {
-        await saveMutation.mutateAsync(setupIntent.payment_method as string);
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add payment method.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="min-h-[200px] p-4 border border-gray-200 rounded-lg bg-white">
-        <PaymentElement 
-          options={{
-            layout: 'tabs',
-          }}
-        />
-      </div>
-
-      <div className="flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isProcessing}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={!stripe || isProcessing}
-          className="flex-1"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            "Save Card"
-          )}
-        </Button>
-      </div>
-    </form>
-  );
 }
 
 function StatusIndicator({
@@ -227,111 +90,68 @@ function formatBrand(brand: string): string {
   return brandMap[brand.toLowerCase()] || brand;
 }
 
-function AddCardWrapper({
-  onSuccess,
-  onCancel,
-}: {
-  onSuccess: () => void;
-  onCancel: () => void;
-}) {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchSetupIntent = async () => {
-      try {
-        const res = await apiRequest("POST", "/api/payment-method/setup-intent");
-        const data = await res.json();
-        if (data.clientSecret) {
-          setClientSecret(data.clientSecret);
-        } else {
-          throw new Error("Failed to create setup intent");
-        }
-      } catch (err: any) {
-        setError(err.message || "Failed to initialize payment form");
-        toast({
-          title: "Error",
-          description: err.message || "Failed to initialize payment form",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchSetupIntent();
-  }, [toast]);
-
-  if (isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center">
-        <div className="flex items-center gap-2 text-gray-500">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Initializing secure payment form...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !clientSecret) {
-    return (
-      <div className="p-4">
-        <Alert variant="destructive">
-          <AlertDescription>
-            {error || "Unable to load payment form. Please try again."}
-          </AlertDescription>
-        </Alert>
-        <div className="mt-4">
-          <Button variant="outline" onClick={onCancel} className="w-full">
-            Go Back
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const stripePromise = getStripePromise();
-
-  return (
-    <Elements 
-      stripe={stripePromise} 
-      options={{ 
-        clientSecret,
-        appearance: {
-          theme: 'stripe',
-          variables: {
-            colorPrimary: '#0D9488',
-            fontFamily: 'system-ui, sans-serif',
-            borderRadius: '6px',
-          },
-          rules: {
-            '.Input': {
-              border: '1px solid #e5e7eb',
-              boxShadow: 'none',
-            },
-            '.Input:focus': {
-              border: '1px solid #0D9488',
-              boxShadow: '0 0 0 1px #0D9488',
-            },
-          },
-        },
-      }}
-    >
-      <PaymentForm onSuccess={onSuccess} onCancel={onCancel} />
-    </Elements>
-  );
-}
-
 export default function PaymentMethodsPage() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isAddingCard, setIsAddingCard] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
 
-  const { data, isLoading } = useQuery<PaymentMethodData>({
+  const { data, isLoading, refetch } = useQuery<PaymentMethodData>({
     queryKey: ["/api/payment-method"],
+  });
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const setupSuccess = urlParams.get("setup_success");
+    const sessionId = urlParams.get("session_id");
+    
+    if (setupSuccess === "true" && sessionId) {
+      apiRequest("POST", "/api/payment-method/complete-setup", { sessionId })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.success) {
+            toast({
+              title: "Payment method added",
+              description: "Your card has been securely saved to your account.",
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/payment-method"] });
+          }
+        })
+        .catch((err) => {
+          console.error("Error completing setup:", err);
+        })
+        .finally(() => {
+          window.history.replaceState({}, "", "/payment-methods");
+        });
+    } else if (setupSuccess === "false") {
+      toast({
+        title: "Setup cancelled",
+        description: "Payment method setup was cancelled.",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, "", "/payment-methods");
+    }
+  }, [toast, queryClient]);
+
+  const addCardMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/payment-method/create-checkout-session");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        setIsRedirecting(true);
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start payment setup.",
+        variant: "destructive",
+      });
+    },
   });
 
   const removeMutation = useMutation({
@@ -355,6 +175,10 @@ export default function PaymentMethodsPage() {
       });
     },
   });
+
+  const handleAddCard = () => {
+    addCardMutation.mutate();
+  };
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
@@ -386,21 +210,6 @@ export default function PaymentMethodsPage() {
             <CardContent className="p-6">
               <Skeleton className="h-6 w-48 mb-4" />
               <Skeleton className="h-4 w-64" />
-            </CardContent>
-          </Card>
-        ) : isAddingCard ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Add Payment Method</CardTitle>
-              <CardDescription>
-                Add a card via our secure payment provider
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AddCardWrapper
-                onSuccess={() => setIsAddingCard(false)}
-                onCancel={() => setIsAddingCard(false)}
-              />
             </CardContent>
           </Card>
         ) : data?.hasPaymentMethod ? (
@@ -435,10 +244,21 @@ export default function PaymentMethodsPage() {
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => setIsAddingCard(true)}
+                  onClick={handleAddCard}
+                  disabled={addCardMutation.isPending || isRedirecting}
                   className="flex-1"
                 >
-                  Update payment method
+                  {addCardMutation.isPending || isRedirecting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Redirecting...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Update payment method
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="ghost"
@@ -477,9 +297,27 @@ export default function PaymentMethodsPage() {
                 </AlertDescription>
               </Alert>
 
-              <Button onClick={() => setIsAddingCard(true)} className="w-full">
-                Add payment method
+              <Button 
+                onClick={handleAddCard} 
+                disabled={addCardMutation.isPending || isRedirecting}
+                className="w-full"
+              >
+                {addCardMutation.isPending || isRedirecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Redirecting to secure payment page...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Add payment method
+                  </>
+                )}
               </Button>
+
+              <p className="text-xs text-gray-400 text-center mt-3">
+                You'll be redirected to a secure page to enter your card details
+              </p>
             </CardContent>
           </Card>
         )}
@@ -487,7 +325,7 @@ export default function PaymentMethodsPage() {
         <p className="text-xs text-gray-400 text-center mt-6">
           Your card is securely handled by our payment provider. It may be used
           for refundable deposits, paid transactions, subscriptions, or
-          reimbursements when applicable. You’re only charged when a payment is
+          reimbursements when applicable. You're only charged when a payment is
           required.
         </p>
 

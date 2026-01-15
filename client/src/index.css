@@ -61,14 +61,35 @@
 }
 
 /* Stripe Elements - ensure iframe is interactive */
-.StripeElement {
+.StripeElement,
+.__PrivateStripeElement,
+.__PrivateStripeElement iframe,
+[class*="__PrivateStripeElement"] {
   min-height: 24px;
-  padding: 10px 0;
   pointer-events: auto !important;
+  position: relative !important;
+  z-index: 1 !important;
 }
 
-.StripeElement iframe {
+/* PaymentElement specific fixes */
+.p-PaymentElement,
+[data-testid="payment-element"],
+.PaymentElement {
   pointer-events: auto !important;
+  position: relative !important;
+}
+
+.p-PaymentElement iframe,
+[data-testid="payment-element"] iframe {
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+/* Ensure all Stripe iframes are clickable */
+iframe[name^="__privateStripeFrame"],
+iframe[title*="Secure"] {
+  pointer-events: auto !important;
+  z-index: 100 !important;
 }
 
 /* Tutorial highlight pulse animation */

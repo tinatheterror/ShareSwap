@@ -361,7 +361,7 @@ export function ItemRequestForm({
                 const dailyRate = Number((item as any).dollarsPrice) || 10;
                 const rentalCost = rentalDays > 0 ? dailyRate * rentalDays : 0;
 
-                // Platform fee (0% for 2025, but show the line)
+                // Platform fee (0% for 2026, but show the line)
                 const platformFeePercent = 0;
                 const platformFee = Math.round(rentalCost * platformFeePercent);
 
@@ -408,7 +408,7 @@ export function ItemRequestForm({
                         )}
                         <div className="flex justify-between">
                           <span className="text-gray-600">
-                            Platform fee (0% for 2025)
+                            Platform fee (0% for 2026)
                           </span>
                           <span className="font-medium text-black">Free</span>
                         </div>
@@ -462,10 +462,10 @@ export function ItemRequestForm({
               (() => {
                 // Tier-based weekly ShareCoin borrow rates
                 const TIER_WEEKLY_RATES: Record<number, number> = {
-                  1: 2,   // Tier 1: Under $50 - 2 SC/week
-                  2: 5,   // Tier 2: $50-$150 - 5 SC/week
-                  3: 10,  // Tier 3: $150-$300 - 10 SC/week
-                  4: 20,  // Tier 4: $300+ - 20 SC/week
+                  1: 2, // Tier 1: Under $50 - 2 SC/week
+                  2: 5, // Tier 2: $50-$150 - 5 SC/week
+                  3: 10, // Tier 3: $150-$300 - 10 SC/week
+                  4: 20, // Tier 4: $300+ - 20 SC/week
                 };
                 const itemTierForRate = (item as any).tier || 2;
                 const weeklyRate = TIER_WEEKLY_RATES[itemTierForRate] || 5;
@@ -579,7 +579,8 @@ export function ItemRequestForm({
                               Held securely, auto-refunded on return
                             </p>
                             <p className="text-[10px] text-muted-foreground mt-0.5">
-                              Processing fee: ${(depositCalc.finalDeposit * 0.03).toFixed(2)}
+                              Processing fee: $
+                              {(depositCalc.finalDeposit * 0.03).toFixed(2)}
                             </p>
                           </div>
                         )}
@@ -604,15 +605,26 @@ export function ItemRequestForm({
                   if (isCourier && field.value !== "in_app") {
                     field.onChange("in_app");
                   }
-                  
+
                   // Calculate deposit for processing fee display
                   const itemTierForDeposit = (item as any).tier || 2;
-                  const itemOriginalValueForDeposit = (item as any).originalValue || "$50–$150";
-                  const reputationScoreForDeposit = (user as any)?.reputationScore || 0;
-                  const viewerTrustScoreForDeposit = Math.min(100, Math.round((reputationScoreForDeposit / 500) * 100) + 50);
-                  const depositCalcForFee = calculateSecurityDeposit(itemTierForDeposit, itemOriginalValueForDeposit, viewerTrustScoreForDeposit);
-                  const processingFee = (depositCalcForFee.finalDeposit * 0.03).toFixed(2);
-                  
+                  const itemOriginalValueForDeposit =
+                    (item as any).originalValue || "$50–$150";
+                  const reputationScoreForDeposit =
+                    (user as any)?.reputationScore || 0;
+                  const viewerTrustScoreForDeposit = Math.min(
+                    100,
+                    Math.round((reputationScoreForDeposit / 500) * 100) + 50,
+                  );
+                  const depositCalcForFee = calculateSecurityDeposit(
+                    itemTierForDeposit,
+                    itemOriginalValueForDeposit,
+                    viewerTrustScoreForDeposit,
+                  );
+                  const processingFee = (
+                    depositCalcForFee.finalDeposit * 0.03
+                  ).toFixed(2);
+
                   return (
                     <FormItem className="space-y-3">
                       <FormLabel className="flex items-center gap-2">
@@ -642,9 +654,6 @@ export function ItemRequestForm({
                               <p className="text-xs text-teal-600 font-medium mt-0.5">
                                 Recommended
                               </p>
-                              <p className="text-[10px] text-gray-400 mt-0.5">
-                                Held securely, auto-refunded
-                              </p>
                               <p className="text-[10px] text-muted-foreground mt-0.5">
                                 Processing fee: ${processingFee}
                               </p>
@@ -669,9 +678,6 @@ export function ItemRequestForm({
                               </label>
                               <p className="text-xs text-gray-500 font-medium mt-0.5">
                                 No fees
-                              </p>
-                              <p className="text-[10px] text-gray-400 mt-0.5">
-                                Exchanged directly with neighbour
                               </p>
                             </div>
                           </div>
@@ -717,9 +723,6 @@ export function ItemRequestForm({
                           <p className="text-xs text-green-600 font-medium mt-0.5">
                             Free
                           </p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            Meet up with the owner
-                          </p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
@@ -738,9 +741,6 @@ export function ItemRequestForm({
                           </label>
                           <p className="text-xs text-gray-500 font-medium mt-0.5">
                             +$15
-                          </p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            Courier delivers to you
                           </p>
                         </div>
                       </div>

@@ -537,7 +537,7 @@ export default function LendPage() {
         // Try BigDataCloud first (better postal code coverage, no API key needed)
         try {
           const bdcResponse = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
           );
           if (bdcResponse.ok) {
             const bdcData = await bdcResponse.json();
@@ -561,8 +561,14 @@ export default function LendPage() {
             );
             if (response.ok) {
               const data = await response.json();
-              postcode = data.address?.postcode || data.address?.postal_code || null;
-              locality = locality || data.address?.city || data.address?.town || data.address?.village || null;
+              postcode =
+                data.address?.postcode || data.address?.postal_code || null;
+              locality =
+                locality ||
+                data.address?.city ||
+                data.address?.town ||
+                data.address?.village ||
+                null;
             }
           } catch (e) {
             console.log("Nominatim also failed");
@@ -579,7 +585,8 @@ export default function LendPage() {
         } else {
           toast({
             title: "Postal Code Needed",
-            description: "We found your location but need your postal code for search.",
+            description:
+              "We found your location but need your postal code for search.",
           });
         }
       } catch (error) {
@@ -1260,8 +1267,7 @@ export default function LendPage() {
                                       </span>
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-0.5">
-                                      Borrowers may see lower deposits based on
-                                      their trust score
+                                      Deposit varies by trust score
                                     </div>
                                   </div>
                                 );
@@ -1377,7 +1383,7 @@ export default function LendPage() {
                                           Platform fee:
                                         </span>
                                         <span className="font-medium text-emerald-600">
-                                          0% for 2025
+                                          0% for 2026
                                         </span>
                                       </div>
                                     </div>

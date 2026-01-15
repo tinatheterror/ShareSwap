@@ -94,19 +94,19 @@ export default function ReferralsPage() {
           </CardHeader>
           <CardContent>
             {user?.referralCode || referralCode ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <Input
-                    value={referralCode || user?.referralCode}
-                    readOnly
-                    className="font-mono text-lg font-bold text-center"
-                  />
-                  <Button onClick={copyToClipboard} variant="outline">
-                    <Copy className="h-4 w-4 mr-2" />
+              <div className="space-y-3">
+                <Input
+                  value={referralCode || user?.referralCode}
+                  readOnly
+                  className="font-mono text-base font-bold text-center"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={copyToClipboard} variant="outline" className="flex-1 text-sm">
+                    <Copy className="h-4 w-4 mr-1" />
                     Copy
                   </Button>
-                  <Button onClick={shareReferral}>
-                    <Share className="h-4 w-4 mr-2" />
+                  <Button onClick={shareReferral} className="flex-1 text-sm">
+                    <Share className="h-4 w-4 mr-1" />
                     Share
                   </Button>
                 </div>

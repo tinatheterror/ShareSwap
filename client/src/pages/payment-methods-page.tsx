@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, Stripe } from "@stripe/stripe-js";
 import {
   Elements,
   CardElement,
@@ -40,7 +40,20 @@ import {
   Loader2,
 } from "lucide-react";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || "");
+let stripePromise: Promise<Stripe | null> | null = null;
+
+async function getStripePromise(): Promise<Stripe | null> {
+  if (!stripePromise) {
+    stripePromise = fetch("/api/stripe/publishable-key")
+      .then((res) => res.json())
+      .then(({ publishableKey }) => {
+        if (!publishableKey) return null;
+        return loadStripe(publishableKey);
+      })
+      .catch(() => null);
+  }
+  return stripePromise;
+}
 
 interface PaymentMethodData {
   hasPaymentMethod: boolean;
@@ -278,6 +291,15 @@ export default function PaymentMethodsPage() {
   const queryClient = useQueryClient();
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [stripeInstance, setStripeInstance] = useState<Promise<Stripe | null> | null>(null);
+
+  useEffect(() => {
+    getStripePromise().then((stripe) => {
+      if (stripe) {
+        setStripeInstance(Promise.resolve(stripe));
+      }
+    });
+  }, []);
 
   const { data, isLoading } = useQuery<PaymentMethodData>({
     queryKey: ["/api/payment-method"],
@@ -346,12 +368,21 @@ export default function PaymentMethodsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Elements stripe={stripePromise}>
-                <CardForm
-                  onSuccess={() => setIsAddingCard(false)}
-                  onCancel={() => setIsAddingCard(false)}
-                />
-              </Elements>
+              {stripeInstance ? (
+                <Elements stripe={stripeInstance}>
+                  <CardForm
+                    onSuccess={() => setIsAddingCard(false)}
+                    onCancel={() => setIsAddingCard(false)}
+                  />
+                </Elements>
+              ) : (
+                <div className="p-4 flex items-center justify-center">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading payment form...</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : data?.hasPaymentMethod ? (

@@ -169,13 +169,69 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
   }
 }
 
-// Initialize Stripe
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+// Initialize Stripe - will be loaded from connector
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+
+// Helper to get stripe client (lazy loaded from connector)
+let stripeClient: Stripe | null = null;
+async function getStripe(): Promise<Stripe> {
+  if (!stripeClient) {
+    stripeClient = await getUncachableStripeClient();
+  }
+  return stripeClient;
 }
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-07-30.basil",
-});
+
+// Legacy alias for existing code - proxy to async stripe client
+const stripe = {
+  customers: {
+    create: async (...args: Parameters<Stripe['customers']['create']>) => {
+      const s = await getStripe();
+      return s.customers.create(...args);
+    },
+  },
+  setupIntents: {
+    create: async (...args: Parameters<Stripe['setupIntents']['create']>) => {
+      const s = await getStripe();
+      return s.setupIntents.create(...args);
+    },
+  },
+  paymentIntents: {
+    create: async (...args: Parameters<Stripe['paymentIntents']['create']>) => {
+      const s = await getStripe();
+      return s.paymentIntents.create(...args);
+    },
+    retrieve: async (...args: Parameters<Stripe['paymentIntents']['retrieve']>) => {
+      const s = await getStripe();
+      return s.paymentIntents.retrieve(...args);
+    },
+    update: async (...args: Parameters<Stripe['paymentIntents']['update']>) => {
+      const s = await getStripe();
+      return s.paymentIntents.update(...args);
+    },
+    cancel: async (...args: Parameters<Stripe['paymentIntents']['cancel']>) => {
+      const s = await getStripe();
+      return s.paymentIntents.cancel(...args);
+    },
+    capture: async (...args: Parameters<Stripe['paymentIntents']['capture']>) => {
+      const s = await getStripe();
+      return s.paymentIntents.capture(...args);
+    },
+  },
+  paymentMethods: {
+    retrieve: async (...args: Parameters<Stripe['paymentMethods']['retrieve']>) => {
+      const s = await getStripe();
+      return s.paymentMethods.retrieve(...args);
+    },
+    attach: async (...args: Parameters<Stripe['paymentMethods']['attach']>) => {
+      const s = await getStripe();
+      return s.paymentMethods.attach(...args);
+    },
+    detach: async (...args: Parameters<Stripe['paymentMethods']['detach']>) => {
+      const s = await getStripe();
+      return s.paymentMethods.detach(...args);
+    },
+  },
+};
 
 // Type extension for Passport.js session data
 declare module 'express-session' {
@@ -288,6 +344,17 @@ export function registerRoutes(app: Express): Server {
     res.json({ 
       message: "CSRF token set in cookie and ready for use",
     });
+  });
+
+  // Get Stripe publishable key for frontend
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error) {
+      console.error("Error fetching Stripe publishable key:", error);
+      res.status(500).json({ error: "Failed to get Stripe configuration" });
+    }
   });
 
   // Security: Apply CSRF protection to all routes except login/register/csrf-token/referrals

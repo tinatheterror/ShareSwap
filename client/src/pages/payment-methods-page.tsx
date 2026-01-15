@@ -146,7 +146,13 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <PaymentElement />
+      <div className="min-h-[200px] p-4 border border-gray-200 rounded-lg bg-white">
+        <PaymentElement 
+          options={{
+            layout: 'tabs',
+          }}
+        />
+      </div>
 
       <div className="flex gap-3">
         <Button
@@ -296,6 +302,18 @@ function AddCardWrapper({
           theme: 'stripe',
           variables: {
             colorPrimary: '#0D9488',
+            fontFamily: 'system-ui, sans-serif',
+            borderRadius: '6px',
+          },
+          rules: {
+            '.Input': {
+              border: '1px solid #e5e7eb',
+              boxShadow: 'none',
+            },
+            '.Input:focus': {
+              border: '1px solid #0D9488',
+              boxShadow: '0 0 0 1px #0D9488',
+            },
           },
         },
       }}

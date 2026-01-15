@@ -4875,9 +4875,14 @@ Respond with ONLY the category name, nothing else.`
 
   // Create Stripe Checkout Session for adding payment method (hosted page)
   app.post("/api/payment-method/create-checkout-session", csrfProtection, async (req, res) => {
+    console.log("[Stripe Checkout] create-checkout-session endpoint hit");
+    
     if (!req.isAuthenticated()) {
+      console.log("[Stripe Checkout] User not authenticated");
       return res.sendStatus(401);
     }
+
+    console.log("[Stripe Checkout] User authenticated, userId:", req.user?.id);
 
     try {
       const [user] = await db

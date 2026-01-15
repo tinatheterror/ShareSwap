@@ -136,19 +136,30 @@ export default function PaymentMethodsPage() {
 
   const addCardMutation = useMutation({
     mutationFn: async () => {
+      console.log("[PaymentMethods] Starting checkout session request...");
       const res = await apiRequest("POST", "/api/payment-method/create-checkout-session");
-      return res.json();
+      const data = await res.json();
+      console.log("[PaymentMethods] Checkout session response:", data);
+      return data;
     },
     onSuccess: (data) => {
+      console.log("[PaymentMethods] Success, redirecting to:", data.url);
       if (data.url) {
         setIsRedirecting(true);
         window.location.href = data.url;
+      } else {
+        toast({
+          title: "Error",
+          description: "No redirect URL received from payment provider.",
+          variant: "destructive",
+        });
       }
     },
     onError: (error: any) => {
+      console.error("[PaymentMethods] Error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to start payment setup.",
+        description: error.message || "Failed to start payment setup. Please make sure you're logged in.",
         variant: "destructive",
       });
     },

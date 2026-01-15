@@ -30,10 +30,17 @@ export default function SettingsPage() {
       const formData = new FormData();
       formData.append("profilePhoto", file);
       
+      // Get CSRF token from cookie
+      const csrfToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("csrf_token="))
+        ?.split("=")[1];
+      
       const res = await fetch("/api/users/profile-photo", {
         method: "POST",
         body: formData,
         credentials: "include",
+        headers: csrfToken ? { "x-csrf-token": csrfToken } : {},
       });
       
       if (!res.ok) {

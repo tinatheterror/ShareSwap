@@ -323,6 +323,8 @@ export default function LendPage() {
   useEffect(() => {
     if (prefillItemName && !isEditMode) {
       form.setValue("name", prefillItemName);
+      // Also detect the item category for prefilled names
+      detectItemCategory(prefillItemName);
     }
   }, [prefillItemName, isEditMode]);
 
@@ -763,15 +765,17 @@ export default function LendPage() {
       <div
         className="w-full relative"
         style={{
+          backgroundColor: "#0DCEA1",
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundPosition: "center top",
           borderBottomRightRadius: "32px",
+          minHeight: "120px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-12 pb-4 sm:pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-6">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-3xl md:text-4xl font-bold mb-0.5 sm:mb-1 text-black">
                 {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
@@ -783,7 +787,7 @@ export default function LendPage() {
             </div>
 
             {!isEditMode && (
-              <div className="flex flex-col gap-2 w-full md:w-96">
+              <div className="flex flex-col gap-2 w-full md:w-80 md:max-w-80 flex-shrink-0">
                 <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3">
                   <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
                     <Download className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-600" />
@@ -796,7 +800,7 @@ export default function LendPage() {
                       placeholder="Paste listing URL..."
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
-                      className="flex-1 text-xs h-8 sm:h-9 px-2 sm:px-3"
+                      className="flex-1 min-w-0 text-xs h-8 sm:h-9 px-2 sm:px-3"
                     />
                     <Button
                       onClick={async () => {
@@ -1243,7 +1247,7 @@ export default function LendPage() {
                                     {TIER_WEEKLY_BANDS[calculatedTier].display}
                                   </>
                                 )}
-                                <span className="font-normal text-teal-700">
+                                <span className="font-normal text-black">
                                   {" "}
                                   ShareCoins/week
                                 </span>
@@ -1267,7 +1271,7 @@ export default function LendPage() {
                                       </span>
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-0.5">
-                                      Deposit varies by trust score
+                                      Deposit varies by borrower's trust score
                                     </div>
                                   </div>
                                 );

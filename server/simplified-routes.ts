@@ -233,7 +233,20 @@ export function addSimplifiedRoutes(app: Express) {
       // Filter out current user's own wishlists
       const otherUsersWishlists = sampleWishlists.filter(w => w.userId !== req.user.id);
       
-      res.json(otherUsersWishlists);
+      // Add isExpired field to each wishlist (reuse today var, normalize to midnight)
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+      const wishlistsWithExpiry = otherUsersWishlists.map(w => {
+        let isExpired = false;
+        if (w.returnDate) {
+          isExpired = new Date(w.returnDate) < todayMidnight;
+        } else if (w.neededDate) {
+          isExpired = new Date(w.neededDate) < todayMidnight;
+        }
+        return { ...w, isExpired };
+      });
+      
+      res.json(wishlistsWithExpiry);
     } catch (error) {
       console.error("Error fetching all wishlists:", error);
       res.status(500).json({ error: "Failed to fetch wishlists" });

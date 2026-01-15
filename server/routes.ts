@@ -1876,12 +1876,26 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(wishlists.isActive, true))
         .orderBy(desc(wishlists.createdAt));
 
-      // For urgent wishlists, highlight verified users
-      const wishlistsWithHighlight = allWishlists.map(w => ({
-        ...w,
-        // Verified users are highlighted in urgent wishlists
-        highlightVerified: (w.urgency === 'urgent' || w.urgency === 'high') && w.isVerified,
-      }));
+      // For urgent wishlists, highlight verified users and calculate expired status
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const wishlistsWithHighlight = allWishlists.map(w => {
+        // Check if wishlist is expired based on returnDate or neededDate
+        let isExpired = false;
+        if (w.returnDate) {
+          isExpired = new Date(w.returnDate) < today;
+        } else if (w.neededDate) {
+          isExpired = new Date(w.neededDate) < today;
+        }
+        
+        return {
+          ...w,
+          isExpired,
+          // Verified users are highlighted in urgent wishlists
+          highlightVerified: (w.urgency === 'urgent' || w.urgency === 'high') && w.isVerified,
+        };
+      });
 
       // Sort: urgent first, then verified users, then by date
       const sortedWishlists = wishlistsWithHighlight.sort((a, b) => {

@@ -56,8 +56,8 @@ export default function ReferralsPage() {
     if (code && navigator.share) {
       try {
         await navigator.share({
-          title: "Join ShareSpace",
-          text: `Join me on ShareSpace with code ${code} and we both get 10 ShareCoins!`,
+          title: "Join ShareSwap",
+          text: `Hi! Join me on ShareSwap with code ${code} it helps me earn ShareCoins.`,
           url: `${window.location.origin}/register?ref=${code}`,
         });
       } catch (error) {
@@ -101,7 +101,11 @@ export default function ReferralsPage() {
                   className="font-mono text-base font-bold text-center"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={copyToClipboard} variant="outline" className="flex-1 text-sm">
+                  <Button
+                    onClick={copyToClipboard}
+                    variant="outline"
+                    className="flex-1 text-sm"
+                  >
                     <Copy className="h-4 w-4 mr-1" />
                     Copy
                   </Button>

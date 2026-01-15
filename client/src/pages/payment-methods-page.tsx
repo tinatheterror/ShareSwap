@@ -4,7 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { loadStripe, Stripe } from "@stripe/stripe-js";
 import {
   Elements,
-  CardElement,
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -134,8 +136,8 @@ function CardForm({
     try {
       const { clientSecret } = await setupMutation.mutateAsync();
 
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) {
         throw new Error("Card element not found");
       }
 
@@ -143,7 +145,7 @@ function CardForm({
         clientSecret,
         {
           payment_method: {
-            card: cardElement,
+            card: cardNumberElement,
           },
         },
       );
@@ -192,38 +194,43 @@ function CardForm({
     );
   }
 
+  const elementStyle = {
+    base: {
+      fontSize: "16px",
+      color: "#374151",
+      fontFamily: "system-ui, -apple-system, sans-serif",
+      lineHeight: "24px",
+      "::placeholder": {
+        color: "#9CA3AF",
+      },
+    },
+    invalid: {
+      color: "#EF4444",
+    },
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div 
-        className="border rounded-lg bg-white"
-        style={{ 
-          position: 'relative', 
-          zIndex: 50,
-          padding: '16px',
-          minHeight: '56px',
-          pointerEvents: 'auto'
-        }}
-      >
-        <div style={{ minHeight: '24px', pointerEvents: 'auto' }}>
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: "16px",
-                  color: "#374151",
-                  fontFamily: "system-ui, -apple-system, sans-serif",
-                  lineHeight: "24px",
-                  "::placeholder": {
-                    color: "#9CA3AF",
-                  },
-                },
-                invalid: {
-                  color: "#EF4444",
-                },
-              },
-              hidePostalCode: true,
-            }}
-          />
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+          <div className="p-3 border rounded-lg bg-white">
+            <CardNumberElement options={{ style: elementStyle, showIcon: true }} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Expiry</label>
+            <div className="p-3 border rounded-lg bg-white">
+              <CardExpiryElement options={{ style: elementStyle }} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">CVC</label>
+            <div className="p-3 border rounded-lg bg-white">
+              <CardCvcElement options={{ style: elementStyle }} />
+            </div>
+          </div>
         </div>
       </div>
 

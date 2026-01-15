@@ -324,11 +324,8 @@ export default function ItemDetailsPage() {
                 <div className="space-y-2">
                   <h3 className="font-medium">Condition</h3>
                   <div className="flex items-center gap-2">
-                    <Badge
-                      variant={item.isConditionVerified ? "default" : "secondary"}
-                    >
-                      {item.conditionRating}/10{" "}
-                      {item.isConditionVerified && "✓ Verified"}
+                    <Badge variant="secondary">
+                      {item.conditionRating}/10
                     </Badge>
                     {(item as any).owner?.isVerified && (
                       <span className="text-xs px-2 py-1 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20 shadow-sm">

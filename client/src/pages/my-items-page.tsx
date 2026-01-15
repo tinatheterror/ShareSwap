@@ -228,14 +228,8 @@ export default function MyItemsPage() {
                     <span className="text-sm text-muted-foreground">
                       Condition:
                     </span>
-                    <Badge
-                      variant={
-                        item.isConditionVerified ? "default" : "secondary"
-                      }
-                      className="text-xs"
-                    >
-                      {(item as any).condition || `${item.conditionRating}/10`}{" "}
-                      {item.isConditionVerified && "✓"}
+                    <Badge variant="secondary" className="text-xs">
+                      {(item as any).condition || `${item.conditionRating}/10`}
                     </Badge>
                   </div>
 

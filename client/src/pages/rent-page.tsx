@@ -227,17 +227,12 @@ export default function RentPage() {
                 
                 <div className="text-center mb-3">
                   <h3 className="font-semibold text-sm line-clamp-1 mb-1">{item.name}</h3>
-                  <div className="flex items-center justify-center gap-1 mb-1">
-                    <p className="text-xs text-gray-500">
-                      {item.isConditionVerified ? "Verified" : "Pending"}
-                    </p>
-                    {item.owner?.isVerified && (
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
-                        Verified Owner
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-center gap-1 mb-1">
+                  {item.owner?.isVerified && (
+                    <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                      Verified Owner
+                    </span>
+                  )}
+                  <div className="flex items-center justify-center gap-1 mb-1 mt-1">
                     <span className="text-xs font-semibold text-teal-700">
                       ${Number(item.dollarsPrice || 10).toFixed(2)}/day
                     </span>
@@ -248,11 +243,10 @@ export default function RentPage() {
                 </div>
                 
                 <Button 
-                  className="w-full  text-white text-sm py-2 rounded-lg" style={{ backgroundColor: "#0DCEA1" }}
-                  disabled={!item.isConditionVerified}
+                  className="w-full text-white text-sm py-2 rounded-lg" style={{ backgroundColor: "#0DCEA1" }}
                   onClick={() => navigate(`/items/${item.id}`)}
                 >
-                  {item.isConditionVerified ? "Rent" : "Pending"}
+                  Rent
                 </Button>
               </CardContent>
             </Card>

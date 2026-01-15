@@ -40,19 +40,23 @@ import {
   Loader2,
 } from "lucide-react";
 
-let stripePromise: Promise<Stripe | null> | null = null;
+let stripePromiseCache: Promise<Stripe | null> | null = null;
 
-async function getStripePromise(): Promise<Stripe | null> {
-  if (!stripePromise) {
-    stripePromise = fetch("/api/stripe/publishable-key")
+function getStripePromise(): Promise<Stripe | null> {
+  if (!stripePromiseCache) {
+    stripePromiseCache = fetch("/api/stripe/publishable-key")
       .then((res) => res.json())
       .then(({ publishableKey }) => {
+        console.log("[Stripe] Got publishable key:", publishableKey ? "yes" : "no");
         if (!publishableKey) return null;
         return loadStripe(publishableKey);
       })
-      .catch(() => null);
+      .catch((err) => {
+        console.error("[Stripe] Error loading:", err);
+        return null;
+      });
   }
-  return stripePromise;
+  return stripePromiseCache;
 }
 
 interface PaymentMethodData {
@@ -302,15 +306,8 @@ export default function PaymentMethodsPage() {
   const queryClient = useQueryClient();
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
-  const [stripeInstance, setStripeInstance] = useState<Promise<Stripe | null> | null>(null);
-
-  useEffect(() => {
-    getStripePromise().then((stripe) => {
-      if (stripe) {
-        setStripeInstance(Promise.resolve(stripe));
-      }
-    });
-  }, []);
+  
+  const stripePromise = getStripePromise();
 
   const { data, isLoading } = useQuery<PaymentMethodData>({
     queryKey: ["/api/payment-method"],
@@ -379,21 +376,12 @@ export default function PaymentMethodsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {stripeInstance ? (
-                <Elements stripe={stripeInstance}>
-                  <CardForm
-                    onSuccess={() => setIsAddingCard(false)}
-                    onCancel={() => setIsAddingCard(false)}
-                  />
-                </Elements>
-              ) : (
-                <div className="p-4 flex items-center justify-center">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Loading payment form...</span>
-                  </div>
-                </div>
-              )}
+              <Elements stripe={stripePromise}>
+                <CardForm
+                  onSuccess={() => setIsAddingCard(false)}
+                  onCancel={() => setIsAddingCard(false)}
+                />
+              </Elements>
             </CardContent>
           </Card>
         ) : data?.hasPaymentMethod ? (

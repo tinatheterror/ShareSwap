@@ -144,7 +144,7 @@ function CardForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border rounded-lg bg-white min-h-[50px]">
+      <div className="p-4 border rounded-lg bg-white min-h-[60px] relative z-10">
         <CardElement
           options={{
             style: {

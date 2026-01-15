@@ -4,9 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { loadStripe, Stripe } from "@stripe/stripe-js";
 import {
   Elements,
-  CardNumberElement,
-  CardExpiryElement,
-  CardCvcElement,
+  PaymentElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -73,7 +71,7 @@ interface PaymentMethodData {
   } | null;
 }
 
-function CardForm({
+function PaymentForm({
   onSuccess,
   onCancel,
 }: {
@@ -85,20 +83,6 @@ function CardForm({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [stripeReady, setStripeReady] = useState(false);
-
-  useEffect(() => {
-    if (stripe) {
-      setStripeReady(true);
-    }
-  }, [stripe]);
-
-  const setupMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/payment-method/setup-intent");
-      return res.json();
-    },
-  });
 
   const saveMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
@@ -134,21 +118,13 @@ function CardForm({
     setIsProcessing(true);
 
     try {
-      const { clientSecret } = await setupMutation.mutateAsync();
-
-      const cardNumberElement = elements.getElement(CardNumberElement);
-      if (!cardNumberElement) {
-        throw new Error("Card element not found");
-      }
-
-      const { setupIntent, error } = await stripe.confirmCardSetup(
-        clientSecret,
-        {
-          payment_method: {
-            card: cardNumberElement,
-          },
+      const { error, setupIntent } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: window.location.href,
         },
-      );
+        redirect: "if_required",
+      });
 
       if (error) {
         throw new Error(error.message);
@@ -168,71 +144,9 @@ function CardForm({
     }
   };
 
-  if (!stripeReady) {
-    return (
-      <div className="space-y-6">
-        <div className="p-4 border rounded-lg bg-gray-50 min-h-[60px] flex items-center justify-center">
-          <div className="flex items-center gap-2 text-gray-500">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Loading secure payment form...</span>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button type="button" disabled className="flex-1">
-            Save Card
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const elementStyle = {
-    base: {
-      fontSize: "16px",
-      color: "#374151",
-      fontFamily: "system-ui, -apple-system, sans-serif",
-      lineHeight: "24px",
-      "::placeholder": {
-        color: "#9CA3AF",
-      },
-    },
-    invalid: {
-      color: "#EF4444",
-    },
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
-          <div className="p-3 border rounded-lg bg-white">
-            <CardNumberElement options={{ style: elementStyle, showIcon: true }} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Expiry</label>
-            <div className="p-3 border rounded-lg bg-white">
-              <CardExpiryElement options={{ style: elementStyle }} />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CVC</label>
-            <div className="p-3 border rounded-lg bg-white">
-              <CardCvcElement options={{ style: elementStyle }} />
-            </div>
-          </div>
-        </div>
-      </div>
+      <PaymentElement />
 
       <div className="flex gap-3">
         <Button
@@ -307,14 +221,96 @@ function formatBrand(brand: string): string {
   return brandMap[brand.toLowerCase()] || brand;
 }
 
+function AddCardWrapper({
+  onSuccess,
+  onCancel,
+}: {
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchSetupIntent = async () => {
+      try {
+        const res = await apiRequest("POST", "/api/payment-method/setup-intent");
+        const data = await res.json();
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+        } else {
+          throw new Error("Failed to create setup intent");
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to initialize payment form");
+        toast({
+          title: "Error",
+          description: err.message || "Failed to initialize payment form",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSetupIntent();
+  }, [toast]);
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="flex items-center gap-2 text-gray-500">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Initializing secure payment form...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !clientSecret) {
+    return (
+      <div className="p-4">
+        <Alert variant="destructive">
+          <AlertDescription>
+            {error || "Unable to load payment form. Please try again."}
+          </AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Button variant="outline" onClick={onCancel} className="w-full">
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const stripePromise = getStripePromise();
+
+  return (
+    <Elements 
+      stripe={stripePromise} 
+      options={{ 
+        clientSecret,
+        appearance: {
+          theme: 'stripe',
+          variables: {
+            colorPrimary: '#0D9488',
+          },
+        },
+      }}
+    >
+      <PaymentForm onSuccess={onSuccess} onCancel={onCancel} />
+    </Elements>
+  );
+}
+
 export default function PaymentMethodsPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
-  
-  const stripePromise = getStripePromise();
 
   const { data, isLoading } = useQuery<PaymentMethodData>({
     queryKey: ["/api/payment-method"],
@@ -383,12 +379,10 @@ export default function PaymentMethodsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Elements stripe={stripePromise}>
-                <CardForm
-                  onSuccess={() => setIsAddingCard(false)}
-                  onCancel={() => setIsAddingCard(false)}
-                />
-              </Elements>
+              <AddCardWrapper
+                onSuccess={() => setIsAddingCard(false)}
+                onCancel={() => setIsAddingCard(false)}
+              />
             </CardContent>
           </Card>
         ) : data?.hasPaymentMethod ? (

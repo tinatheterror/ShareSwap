@@ -310,23 +310,32 @@ export default function ItemDetailsPage() {
                           @{(item as any).owner.username}
                         </span>
                       </Link>
-                      <UserBadges
-                        isVerified={(item as any).owner.isVerified}
-                        reputationLevel={(item as any).owner.reputationLevel}
-                        size="sm"
-                      />
+                      <div className="shadow-sm rounded-full">
+                        <UserBadges
+                          isVerified={(item as any).owner.isVerified}
+                          reputationLevel={(item as any).owner.reputationLevel}
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-2">
                   <h3 className="font-medium">Condition</h3>
-                  <Badge
-                    variant={item.isConditionVerified ? "default" : "secondary"}
-                  >
-                    {item.conditionRating}/10{" "}
-                    {item.isConditionVerified && "✓ Verified"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={item.isConditionVerified ? "default" : "secondary"}
+                    >
+                      {item.conditionRating}/10{" "}
+                      {item.isConditionVerified && "✓ Verified"}
+                    </Badge>
+                    {(item as any).owner?.isVerified && (
+                      <span className="text-xs px-2 py-1 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20 shadow-sm">
+                        Verified Owner
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-4">

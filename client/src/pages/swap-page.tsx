@@ -264,14 +264,14 @@ export default function SwapPage() {
                   </div>
                   
                   <div className="text-center mb-3">
-                    <div className="flex items-center justify-center gap-1 mb-1">
-                      <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
-                      {item.owner?.isVerified && (
-                        <BadgeCheck className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                      )}
-                    </div>
-                    <div className="flex justify-center mb-2">
+                    <h3 className="font-semibold text-sm line-clamp-1 mb-1">{item.name}</h3>
+                    <div className="flex items-center justify-center gap-1 mb-2">
                       <Badge className="bg-teal-100 text-teal-800 text-xs">Swappable</Badge>
+                      {item.owner?.isVerified && (
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                          Verified Owner
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-600">
                       {item.distance ? `${item.distance.toFixed(1)}km away` : "Nearby"}

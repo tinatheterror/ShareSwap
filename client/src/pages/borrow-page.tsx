@@ -455,14 +455,9 @@ export default function BorrowPage() {
                   </div>
 
                   <CardContent className="px-6 pt-0 pb-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-xl text-slate-800 truncate">
-                        {item.name}
-                      </h3>
-                      {item.owner?.isVerified && (
-                        <BadgeCheck className="h-5 w-5 text-teal-600 flex-shrink-0" />
-                      )}
-                    </div>
+                    <h3 className="font-bold text-xl text-slate-800 truncate mb-1">
+                      {item.name}
+                    </h3>
 
                     <div className="space-y-0.5 mb-3">
                       <div className="flex items-center gap-2 text-slate-700">
@@ -472,9 +467,16 @@ export default function BorrowPage() {
                         </span>
                       </div>
 
-                      <div className="text-sm text-slate-700">
-                        <span className="font-medium">Condition:</span>{" "}
-                        {item.conditionRating || 8}/10
+                      <div className="flex items-center gap-2 text-sm text-slate-700">
+                        <span>
+                          <span className="font-medium">Condition:</span>{" "}
+                          {item.conditionRating || 8}/10
+                        </span>
+                        {item.owner?.isVerified && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                            Verified Owner
+                          </span>
+                        )}
                       </div>
 
                       {(item.isLendable || item.isRentable) && (

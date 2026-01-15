@@ -226,15 +226,17 @@ export default function RentPage() {
                 </div>
                 
                 <div className="text-center mb-3">
+                  <h3 className="font-semibold text-sm line-clamp-1 mb-1">{item.name}</h3>
                   <div className="flex items-center justify-center gap-1 mb-1">
-                    <h3 className="font-semibold text-sm line-clamp-1">{item.name}</h3>
+                    <p className="text-xs text-gray-500">
+                      {item.isConditionVerified ? "Verified" : "Pending"}
+                    </p>
                     {item.owner?.isVerified && (
-                      <BadgeCheck className="h-4 w-4 text-teal-600 flex-shrink-0" />
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                        Verified Owner
+                      </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mb-1">
-                    {item.isConditionVerified ? "Verified" : "Pending"}
-                  </p>
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <span className="text-xs font-semibold text-teal-700">
                       ${Number(item.dollarsPrice || 10).toFixed(2)}/day

@@ -190,26 +190,37 @@ function CardForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border rounded-lg bg-white min-h-[60px] relative z-10">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: "16px",
-                color: "#374151",
-                fontFamily: "system-ui, -apple-system, sans-serif",
-                lineHeight: "24px",
-                "::placeholder": {
-                  color: "#9CA3AF",
+      <div 
+        className="border rounded-lg bg-white"
+        style={{ 
+          position: 'relative', 
+          zIndex: 50,
+          padding: '16px',
+          minHeight: '56px',
+          pointerEvents: 'auto'
+        }}
+      >
+        <div style={{ minHeight: '24px', pointerEvents: 'auto' }}>
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: "16px",
+                  color: "#374151",
+                  fontFamily: "system-ui, -apple-system, sans-serif",
+                  lineHeight: "24px",
+                  "::placeholder": {
+                    color: "#9CA3AF",
+                  },
+                },
+                invalid: {
+                  color: "#EF4444",
                 },
               },
-              invalid: {
-                color: "#EF4444",
-              },
-            },
-            hidePostalCode: true,
-          }}
-        />
+              hidePostalCode: true,
+            }}
+          />
+        </div>
       </div>
 
       <div className="flex gap-3">

@@ -60,6 +60,17 @@
   }
 }
 
+/* Stripe Elements - ensure iframe is interactive */
+.StripeElement {
+  min-height: 24px;
+  padding: 10px 0;
+  pointer-events: auto !important;
+}
+
+.StripeElement iframe {
+  pointer-events: auto !important;
+}
+
 /* Tutorial highlight pulse animation */
 @keyframes pulse {
   0%, 100% {

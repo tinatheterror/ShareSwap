@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { loadStripe } from "@stripe/stripe-js";
@@ -66,6 +66,13 @@ function CardForm({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [stripeReady, setStripeReady] = useState(false);
+
+  useEffect(() => {
+    if (stripe) {
+      setStripeReady(true);
+    }
+  }, [stripe]);
 
   const setupMutation = useMutation({
     mutationFn: async () => {
@@ -141,6 +148,32 @@ function CardForm({
       setIsProcessing(false);
     }
   };
+
+  if (!stripeReady) {
+    return (
+      <div className="space-y-6">
+        <div className="p-4 border rounded-lg bg-gray-50 min-h-[60px] flex items-center justify-center">
+          <div className="flex items-center gap-2 text-gray-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Loading secure payment form...</span>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button type="button" disabled className="flex-1">
+            Save Card
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

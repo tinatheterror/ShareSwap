@@ -4936,9 +4936,11 @@ Respond with ONLY the category name, nothing else.`
         url: session.url,
         sessionId: session.id,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating checkout session:", error);
-      res.status(500).json({ error: "Failed to create checkout session" });
+      const errorMessage = error?.message || error?.raw?.message || "Failed to create checkout session";
+      console.error("Stripe error details:", JSON.stringify(error, null, 2));
+      res.status(500).json({ error: "Failed to create checkout session", details: errorMessage });
     }
   });
 

@@ -125,7 +125,3 @@ app.use((req, res, next) => {
   // Log WebSocket server setup
   log(`WebSocket server configured at /ws/chat`);
 })();
-
-import stripeRoutes from "./routes/stripe";
-
-app.use("/api/stripe", stripeRoutes);

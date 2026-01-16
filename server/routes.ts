@@ -4838,10 +4838,11 @@ Respond with ONLY the category name, nothing else.`
       }
 
       let customerId = user.stripeCustomerId;
+      const stripeInstance = await getStripe();
 
       // Create Stripe customer if doesn't exist
       if (!customerId) {
-        const customer = await stripe.customers.create({
+        const customer = await stripeInstance.customers.create({
           metadata: {
             userId: user.id.toString(),
             username: user.username,
@@ -4856,7 +4857,7 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Create SetupIntent
-      const setupIntent = await stripe.setupIntents.create({
+      const setupIntent = await stripeInstance.setupIntents.create({
         customer: customerId,
         payment_method_types: ['card'],
         metadata: {
@@ -4990,7 +4991,7 @@ Respond with ONLY the category name, nothing else.`
       // Detach the previous payment method if one exists
       if (user?.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethod.id) {
         try {
-          await stripe.paymentMethods.detach(user.existingPaymentMethodId);
+          await stripeInstance.paymentMethods.detach(user.existingPaymentMethodId);
         } catch (detachError) {
           console.error("Error detaching previous payment method:", detachError);
         }
@@ -5051,8 +5052,10 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "No Stripe customer found. Please try again." });
       }
 
+      const stripeInstance = await getStripe();
+
       // Retrieve payment method details from Stripe
-      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+      const paymentMethod = await stripeInstance.paymentMethods.retrieve(paymentMethodId);
 
       if (!paymentMethod.card) {
         return res.status(400).json({ error: "Invalid payment method" });
@@ -5062,7 +5065,7 @@ Respond with ONLY the category name, nothing else.`
       if (paymentMethod.customer !== user.stripeCustomerId) {
         // If not attached, attach it to the customer
         if (!paymentMethod.customer) {
-          await stripe.paymentMethods.attach(paymentMethodId, {
+          await stripeInstance.paymentMethods.attach(paymentMethodId, {
             customer: user.stripeCustomerId,
           });
         } else {
@@ -5073,7 +5076,7 @@ Respond with ONLY the category name, nothing else.`
       // Detach the previous payment method if one exists
       if (user.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethodId) {
         try {
-          await stripe.paymentMethods.detach(user.existingPaymentMethodId);
+          await stripeInstance.paymentMethods.detach(user.existingPaymentMethodId);
         } catch (detachError) {
           console.error("Error detaching previous payment method:", detachError);
         }
@@ -5145,7 +5148,8 @@ Respond with ONLY the category name, nothing else.`
       // Detach from Stripe if exists
       if (user?.stripePaymentMethodId) {
         try {
-          await stripe.paymentMethods.detach(user.stripePaymentMethodId);
+          const stripeInstance = await getStripe();
+          await stripeInstance.paymentMethods.detach(user.stripePaymentMethodId);
         } catch (stripeError) {
           console.error("Error detaching payment method from Stripe:", stripeError);
         }

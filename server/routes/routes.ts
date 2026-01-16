@@ -22,7 +22,16 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals } from "@db/schema";
+import {
+  locationAlerts,
+  swapMatches,
+  swapCooldowns,
+  farmingDetections,
+  rentalReturns,
+  platformCommissions,
+  wishlists,
+  referrals,
+} from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
@@ -35,48 +44,52 @@ import { CooldownChecker } from "./cooldown-checker";
 import { csrfProtection, setCsrfToken } from "./csrf";
 import OpenAI from "openai";
 import Stripe from "stripe";
-import { 
-  awardBorrowReturnPoints, 
-  awardSwapCompletionPoints, 
-  awardRentalCompletionPoints, 
-  awardGiftingPoints, 
-  awardFeedbackPoints, 
+import {
+  awardBorrowReturnPoints,
+  awardSwapCompletionPoints,
+  awardRentalCompletionPoints,
+  awardGiftingPoints,
+  awardFeedbackPoints,
   TRUST_POINTS,
   applyLateReturnPenalty,
   applyCancellationPenalty,
-  applyDepositClaimedPenalty
+  applyDepositClaimedPenalty,
 } from "./trust-score-service";
-import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
+import {
+  calculateAIValuation,
+  getTierBand,
+  type ItemValuationInput,
+} from "./ai-valuation";
 import { calculateReplacementValue } from "./replacement-value";
 
 // Helper function to award ShareCoins with first-time bonus handling
 async function awardShareCoinsWithFirstTimeBonus(
   userId: number,
-  actionType: 'RENT' | 'LEND' | 'SWAP' | 'GIFT' | 'BORROW',
+  actionType: "RENT" | "LEND" | "SWAP" | "GIFT" | "BORROW",
   itemName: string,
-  baseReward: number = 1
+  baseReward: number = 1,
 ): Promise<{ totalAwarded: number; isFirstTime: boolean }> {
   // Map action type to user field
   const fieldMap: Record<string, keyof typeof users> = {
-    'RENT': 'hasCompletedFirstRent',
-    'LEND': 'hasCompletedFirstLend', 
-    'SWAP': 'hasCompletedFirstSwap',
-    'GIFT': 'hasCompletedFirstGift',
-    'BORROW': 'hasCompletedFirstBorrow',
+    RENT: "hasCompletedFirstRent",
+    LEND: "hasCompletedFirstLend",
+    SWAP: "hasCompletedFirstSwap",
+    GIFT: "hasCompletedFirstGift",
+    BORROW: "hasCompletedFirstBorrow",
   };
-  
+
   const field = fieldMap[actionType];
-  
+
   // Check if user has completed this action before
   const [user] = await db
     .select({ hasCompleted: users[field] as any })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  
+
   const isFirstTime = !user?.hasCompleted;
   let totalAwarded = 0;
-  
+
   // Award first-time bonus if applicable
   if (isFirstTime) {
     await db.insert(shareCoinsTransactions).values({
@@ -86,14 +99,14 @@ async function awardShareCoinsWithFirstTimeBonus(
       transactionType: "EARNED",
     });
     totalAwarded += 1;
-    
+
     // Mark user as having completed first action
     await db
       .update(users)
       .set({ [field]: true })
       .where(eq(users.id, userId));
   }
-  
+
   // Award base completion reward
   await db.insert(shareCoinsTransactions).values({
     userId,
@@ -102,7 +115,7 @@ async function awardShareCoinsWithFirstTimeBonus(
     transactionType: "EARNED",
   });
   totalAwarded += baseReward;
-  
+
   // Update user's ShareCoins balance
   await db
     .update(users)
@@ -110,12 +123,14 @@ async function awardShareCoinsWithFirstTimeBonus(
       shareCoins: sql`share_coins + ${totalAwarded}`,
     })
     .where(eq(users.id, userId));
-  
+
   return { totalAwarded, isFirstTime };
 }
 
 // Helper function to check and award referral bonus when a referred user completes their first transaction
-async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: boolean; referrerId?: number }> {
+async function checkAndAwardReferralBonus(
+  userId: number,
+): Promise<{ awarded: boolean; referrerId?: number }> {
   try {
     // Find a referral record for this user that hasn't been rewarded yet
     const [referral] = await db
@@ -125,8 +140,8 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
         and(
           eq(referrals.referredUserId, userId),
           eq(referrals.completedFirstTransaction, false),
-          eq(referrals.isRewardClaimed, false)
-        )
+          eq(referrals.isRewardClaimed, false),
+        ),
       )
       .limit(1);
 
@@ -160,7 +175,9 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
       })
       .where(eq(referrals.id, referral.id));
 
-    console.log(`🎉 Referral bonus: Awarded ${rewardAmount} ShareCoins to user ${referral.referrerId} for referring user ${userId}`);
+    console.log(
+      `🎉 Referral bonus: Awarded ${rewardAmount} ShareCoins to user ${referral.referrerId} for referring user ${userId}`,
+    );
 
     return { awarded: true, referrerId: referral.referrerId };
   } catch (error) {
@@ -170,7 +187,10 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
 }
 
 // Initialize Stripe - will be loaded from connector
-import { getUncachableStripeClient, getStripePublishableKey } from "./stripe.server";
+import {
+  getUncachableStripeClient,
+  getStripePublishableKey,
+} from "./stripe.server";
 
 // Helper to get stripe client (lazy loaded from connector)
 let stripeClient: Stripe | null = null;
@@ -184,60 +204,70 @@ async function getStripe(): Promise<Stripe> {
 // Legacy alias for existing code - proxy to async stripe client
 const stripe = {
   customers: {
-    create: async (...args: Parameters<Stripe['customers']['create']>) => {
+    create: async (...args: Parameters<Stripe["customers"]["create"]>) => {
       const s = await getStripe();
       return s.customers.create(...args);
     },
   },
   setupIntents: {
-    create: async (...args: Parameters<Stripe['setupIntents']['create']>) => {
+    create: async (...args: Parameters<Stripe["setupIntents"]["create"]>) => {
       const s = await getStripe();
       return s.setupIntents.create(...args);
     },
   },
   paymentIntents: {
-    create: async (...args: Parameters<Stripe['paymentIntents']['create']>) => {
+    create: async (...args: Parameters<Stripe["paymentIntents"]["create"]>) => {
       const s = await getStripe();
       return s.paymentIntents.create(...args);
     },
-    retrieve: async (...args: Parameters<Stripe['paymentIntents']['retrieve']>) => {
+    retrieve: async (
+      ...args: Parameters<Stripe["paymentIntents"]["retrieve"]>
+    ) => {
       const s = await getStripe();
       return s.paymentIntents.retrieve(...args);
     },
-    update: async (...args: Parameters<Stripe['paymentIntents']['update']>) => {
+    update: async (...args: Parameters<Stripe["paymentIntents"]["update"]>) => {
       const s = await getStripe();
       return s.paymentIntents.update(...args);
     },
-    cancel: async (...args: Parameters<Stripe['paymentIntents']['cancel']>) => {
+    cancel: async (...args: Parameters<Stripe["paymentIntents"]["cancel"]>) => {
       const s = await getStripe();
       return s.paymentIntents.cancel(...args);
     },
-    capture: async (...args: Parameters<Stripe['paymentIntents']['capture']>) => {
+    capture: async (
+      ...args: Parameters<Stripe["paymentIntents"]["capture"]>
+    ) => {
       const s = await getStripe();
       return s.paymentIntents.capture(...args);
     },
   },
   paymentMethods: {
-    retrieve: async (...args: Parameters<Stripe['paymentMethods']['retrieve']>) => {
+    retrieve: async (
+      ...args: Parameters<Stripe["paymentMethods"]["retrieve"]>
+    ) => {
       const s = await getStripe();
       return s.paymentMethods.retrieve(...args);
     },
-    attach: async (...args: Parameters<Stripe['paymentMethods']['attach']>) => {
+    attach: async (...args: Parameters<Stripe["paymentMethods"]["attach"]>) => {
       const s = await getStripe();
       return s.paymentMethods.attach(...args);
     },
-    detach: async (...args: Parameters<Stripe['paymentMethods']['detach']>) => {
+    detach: async (...args: Parameters<Stripe["paymentMethods"]["detach"]>) => {
       const s = await getStripe();
       return s.paymentMethods.detach(...args);
     },
   },
   checkout: {
     sessions: {
-      create: async (...args: Parameters<Stripe['checkout']['sessions']['create']>) => {
+      create: async (
+        ...args: Parameters<Stripe["checkout"]["sessions"]["create"]>
+      ) => {
         const s = await getStripe();
         return s.checkout.sessions.create(...args);
       },
-      retrieve: async (...args: Parameters<Stripe['checkout']['sessions']['retrieve']>) => {
+      retrieve: async (
+        ...args: Parameters<Stripe["checkout"]["sessions"]["retrieve"]>
+      ) => {
         const s = await getStripe();
         return s.checkout.sessions.retrieve(...args);
       },
@@ -246,7 +276,7 @@ const stripe = {
 };
 
 // Type extension for Passport.js session data
-declare module 'express-session' {
+declare module "express-session" {
   interface SessionData {
     passport?: {
       user: number;
@@ -276,22 +306,21 @@ function calculateDistance(
 function calculateBoundingBox(lat: number, lon: number, radiusKm: number) {
   const R = 6371; // Earth's radius in kilometers
   const latRad = (lat * Math.PI) / 180;
-  
+
   // Calculate latitude bounds
   const latDelta = (radiusKm / R) * (180 / Math.PI);
-  let minLat = Math.max(-90, lat - latDelta);  // Clamp to valid latitude range
+  let minLat = Math.max(-90, lat - latDelta); // Clamp to valid latitude range
   let maxLat = Math.min(90, lat + latDelta);
-  
+
   // Calculate longitude bounds (adjusted for latitude)
   // Handle extreme latitudes where cos(lat) approaches 0
   const cosLat = Math.cos(latRad);
-  const lonDelta = cosLat > 0.001 
-    ? (radiusKm / (R * cosLat)) * (180 / Math.PI) 
-    : 180; // At poles, search all longitudes
-  
+  const lonDelta =
+    cosLat > 0.001 ? (radiusKm / (R * cosLat)) * (180 / Math.PI) : 180; // At poles, search all longitudes
+
   let minLon = lon - lonDelta;
   let maxLon = lon + lonDelta;
-  
+
   // Handle antimeridian crossing (longitude wrap around ±180)
   let crossesAntimeridian = false;
   if (minLon < -180) {
@@ -302,7 +331,7 @@ function calculateBoundingBox(lat: number, lon: number, radiusKm: number) {
     maxLon -= 360;
     crossesAntimeridian = true;
   }
-  
+
   return { minLat, maxLat, minLon, maxLon, crossesAntimeridian };
 }
 
@@ -311,9 +340,14 @@ const storage = multer.diskStorage({
   destination: "./uploads/",
   filename: function (req, file, cb) {
     // Sanitize filename to prevent directory traversal attacks
-    const sanitizedOriginalName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.-]/g, '_');
-    const randomPrefix = randomBytes(16).toString('hex');
-    cb(null, `${randomPrefix}-${Date.now()}${path.extname(sanitizedOriginalName)}`);
+    const sanitizedOriginalName = path
+      .basename(file.originalname)
+      .replace(/[^a-zA-Z0-9.-]/g, "_");
+    const randomPrefix = randomBytes(16).toString("hex");
+    cb(
+      null,
+      `${randomPrefix}-${Date.now()}${path.extname(sanitizedOriginalName)}`,
+    );
   },
 });
 
@@ -326,16 +360,29 @@ const upload = multer({
   },
   fileFilter: function (req, file, cb) {
     // Only allow image files
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    const allowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+
     const ext = path.extname(file.originalname).toLowerCase();
     const mimeType = file.mimetype.toLowerCase();
-    
-    if (allowedMimeTypes.includes(mimeType) && allowedExtensions.includes(ext)) {
+
+    if (
+      allowedMimeTypes.includes(mimeType) &&
+      allowedExtensions.includes(ext)
+    ) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'));
+      cb(
+        new Error(
+          "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.",
+        ),
+      );
     }
   },
 });
@@ -351,9 +398,9 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/csrf-token", (req, res) => {
     // Generate and set CSRF token in cookie
     const token = setCsrfToken(req, res);
-    console.log('[CSRF Token Endpoint] Token generated and set');
-    
-    res.json({ 
+    console.log("[CSRF Token Endpoint] Token generated and set");
+
+    res.json({
       message: "CSRF token set in cookie and ready for use",
     });
   });
@@ -373,7 +420,12 @@ export function registerRoutes(app: Express): Server {
   // CSRF protection automatically applies to POST, PUT, DELETE, PATCH (not GET, HEAD, OPTIONS)
   app.use((req, res, next) => {
     // Skip CSRF for login, register, csrf-token, and referrals endpoints
-    const skipPaths = ['/api/login', '/api/register', '/api/csrf-token', '/api/referrals/generate'];
+    const skipPaths = [
+      "/api/login",
+      "/api/register",
+      "/api/csrf-token",
+      "/api/referrals/generate",
+    ];
     if (skipPaths.includes(req.path)) {
       return next();
     }
@@ -403,7 +455,7 @@ export function registerRoutes(app: Express): Server {
       // CRITICAL SECURITY WARNING: PCI COMPLIANCE VIOLATION!
       // This code accepts raw credit card data (card number, CVV, expiry) directly.
       // This is NOT PCI-DSS compliant and creates severe legal and security risks.
-      // 
+      //
       // REQUIRED BEFORE PRODUCTION:
       // 1. Integrate with a PCI-compliant payment gateway (Stripe, Square, Braintree)
       // 2. Use tokenization - never handle raw card data
@@ -412,19 +464,26 @@ export function registerRoutes(app: Express): Server {
       // 5. Remove all credit card data from request logs
       //
       // Current risk level: CRITICAL - DO NOT DEPLOY WITHOUT FIXING
-      
+
       if (!req.body.cardNumber || req.body.cardNumber.trim().length !== 16) {
-        return res.status(400).json({ error: "Valid 16-digit card number is required" });
+        return res
+          .status(400)
+          .json({ error: "Valid 16-digit card number is required" });
       }
 
-      if (!req.body.expiry || !/^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(req.body.expiry)) {
-        return res.status(400).json({ error: "Valid expiry date (MM/YY) is required" });
+      if (
+        !req.body.expiry ||
+        !/^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(req.body.expiry)
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Valid expiry date (MM/YY) is required" });
       }
 
       if (!req.body.cvv || req.body.cvv.trim().length !== 3) {
         return res.status(400).json({ error: "Valid 3-digit CVV is required" });
       }
-      
+
       // NOTE: At least this data is NOT being stored in the database (verified below)
       // But handling it at all is still a violation
 
@@ -441,7 +500,9 @@ export function registerRoutes(app: Express): Server {
       res.status(201).json(verification[0]);
     } catch (error) {
       console.error("Error creating verification:", error);
-      res.status(500).json({ error: "Failed to submit verification. Please try again." });
+      res
+        .status(500)
+        .json({ error: "Failed to submit verification. Please try again." });
     }
   });
 
@@ -459,7 +520,7 @@ export function registerRoutes(app: Express): Server {
 
     if (!verification) {
       return res.json({
-        status: 'unverified',
+        status: "unverified",
         legalFullName: null,
         submittedAt: null,
         verifiedAt: null,
@@ -468,10 +529,10 @@ export function registerRoutes(app: Express): Server {
     }
 
     // Map database status to frontend status
-    let status: 'unverified' | 'pending' | 'verified' | 'failed' = 'unverified';
-    if (verification.status === 'pending') status = 'pending';
-    else if (verification.status === 'approved') status = 'verified';
-    else if (verification.status === 'rejected') status = 'failed';
+    let status: "unverified" | "pending" | "verified" | "failed" = "unverified";
+    if (verification.status === "pending") status = "pending";
+    else if (verification.status === "approved") status = "verified";
+    else if (verification.status === "rejected") status = "failed";
 
     // Get verifiedAt from user record if verified
     const [user] = await db
@@ -485,58 +546,71 @@ export function registerRoutes(app: Express): Server {
       legalFullName: verification.fullName,
       submittedAt: verification.createdAt,
       verifiedAt: user?.verifiedAt || null,
-      failureReason: status === 'failed' ? 'Document could not be verified. Please upload a clearer image.' : null,
+      failureReason:
+        status === "failed"
+          ? "Document could not be verified. Please upload a clearer image."
+          : null,
     });
   });
 
   // New identity-only verification endpoint (no card data)
-  app.post("/api/verify-identity", upload.single("idDocument"), async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      if (!req.body.legalFullName || req.body.legalFullName.trim() === "") {
-        return res.status(400).json({ error: "Legal full name is required" });
+  app.post(
+    "/api/verify-identity",
+    upload.single("idDocument"),
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      if (!req.file) {
-        return res.status(400).json({ error: "ID document is required" });
-      }
+      try {
+        if (!req.body.legalFullName || req.body.legalFullName.trim() === "") {
+          return res.status(400).json({ error: "Legal full name is required" });
+        }
 
-      // Check for existing pending verification
-      const [existing] = await db
-        .select()
-        .from(verifications)
-        .where(and(
-          eq(verifications.userId, req.user.id),
-          eq(verifications.status, "pending")
-        ))
-        .limit(1);
+        if (!req.file) {
+          return res.status(400).json({ error: "ID document is required" });
+        }
 
-      if (existing) {
-        return res.status(400).json({ error: "You already have a pending verification request" });
-      }
+        // Check for existing pending verification
+        const [existing] = await db
+          .select()
+          .from(verifications)
+          .where(
+            and(
+              eq(verifications.userId, req.user.id),
+              eq(verifications.status, "pending"),
+            ),
+          )
+          .limit(1);
 
-      const verification = await db
-        .insert(verifications)
-        .values({
-          userId: req.user.id,
-          fullName: req.body.legalFullName,
-          idNumber: "ID_DOC_UPLOADED", // Placeholder since we're not collecting ID number anymore
+        if (existing) {
+          return res
+            .status(400)
+            .json({ error: "You already have a pending verification request" });
+        }
+
+        const verification = await db
+          .insert(verifications)
+          .values({
+            userId: req.user.id,
+            fullName: req.body.legalFullName,
+            idNumber: "ID_DOC_UPLOADED", // Placeholder since we're not collecting ID number anymore
+            status: "pending",
+          })
+          .returning();
+
+        res.status(201).json({
+          success: true,
           status: "pending",
-        })
-        .returning();
-
-      res.status(201).json({
-        success: true,
-        status: 'pending',
-      });
-    } catch (error) {
-      console.error("Error creating verification:", error);
-      res.status(500).json({ error: "Failed to submit verification. Please try again." });
-    }
-  });
+        });
+      } catch (error) {
+        console.error("Error creating verification:", error);
+        res
+          .status(500)
+          .json({ error: "Failed to submit verification. Please try again." });
+      }
+    },
+  );
 
   // Admin: Approve user verification (for demo/testing - auto-approve own verification)
   app.post("/api/verify/approve", async (req, res) => {
@@ -546,7 +620,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const userId = req.user.id;
-      
+
       // Check if user has a pending verification
       const [verification] = await db
         .select()
@@ -569,7 +643,7 @@ export function registerRoutes(app: Express): Server {
       // 1. Set isVerified = true and verifiedAt timestamp
       // 2. Boost trust/reputation score significantly (+50 points)
       const VERIFICATION_TRUST_BOOST = 50;
-      
+
       await db
         .update(users)
         .set({
@@ -603,13 +677,16 @@ export function registerRoutes(app: Express): Server {
         })
         .where(eq(users.id, userId));
 
-      console.log(`✅ Awarded ${VERIFICATION_SHARECOIN_REWARD} ShareCoins to user ${userId} for profile verification`);
+      console.log(
+        `✅ Awarded ${VERIFICATION_SHARECOIN_REWARD} ShareCoins to user ${userId} for profile verification`,
+      );
 
-      res.json({ 
-        success: true, 
-        message: "Verification approved! You received a trust score boost and 5 ShareCoins.",
+      res.json({
+        success: true,
+        message:
+          "Verification approved! You received a trust score boost and 5 ShareCoins.",
         trustBoost: VERIFICATION_TRUST_BOOST,
-        shareCoinsAwarded: VERIFICATION_SHARECOIN_REWARD
+        shareCoinsAwarded: VERIFICATION_SHARECOIN_REWARD,
       });
     } catch (error) {
       console.error("Error approving verification:", error);
@@ -618,53 +695,60 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Profile photo upload endpoint with face validation
-  app.post("/api/users/profile-photo", upload.single("profilePhoto"), async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "Profile photo is required" });
+  app.post(
+    "/api/users/profile-photo",
+    upload.single("profilePhoto"),
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      const photoUrl = `/uploads/${req.file.filename}`;
-      const userId = req.user.id;
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "Profile photo is required" });
+        }
 
-      // Get user to check if they've already earned the bonus
-      const [user] = await db
-        .select({ hasUploadedProfilePhoto: users.hasUploadedProfilePhoto })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
+        const photoUrl = `/uploads/${req.file.filename}`;
+        const userId = req.user.id;
 
-      const hasAlreadyEarnedBonus = user?.hasUploadedProfilePhoto === true;
+        // Get user to check if they've already earned the bonus
+        const [user] = await db
+          .select({ hasUploadedProfilePhoto: users.hasUploadedProfilePhoto })
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
 
-      // Validate photo with AI if user hasn't earned bonus yet
-      let validationStatus = "pending";
-      let validationReason = "";
-      let shareCoinsAwarded = 0;
+        const hasAlreadyEarnedBonus = user?.hasUploadedProfilePhoto === true;
 
-      if (!hasAlreadyEarnedBonus) {
-        try {
-          // Read the uploaded file and convert to base64
-          const fs = await import("fs");
-          const path = await import("path");
-          const filePath = path.join(process.cwd(), "uploads", req.file.filename);
-          const imageBuffer = fs.readFileSync(filePath);
-          const base64Image = imageBuffer.toString("base64");
-          const mimeType = req.file.mimetype || "image/jpeg";
+        // Validate photo with AI if user hasn't earned bonus yet
+        let validationStatus = "pending";
+        let validationReason = "";
+        let shareCoinsAwarded = 0;
 
-          // Call GPT-4 Vision for face validation
-          const OpenAI = (await import("openai")).default;
-          const openai = new OpenAI();
+        if (!hasAlreadyEarnedBonus) {
+          try {
+            // Read the uploaded file and convert to base64
+            const fs = await import("fs");
+            const path = await import("path");
+            const filePath = path.join(
+              process.cwd(),
+              "uploads",
+              req.file.filename,
+            );
+            const imageBuffer = fs.readFileSync(filePath);
+            const base64Image = imageBuffer.toString("base64");
+            const mimeType = req.file.mimetype || "image/jpeg";
 
-          const response = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [
-              {
-                role: "system",
-                content: `You are a profile photo moderator for ShareSwap, a peer-to-peer sharing community. Your job is to determine if a profile photo shows a clear, visible human face suitable for building trust in the community.
+            // Call GPT-4 Vision for face validation
+            const OpenAI = (await import("openai")).default;
+            const openai = new OpenAI();
+
+            const response = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "system",
+                  content: `You are a profile photo moderator for ShareSwap, a peer-to-peer sharing community. Your job is to determine if a profile photo shows a clear, visible human face suitable for building trust in the community.
 
 APPROVE photos that:
 - Show a clear, visible human face (selfies, headshots, portrait photos)
@@ -683,116 +767,122 @@ REJECT photos that:
 - Memes, screenshots, or collages
 
 Respond with ONLY valid JSON in this exact format:
-{"decision": "approved" or "rejected", "reason": "brief explanation"}`
-              },
-              {
-                role: "user",
-                content: [
-                  {
-                    type: "text",
-                    text: "Please analyze this profile photo and determine if it shows a clear, visible human face."
-                  },
-                  {
-                    type: "image_url",
-                    image_url: {
-                      url: `data:${mimeType};base64,${base64Image}`,
-                      detail: "low"
-                    }
-                  }
-                ]
+{"decision": "approved" or "rejected", "reason": "brief explanation"}`,
+                },
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: "Please analyze this profile photo and determine if it shows a clear, visible human face.",
+                    },
+                    {
+                      type: "image_url",
+                      image_url: {
+                        url: `data:${mimeType};base64,${base64Image}`,
+                        detail: "low",
+                      },
+                    },
+                  ],
+                },
+              ],
+              max_tokens: 150,
+              temperature: 0.1,
+            });
+
+            const content = response.choices[0]?.message?.content || "";
+            console.log(
+              `📷 Profile photo validation for user ${userId}:`,
+              content,
+            );
+
+            // Parse the AI response
+            try {
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const result = JSON.parse(jsonMatch[0]);
+                validationStatus =
+                  result.decision === "approved" ? "approved" : "rejected";
+                validationReason = result.reason || "";
+              } else {
+                // If can't parse, be conservative and reject
+                validationStatus = "rejected";
+                validationReason = "Could not verify face in photo";
               }
-            ],
-            max_tokens: 150,
-            temperature: 0.1
-          });
-
-          const content = response.choices[0]?.message?.content || "";
-          console.log(`📷 Profile photo validation for user ${userId}:`, content);
-
-          // Parse the AI response
-          try {
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const result = JSON.parse(jsonMatch[0]);
-              validationStatus = result.decision === "approved" ? "approved" : "rejected";
-              validationReason = result.reason || "";
-            } else {
-              // If can't parse, be conservative and reject
+            } catch (parseError) {
+              console.error("Error parsing AI response:", parseError);
               validationStatus = "rejected";
               validationReason = "Could not verify face in photo";
             }
-          } catch (parseError) {
-            console.error("Error parsing AI response:", parseError);
+          } catch (aiError) {
+            console.error("AI validation error:", aiError);
+            // If AI fails, still save photo but don't award coins
             validationStatus = "rejected";
-            validationReason = "Could not verify face in photo";
+            validationReason = "Validation service unavailable";
           }
-        } catch (aiError) {
-          console.error("AI validation error:", aiError);
-          // If AI fails, still save photo but don't award coins
-          validationStatus = "rejected";
-          validationReason = "Validation service unavailable";
         }
-      }
 
-      // Update user profile photo (always save, even if validation fails)
-      const updateData: any = {
-        profilePhoto: photoUrl,
-        profilePhotoValidationStatus: validationStatus,
-        profilePhotoValidationReason: validationReason,
-      };
+        // Update user profile photo (always save, even if validation fails)
+        const updateData: any = {
+          profilePhoto: photoUrl,
+          profilePhotoValidationStatus: validationStatus,
+          profilePhotoValidationReason: validationReason,
+        };
 
-      // Only award bonus if validated and not already earned
-      if (validationStatus === "approved" && !hasAlreadyEarnedBonus) {
-        updateData.hasUploadedProfilePhoto = true;
-        shareCoinsAwarded = 1;
+        // Only award bonus if validated and not already earned
+        if (validationStatus === "approved" && !hasAlreadyEarnedBonus) {
+          updateData.hasUploadedProfilePhoto = true;
+          shareCoinsAwarded = 1;
 
-        await db.insert(shareCoinsTransactions).values({
-          userId,
-          amount: "1",
-          description: "Profile Photo Upload Bonus",
-          transactionType: "EARNED",
+          await db.insert(shareCoinsTransactions).values({
+            userId,
+            amount: "1",
+            description: "Profile Photo Upload Bonus",
+            transactionType: "EARNED",
+          });
+
+          await db
+            .update(users)
+            .set({
+              ...updateData,
+              shareCoins: sql`share_coins + 1`,
+            })
+            .where(eq(users.id, userId));
+
+          console.log(
+            `✅ Awarded 1 ShareCoin to user ${userId} for valid profile photo`,
+          );
+        } else {
+          await db.update(users).set(updateData).where(eq(users.id, userId));
+        }
+
+        // Determine response message
+        let message: string;
+        if (hasAlreadyEarnedBonus) {
+          message = "Profile photo updated!";
+        } else if (validationStatus === "approved") {
+          message = "Profile photo uploaded! You earned 1 ShareCoin.";
+        } else {
+          message =
+            "Photo saved, but we couldn't verify a clear face. Try another photo to earn 1 ShareCoin.";
+        }
+
+        res.json({
+          success: true,
+          profilePhoto: photoUrl,
+          validationStatus,
+          validationReason:
+            validationStatus === "rejected" ? validationReason : undefined,
+          shareCoinsAwarded,
+          hasAlreadyEarnedBonus,
+          message,
         });
-
-        await db
-          .update(users)
-          .set({
-            ...updateData,
-            shareCoins: sql`share_coins + 1`,
-          })
-          .where(eq(users.id, userId));
-
-        console.log(`✅ Awarded 1 ShareCoin to user ${userId} for valid profile photo`);
-      } else {
-        await db
-          .update(users)
-          .set(updateData)
-          .where(eq(users.id, userId));
+      } catch (error) {
+        console.error("Error uploading profile photo:", error);
+        res.status(500).json({ error: "Failed to upload profile photo" });
       }
-
-      // Determine response message
-      let message: string;
-      if (hasAlreadyEarnedBonus) {
-        message = "Profile photo updated!";
-      } else if (validationStatus === "approved") {
-        message = "Profile photo uploaded! You earned 1 ShareCoin.";
-      } else {
-        message = "Photo saved, but we couldn't verify a clear face. Try another photo to earn 1 ShareCoin.";
-      }
-
-      res.json({
-        success: true,
-        profilePhoto: photoUrl,
-        validationStatus,
-        validationReason: validationStatus === "rejected" ? validationReason : undefined,
-        shareCoinsAwarded,
-        hasAlreadyEarnedBonus,
-        message,
-      });
-    } catch (error) {
-      console.error("Error uploading profile photo:", error);
-      res.status(500).json({ error: "Failed to upload profile photo" });
-    }
-  });
+    },
+  );
 
   // SmartScan endpoints
   app.get("/api/smartscan/usage", async (req, res) => {
@@ -813,10 +903,15 @@ Respond with ONLY valid JSON in this exact format:
 
       // Check if we need to reset monthly usage
       const now = new Date();
-      const resetDate = user.smartScansResetDate ? new Date(user.smartScansResetDate) : new Date();
-      
+      const resetDate = user.smartScansResetDate
+        ? new Date(user.smartScansResetDate)
+        : new Date();
+
       // Reset on the 1st of each month
-      if (resetDate.getMonth() !== now.getMonth() || resetDate.getFullYear() !== now.getFullYear()) {
+      if (
+        resetDate.getMonth() !== now.getMonth() ||
+        resetDate.getFullYear() !== now.getFullYear()
+      ) {
         await db
           .update(users)
           .set({
@@ -834,7 +929,9 @@ Respond with ONLY valid JSON in this exact format:
       }
 
       const scansUsed = user.smartScansUsed || 0;
-      const scansRemaining = user.isPremium ? "unlimited" : Math.max(0, 3 - scansUsed);
+      const scansRemaining = user.isPremium
+        ? "unlimited"
+        : Math.max(0, 3 - scansUsed);
 
       res.json({
         scansUsed,
@@ -848,89 +945,100 @@ Respond with ONLY valid JSON in this exact format:
     }
   });
 
-  app.post("/api/smartscan/analyze", upload.array("photos", 10), async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      // Get user data
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+  app.post(
+    "/api/smartscan/analyze",
+    upload.array("photos", 10),
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Check usage limits (unless premium)
-      if (!user.isPremium) {
-        const now = new Date();
-        const resetDate = user.smartScansResetDate ? new Date(user.smartScansResetDate) : new Date();
-        
-        let scansUsed = user.smartScansUsed || 0;
+      try {
+        // Get user data
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
 
-        // Reset if needed
-        if (resetDate.getMonth() !== now.getMonth() || resetDate.getFullYear() !== now.getFullYear()) {
-          scansUsed = 0;
-          await db
-            .update(users)
-            .set({
-              smartScansUsed: 0,
-              smartScansResetDate: now,
-            })
-            .where(eq(users.id, req.user.id));
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
         }
 
-        if (scansUsed >= 3) {
-          return res.status(403).json({ 
-            error: "SmartScan limit reached",
-            message: "You've used all 3 free SmartScans this month. Upgrade to Premium for unlimited scans or upload items manually.",
-          });
+        // Check usage limits (unless premium)
+        if (!user.isPremium) {
+          const now = new Date();
+          const resetDate = user.smartScansResetDate
+            ? new Date(user.smartScansResetDate)
+            : new Date();
+
+          let scansUsed = user.smartScansUsed || 0;
+
+          // Reset if needed
+          if (
+            resetDate.getMonth() !== now.getMonth() ||
+            resetDate.getFullYear() !== now.getFullYear()
+          ) {
+            scansUsed = 0;
+            await db
+              .update(users)
+              .set({
+                smartScansUsed: 0,
+                smartScansResetDate: now,
+              })
+              .where(eq(users.id, req.user.id));
+          }
+
+          if (scansUsed >= 3) {
+            return res.status(403).json({
+              error: "SmartScan limit reached",
+              message:
+                "You've used all 3 free SmartScans this month. Upgrade to Premium for unlimited scans or upload items manually.",
+            });
+          }
         }
-      }
 
-      // Validate images
-      if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
-        return res.status(400).json({ error: "At least one image is required" });
-      }
+        // Validate images
+        if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+          return res
+            .status(400)
+            .json({ error: "At least one image is required" });
+        }
 
-      const files = req.files as Express.Multer.File[];
-      const photoUrls = files.map(f => `/uploads/${path.basename(f.path)}`);
+        const files = req.files as Express.Multer.File[];
+        const photoUrls = files.map((f) => `/uploads/${path.basename(f.path)}`);
 
-      // Initialize OpenAI client with Replit AI Integrations
-      const openai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-      });
+        // Initialize OpenAI client with Replit AI Integrations
+        const openai = new OpenAI({
+          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        });
 
-      // Prepare images for OpenAI Vision API
-      const fs = await import('fs/promises');
-      const imageContents = await Promise.all(
-        files.map(async (file) => {
-          const buffer = await fs.readFile(file.path);
-          const base64 = buffer.toString('base64');
-          return {
-            type: "image_url" as const,
-            image_url: {
-              url: `data:${file.mimetype};base64,${base64}`,
-            },
-          };
-        })
-      );
+        // Prepare images for OpenAI Vision API
+        const fs = await import("fs/promises");
+        const imageContents = await Promise.all(
+          files.map(async (file) => {
+            const buffer = await fs.readFile(file.path);
+            const base64 = buffer.toString("base64");
+            return {
+              type: "image_url" as const,
+              image_url: {
+                url: `data:${file.mimetype};base64,${base64}`,
+              },
+            };
+          }),
+        );
 
-      // Call GPT-4 Vision API
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `You are an expert at identifying and analyzing items from photos for a peer-to-peer sharing marketplace. Analyze these images and extract the following information in JSON format:
+        // Call GPT-4 Vision API
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `You are an expert at identifying and analyzing items from photos for a peer-to-peer sharing marketplace. Analyze these images and extract the following information in JSON format:
 
 {
   "name": "Short, descriptive name of the item (max 50 chars)",
@@ -938,85 +1046,97 @@ Respond with ONLY valid JSON in this exact format:
   "category": "One of: Electronics, Tools, Sports, Home & Garden, Books & Media, Clothing, Toys & Games, Kitchen, Outdoor, Other",
   "brand": "Brand name if visible, otherwise 'Unknown'",
   "conditionRating": "Integer 1-5 where 1=Poor, 2=Fair, 3=Good, 4=Very Good, 5=Excellent",
-  ${user.isPremium ? '"estimatedValue": "Estimated market value in USD (just the number, e.g., \'25.00\')",' : ''}
+  ${user.isPremium ? '"estimatedValue": "Estimated market value in USD (just the number, e.g., \'25.00\')",' : ""}
   "confidence": "Float 0-1 indicating how confident you are in this analysis"
 }
 
 Be specific and honest about condition. Look for signs of wear, damage, or quality issues.`,
-              },
-              ...imageContents,
-            ],
-          },
-        ],
-        max_tokens: 500,
-        temperature: 0.3,
-      });
+                },
+                ...imageContents,
+              ],
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0.3,
+        });
 
-      // Parse AI response
-      const aiResponse = completion.choices[0]?.message?.content;
-      if (!aiResponse) {
-        throw new Error("No response from AI");
-      }
-
-      // Extract JSON from response (handle markdown code blocks)
-      let analysisData;
-      try {
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          throw new Error("No JSON found in response");
+        // Parse AI response
+        const aiResponse = completion.choices[0]?.message?.content;
+        if (!aiResponse) {
+          throw new Error("No response from AI");
         }
-        analysisData = JSON.parse(jsonMatch[0]);
-      } catch (parseError) {
-        console.error("Failed to parse AI response:", aiResponse);
-        throw new Error("Invalid AI response format");
-      }
 
-      // Update usage tracking
-      if (!user.isPremium) {
-        await db
-          .update(users)
-          .set({
-            smartScansUsed: sql`${users.smartScansUsed} + 1`,
-          })
-          .where(eq(users.id, req.user.id));
-      }
+        // Extract JSON from response (handle markdown code blocks)
+        let analysisData;
+        try {
+          const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) {
+            throw new Error("No JSON found in response");
+          }
+          analysisData = JSON.parse(jsonMatch[0]);
+        } catch (parseError) {
+          console.error("Failed to parse AI response:", aiResponse);
+          throw new Error("Invalid AI response format");
+        }
 
-      res.json({
-        success: true,
-        analysis: {
-          name: analysisData.name || "Unidentified Item",
-          description: analysisData.description || "AI analysis completed.",
-          category: analysisData.category || "Other",
-          brand: analysisData.brand || "Unknown",
-          conditionRating: Math.min(5, Math.max(1, parseInt(analysisData.conditionRating) || 3)),
-          estimatedValue: user.isPremium && analysisData.estimatedValue ? analysisData.estimatedValue : null,
-          confidence: parseFloat(analysisData.confidence) || 0.5,
-        },
-        photos: photoUrls,
-        scansRemaining: user.isPremium ? "unlimited" : (2 - (user.smartScansUsed || 0)),
-      });
-    } catch (error) {
-      console.error("Error analyzing images:", error);
-      
-      // Fallback to basic response if AI fails (don't charge the user)
-      const files = req.files as Express.Multer.File[];
-      const photoUrls = files ? files.map(f => `/uploads/${path.basename(f.path)}`) : [];
-      
-      res.json({
-        success: true,
-        analysis: {
-          name: "Item",
-          description: "AI analysis temporarily unavailable. Please fill in details manually.",
-          category: "Other",
-          brand: "Unknown",
-          conditionRating: 3,
-          estimatedValue: null,
-          confidence: 0.1,
-        },
-        photos: photoUrls,
-      });
-    }
-  });
+        // Update usage tracking
+        if (!user.isPremium) {
+          await db
+            .update(users)
+            .set({
+              smartScansUsed: sql`${users.smartScansUsed} + 1`,
+            })
+            .where(eq(users.id, req.user.id));
+        }
+
+        res.json({
+          success: true,
+          analysis: {
+            name: analysisData.name || "Unidentified Item",
+            description: analysisData.description || "AI analysis completed.",
+            category: analysisData.category || "Other",
+            brand: analysisData.brand || "Unknown",
+            conditionRating: Math.min(
+              5,
+              Math.max(1, parseInt(analysisData.conditionRating) || 3),
+            ),
+            estimatedValue:
+              user.isPremium && analysisData.estimatedValue
+                ? analysisData.estimatedValue
+                : null,
+            confidence: parseFloat(analysisData.confidence) || 0.5,
+          },
+          photos: photoUrls,
+          scansRemaining: user.isPremium
+            ? "unlimited"
+            : 2 - (user.smartScansUsed || 0),
+        });
+      } catch (error) {
+        console.error("Error analyzing images:", error);
+
+        // Fallback to basic response if AI fails (don't charge the user)
+        const files = req.files as Express.Multer.File[];
+        const photoUrls = files
+          ? files.map((f) => `/uploads/${path.basename(f.path)}`)
+          : [];
+
+        res.json({
+          success: true,
+          analysis: {
+            name: "Item",
+            description:
+              "AI analysis temporarily unavailable. Please fill in details manually.",
+            category: "Other",
+            brand: "Unknown",
+            conditionRating: 3,
+            estimatedValue: null,
+            confidence: 0.1,
+          },
+          photos: photoUrls,
+        });
+      }
+    },
+  );
 
   // Import listing from marketplace URL
   app.post("/api/import-listing", csrfProtection, async (req, res) => {
@@ -1026,8 +1146,8 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
 
     try {
       const { url } = req.body;
-      
-      if (!url || typeof url !== 'string') {
+
+      if (!url || typeof url !== "string") {
         return res.status(400).json({ error: "Valid URL is required" });
       }
 
@@ -1040,33 +1160,34 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
       }
 
       // Security: Only allow HTTPS URLs from approved marketplaces
-      if (parsedUrl.protocol !== 'https:') {
+      if (parsedUrl.protocol !== "https:") {
         return res.status(400).json({ error: "Only HTTPS URLs are supported" });
       }
 
       // Allowlist of approved marketplace domains
       const allowedDomains = [
-        'craigslist.org',
-        'facebook.com',
-        'fb.com',
-        'marketplace.facebook.com',
+        "craigslist.org",
+        "facebook.com",
+        "fb.com",
+        "marketplace.facebook.com",
       ];
 
       const hostname = parsedUrl.hostname.toLowerCase();
-      const isAllowed = allowedDomains.some(domain => 
-        hostname === domain || hostname.endsWith('.' + domain)
+      const isAllowed = allowedDomains.some(
+        (domain) => hostname === domain || hostname.endsWith("." + domain),
       );
 
       if (!isAllowed) {
-        return res.status(400).json({ 
-          error: "URL must be from Facebook Marketplace, Craigslist, or Facebook Groups" 
+        return res.status(400).json({
+          error:
+            "URL must be from Facebook Marketplace, Craigslist, or Facebook Groups",
         });
       }
 
       // Security: Prevent access to private/internal IP addresses
       const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
       if (ipv4Regex.test(hostname)) {
-        const parts = hostname.split('.').map(Number);
+        const parts = hostname.split(".").map(Number);
         // Block private IP ranges: 10.x.x.x, 172.16-31.x.x, 192.168.x.x, 127.x.x.x
         if (
           parts[0] === 10 ||
@@ -1074,7 +1195,9 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
           (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
           (parts[0] === 192 && parts[1] === 168)
         ) {
-          return res.status(400).json({ error: "Access to private IP addresses is not allowed" });
+          return res
+            .status(400)
+            .json({ error: "Access to private IP addresses is not allowed" });
         }
       }
 
@@ -1092,11 +1215,12 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
 
         const response = await fetch(url, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           },
           signal: controller.signal,
         });
-        
+
         clearTimeout(timeoutId);
 
         // Validate response
@@ -1105,45 +1229,55 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
         }
 
         // Check content type
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
-          throw new Error('Unsupported content type');
+        const contentType = response.headers.get("content-type") || "";
+        if (
+          !contentType.includes("text/html") &&
+          !contentType.includes("text/plain")
+        ) {
+          throw new Error("Unsupported content type");
         }
 
         // Limit response size to prevent memory issues
-        const contentLength = response.headers.get('content-length');
-        if (contentLength && parseInt(contentLength) > 1024 * 1024) { // 1MB limit
-          throw new Error('Response too large');
+        const contentLength = response.headers.get("content-length");
+        if (contentLength && parseInt(contentLength) > 1024 * 1024) {
+          // 1MB limit
+          throw new Error("Response too large");
         }
 
         const html = await response.text();
-        
+
         // Limit total text length
-        if (html.length > 1024 * 1024) { // 1MB limit
-          throw new Error('Content too large');
+        if (html.length > 1024 * 1024) {
+          // 1MB limit
+          throw new Error("Content too large");
         }
 
         // Simple text extraction - remove HTML tags
         pageContent = html
-          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/\s+/g, ' ')
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
           .trim()
           .substring(0, 5000); // Limit content length for AI
       } catch (fetchError: any) {
         console.log("Could not fetch URL content:", fetchError.message);
         // Don't expose internal error details to client
-        if (fetchError.name === 'AbortError') {
-          return res.status(400).json({ error: "Request timeout - the page took too long to load" });
+        if (fetchError.name === "AbortError") {
+          return res
+            .status(400)
+            .json({
+              error: "Request timeout - the page took too long to load",
+            });
         }
         // Continue with URL-only analysis
       }
 
       // Validate we have some content to analyze
       if (!pageContent && !url) {
-        return res.status(400).json({ 
-          error: "Unable to extract content from URL. The page may require login or JavaScript to load." 
+        return res.status(400).json({
+          error:
+            "Unable to extract content from URL. The page may require login or JavaScript to load.",
         });
       }
 
@@ -1153,7 +1287,8 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
         messages: [
           {
             role: "system",
-            content: "You are an expert at extracting structured data from marketplace listings (Facebook Marketplace, Craigslist, Facebook Groups, etc.). Extract item details and return valid JSON only.",
+            content:
+              "You are an expert at extracting structured data from marketplace listings (Facebook Marketplace, Craigslist, Facebook Groups, etc.). Extract item details and return valid JSON only.",
           },
           {
             role: "user",
@@ -1167,7 +1302,7 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
 }
 
 URL: ${url}
-${pageContent ? `\nPage Content:\n${pageContent}` : '\nNote: Could not fetch page content. Extract what you can from the URL.'}
+${pageContent ? `\nPage Content:\n${pageContent}` : "\nNote: Could not fetch page content. Extract what you can from the URL."}
 
 Return only the JSON object, no other text.`,
           },
@@ -1179,8 +1314,9 @@ Return only the JSON object, no other text.`,
       // Parse AI response with validation
       const aiResponse = completion.choices[0]?.message?.content;
       if (!aiResponse) {
-        return res.status(500).json({ 
-          error: "AI analysis failed. Please try again or enter details manually." 
+        return res.status(500).json({
+          error:
+            "AI analysis failed. Please try again or enter details manually.",
         });
       }
 
@@ -1189,43 +1325,54 @@ Return only the JSON object, no other text.`,
         listingData = JSON.parse(aiResponse);
       } catch (parseError) {
         console.error("Failed to parse AI response:", aiResponse);
-        return res.status(500).json({ 
-          error: "Could not extract listing details. Please enter details manually." 
+        return res.status(500).json({
+          error:
+            "Could not extract listing details. Please enter details manually.",
         });
       }
 
       // Validate extracted data
       if (!listingData.name || listingData.name.trim().length === 0) {
-        return res.status(400).json({ 
-          error: "Could not extract item name from listing. Please verify the URL is correct." 
+        return res.status(400).json({
+          error:
+            "Could not extract item name from listing. Please verify the URL is correct.",
         });
       }
 
       res.json({
         success: true,
         name: (listingData.name || "Imported Item").substring(0, 60),
-        description: listingData.description || "Imported from marketplace listing",
+        description:
+          listingData.description || "Imported from marketplace listing",
         price: listingData.price ? parseFloat(listingData.price) : null,
-        conditionRating: Math.min(10, Math.max(1, parseInt(listingData.conditionRating) || 8)),
+        conditionRating: Math.min(
+          10,
+          Math.max(1, parseInt(listingData.conditionRating) || 8),
+        ),
       });
     } catch (error: any) {
       console.error("Error importing listing:", error);
-      
+
       // Provide helpful error messages
-      if (error.message?.includes('timeout') || error.name === 'AbortError') {
-        return res.status(400).json({ 
-          error: "The request timed out. Please try again." 
-        });
-      }
-      
-      if (error.message?.includes('API') || error.message?.includes('rate limit')) {
-        return res.status(503).json({ 
-          error: "AI service is temporarily unavailable. Please try again later." 
+      if (error.message?.includes("timeout") || error.name === "AbortError") {
+        return res.status(400).json({
+          error: "The request timed out. Please try again.",
         });
       }
 
-      res.status(500).json({ 
-        error: "Failed to import listing. Please try again or enter details manually.",
+      if (
+        error.message?.includes("API") ||
+        error.message?.includes("rate limit")
+      ) {
+        return res.status(503).json({
+          error:
+            "AI service is temporarily unavailable. Please try again later.",
+        });
+      }
+
+      res.status(500).json({
+        error:
+          "Failed to import listing. Please try again or enter details manually.",
       });
     }
   });
@@ -1238,14 +1385,14 @@ Return only the JSON object, no other text.`,
 
     try {
       const { itemName } = req.body;
-      
-      if (!itemName || typeof itemName !== 'string' || itemName.length < 3) {
+
+      if (!itemName || typeof itemName !== "string" || itemName.length < 3) {
         return res.status(400).json({ error: "Valid item name is required" });
       }
 
       const ITEM_CATEGORIES = [
         "Baby & Kids",
-        "Clothing & Accessories", 
+        "Clothing & Accessories",
         "Electronics",
         "Hobbies & Collectibles",
         "Home & Kitchen",
@@ -1273,27 +1420,28 @@ Available categories:
 - Home & Kitchen (furniture, appliances, cookware, decor, bedding, storage, etc.)
 - Tools & Equipment (power tools, hand tools, gardening, ladders, outdoor equipment, etc.)
 
-Respond with ONLY the category name, nothing else.`
+Respond with ONLY the category name, nothing else.`,
           },
           {
             role: "user",
-            content: `Categorize this item: "${itemName}"`
-          }
+            content: `Categorize this item: "${itemName}"`,
+          },
         ],
         temperature: 0.1,
         max_tokens: 20,
       });
 
-      const detectedCategory = response.choices[0]?.message?.content?.trim() || "";
-      
+      const detectedCategory =
+        response.choices[0]?.message?.content?.trim() || "";
+
       // Validate the detected category is in our list
-      const validCategory = ITEM_CATEGORIES.find(cat => 
-        cat.toLowerCase() === detectedCategory.toLowerCase()
+      const validCategory = ITEM_CATEGORIES.find(
+        (cat) => cat.toLowerCase() === detectedCategory.toLowerCase(),
       );
 
-      res.json({ 
+      res.json({
         category: validCategory || null,
-        confidence: validCategory ? 0.9 : 0.3
+        confidence: validCategory ? 0.9 : 0.3,
       });
     } catch (error: any) {
       console.error("Error detecting category:", error);
@@ -1304,10 +1452,25 @@ Respond with ONLY the category name, nothing else.`
   // Real-time AI valuation preview endpoint
   app.post("/api/valuation/preview", csrfProtection, async (req, res) => {
     try {
-      const { name, description, itemType, category, brand, condition, conditionRating, originalValue, estimatedValue, photos } = req.body;
+      const {
+        name,
+        description,
+        itemType,
+        category,
+        brand,
+        condition,
+        conditionRating,
+        originalValue,
+        estimatedValue,
+        photos,
+      } = req.body;
 
       if (!name || !condition || !originalValue) {
-        return res.status(400).json({ error: "Missing required fields: name, condition, originalValue" });
+        return res
+          .status(400)
+          .json({
+            error: "Missing required fields: name, condition, originalValue",
+          });
       }
 
       // Calculate tier from originalValue and condition (same logic as frontend)
@@ -1327,9 +1490,15 @@ Respond with ONLY the category name, nothing else.`
       // Validate and limit photos
       let validPhotos: string[] = [];
       if (photos && Array.isArray(photos)) {
-        validPhotos = photos.slice(0, 3).filter((p: string) => 
-          typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('/uploads/') || p.startsWith('http'))
-        );
+        validPhotos = photos
+          .slice(0, 3)
+          .filter(
+            (p: string) =>
+              typeof p === "string" &&
+              (p.startsWith("data:image/") ||
+                p.startsWith("/uploads/") ||
+                p.startsWith("http")),
+          );
       }
 
       // Prepare valuation input
@@ -1348,7 +1517,7 @@ Respond with ONLY the category name, nothing else.`
       };
 
       const result = await calculateAIValuation(valuationInput);
-      
+
       res.json({
         tier,
         shareCoinsValue: result.shareCoinsValue,
@@ -1385,14 +1554,16 @@ Respond with ONLY the category name, nothing else.`
       // Handle photos from SmartScan or manual upload
       let photoUrls: string[] = [];
       const wasSmartScanned = req.body.wasSmartScanned === "true";
-      
+
       if (wasSmartScanned && req.body.smartScanPhotos) {
         // Use SmartScan photos (already uploaded)
         photoUrls = JSON.parse(req.body.smartScanPhotos);
       } else {
         // Use manually uploaded photos
         const files = req.files as Express.Multer.File[];
-        photoUrls = files ? files.map((file) => `/uploads/${file.filename}`) : [];
+        photoUrls = files
+          ? files.map((file) => `/uploads/${file.filename}`)
+          : [];
       }
 
       // Parse location data
@@ -1407,173 +1578,181 @@ Respond with ONLY the category name, nothing else.`
       const isRentable = req.body.isRentable === "true";
       const isGift = req.body.isGift === "true";
 
-    // Parse tier from request
-    const tier = req.body.tier ? parseInt(req.body.tier) : null;
-    
-    // Calculate ShareCoins reward using AI valuation when tier is available
-    let shareCoinsReward = 5; // Default base reward
-    let aiValuationResult = null;
+      // Parse tier from request
+      const tier = req.body.tier ? parseInt(req.body.tier) : null;
 
-    if (tier && tier >= 1 && tier <= 4) {
-      // Use AI to calculate exact ShareCoin value within the tier band
-      const valuationInput: ItemValuationInput = {
-        tier,
-        condition: req.body.condition || "Good",
-        conditionRating: parseInt(req.body.conditionRating) || 5,
-        brand: req.body.brand || null,
-        category: req.body.category || null,
-        itemType: req.body.itemType || null,
-        name: req.body.name,
-        description: req.body.description || "",
-        originalValue: req.body.originalValue || null,
-        estimatedValue: req.body.estimatedValue || null,
-      };
+      // Calculate ShareCoins reward using AI valuation when tier is available
+      let shareCoinsReward = 5; // Default base reward
+      let aiValuationResult = null;
 
-      try {
-        aiValuationResult = await calculateAIValuation(valuationInput);
-        shareCoinsReward = aiValuationResult.shareCoinsValue;
-        console.log(`AI Valuation for "${req.body.name}": ${shareCoinsReward} ShareCoins (Tier ${tier}, Band: ${aiValuationResult.tierBand.min}-${aiValuationResult.tierBand.max})`);
-        console.log(`Reasoning: ${aiValuationResult.reasoning}`);
-      } catch (error) {
-        console.error("AI valuation failed, using fallback:", error);
-        // Fallback to tier-based minimum
-        const band = getTierBand(tier);
-        shareCoinsReward = band.min;
-      }
-    } else {
-      // No tier provided - use legacy calculation based on sharing modes
-      const baseReward = 5;
-      shareCoinsReward = baseReward;
+      if (tier && tier >= 1 && tier <= 4) {
+        // Use AI to calculate exact ShareCoin value within the tier band
+        const valuationInput: ItemValuationInput = {
+          tier,
+          condition: req.body.condition || "Good",
+          conditionRating: parseInt(req.body.conditionRating) || 5,
+          brand: req.body.brand || null,
+          category: req.body.category || null,
+          itemType: req.body.itemType || null,
+          name: req.body.name,
+          description: req.body.description || "",
+          originalValue: req.body.originalValue || null,
+          estimatedValue: req.body.estimatedValue || null,
+        };
 
-      if (isLendable) {
-        const securityDeposit = parseFloat(req.body.securityDeposit || "0");
-        const lendingDuration = parseInt(req.body.lendingDuration || "0");
-        
-        if (!isNaN(securityDeposit) && !isNaN(lendingDuration)) {
-          const lendingReward = Math.max(
-            10,
-            Math.floor(securityDeposit * lendingDuration * 0.01),
+        try {
+          aiValuationResult = await calculateAIValuation(valuationInput);
+          shareCoinsReward = aiValuationResult.shareCoinsValue;
+          console.log(
+            `AI Valuation for "${req.body.name}": ${shareCoinsReward} ShareCoins (Tier ${tier}, Band: ${aiValuationResult.tierBand.min}-${aiValuationResult.tierBand.max})`,
           );
-          shareCoinsReward += lendingReward;
-        } else {
-          shareCoinsReward += 10;
+          console.log(`Reasoning: ${aiValuationResult.reasoning}`);
+        } catch (error) {
+          console.error("AI valuation failed, using fallback:", error);
+          // Fallback to tier-based minimum
+          const band = getTierBand(tier);
+          shareCoinsReward = band.min;
+        }
+      } else {
+        // No tier provided - use legacy calculation based on sharing modes
+        const baseReward = 5;
+        shareCoinsReward = baseReward;
+
+        if (isLendable) {
+          const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+          const lendingDuration = parseInt(req.body.lendingDuration || "0");
+
+          if (!isNaN(securityDeposit) && !isNaN(lendingDuration)) {
+            const lendingReward = Math.max(
+              10,
+              Math.floor(securityDeposit * lendingDuration * 0.01),
+            );
+            shareCoinsReward += lendingReward;
+          } else {
+            shareCoinsReward += 10;
+          }
+        }
+
+        if (isSwappable) {
+          shareCoinsReward += 20;
+        }
+
+        if (isRentable) {
+          const securityDeposit = parseFloat(req.body.securityDeposit || "0");
+          if (!isNaN(securityDeposit)) {
+            const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
+            shareCoinsReward += rentalReward;
+          } else {
+            shareCoinsReward += 25;
+          }
+        }
+
+        if (isGift) {
+          shareCoinsReward += 5;
         }
       }
 
-      if (isSwappable) {
-        shareCoinsReward += 20;
+      // Ensure shareCoinsReward is a valid number
+      if (isNaN(shareCoinsReward)) {
+        shareCoinsReward = 5; // Fallback to base reward
       }
 
-      if (isRentable) {
-        const securityDeposit = parseFloat(req.body.securityDeposit || "0");
-        if (!isNaN(securityDeposit)) {
-          const rentalReward = 25 + Math.floor(securityDeposit * 0.05);
-          shareCoinsReward += rentalReward;
-        } else {
-          shareCoinsReward += 25;
-        }
-      }
+      // Calculate replacement value for borrowable items (locked at listing time)
+      const replacementValue = isLendable
+        ? calculateReplacementValue(tier)
+        : null;
 
-      if (isGift) {
-        shareCoinsReward += 5;
-      }
-    }
-
-    // Ensure shareCoinsReward is a valid number
-    if (isNaN(shareCoinsReward)) {
-      shareCoinsReward = 5; // Fallback to base reward
-    }
-
-    // Calculate replacement value for borrowable items (locked at listing time)
-    const replacementValue = isLendable ? calculateReplacementValue(tier) : null;
-
-    const itemData: InsertItem = {
-      name: req.body.name,
-      description: req.body.description,
-      category: req.body.category || null,
-      brand: req.body.brand || null,
-      itemType: req.body.itemType || null,
-      condition: req.body.condition || null,
-      originalValue: req.body.originalValue || null,
-      tier: tier,
-      conditionRating: parseInt(req.body.conditionRating) || 0,
-      photos: photoUrls,
-      latitude: latitude?.toString() || null,
-      longitude: longitude?.toString() || null,
-      address: req.body.address,
-      city: req.body.city,
-      state: req.body.state,
-      country: req.body.country,
-      isLendable,
-      isSwappable,
-      isRentable,
-      isGift,
-      securityDeposit: req.body.securityDeposit || "0",
-      lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
-      shareCoinsReward: shareCoinsReward.toString(),
-      estimatedValue: req.body.estimatedValue || null,
-      replacementValue: replacementValue,
-      isAvailable: true,
-      isConditionVerified: false,
-      wasSmartScanned: wasSmartScanned,
-      ownerId: req.user.id,
-    };
-
-    // First insert the item
-    const [item] = await db.insert(items).values(itemData).returning();
-
-    // Note: ShareCoins are NOT awarded on listing based on item value
-    // The shareCoinsReward field stores the item's valuation for swap calculations
-    // However, we DO award a one-time +1 SC bonus for the user's FIRST listing
-
-    // Check if this is user's first listing and award bonus
-    let firstListingBonus = 0;
-    const [userRecord] = await db
-      .select({ hasCompletedFirstListing: users.hasCompletedFirstListing })
-      .from(users)
-      .where(eq(users.id, req.user.id))
-      .limit(1);
-
-    if (userRecord && !userRecord.hasCompletedFirstListing) {
-      firstListingBonus = 1;
-      
-      // Award 1 ShareCoin for first listing
-      await db.insert(shareCoinsTransactions).values({
-        userId: req.user.id,
-        amount: "1",
-        description: "First Listing Bonus",
-        transactionType: "EARNED",
-      });
-
-      await db
-        .update(users)
-        .set({
-          shareCoins: sql`share_coins + 1`,
-          hasCompletedFirstListing: true,
-        })
-        .where(eq(users.id, req.user.id));
-
-      console.log(`✅ Awarded 1 ShareCoin to user ${req.user.id} for first listing`);
-    }
-
-    // Prepare response with AI valuation details
-    const responseData: any = {
-      ...item,
-      shareCoinsReward,
-    };
-    
-    if (aiValuationResult) {
-      responseData.aiValuation = {
-        tierBand: aiValuationResult.tierBand,
-        reasoning: aiValuationResult.reasoning,
-        factors: aiValuationResult.factors,
+      const itemData: InsertItem = {
+        name: req.body.name,
+        description: req.body.description,
+        category: req.body.category || null,
+        brand: req.body.brand || null,
+        itemType: req.body.itemType || null,
+        condition: req.body.condition || null,
+        originalValue: req.body.originalValue || null,
+        tier: tier,
+        conditionRating: parseInt(req.body.conditionRating) || 0,
+        photos: photoUrls,
+        latitude: latitude?.toString() || null,
+        longitude: longitude?.toString() || null,
+        address: req.body.address,
+        city: req.body.city,
+        state: req.body.state,
+        country: req.body.country,
+        isLendable,
+        isSwappable,
+        isRentable,
+        isGift,
+        securityDeposit: req.body.securityDeposit || "0",
+        lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
+        shareCoinsReward: shareCoinsReward.toString(),
+        estimatedValue: req.body.estimatedValue || null,
+        replacementValue: replacementValue,
+        isAvailable: true,
+        isConditionVerified: false,
+        wasSmartScanned: wasSmartScanned,
+        ownerId: req.user.id,
       };
-    }
 
-    res.status(201).json(responseData);
+      // First insert the item
+      const [item] = await db.insert(items).values(itemData).returning();
+
+      // Note: ShareCoins are NOT awarded on listing based on item value
+      // The shareCoinsReward field stores the item's valuation for swap calculations
+      // However, we DO award a one-time +1 SC bonus for the user's FIRST listing
+
+      // Check if this is user's first listing and award bonus
+      let firstListingBonus = 0;
+      const [userRecord] = await db
+        .select({ hasCompletedFirstListing: users.hasCompletedFirstListing })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (userRecord && !userRecord.hasCompletedFirstListing) {
+        firstListingBonus = 1;
+
+        // Award 1 ShareCoin for first listing
+        await db.insert(shareCoinsTransactions).values({
+          userId: req.user.id,
+          amount: "1",
+          description: "First Listing Bonus",
+          transactionType: "EARNED",
+        });
+
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`share_coins + 1`,
+            hasCompletedFirstListing: true,
+          })
+          .where(eq(users.id, req.user.id));
+
+        console.log(
+          `✅ Awarded 1 ShareCoin to user ${req.user.id} for first listing`,
+        );
+      }
+
+      // Prepare response with AI valuation details
+      const responseData: any = {
+        ...item,
+        shareCoinsReward,
+      };
+
+      if (aiValuationResult) {
+        responseData.aiValuation = {
+          tierBand: aiValuationResult.tierBand,
+          reasoning: aiValuationResult.reasoning,
+          factors: aiValuationResult.factors,
+        };
+      }
+
+      res.status(201).json(responseData);
     } catch (error) {
       console.error("Error creating item:", error);
-      res.status(500).json({ error: "Failed to create item. Please try again." });
+      res
+        .status(500)
+        .json({ error: "Failed to create item. Please try again." });
     }
   });
 
@@ -1585,22 +1764,27 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const itemId = parseInt(req.params.id);
-      
+
       // Check if item exists and belongs to the user
-      const [existingItem] = await db.select().from(items).where(eq(items.id, itemId));
-      
+      const [existingItem] = await db
+        .select()
+        .from(items)
+        .where(eq(items.id, itemId));
+
       if (!existingItem) {
         return res.status(404).json({ error: "Item not found" });
       }
-      
+
       if (existingItem.ownerId !== req.user.id) {
-        return res.status(403).json({ error: "You can only edit your own items" });
+        return res
+          .status(403)
+          .json({ error: "You can only edit your own items" });
       }
 
       // Handle photos
       let photoUrls: string[] = existingItem.photos || [];
       const files = req.files as Express.Multer.File[];
-      
+
       if (files && files.length > 0) {
         // New photos uploaded
         photoUrls = files.map((file) => `/uploads/${file.filename}`);
@@ -1611,7 +1795,9 @@ Respond with ONLY the category name, nothing else.`
 
       // Parse location data
       const latitude = req.body.latitude ? parseFloat(req.body.latitude) : null;
-      const longitude = req.body.longitude ? parseFloat(req.body.longitude) : null;
+      const longitude = req.body.longitude
+        ? parseFloat(req.body.longitude)
+        : null;
 
       // Parse boolean flags
       const isLendable = req.body.isLendable === "true";
@@ -1629,7 +1815,8 @@ Respond with ONLY the category name, nothing else.`
         condition: req.body.condition || existingItem.condition,
         originalValue: req.body.originalValue || existingItem.originalValue,
         tier: tier,
-        conditionRating: parseInt(req.body.conditionRating) || existingItem.conditionRating,
+        conditionRating:
+          parseInt(req.body.conditionRating) || existingItem.conditionRating,
         photos: photoUrls,
         latitude: latitude?.toString() || existingItem.latitude,
         longitude: longitude?.toString() || existingItem.longitude,
@@ -1637,7 +1824,8 @@ Respond with ONLY the category name, nothing else.`
         isSwappable,
         isRentable,
         isGift,
-        securityDeposit: req.body.securityDeposit || existingItem.securityDeposit,
+        securityDeposit:
+          req.body.securityDeposit || existingItem.securityDeposit,
         updatedAt: new Date(),
       };
 
@@ -1662,16 +1850,21 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const itemId = parseInt(req.params.id);
-      
+
       // Check if item exists and belongs to the user
-      const [existingItem] = await db.select().from(items).where(eq(items.id, itemId));
-      
+      const [existingItem] = await db
+        .select()
+        .from(items)
+        .where(eq(items.id, itemId));
+
       if (!existingItem) {
         return res.status(404).json({ error: "Item not found" });
       }
-      
+
       if (existingItem.ownerId !== req.user.id) {
-        return res.status(403).json({ error: "You can only delete your own items" });
+        return res
+          .status(403)
+          .json({ error: "You can only delete your own items" });
       }
 
       // Check if item has any active requests or transactions
@@ -1680,14 +1873,15 @@ Respond with ONLY the category name, nothing else.`
           eq(itemRequests.itemId, itemId),
           or(
             eq(itemRequests.status, "PENDING"),
-            eq(itemRequests.status, "ACCEPTED")
-          )
+            eq(itemRequests.status, "ACCEPTED"),
+          ),
         ),
       });
 
       if (activeRequests.length > 0) {
-        return res.status(400).json({ 
-          error: "Cannot delete item with active requests. Please complete or decline pending requests first." 
+        return res.status(400).json({
+          error:
+            "Cannot delete item with active requests. Please complete or decline pending requests first.",
         });
       }
 
@@ -1726,7 +1920,7 @@ Respond with ONLY the category name, nothing else.`
       }
 
       const radiusKm = Number(radius);
-      
+
       // Calculate bounding box for efficient database filtering
       const bbox = calculateBoundingBox(userLat, userLon, radiusKm);
 
@@ -1737,28 +1931,28 @@ Respond with ONLY the category name, nothing else.`
         sql`${items.latitude}::numeric >= ${bbox.minLat}`,
         sql`${items.latitude}::numeric <= ${bbox.maxLat}`,
       ];
-      
+
       // Handle antimeridian crossing with OR condition for longitude
       if (bbox.crossesAntimeridian) {
         whereConditions.push(
           or(
             sql`${items.longitude}::numeric >= ${bbox.minLon}`,
-            sql`${items.longitude}::numeric <= ${bbox.maxLon}`
-          )!
+            sql`${items.longitude}::numeric <= ${bbox.maxLon}`,
+          )!,
         );
       } else {
         whereConditions.push(
           sql`${items.longitude}::numeric >= ${bbox.minLon}`,
-          sql`${items.longitude}::numeric <= ${bbox.maxLon}`
+          sql`${items.longitude}::numeric <= ${bbox.maxLon}`,
         );
       }
-      
+
       // Add type-specific filtering
-      if (type === 'rent') {
+      if (type === "rent") {
         whereConditions.push(eq(items.isRentable, true));
-      } else if (type === 'borrow') {
+      } else if (type === "borrow") {
         whereConditions.push(eq(items.isLendable, true));
-      } else if (type === 'swap') {
+      } else if (type === "swap") {
         whereConditions.push(eq(items.isSwappable, true));
       }
 
@@ -1773,14 +1967,14 @@ Respond with ONLY the category name, nothing else.`
               isVerified: true,
               reputationLevel: true,
               accountStatus: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       // Filter out items from deactivated users (defense in depth)
       const activeItems = boundedItems.filter(
-        (item) => (item.owner as any)?.accountStatus !== 'deactivated'
+        (item) => (item.owner as any)?.accountStatus !== "deactivated",
       );
 
       // Calculate exact distance and filter by radius
@@ -1819,17 +2013,17 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const { type } = req.query; // Add type filter (rent, borrow, swap, gift)
-      
+
       let whereConditions = [eq(items.isAvailable, true)];
-      
+
       // Add type-specific filtering
-      if (type === 'rent') {
+      if (type === "rent") {
         whereConditions.push(eq(items.isRentable, true));
-      } else if (type === 'borrow') {
+      } else if (type === "borrow") {
         whereConditions.push(eq(items.isLendable, true));
-      } else if (type === 'swap') {
+      } else if (type === "swap") {
         whereConditions.push(eq(items.isSwappable, true));
-      } else if (type === 'gift') {
+      } else if (type === "gift") {
         whereConditions.push(eq(items.isGift, true));
       }
 
@@ -1844,14 +2038,14 @@ Respond with ONLY the category name, nothing else.`
               isVerified: true,
               reputationLevel: true,
               accountStatus: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       // Filter out items from deactivated users (defense in depth)
       const activeItems = allItems.filter(
-        (item) => (item.owner as any)?.accountStatus !== 'deactivated'
+        (item) => (item.owner as any)?.accountStatus !== "deactivated",
       );
 
       // Sort to prioritize items from verified users (slight boost in feed priority)
@@ -1861,7 +2055,9 @@ Respond with ONLY the category name, nothing else.`
         const bVerified = b.owner?.isVerified ? 1 : 0;
         if (bVerified !== aVerified) return bVerified - aVerified;
         // Then sort by creation date
-        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+        return (
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        );
       });
 
       res.json(sortedItems);
@@ -1898,7 +2094,10 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const limit = parseInt(req.query.limit as string) || 10;
-      const recommendations = await recommendationEngine.getRecommendations(req.user.id, limit);
+      const recommendations = await recommendationEngine.getRecommendations(
+        req.user.id,
+        limit,
+      );
       res.json(recommendations);
     } catch (error) {
       console.error("Error getting recommendations:", error);
@@ -1914,7 +2113,11 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const limit = parseInt(req.query.limit as string) || 8;
-      const seasonalRecs = await recommendationEngine.getSeasonalRecommendations(req.user.id, limit);
+      const seasonalRecs =
+        await recommendationEngine.getSeasonalRecommendations(
+          req.user.id,
+          limit,
+        );
       res.json(seasonalRecs);
     } catch (error) {
       console.error("Error getting seasonal recommendations:", error);
@@ -1958,8 +2161,8 @@ Respond with ONLY the category name, nothing else.`
       // For urgent wishlists, highlight verified users and calculate expired status
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
-      const wishlistsWithHighlight = allWishlists.map(w => {
+
+      const wishlistsWithHighlight = allWishlists.map((w) => {
         // Check if wishlist is expired based on returnDate or neededDate
         let isExpired = false;
         if (w.returnDate) {
@@ -1967,25 +2170,33 @@ Respond with ONLY the category name, nothing else.`
         } else if (w.neededDate) {
           isExpired = new Date(w.neededDate) < today;
         }
-        
+
         return {
           ...w,
           isExpired,
           // Verified users are highlighted in urgent wishlists
-          highlightVerified: (w.urgency === 'urgent' || w.urgency === 'high') && w.isVerified,
+          highlightVerified:
+            (w.urgency === "urgent" || w.urgency === "high") && w.isVerified,
         };
       });
 
       // Sort: urgent first, then verified users, then by date
       const sortedWishlists = wishlistsWithHighlight.sort((a, b) => {
-        const urgencyOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-        const aUrgency = urgencyOrder[a.urgency || 'normal'] ?? 2;
-        const bUrgency = urgencyOrder[b.urgency || 'normal'] ?? 2;
+        const urgencyOrder: Record<string, number> = {
+          urgent: 0,
+          high: 1,
+          normal: 2,
+          low: 3,
+        };
+        const aUrgency = urgencyOrder[a.urgency || "normal"] ?? 2;
+        const bUrgency = urgencyOrder[b.urgency || "normal"] ?? 2;
         if (aUrgency !== bUrgency) return aUrgency - bUrgency;
         // Within same urgency, verified users first
         if (a.isVerified !== b.isVerified) return a.isVerified ? -1 : 1;
         // Then by date
-        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+        return (
+          new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+        );
       });
 
       res.json(sortedWishlists);
@@ -2002,7 +2213,18 @@ Respond with ONLY the category name, nothing else.`
     }
 
     try {
-      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency } = req.body;
+      const {
+        itemName,
+        description,
+        category,
+        needType,
+        maxShareCoinPrice,
+        maxDollarPrice,
+        preferredLocation,
+        neededDate,
+        returnDate,
+        urgency,
+      } = req.body;
 
       if (!itemName) {
         return res.status(400).json({ error: "Item name is required" });
@@ -2015,13 +2237,13 @@ Respond with ONLY the category name, nothing else.`
           itemName,
           description,
           category,
-          needType: needType || 'borrow',
+          needType: needType || "borrow",
           maxShareCoinPrice,
           maxDollarPrice,
           preferredLocation,
           neededDate: neededDate || null,
           returnDate: returnDate || null,
-          urgency: urgency || 'normal',
+          urgency: urgency || "normal",
         })
         .returning();
 
@@ -2048,13 +2270,26 @@ Respond with ONLY the category name, nothing else.`
       const [existing] = await db
         .select()
         .from(wishlists)
-        .where(and(eq(wishlists.id, wishlistId), eq(wishlists.userId, req.user.id)));
+        .where(
+          and(eq(wishlists.id, wishlistId), eq(wishlists.userId, req.user.id)),
+        );
 
       if (!existing) {
         return res.status(404).json({ error: "Wishlist item not found" });
       }
 
-      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency } = req.body;
+      const {
+        itemName,
+        description,
+        category,
+        needType,
+        maxShareCoinPrice,
+        maxDollarPrice,
+        preferredLocation,
+        neededDate,
+        returnDate,
+        urgency,
+      } = req.body;
 
       const [updated] = await db
         .update(wishlists)
@@ -2063,11 +2298,19 @@ Respond with ONLY the category name, nothing else.`
           description: description ?? existing.description,
           category: category ?? existing.category,
           needType: needType ?? existing.needType,
-          maxShareCoinPrice: maxShareCoinPrice !== undefined ? maxShareCoinPrice : existing.maxShareCoinPrice,
-          maxDollarPrice: maxDollarPrice !== undefined ? maxDollarPrice : existing.maxDollarPrice,
+          maxShareCoinPrice:
+            maxShareCoinPrice !== undefined
+              ? maxShareCoinPrice
+              : existing.maxShareCoinPrice,
+          maxDollarPrice:
+            maxDollarPrice !== undefined
+              ? maxDollarPrice
+              : existing.maxDollarPrice,
           preferredLocation: preferredLocation ?? existing.preferredLocation,
-          neededDate: neededDate !== undefined ? neededDate : existing.neededDate,
-          returnDate: returnDate !== undefined ? returnDate : existing.returnDate,
+          neededDate:
+            neededDate !== undefined ? neededDate : existing.neededDate,
+          returnDate:
+            returnDate !== undefined ? returnDate : existing.returnDate,
           urgency: urgency ?? existing.urgency,
         })
         .where(eq(wishlists.id, wishlistId))
@@ -2096,7 +2339,9 @@ Respond with ONLY the category name, nothing else.`
       const [existing] = await db
         .select()
         .from(wishlists)
-        .where(and(eq(wishlists.id, wishlistId), eq(wishlists.userId, req.user.id)));
+        .where(
+          and(eq(wishlists.id, wishlistId), eq(wishlists.userId, req.user.id)),
+        );
 
       if (!existing) {
         return res.status(404).json({ error: "Wishlist item not found" });
@@ -2140,12 +2385,15 @@ Respond with ONLY the category name, nothing else.`
     try {
       const requestId = parseInt(req.params.requestId);
       const userItemId = parseInt(req.params.userItemId);
-      
+
       if (isNaN(requestId) || isNaN(userItemId)) {
         return res.status(400).json({ error: "Invalid request or item ID" });
       }
 
-      const matches = await recommendationEngine.findSwapMatches(requestId, userItemId);
+      const matches = await recommendationEngine.findSwapMatches(
+        requestId,
+        userItemId,
+      );
       res.json(matches);
     } catch (error) {
       console.error("Error finding swap matches:", error);
@@ -2161,7 +2409,7 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const { keywords, latitude, longitude, radius } = req.body;
-      
+
       if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
         return res.status(400).json({ error: "Keywords are required" });
       }
@@ -2223,10 +2471,16 @@ Respond with ONLY the category name, nothing else.`
         deliveryService,
         specialInstructions,
         suggestedDepositAmount,
-        riskAccepted
+        riskAccepted,
       } = req.body;
 
-      if (!itemId || !deliveryMethod || !depositMethod || !scheduledDate || !scheduledTime) {
+      if (
+        !itemId ||
+        !deliveryMethod ||
+        !depositMethod ||
+        !scheduledDate ||
+        !scheduledTime
+      ) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
@@ -2248,30 +2502,40 @@ Respond with ONLY the category name, nothing else.`
         deliveryMethod,
         scheduledDate,
         scheduledTime,
-        deliveryAddress: deliveryMethod === 'pickup' ? pickupLocation : deliveryAddress,
+        deliveryAddress:
+          deliveryMethod === "pickup" ? pickupLocation : deliveryAddress,
         timestamp: new Date().toISOString(),
-        verificationCode: Math.random().toString(36).substring(2, 15)
+        verificationCode: Math.random().toString(36).substring(2, 15),
       });
 
-      const deliveryFee = deliveryMethod === 'delivery' ? 
-        (deliveryService === 'uber' ? '15.00' : 
-         deliveryService === 'doordash' ? '12.00' : 
-         deliveryService === 'postmates' ? '18.00' : 
-         deliveryService === 'local_courier' ? '25.00' : '0.00') : '0.00';
+      const deliveryFee =
+        deliveryMethod === "delivery"
+          ? deliveryService === "uber"
+            ? "15.00"
+            : deliveryService === "doordash"
+              ? "12.00"
+              : deliveryService === "postmates"
+                ? "18.00"
+                : deliveryService === "local_courier"
+                  ? "25.00"
+                  : "0.00"
+          : "0.00";
 
       const [arrangement] = await db
         .insert(deliveryArrangements)
         .values({
           deliveryType: deliveryMethod,
           deliveryFee,
-          deliveryAddress: deliveryMethod === 'pickup' ? pickupLocation : deliveryAddress,
+          deliveryAddress:
+            deliveryMethod === "pickup" ? pickupLocation : deliveryAddress,
           deliveryDate: new Date(`${scheduledDate}T${scheduledTime}`),
           returnDate: returnDate ? new Date(`${returnDate}T23:59:59`) : null,
           securityDeposit: suggestedDepositAmount.toString(),
           specialInstructions,
           qrCodeData,
-          riskAccepted: deliveryMethod === 'self_delivery' ? riskAccepted : false,
-          status: 'pending',
+          riskAccepted:
+            deliveryMethod === "self_delivery" ? riskAccepted : false,
+          status: "pending",
         })
         .returning();
 
@@ -2466,25 +2730,29 @@ Respond with ONLY the category name, nothing else.`
       .where(
         or(
           eq(messages.senderId, req.user.id),
-          eq(messages.receiverId, req.user.id)
-        )
+          eq(messages.receiverId, req.user.id),
+        ),
       )
       .orderBy(desc(messages.createdAt));
 
     // Group by conversation partner
-    const conversationMap = new Map<number, {
-      lastMessage: string;
-      lastMessageTime: Date;
-      unreadCount: number;
-    }>();
+    const conversationMap = new Map<
+      number,
+      {
+        lastMessage: string;
+        lastMessageTime: Date;
+        unreadCount: number;
+      }
+    >();
 
     for (const msg of allMessages) {
-      const partnerId = msg.senderId === req.user.id ? msg.receiverId : msg.senderId;
-      
+      const partnerId =
+        msg.senderId === req.user.id ? msg.receiverId : msg.senderId;
+
       if (!conversationMap.has(partnerId)) {
         // Count unread messages from this partner
         const unread = allMessages.filter(
-          m => m.senderId === partnerId && m.receiverId === req.user.id
+          (m) => m.senderId === partnerId && m.receiverId === req.user.id,
         ).length;
 
         conversationMap.set(partnerId, {
@@ -2519,32 +2787,34 @@ Respond with ONLY the category name, nothing else.`
             or(
               and(
                 eq(itemRequests.requesterId, partnerId),
-                eq(items.ownerId, req.user.id)
+                eq(items.ownerId, req.user.id),
               ),
               and(
                 eq(itemRequests.requesterId, req.user.id),
-                eq(items.ownerId, partnerId)
-              )
-            )
+                eq(items.ownerId, partnerId),
+              ),
+            ),
           )
           .orderBy(desc(itemRequests.createdAt))
           .limit(1);
 
         return {
           userId: partnerId,
-          username: otherUser?.username || 'Unknown',
+          username: otherUser?.username || "Unknown",
           lastMessage: data.lastMessage,
           lastMessageTime: data.lastMessageTime,
           unreadCount: data.unreadCount,
           transactionType: relatedRequests[0]?.requestType || null,
           itemName: relatedRequests[0]?.itemName || null,
         };
-      })
+      }),
     );
 
     // Sort by most recent message
-    conversations.sort((a, b) => 
-      new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+    conversations.sort(
+      (a, b) =>
+        new Date(b.lastMessageTime).getTime() -
+        new Date(a.lastMessageTime).getTime(),
     );
 
     res.json(conversations);
@@ -2784,12 +3054,15 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const itemId = parseInt(req.params.itemId);
-    const { requestType, message, startDate, endDate, deliveryMethod } = req.body;
+    const { requestType, message, startDate, endDate, deliveryMethod } =
+      req.body;
 
     // Validate deliveryMethod
     const validDeliveryMethods = ["in_person", "courier"];
-    const validatedDeliveryMethod = validDeliveryMethods.includes(deliveryMethod) 
-      ? deliveryMethod 
+    const validatedDeliveryMethod = validDeliveryMethods.includes(
+      deliveryMethod,
+    )
+      ? deliveryMethod
       : "in_person";
 
     // Check if item exists and is available
@@ -2820,7 +3093,9 @@ Respond with ONLY the category name, nothing else.`
     if (requestType === "BORROW" && !item.replacementValue) {
       return res
         .status(400)
-        .send("This item cannot be borrowed because it does not have a Replacement Value set.");
+        .send(
+          "This item cannot be borrowed because it does not have a Replacement Value set.",
+        );
     }
 
     // Create the request
@@ -2914,13 +3189,15 @@ Respond with ONLY the category name, nothing else.`
     // Sort to prioritize verified requesters for pending requests (owner sees verified first)
     const sortedRequests = requests.sort((a, b) => {
       // Pending requests with verified requesters should appear first
-      if (a.status === 'PENDING' && b.status === 'PENDING') {
+      if (a.status === "PENDING" && b.status === "PENDING") {
         const aVerified = a.requester.isVerified ? 1 : 0;
         const bVerified = b.requester.isVerified ? 1 : 0;
         if (bVerified !== aVerified) return bVerified - aVerified;
       }
       // Then sort by creation date (most recent first)
-      return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+      return (
+        new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+      );
     });
 
     res.json(sortedRequests);
@@ -2952,15 +3229,17 @@ Respond with ONLY the category name, nothing else.`
     if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
       const cooldownCheck = await CooldownChecker.checkSwapCooldown(
         request.item_requests.requesterId,
-        req.user.id
+        req.user.id,
       );
-      
+
       if (cooldownCheck.inCooldown) {
-        const timeRemaining = CooldownChecker.getCooldownTimeRemaining(cooldownCheck.cooldownUntil!);
+        const timeRemaining = CooldownChecker.getCooldownTimeRemaining(
+          cooldownCheck.cooldownUntil!,
+        );
         return res.status(429).json({
           error: `Swap cooldown active. Please wait ${timeRemaining} minutes before swapping with this user again.`,
           cooldownUntil: cooldownCheck.cooldownUntil,
-          reason: cooldownCheck.reason
+          reason: cooldownCheck.reason,
         });
       }
     }
@@ -2978,65 +3257,70 @@ Respond with ONLY the category name, nothing else.`
         const farmingDetection = await AntiFarmingSystem.detectSwapFarming(
           request.item_requests.requesterId,
           req.user.id,
-          request.items.id
+          request.items.id,
         );
-        
+
         // Log detection results
         await db.insert(farmingDetections).values({
           userId1: request.item_requests.requesterId,
           userId2: req.user.id,
           itemId: request.items.id,
           riskLevel: farmingDetection.riskLevel,
-          detectionReason: farmingDetection.reason || 'Normal transaction',
-          actionTaken: farmingDetection.recommendations.join(', '),
+          detectionReason: farmingDetection.reason || "Normal transaction",
+          actionTaken: farmingDetection.recommendations.join(", "),
         });
-        
+
         // Apply anti-farming measures
         const measures = await AntiFarmingSystem.applyAntifarmingMeasures(
           farmingDetection,
           request.item_requests.requesterId,
-          req.user.id
+          req.user.id,
         );
-        
+
         // Block transaction if critical farming detected
         if (measures.blockTransaction) {
-          return res.status(400).json({ 
-            error: "Transaction blocked due to suspicious activity. Please contact support if you believe this is an error.",
-            riskLevel: farmingDetection.riskLevel
+          return res.status(400).json({
+            error:
+              "Transaction blocked due to suspicious activity. Please contact support if you believe this is an error.",
+            riskLevel: farmingDetection.riskLevel,
           });
         }
-        
+
         // Apply cooldown if necessary
         if (measures.cooldownHours > 0) {
-          const cooldownUntil = new Date(Date.now() + measures.cooldownHours * 60 * 60 * 1000);
+          const cooldownUntil = new Date(
+            Date.now() + measures.cooldownHours * 60 * 60 * 1000,
+          );
           await db.insert(swapCooldowns).values({
             userId1: Math.min(request.item_requests.requesterId, req.user.id),
             userId2: Math.max(request.item_requests.requesterId, req.user.id),
             cooldownUntil,
-            reason: farmingDetection.reason || 'Automated farming protection',
+            reason: farmingDetection.reason || "Automated farming protection",
           });
         }
-        
+
         // Award ShareCoins only if not flagged as farming
         if (measures.awardShareCoins) {
           // Award ShareCoins to the item owner (current user) with first-time bonus
           const ownerResult = await awardShareCoinsWithFirstTimeBonus(
             req.user.id,
-            'SWAP',
+            "SWAP",
             request.items.name,
-            1
+            1,
           );
 
           // Award ShareCoins to the requester with first-time bonus
           const requesterResult = await awardShareCoinsWithFirstTimeBonus(
             request.item_requests.requesterId,
-            'SWAP',
+            "SWAP",
             request.items.name,
-            1
+            1,
           );
-            
-          console.log(`✅ Awarded ShareCoins for swap: Owner=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime}), Requester=${requesterResult.totalAwarded} (first-time: ${requesterResult.isFirstTime})`);
-          
+
+          console.log(
+            `✅ Awarded ShareCoins for swap: Owner=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime}), Requester=${requesterResult.totalAwarded} (first-time: ${requesterResult.isFirstTime})`,
+          );
+
           // Award trust points for successful swap completion (+30 each)
           try {
             await awardSwapCompletionPoints(
@@ -3044,7 +3328,7 @@ Respond with ONLY the category name, nothing else.`
               request.item_requests.requesterId,
               requestId,
               request.items.id,
-              request.items.id // Both users get points for the same transaction
+              request.items.id, // Both users get points for the same transaction
             );
             console.log(`✅ Awarded trust points for swap completion`);
           } catch (trustError) {
@@ -3055,9 +3339,10 @@ Respond with ONLY the category name, nothing else.`
           await checkAndAwardReferralBonus(req.user.id);
           await checkAndAwardReferralBonus(request.item_requests.requesterId);
         } else {
-          console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
+          console.log(
+            `🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`,
+          );
         }
-        
       } catch (error) {
         console.error("Error in swap processing with anti-farming:", error);
         // Don't fail the request acceptance if anti-farming processing fails
@@ -3070,20 +3355,22 @@ Respond with ONLY the category name, nothing else.`
         // Award ShareCoins to the gifter (owner) for their generosity
         const gifterResult = await awardShareCoinsWithFirstTimeBonus(
           req.user.id,
-          'GIFT',
+          "GIFT",
           request.items.name,
-          1
+          1,
         );
-        
-        console.log(`✅ Awarded ShareCoins for gift: Gifter=${gifterResult.totalAwarded} (first-time: ${gifterResult.isFirstTime})`);
-        
+
+        console.log(
+          `✅ Awarded ShareCoins for gift: Gifter=${gifterResult.totalAwarded} (first-time: ${gifterResult.isFirstTime})`,
+        );
+
         // Award trust points for gifting (+6 to giver)
         try {
           await awardGiftingPoints(
             req.user.id,
             request.item_requests.requesterId,
             requestId,
-            request.items.id
+            request.items.id,
           );
           console.log(`✅ Awarded trust points for gifting`);
         } catch (trustError) {
@@ -3102,7 +3389,7 @@ Respond with ONLY the category name, nothing else.`
     if (status === "ACCEPTED" && request.item_requests.requestType === "RENT") {
       try {
         const rentalPrice = parseFloat(request.items.dollarsPrice || "0");
-        
+
         if (rentalPrice > 0) {
           // Check if requester is premium user
           const [requesterUser] = await db
@@ -3110,24 +3397,32 @@ Respond with ONLY the category name, nothing else.`
             .from(users)
             .where(eq(users.id, request.item_requests.requesterId))
             .limit(1);
-          
+
           const isPremiumUser = requesterUser?.isPremium || false;
-          const commissionDetails = calculateCommission(rentalPrice, 'RENTAL', isPremiumUser);
-          
+          const commissionDetails = calculateCommission(
+            rentalPrice,
+            "RENTAL",
+            isPremiumUser,
+          );
+
           if (commissionDetails.commissionAmount > 0) {
             // Log platform commission with new messaging
             console.log(`✅ ${platformConfig.messaging.commission}`);
-            console.log(`Commission: $${commissionDetails.commissionAmount.toFixed(2)} (${(commissionDetails.rate * 100).toFixed(1)}% of $${rentalPrice}) - Premium: ${isPremiumUser}`);
-            console.log(`Breakdown: $${commissionDetails.platformAmount.toFixed(2)} platform sustainability, $${commissionDetails.userRewardAmount.toFixed(2)} user reward fund`);
-            
+            console.log(
+              `Commission: $${commissionDetails.commissionAmount.toFixed(2)} (${(commissionDetails.rate * 100).toFixed(1)}% of $${rentalPrice}) - Premium: ${isPremiumUser}`,
+            );
+            console.log(
+              `Breakdown: $${commissionDetails.platformAmount.toFixed(2)} platform sustainability, $${commissionDetails.userRewardAmount.toFixed(2)} user reward fund`,
+            );
+
             // Record commission transaction
             await db.insert(shareCoinsTransactions).values({
               userId: request.item_requests.requesterId,
               amount: (-commissionDetails.commissionAmount).toString(),
-              description: `Platform commission for renting: ${request.items.name}${isPremiumUser ? ' (Premium Rate)' : ''}`,
+              description: `Platform commission for renting: ${request.items.name}${isPremiumUser ? " (Premium Rate)" : ""}`,
               transactionType: "COMMISSION",
             });
-            
+
             // Record commission details in platform_commissions table
             await db.insert(platformCommissions).values({
               transactionId: requestId,
@@ -3138,7 +3433,9 @@ Respond with ONLY the category name, nothing else.`
               payerId: request.item_requests.requesterId,
             });
           } else {
-            console.log(`No commission charged: amount below minimum ($${platformConfig.minimumCommission})`);
+            console.log(
+              `No commission charged: amount below minimum ($${platformConfig.minimumCommission})`,
+            );
           }
         }
       } catch (error) {
@@ -3151,49 +3448,55 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Create Stripe payment authorization hold for security deposit
-  app.post("/api/stripe/create-deposit-hold", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const { depositAmount, requestId } = req.body;
-
-      if (!depositAmount || depositAmount <= 0) {
-        return res.status(400).json({ error: "Invalid deposit amount" });
+  app.post(
+    "/api/stripe/create-deposit-hold",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Calculate 5% processing fee
-      const processingFee = depositAmount * 0.05;
-      const totalAmount = depositAmount + processingFee;
+      try {
+        const { depositAmount, requestId } = req.body;
 
-      // Create payment intent with manual capture (authorization hold)
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalAmount * 100), // Convert to cents
-        currency: "usd",
-        capture_method: "manual", // Hold funds, don't capture immediately
-        metadata: {
-          type: "security_deposit",
-          request_id: requestId.toString(),
-          user_id: req.user.id.toString(),
-          deposit_amount: depositAmount.toString(),
-          processing_fee: processingFee.toString(),
-        },
-        description: `Security deposit hold for ShareSwap request #${requestId}`,
-      });
+        if (!depositAmount || depositAmount <= 0) {
+          return res.status(400).json({ error: "Invalid deposit amount" });
+        }
 
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        depositAmount,
-        processingFee,
-        totalAmount,
-      });
-    } catch (error: any) {
-      console.error("Error creating deposit hold:", error);
-      res.status(500).json({ error: "Failed to create deposit hold: " + error.message });
-    }
-  });
+        // Calculate 5% processing fee
+        const processingFee = depositAmount * 0.05;
+        const totalAmount = depositAmount + processingFee;
+
+        // Create payment intent with manual capture (authorization hold)
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(totalAmount * 100), // Convert to cents
+          currency: "usd",
+          capture_method: "manual", // Hold funds, don't capture immediately
+          metadata: {
+            type: "security_deposit",
+            request_id: requestId.toString(),
+            user_id: req.user.id.toString(),
+            deposit_amount: depositAmount.toString(),
+            processing_fee: processingFee.toString(),
+          },
+          description: `Security deposit hold for ShareSwap request #${requestId}`,
+        });
+
+        res.json({
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id,
+          depositAmount,
+          processingFee,
+          totalAmount,
+        });
+      } catch (error: any) {
+        console.error("Error creating deposit hold:", error);
+        res
+          .status(500)
+          .json({ error: "Failed to create deposit hold: " + error.message });
+      }
+    },
+  );
 
   // Capture deposit (charge for damage/non-return)
   app.post("/api/stripe/capture-deposit", csrfProtection, async (req, res) => {
@@ -3209,9 +3512,12 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Capture the payment (charge the customer)
-      const capturedPayment = await stripe.paymentIntents.capture(paymentIntentId, {
-        amount_to_capture: amount ? Math.round(amount * 100) : undefined,
-      });
+      const capturedPayment = await stripe.paymentIntents.capture(
+        paymentIntentId,
+        {
+          amount_to_capture: amount ? Math.round(amount * 100) : undefined,
+        },
+      );
 
       // Apply deposit claimed penalty to the borrower/renter
       if (capturedPayment.status === "succeeded" && requestId) {
@@ -3222,17 +3528,22 @@ Respond with ONLY the category name, nothing else.`
             .innerJoin(items, eq(items.id, itemRequests.itemId))
             .where(eq(itemRequests.id, parseInt(requestId)))
             .limit(1);
-          
+
           if (request) {
             await applyDepositClaimedPenalty(
               request.item_requests.requesterId,
               parseInt(requestId),
-              request.items.id
+              request.items.id,
             );
-            console.log(`🚨 Deposit claimed penalty applied to user ${request.item_requests.requesterId}`);
+            console.log(
+              `🚨 Deposit claimed penalty applied to user ${request.item_requests.requesterId}`,
+            );
           }
         } catch (penaltyError) {
-          console.error("Error applying deposit claimed penalty:", penaltyError);
+          console.error(
+            "Error applying deposit claimed penalty:",
+            penaltyError,
+          );
           // Don't fail the capture if penalty fails
         }
       }
@@ -3245,7 +3556,9 @@ Respond with ONLY the category name, nothing else.`
       });
     } catch (error: any) {
       console.error("Error capturing deposit:", error);
-      res.status(500).json({ error: "Failed to capture deposit: " + error.message });
+      res
+        .status(500)
+        .json({ error: "Failed to capture deposit: " + error.message });
     }
   });
 
@@ -3263,7 +3576,8 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Cancel the payment intent (release the hold)
-      const canceledPayment = await stripe.paymentIntents.cancel(paymentIntentId);
+      const canceledPayment =
+        await stripe.paymentIntents.cancel(paymentIntentId);
 
       res.json({
         success: true,
@@ -3272,7 +3586,9 @@ Respond with ONLY the category name, nothing else.`
       });
     } catch (error: any) {
       console.error("Error canceling deposit:", error);
-      res.status(500).json({ error: "Failed to cancel deposit: " + error.message });
+      res
+        .status(500)
+        .json({ error: "Failed to cancel deposit: " + error.message });
     }
   });
 
@@ -3281,148 +3597,186 @@ Respond with ONLY the category name, nothing else.`
   // =====================================
 
   // Create rental payment hold (deposit + rental fee authorization)
-  app.post("/api/rentals/create-payment-hold", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const { requestId, depositAmount, rentalAmount, processingFee, platformFee, courierFee } = req.body;
-
-      if (!requestId || !depositAmount || depositAmount <= 0) {
-        return res.status(400).json({ error: "Invalid request parameters" });
+  app.post(
+    "/api/rentals/create-payment-hold",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Verify request belongs to this user and is in ACCEPTED state
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
+      try {
+        const {
+          requestId,
+          depositAmount,
+          rentalAmount,
+          processingFee,
+          platformFee,
+          courierFee,
+        } = req.body;
 
-      if (!request || request.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
+        if (!requestId || !depositAmount || depositAmount <= 0) {
+          return res.status(400).json({ error: "Invalid request parameters" });
+        }
+
+        // Verify request belongs to this user and is in ACCEPTED state
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        if (!request || request.requesterId !== req.user.id) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        if (request.status !== "ACCEPTED") {
+          return res
+            .status(400)
+            .json({ error: "Request is not in accepted state" });
+        }
+
+        // Total amount to authorize (deposit + processing fee + courier if applicable)
+        // Rental fee will be charged on handoff, deposit is held
+        const totalHoldAmount =
+          depositAmount + (processingFee || 0) + (courierFee || 0);
+
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: Math.round(totalHoldAmount * 100),
+          currency: "usd",
+          capture_method: "manual",
+          metadata: {
+            type: "rental_deposit",
+            requestId: requestId.toString(),
+            userId: req.user.id.toString(),
+            depositAmount: depositAmount.toString(),
+            rentalAmount: (rentalAmount || 0).toString(),
+            processingFee: (processingFee || 0).toString(),
+            platformFee: (platformFee || 0).toString(),
+          },
+        });
+
+        res.json({
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id,
+          depositAmount,
+          rentalAmount,
+          totalHoldAmount,
+        });
+      } catch (error: any) {
+        console.error("Error creating rental payment hold:", error);
+        res
+          .status(500)
+          .json({ error: "Failed to create rental payment: " + error.message });
       }
-
-      if (request.status !== "ACCEPTED") {
-        return res.status(400).json({ error: "Request is not in accepted state" });
-      }
-
-      // Total amount to authorize (deposit + processing fee + courier if applicable)
-      // Rental fee will be charged on handoff, deposit is held
-      const totalHoldAmount = depositAmount + (processingFee || 0) + (courierFee || 0);
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalHoldAmount * 100),
-        currency: "usd",
-        capture_method: "manual",
-        metadata: {
-          type: "rental_deposit",
-          requestId: requestId.toString(),
-          userId: req.user.id.toString(),
-          depositAmount: depositAmount.toString(),
-          rentalAmount: (rentalAmount || 0).toString(),
-          processingFee: (processingFee || 0).toString(),
-          platformFee: (platformFee || 0).toString(),
-        },
-      });
-
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        depositAmount,
-        rentalAmount,
-        totalHoldAmount,
-      });
-    } catch (error: any) {
-      console.error("Error creating rental payment hold:", error);
-      res.status(500).json({ error: "Failed to create rental payment: " + error.message });
-    }
-  });
+    },
+  );
 
   // Confirm rental deposit payment
-  app.post("/api/requests/:requestId/confirm-rental-deposit", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { paymentIntentId, depositAmount, rentalAmount, processingFee, platformFee } = req.body;
-
-      if (!paymentIntentId) {
-        return res.status(400).json({ error: "Payment intent ID is required" });
+  app.post(
+    "/api/requests/:requestId/confirm-rental-deposit",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
+      try {
+        const requestId = parseInt(req.params.requestId);
+        const {
+          paymentIntentId,
+          depositAmount,
+          rentalAmount,
+          processingFee,
+          platformFee,
+        } = req.body;
 
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
+        if (!paymentIntentId) {
+          return res
+            .status(400)
+            .json({ error: "Payment intent ID is required" });
+        }
 
-      if (request.item_requests.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
 
-      if (request.item_requests.status !== "ACCEPTED") {
-        return res.status(400).json({ error: "Request is not in accepted state" });
-      }
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
 
-      // Verify the PaymentIntent with Stripe
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        if (request.item_requests.requesterId !== req.user.id) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
 
-      // Verify payment intent is in the correct state (requires_capture = authorized but not captured)
-      if (paymentIntent.status !== "requires_capture") {
-        return res.status(400).json({ 
-          error: "Payment has not been authorized correctly",
-          status: paymentIntent.status
+        if (request.item_requests.status !== "ACCEPTED") {
+          return res
+            .status(400)
+            .json({ error: "Request is not in accepted state" });
+        }
+
+        // Verify the PaymentIntent with Stripe
+        const paymentIntent =
+          await stripe.paymentIntents.retrieve(paymentIntentId);
+
+        // Verify payment intent is in the correct state (requires_capture = authorized but not captured)
+        if (paymentIntent.status !== "requires_capture") {
+          return res.status(400).json({
+            error: "Payment has not been authorized correctly",
+            status: paymentIntent.status,
+          });
+        }
+
+        // Verify the payment intent belongs to this request
+        if (paymentIntent.metadata.requestId !== requestId.toString()) {
+          return res
+            .status(400)
+            .json({ error: "Payment intent does not match this request" });
+        }
+
+        // Verify the payment intent belongs to this user
+        if (paymentIntent.metadata.userId !== req.user.id.toString()) {
+          return res
+            .status(403)
+            .json({ error: "Payment intent does not belong to this user" });
+        }
+
+        // Update request with rental deposit info
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "DEPOSIT_CONFIRMED",
+            depositPaymentIntentId: paymentIntentId,
+            trustDepositAmount: depositAmount?.toString(),
+            depositStatus: "authorized",
+            depositAuthorizedAt: new Date(),
+            rentalAmount: rentalAmount?.toString(),
+            rentalProcessingFee: processingFee?.toString(),
+            rentalPlatformFee: platformFee?.toString(),
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        const nextStep =
+          request.item_requests.deliveryMethod === "courier"
+            ? "book_courier"
+            : "await_handoff";
+
+        res.json({
+          success: true,
+          request: updated,
+          nextStep,
+          message: "Rental deposit authorized successfully",
         });
+      } catch (error: any) {
+        console.error("Error confirming rental deposit:", error);
+        res.status(500).json({ error: "Failed to confirm rental deposit" });
       }
-
-      // Verify the payment intent belongs to this request
-      if (paymentIntent.metadata.requestId !== requestId.toString()) {
-        return res.status(400).json({ error: "Payment intent does not match this request" });
-      }
-
-      // Verify the payment intent belongs to this user
-      if (paymentIntent.metadata.userId !== req.user.id.toString()) {
-        return res.status(403).json({ error: "Payment intent does not belong to this user" });
-      }
-
-      // Update request with rental deposit info
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "DEPOSIT_CONFIRMED",
-          depositPaymentIntentId: paymentIntentId,
-          trustDepositAmount: depositAmount?.toString(),
-          depositStatus: "authorized",
-          depositAuthorizedAt: new Date(),
-          rentalAmount: rentalAmount?.toString(),
-          rentalProcessingFee: processingFee?.toString(),
-          rentalPlatformFee: platformFee?.toString(),
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      const nextStep = request.item_requests.deliveryMethod === "courier" ? "book_courier" : "await_handoff";
-
-      res.json({
-        success: true,
-        request: updated,
-        nextStep,
-        message: "Rental deposit authorized successfully",
-      });
-    } catch (error: any) {
-      console.error("Error confirming rental deposit:", error);
-      res.status(500).json({ error: "Failed to confirm rental deposit" });
-    }
-  });
+    },
+  );
 
   // =====================================
   // BORROW TRANSACTION LIFECYCLE ENDPOINTS
@@ -3436,7 +3790,7 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
-      
+
       const [request] = await db
         .select({
           request: itemRequests,
@@ -3464,8 +3818,11 @@ Respond with ONLY the category name, nothing else.`
 
       // Calculate trust score based on reputation
       const reputationScore = request.requester.reputationScore || 0;
-      const trustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
-      
+      const trustScore = Math.min(
+        100,
+        Math.round((reputationScore / 500) * 100) + 50,
+      );
+
       res.json({
         request: request.request,
         item: request.item,
@@ -3480,680 +3837,770 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Pay trust deposit (step 1 after acceptance)
-  app.post("/api/requests/:requestId/pay-deposit", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { 
-        depositAmount, 
-        baseDepositAmount, 
-        discountPercentage, 
-        trustScore,
-        paymentIntentId,
-        shareCoinAmount 
-      } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
+  app.post(
+    "/api/requests/:requestId/pay-deposit",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Must be the requester
-      if (request.item_requests.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Request must be ACCEPTED
-      if (request.item_requests.status !== "ACCEPTED") {
-        return res.status(400).json({ error: "Request must be accepted before paying deposit" });
-      }
-
-      // Update request with deposit info
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "DEPOSIT_CONFIRMED",
-          trustDepositAmount: depositAmount.toString(),
-          trustDepositBaseAmount: baseDepositAmount?.toString(),
-          trustDiscountPercentage: discountPercentage,
-          requesterTrustScoreSnapshot: trustScore,
-          depositStatus: "authorized",
-          depositPaymentIntentId: paymentIntentId,
-          depositAuthorizedAt: new Date(),
-          shareCoinAmount: shareCoinAmount?.toString(),
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      res.json({
-        success: true,
-        request: updated,
-        nextStep: request.item_requests.deliveryMethod === "courier" ? "book_courier" : "await_handoff",
-      });
-    } catch (error: any) {
-      console.error("Error processing deposit payment:", error);
-      res.status(500).json({ error: "Failed to process deposit payment" });
-    }
-  });
-
-  // Book courier (step 2 if courier was selected)
-  app.post("/api/requests/:requestId/book-courier", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { address, pickupWindow } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      // Must be the requester (borrower is responsible for courier)
-      if (request.item_requests.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Deposit must be confirmed first (CRITICAL: never book courier if deposit failed)
-      if (request.item_requests.status !== "DEPOSIT_CONFIRMED") {
-        return res.status(400).json({ error: "Deposit must be confirmed before booking courier" });
-      }
-
-      // Generate a simulated courier booking ID (in production, this would call Uber Direct API)
-      const courierBookingId = `COURIER-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-
-      // Update request with courier info
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "COURIER_PENDING",
-          courierAddress: address,
-          courierPickupWindow: pickupWindow,
-          courierBookingId: courierBookingId,
-          courierBookedAt: new Date(),
-          courierStatus: "booked",
-          courierBookedBy: "requester",
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      res.json({
-        success: true,
-        request: updated,
-        courierBookingId,
-        message: "Courier booked successfully. Awaiting pickup.",
-      });
-    } catch (error: any) {
-      console.error("Error booking courier:", error);
-      res.status(500).json({ error: "Failed to book courier" });
-    }
-  });
-
-  // Cancel courier booking (transaction pauses, nothing breaks)
-  app.post("/api/requests/:requestId/cancel-courier", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      if (request.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Update status back to deposit confirmed (paused state)
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "DEPOSIT_CONFIRMED",
-          courierStatus: "cancelled",
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      res.json({
-        success: true,
-        request: updated,
-        message: "Courier booking cancelled. You can rebook anytime.",
-      });
-    } catch (error: any) {
-      console.error("Error cancelling courier:", error);
-      res.status(500).json({ error: "Failed to cancel courier" });
-    }
-  });
-
-  // Cancel request after acceptance (applies penalty with grace pass for first offense)
-  app.post("/api/requests/:requestId/cancel", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { reason } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      // Check if user is involved in this request
-      const isOwner = request.items.ownerId === req.user.id;
-      const isRequester = request.item_requests.requesterId === req.user.id;
-      
-      if (!isOwner && !isRequester) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Can only cancel if status is ACCEPTED or beyond (but not COMPLETED)
-      const cancelableStatuses = ["ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
-      if (!cancelableStatuses.includes(request.item_requests.status)) {
-        return res.status(400).json({ 
-          error: "Cannot cancel request in current status",
-          currentStatus: request.item_requests.status
-        });
-      }
-
-      // Release any held deposit via Stripe before cancelling
-      if (request.item_requests.depositPaymentIntentId) {
-        try {
-          await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
-        } catch (stripeError: any) {
-          console.error("Error releasing deposit on cancel:", stripeError);
-          // Continue with cancellation even if Stripe fails
-        }
-      }
-
-      // Update request status to CANCELLED
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "CANCELLED",
-          depositStatus: request.item_requests.depositPaymentIntentId ? "released" : null,
-          depositReleasedAt: request.item_requests.depositPaymentIntentId ? new Date() : null,
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      // Make item available again
-      await db
-        .update(items)
-        .set({ isAvailable: true })
-        .where(eq(items.id, request.items.id));
-
-      // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
-      let penaltyResult = { applied: false, wasGracePass: false };
       try {
-        penaltyResult = await applyCancellationPenalty(
-          req.user.id,
-          requestId,
-          request.items.id
-        );
-      } catch (penaltyError) {
-        console.error("Error applying cancellation penalty:", penaltyError);
-        // Don't fail the cancellation if penalty fails
-      }
+        const requestId = parseInt(req.params.requestId);
+        const {
+          depositAmount,
+          baseDepositAmount,
+          discountPercentage,
+          trustScore,
+          paymentIntentId,
+          shareCoinAmount,
+        } = req.body;
 
-      res.json({
-        success: true,
-        request: updated,
-        depositReleased: !!request.item_requests.depositPaymentIntentId,
-        message: penaltyResult.wasGracePass 
-          ? "Request cancelled. This is your first cancellation - no penalty applied, but future cancellations will affect your trust score."
-          : penaltyResult.applied 
-            ? "Request cancelled. A trust score penalty has been applied."
-            : "Request cancelled successfully.",
-      });
-    } catch (error: any) {
-      console.error("Error cancelling request:", error);
-      res.status(500).json({ error: "Failed to cancel request" });
-    }
-  });
-
-  // Report no-show (missed pickup window - applies penalty with grace pass)
-  app.post("/api/requests/:requestId/report-no-show", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { reportedUserId, description } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      // Check if reporter is involved in this request
-      const isOwner = request.items.ownerId === req.user.id;
-      const isRequester = request.item_requests.requesterId === req.user.id;
-      
-      if (!isOwner && !isRequester) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Can't report yourself
-      if (reportedUserId === req.user.id) {
-        return res.status(400).json({ error: "Cannot report yourself" });
-      }
-
-      // Verify the reported user is involved in this request
-      if (reportedUserId !== request.items.ownerId && reportedUserId !== request.item_requests.requesterId) {
-        return res.status(400).json({ error: "Reported user is not part of this transaction" });
-      }
-
-      // Only apply no-show penalty to valid statuses
-      const noShowStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
-      if (!noShowStatuses.includes(request.item_requests.status)) {
-        return res.status(400).json({ 
-          error: "Cannot report no-show in current status",
-          currentStatus: request.item_requests.status
-        });
-      }
-
-      // No-show acknowledged but not logged or penalized (minor violations removed)
-      res.json({
-        success: true,
-        message: "No-show reported.",
-      });
-    } catch (error: any) {
-      console.error("Error reporting no-show:", error);
-      res.status(500).json({ error: "Failed to report no-show" });
-    }
-  });
-
-  // Confirm handoff (item exchanged - charges ShareCoins, starts borrow period)
-  app.post("/api/requests/:requestId/handoff", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { confirmedBy } = req.body; // 'owner' or 'requester'
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      // Check authorization (either owner or requester can confirm)
-      const isOwner = request.items.ownerId === req.user.id;
-      const isRequester = request.item_requests.requesterId === req.user.id;
-      
-      if (!isOwner && !isRequester) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Validate status (must be DEPOSIT_CONFIRMED or COURIER_PENDING for courier deliveries)
-      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING"];
-      if (!validStatuses.includes(request.item_requests.status)) {
-        return res.status(400).json({ error: "Request is not ready for handoff" });
-      }
-
-      // Charge ShareCoins from borrower
-      const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-      
-      if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-        // Get borrower's current ShareCoin balance
-        const [borrower] = await db
-          .select({ shareCoins: users.shareCoins })
-          .from(users)
-          .where(eq(users.id, request.item_requests.requesterId))
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
           .limit(1);
 
-        const currentBalance = parseFloat(borrower?.shareCoins || "0");
-        
-        if (currentBalance < shareCoinAmount) {
-          return res.status(400).json({ error: "Insufficient ShareCoins balance" });
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
         }
 
-        // Deduct ShareCoins from borrower
-        await db
-          .update(users)
-          .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
-          .where(eq(users.id, request.item_requests.requesterId));
+        // Must be the requester
+        if (request.item_requests.requesterId !== req.user.id) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
 
-        // Record the transaction
-        await db.insert(shareCoinsTransactions).values({
-          userId: request.item_requests.requesterId,
-          amount: (-shareCoinAmount).toString(),
-          description: `Borrowed: ${request.items.name}`,
-          transactionType: "BORROW_CHARGE",
+        // Request must be ACCEPTED
+        if (request.item_requests.status !== "ACCEPTED") {
+          return res
+            .status(400)
+            .json({ error: "Request must be accepted before paying deposit" });
+        }
+
+        // Update request with deposit info
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "DEPOSIT_CONFIRMED",
+            trustDepositAmount: depositAmount.toString(),
+            trustDepositBaseAmount: baseDepositAmount?.toString(),
+            trustDiscountPercentage: discountPercentage,
+            requesterTrustScoreSnapshot: trustScore,
+            depositStatus: "authorized",
+            depositPaymentIntentId: paymentIntentId,
+            depositAuthorizedAt: new Date(),
+            shareCoinAmount: shareCoinAmount?.toString(),
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        res.json({
+          success: true,
+          request: updated,
+          nextStep:
+            request.item_requests.deliveryMethod === "courier"
+              ? "book_courier"
+              : "await_handoff",
         });
+      } catch (error: any) {
+        console.error("Error processing deposit payment:", error);
+        res.status(500).json({ error: "Failed to process deposit payment" });
+      }
+    },
+  );
 
-        // Award ShareCoins to lender
-        if (request.items.ownerId) {
-          const [lender] = await db
-            .select({ shareCoins: users.shareCoins })
-            .from(users)
-            .where(eq(users.id, request.items.ownerId))
-            .limit(1);
-
-          const lenderBalance = parseFloat(lender?.shareCoins || "0");
-          await db
-            .update(users)
-            .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
-            .where(eq(users.id, request.items.ownerId));
-
-          await db.insert(shareCoinsTransactions).values({
-            userId: request.items.ownerId,
-            amount: shareCoinAmount.toString(),
-            description: `Lent: ${request.items.name}`,
-            transactionType: "LEND_REWARD",
-          });
-        }
+  // Book courier (step 2 if courier was selected)
+  app.post(
+    "/api/requests/:requestId/book-courier",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Update request status
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "IN_PROGRESS",
-          handoffConfirmedAt: new Date(),
-          borrowPeriodStartedAt: new Date(),
-          shareCoinsCharged: true,
-          shareCoinsChargedAt: new Date(),
-          depositStatus: "held",
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
+      try {
+        const requestId = parseInt(req.params.requestId);
+        const { address, pickupWindow } = req.body;
 
-      // Mark item as unavailable
-      await db
-        .update(items)
-        .set({ isAvailable: false })
-        .where(eq(items.id, request.items.id));
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
 
-      res.json({
-        success: true,
-        request: updated,
-        shareCoinsCharged: shareCoinAmount,
-        message: "Handoff confirmed! Borrow period has started.",
-      });
-    } catch (error: any) {
-      console.error("Error confirming handoff:", error);
-      res.status(500).json({ error: "Failed to confirm handoff" });
-    }
-  });
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Must be the requester (borrower is responsible for courier)
+        if (request.item_requests.requesterId !== req.user.id) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Deposit must be confirmed first (CRITICAL: never book courier if deposit failed)
+        if (request.item_requests.status !== "DEPOSIT_CONFIRMED") {
+          return res
+            .status(400)
+            .json({
+              error: "Deposit must be confirmed before booking courier",
+            });
+        }
+
+        // Generate a simulated courier booking ID (in production, this would call Uber Direct API)
+        const courierBookingId = `COURIER-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
+
+        // Update request with courier info
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "COURIER_PENDING",
+            courierAddress: address,
+            courierPickupWindow: pickupWindow,
+            courierBookingId: courierBookingId,
+            courierBookedAt: new Date(),
+            courierStatus: "booked",
+            courierBookedBy: "requester",
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        res.json({
+          success: true,
+          request: updated,
+          courierBookingId,
+          message: "Courier booked successfully. Awaiting pickup.",
+        });
+      } catch (error: any) {
+        console.error("Error booking courier:", error);
+        res.status(500).json({ error: "Failed to book courier" });
+      }
+    },
+  );
+
+  // Cancel courier booking (transaction pauses, nothing breaks)
+  app.post(
+    "/api/requests/:requestId/cancel-courier",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+      }
+
+      try {
+        const requestId = parseInt(req.params.requestId);
+
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        if (request.requesterId !== req.user.id) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Update status back to deposit confirmed (paused state)
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "DEPOSIT_CONFIRMED",
+            courierStatus: "cancelled",
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        res.json({
+          success: true,
+          request: updated,
+          message: "Courier booking cancelled. You can rebook anytime.",
+        });
+      } catch (error: any) {
+        console.error("Error cancelling courier:", error);
+        res.status(500).json({ error: "Failed to cancel courier" });
+      }
+    },
+  );
+
+  // Cancel request after acceptance (applies penalty with grace pass for first offense)
+  app.post(
+    "/api/requests/:requestId/cancel",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+      }
+
+      try {
+        const requestId = parseInt(req.params.requestId);
+        const { reason } = req.body;
+
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Check if user is involved in this request
+        const isOwner = request.items.ownerId === req.user.id;
+        const isRequester = request.item_requests.requesterId === req.user.id;
+
+        if (!isOwner && !isRequester) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Can only cancel if status is ACCEPTED or beyond (but not COMPLETED)
+        const cancelableStatuses = [
+          "ACCEPTED",
+          "DEPOSIT_CONFIRMED",
+          "COURIER_PENDING",
+          "HANDOFF_CONFIRMED",
+        ];
+        if (!cancelableStatuses.includes(request.item_requests.status)) {
+          return res.status(400).json({
+            error: "Cannot cancel request in current status",
+            currentStatus: request.item_requests.status,
+          });
+        }
+
+        // Release any held deposit via Stripe before cancelling
+        if (request.item_requests.depositPaymentIntentId) {
+          try {
+            await stripe.paymentIntents.cancel(
+              request.item_requests.depositPaymentIntentId,
+            );
+          } catch (stripeError: any) {
+            console.error("Error releasing deposit on cancel:", stripeError);
+            // Continue with cancellation even if Stripe fails
+          }
+        }
+
+        // Update request status to CANCELLED
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "CANCELLED",
+            depositStatus: request.item_requests.depositPaymentIntentId
+              ? "released"
+              : null,
+            depositReleasedAt: request.item_requests.depositPaymentIntentId
+              ? new Date()
+              : null,
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        // Make item available again
+        await db
+          .update(items)
+          .set({ isAvailable: true })
+          .where(eq(items.id, request.items.id));
+
+        // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
+        let penaltyResult = { applied: false, wasGracePass: false };
+        try {
+          penaltyResult = await applyCancellationPenalty(
+            req.user.id,
+            requestId,
+            request.items.id,
+          );
+        } catch (penaltyError) {
+          console.error("Error applying cancellation penalty:", penaltyError);
+          // Don't fail the cancellation if penalty fails
+        }
+
+        res.json({
+          success: true,
+          request: updated,
+          depositReleased: !!request.item_requests.depositPaymentIntentId,
+          message: penaltyResult.wasGracePass
+            ? "Request cancelled. This is your first cancellation - no penalty applied, but future cancellations will affect your trust score."
+            : penaltyResult.applied
+              ? "Request cancelled. A trust score penalty has been applied."
+              : "Request cancelled successfully.",
+        });
+      } catch (error: any) {
+        console.error("Error cancelling request:", error);
+        res.status(500).json({ error: "Failed to cancel request" });
+      }
+    },
+  );
+
+  // Report no-show (missed pickup window - applies penalty with grace pass)
+  app.post(
+    "/api/requests/:requestId/report-no-show",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+      }
+
+      try {
+        const requestId = parseInt(req.params.requestId);
+        const { reportedUserId, description } = req.body;
+
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Check if reporter is involved in this request
+        const isOwner = request.items.ownerId === req.user.id;
+        const isRequester = request.item_requests.requesterId === req.user.id;
+
+        if (!isOwner && !isRequester) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Can't report yourself
+        if (reportedUserId === req.user.id) {
+          return res.status(400).json({ error: "Cannot report yourself" });
+        }
+
+        // Verify the reported user is involved in this request
+        if (
+          reportedUserId !== request.items.ownerId &&
+          reportedUserId !== request.item_requests.requesterId
+        ) {
+          return res
+            .status(400)
+            .json({ error: "Reported user is not part of this transaction" });
+        }
+
+        // Only apply no-show penalty to valid statuses
+        const noShowStatuses = [
+          "DEPOSIT_CONFIRMED",
+          "COURIER_PENDING",
+          "HANDOFF_CONFIRMED",
+        ];
+        if (!noShowStatuses.includes(request.item_requests.status)) {
+          return res.status(400).json({
+            error: "Cannot report no-show in current status",
+            currentStatus: request.item_requests.status,
+          });
+        }
+
+        // No-show acknowledged but not logged or penalized (minor violations removed)
+        res.json({
+          success: true,
+          message: "No-show reported.",
+        });
+      } catch (error: any) {
+        console.error("Error reporting no-show:", error);
+        res.status(500).json({ error: "Failed to report no-show" });
+      }
+    },
+  );
+
+  // Confirm handoff (item exchanged - charges ShareCoins, starts borrow period)
+  app.post(
+    "/api/requests/:requestId/handoff",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+      }
+
+      try {
+        const requestId = parseInt(req.params.requestId);
+        const { confirmedBy } = req.body; // 'owner' or 'requester'
+
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Check authorization (either owner or requester can confirm)
+        const isOwner = request.items.ownerId === req.user.id;
+        const isRequester = request.item_requests.requesterId === req.user.id;
+
+        if (!isOwner && !isRequester) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Validate status (must be DEPOSIT_CONFIRMED or COURIER_PENDING for courier deliveries)
+        const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING"];
+        if (!validStatuses.includes(request.item_requests.status)) {
+          return res
+            .status(400)
+            .json({ error: "Request is not ready for handoff" });
+        }
+
+        // Charge ShareCoins from borrower
+        const shareCoinAmount = parseFloat(
+          request.item_requests.shareCoinAmount ||
+            request.items.shareCoinPrice ||
+            "0",
+        );
+
+        if (
+          shareCoinAmount > 0 &&
+          request.item_requests.requestType === "BORROW"
+        ) {
+          // Get borrower's current ShareCoin balance
+          const [borrower] = await db
+            .select({ shareCoins: users.shareCoins })
+            .from(users)
+            .where(eq(users.id, request.item_requests.requesterId))
+            .limit(1);
+
+          const currentBalance = parseFloat(borrower?.shareCoins || "0");
+
+          if (currentBalance < shareCoinAmount) {
+            return res
+              .status(400)
+              .json({ error: "Insufficient ShareCoins balance" });
+          }
+
+          // Deduct ShareCoins from borrower
+          await db
+            .update(users)
+            .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
+            .where(eq(users.id, request.item_requests.requesterId));
+
+          // Record the transaction
+          await db.insert(shareCoinsTransactions).values({
+            userId: request.item_requests.requesterId,
+            amount: (-shareCoinAmount).toString(),
+            description: `Borrowed: ${request.items.name}`,
+            transactionType: "BORROW_CHARGE",
+          });
+
+          // Award ShareCoins to lender
+          if (request.items.ownerId) {
+            const [lender] = await db
+              .select({ shareCoins: users.shareCoins })
+              .from(users)
+              .where(eq(users.id, request.items.ownerId))
+              .limit(1);
+
+            const lenderBalance = parseFloat(lender?.shareCoins || "0");
+            await db
+              .update(users)
+              .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
+              .where(eq(users.id, request.items.ownerId));
+
+            await db.insert(shareCoinsTransactions).values({
+              userId: request.items.ownerId,
+              amount: shareCoinAmount.toString(),
+              description: `Lent: ${request.items.name}`,
+              transactionType: "LEND_REWARD",
+            });
+          }
+        }
+
+        // Update request status
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "IN_PROGRESS",
+            handoffConfirmedAt: new Date(),
+            borrowPeriodStartedAt: new Date(),
+            shareCoinsCharged: true,
+            shareCoinsChargedAt: new Date(),
+            depositStatus: "held",
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        // Mark item as unavailable
+        await db
+          .update(items)
+          .set({ isAvailable: false })
+          .where(eq(items.id, request.items.id));
+
+        res.json({
+          success: true,
+          request: updated,
+          shareCoinsCharged: shareCoinAmount,
+          message: "Handoff confirmed! Borrow period has started.",
+        });
+      } catch (error: any) {
+        console.error("Error confirming handoff:", error);
+        res.status(500).json({ error: "Failed to confirm handoff" });
+      }
+    },
+  );
 
   // Borrower notifies about expected late return (avoids penalty when communicating in advance)
   // IMPORTANT: Must be called BEFORE the due date to avoid penalties - post-facto notifications are rejected
-  app.post("/api/requests/:requestId/notify-delay", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { reason } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
+  app.post(
+    "/api/requests/:requestId/notify-delay",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Must be the borrower/requester
-      if (request.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Only the borrower can notify about delays" });
-      }
+      try {
+        const requestId = parseInt(req.params.requestId);
+        const { reason } = req.body;
 
-      // Must be in a valid state for delay notification
-      const validStatuses = ["IN_PROGRESS"];
-      if (!validStatuses.includes(request.status)) {
-        return res.status(400).json({ error: "Cannot notify delay in current status" });
-      }
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
 
-      // CRITICAL: Can only notify BEFORE the due date
-      // Post-facto notifications don't count - must communicate in advance
-      const now = new Date();
-      const endDate = request.endDate ? new Date(request.endDate) : null;
-      
-      if (endDate && now >= endDate) {
-        return res.status(400).json({ 
-          error: "Cannot notify about delay after the due date. To avoid penalties, please communicate before the return date.",
-          alreadyOverdue: true
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Must be the borrower/requester
+        if (request.requesterId !== req.user.id) {
+          return res
+            .status(403)
+            .json({ error: "Only the borrower can notify about delays" });
+        }
+
+        // Must be in a valid state for delay notification
+        const validStatuses = ["IN_PROGRESS"];
+        if (!validStatuses.includes(request.status)) {
+          return res
+            .status(400)
+            .json({ error: "Cannot notify delay in current status" });
+        }
+
+        // CRITICAL: Can only notify BEFORE the due date
+        // Post-facto notifications don't count - must communicate in advance
+        const now = new Date();
+        const endDate = request.endDate ? new Date(request.endDate) : null;
+
+        if (endDate && now >= endDate) {
+          return res.status(400).json({
+            error:
+              "Cannot notify about delay after the due date. To avoid penalties, please communicate before the return date.",
+            alreadyOverdue: true,
+          });
+        }
+
+        // Update the request with delay notification
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            returnDelayNotifiedAt: new Date(),
+            returnDelayReason:
+              reason || "Borrower notified about expected delay",
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        res.json({
+          success: true,
+          request: updated,
+          message:
+            "Delay notification recorded. Thank you for communicating - this will help avoid trust score penalties.",
         });
+      } catch (error: any) {
+        console.error("Error recording delay notification:", error);
+        res.status(500).json({ error: "Failed to record delay notification" });
       }
-
-      // Update the request with delay notification
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          returnDelayNotifiedAt: new Date(),
-          returnDelayReason: reason || "Borrower notified about expected delay",
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      res.json({
-        success: true,
-        request: updated,
-        message: "Delay notification recorded. Thank you for communicating - this will help avoid trust score penalties.",
-      });
-    } catch (error: any) {
-      console.error("Error recording delay notification:", error);
-      res.status(500).json({ error: "Failed to record delay notification" });
-    }
-  });
+    },
+  );
 
   // Borrower initiates return
-  app.post("/api/requests/:requestId/return", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
+  app.post(
+    "/api/requests/:requestId/return",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Must be the borrower
-      if (request.item_requests.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
+      try {
+        const requestId = parseInt(req.params.requestId);
+
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Must be the borrower
+        if (request.item_requests.requesterId !== req.user.id) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Must be in progress
+        if (request.item_requests.status !== "IN_PROGRESS") {
+          return res.status(400).json({ error: "Request is not in progress" });
+        }
+
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "RETURN_REQUESTED",
+            returnRequestedAt: new Date(),
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        res.json({
+          success: true,
+          request: updated,
+          message: "Return initiated. Waiting for lender confirmation.",
+        });
+      } catch (error: any) {
+        console.error("Error initiating return:", error);
+        res.status(500).json({ error: "Failed to initiate return" });
       }
-
-      // Must be in progress
-      if (request.item_requests.status !== "IN_PROGRESS") {
-        return res.status(400).json({ error: "Request is not in progress" });
-      }
-
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "RETURN_REQUESTED",
-          returnRequestedAt: new Date(),
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      res.json({
-        success: true,
-        request: updated,
-        message: "Return initiated. Waiting for lender confirmation.",
-      });
-    } catch (error: any) {
-      console.error("Error initiating return:", error);
-      res.status(500).json({ error: "Failed to initiate return" });
-    }
-  });
+    },
+  );
 
   // Lender confirms return (releases deposit, updates trust score)
-  app.post("/api/requests/:requestId/confirm-return", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { conditionRating, conditionNotes } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
+  app.post(
+    "/api/requests/:requestId/confirm-return",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      // Must be the owner
-      if (request.items.ownerId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Must be return requested
-      if (request.item_requests.status !== "RETURN_REQUESTED") {
-        return res.status(400).json({ error: "No return pending" });
-      }
-
-      // Release the deposit via Stripe
-      if (request.item_requests.depositPaymentIntentId) {
-        try {
-          await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
-        } catch (stripeError: any) {
-          console.error("Error releasing deposit:", stripeError);
-          // Continue even if Stripe fails - we don't want to block the return
-        }
-      }
-
-      // Update request to completed
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "COMPLETED",
-          returnConfirmedAt: new Date(),
-          returnConditionRating: conditionRating || 5,
-          returnConditionNotes: conditionNotes,
-          depositStatus: "released",
-          depositReleasedAt: new Date(),
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      // Mark item as available again
-      await db
-        .update(items)
-        .set({ isAvailable: true })
-        .where(eq(items.id, request.items.id));
-
-      // Award trust points using the new tiered system
-      // Check if return was on time (before or on the end date)
-      const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
-      const now = new Date();
-      const wasOnTime = endDate ? now <= endDate : true;
-      
-      // Calculate days late for penalty purposes
-      let daysLate = 0;
-      if (!wasOnTime && endDate) {
-        daysLate = Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
-      }
-      
       try {
-        await awardBorrowReturnPoints(
-          request.item_requests.requesterId,
-          request.items.ownerId!,
-          requestId,
-          request.items.id,
-          conditionRating || 5,
-          wasOnTime
-        );
-        
-        // Apply late return penalty if applicable (with grace pass for first-time offenders)
-        // Only penalize if borrower didn't notify about the delay in advance
-        if (!wasOnTime && daysLate >= 1) {
-          const hadCommunication = !!request.item_requests.returnDelayNotifiedAt;
-          await applyLateReturnPenalty(
-            request.item_requests.requesterId,
-            requestId,
-            request.items.id,
-            daysLate,
-            hadCommunication
+        const requestId = parseInt(req.params.requestId);
+        const { conditionRating, conditionNotes } = req.body;
+
+        const [request] = await db
+          .select()
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(eq(itemRequests.id, requestId))
+          .limit(1);
+
+        if (!request) {
+          return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Must be the owner
+        if (request.items.ownerId !== req.user.id) {
+          return res.status(403).json({ error: "Unauthorized" });
+        }
+
+        // Must be return requested
+        if (request.item_requests.status !== "RETURN_REQUESTED") {
+          return res.status(400).json({ error: "No return pending" });
+        }
+
+        // Release the deposit via Stripe
+        if (request.item_requests.depositPaymentIntentId) {
+          try {
+            await stripe.paymentIntents.cancel(
+              request.item_requests.depositPaymentIntentId,
+            );
+          } catch (stripeError: any) {
+            console.error("Error releasing deposit:", stripeError);
+            // Continue even if Stripe fails - we don't want to block the return
+          }
+        }
+
+        // Update request to completed
+        const [updated] = await db
+          .update(itemRequests)
+          .set({
+            status: "COMPLETED",
+            returnConfirmedAt: new Date(),
+            returnConditionRating: conditionRating || 5,
+            returnConditionNotes: conditionNotes,
+            depositStatus: "released",
+            depositReleasedAt: new Date(),
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        // Mark item as available again
+        await db
+          .update(items)
+          .set({ isAvailable: true })
+          .where(eq(items.id, request.items.id));
+
+        // Award trust points using the new tiered system
+        // Check if return was on time (before or on the end date)
+        const endDate = request.item_requests.endDate
+          ? new Date(request.item_requests.endDate)
+          : null;
+        const now = new Date();
+        const wasOnTime = endDate ? now <= endDate : true;
+
+        // Calculate days late for penalty purposes
+        let daysLate = 0;
+        if (!wasOnTime && endDate) {
+          daysLate = Math.ceil(
+            (now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24),
           );
         }
-      } catch (trustError) {
-        console.error("Error awarding trust points:", trustError);
-        // Don't fail the return if trust scoring fails
+
+        try {
+          await awardBorrowReturnPoints(
+            request.item_requests.requesterId,
+            request.items.ownerId!,
+            requestId,
+            request.items.id,
+            conditionRating || 5,
+            wasOnTime,
+          );
+
+          // Apply late return penalty if applicable (with grace pass for first-time offenders)
+          // Only penalize if borrower didn't notify about the delay in advance
+          if (!wasOnTime && daysLate >= 1) {
+            const hadCommunication =
+              !!request.item_requests.returnDelayNotifiedAt;
+            await applyLateReturnPenalty(
+              request.item_requests.requesterId,
+              requestId,
+              request.items.id,
+              daysLate,
+              hadCommunication,
+            );
+          }
+        } catch (trustError) {
+          console.error("Error awarding trust points:", trustError);
+          // Don't fail the return if trust scoring fails
+        }
+
+        // Check and award referral bonus for both users (first transaction completion)
+        await checkAndAwardReferralBonus(request.item_requests.requesterId);
+        await checkAndAwardReferralBonus(request.items.ownerId!);
+
+        res.json({
+          success: true,
+          request: updated,
+          depositReleased: true,
+          message: "Return confirmed! Deposit has been released.",
+        });
+      } catch (error: any) {
+        console.error("Error confirming return:", error);
+        res.status(500).json({ error: "Failed to confirm return" });
       }
-
-      // Check and award referral bonus for both users (first transaction completion)
-      await checkAndAwardReferralBonus(request.item_requests.requesterId);
-      await checkAndAwardReferralBonus(request.items.ownerId!);
-
-      res.json({
-        success: true,
-        request: updated,
-        depositReleased: true,
-        message: "Return confirmed! Deposit has been released.",
-      });
-    } catch (error: any) {
-      console.error("Error confirming return:", error);
-      res.status(500).json({ error: "Failed to confirm return" });
-    }
-  });
+    },
+  );
 
   // Create or update delivery arrangement with delivery/deposit method choices
   app.post("/api/delivery-arrangements", csrfProtection, async (req, res) => {
@@ -4193,9 +4640,15 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Calculate fees (frontend already calculated depositProcessingFee, so we use it directly)
-      const deliveryMargin = deliveryMethod === 'shareswap_delivery' && uberQuoteFee ? 2.00 : null;
-      const totalDeliveryFee = uberQuoteFee && deliveryMargin ? uberQuoteFee + deliveryMargin : null;
-      const finalDepositProcessingFee = depositProcessingFee || (depositMethod === 'shareswap_deposit' && depositAmount ? depositAmount * 0.05 : null);
+      const deliveryMargin =
+        deliveryMethod === "shareswap_delivery" && uberQuoteFee ? 2.0 : null;
+      const totalDeliveryFee =
+        uberQuoteFee && deliveryMargin ? uberQuoteFee + deliveryMargin : null;
+      const finalDepositProcessingFee =
+        depositProcessingFee ||
+        (depositMethod === "shareswap_deposit" && depositAmount
+          ? depositAmount * 0.05
+          : null);
 
       // Check if arrangement already exists
       const [existingArrangement] = await db
@@ -4217,7 +4670,7 @@ Respond with ONLY the category name, nothing else.`
             depositProcessingFee: finalDepositProcessingFee?.toString(),
             securityDeposit: depositAmount?.toString(),
             stripePaymentIntentId,
-            stripeDepositStatus: stripePaymentIntentId ? 'authorized' : null,
+            stripeDepositStatus: stripePaymentIntentId ? "authorized" : null,
           })
           .where(eq(deliveryArrangements.id, existingArrangement.id))
           .returning();
@@ -4229,7 +4682,10 @@ Respond with ONLY the category name, nothing else.`
           .insert(deliveryArrangements)
           .values({
             requestId,
-            deliveryType: deliveryMethod === 'shareswap_delivery' ? 'UBER_DIRECT' : 'SELF_ARRANGE',
+            deliveryType:
+              deliveryMethod === "shareswap_delivery"
+                ? "UBER_DIRECT"
+                : "SELF_ARRANGE",
             deliveryMethod,
             depositMethod,
             deliveryMargin: deliveryMargin?.toString(),
@@ -4238,7 +4694,7 @@ Respond with ONLY the category name, nothing else.`
             depositProcessingFee: finalDepositProcessingFee?.toString(),
             securityDeposit: depositAmount?.toString(),
             stripePaymentIntentId,
-            stripeDepositStatus: stripePaymentIntentId ? 'authorized' : null,
+            stripeDepositStatus: stripePaymentIntentId ? "authorized" : null,
             status: "PENDING",
           })
           .returning();
@@ -4247,7 +4703,11 @@ Respond with ONLY the category name, nothing else.`
       }
     } catch (error: any) {
       console.error("Error creating delivery arrangement:", error);
-      res.status(500).json({ error: "Failed to create delivery arrangement: " + error.message });
+      res
+        .status(500)
+        .json({
+          error: "Failed to create delivery arrangement: " + error.message,
+        });
     }
   });
 
@@ -4287,8 +4747,8 @@ Respond with ONLY the category name, nothing else.`
         .where(
           and(
             eq(notifications.id, notificationId),
-            eq(notifications.userId, req.user.id)
-          )
+            eq(notifications.userId, req.user.id),
+          ),
         )
         .returning();
 
@@ -4316,8 +4776,8 @@ Respond with ONLY the category name, nothing else.`
         .where(
           and(
             eq(notifications.userId, req.user.id),
-            eq(notifications.isRead, false)
-          )
+            eq(notifications.isRead, false),
+          ),
         );
 
       res.json({ success: true });
@@ -4340,8 +4800,8 @@ Respond with ONLY the category name, nothing else.`
         .where(
           and(
             eq(notifications.userId, req.user.id),
-            eq(notifications.isRead, false)
-          )
+            eq(notifications.isRead, false),
+          ),
         );
 
       res.json({ count: result.count });
@@ -4352,124 +4812,134 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Check and generate return reminders for active borrows/rentals
-  app.post("/api/notifications/check-return-reminders", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const userId = req.user.id;
-      const now = new Date();
-      const twoDaysFromNow = new Date(now);
-      twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
-      
-      // Only check items due within next 2 days or already overdue
-      // This reduces DB load significantly
-      const activeRequests = await db
-        .select({
-          request: itemRequests,
-          item: items,
-          owner: users,
-        })
-        .from(itemRequests)
-        .innerJoin(items, eq(itemRequests.itemId, items.id))
-        .innerJoin(users, eq(items.ownerId, users.id))
-        .where(
-          and(
-            eq(itemRequests.requesterId, userId),
-            eq(itemRequests.status, "ACCEPTED"),
-            or(
-              eq(itemRequests.requestType, "borrow"),
-              eq(itemRequests.requestType, "rent")
-            ),
-            // Only check items with endDate within next 2 days or overdue
-            sql`${itemRequests.endDate} IS NOT NULL AND ${itemRequests.endDate} <= ${twoDaysFromNow}`
-          )
-        );
-
-      let remindersCreated = 0;
-
-      for (const { request, item, owner } of activeRequests) {
-        const returnDate = request.endDate;
-        if (!returnDate) continue;
-
-        const returnDateObj = new Date(returnDate);
-        returnDateObj.setHours(0, 0, 0, 0);
-        
-        const nowDate = new Date(now);
-        nowDate.setHours(0, 0, 0, 0);
-
-        const daysUntilReturn = Math.ceil((returnDateObj.getTime() - nowDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        let notificationType = "";
-        let title = "";
-        let message = "";
-
-        // Determine if reminder is needed
-        if (daysUntilReturn === 1) {
-          // Tomorrow
-          notificationType = "return_reminder_tomorrow";
-          title = "Return Reminder: Tomorrow";
-          message = `"${item.name}" is due to be returned tomorrow. Please prepare to return it to ${owner.username}.`;
-        } else if (daysUntilReturn === 0) {
-          // Today
-          notificationType = "return_reminder_today";
-          title = "Return Reminder: Today";
-          message = `"${item.name}" is due to be returned today! Please return it to ${owner.username} as soon as possible.`;
-        } else if (daysUntilReturn < 0) {
-          // Overdue
-          const daysOverdue = Math.abs(daysUntilReturn);
-          notificationType = "return_reminder_overdue";
-          title = "Overdue Return";
-          message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue! Please return it to ${owner.username} immediately.`;
-        }
-
-        if (notificationType) {
-          // More robust duplicate check: check if notification exists for this exact scenario
-          // Using try-catch to handle race conditions gracefully
-          try {
-            const todayStart = new Date(now);
-            todayStart.setHours(0, 0, 0, 0);
-
-            const existingNotification = await db
-              .select()
-              .from(notifications)
-              .where(
-                and(
-                  eq(notifications.userId, userId),
-                  eq(notifications.requestId, request.id),
-                  eq(notifications.type, notificationType),
-                  gte(notifications.createdAt, todayStart)
-                )
-              )
-              .limit(1);
-
-            if (existingNotification.length === 0) {
-              // Create the notification
-              await db.insert(notifications).values({
-                userId,
-                type: notificationType,
-                title,
-                message,
-                itemId: item.id,
-                requestId: request.id,
-                isRead: false,
-              });
-              remindersCreated++;
-            }
-          } catch (insertError) {
-            // Silently handle duplicate insert errors from race conditions
-            console.error("Error creating notification (may be duplicate):", insertError);
-          }
-        }
+  app.post(
+    "/api/notifications/check-return-reminders",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      res.json({ remindersCreated });
-    } catch (error) {
-      console.error("Error checking return reminders:", error);
-      res.status(500).json({ error: "Failed to check return reminders" });
-    }
-  });
+      try {
+        const userId = req.user.id;
+        const now = new Date();
+        const twoDaysFromNow = new Date(now);
+        twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+
+        // Only check items due within next 2 days or already overdue
+        // This reduces DB load significantly
+        const activeRequests = await db
+          .select({
+            request: itemRequests,
+            item: items,
+            owner: users,
+          })
+          .from(itemRequests)
+          .innerJoin(items, eq(itemRequests.itemId, items.id))
+          .innerJoin(users, eq(items.ownerId, users.id))
+          .where(
+            and(
+              eq(itemRequests.requesterId, userId),
+              eq(itemRequests.status, "ACCEPTED"),
+              or(
+                eq(itemRequests.requestType, "borrow"),
+                eq(itemRequests.requestType, "rent"),
+              ),
+              // Only check items with endDate within next 2 days or overdue
+              sql`${itemRequests.endDate} IS NOT NULL AND ${itemRequests.endDate} <= ${twoDaysFromNow}`,
+            ),
+          );
+
+        let remindersCreated = 0;
+
+        for (const { request, item, owner } of activeRequests) {
+          const returnDate = request.endDate;
+          if (!returnDate) continue;
+
+          const returnDateObj = new Date(returnDate);
+          returnDateObj.setHours(0, 0, 0, 0);
+
+          const nowDate = new Date(now);
+          nowDate.setHours(0, 0, 0, 0);
+
+          const daysUntilReturn = Math.ceil(
+            (returnDateObj.getTime() - nowDate.getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
+
+          let notificationType = "";
+          let title = "";
+          let message = "";
+
+          // Determine if reminder is needed
+          if (daysUntilReturn === 1) {
+            // Tomorrow
+            notificationType = "return_reminder_tomorrow";
+            title = "Return Reminder: Tomorrow";
+            message = `"${item.name}" is due to be returned tomorrow. Please prepare to return it to ${owner.username}.`;
+          } else if (daysUntilReturn === 0) {
+            // Today
+            notificationType = "return_reminder_today";
+            title = "Return Reminder: Today";
+            message = `"${item.name}" is due to be returned today! Please return it to ${owner.username} as soon as possible.`;
+          } else if (daysUntilReturn < 0) {
+            // Overdue
+            const daysOverdue = Math.abs(daysUntilReturn);
+            notificationType = "return_reminder_overdue";
+            title = "Overdue Return";
+            message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""} overdue! Please return it to ${owner.username} immediately.`;
+          }
+
+          if (notificationType) {
+            // More robust duplicate check: check if notification exists for this exact scenario
+            // Using try-catch to handle race conditions gracefully
+            try {
+              const todayStart = new Date(now);
+              todayStart.setHours(0, 0, 0, 0);
+
+              const existingNotification = await db
+                .select()
+                .from(notifications)
+                .where(
+                  and(
+                    eq(notifications.userId, userId),
+                    eq(notifications.requestId, request.id),
+                    eq(notifications.type, notificationType),
+                    gte(notifications.createdAt, todayStart),
+                  ),
+                )
+                .limit(1);
+
+              if (existingNotification.length === 0) {
+                // Create the notification
+                await db.insert(notifications).values({
+                  userId,
+                  type: notificationType,
+                  title,
+                  message,
+                  itemId: item.id,
+                  requestId: request.id,
+                  isRead: false,
+                });
+                remindersCreated++;
+              }
+            } catch (insertError) {
+              // Silently handle duplicate insert errors from race conditions
+              console.error(
+                "Error creating notification (may be duplicate):",
+                insertError,
+              );
+            }
+          }
+        }
+
+        res.json({ remindersCreated });
+      } catch (error) {
+        console.error("Error checking return reminders:", error);
+        res.status(500).json({ error: "Failed to check return reminders" });
+      }
+    },
+  );
 
   // Get statistics for public display
   app.get("/api/stats", async (req, res) => {
@@ -4514,57 +4984,64 @@ Respond with ONLY the category name, nothing else.`
       const [borrowedCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(itemRequests)
-        .where(and(
-          eq(itemRequests.requesterId, userId),
-          eq(itemRequests.requestType, "BORROW"),
-          eq(itemRequests.status, "COMPLETED")
-        ));
+        .where(
+          and(
+            eq(itemRequests.requesterId, userId),
+            eq(itemRequests.requestType, "BORROW"),
+            eq(itemRequests.status, "COMPLETED"),
+          ),
+        );
 
       // Count items lent (as owner with COMPLETED status)
       const [lentCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(and(
-          eq(items.ownerId, userId),
-          eq(itemRequests.status, "COMPLETED")
-        ));
+        .where(
+          and(eq(items.ownerId, userId), eq(itemRequests.status, "COMPLETED")),
+        );
 
       // Count swaps completed
       const [swapCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(itemRequests)
-        .where(and(
-          or(
-            eq(itemRequests.requesterId, userId),
-            sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
+        .where(
+          and(
+            or(
+              eq(itemRequests.requesterId, userId),
+              sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`,
+            ),
+            eq(itemRequests.requestType, "SWAP"),
+            eq(itemRequests.status, "COMPLETED"),
           ),
-          eq(itemRequests.requestType, "SWAP"),
-          eq(itemRequests.status, "COMPLETED")
-        ));
+        );
 
       // Count gifts given (as owner with GIFT type)
       const [giftCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(and(
-          eq(items.ownerId, userId),
-          eq(itemRequests.requestType, "GIFT"),
-          eq(itemRequests.status, "COMPLETED")
-        ));
+        .where(
+          and(
+            eq(items.ownerId, userId),
+            eq(itemRequests.requestType, "GIFT"),
+            eq(itemRequests.status, "COMPLETED"),
+          ),
+        );
 
       // Count successful handoffs (only COMPLETED transactions)
       const [handoffCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(itemRequests)
-        .where(and(
-          or(
-            eq(itemRequests.requesterId, userId),
-            sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
+        .where(
+          and(
+            or(
+              eq(itemRequests.requesterId, userId),
+              sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`,
+            ),
+            eq(itemRequests.status, "COMPLETED"),
           ),
-          eq(itemRequests.status, "COMPLETED")
-        ));
+        );
 
       // Count referrals
       const [referralCount] = await db
@@ -4578,12 +5055,17 @@ Respond with ONLY the category name, nothing else.`
         .select({ count: sql<number>`count(*)` })
         .from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .innerJoin(wishlists, sql`${wishlists.itemName} ILIKE '%' || ${items.name} || '%'`)
-        .where(and(
-          eq(items.ownerId, userId),
-          eq(itemRequests.status, "COMPLETED"),
-          eq(wishlists.urgency, "urgent")
-        ));
+        .innerJoin(
+          wishlists,
+          sql`${wishlists.itemName} ILIKE '%' || ${items.name} || '%'`,
+        )
+        .where(
+          and(
+            eq(items.ownerId, userId),
+            eq(itemRequests.status, "COMPLETED"),
+            eq(wishlists.urgency, "urgent"),
+          ),
+        );
 
       res.json({
         totalBorrowed: Number(borrowedCount?.count || 0),
@@ -4636,7 +5118,7 @@ Respond with ONLY the category name, nothing else.`
 
       res.json({
         ...user,
-        emailVerified: !!user.googleId || user.authProvider === 'google',
+        emailVerified: !!user.googleId || user.authProvider === "google",
       });
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -4653,7 +5135,12 @@ Respond with ONLY the category name, nothing else.`
     const { fullName, bio, location, phone } = req.body;
 
     // Build update object with only provided fields
-    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string }> = {};
+    const updateData: Partial<{
+      fullName: string;
+      bio: string;
+      location: string;
+      phone: string;
+    }> = {};
     if (fullName !== undefined) updateData.fullName = fullName;
     if (bio !== undefined) updateData.bio = bio;
     if (location !== undefined) updateData.location = location;
@@ -4741,28 +5228,34 @@ Respond with ONLY the category name, nothing else.`
       });
     } catch (error) {
       console.error("Error fetching verification nudge status:", error);
-      res.status(500).json({ error: "Failed to fetch verification nudge status" });
+      res
+        .status(500)
+        .json({ error: "Failed to fetch verification nudge status" });
     }
   });
 
   // Dismiss verification nudge
-  app.post("/api/verification-nudge-dismiss", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
+  app.post(
+    "/api/verification-nudge-dismiss",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
+      }
 
-    try {
-      await db
-        .update(users)
-        .set({ hasSeenVerificationNudge: true })
-        .where(eq(users.id, req.user.id));
+      try {
+        await db
+          .update(users)
+          .set({ hasSeenVerificationNudge: true })
+          .where(eq(users.id, req.user.id));
 
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error dismissing verification nudge:", error);
-      res.status(500).json({ error: "Failed to dismiss verification nudge" });
-    }
-  });
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error dismissing verification nudge:", error);
+        res.status(500).json({ error: "Failed to dismiss verification nudge" });
+      }
+    },
+  );
 
   // Get user's payment method
   app.get("/api/payment-method", async (req, res) => {
@@ -4791,24 +5284,33 @@ Respond with ONLY the category name, nothing else.`
 
       // Check if payment method exists
       const hasPaymentMethod = !!user.stripePaymentMethodId;
-      
+
       // Check if card is expired
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
-      const isExpired = user.expYear && user.expMonth && 
-        (user.expYear < currentYear || (user.expYear === currentYear && user.expMonth < currentMonth));
+      const isExpired =
+        user.expYear &&
+        user.expMonth &&
+        (user.expYear < currentYear ||
+          (user.expYear === currentYear && user.expMonth < currentMonth));
 
       res.json({
         hasPaymentMethod,
-        status: !hasPaymentMethod ? 'missing' : isExpired ? 'expired' : 'verified',
-        paymentMethod: hasPaymentMethod ? {
-          last4: user.last4,
-          brand: user.brand,
-          expMonth: user.expMonth,
-          expYear: user.expYear,
-          addedAt: user.addedAt,
-        } : null,
+        status: !hasPaymentMethod
+          ? "missing"
+          : isExpired
+            ? "expired"
+            : "verified",
+        paymentMethod: hasPaymentMethod
+          ? {
+              last4: user.last4,
+              brand: user.brand,
+              expMonth: user.expMonth,
+              expYear: user.expYear,
+              addedAt: user.addedAt,
+            }
+          : null,
       });
     } catch (error) {
       console.error("Error fetching payment method:", error);
@@ -4817,215 +5319,239 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Create Stripe SetupIntent for adding a new payment method
-  app.post("/api/payment-method/setup-intent", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const [user] = await db
-        .select({
-          id: users.id,
-          stripeCustomerId: users.stripeCustomerId,
-          username: users.username,
-        })
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+  app.post(
+    "/api/payment-method/setup-intent",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      let customerId = user.stripeCustomerId;
+      try {
+        const [user] = await db
+          .select({
+            id: users.id,
+            stripeCustomerId: users.stripeCustomerId,
+            username: users.username,
+          })
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
 
-      // Create Stripe customer if doesn't exist
-      if (!customerId) {
-        const customer = await stripe.customers.create({
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        let customerId = user.stripeCustomerId;
+
+        // Create Stripe customer if doesn't exist
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            metadata: {
+              userId: user.id.toString(),
+              username: user.username,
+            },
+          });
+          customerId = customer.id;
+
+          await db
+            .update(users)
+            .set({ stripeCustomerId: customerId })
+            .where(eq(users.id, req.user.id));
+        }
+
+        // Create SetupIntent
+        const setupIntent = await stripe.setupIntents.create({
+          customer: customerId,
+          payment_method_types: ["card"],
           metadata: {
             userId: user.id.toString(),
-            username: user.username,
           },
         });
-        customerId = customer.id;
 
-        await db
-          .update(users)
-          .set({ stripeCustomerId: customerId })
-          .where(eq(users.id, req.user.id));
+        res.json({
+          clientSecret: setupIntent.client_secret,
+        });
+      } catch (error) {
+        console.error("Error creating setup intent:", error);
+        res.status(500).json({ error: "Failed to create setup intent" });
       }
-
-      // Create SetupIntent
-      const setupIntent = await stripe.setupIntents.create({
-        customer: customerId,
-        payment_method_types: ['card'],
-        metadata: {
-          userId: user.id.toString(),
-        },
-      });
-
-      res.json({
-        clientSecret: setupIntent.client_secret,
-      });
-    } catch (error) {
-      console.error("Error creating setup intent:", error);
-      res.status(500).json({ error: "Failed to create setup intent" });
-    }
-  });
+    },
+  );
 
   // Create Stripe Checkout Session for adding payment method (hosted page)
-  app.post("/api/payment-method/create-checkout-session", csrfProtection, async (req, res) => {
-    console.log("[Stripe Checkout] create-checkout-session endpoint hit");
-    
-    if (!req.isAuthenticated()) {
-      console.log("[Stripe Checkout] User not authenticated");
-      return res.sendStatus(401);
-    }
+  app.post(
+    "/api/payment-method/create-checkout-session",
+    csrfProtection,
+    async (req, res) => {
+      console.log("[Stripe Checkout] create-checkout-session endpoint hit");
 
-    console.log("[Stripe Checkout] User authenticated, userId:", req.user?.id);
-
-    try {
-      const [user] = await db
-        .select({
-          id: users.id,
-          stripeCustomerId: users.stripeCustomerId,
-          username: users.username,
-        })
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+      if (!req.isAuthenticated()) {
+        console.log("[Stripe Checkout] User not authenticated");
+        return res.sendStatus(401);
       }
 
-      let customerId = user.stripeCustomerId;
+      console.log(
+        "[Stripe Checkout] User authenticated, userId:",
+        req.user?.id,
+      );
 
-      // Get stripe instance
-      const stripeInstance = await getStripe();
+      try {
+        const [user] = await db
+          .select({
+            id: users.id,
+            stripeCustomerId: users.stripeCustomerId,
+            username: users.username,
+          })
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
 
-      // Create Stripe customer if doesn't exist
-      if (!customerId) {
-        const customer = await stripeInstance.customers.create({
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        let customerId = user.stripeCustomerId;
+
+        // Get stripe instance
+        const stripeInstance = await getStripe();
+
+        // Create Stripe customer if doesn't exist
+        if (!customerId) {
+          const customer = await stripeInstance.customers.create({
+            metadata: {
+              userId: user.id.toString(),
+              username: user.username,
+            },
+          });
+          customerId = customer.id;
+
+          await db
+            .update(users)
+            .set({ stripeCustomerId: customerId })
+            .where(eq(users.id, req.user.id));
+        }
+
+        // Determine the base URL for redirects
+        const protocol = req.headers["x-forwarded-proto"] || "https";
+        const host = req.headers.host;
+        const baseUrl = `${protocol}://${host}`;
+
+        // Create Checkout Session in setup mode for saving payment method
+        const session = await stripeInstance.checkout.sessions.create({
+          mode: "setup",
+          customer: customerId,
+          payment_method_types: ["card"],
+          success_url: `${baseUrl}/payment-methods?setup_success=true&session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${baseUrl}/payment-methods?setup_success=false`,
           metadata: {
             userId: user.id.toString(),
-            username: user.username,
           },
         });
-        customerId = customer.id;
 
-        await db
-          .update(users)
-          .set({ stripeCustomerId: customerId })
-          .where(eq(users.id, req.user.id));
+        res.json({
+          url: session.url,
+          sessionId: session.id,
+        });
+      } catch (error) {
+        console.error("Error creating checkout session:", error);
+        res.status(500).json({ error: "Failed to create checkout session" });
       }
-
-      // Determine the base URL for redirects
-      const protocol = req.headers['x-forwarded-proto'] || 'https';
-      const host = req.headers.host;
-      const baseUrl = `${protocol}://${host}`;
-
-      // Create Checkout Session in setup mode for saving payment method
-      const session = await stripeInstance.checkout.sessions.create({
-        mode: 'setup',
-        customer: customerId,
-        payment_method_types: ['card'],
-        success_url: `${baseUrl}/payment-methods?setup_success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/payment-methods?setup_success=false`,
-        metadata: {
-          userId: user.id.toString(),
-        },
-      });
-
-      res.json({
-        url: session.url,
-        sessionId: session.id,
-      });
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      res.status(500).json({ error: "Failed to create checkout session" });
-    }
-  });
+    },
+  );
 
   // Complete payment method setup after Checkout Session
-  app.post("/api/payment-method/complete-setup", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    const { sessionId } = req.body;
-
-    if (!sessionId) {
-      return res.status(400).json({ error: "Session ID is required" });
-    }
-
-    try {
-      // Retrieve the checkout session
-      const stripeInstance = await getStripe();
-      const session = await stripeInstance.checkout.sessions.retrieve(sessionId, {
-        expand: ['setup_intent', 'setup_intent.payment_method'],
-      });
-
-      if (!session.setup_intent || typeof session.setup_intent === 'string') {
-        return res.status(400).json({ error: "Invalid session" });
+  app.post(
+    "/api/payment-method/complete-setup",
+    csrfProtection,
+    async (req, res) => {
+      if (!req.isAuthenticated()) {
+        return res.sendStatus(401);
       }
 
-      const setupIntent = session.setup_intent;
-      const paymentMethod = setupIntent.payment_method;
+      const { sessionId } = req.body;
 
-      if (!paymentMethod || typeof paymentMethod === 'string') {
-        return res.status(400).json({ error: "No payment method found" });
+      if (!sessionId) {
+        return res.status(400).json({ error: "Session ID is required" });
       }
 
-      if (!paymentMethod.card) {
-        return res.status(400).json({ error: "Invalid payment method type" });
-      }
+      try {
+        // Retrieve the checkout session
+        const stripeInstance = await getStripe();
+        const session = await stripeInstance.checkout.sessions.retrieve(
+          sessionId,
+          {
+            expand: ["setup_intent", "setup_intent.payment_method"],
+          },
+        );
 
-      // Get user's existing payment method
-      const [user] = await db
-        .select({
-          existingPaymentMethodId: users.stripePaymentMethodId,
-        })
-        .from(users)
-        .where(eq(users.id, req.user.id))
-        .limit(1);
-
-      // Detach the previous payment method if one exists
-      if (user?.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethod.id) {
-        try {
-          await stripe.paymentMethods.detach(user.existingPaymentMethodId);
-        } catch (detachError) {
-          console.error("Error detaching previous payment method:", detachError);
+        if (!session.setup_intent || typeof session.setup_intent === "string") {
+          return res.status(400).json({ error: "Invalid session" });
         }
+
+        const setupIntent = session.setup_intent;
+        const paymentMethod = setupIntent.payment_method;
+
+        if (!paymentMethod || typeof paymentMethod === "string") {
+          return res.status(400).json({ error: "No payment method found" });
+        }
+
+        if (!paymentMethod.card) {
+          return res.status(400).json({ error: "Invalid payment method type" });
+        }
+
+        // Get user's existing payment method
+        const [user] = await db
+          .select({
+            existingPaymentMethodId: users.stripePaymentMethodId,
+          })
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
+
+        // Detach the previous payment method if one exists
+        if (
+          user?.existingPaymentMethodId &&
+          user.existingPaymentMethodId !== paymentMethod.id
+        ) {
+          try {
+            await stripe.paymentMethods.detach(user.existingPaymentMethodId);
+          } catch (detachError) {
+            console.error(
+              "Error detaching previous payment method:",
+              detachError,
+            );
+          }
+        }
+
+        // Update user with payment method details
+        await db
+          .update(users)
+          .set({
+            stripePaymentMethodId: paymentMethod.id,
+            paymentMethodLast4: paymentMethod.card.last4,
+            paymentMethodBrand: paymentMethod.card.brand,
+            paymentMethodExpMonth: paymentMethod.card.exp_month,
+            paymentMethodExpYear: paymentMethod.card.exp_year,
+            paymentMethodAddedAt: new Date(),
+          })
+          .where(eq(users.id, req.user.id));
+
+        res.json({
+          success: true,
+          paymentMethod: {
+            last4: paymentMethod.card.last4,
+            brand: paymentMethod.card.brand,
+            expMonth: paymentMethod.card.exp_month,
+            expYear: paymentMethod.card.exp_year,
+          },
+        });
+      } catch (error) {
+        console.error("Error completing setup:", error);
+        res.status(500).json({ error: "Failed to complete setup" });
       }
-
-      // Update user with payment method details
-      await db
-        .update(users)
-        .set({
-          stripePaymentMethodId: paymentMethod.id,
-          paymentMethodLast4: paymentMethod.card.last4,
-          paymentMethodBrand: paymentMethod.card.brand,
-          paymentMethodExpMonth: paymentMethod.card.exp_month,
-          paymentMethodExpYear: paymentMethod.card.exp_year,
-          paymentMethodAddedAt: new Date(),
-        })
-        .where(eq(users.id, req.user.id));
-
-      res.json({
-        success: true,
-        paymentMethod: {
-          last4: paymentMethod.card.last4,
-          brand: paymentMethod.card.brand,
-          expMonth: paymentMethod.card.exp_month,
-          expYear: paymentMethod.card.exp_year,
-        },
-      });
-    } catch (error) {
-      console.error("Error completing setup:", error);
-      res.status(500).json({ error: "Failed to complete setup" });
-    }
-  });
+    },
+  );
 
   // Save payment method after successful setup
   app.post("/api/payment-method/save", csrfProtection, async (req, res) => {
@@ -5051,11 +5577,14 @@ Respond with ONLY the category name, nothing else.`
         .limit(1);
 
       if (!user?.stripeCustomerId) {
-        return res.status(400).json({ error: "No Stripe customer found. Please try again." });
+        return res
+          .status(400)
+          .json({ error: "No Stripe customer found. Please try again." });
       }
 
       // Retrieve payment method details from Stripe
-      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+      const paymentMethod =
+        await stripe.paymentMethods.retrieve(paymentMethodId);
 
       if (!paymentMethod.card) {
         return res.status(400).json({ error: "Invalid payment method" });
@@ -5069,16 +5598,26 @@ Respond with ONLY the category name, nothing else.`
             customer: user.stripeCustomerId,
           });
         } else {
-          return res.status(400).json({ error: "This payment method does not belong to your account" });
+          return res
+            .status(400)
+            .json({
+              error: "This payment method does not belong to your account",
+            });
         }
       }
 
       // Detach the previous payment method if one exists
-      if (user.existingPaymentMethodId && user.existingPaymentMethodId !== paymentMethodId) {
+      if (
+        user.existingPaymentMethodId &&
+        user.existingPaymentMethodId !== paymentMethodId
+      ) {
         try {
           await stripe.paymentMethods.detach(user.existingPaymentMethodId);
         } catch (detachError) {
-          console.error("Error detaching previous payment method:", detachError);
+          console.error(
+            "Error detaching previous payment method:",
+            detachError,
+          );
         }
       }
 
@@ -5126,15 +5665,16 @@ Respond with ONLY the category name, nothing else.`
           and(
             or(
               eq(itemRequests.requesterId, req.user.id),
-              eq(items.ownerId, req.user.id)
+              eq(items.ownerId, req.user.id),
             ),
-            sql`${itemRequests.status} IN ('ACCEPTED', 'DEPOSIT_CONFIRMED', 'IN_PROGRESS')`
-          )
+            sql`${itemRequests.status} IN ('ACCEPTED', 'DEPOSIT_CONFIRMED', 'IN_PROGRESS')`,
+          ),
         );
 
       if (activeTransactions[0]?.count > 0) {
-        return res.status(400).json({ 
-          error: "Cannot remove payment method while you have active transactions. Complete or cancel them first.",
+        return res.status(400).json({
+          error:
+            "Cannot remove payment method while you have active transactions. Complete or cancel them first.",
           hasActiveTransactions: true,
         });
       }
@@ -5150,7 +5690,10 @@ Respond with ONLY the category name, nothing else.`
         try {
           await stripe.paymentMethods.detach(user.stripePaymentMethodId);
         } catch (stripeError) {
-          console.error("Error detaching payment method from Stripe:", stripeError);
+          console.error(
+            "Error detaching payment method from Stripe:",
+            stripeError,
+          );
         }
       }
 
@@ -5179,7 +5722,7 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
-    
+
     res.json({
       current: {
         rentalCommissionRate: platformConfig.rentalCommissionRate,
@@ -5189,7 +5732,7 @@ Respond with ONLY the category name, nothing else.`
       },
       options: platformConfig.commissionStructures,
       messaging: platformConfig.messaging,
-      description: "Platform commission configuration options"
+      description: "Platform commission configuration options",
     });
   });
 
@@ -5212,13 +5755,15 @@ Respond with ONLY the category name, nothing else.`
           and(
             eq(itemRequests.id, requestId),
             eq(itemRequests.requestType, "RENT"),
-            eq(itemRequests.status, "ACCEPTED")
-          )
+            eq(itemRequests.status, "ACCEPTED"),
+          ),
         )
         .limit(1);
 
       if (!rental) {
-        return res.status(404).json({ error: "Rental not found or not in progress" });
+        return res
+          .status(404)
+          .json({ error: "Rental not found or not in progress" });
       }
 
       // Only owner or renter can mark as returned
@@ -5226,7 +5771,9 @@ Respond with ONLY the category name, nothing else.`
       const isRenter = rental.item_requests.requesterId === req.user.id;
 
       if (!isOwner && !isRenter) {
-        return res.status(403).json({ error: "Not authorized to mark this rental as returned" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to mark this rental as returned" });
       }
 
       // Check if already returned
@@ -5237,15 +5784,22 @@ Respond with ONLY the category name, nothing else.`
         .limit(1);
 
       if (existingReturn.length > 0) {
-        return res.status(400).json({ error: "Rental already marked as returned" });
+        return res
+          .status(400)
+          .json({ error: "Rental already marked as returned" });
       }
 
       // Calculate commission details for ShareCoin rewards
       const rentalPrice = parseFloat(rental.items.dollarsPrice || "0");
-      const commissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
+      const commissionDetails = calculateCommission(
+        rentalPrice,
+        "RENTAL",
+        false,
+      );
 
       // Award ShareCoins to both users for successful rental completion
-      const shareCoinsReward = platformConfig.shareCoinsRewards.successfulRental;
+      const shareCoinsReward =
+        platformConfig.shareCoinsRewards.successfulRental;
       const renterId = rental.item_requests.requesterId;
       const ownerId = rental.items.ownerId;
 
@@ -5256,9 +5810,9 @@ Respond with ONLY the category name, nothing else.`
         // Award to renter with first-time bonus
         const renterResult = await awardShareCoinsWithFirstTimeBonus(
           renterId,
-          'RENT',
+          "RENT",
           rental.items.name,
-          shareCoinsReward
+          shareCoinsReward,
         );
         renterShareCoins = renterResult.totalAwarded;
 
@@ -5266,14 +5820,16 @@ Respond with ONLY the category name, nothing else.`
         if (ownerId) {
           const ownerResult = await awardShareCoinsWithFirstTimeBonus(
             ownerId,
-            'LEND',
+            "LEND",
             rental.items.name,
-            shareCoinsReward
+            shareCoinsReward,
           );
           ownerShareCoins = ownerResult.totalAwarded;
 
           console.log(`✅ ${platformConfig.messaging.shareCoinsReward}`);
-          console.log(`Rental completion: Renter=${renterResult.totalAwarded} (first-time: ${renterResult.isFirstTime}), Owner/Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
+          console.log(
+            `Rental completion: Renter=${renterResult.totalAwarded} (first-time: ${renterResult.isFirstTime}), Owner/Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`,
+          );
         }
       }
 
@@ -5291,8 +5847,10 @@ Respond with ONLY the category name, nothing else.`
 
       // Award additional ShareCoins from user reward fund
       if (commissionDetails.shareCoinsFromReward > 0) {
-        const rewardPerUser = Math.floor(commissionDetails.shareCoinsFromReward / 2);
-        
+        const rewardPerUser = Math.floor(
+          commissionDetails.shareCoinsFromReward / 2,
+        );
+
         if (rewardPerUser > 0) {
           // Award community reward ShareCoins to both users
           await db.insert(shareCoinsTransactions).values({
@@ -5323,7 +5881,9 @@ Respond with ONLY the category name, nothing else.`
             })
             .where(sql`${users.id} = ${ownerId}`);
 
-          console.log(`Awarded ${rewardPerUser} bonus ShareCoins to each user from community reward fund`);
+          console.log(
+            `Awarded ${rewardPerUser} bonus ShareCoins to each user from community reward fund`,
+          );
         }
       }
 
@@ -5340,7 +5900,7 @@ Respond with ONLY the category name, nothing else.`
           ownerId!,
           requestId,
           rental.items.id,
-          false // hadDispute - completed rentals are dispute-free
+          false, // hadDispute - completed rentals are dispute-free
         );
       } catch (trustError) {
         console.error("Error awarding rental trust points:", trustError);
@@ -5355,9 +5915,10 @@ Respond with ONLY the category name, nothing else.`
         message: "Rental marked as returned successfully",
         renterShareCoins,
         ownerShareCoins,
-        communityBonusAwarded: Math.floor(commissionDetails.shareCoinsFromReward / 2),
+        communityBonusAwarded: Math.floor(
+          commissionDetails.shareCoinsFromReward / 2,
+        ),
       });
-
     } catch (error) {
       console.error("Error processing rental return:", error);
       res.status(500).json({ error: "Failed to process rental return" });
@@ -5382,13 +5943,15 @@ Respond with ONLY the category name, nothing else.`
           and(
             eq(itemRequests.id, requestId),
             eq(itemRequests.requestType, "BORROW"),
-            eq(itemRequests.status, "ACCEPTED")
-          )
+            eq(itemRequests.status, "ACCEPTED"),
+          ),
         )
         .limit(1);
 
       if (!borrow) {
-        return res.status(404).json({ error: "Borrow not found or not in progress" });
+        return res
+          .status(404)
+          .json({ error: "Borrow not found or not in progress" });
       }
 
       // Only owner or borrower can mark as returned
@@ -5396,7 +5959,9 @@ Respond with ONLY the category name, nothing else.`
       const isBorrower = borrow.item_requests.requesterId === req.user.id;
 
       if (!isOwner && !isBorrower) {
-        return res.status(403).json({ error: "Not authorized to mark this borrow as returned" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to mark this borrow as returned" });
       }
 
       const borrowerId = borrow.item_requests.requesterId;
@@ -5405,9 +5970,9 @@ Respond with ONLY the category name, nothing else.`
       // Award ShareCoins to borrower with first-time bonus
       const borrowerResult = await awardShareCoinsWithFirstTimeBonus(
         borrowerId,
-        'BORROW',
+        "BORROW",
         borrow.items.name,
-        1
+        1,
       );
 
       // Award ShareCoins to owner (lender) with first-time bonus
@@ -5415,13 +5980,15 @@ Respond with ONLY the category name, nothing else.`
       if (ownerId) {
         ownerResult = await awardShareCoinsWithFirstTimeBonus(
           ownerId,
-          'LEND',
+          "LEND",
           borrow.items.name,
-          1
+          1,
         );
       }
 
-      console.log(`✅ Borrow completion: Borrower=${borrowerResult.totalAwarded} (first-time: ${borrowerResult.isFirstTime}), Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`);
+      console.log(
+        `✅ Borrow completion: Borrower=${borrowerResult.totalAwarded} (first-time: ${borrowerResult.isFirstTime}), Lender=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime})`,
+      );
 
       // Update request status to COMPLETED
       await db
@@ -5439,7 +6006,6 @@ Respond with ONLY the category name, nothing else.`
         borrowerShareCoins: borrowerResult.totalAwarded,
         lenderShareCoins: ownerResult.totalAwarded,
       });
-
     } catch (error) {
       console.error("Error processing borrow return:", error);
       res.status(500).json({ error: "Failed to process borrow return" });
@@ -5451,7 +6017,7 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
-    
+
     try {
       // Get recent farming detections
       const detections = await db
@@ -5459,28 +6025,31 @@ Respond with ONLY the category name, nothing else.`
         .from(farmingDetections)
         .orderBy(desc(farmingDetections.createdAt))
         .limit(50);
-      
+
       // Get active cooldowns
       const activeCooldowns = await db
         .select()
         .from(swapCooldowns)
         .where(gte(swapCooldowns.cooldownUntil, new Date()))
         .orderBy(desc(swapCooldowns.cooldownUntil));
-      
+
       // Statistics
-      const riskLevelCounts = detections.reduce((acc, detection) => {
-        acc[detection.riskLevel] = (acc[detection.riskLevel] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
+      const riskLevelCounts = detections.reduce(
+        (acc, detection) => {
+          acc[detection.riskLevel] = (acc[detection.riskLevel] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
       res.json({
         recentDetections: detections,
         activeCooldowns: activeCooldowns,
         statistics: {
           totalDetections: detections.length,
           riskLevelBreakdown: riskLevelCounts,
-          activeCooldownCount: activeCooldowns.length
-        }
+          activeCooldownCount: activeCooldowns.length,
+        },
       });
     } catch (error) {
       console.error("Error fetching farming stats:", error);
@@ -5515,16 +6084,18 @@ Respond with ONLY the category name, nothing else.`
 
     // Only accepted requests can have delivery confirmed
     if (request.item_requests.status !== "ACCEPTED") {
-      return res.status(400).send("Request must be accepted to confirm delivery");
+      return res
+        .status(400)
+        .send("Request must be accepted to confirm delivery");
     }
 
     // For in-person, delivery confirmation is automatic at handoff (no-op if already confirmed)
     if (request.item_requests.deliveryMethod === "in_person") {
       if (request.item_requests.deliveryConfirmed) {
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           message: "Delivery already confirmed for in-person handoff.",
-          request: request.item_requests 
+          request: request.item_requests,
         });
       }
     }
@@ -5537,9 +6108,9 @@ Respond with ONLY the category name, nothing else.`
     // Update delivery confirmation
     const [updated] = await db
       .update(itemRequests)
-      .set({ 
+      .set({
         deliveryConfirmed: true,
-        deliveryConfirmedAt: new Date()
+        deliveryConfirmedAt: new Date(),
       })
       .where(eq(itemRequests.id, requestId))
       .returning();
@@ -5555,14 +6126,15 @@ Respond with ONLY the category name, nothing else.`
       isRead: false,
     });
 
-    const depositMessage = request.item_requests.deliveryMethod === "courier" 
-      ? "Delivery confirmed. Trust-deposit is now active."
-      : "Handoff confirmed. Trust-deposit is active.";
+    const depositMessage =
+      request.item_requests.deliveryMethod === "courier"
+        ? "Delivery confirmed. Trust-deposit is now active."
+        : "Handoff confirmed. Trust-deposit is active.";
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: depositMessage,
-      request: updated 
+      request: updated,
     });
   });
 
@@ -5589,51 +6161,67 @@ Respond with ONLY the category name, nothing else.`
 
     // Only courier deliveries can have courier issues
     if (request.item_requests.deliveryMethod !== "courier") {
-      return res.status(400).send("Courier issues only apply to courier deliveries");
+      return res
+        .status(400)
+        .send("Courier issues only apply to courier deliveries");
     }
 
     // Request must be accepted first
     if (request.item_requests.status !== "ACCEPTED") {
-      return res.status(400).send("Request must be accepted to report courier issues");
+      return res
+        .status(400)
+        .send("Request must be accepted to report courier issues");
     }
 
     // Courier booking info should be present for proper responsibility assignment
     if (!request.item_requests.courierBookedBy) {
-      return res.status(400).send("Courier booking information must be recorded before reporting issues");
+      return res
+        .status(400)
+        .send(
+          "Courier booking information must be recorded before reporting issues",
+        );
     }
 
     // Prevent duplicate issue reports
     if (request.item_requests.courierIssue) {
-      return res.status(400).send("A courier issue has already been reported for this request");
+      return res
+        .status(400)
+        .send("A courier issue has already been reported for this request");
     }
 
     // Either party can report a courier issue
     const isOwner = request.items.ownerId === req.user.id;
     const isRequester = request.item_requests.requesterId === req.user.id;
-    
+
     if (!isOwner && !isRequester) {
-      return res.status(403).send("Only parties involved in this transaction can report issues");
+      return res
+        .status(403)
+        .send("Only parties involved in this transaction can report issues");
     }
 
     // Update courier issue status - this voids any trust-deposit charges
     // When courierIssue is true, trust-deposit should not be activated or charged
     const [updated] = await db
       .update(itemRequests)
-      .set({ 
+      .set({
         courierIssue: true,
-        courierIssueNote: issueNote || "Item lost or damaged during courier delivery",
+        courierIssueNote:
+          issueNote || "Item lost or damaged during courier delivery",
         // Clear delivery confirmation since delivery didn't complete successfully
         deliveryConfirmed: false,
-        deliveryConfirmedAt: null
+        deliveryConfirmedAt: null,
       })
       .where(eq(itemRequests.id, requestId))
       .returning();
 
     // Notify both parties
-    const notifyUserId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
+    const notifyUserId = isOwner
+      ? request.item_requests.requesterId
+      : request.items.ownerId;
     const courierBooker = request.item_requests.courierBookedBy;
-    const bookerLabel = courierBooker === 'requester' ? 'borrower/renter' : 'owner';
-    
+    const bookerLabel =
+      courierBooker === "requester" ? "borrower/renter" : "owner";
+
     if (notifyUserId) {
       await db.insert(notifications).values({
         userId: notifyUserId,
@@ -5646,11 +6234,11 @@ Respond with ONLY the category name, nothing else.`
       });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `Courier issue reported. Trust-deposit will NOT be charged. The ${bookerLabel} who booked the courier is responsible for resolving this with the delivery service.`,
       request: updated,
-      responsibleParty: courierBooker
+      responsibleParty: courierBooker,
     });
   });
 
@@ -5663,7 +6251,7 @@ Respond with ONLY the category name, nothing else.`
     const requestId = parseInt(req.params.requestId);
     const { bookedBy } = req.body; // 'requester' | 'owner'
 
-    if (!['requester', 'owner'].includes(bookedBy)) {
+    if (!["requester", "owner"].includes(bookedBy)) {
       return res.status(400).send("bookedBy must be 'requester' or 'owner'");
     }
 
@@ -5682,7 +6270,7 @@ Respond with ONLY the category name, nothing else.`
     // Only allow if user is involved in the transaction
     const isOwner = request.items.ownerId === req.user.id;
     const isRequester = request.item_requests.requesterId === req.user.id;
-    
+
     if (!isOwner && !isRequester) {
       return res.status(403).send("Not authorized");
     }
@@ -5712,7 +6300,10 @@ Respond with ONLY the category name, nothing else.`
       req.body;
 
     // Calculate delivery fee for courier service (Uber Direct = $15)
-    const deliveryFee = deliveryType === "IN_APP_SERVICE" || deliveryType === "courier" ? "15.00" : "0.00";
+    const deliveryFee =
+      deliveryType === "IN_APP_SERVICE" || deliveryType === "courier"
+        ? "15.00"
+        : "0.00";
 
     const [arrangement] = await db
       .insert(deliveryArrangements)
@@ -5837,7 +6428,8 @@ Respond with ONLY the category name, nothing else.`
 
     // Validate feedback tags
     const validTags = ["reliable", "on_time", "as_described"];
-    const cleanedTags = feedbackTags?.filter((tag: string) => validTags.includes(tag)) || [];
+    const cleanedTags =
+      feedbackTags?.filter((tag: string) => validTags.includes(tag)) || [];
 
     // Create the review
     const [review] = await db
@@ -5886,9 +6478,11 @@ Respond with ONLY the category name, nothing else.`
         await awardFeedbackPoints(
           reviewedUserId,
           transactionId,
-          cleanedTags as ("reliable" | "on_time" | "as_described")[]
+          cleanedTags as ("reliable" | "on_time" | "as_described")[],
         );
-        console.log(`✅ Awarded trust points for feedback tags: ${cleanedTags.join(", ")}`);
+        console.log(
+          `✅ Awarded trust points for feedback tags: ${cleanedTags.join(", ")}`,
+        );
       } catch (trustError) {
         console.error("Error awarding feedback trust points:", trustError);
       }
@@ -5930,9 +6524,10 @@ Respond with ONLY the category name, nothing else.`
       .from(userReviews)
       .where(eq(userReviews.reviewedUserId, user.id));
 
-    const averageRating = reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-      : 0;
+    const averageRating =
+      reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+        : 0;
 
     const reviewCount = reviews.length;
 
@@ -5950,7 +6545,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const username = req.params.username;
-    
+
     // First find the user
     const [user] = await db
       .select({ id: users.id })
@@ -5973,9 +6568,9 @@ Respond with ONLY the category name, nothing else.`
             username: true,
             isVerified: true,
             reputationLevel: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     res.json(userItems);
@@ -5988,7 +6583,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const username = req.params.username;
-    
+
     // First find the user
     const [user] = await db
       .select({ id: users.id })
@@ -6021,7 +6616,6 @@ Respond with ONLY the category name, nothing else.`
 
     res.json(reviews);
   });
-
 
   app.get("/api/delivery-arrangements", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -6063,7 +6657,7 @@ Respond with ONLY the category name, nothing else.`
       .orderBy(desc(deliveryArrangements.deliveryDate));
 
     // Transform the data to match the expected frontend interface
-    const transformedArrangements = arrangements.map(arr => ({
+    const transformedArrangements = arrangements.map((arr) => ({
       id: arr.id,
       requestId: arr.requestId,
       deliveryType: arr.deliveryType,
@@ -6084,8 +6678,8 @@ Respond with ONLY the category name, nothing else.`
           id: arr.itemId,
           name: arr.itemName,
           photos: arr.itemPhotos,
-        }
-      }
+        },
+      },
     }));
 
     res.json(transformedArrangements);
@@ -6137,7 +6731,7 @@ Respond with ONLY the category name, nothing else.`
         .orderBy(desc(gameSessions.startedAt));
 
       // Transform data to match frontend interface
-      const transformedSessions = sessions.map(session => ({
+      const transformedSessions = sessions.map((session) => ({
         id: session.id,
         gameId: session.gameId,
         startedAt: session.startedAt,
@@ -6151,7 +6745,7 @@ Respond with ONLY the category name, nothing else.`
           description: session.gameDescription,
           imageUrl: session.gameImageUrl,
           sponsorName: session.gameSponsorName,
-        }
+        },
       }));
 
       res.json(transformedSessions);
@@ -6177,7 +6771,9 @@ Respond with ONLY the category name, nothing else.`
       const [game] = await db
         .select()
         .from(sponsoredGames)
-        .where(and(eq(sponsoredGames.id, gameId), eq(sponsoredGames.isActive, true)))
+        .where(
+          and(eq(sponsoredGames.id, gameId), eq(sponsoredGames.isActive, true)),
+        )
         .limit(1);
 
       if (!game) {
@@ -6189,7 +6785,7 @@ Respond with ONLY the category name, nothing else.`
         .values({
           userId: req.user.id,
           gameId,
-          status: 'started',
+          status: "started",
         })
         .returning();
 
@@ -6213,7 +6809,12 @@ Respond with ONLY the category name, nothing else.`
       const [existingSession] = await db
         .select()
         .from(gameSessions)
-        .where(and(eq(gameSessions.id, sessionId), eq(gameSessions.userId, req.user.id)))
+        .where(
+          and(
+            eq(gameSessions.id, sessionId),
+            eq(gameSessions.userId, req.user.id),
+          ),
+        )
         .limit(1);
 
       if (!existingSession) {
@@ -6228,27 +6829,25 @@ Respond with ONLY the category name, nothing else.`
         .limit(1);
 
       let rewardAmount = "0.00";
-      
-      if (status === 'completed' && game) {
+
+      if (status === "completed" && game) {
         rewardAmount = game.rewardAmount;
-        
+
         // Award ShareCoins to user
         await db
           .update(users)
           .set({
-            shareCoins: sql`${users.shareCoins} + ${rewardAmount}`
+            shareCoins: sql`${users.shareCoins} + ${rewardAmount}`,
           })
           .where(eq(users.id, req.user.id));
 
         // Record transaction
-        await db
-          .insert(shareCoinsTransactions)
-          .values({
-            userId: req.user.id,
-            amount: rewardAmount,
-            description: `Game reward: ${game.name}`,
-            transactionType: 'game_reward',
-          });
+        await db.insert(shareCoinsTransactions).values({
+          userId: req.user.id,
+          amount: rewardAmount,
+          description: `Game reward: ${game.name}`,
+          transactionType: "game_reward",
+        });
       }
 
       const [updatedSession] = await db
@@ -6257,7 +6856,7 @@ Respond with ONLY the category name, nothing else.`
           status,
           score,
           completedAt: completedAt ? new Date(completedAt) : null,
-          rewardAmount: status === 'completed' ? rewardAmount : null,
+          rewardAmount: status === "completed" ? rewardAmount : null,
         })
         .where(eq(gameSessions.id, sessionId))
         .returning();
@@ -6284,33 +6883,37 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Extract session ID from cookie
-      const cookies = cookieHeader.split(';').reduce((acc: any, cookie: string) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key] = value;
-        return acc;
-      }, {});
+      const cookies = cookieHeader
+        .split(";")
+        .reduce((acc: any, cookie: string) => {
+          const [key, value] = cookie.trim().split("=");
+          acc[key] = value;
+          return acc;
+        }, {});
 
-      const sessionId = cookies['shareswap.sid'];
+      const sessionId = cookies["shareswap.sid"];
       if (!sessionId) {
         console.log("No session cookie found");
         return resolve(null);
       }
 
       // Decode session ID (remove 's:' prefix and signature)
-      const decodedSessionId = decodeURIComponent(sessionId).split('.')[0].substring(2);
-      
+      const decodedSessionId = decodeURIComponent(sessionId)
+        .split(".")[0]
+        .substring(2);
+
       // Validate session in the store
       store.get(decodedSessionId, (err, session) => {
         if (err) {
           console.error("Error validating WebSocket session:", err);
           return resolve(null);
         }
-        
+
         if (!session || !session.passport || !session.passport.user) {
           console.log("Invalid or expired session");
           return resolve(null);
         }
-        
+
         const userId = session.passport.user;
         console.log("WebSocket session validated for user:", userId);
         resolve(userId);
@@ -6327,7 +6930,7 @@ Respond with ONLY the category name, nothing else.`
       if (info.req.headers["sec-websocket-protocol"] === "vite-hmr") {
         return callback(true);
       }
-      
+
       // Allow connection - we'll authenticate during the connection handler
       callback(true);
     },
@@ -6338,29 +6941,33 @@ Respond with ONLY the category name, nothing else.`
 
   wss.on("connection", async (ws: WebSocket, req: any) => {
     console.log("New WebSocket connection established");
-    
+
     // Security: Validate session immediately on connection
     const userId = await validateWebSocketSession(req);
-    
+
     if (!userId) {
       console.log("WebSocket connection rejected: Invalid or missing session");
-      ws.send(JSON.stringify({
-        type: "auth_error",
-        message: "Authentication failed - please log in"
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "auth_error",
+          message: "Authentication failed - please log in",
+        }),
+      );
       ws.close(1008, "Unauthorized");
       return;
     }
-    
+
     console.log(`✅ WebSocket authenticated for user ${userId}`);
     connectedClients.set(userId, ws);
-    
+
     // Send authentication success
-    ws.send(JSON.stringify({
-      type: "auth_success",
-      message: "Authenticated successfully",
-      userId
-    }));
+    ws.send(
+      JSON.stringify({
+        type: "auth_success",
+        message: "Authenticated successfully",
+        userId,
+      }),
+    );
 
     ws.on("message", async (message: string) => {
       try {
@@ -6369,11 +6976,13 @@ Respond with ONLY the category name, nothing else.`
 
         // No need for authenticate message type anymore - authentication happens on connection
         if (data.type === "authenticate") {
-          ws.send(JSON.stringify({
-            type: "auth_success",
-            message: "Already authenticated",
-            userId
-          }));
+          ws.send(
+            JSON.stringify({
+              type: "auth_success",
+              message: "Already authenticated",
+              userId,
+            }),
+          );
           return;
         }
 
@@ -6423,15 +7032,15 @@ Respond with ONLY the category name, nothing else.`
     if (!req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    
+
     const { confirmDeactivation } = req.body;
     if (!confirmDeactivation) {
       return res.status(400).json({ message: "Confirmation required" });
     }
-    
+
     try {
       const userId = req.user.id;
-      
+
       // Check for active transactions (pending requests) - user is requester or owns the item
       const activeRequests = await db
         .select()
@@ -6439,47 +7048,45 @@ Respond with ONLY the category name, nothing else.`
         .innerJoin(items, eq(itemRequests.itemId, items.id))
         .where(
           and(
+            or(eq(itemRequests.requesterId, userId), eq(items.ownerId, userId)),
             or(
-              eq(itemRequests.requesterId, userId),
-              eq(items.ownerId, userId)
+              eq(itemRequests.status, "PENDING"),
+              eq(itemRequests.status, "ACCEPTED"),
             ),
-            or(
-              eq(itemRequests.status, 'PENDING'),
-              eq(itemRequests.status, 'ACCEPTED')
-            )
-          )
+          ),
         )
         .limit(1);
-      
+
       if (activeRequests.length > 0) {
-        return res.status(400).json({ 
-          message: "Cannot deactivate account with active transactions. Please complete or cancel pending requests first."
+        return res.status(400).json({
+          message:
+            "Cannot deactivate account with active transactions. Please complete or cancel pending requests first.",
         });
       }
-      
+
       // Deactivate user account
       await db
         .update(users)
         .set({
-          accountStatus: 'deactivated',
+          accountStatus: "deactivated",
           deactivatedAt: new Date(),
         } as any)
         .where(eq(users.id, userId));
-      
+
       // Archive all user items (mark as unavailable)
       await db
         .update(items)
         .set({ isAvailable: false })
         .where(eq(items.ownerId, userId));
-      
+
       // Log the user out
       req.logout((err) => {
         if (err) {
           console.error("Logout error during deactivation:", err);
         }
-        res.json({ 
+        res.json({
           message: "Account deactivated successfully",
-          status: "deactivated"
+          status: "deactivated",
         });
       });
     } catch (error) {
@@ -6493,7 +7100,7 @@ Respond with ONLY the category name, nothing else.`
     if (!req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    
+
     try {
       const [user] = await db
         .select({
@@ -6504,8 +7111,8 @@ Respond with ONLY the category name, nothing else.`
         .from(users)
         .where(eq(users.id, req.user.id))
         .limit(1);
-      
-      res.json(user || { accountStatus: 'active' });
+
+      res.json(user || { accountStatus: "active" });
     } catch (error) {
       console.error("Account status error:", error);
       res.status(500).json({ message: "Failed to get account status" });
@@ -6513,7 +7120,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   setupAuth(app);
-  
+
   // Add simplified routes for new features
   addSimplifiedRoutes(app);
 

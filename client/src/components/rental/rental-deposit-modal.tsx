@@ -12,10 +12,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { DollarSign, Shield, Truck, Loader2, CheckCircle2, CreditCard, Info } from "lucide-react";
 import { calculateRentalDeposit, calculateRentalRate } from "@/lib/rental-calculator";
-import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { getStripePromise } from "@/lib/stripe-client";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+const stripePromise = getStripePromise();
 
 interface RentalDepositModalProps {
   isOpen: boolean;

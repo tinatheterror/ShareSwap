@@ -11,15 +11,15 @@ import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { CelebrationAnimation } from "@/components/celebration-animation";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
 import { useVerification } from "@/hooks/use-verification";
+import { getStripePromise } from "@/lib/stripe-client";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+const stripePromise = getStripePromise();
 
 interface ItemRequest {
   id: number;

@@ -188,6 +188,7 @@ export default function PaymentMethodsPage() {
   });
 
   const handleAddCard = () => {
+    console.log("[PaymentMethods] handleAddCard clicked - triggering mutation");
     addCardMutation.mutate();
   };
 

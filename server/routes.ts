@@ -170,7 +170,7 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
 }
 
 // Initialize Stripe - will be loaded from connector
-import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
+import { getUncachableStripeClient, getStripePublishableKey } from "./stripe.server";
 
 // Helper to get stripe client (lazy loaded from connector)
 let stripeClient: Stripe | null = null;

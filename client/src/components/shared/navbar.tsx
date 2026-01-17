@@ -287,6 +287,17 @@ export function Navbar() {
 
           {/* Mobile Navigation */}
           <div className="flex lg:hidden items-center gap-2">
+            {user && (
+              <Link href="/wallet">
+                <Button variant="outline" size="sm" className="flex items-center gap-1.5 px-2 py-1 h-auto border-primary/30">
+                  <Coins className="h-4 w-4 text-primary" />
+                  <div className="flex flex-col items-start leading-tight">
+                    <span className="text-[10px] text-muted-foreground">Total Balance</span>
+                    <span className="text-xs font-medium">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
+                  </div>
+                </Button>
+              </Link>
+            )}
             {user && <NotificationBell />}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -299,20 +310,22 @@ export function Navbar() {
                   {user ? (
                     <>
                       {/* User Info */}
-                      <div className="flex items-center gap-3 pb-4 border-b">
-                        <Avatar className="h-12 w-12 border-2 border-primary">
-                          <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                            {user.username.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{user.username}</p>
-                          <p className="text-sm text-primary flex items-center gap-1">
-                            <Coins className="h-4 w-4" />
-                            {user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins
-                          </p>
+                      <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                        <div className="flex items-center gap-3 pb-4 border-b cursor-pointer hover:opacity-80">
+                          <Avatar className="h-12 w-12 border-2 border-primary">
+                            <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                              {user.username.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{user.username}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <User className="h-4 w-4" />
+                              View Profile
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      </Link>
 
                       {/* Navigation Links */}
                       <Link href="/" onClick={() => setMobileMenuOpen(false)}>
@@ -361,12 +374,6 @@ export function Navbar() {
                         <Button variant="ghost" className="w-full justify-start gap-3">
                           <HelpCircle className="h-5 w-5" />
                           How It Works
-                        </Button>
-                      </Link>
-                      <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-3">
-                          <User className="h-5 w-5" />
-                          Profile
                         </Button>
                       </Link>
 

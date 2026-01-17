@@ -191,7 +191,7 @@ export function setupAuth(app: Express) {
 
   // Security: Apply rate limiting to login endpoint
   app.post("/api/login", authLimiter, (req, res, next) => {
-    passport.authenticate("local", (err: any, user: SelectUser | false, info: any) => {
+    passport.authenticate("local", async (err: any, user: SelectUser | false, info: any) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ message: info?.message || "Authentication failed" });
@@ -205,6 +205,20 @@ export function setupAuth(app: Express) {
           userId: user.id
         });
       }
+      
+      // Update device fingerprint on login for referral fraud detection
+      const { deviceFingerprint } = req.body;
+      if (deviceFingerprint) {
+        try {
+          await db
+            .update(users)
+            .set({ deviceFingerprint: deviceFingerprint })
+            .where(eq(users.id, user.id));
+        } catch (e) {
+          console.error("Failed to update device fingerprint:", e);
+        }
+      }
+      
       req.login(user, (err) => {
         if (err) return next(err);
         res.json(user);
@@ -267,8 +281,9 @@ export function setupAuth(app: Express) {
       }
 
       // Check if a referral code was provided
-      const { referralCode } = req.body;
+      const { referralCode, deviceFingerprint } = req.body;
       let referrerId: number | null = null;
+      let referrerDeviceFingerprint: string | null = null;
 
       if (referralCode) {
         // Find the user who owns this referral code
@@ -280,6 +295,7 @@ export function setupAuth(app: Express) {
 
         if (referrer) {
           referrerId = referrer.id;
+          referrerDeviceFingerprint = (referrer as any).deviceFingerprint || null;
         }
       }
 
@@ -289,6 +305,7 @@ export function setupAuth(app: Express) {
           ...result.data,
           password: result.data.password ? await hashPassword(result.data.password) : null,
           referredBy: referrerId,
+          deviceFingerprint: deviceFingerprint || null,
         })
         .returning();
 
@@ -301,12 +318,15 @@ export function setupAuth(app: Express) {
           rewardAmount: "10.00",
           isRewardClaimed: false,
           completedFirstTransaction: false,
+          referrerDeviceFingerprint: referrerDeviceFingerprint,
+          referredDeviceFingerprint: deviceFingerprint || null,
         });
+        console.log(`📣 Referral created: User ${user.id} was referred by user ${referrerId}`);
       }
 
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(201).json(user);
+        res.status(201).json({ ...user, referralApplied: !!referrerId });
       });
     } catch (error) {
       next(error);

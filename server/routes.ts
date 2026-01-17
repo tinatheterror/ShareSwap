@@ -115,8 +115,59 @@ async function awardShareCoinsWithFirstTimeBonus(
 }
 
 // Helper function to check and award referral bonus when a referred user completes their first transaction
-async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: boolean; referrerId?: number }> {
+// Requirements: Transaction must be completed (not cancelled/disputed), different accounts AND different devices
+async function checkAndAwardReferralBonus(
+  userId: number, 
+  transactionId?: number,
+  transactionType?: string
+): Promise<{ awarded: boolean; referrerId?: number; reason?: string }> {
   try {
+    // If a transaction ID is provided, verify it's a completed transaction (not cancelled/disputed)
+    if (transactionId) {
+      const [transaction] = await db
+        .select({ status: itemRequests.status })
+        .from(itemRequests)
+        .where(eq(itemRequests.id, transactionId))
+        .limit(1);
+      
+      if (!transaction) {
+        return { awarded: false, reason: "Transaction not found" };
+      }
+      
+      const invalidStatuses = ['CANCELLED', 'REJECTED', 'DISPUTED'];
+      
+      if (invalidStatuses.includes(transaction.status || '')) {
+        console.log(`🚫 Referral not awarded: Transaction ${transactionId} has invalid status ${transaction.status}`);
+        return { awarded: false, reason: `Transaction ${transaction.status} - not eligible for referral bonus` };
+      }
+      
+      // Type-specific status validation:
+      // - SWAP and GIFT complete at acceptance (no return phase)
+      // - BORROW, LEND, RENT require COMPLETED status (after return)
+      const immediateCompletionTypes = ['SWAP', 'GIFT'];
+      const requiresReturnTypes = ['BORROW', 'LEND', 'RENT'];
+      
+      if (transactionType && immediateCompletionTypes.includes(transactionType)) {
+        // For swaps and gifts, ACCEPTED is valid completion
+        if (!['ACCEPTED', 'COMPLETED'].includes(transaction.status || '')) {
+          console.log(`🚫 Referral not awarded: ${transactionType} transaction ${transactionId} not yet accepted/completed (status: ${transaction.status})`);
+          return { awarded: false, reason: "Transaction not yet completed" };
+        }
+      } else if (transactionType && requiresReturnTypes.includes(transactionType)) {
+        // For borrows, lends, and rentals, require COMPLETED status (after return)
+        if (transaction.status !== 'COMPLETED') {
+          console.log(`🚫 Referral not awarded: ${transactionType} transaction ${transactionId} not yet completed (status: ${transaction.status})`);
+          return { awarded: false, reason: "Transaction not yet completed - item must be returned" };
+        }
+      } else {
+        // Fallback: require COMPLETED for unknown types
+        if (transaction.status !== 'COMPLETED') {
+          console.log(`🚫 Referral not awarded: Transaction ${transactionId} not yet completed (status: ${transaction.status})`);
+          return { awarded: false, reason: "Transaction not yet completed" };
+        }
+      }
+    }
+
     // Find a referral record for this user that hasn't been rewarded yet
     const [referral] = await db
       .select()
@@ -131,7 +182,29 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
       .limit(1);
 
     if (!referral || !referral.referrerId) {
-      return { awarded: false };
+      return { awarded: false, reason: "No pending referral found" };
+    }
+
+    // Security check: Ensure referred user and referrer are different accounts
+    if (referral.referrerId === userId) {
+      console.log(`🚫 Referral fraud detected: User ${userId} tried to self-refer`);
+      return { awarded: false, reason: "Self-referral not allowed" };
+    }
+
+    // Security check: Different devices required
+    // Use the CURRENT device fingerprint from users table (updated on each login) for accurate comparison
+    const [referrer] = await db
+      .select({ deviceFingerprint: users.deviceFingerprint })
+      .from(users)
+      .where(eq(users.id, referral.referrerId))
+      .limit(1);
+    
+    const referrerFingerprint = referrer?.deviceFingerprint || referral.referrerDeviceFingerprint;
+    const referredFingerprint = referral.referredDeviceFingerprint;
+    
+    if (referrerFingerprint && referredFingerprint && referrerFingerprint === referredFingerprint) {
+      console.log(`🚫 Referral fraud detected: Same device fingerprint for referrer (${referral.referrerId}) and referred user (${userId})`);
+      return { awarded: false, reason: "Same device detected - referral bonus requires different devices" };
     }
 
     // Award 10 ShareCoins to the referrer
@@ -140,7 +213,7 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
     await db.insert(shareCoinsTransactions).values({
       userId: referral.referrerId,
       amount: rewardAmount.toString(),
-      description: "Referral bonus: Friend completed their first transaction",
+      description: `Referral bonus: Friend completed their first ${transactionType || 'transaction'}`,
       transactionType: "EARNED",
     });
 
@@ -151,21 +224,24 @@ async function checkAndAwardReferralBonus(userId: number): Promise<{ awarded: bo
       })
       .where(eq(users.id, referral.referrerId));
 
-    // Mark the referral as completed and rewarded
+    // Mark the referral as completed and rewarded with transaction details
     await db
       .update(referrals)
       .set({
         completedFirstTransaction: true,
         isRewardClaimed: true,
+        firstTransactionId: transactionId || null,
+        firstTransactionType: transactionType || null,
+        rewardedAt: new Date(),
       })
       .where(eq(referrals.id, referral.id));
 
-    console.log(`🎉 Referral bonus: Awarded ${rewardAmount} ShareCoins to user ${referral.referrerId} for referring user ${userId}`);
+    console.log(`🎉 Referral bonus: Awarded ${rewardAmount} ShareCoins to user ${referral.referrerId} for referring user ${userId} (${transactionType})`);
 
     return { awarded: true, referrerId: referral.referrerId };
   } catch (error) {
     console.error("Error checking/awarding referral bonus:", error);
-    return { awarded: false };
+    return { awarded: false, reason: "Internal error" };
   }
 }
 
@@ -3052,8 +3128,8 @@ Respond with ONLY the category name, nothing else.`
           }
 
           // Check and award referral bonus for both users (first transaction completion)
-          await checkAndAwardReferralBonus(req.user.id);
-          await checkAndAwardReferralBonus(request.item_requests.requesterId);
+          await checkAndAwardReferralBonus(req.user.id, requestId, 'SWAP');
+          await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, 'SWAP');
         } else {
           console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
         }
@@ -3091,8 +3167,8 @@ Respond with ONLY the category name, nothing else.`
         }
 
         // Check and award referral bonus for both users (first transaction completion)
-        await checkAndAwardReferralBonus(req.user.id);
-        await checkAndAwardReferralBonus(request.item_requests.requesterId);
+        await checkAndAwardReferralBonus(req.user.id, requestId, 'GIFT');
+        await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, 'GIFT');
       } catch (error) {
         console.error("Error processing gift reward:", error);
       }
@@ -4140,8 +4216,8 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Check and award referral bonus for both users (first transaction completion)
-      await checkAndAwardReferralBonus(request.item_requests.requesterId);
-      await checkAndAwardReferralBonus(request.items.ownerId!);
+      await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, 'BORROW');
+      await checkAndAwardReferralBonus(request.items.ownerId!, requestId, 'LEND');
 
       res.json({
         success: true,
@@ -5348,8 +5424,8 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Check and award referral bonus for both users (first transaction completion)
-      await checkAndAwardReferralBonus(renterId);
-      if (ownerId) await checkAndAwardReferralBonus(ownerId);
+      await checkAndAwardReferralBonus(renterId, requestId, 'RENT');
+      if (ownerId) await checkAndAwardReferralBonus(ownerId, requestId, 'RENT');
 
       res.json({
         success: true,
@@ -5431,8 +5507,8 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId));
 
       // Check and award referral bonus for both users (first transaction completion)
-      await checkAndAwardReferralBonus(borrowerId);
-      if (ownerId) await checkAndAwardReferralBonus(ownerId);
+      await checkAndAwardReferralBonus(borrowerId, requestId, 'BORROW');
+      if (ownerId) await checkAndAwardReferralBonus(ownerId, requestId, 'LEND');
 
       res.json({
         success: true,

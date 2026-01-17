@@ -1,11 +1,11 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { Lock, Mail, RotateCcw, AlertCircle, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { Lock, Mail, RotateCcw, AlertCircle, Eye, EyeOff, Users } from "lucide-react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,15 +16,52 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
+// Generate a simple device fingerprint for anti-fraud
+function generateDeviceFingerprint(): string {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.textBaseline = "top";
+    ctx.font = "14px Arial";
+    ctx.fillText("ShareSwap", 2, 2);
+  }
+  const canvasData = canvas.toDataURL();
+  const screen = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const language = navigator.language;
+  const platform = navigator.platform;
+  const fingerprint = `${canvasData}-${screen}-${timezone}-${language}-${platform}`;
+  // Create a simple hash
+  let hash = 0;
+  for (let i = 0; i < fingerprint.length; i++) {
+    const char = fingerprint.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(36);
+}
+
 export default function AuthPage() {
   const { user } = useAuth();
+  const searchString = useSearch();
   const [showEmailAuth, setShowEmailAuth] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [showReactivate, setShowReactivate] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
+
+  // Extract referral code from URL and pre-fill
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const ref = params.get("ref");
+    if (ref) {
+      setReferralCode(ref);
+      setIsLogin(false); // Switch to signup mode when coming from referral
+    }
+  }, [searchString]);
 
   // Fetch platform statistics
   const { data: stats, isLoading: statsLoading } = useQuery<{
@@ -66,7 +103,7 @@ export default function AuthPage() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string }) => {
+    mutationFn: async (credentials: { username: string; password: string; deviceFingerprint?: string }) => {
       const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,7 +135,7 @@ export default function AuthPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string }) => {
+    mutationFn: async (credentials: { username: string; password: string; referralCode?: string; deviceFingerprint?: string }) => {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +147,13 @@ export default function AuthPage() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.referralApplied) {
+        toast({
+          title: "Welcome to ShareSwap!",
+          description: "Referral code applied! Complete a transaction to earn rewards for your friend.",
+        });
+      }
       window.location.href = "/";
     },
     onError: (error: Error) => {
@@ -125,9 +168,16 @@ export default function AuthPage() {
   const handleEmailAuth = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLogin) {
-      loginMutation.mutate({ username: email, password });
+      const deviceFingerprint = generateDeviceFingerprint();
+      loginMutation.mutate({ username: email, password, deviceFingerprint });
     } else {
-      registerMutation.mutate({ username: email, password });
+      const deviceFingerprint = generateDeviceFingerprint();
+      registerMutation.mutate({ 
+        username: email, 
+        password, 
+        referralCode: referralCode.trim() || undefined,
+        deviceFingerprint 
+      });
     }
   };
 
@@ -149,7 +199,7 @@ export default function AuthPage() {
           <CardContent className="pt-6">
             <div className="space-y-3">
               <h2 className="text-2xl font-semibold text-center mb-1">
-                Sign in and start sharing resources
+                Sign in and discover a world of shared resources
               </h2>
 
               <Button
@@ -250,10 +300,35 @@ export default function AuthPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="referralCode" className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  Referral Code (optional)
+                </Label>
+                <Input
+                  id="referralCode"
+                  type="text"
+                  placeholder="Enter friend's referral code"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value)}
+                  className="uppercase"
+                />
+                {referralCode && (
+                  <p className="text-xs text-green-600">
+                    Your friend will earn 10 ShareCoins when you complete your first transaction!
+                  </p>
+                )}
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full"
@@ -267,7 +342,8 @@ export default function AuthPage() {
             </Button>
             {!isLogin && (
               <p className="text-xs text-gray-500 text-center">
-                You can browse right away. Verification is only required for borrowing and renting.
+                You can browse right away. Verification is only required for
+                borrowing and renting.
               </p>
             )}
             <div className="text-center">

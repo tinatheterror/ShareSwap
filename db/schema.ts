@@ -46,6 +46,7 @@ export const users = pgTable("users", {
   paymentMethodExpMonth: integer("payment_method_exp_month"),
   paymentMethodExpYear: integer("payment_method_exp_year"),
   paymentMethodAddedAt: timestamp("payment_method_added_at"),
+  deviceFingerprint: text("device_fingerprint"), // For referral fraud detection
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -413,6 +414,11 @@ export const referrals = pgTable("referrals", {
   rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }).default("10.00"),
   isRewardClaimed: boolean("is_reward_claimed").default(false),
   completedFirstTransaction: boolean("completed_first_transaction").default(false),
+  referrerDeviceFingerprint: text("referrer_device_fingerprint"), // Device fingerprint of the referrer at their last login
+  referredDeviceFingerprint: text("referred_device_fingerprint"), // Device fingerprint of referred user at signup
+  firstTransactionId: integer("first_transaction_id"), // ID of the qualifying transaction
+  firstTransactionType: text("first_transaction_type"), // 'BORROW', 'RENT', 'SWAP', 'GIFT'
+  rewardedAt: timestamp("rewarded_at"), // When the bonus was awarded
   createdAt: timestamp("created_at").defaultNow(),
 });
 

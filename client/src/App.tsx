@@ -1,11 +1,19 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect, useSearch } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "./hooks/use-auth";
 import { ChatWidget } from "@/components/chat-widget";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
+
+// Redirect component for /register and /join routes to preserve referral code
+function RegisterRedirect() {
+  const searchString = useSearch();
+  const params = new URLSearchParams(searchString);
+  const ref = params.get("ref");
+  return <Redirect to={ref ? `/auth?ref=${ref}` : "/auth"} />;
+}
 import HomePage from "@/pages/home-page";
 import VerificationPage from "@/pages/verification-page";
 import ShareOptionsPage from "@/pages/share-options";
@@ -41,6 +49,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <Route path="/register" component={RegisterRedirect} />
+      <Route path="/join" component={RegisterRedirect} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/verification" component={VerificationPage} />
       <ProtectedRoute path="/share-options" component={ShareOptionsPage} />

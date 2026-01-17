@@ -9,8 +9,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   User,
   Mail,
@@ -96,6 +105,13 @@ export default function ProfilePage() {
     phone: "",
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  
+  // Crop state
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
 
   const [, navigate] = useLocation();
 
@@ -163,7 +179,7 @@ export default function ProfilePage() {
       
       const csrfToken = document.cookie
         .split("; ")
-        .find((row) => row.startsWith("csrf_token="))
+        .find((row) => row.startsWith("x-csrf-token="))
         ?.split("=")[1];
       
       const res = await fetch("/api/users/profile-photo", {
@@ -210,6 +226,63 @@ export default function ProfilePage() {
     },
   });
 
+  // Initialize crop when image loads
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const cropInit = centerCrop(
+      makeAspectCrop({ unit: '%', width: 80 }, 1, width, height),
+      width,
+      height
+    );
+    setCrop(cropInit);
+  }, []);
+
+  // Convert cropped image to file
+  const getCroppedImage = useCallback(async (): Promise<File | null> => {
+    if (!imgRef.current || !crop) return null;
+    
+    const image = imgRef.current;
+    const canvas = document.createElement('canvas');
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+    
+    const pixelCrop = {
+      x: (crop.x / 100) * image.width * scaleX,
+      y: (crop.y / 100) * image.height * scaleY,
+      width: (crop.width / 100) * image.width * scaleX,
+      height: (crop.height / 100) * image.height * scaleY,
+    };
+    
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return null;
+    
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+    
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], originalFile?.name || 'profile.jpg', { type: 'image/jpeg' });
+          resolve(file);
+        } else {
+          resolve(null);
+        }
+      }, 'image/jpeg', 0.9);
+    });
+  }, [crop, originalFile]);
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -221,8 +294,33 @@ export default function ProfilePage() {
         });
         return;
       }
-      profilePhotoMutation.mutate(file);
+      // Show crop dialog instead of uploading directly
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageSrc(reader.result as string);
+        setOriginalFile(file);
+        setShowCropDialog(true);
+      };
+      reader.readAsDataURL(file);
     }
+    // Reset file input
+    if (e.target) e.target.value = '';
+  };
+
+  const handleCropConfirm = async () => {
+    const croppedFile = await getCroppedImage();
+    if (croppedFile) {
+      profilePhotoMutation.mutate(croppedFile);
+    }
+    setShowCropDialog(false);
+    setImageSrc(null);
+    setCrop(undefined);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropDialog(false);
+    setImageSrc(null);
+    setCrop(undefined);
   };
 
   const handleEditProfile = () => {
@@ -1159,6 +1257,47 @@ export default function ProfilePage() {
             }}
           />
         )}
+
+        {/* Photo Crop Dialog */}
+        <Dialog open={showCropDialog} onOpenChange={(open) => {
+          if (!open) handleCropCancel();
+          setShowCropDialog(open);
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Crop Your Photo</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center py-4">
+              {imageSrc && (
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  aspect={1}
+                  circularCrop
+                >
+                  <img
+                    ref={imgRef}
+                    src={imageSrc}
+                    alt="Crop preview"
+                    onLoad={onImageLoad}
+                    style={{ maxHeight: '400px', maxWidth: '100%' }}
+                  />
+                </ReactCrop>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={handleCropCancel}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleCropConfirm} 
+                disabled={profilePhotoMutation.isPending}
+              >
+                {profilePhotoMutation.isPending ? "Uploading..." : "Upload Photo"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

@@ -33,7 +33,7 @@ export default function SettingsPage() {
       // Get CSRF token from cookie
       const csrfToken = document.cookie
         .split("; ")
-        .find((row) => row.startsWith("csrf_token="))
+        .find((row) => row.startsWith("x-csrf-token="))
         ?.split("=")[1];
       
       const res = await fetch("/api/users/profile-photo", {

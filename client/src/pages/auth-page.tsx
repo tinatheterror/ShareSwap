@@ -73,7 +73,7 @@ export default function AuthPage() {
       });
       if (!response.ok) {
         const error = await response.json();
-        if (response.status === 403 && error.accountStatus === 'deactivated') {
+        if (response.status === 403 && error.accountStatus === "deactivated") {
           throw { ...error, isDeactivated: true };
         }
         throw new Error(error.message || "Login failed");
@@ -148,7 +148,7 @@ export default function AuthPage() {
           <CardContent className="pt-6">
             <div className="space-y-3">
               <h2 className="text-2xl font-semibold text-center mb-1">
-                Sign in and spread a little neighbourly magic
+                Sign in and start sharing resources
               </h2>
 
               <Button
@@ -261,7 +261,7 @@ export default function AuthPage() {
                 className="text-sm text-primary hover:underline"
               >
                 {isLogin
-                  ? "Don't have an account? Sign up"
+                  ? "New here? Create an account"
                   : "Already have an account? Sign in"}
               </button>
             </div>
@@ -279,12 +279,16 @@ export default function AuthPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-gray-600">
-              Your account has been deactivated. Your profile and listings are currently hidden from other users.
+              Your account has been deactivated. Your profile and listings are
+              currently hidden from other users.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800 font-medium mb-1">Want to come back?</p>
+              <p className="text-sm text-blue-800 font-medium mb-1">
+                Want to come back?
+              </p>
               <p className="text-sm text-blue-700">
-                Click the button below to instantly reactivate your account and restore your profile.
+                Click the button below to instantly reactivate your account and
+                restore your profile.
               </p>
             </div>
             <div className="flex gap-3">
@@ -301,11 +305,15 @@ export default function AuthPage() {
               </Button>
               <Button
                 className="flex-1"
-                onClick={() => reactivateMutation.mutate({ username: email, password })}
+                onClick={() =>
+                  reactivateMutation.mutate({ username: email, password })
+                }
                 disabled={reactivateMutation.isPending}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                {reactivateMutation.isPending ? "Reactivating..." : "Reactivate Account"}
+                {reactivateMutation.isPending
+                  ? "Reactivating..."
+                  : "Reactivate Account"}
               </Button>
             </div>
           </div>

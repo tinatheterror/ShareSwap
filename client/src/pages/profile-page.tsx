@@ -9,7 +9,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   User,
   Mail,
@@ -94,6 +95,7 @@ export default function ProfilePage() {
     location: "",
     phone: "",
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [, navigate] = useLocation();
 
@@ -153,6 +155,75 @@ export default function ProfilePage() {
       });
     },
   });
+
+  const profilePhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("profilePhoto", file);
+      
+      const csrfToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("csrf_token="))
+        ?.split("=")[1];
+      
+      const res = await fetch("/api/users/profile-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+        headers: csrfToken ? { "x-csrf-token": csrfToken } : {},
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to upload photo");
+      }
+      
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
+      
+      if (data.shareCoinsAwarded > 0) {
+        toast({
+          title: "Photo Approved!",
+          description: "You earned 1 ShareCoin for adding a profile photo!",
+        });
+      } else if (data.validationStatus === "rejected") {
+        toast({
+          title: "Photo Saved",
+          description: data.validationReason || "Try another photo to earn 1 ShareCoin.",
+        });
+      } else {
+        toast({
+          title: "Photo Updated!",
+          description: "Your profile photo has been updated.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload profile photo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image under 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      profilePhotoMutation.mutate(file);
+    }
+  };
 
   const handleEditProfile = () => {
     if (profile) {
@@ -469,11 +540,14 @@ export default function ProfilePage() {
               <CardHeader className="bg-[#D4F7F1]">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                      {profile?.fullName
-                        ? profile.fullName.charAt(0).toUpperCase()
-                        : user.username.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+                      <AvatarImage src={(user as any)?.profilePhoto} alt={user.username} />
+                      <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
+                        {profile?.fullName
+                          ? profile.fullName.charAt(0).toUpperCase()
+                          : user.username.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <CardTitle className="text-2xl text-slate-800">
@@ -516,6 +590,49 @@ export default function ProfilePage() {
               <CardContent className="p-6">
                 {isEditing ? (
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Profile Photo
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <Avatar className="h-16 w-16 border-2 border-gray-200">
+                            <AvatarImage src={(user as any)?.profilePhoto} alt={user.username} />
+                            <AvatarFallback className="bg-teal-100 text-teal-600 text-xl font-medium">
+                              {user.username?.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute -bottom-1 -right-1 p-1.5 bg-teal-500 rounded-full text-white hover:bg-teal-600 transition-colors shadow-md"
+                            disabled={profilePhotoMutation.isPending}
+                          >
+                            <Camera className="h-3.5 w-3.5" />
+                          </button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                          />
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {profilePhotoMutation.isPending 
+                            ? "Uploading..." 
+                            : (user as any)?.profilePhoto 
+                              ? "Click camera to change" 
+                              : "Add a photo"}
+                          {!(user as any)?.hasUploadedProfilePhoto && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
+                              <Coins className="h-3 w-3" />
+                              <span>Earn 1 ShareCoin</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">
                         Full Name

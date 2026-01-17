@@ -265,6 +265,11 @@ export default function AuthPage() {
                   ? "Sign In"
                   : "Create Account"}
             </Button>
+            {!isLogin && (
+              <p className="text-xs text-gray-500 text-center">
+                You can browse right away. Verification is only required for borrowing and renting.
+              </p>
+            )}
             <div className="text-center">
               <button
                 type="button"

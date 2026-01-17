@@ -1,0 +1,147 @@
+This is NOT a frontend issue anymore
+
+So typing issues aside — now we’re in backend Stripe logic territory.
+
+THE 4 MOST COMMON CAUSES (ONE OF THESE IS 100% YOUR ISSUE)
+1️⃣ You are using a TEST publishable key with a LIVE secret key (or vice versa)
+
+Stripe is EXTREMELY petty about this.
+
+Check this immediately:
+
+const isProduction = process.env.REPLIT_DEPLOYMENT === '1';
+
+
+If true:
+
+You must use LIVE keys
+If false:
+
+You must use TEST keys
+
+👉 Replit’s Stripe connector provides both, but your code chooses the environment.
+
+If your frontend uses pk_test_ but backend uses sk_live_ → 💥 session creation fails.
+
+This is the #1 cause when it works locally but not deployed.
+
+2️⃣ Your success_url or cancel_url is invalid
+
+Stripe will FAIL HARD if:
+
+URL is missing protocol
+
+Uses localhost in production
+
+Uses a relative path
+
+❌ BAD:
+
+success_url: "/success"
+
+
+✅ GOOD:
+
+success_url: "https://share-swap-mvp.replit.app/payment-success"
+cancel_url: "https://share-swap-mvp.replit.app/payment-cancelled"
+
+
+This alone causes silent 500s.
+
+3️⃣ You are passing amounts incorrectly
+
+Stripe requires:
+
+Integers
+
+In the smallest currency unit
+
+❌ BAD:
+
+unit_amount: 12.99
+
+
+❌ BAD:
+
+unit_amount: "1299"
+
+
+✅ GOOD:
+
+unit_amount: Math.round(12.99 * 100)
+
+
+If even ONE line item breaks this → entire session fails.
+
+4️⃣ You’re missing required Checkout fields
+
+At minimum, this must exist:
+
+stripe.checkout.sessions.create({
+  mode: "payment",
+  payment_method_types: ["card"],
+  line_items: [...],
+  success_url: "...",
+  cancel_url: "..."
+});
+
+
+If you’re using setup or payment_intent_data incorrectly → fail.
+
+HOW TO FIND THE EXACT FAILURE (DO THIS NOW)
+
+In your checkout route, replace this:
+
+catch (err) {
+  res.status(500).json({ error: "Failed to create checkout session" });
+}
+
+
+with this:
+
+catch (err: any) {
+  console.error("Stripe session error:", err);
+  res.status(500).json({
+    error: "Failed to create checkout session",
+    details: err.message || err,
+  });
+}
+
+
+Then reload and check Replit console logs.
+
+Stripe errors are very specific, like:
+
+Invalid success_url
+
+You cannot use test keys in live mode
+
+unit_amount must be an integer
+
+Stripe never lies. You just need to let it speak.
+
+BRUTALLY HONEST DIAGNOSIS (BASED ON YOUR CONTEXT)
+
+Given:
+
+Works locally
+
+Breaks deployed
+
+You’re using Replit Stripe connector
+
+You just fixed publishable key routing
+
+💥 90% chance your issue is one of these two:
+
+Key environment mismatch
+
+Relative success/cancel URLs
+
+These break only after deploy — classic.
+
+NEXT STEP (DO NOT SKIP)
+
+Paste only this from your checkout route (redact nothing but secrets):
+
+stripe.checkout.sessions.create({ ... })

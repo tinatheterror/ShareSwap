@@ -10,21 +10,13 @@ async function getCredentials() {
       ? "depl " + process.env.WEB_REPL_RENEWAL
       : null;
 
-  console.log("[Stripe] Getting credentials...");
-  console.log("[Stripe] REPLIT_DEPLOYMENT:", process.env.REPLIT_DEPLOYMENT);
-  console.log("[Stripe] Has REPL_IDENTITY:", !!process.env.REPL_IDENTITY);
-  console.log("[Stripe] Has WEB_REPL_RENEWAL:", !!process.env.WEB_REPL_RENEWAL);
-
   if (!xReplitToken) {
     throw new Error("X_REPLIT_TOKEN not found for repl/depl");
   }
 
   const connectorName = "stripe";
-  const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
   // Always use development (test) keys for now - switch to production when live keys are configured
   const targetEnvironment = "development";
-  console.log("[Stripe] isProduction:", isProduction);
-  console.log("[Stripe] Using environment:", targetEnvironment, "(using test keys for now)");
 
   const url = new URL(`https://${hostname}/api/v2/connection`);
   url.searchParams.set("include_secrets", "true");
@@ -39,9 +31,6 @@ async function getCredentials() {
   });
 
   const data = await response.json();
-  console.log("[Stripe] Connector response status:", response.status);
-  console.log("[Stripe] Connector has items:", !!data.items?.length);
-
   connectionSettings = data.items?.[0];
 
   if (
@@ -49,15 +38,8 @@ async function getCredentials() {
     !connectionSettings.settings.publishable ||
     !connectionSettings.settings.secret
   ) {
-    console.error("[Stripe] Connection settings missing or incomplete");
-    console.error("[Stripe] Has connectionSettings:", !!connectionSettings);
-    console.error("[Stripe] Has publishable:", !!connectionSettings?.settings?.publishable);
-    console.error("[Stripe] Has secret:", !!connectionSettings?.settings?.secret);
     throw new Error(`Stripe ${targetEnvironment} connection not found`);
   }
-
-  const keyType = connectionSettings.settings.publishable.startsWith('pk_live_') ? 'LIVE' : 'TEST';
-  console.log("[Stripe] Key type:", keyType);
 
   return {
     publishableKey: connectionSettings.settings.publishable,

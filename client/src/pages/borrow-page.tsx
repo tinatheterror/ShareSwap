@@ -104,26 +104,46 @@ export default function BorrowPage() {
             lon: longitude,
           });
 
-          // Get postal code from coordinates using OpenStreetMap Nominatim
+          // Get postal code from coordinates - try BigDataCloud first, then Nominatim
+          let postcode: string | null = null;
+          
+          // Try BigDataCloud first (better postal code coverage, no API key needed)
           try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
-              {
-                headers: {
-                  "User-Agent": "ShareSwap/1.0",
-                },
-              },
+            const bdcResponse = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
             );
-            if (response.ok) {
-              const data = await response.json();
-              const postcode =
-                data.address?.postcode || data.address?.postal_code;
-              if (postcode) {
-                setUserPostalCode(postcode);
-              }
+            if (bdcResponse.ok) {
+              const bdcData = await bdcResponse.json();
+              postcode = bdcData.postcode || null;
             }
-          } catch (error) {
-            console.error("Error getting postal code:", error);
+          } catch (e) {
+            console.log("BigDataCloud failed, trying Nominatim...");
+          }
+          
+          // Fallback to OpenStreetMap Nominatim if BigDataCloud didn't return postal code
+          if (!postcode) {
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+                {
+                  headers: {
+                    "User-Agent": "ShareSwap/1.0",
+                  },
+                },
+              );
+              if (response.ok) {
+                const data = await response.json();
+                postcode = data.address?.postcode || data.address?.postal_code || null;
+              }
+            } catch (error) {
+              console.error("Error getting postal code:", error);
+            }
+          }
+          
+          if (postcode) {
+            setUserPostalCode(postcode);
+          } else {
+            console.log("Could not determine postal code from coordinates");
           }
         },
         (error) => {

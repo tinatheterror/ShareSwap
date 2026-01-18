@@ -516,8 +516,32 @@ export default function LendPage() {
   };
 
   const getCurrentLocation = async () => {
+    setIsLoadingLocation(true);
+    
+    // Try IP-based geolocation first (works without permissions)
+    try {
+      const ipResponse = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client');
+      if (ipResponse.ok) {
+        const ipData = await ipResponse.json();
+        if (ipData.postcode && ipData.latitude && ipData.longitude) {
+          form.setValue("latitude", ipData.latitude);
+          form.setValue("longitude", ipData.longitude);
+          form.setValue("postalCode", ipData.postcode);
+          const locality = ipData.locality || ipData.city || "";
+          toast({
+            title: "Location Updated",
+            description: `Your postal code ${ipData.postcode}${locality ? ` (${locality})` : ""} has been filled.`,
+          });
+          setIsLoadingLocation(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.log("IP-based geolocation failed, trying browser geolocation...");
+    }
+    
+    // Fallback to browser geolocation
     if ("geolocation" in navigator) {
-      setIsLoadingLocation(true);
       try {
         const position = await new Promise<GeolocationPosition>(
           (resolve, reject) => {
@@ -612,6 +636,7 @@ export default function LendPage() {
         setIsLoadingLocation(false);
       }
     } else {
+      setIsLoadingLocation(false);
       toast({
         title: "Location Not Supported",
         description: "Your browser doesn't support location services. Please enter postal code manually.",

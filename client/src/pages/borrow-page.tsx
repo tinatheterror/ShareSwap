@@ -146,15 +146,29 @@ export default function BorrowPage() {
             console.log("Could not determine postal code from coordinates");
           }
         },
-        (error) => {
+        (error: GeolocationPositionError) => {
           console.error("Error getting location:", error);
+          let errorMessage = "Could not get your location. Some features may be limited.";
+          
+          if (error.code === 1) {
+            errorMessage = "Location permission denied. Enable location in browser settings for nearby items.";
+          } else if (error.code === 2) {
+            errorMessage = "Location unavailable. Check your device's location settings.";
+          } else if (error.code === 3) {
+            errorMessage = "Location request timed out. Please refresh to try again.";
+          }
+          
           toast({
             title: "Location Error",
-            description:
-              "Could not get your location. Some features may be limited.",
+            description: errorMessage,
             variant: "destructive",
           });
         },
+        {
+          enableHighAccuracy: false,
+          timeout: 30000,
+          maximumAge: 600000,
+        }
       );
     }
   }, []);

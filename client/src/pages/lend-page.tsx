@@ -522,9 +522,9 @@ export default function LendPage() {
         const position = await new Promise<GeolocationPosition>(
           (resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 10000,
-              maximumAge: 300000,
+              enableHighAccuracy: false,
+              timeout: 30000,
+              maximumAge: 600000,
             });
           },
         );
@@ -591,17 +591,32 @@ export default function LendPage() {
               "We found your location but need your postal code for search.",
           });
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error getting location:", error);
+        let errorMessage = "Could not get your location. Please enter postal code manually.";
+        
+        if (error?.code === 1) {
+          errorMessage = "Location permission denied. Please enable location access in your browser settings or enter postal code manually.";
+        } else if (error?.code === 2) {
+          errorMessage = "Location unavailable. Please check your device's location settings or enter postal code manually.";
+        } else if (error?.code === 3) {
+          errorMessage = "Location request timed out. Please try again or enter postal code manually.";
+        }
+        
         toast({
           title: "Location Error",
-          description:
-            "Could not get your location. Please enter postal code manually.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
         setIsLoadingLocation(false);
       }
+    } else {
+      toast({
+        title: "Location Not Supported",
+        description: "Your browser doesn't support location services. Please enter postal code manually.",
+        variant: "destructive",
+      });
     }
   };
 

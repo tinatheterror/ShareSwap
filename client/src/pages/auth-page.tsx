@@ -222,8 +222,8 @@ export default function AuthPage() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-primary mt-4 pt-4 border-t font-medium">
-                <Lock className="h-4 w-4" />
+              <div className="flex items-start justify-center gap-2 text-sm text-primary mt-4 pt-4 border-t font-medium">
+                <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>
             </div>

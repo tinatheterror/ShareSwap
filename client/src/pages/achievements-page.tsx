@@ -257,8 +257,8 @@ export default function AchievementsPage() {
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-            <Trophy className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold mb-2 flex items-start justify-center gap-2">
+            <Trophy className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
             Your Community Journey
           </h1>
           <p className="text-muted-foreground">

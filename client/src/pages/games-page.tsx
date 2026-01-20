@@ -118,8 +118,8 @@ export default function GamesPage() {
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-            <Gamepad2 className="h-8 w-8 text-primary" />
+          <h1 className="text-3xl font-bold mb-2 flex items-start justify-center gap-2">
+            <Gamepad2 className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
             Play Games & Earn ShareCoins
           </h1>
           <p className="text-muted-foreground">

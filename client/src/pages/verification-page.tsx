@@ -337,26 +337,26 @@ export default function VerificationPage() {
             )}
 
             <Card className="bg-gradient-to-br from-teal-50 to-white border-teal-100">
-              <CardContent className="p-6">
-                <h3 className="font-semibold text-teal-900 mb-4">
+              <CardContent className="p-4 sm:p-6">
+                <h3 className="font-semibold text-teal-900 mb-4 text-center sm:text-left">
                   Why Verify Your Identity?
                 </h3>
-                <div className="grid grid-cols-3 gap-4 text-xs text-teal-800">
-                  <div className="flex items-start gap-3">
-                    <BadgeCheck className="h-12 w-12 flex-shrink-0 text-teal-600" />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-teal-800">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">
+                    <BadgeCheck className="h-8 w-8 sm:h-12 sm:w-12 flex-shrink-0 text-teal-600" />
                     <span>
                       A verified badge builds instant trust with neighbors
                     </span>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Star className="h-12 w-12 flex-shrink-0 text-teal-600" />
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">
+                    <Star className="h-8 w-8 sm:h-12 sm:w-12 flex-shrink-0 text-teal-600" />
                     <span>
                       Improve your trust score and become a preferred choice for
                       sharing
                     </span>
                   </div>
-                  <div className="flex items-start gap-3">
-                    <Eye className="h-12 w-12 flex-shrink-0 text-teal-600" />
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">
+                    <Eye className="h-8 w-8 sm:h-12 sm:w-12 flex-shrink-0 text-teal-600" />
                     <span>
                       Verified users are prioritized in urgent requests and
                       search results

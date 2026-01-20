@@ -289,12 +289,9 @@ export function Navbar() {
           <div className="flex lg:hidden items-center gap-2">
             {user && (
               <Link href="/wallet">
-                <Button variant="outline" size="sm" className="flex items-center gap-1.5 px-2 py-1 h-auto border-primary/30">
-                  <Coins className="h-4 w-4 text-primary" />
-                  <div className="flex flex-col items-start leading-tight">
-                    <span className="text-[10px] text-muted-foreground">Total Balance</span>
-                    <span className="text-xs font-medium">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
-                  </div>
+                <Button variant="outline" size="sm" className="flex items-center gap-1 px-1.5 py-0.5 h-auto border-primary/30">
+                  <Coins className="h-3 w-3 text-primary flex-shrink-0" />
+                  <span className="text-[10px] font-medium whitespace-nowrap">{user?.shareCoins ? Number(user.shareCoins).toFixed(0) : "0"}</span>
                 </Button>
               </Link>
             )}

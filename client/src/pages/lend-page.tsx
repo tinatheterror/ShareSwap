@@ -795,6 +795,7 @@ export default function LendPage() {
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
           backgroundPosition: "center top",
+          borderBottomLeftRadius: "32px",
           borderBottomRightRadius: "32px",
           minHeight: "120px",
         }}

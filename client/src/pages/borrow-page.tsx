@@ -283,6 +283,7 @@ export default function BorrowPage() {
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
+          borderBottomLeftRadius: "32px",
           borderBottomRightRadius: "32px",
         }}
       >

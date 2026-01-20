@@ -518,30 +518,33 @@ export default function LendPage() {
   const getCurrentLocation = async () => {
     setIsLoadingLocation(true);
     
-    // Try IP-based geolocation first (works without permissions)
+    let latitude: number | null = null;
+    let longitude: number | null = null;
+    let postcode: string | null = null;
+    let locality: string | null = null;
+    let region: string | null = null;
+    
+    // Step 1: Try IP-based geolocation first (works without permissions)
     try {
       const ipResponse = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client');
       if (ipResponse.ok) {
         const ipData = await ipResponse.json();
-        if (ipData.postcode && ipData.latitude && ipData.longitude) {
-          form.setValue("latitude", ipData.latitude);
-          form.setValue("longitude", ipData.longitude);
-          form.setValue("postalCode", ipData.postcode);
-          const locality = ipData.locality || ipData.city || "";
-          toast({
-            title: "Location Updated",
-            description: `Your postal code ${ipData.postcode}${locality ? ` (${locality})` : ""} has been filled.`,
-          });
-          setIsLoadingLocation(false);
-          return;
+        console.log("IP geolocation response:", ipData);
+        
+        if (ipData.latitude && ipData.longitude) {
+          latitude = ipData.latitude;
+          longitude = ipData.longitude;
         }
+        postcode = ipData.postcode || null;
+        locality = ipData.locality || ipData.city || null;
+        region = ipData.principalSubdivision || null;
       }
     } catch (e) {
       console.log("IP-based geolocation failed, trying browser geolocation...");
     }
     
-    // Fallback to browser geolocation
-    if ("geolocation" in navigator) {
+    // Step 2: Try browser geolocation if IP didn't give coordinates
+    if (!latitude && !longitude && "geolocation" in navigator) {
       try {
         const position = await new Promise<GeolocationPosition>(
           (resolve, reject) => {
@@ -552,97 +555,80 @@ export default function LendPage() {
             });
           },
         );
-
-        const { latitude, longitude } = position.coords;
-        form.setValue("latitude", latitude);
-        form.setValue("longitude", longitude);
-
-        let postcode: string | null = null;
-        let locality: string | null = null;
-
-        // Try BigDataCloud first (better postal code coverage, no API key needed)
-        try {
-          const bdcResponse = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
-          );
-          if (bdcResponse.ok) {
-            const bdcData = await bdcResponse.json();
-            postcode = bdcData.postcode || null;
-            locality = bdcData.locality || bdcData.city || null;
-          }
-        } catch (e) {
-          console.log("BigDataCloud failed, trying Nominatim...");
-        }
-
-        // Fallback to OpenStreetMap Nominatim if BigDataCloud didn't return postal code
-        if (!postcode) {
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
-              {
-                headers: {
-                  "User-Agent": "ShareSwap/1.0",
-                },
-              },
-            );
-            if (response.ok) {
-              const data = await response.json();
-              postcode =
-                data.address?.postcode || data.address?.postal_code || null;
-              locality =
-                locality ||
-                data.address?.city ||
-                data.address?.town ||
-                data.address?.village ||
-                null;
-            }
-          } catch (e) {
-            console.log("Nominatim also failed");
-          }
-        }
-
-        if (postcode) {
-          form.setValue("postalCode", postcode);
-          const locationName = locality ? ` (${locality})` : "";
-          toast({
-            title: "Location Updated",
-            description: `Your postal code ${postcode}${locationName} has been filled.`,
-          });
-        } else {
-          toast({
-            title: "Postal Code Needed",
-            description:
-              "We found your location but need your postal code for search.",
-          });
-        }
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+        console.log("Browser geolocation:", latitude, longitude);
       } catch (error: any) {
-        console.error("Error getting location:", error);
-        let errorMessage = "Could not get your location. Please enter postal code manually.";
-        
-        if (error?.code === 1) {
-          errorMessage = "Location permission denied. Please enable location access in your browser settings or enter postal code manually.";
-        } else if (error?.code === 2) {
-          errorMessage = "Location unavailable. Please check your device's location settings or enter postal code manually.";
-        } else if (error?.code === 3) {
-          errorMessage = "Location request timed out. Please try again or enter postal code manually.";
-        }
-        
-        toast({
-          title: "Location Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingLocation(false);
+        console.log("Browser geolocation failed:", error?.code, error?.message);
       }
-    } else {
-      setIsLoadingLocation(false);
+    }
+    
+    // Step 3: If we have coordinates but no postal code, try reverse geocoding
+    if (latitude && longitude && !postcode) {
+      try {
+        const bdcResponse = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+        );
+        if (bdcResponse.ok) {
+          const bdcData = await bdcResponse.json();
+          console.log("Reverse geocode response:", bdcData);
+          postcode = bdcData.postcode || postcode;
+          locality = bdcData.locality || bdcData.city || locality;
+          region = bdcData.principalSubdivision || region;
+        }
+      } catch (e) {
+        console.log("Reverse geocoding failed");
+      }
+    }
+    
+    // Step 4: Determine success - coordinates OR city/region is enough
+    const hasCoordinates = latitude !== null && longitude !== null;
+    const hasLocation = hasCoordinates || locality || region;
+    
+    if (hasLocation) {
+      // Save coordinates if we have them
+      if (hasCoordinates) {
+        form.setValue("latitude", latitude!);
+        form.setValue("longitude", longitude!);
+      }
+      
+      // Save postal code if we have it (enhancement, not required)
+      if (postcode) {
+        form.setValue("postalCode", postcode);
+      }
+      
+      // Build success message
+      let locationDesc = "";
+      if (postcode && locality) {
+        locationDesc = `${postcode} (${locality})`;
+      } else if (postcode) {
+        locationDesc = postcode;
+      } else if (locality && region) {
+        locationDesc = `${locality}, ${region}`;
+      } else if (locality) {
+        locationDesc = locality;
+      } else if (region) {
+        locationDesc = region;
+      } else {
+        locationDesc = "your approximate area";
+      }
+      
       toast({
-        title: "Location Not Supported",
-        description: "Your browser doesn't support location services. Please enter postal code manually.",
+        title: "Location Found",
+        description: postcode 
+          ? `Location set to ${locationDesc}.`
+          : `We found ${locationDesc}. You can enter a postal code for more accuracy.`,
+      });
+    } else {
+      // Only show error if we truly have nothing
+      toast({
+        title: "Could Not Find Location",
+        description: "Please enter your postal code manually.",
         variant: "destructive",
       });
     }
+    
+    setIsLoadingLocation(false);
   };
 
   const queryClient = useQueryClient();

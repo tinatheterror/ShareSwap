@@ -202,8 +202,28 @@ export default function AuthPage() {
                 Sign in and discover a world of shared resources
               </h2>
 
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <Label htmlFor="main-referral" className="text-sm text-muted-foreground">Have a referral code?</Label>
+                </div>
+                <Input
+                  id="main-referral"
+                  type="text"
+                  placeholder="Enter referral code (optional)"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  className="h-10"
+                />
+              </div>
+
               <Button
-                onClick={() => (window.location.href = "/api/auth/google")}
+                onClick={() => {
+                  const url = referralCode.trim() 
+                    ? `/api/auth/google?ref=${encodeURIComponent(referralCode.trim())}`
+                    : "/api/auth/google";
+                  window.location.href = url;
+                }}
                 className="w-full bg-primary hover:bg-primary/90 h-11"
               >
                 Continue with Google

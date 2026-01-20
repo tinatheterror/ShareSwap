@@ -115,9 +115,9 @@ export function setupAuth(app: Express) {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
           callbackURL: googleCallbackURL,
-          passReqToCallback: false,
+          passReqToCallback: true,
         } as any,
-        async (accessToken, refreshToken, profile, done) => {
+        async (req: any, accessToken: any, refreshToken: any, profile: any, done: any) => {
           try {
             // Check if user exists with this Google ID
             const [existingUser] = await db
@@ -127,7 +127,30 @@ export function setupAuth(app: Express) {
               .limit(1);
 
             if (existingUser) {
+              // Clear pending referral code for existing users
+              if (req.session) {
+                delete req.session.pendingReferralCode;
+              }
               return done(null, existingUser);
+            }
+
+            // Get referral code from session
+            const referralCode = req.session?.pendingReferralCode as string | undefined;
+            let referrerId: number | null = null;
+            let referrerDeviceFingerprint: string | null = null;
+
+            if (referralCode) {
+              const [referrer] = await db
+                .select()
+                .from(users)
+                .where(eq(users.referralCode, referralCode))
+                .limit(1);
+              
+              if (referrer) {
+                referrerId = referrer.id;
+                referrerDeviceFingerprint = referrer.deviceFingerprint || null;
+                console.log(`[Google OAuth] Valid referral code ${referralCode} from user ${referrerId}`);
+              }
             }
 
             // Create new user from Google profile
@@ -156,8 +179,29 @@ export function setupAuth(app: Express) {
                 authProvider: 'google',
                 isVerified: true, // Google accounts are pre-verified
                 password: null,
+                referredBy: referrerId,
               })
               .returning();
+
+            // Create referral record if user was referred
+            if (referrerId && referralCode) {
+              await db.insert(referrals).values({
+                referrerId: referrerId,
+                referredUserId: newUser.id,
+                referralCode: referralCode,
+                rewardAmount: "10.00",
+                isRewardClaimed: false,
+                completedFirstTransaction: false,
+                referrerDeviceFingerprint: referrerDeviceFingerprint,
+                referredDeviceFingerprint: null,
+              });
+              console.log(`📣 [Google OAuth] Referral created: User ${newUser.id} was referred by user ${referrerId}`);
+            }
+
+            // Clear pending referral code
+            if (req.session) {
+              delete req.session.pendingReferralCode;
+            }
 
             return done(null, newUser);
           } catch (error) {
@@ -338,6 +382,14 @@ export function setupAuth(app: Express) {
     console.log("[Google OAuth] /api/auth/google hit");
     console.log("[Google OAuth] Client ID exists:", !!process.env.GOOGLE_CLIENT_ID);
     console.log("[Google OAuth] Client Secret exists:", !!process.env.GOOGLE_CLIENT_SECRET);
+    
+    // Store referral code in session for use after OAuth callback
+    const refCode = req.query.ref as string;
+    if (refCode) {
+      (req.session as any).pendingReferralCode = refCode;
+      console.log("[Google OAuth] Referral code stored in session:", refCode);
+    }
+    
     passport.authenticate("google", { 
       scope: ["profile", "email"]
     })(req, res, next);

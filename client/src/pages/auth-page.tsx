@@ -340,25 +340,12 @@ export default function AuthPage() {
                 </button>
               </div>
             </div>
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="referralCode" className="flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  Referral Code (optional)
-                </Label>
-                <Input
-                  id="referralCode"
-                  type="text"
-                  placeholder="Enter friend's referral code"
-                  value={referralCode}
-                  onChange={(e) => setReferralCode(e.target.value)}
-                  className="uppercase"
-                />
-                {referralCode && (
-                  <p className="text-xs text-green-600">
-                    Your friend will earn 10 ShareCoins when you complete your first transaction!
-                  </p>
-                )}
+            {!isLogin && referralCode && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
+                <Users className="h-4 w-4 text-green-600" />
+                <p className="text-xs text-green-700">
+                  Referral code <span className="font-medium">{referralCode}</span> applied
+                </p>
               </div>
             )}
             <Button

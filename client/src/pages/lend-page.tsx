@@ -801,9 +801,9 @@ export default function LendPage() {
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
-      {/* Top background to fill any gap */}
-      <div className="bg-[#a8e6cf] fixed top-0 left-0 right-0 h-32 -z-10" />
-      <Navbar />
+      <div className="bg-[#a8e6cf]">
+        <Navbar />
+      </div>
 
       {/* Hero Section - Same style as Browse page */}
       <div

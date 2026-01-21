@@ -801,22 +801,22 @@ export default function LendPage() {
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
-      <div className="bg-[#a8e6cf]">
-        <Navbar />
-      </div>
-
-      {/* Hero Section - Same style as Browse page */}
+      {/* Combined Navbar + Hero with shared background */}
       <div
-        className="w-full relative"
         style={{
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundPosition: "center bottom",
           borderBottomLeftRadius: "32px",
           borderBottomRightRadius: "32px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-12 pb-3 sm:pb-8">
+        <div className="[&_nav]:bg-transparent [&_nav]:border-b-0">
+          <Navbar />
+        </div>
+
+        {/* Hero Content */}
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-8 pb-3 sm:pb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">

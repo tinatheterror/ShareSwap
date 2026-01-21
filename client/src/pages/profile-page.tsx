@@ -698,6 +698,7 @@ export default function ProfilePage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="w-full justify-start"
                       onClick={isEditing ? handleCancelEdit : handleEditProfile}
                       disabled={updateProfileMutation.isPending}
                     >
@@ -714,7 +715,7 @@ export default function ProfilePage() {
                       )}
                     </Button>
                     <Link href="/settings">
-                      <Button variant="outline" size="sm" className="w-full">
+                      <Button variant="outline" size="sm" className="w-full justify-start">
                         <Settings className="h-4 w-4 mr-2" />
                         Account Settings
                       </Button>

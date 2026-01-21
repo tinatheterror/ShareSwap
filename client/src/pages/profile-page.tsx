@@ -694,24 +694,32 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={isEditing ? handleCancelEdit : handleEditProfile}
-                    disabled={updateProfileMutation.isPending}
-                  >
-                    {isEditing ? (
-                      <>
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </>
-                    ) : (
-                      <>
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Edit Profile
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={isEditing ? handleCancelEdit : handleEditProfile}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      {isEditing ? (
+                        <>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </>
+                      ) : (
+                        <>
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Edit Profile
+                        </>
+                      )}
+                    </Button>
+                    <Link href="/settings">
+                      <Button variant="outline" size="sm" className="w-full">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Account Settings
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6">
@@ -1064,39 +1072,6 @@ export default function ProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick Actions */}
-            <Card style={{ backgroundColor: "#D4F7F1" }}>
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Link href="/settings">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Account Settings
-                  </Button>
-                </Link>
-                <Link href="/notifications">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Bell className="h-4 w-4 mr-2" />
-                    Notifications
-                  </Button>
-                </Link>
-                <Link href="/payment-methods">
-                  <Button variant="outline" className="w-full justify-start">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Payment Methods
-                  </Button>
-                </Link>
-                <Link href="/verification">
-                  <Button variant="outline" className="w-full justify-start">
-                    <BadgeCheck className="h-4 w-4 mr-2" />
-                    Identity Verification
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
             {/* Verification Checklist */}
             <Card
               id="verification-status"
@@ -1108,7 +1083,7 @@ export default function ProfilePage() {
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Shield
+                  <BadgeCheck
                     className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-orange-600"}`}
                   />
                   Verification Status
@@ -1130,45 +1105,27 @@ export default function ProfilePage() {
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <Link href="/profile/verification">
-                    <div className="flex items-center gap-2 cursor-pointer hover:bg-white/50 rounded p-1 -m-1 transition-colors">
-                      {profile?.isVerified ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <X className="h-4 w-4 text-gray-400" />
-                      )}
-                      <span
-                        className={`text-sm underline ${profile?.isVerified ? "text-green-700" : "text-gray-500"}`}
-                      >
-                        ID verification
-                      </span>
-                    </div>
-                  </Link>
-                  <Link href="/profile/payment-methods">
-                    <div className="flex items-center gap-2 cursor-pointer hover:bg-white/50 rounded p-1 -m-1 transition-colors">
-                      {(profile as any)?.paymentMethodLast4 ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <X className="h-4 w-4 text-gray-400" />
-                      )}
-                      <span
-                        className={`text-sm underline ${(profile as any)?.paymentMethodLast4 ? "text-green-700" : "text-gray-500"}`}
-                      >
-                        Payment method on file
-                      </span>
-                    </div>
-                  </Link>
-                </div>
-                {!profile?.isVerified && (
-                  <Link href="/profile/verification">
-                    <Button className="w-full bg-[#0BB88C] hover:bg-[#0BB88C]/90 text-white mt-2">
-                      <BadgeCheck className="h-4 w-4 mr-2" />
-                      Verify Profile
-                    </Button>
-                  </Link>
-                )}
+              <CardContent className="space-y-2">
+                <Link href="/profile/payment-methods">
+                  <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                    {(profile as any)?.paymentMethodLast4 ? (
+                      <Check className="h-4 w-4 mr-2 text-green-600" />
+                    ) : (
+                      <CreditCard className="h-4 w-4 mr-2 text-gray-400" />
+                    )}
+                    Payment Methods
+                  </Button>
+                </Link>
+                <Link href="/profile/verification">
+                  <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                    {profile?.isVerified ? (
+                      <Check className="h-4 w-4 mr-2 text-green-600" />
+                    ) : (
+                      <BadgeCheck className="h-4 w-4 mr-2 text-gray-400" />
+                    )}
+                    Identity Verification
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
 

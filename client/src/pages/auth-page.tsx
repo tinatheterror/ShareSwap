@@ -229,12 +229,12 @@ export default function AuthPage() {
               </div>
 
               {!showReferralInput ? (
-                <div className="flex items-start gap-2">
+                <div className="flex items-start justify-center gap-2">
                   <Users className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
                   <button
                     type="button"
                     onClick={() => setShowReferralInput(true)}
-                    className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline"
+                    className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline text-left"
                   >
                     Have a referral code?
                   </button>

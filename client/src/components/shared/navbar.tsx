@@ -407,35 +407,6 @@ export function Navbar() {
                           My Wishlist
                         </Button>
                       </Link>
-                      <Link href="/achievements" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-3">
-                          <Trophy className="h-5 w-5" />
-                          Achievements
-                        </Button>
-                      </Link>
-                      <Link href="/games" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-3">
-                          <Gamepad2 className="h-5 w-5" />
-                          Play Games
-                        </Button>
-                      </Link>
-                      <Link href="/referrals" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-3">
-                          <Users className="h-5 w-5" />
-                          Invite Friends
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start gap-3"
-                        onClick={() => {
-                          setMobileMenuOpen(false);
-                          setShowWishlistPopup(true);
-                        }}
-                      >
-                        <HandHeart className="h-5 w-5" />
-                        Help Neighbours
-                      </Button>
                       <Link href="/help" onClick={() => setMobileMenuOpen(false)}>
                         <Button variant="ghost" className="w-full justify-start gap-3">
                           <HelpCircle className="h-5 w-5" />

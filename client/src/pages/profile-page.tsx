@@ -1107,7 +1107,7 @@ export default function ProfilePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Link href="/profile/payment-methods">
+                <Link href="/payment-methods">
                   <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
                     {(profile as any)?.paymentMethodLast4 ? (
                       <Check className="h-4 w-4 mr-2 text-green-600" />
@@ -1118,7 +1118,7 @@ export default function ProfilePage() {
                     Payment Methods
                   </Button>
                 </Link>
-                <Link href="/profile/verification">
+                <Link href="/verification">
                   <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
                     {profile?.isVerified ? (
                       <Check className="h-4 w-4 mr-2 text-green-600" />

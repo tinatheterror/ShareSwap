@@ -229,15 +229,14 @@ export default function AuthPage() {
               </div>
 
               {!showReferralInput ? (
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowReferralInput(true)}
-                    className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline"
-                  >
-                    Have a referral code?
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReferralInput(true)}
+                  className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Users className="h-3 w-3" />
+                  <span className="underline">Have a referral code?</span>
+                </button>
               ) : (
                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-center gap-2">

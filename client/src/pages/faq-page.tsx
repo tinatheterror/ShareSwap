@@ -678,10 +678,10 @@ export default function FAQPage() {
                 </div>
 
                 {/* Sponsored Games */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200">
+                <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-3 border border-teal-200">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Gamepad2 className="h-4 w-4 text-purple-600" />
+                    <div className="w-8 h-8 bg-teal-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Gamepad2 className="h-4 w-4 text-teal-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
@@ -1693,8 +1693,8 @@ export default function FAQPage() {
 
         {/* What's Coming Next */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="bg-gradient-to-r from-teal-50 to-indigo-50 rounded-t-lg">
-            <CardTitle className="text-lg text-teal-800 flex items-center gap-2">
+          <CardHeader className="bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-lg">
+            <CardTitle className="text-lg text-teal-700 flex items-center gap-2">
               🚀 What's Coming Next
             </CardTitle>
           </CardHeader>

@@ -192,6 +192,7 @@ export default function LendPage() {
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [detectedLocality, setDetectedLocality] = useState<string>("");
   const [matchedWishlists, setMatchedWishlists] = useState<any[]>([]);
   const [showMatchingModal, setShowMatchingModal] = useState(false);
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
@@ -598,30 +599,15 @@ export default function LendPage() {
         form.setValue("postalCode", postcode);
       }
       
-      // Build success message
-      let locationDesc = "";
-      if (postcode && locality) {
-        locationDesc = `${postcode} (${locality})`;
-      } else if (postcode) {
-        locationDesc = postcode;
-      } else if (locality && region) {
-        locationDesc = `${locality}, ${region}`;
-      } else if (locality) {
-        locationDesc = locality;
-      } else if (region) {
-        locationDesc = region;
-      } else {
-        locationDesc = "your approximate area";
+      // Save locality for display
+      const displayLocality = locality || region || "";
+      if (displayLocality) {
+        setDetectedLocality(displayLocality);
       }
       
-      toast({
-        title: "Location Found",
-        description: postcode 
-          ? `Location set to ${locationDesc}.`
-          : `We found ${locationDesc}. You can enter a postal code for more accuracy.`,
-      });
+      // No toast - auto-fill silently, UI shows the detected location
     } else {
-      // Only show error if we truly have nothing
+      // Only show error if we truly have nothing (low confidence)
       toast({
         title: "Could Not Find Location",
         description: "Please enter your postal code manually.",
@@ -1267,19 +1253,35 @@ export default function LendPage() {
 
                   {/* Location field */}
                   <div className="space-y-4">
+                    <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">Location</h3>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => setShowLocationModal(true)}
-                        className="flex items-center gap-2"
+                        className="text-primary hover:text-primary/80 text-sm h-auto p-0"
                       >
-                        <MapPin className="h-4 w-4" />
-                        {watchPostalCode ? watchPostalCode : "Set Location"}
+                        Change location
                       </Button>
                     </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <span>
+                        {watchPostalCode 
+                          ? `Near ${watchPostalCode}${detectedLocality ? ` (${detectedLocality})` : ""}`
+                          : detectedLocality 
+                            ? `Near ${detectedLocality}` 
+                            : "Location not set"}
+                      </span>
+                    </div>
+                    {!watchPostalCode && detectedLocality && (
+                      <p className="text-xs text-muted-foreground">
+                        Want better accuracy? Add your postal code.
+                      </p>
+                    )}
+                  </div>
                   </div>
 
                   {/* Sharing options */}

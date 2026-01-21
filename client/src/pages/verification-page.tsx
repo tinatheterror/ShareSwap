@@ -422,10 +422,6 @@ export default function VerificationPage() {
                           )}
                         </label>
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                        We never share your ID. It's used only to confirm your
-                        identity.
-                      </p>
                     </div>
 
                     <FormField

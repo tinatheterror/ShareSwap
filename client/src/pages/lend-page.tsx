@@ -792,7 +792,7 @@ export default function LendPage() {
 
       {/* Hero Section - Same style as Browse page */}
       <div
-        className="w-full relative -mt-4"
+        className="w-full relative -mt-[1px]"
         style={{
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
@@ -801,13 +801,13 @@ export default function LendPage() {
           borderBottomRightRadius: "32px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-6 sm:pt-12 pb-4 sm:pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 sm:gap-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-12 pb-3 sm:pb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-3xl md:text-4xl font-bold mb-0.5 sm:mb-1 text-black">
+              <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
                 {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
-              <p className="text-black/90 text-xs sm:text-base">
+              <p className="text-black/90 text-[11px] sm:text-base">
                 {isEditMode
                   ? " "
                   : "Make your neighbourhood richer without spending a cent"}
@@ -815,20 +815,20 @@ export default function LendPage() {
             </div>
 
             {!isEditMode && (
-              <div className="flex flex-col gap-1.5 sm:gap-2 w-full md:w-80 md:max-w-80 flex-shrink-0">
-                <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3">
-                  <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
-                    <Download className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-600" />
-                    <h3 className="font-medium text-[10px] sm:text-xs text-black">
+              <div className="flex flex-col gap-1 sm:gap-2 w-full md:w-80 md:max-w-80 flex-shrink-0">
+                <div className="bg-white rounded-lg shadow-sm p-1.5 sm:p-3">
+                  <div className="flex items-center gap-1 mb-1 sm:mb-2">
+                    <Download className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-teal-600" />
+                    <h3 className="font-medium text-[9px] sm:text-xs text-black">
                       Import from Marketplace
                     </h3>
                   </div>
-                  <div className="flex gap-2 mb-1 sm:mb-2">
+                  <div className="flex gap-1.5 sm:gap-2 mb-0.5 sm:mb-2">
                     <Input
                       placeholder="Paste listing URL..."
                       value={importUrl}
                       onChange={(e) => setImportUrl(e.target.value)}
-                      className="flex-1 min-w-0 text-xs h-8 sm:h-9 px-2 sm:px-3"
+                      className="flex-1 min-w-0 text-[10px] sm:text-xs h-6 sm:h-9 px-1.5 sm:px-3"
                     />
                     <Button
                       onClick={async () => {
@@ -878,13 +878,13 @@ export default function LendPage() {
                         }
                       }}
                       disabled={isImporting || !importUrl}
-                      className="text-white text-xs h-8 sm:h-9 px-3 sm:px-4 shrink-0"
+                      className="text-white text-[10px] sm:text-xs h-6 sm:h-9 px-2 sm:px-4 shrink-0"
                       style={{ backgroundColor: "#0DCEA1" }}
                     >
                       {isImporting ? "..." : "Import"}
                     </Button>
                   </div>
-                  <p className="text-[9px] sm:text-[10px] text-gray-400">
+                  <p className="text-[8px] sm:text-[10px] text-gray-400">
                     Facebook, Marketplace & Craigslist
                   </p>
                 </div>
@@ -895,7 +895,7 @@ export default function LendPage() {
 
         {/* Inverted corner on bottom left - grey circle overlay creating cutout effect */}
         <div
-          className="absolute bottom-0 left-0 w-8 h-8"
+          className="absolute bottom-0 left-0 w-6 h-6 sm:w-8 sm:h-8"
           style={{ borderTopRightRadius: "100%", backgroundColor: "#f3f4f6" }}
         />
       </div>

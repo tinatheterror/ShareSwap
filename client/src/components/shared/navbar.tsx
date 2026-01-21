@@ -165,6 +165,7 @@ export function Navbar() {
   const { user, logoutMutation } = useAuth();
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileWalletOpen, setMobileWalletOpen] = useState(false);
 
   return (
     <nav className="border-b bg-background">
@@ -288,12 +289,75 @@ export function Navbar() {
           {/* Mobile Navigation */}
           <div className="flex lg:hidden items-center gap-2">
             {user && (
-              <Link href="/wallet">
-                <Button variant="outline" size="sm" className="flex items-center gap-1 px-1.5 py-0.5 h-auto border-primary/30">
-                  <Coins className="h-3 w-3 text-primary flex-shrink-0" />
-                  <span className="text-[10px] font-medium whitespace-nowrap">{user?.shareCoins ? Number(user.shareCoins).toFixed(0) : "0"}</span>
-                </Button>
-              </Link>
+              <Sheet open={mobileWalletOpen} onOpenChange={setMobileWalletOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-1.5 hover:text-primary hover:border-primary px-2 py-1 h-auto" style={{ maxWidth: '115px' }}>
+                    <Coins className="h-4 w-4 text-primary flex-shrink-0" />
+                    <div className="flex flex-col items-start min-w-0">
+                      <span className="text-[8px] text-muted-foreground leading-tight">Total Balance</span>
+                      <span className="text-[10px] font-medium truncate">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"}</span>
+                    </div>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+                  <div className="flex flex-col gap-4 pt-2">
+                    <h2 className="text-lg font-semibold text-center">Wallet</h2>
+                    
+                    {/* Balance Display */}
+                    <div className="flex flex-col items-center py-4 bg-primary/5 rounded-lg">
+                      <Coins className="h-8 w-8 text-primary mb-2" />
+                      <span className="text-3xl font-bold text-primary">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"}</span>
+                      <span className="text-sm text-muted-foreground">ShareCoins</span>
+                    </div>
+
+                    {/* Wallet Actions */}
+                    <div className="flex flex-col gap-1">
+                      <Link href="/wallet" onClick={() => setMobileWalletOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <Coins className="h-5 w-5" />
+                          View Transactions
+                        </Button>
+                      </Link>
+                      <Link href="/achievements" onClick={() => setMobileWalletOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3">
+                          <Trophy className="h-5 w-5" />
+                          Achievements
+                        </Button>
+                      </Link>
+                    </div>
+
+                    {/* Earn More Section */}
+                    <div className="border-t pt-4">
+                      <h6 className="px-3 pb-2 text-sm font-semibold text-primary">Earn More ShareCoins</h6>
+                      <div className="flex flex-col gap-1">
+                        <Link href="/games" onClick={() => setMobileWalletOpen(false)}>
+                          <Button variant="ghost" className="w-full justify-start gap-3">
+                            <Gamepad2 className="h-5 w-5" />
+                            Play Games
+                          </Button>
+                        </Link>
+                        <Link href="/referrals" onClick={() => setMobileWalletOpen(false)}>
+                          <Button variant="ghost" className="w-full justify-start gap-3">
+                            <Users className="h-5 w-5" />
+                            Invite Friends
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start gap-3"
+                          onClick={() => {
+                            setMobileWalletOpen(false);
+                            setShowWishlistPopup(true);
+                          }}
+                        >
+                          <HandHeart className="h-5 w-5" />
+                          Help Neighbours
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             )}
             {user && <NotificationBell />}
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>

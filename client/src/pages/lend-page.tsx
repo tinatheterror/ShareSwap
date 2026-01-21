@@ -820,7 +820,7 @@ export default function LendPage() {
                   <div className="flex items-center gap-1 mb-1 sm:mb-2">
                     <Download className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-teal-600" />
                     <h3 className="font-medium text-[9px] sm:text-xs text-black">
-                      Import from Marketplace
+                      Transfer listings from other apps
                     </h3>
                   </div>
                   <div className="flex gap-1.5 sm:gap-2 mb-0.5 sm:mb-2">

@@ -791,13 +791,11 @@ export default function LendPage() {
       <div
         className="w-full relative"
         style={{
-          backgroundColor: "#0DCEA1",
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
-          backgroundPosition: "center top",
+          backgroundPosition: "center",
           borderBottomLeftRadius: "32px",
           borderBottomRightRadius: "32px",
-          minHeight: "120px",
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">

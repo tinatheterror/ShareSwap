@@ -196,6 +196,10 @@ export function setupAuth(app: Express) {
                 referredDeviceFingerprint: null,
               });
               console.log(`📣 [Google OAuth] Referral created: User ${newUser.id} was referred by user ${referrerId}`);
+              // Store referral applied flag in session for callback redirect
+              if (req.session) {
+                (req.session as any).referralApplied = true;
+              }
             }
 
             // Clear pending referral code
@@ -400,7 +404,14 @@ export function setupAuth(app: Express) {
       failureRedirect: "/auth"
     })(req, res, (err: any) => {
       if (err) return next(err);
-      res.redirect("/");
+      // Check if referral was applied during this OAuth flow
+      const referralApplied = (req.session as any)?.referralApplied;
+      if (referralApplied) {
+        delete (req.session as any).referralApplied;
+        res.redirect("/?referral=applied");
+      } else {
+        res.redirect("/");
+      }
     });
   });
 

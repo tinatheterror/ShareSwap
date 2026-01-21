@@ -150,10 +150,7 @@ export default function AuthPage() {
     },
     onSuccess: (data) => {
       if (data.referralApplied) {
-        toast({
-          title: "Welcome to ShareSwap!",
-          description: "Referral code applied! Complete a transaction to earn rewards for your friend.",
-        });
+        sessionStorage.setItem("referralApplied", "true");
       }
       window.location.href = "/";
     },

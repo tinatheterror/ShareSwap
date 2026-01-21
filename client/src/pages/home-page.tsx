@@ -1,22 +1,39 @@
 import { Navbar } from "@/components/shared/navbar";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CheckCircle, X } from "lucide-react";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
+  const searchString = useSearch();
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showReferralBanner, setShowReferralBanner] = useState(false);
 
-  // Check if user has seen tutorial
+  // Check if user has seen tutorial and referral status
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem("hasSeenTutorial");
     if (!hasSeenTutorial) {
       // Show tutorial immediately for first-time users
       setShowTutorial(true);
     }
-  }, []);
+    
+    // Check for referral applied - from sessionStorage (email signup) or URL (Google OAuth)
+    const params = new URLSearchParams(searchString);
+    const referralFromUrl = params.get("referral") === "applied";
+    const referralFromSession = sessionStorage.getItem("referralApplied") === "true";
+    
+    if (referralFromUrl || referralFromSession) {
+      setShowReferralBanner(true);
+      sessionStorage.removeItem("referralApplied");
+      // Clean up URL if it has the referral param
+      if (referralFromUrl) {
+        window.history.replaceState({}, "", "/");
+      }
+    }
+  }, [searchString]);
 
   const handleTutorialComplete = () => {
     localStorage.setItem("hasSeenTutorial", "true");
@@ -26,6 +43,28 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
+      
+      {/* Referral Applied Banner */}
+      {showReferralBanner && (
+        <div className="bg-green-50 border-b border-green-200">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <div>
+                <span className="font-medium text-green-800">Referral code applied</span>
+                <span className="text-green-700 text-sm ml-2">Your friend will earn ShareCoins after your first transaction</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowReferralBanner(false)}
+              className="text-green-600 hover:text-green-800 p-1"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
           <div className="flex-shrink-0">

@@ -5,8 +5,12 @@ const TIER_SHARECOIN_VALUES: Record<number, number> = {
   1: 5,   // Tier 1: Under $50
   2: 10,  // Tier 2: $50-$150
   3: 20,  // Tier 3: $150-$300
-  4: 40,  // Tier 4: $300+
+  4: 40,  // Tier 4: $300-$1,000
+  5: 80,  // Tier 5: $1,000-$5,000 (Luxury)
+  6: 150, // Tier 6: $5,000+ (Ultra Luxury)
 };
+
+const MAX_TIER = 6;
 
 export type SwapFairness = 'fair' | 'offset_required' | 'not_allowed';
 
@@ -41,12 +45,12 @@ export function getSwapEligibility(tier: number): SwapEligibility {
   const acceptableTiers: number[] = [];
   if (tier > 1) acceptableTiers.push(tier - 1);
   acceptableTiers.push(tier);
-  if (tier < 4) acceptableTiers.push(tier + 1);
+  if (tier < MAX_TIER) acceptableTiers.push(tier + 1);
   
   // Build fair swap message
   const sameTierMsg = `Tier ${tier} items`;
   const lowerTierMsg = tier > 1 ? `Tier ${tier - 1} (+${yourShareCoins - getTierShareCoins(tier - 1)} SC offset)` : null;
-  const higherTierMsg = tier < 4 ? `Tier ${tier + 1} (−${getTierShareCoins(tier + 1) - yourShareCoins} SC offset)` : null;
+  const higherTierMsg = tier < MAX_TIER ? `Tier ${tier + 1} (−${getTierShareCoins(tier + 1) - yourShareCoins} SC offset)` : null;
   
   let fairSwapMessage = `Fair swap: ${sameTierMsg}`;
   if (lowerTierMsg) fairSwapMessage += `, or ${lowerTierMsg}`;

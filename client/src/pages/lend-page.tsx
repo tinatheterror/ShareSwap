@@ -94,7 +94,9 @@ const ORIGINAL_VALUES = [
   "Under $50",
   "$50–$150",
   "$150–$300",
-  "$300+",
+  "$300–$1,000",
+  "$1,000–$5,000",
+  "$5,000+",
 ] as const;
 
 const TIER_NAMES: Record<number, string> = {
@@ -102,6 +104,8 @@ const TIER_NAMES: Record<number, string> = {
   2: "Tier 2 – Everyday Household Item",
   3: "Tier 3 – Premium Item",
   4: "Tier 4 – High Value Item",
+  5: "Tier 5 – Luxury Item",
+  6: "Tier 6 – Ultra Luxury",
 };
 
 const TIER_WEEKLY_BANDS: Record<
@@ -112,6 +116,8 @@ const TIER_WEEKLY_BANDS: Record<
   2: { min: 10, max: 10, display: "10" },
   3: { min: 20, max: 20, display: "20" },
   4: { min: 40, max: 40, display: "40" },
+  5: { min: 80, max: 80, display: "80" },
+  6: { min: 150, max: 150, display: "150" },
 };
 
 const calculateTier = (originalValue: string, condition: string): number => {
@@ -119,7 +125,10 @@ const calculateTier = (originalValue: string, condition: string): number => {
   if (originalValue === "Under $50") baseTier = 1;
   else if (originalValue === "$50–$150") baseTier = 2;
   else if (originalValue === "$150–$300") baseTier = 3;
-  else if (originalValue === "$300+") baseTier = 4;
+  else if (originalValue === "$300–$1,000") baseTier = 4;
+  else if (originalValue === "$1,000–$5,000") baseTier = 5;
+  else if (originalValue === "$5,000+") baseTier = 6;
+  else if (originalValue === "$300+") baseTier = 4; // Legacy support
 
   if (condition === "Fair" || condition === "Well Loved") {
     baseTier = Math.max(1, baseTier - 1);
@@ -508,12 +517,30 @@ export default function LendPage() {
     form.setValue("name", analysis.name);
     form.setValue("description", analysis.description);
     form.setValue("conditionRating", analysis.conditionRating);
+    
+    // Auto-fill value range if AI suggested one (especially important for luxury items)
+    if (analysis.suggestedValueRange && ORIGINAL_VALUES.includes(analysis.suggestedValueRange)) {
+      form.setValue("originalValue", analysis.suggestedValueRange);
+    } else if (analysis.isLuxuryBrand && analysis.estimatedValue) {
+      // If luxury brand detected, auto-select appropriate tier based on estimated value
+      const value = parseFloat(analysis.estimatedValue);
+      if (value >= 5000) {
+        form.setValue("originalValue", "$5,000+");
+      } else if (value >= 1000) {
+        form.setValue("originalValue", "$1,000–$5,000");
+      } else if (value >= 300) {
+        form.setValue("originalValue", "$300–$1,000");
+      }
+    }
+    
     setSmartScanPhotos(photos);
     setSmartScanAnalysis(analysis); // Store full analysis for submission
 
     toast({
       title: "✨ Form Auto-Filled!",
-      description: "Review and adjust the AI-detected details as needed.",
+      description: analysis.isLuxuryBrand 
+        ? "Luxury brand detected! Value range auto-selected. Review and adjust as needed."
+        : "Review and adjust the AI-detected details as needed.",
     });
   };
 
@@ -1430,7 +1457,10 @@ export default function LendPage() {
                                     "Under $50": 30,
                                     "$50–$150": 100,
                                     "$150–$300": 225,
-                                    "$300+": 500,
+                                    "$300–$1,000": 650,
+                                    "$1,000–$5,000": 3000,
+                                    "$5,000+": 10000,
+                                    "$300+": 500, // Legacy support
                                   };
                                   return valueMap[watchOriginalValue] || 100;
                                 };

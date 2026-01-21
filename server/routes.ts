@@ -1014,19 +1014,23 @@ Respond with ONLY valid JSON in this exact format:
             content: [
               {
                 type: "text",
-                text: `You are an expert at identifying and analyzing items from photos for a peer-to-peer sharing marketplace. Analyze these images and extract the following information in JSON format:
+                text: `You are an expert at identifying and analyzing items from photos for a peer-to-peer sharing marketplace. Pay special attention to LUXURY BRANDS (Chanel, Louis Vuitton, Hermès, Gucci, Prada, Rolex, Cartier, Dior, Balenciaga, etc.) - these items often have market values in the thousands or tens of thousands of dollars.
+
+Analyze these images and extract the following information in JSON format:
 
 {
   "name": "Short, descriptive name of the item (max 50 chars)",
   "description": "Detailed description including notable features, condition details, and any visible wear or damage (100-300 chars)",
   "category": "One of: Electronics, Tools, Sports, Home & Garden, Books & Media, Clothing, Toys & Games, Kitchen, Outdoor, Other",
   "brand": "Brand name if visible, otherwise 'Unknown'",
+  "isLuxuryBrand": "Boolean - true if this is a recognized luxury/designer brand",
   "conditionRating": "Integer 1-5 where 1=Poor, 2=Fair, 3=Good, 4=Very Good, 5=Excellent",
-  ${user.isPremium ? '"estimatedValue": "Estimated market value in USD (just the number, e.g., \'25.00\')",' : ''}
+  ${user.isPremium ? '"estimatedValue": "Estimated CURRENT MARKET value in USD. For luxury items, research typical resale values (e.g., authentic Chanel bags: $3,000-$15,000+, Hermès Birkin: $10,000-$100,000+). Just the number, e.g., \'8500.00\'",' : ''}
+  "suggestedValueRange": "One of: Under $50, $50–$150, $150–$300, $300–$1,000, $1,000–$5,000, $5,000+",
   "confidence": "Float 0-1 indicating how confident you are in this analysis"
 }
 
-Be specific and honest about condition. Look for signs of wear, damage, or quality issues.`,
+IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse is worth $3,000-$15,000+. Look for authenticity markers like logo quality, stitching, hardware, serial numbers. Be specific and honest about condition.`,
               },
               ...imageContents,
             ],
@@ -1072,8 +1076,10 @@ Be specific and honest about condition. Look for signs of wear, damage, or quali
           description: analysisData.description || "AI analysis completed.",
           category: analysisData.category || "Other",
           brand: analysisData.brand || "Unknown",
+          isLuxuryBrand: analysisData.isLuxuryBrand === true,
           conditionRating: Math.min(5, Math.max(1, parseInt(analysisData.conditionRating) || 3)),
           estimatedValue: user.isPremium && analysisData.estimatedValue ? analysisData.estimatedValue : null,
+          suggestedValueRange: analysisData.suggestedValueRange || null,
           confidence: parseFloat(analysisData.confidence) || 0.5,
         },
         photos: photoUrls,
@@ -1399,7 +1405,10 @@ Respond with ONLY the category name, nothing else.`
       if (originalValue === "Under $50") baseTier = 1;
       else if (originalValue === "$50–$150") baseTier = 2;
       else if (originalValue === "$150–$300") baseTier = 3;
-      else if (originalValue === "$300+") baseTier = 4;
+      else if (originalValue === "$300–$1,000") baseTier = 4;
+      else if (originalValue === "$1,000–$5,000") baseTier = 5;
+      else if (originalValue === "$5,000+") baseTier = 6;
+      else if (originalValue === "$300+") baseTier = 4; // Legacy support
 
       // Apply condition modifier
       if (condition === "Fair" || condition === "Well Loved") {

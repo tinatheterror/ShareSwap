@@ -5,6 +5,8 @@ const TIER_BANDS: Record<number, { min: number; max: number }> = {
   2: { min: 10, max: 10 },
   3: { min: 20, max: 20 },
   4: { min: 40, max: 40 },
+  5: { min: 80, max: 80 },   // Luxury tier
+  6: { min: 150, max: 150 }, // Ultra Luxury tier
 };
 
 const CONDITION_MODIFIERS: Record<string, number> = {
@@ -81,7 +83,10 @@ export async function calculateAIValuation(
       "Under $50": 30,
       "$50–$150": 100,
       "$150–$300": 225,
-      "$300+": 500,
+      "$300–$1,000": 650,
+      "$1,000–$5,000": 3000,
+      "$5,000+": 10000,
+      "$300+": 500, // Legacy support
     };
     return valueMap[originalValue || ""] || 100;
   };
@@ -117,6 +122,9 @@ export async function calculateAIValuation(
     const itemBrand = (item.brand || item.name || "").toLowerCase();
     const isLuxuryBrand = LUXURY_BRANDS.some(b => itemBrand.includes(b));
     const isHighValue = item.originalValue === "$300+" || 
+      item.originalValue === "$300–$1,000" ||
+      item.originalValue === "$1,000–$5,000" ||
+      item.originalValue === "$5,000+" ||
       (item.estimatedValue && parseFloat(item.estimatedValue.replace(/[^0-9.]/g, '')) >= 1000);
     const isExcellentCondition = item.condition === "New / Like New" || 
       item.condition === "Like New" || 
@@ -319,7 +327,7 @@ function calculateFallbackValuation(
   }
 
   // For luxury brands in excellent condition with high value, go straight to max
-  if (isLuxuryBrand && isHighValue && isExcellentCondition && item.tier === 4) {
+  if (isLuxuryBrand && isHighValue && isExcellentCondition && item.tier >= 4) {
     return {
       shareCoinsValue: band.max,
       tierBand: band,

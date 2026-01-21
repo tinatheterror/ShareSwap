@@ -58,7 +58,9 @@ export function TrustDepositModal({
     1: 2,   // Tier 1: Under $50 - 2 SC/week
     2: 5,   // Tier 2: $50-$150 - 5 SC/week
     3: 10,  // Tier 3: $150-$300 - 10 SC/week
-    4: 20,  // Tier 4: $300+ - 20 SC/week
+    4: 20,  // Tier 4: $300-$1,000 - 20 SC/week
+    5: 40,  // Tier 5: $1,000-$5,000 (Luxury) - 40 SC/week
+    6: 80,  // Tier 6: $5,000+ (Ultra Luxury) - 80 SC/week
   };
   const shareCoinAmount = TIER_WEEKLY_RATES[item.tier || 2] || 5;
   const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;

@@ -278,7 +278,7 @@ export default function BorrowPage() {
 
       {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
       <div
-        className="w-full relative"
+        className="w-full relative -mt-4"
         style={{
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
@@ -287,36 +287,34 @@ export default function BorrowPage() {
           borderBottomRightRadius: "32px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 sm:gap-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-6 sm:pt-12 pb-4 sm:pb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 sm:gap-6">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 text-black">
+              <h1 className="text-xl sm:text-3xl md:text-4xl font-bold mb-0.5 sm:mb-1 text-black">
                 Browse the community ShareChest
               </h1>
-              <p className="text-sm sm:text-base text-black/90">
+              <p className="text-xs sm:text-base text-black/90">
                 A trusted collection of items available{" "}
                 {userPostalCode && ` near ${userPostalCode}`}
               </p>
             </div>
 
-            <div className="flex flex-col gap-2 sm:gap-3 w-full md:w-72">
+            <div className="flex flex-col gap-1.5 sm:gap-3 w-full md:w-72">
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-2.5 top-2 sm:top-2.5 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <Input
                   placeholder="Search items..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-white rounded-lg text-sm"
-                  style={{ height: "43px" }}
+                  className="pl-8 sm:pl-9 bg-white rounded-lg text-xs sm:text-sm h-8 sm:h-[43px]"
                 />
               </div>
               <Button
                 variant="outline"
-                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 rounded-lg text-sm"
+                className="w-full flex items-center justify-center gap-1.5 sm:gap-2 bg-white hover:bg-gray-50 rounded-lg text-xs sm:text-sm h-8 sm:h-[43px]"
                 onClick={() => setShowLocationModal(true)}
-                style={{ height: "43px" }}
               >
-                <MapPin className="h-4 w-4" />
+                <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {userPostalCode
                   ? `${userPostalCode} (${radius}km radius)`
                   : "Set Location"}
@@ -327,7 +325,7 @@ export default function BorrowPage() {
 
         {/* Inverted corner on bottom left - grey circle overlay creating cutout effect */}
         <div
-          className="absolute bottom-0 left-0 w-8 h-8"
+          className="absolute bottom-0 left-0 w-6 h-6 sm:w-8 sm:h-8"
           style={{ borderTopRightRadius: "100%", backgroundColor: "#f3f4f6" }}
         />
       </div>

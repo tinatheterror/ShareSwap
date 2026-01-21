@@ -792,7 +792,7 @@ export default function LendPage() {
 
       {/* Hero Section - Same style as Browse page */}
       <div
-        className="w-full relative"
+        className="w-full relative -mt-4"
         style={{
           backgroundImage: "url('/hero-banner.png')",
           backgroundSize: "cover",
@@ -801,13 +801,13 @@ export default function LendPage() {
           borderBottomRightRadius: "32px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12 pb-6 sm:pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-6 sm:pt-12 pb-4 sm:pb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 sm:gap-6">
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-3xl md:text-4xl font-bold mb-0.5 sm:mb-1 text-black">
                 {isEditMode ? "Edit Your Item" : "List Your Item"}
               </h1>
-              <p className="text-black/90 text-sm sm:text-base">
+              <p className="text-black/90 text-xs sm:text-base">
                 {isEditMode
                   ? " "
                   : "Make your neighbourhood richer without spending a cent"}
@@ -815,7 +815,7 @@ export default function LendPage() {
             </div>
 
             {!isEditMode && (
-              <div className="flex flex-col gap-2 w-full md:w-80 md:max-w-80 flex-shrink-0">
+              <div className="flex flex-col gap-1.5 sm:gap-2 w-full md:w-80 md:max-w-80 flex-shrink-0">
                 <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3">
                   <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2">
                     <Download className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-600" />

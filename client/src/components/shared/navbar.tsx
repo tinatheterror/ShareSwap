@@ -408,7 +408,7 @@ export function Navbar() {
                         </Button>
                       </Link>
                       <Link href="/help" onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start gap-3">
+                        <Button variant="ghost" className="w-full justify-start gap-3 text-gray-500 hover:text-primary">
                           <HelpCircle className="h-5 w-5" />
                           How It Works
                         </Button>

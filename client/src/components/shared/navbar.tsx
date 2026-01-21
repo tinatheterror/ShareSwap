@@ -304,7 +304,7 @@ export function Navbar() {
                     <h2 className="text-lg font-semibold text-center">Wallet</h2>
                     
                     {/* Balance Display */}
-                    <div className="flex flex-col items-center py-4 bg-primary/5 rounded-lg">
+                    <div className="flex flex-col items-center py-4 rounded-lg">
                       <Coins className="h-8 w-8 text-primary mb-2" />
                       <span className="text-3xl font-bold text-primary">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"}</span>
                       <span className="text-sm text-muted-foreground">ShareCoins</span>

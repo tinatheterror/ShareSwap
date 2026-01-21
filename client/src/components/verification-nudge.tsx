@@ -43,7 +43,7 @@ export function VerificationNudge() {
 
   const handleVerifyNow = () => {
     dismissMutation.mutate();
-    navigate("/profile/verification");
+    navigate("/profile#verification-status");
   };
 
   const handleDismiss = () => {

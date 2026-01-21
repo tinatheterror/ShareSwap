@@ -19,7 +19,7 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
 
   const handleVerifyNow = () => {
     onClose();
-    navigate("/profile/verification");
+    navigate("/profile#verification-status");
   };
 
   return (

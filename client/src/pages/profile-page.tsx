@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import ReactCrop, {
   type Crop,
   centerCrop,
@@ -230,6 +230,18 @@ export default function ProfilePage() {
       });
     },
   });
+
+  // Scroll to verification-status section if hash is present
+  useEffect(() => {
+    if (window.location.hash === '#verification-status') {
+      setTimeout(() => {
+        const element = document.getElementById('verification-status');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [profile]);
 
   // Initialize crop when image loads
   const onImageLoad = useCallback(
@@ -1087,6 +1099,7 @@ export default function ProfilePage() {
 
             {/* Verification Checklist */}
             <Card
+              id="verification-status"
               className={
                 profile?.isVerified
                   ? "border-green-200 bg-green-50"
@@ -1119,30 +1132,34 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    {profile?.isVerified ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <X className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span
-                      className={`text-sm ${profile?.isVerified ? "text-green-700" : "text-gray-500"}`}
-                    >
-                      Identity verified
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {(profile as any)?.paymentMethodLast4 ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <X className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span
-                      className={`text-sm ${(profile as any)?.paymentMethodLast4 ? "text-green-700" : "text-gray-500"}`}
-                    >
-                      Payment method on file
-                    </span>
-                  </div>
+                  <Link href="/profile/verification">
+                    <div className="flex items-center gap-2 cursor-pointer hover:bg-white/50 rounded p-1 -m-1 transition-colors">
+                      {profile?.isVerified ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span
+                        className={`text-sm underline ${profile?.isVerified ? "text-green-700" : "text-gray-500"}`}
+                      >
+                        ID verification
+                      </span>
+                    </div>
+                  </Link>
+                  <Link href="/profile/payment-methods">
+                    <div className="flex items-center gap-2 cursor-pointer hover:bg-white/50 rounded p-1 -m-1 transition-colors">
+                      {(profile as any)?.paymentMethodLast4 ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <X className="h-4 w-4 text-gray-400" />
+                      )}
+                      <span
+                        className={`text-sm underline ${(profile as any)?.paymentMethodLast4 ? "text-green-700" : "text-gray-500"}`}
+                      >
+                        Payment method on file
+                      </span>
+                    </div>
+                  </Link>
                 </div>
                 {!profile?.isVerified && (
                   <Link href="/profile/verification">

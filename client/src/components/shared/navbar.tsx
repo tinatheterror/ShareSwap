@@ -299,7 +299,7 @@ export function Navbar() {
                     </div>
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+                <SheetContent side="top" className="rounded-b-2xl pt-12 pb-6">
                   <div className="flex flex-col gap-4 pt-2">
                     <h2 className="text-lg font-semibold text-center">Wallet</h2>
                     

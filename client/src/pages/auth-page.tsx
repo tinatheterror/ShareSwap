@@ -229,20 +229,20 @@ export default function AuthPage() {
               </div>
 
               {!showReferralInput ? (
-                <div className="flex items-start justify-center gap-2">
+                <div className="flex items-start gap-2 mt-2">
                   <Users className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
                   <button
                     type="button"
                     onClick={() => setShowReferralInput(true)}
-                    className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline text-left"
+                    className="text-[10px] text-muted-foreground hover:text-primary transition-colors underline"
                   >
                     Have a referral code?
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-                  <div className="flex items-center justify-center gap-2">
-                    <Users className="h-3 w-3 text-muted-foreground" />
+                <div className="space-y-2 animate-in slide-in-from-top-2 duration-200 mt-2">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <Label htmlFor="main-referral" className="text-xs text-muted-foreground">Referral code</Label>
                   </div>
                   <Input
@@ -257,7 +257,7 @@ export default function AuthPage() {
                 </div>
               )}
 
-              <div className="flex items-start justify-center gap-2 text-sm text-primary mt-4 pt-4 border-t font-medium">
+              <div className="flex items-start gap-2 text-sm text-primary mt-4 pt-4 border-t font-medium">
                 <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>Your identity helps keep ShareSwap safe and honest.</span>
               </div>

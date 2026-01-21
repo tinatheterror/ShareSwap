@@ -10,7 +10,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useRef, useCallback } from "react";
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from "react-image-crop";
+import ReactCrop, {
+  type Crop,
+  centerCrop,
+  makeAspectCrop,
+} from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -106,7 +110,7 @@ export default function ProfilePage() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  
+
   // Crop state
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -176,30 +180,30 @@ export default function ProfilePage() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("profilePhoto", file);
-      
+
       const csrfToken = document.cookie
         .split("; ")
         .find((row) => row.startsWith("x-csrf-token="))
         ?.split("=")[1];
-      
+
       const res = await fetch("/api/users/profile-photo", {
         method: "POST",
         body: formData,
         credentials: "include",
         headers: csrfToken ? { "x-csrf-token": csrfToken } : {},
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Failed to upload photo");
       }
-      
+
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
-      
+
       if (data.shareCoinsAwarded > 0) {
         toast({
           title: "Photo Approved!",
@@ -208,7 +212,8 @@ export default function ProfilePage() {
       } else if (data.validationStatus === "rejected") {
         toast({
           title: "Photo Saved",
-          description: data.validationReason || "Try another photo to earn 1 ShareCoin.",
+          description:
+            data.validationReason || "Try another photo to earn 1 ShareCoin.",
         });
       } else {
         toast({
@@ -227,38 +232,41 @@ export default function ProfilePage() {
   });
 
   // Initialize crop when image loads
-  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
-    const cropInit = centerCrop(
-      makeAspectCrop({ unit: '%', width: 80 }, 1, width, height),
-      width,
-      height
-    );
-    setCrop(cropInit);
-  }, []);
+  const onImageLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const { width, height } = e.currentTarget;
+      const cropInit = centerCrop(
+        makeAspectCrop({ unit: "%", width: 80 }, 1, width, height),
+        width,
+        height,
+      );
+      setCrop(cropInit);
+    },
+    [],
+  );
 
   // Convert cropped image to file
   const getCroppedImage = useCallback(async (): Promise<File | null> => {
     if (!imgRef.current || !crop) return null;
-    
+
     const image = imgRef.current;
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
-    
+
     const pixelCrop = {
       x: (crop.x / 100) * image.width * scaleX,
       y: (crop.y / 100) * image.height * scaleY,
       width: (crop.width / 100) * image.width * scaleX,
       height: (crop.height / 100) * image.height * scaleY,
     };
-    
+
     canvas.width = pixelCrop.width;
     canvas.height = pixelCrop.height;
-    const ctx = canvas.getContext('2d');
-    
+    const ctx = canvas.getContext("2d");
+
     if (!ctx) return null;
-    
+
     ctx.drawImage(
       image,
       pixelCrop.x,
@@ -268,18 +276,24 @@ export default function ProfilePage() {
       0,
       0,
       pixelCrop.width,
-      pixelCrop.height
+      pixelCrop.height,
     );
-    
+
     return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], originalFile?.name || 'profile.jpg', { type: 'image/jpeg' });
-          resolve(file);
-        } else {
-          resolve(null);
-        }
-      }, 'image/jpeg', 0.9);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const file = new File([blob], originalFile?.name || "profile.jpg", {
+              type: "image/jpeg",
+            });
+            resolve(file);
+          } else {
+            resolve(null);
+          }
+        },
+        "image/jpeg",
+        0.9,
+      );
     });
   }, [crop, originalFile]);
 
@@ -304,7 +318,7 @@ export default function ProfilePage() {
       reader.readAsDataURL(file);
     }
     // Reset file input
-    if (e.target) e.target.value = '';
+    if (e.target) e.target.value = "";
   };
 
   const handleCropConfirm = async () => {
@@ -639,7 +653,10 @@ export default function ProfilePage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16 border-2 border-white shadow-md">
-                      <AvatarImage src={(user as any)?.profilePhoto} alt={user.username} />
+                      <AvatarImage
+                        src={(user as any)?.profilePhoto}
+                        alt={user.username}
+                      />
                       <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
                         {profile?.fullName
                           ? profile.fullName.charAt(0).toUpperCase()
@@ -695,7 +712,10 @@ export default function ProfilePage() {
                       <div className="flex items-center gap-4">
                         <div className="relative">
                           <Avatar className="h-16 w-16 border-2 border-gray-200">
-                            <AvatarImage src={(user as any)?.profilePhoto} alt={user.username} />
+                            <AvatarImage
+                              src={(user as any)?.profilePhoto}
+                              alt={user.username}
+                            />
                             <AvatarFallback className="bg-teal-100 text-teal-600 text-xl font-medium">
                               {user.username?.charAt(0).toUpperCase()}
                             </AvatarFallback>
@@ -717,10 +737,10 @@ export default function ProfilePage() {
                           />
                         </div>
                         <div className="text-sm text-gray-500">
-                          {profilePhotoMutation.isPending 
-                            ? "Uploading..." 
-                            : (user as any)?.profilePhoto 
-                              ? "Click camera to change" 
+                          {profilePhotoMutation.isPending
+                            ? "Uploading..."
+                            : (user as any)?.profilePhoto
+                              ? "Click camera to change"
                               : "Add a photo"}
                           {!(user as any)?.hasUploadedProfilePhoto && (
                             <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
@@ -1059,25 +1079,39 @@ export default function ProfilePage() {
                 <Link href="/verification">
                   <Button variant="outline" className="w-full justify-start">
                     <BadgeCheck className="h-4 w-4 mr-2" />
-                    Verification Status
+                    Identity Verification
                   </Button>
                 </Link>
               </CardContent>
             </Card>
 
             {/* Verification Checklist */}
-            <Card className={profile?.isVerified ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}>
+            <Card
+              className={
+                profile?.isVerified
+                  ? "border-green-200 bg-green-50"
+                  : "border-orange-200 bg-orange-50"
+              }
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Shield className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-orange-600"}`} />
+                  <Shield
+                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-orange-600"}`}
+                  />
                   Verification Status
                   {!profile?.isVerified && (
-                    <Badge variant="outline" className="ml-auto bg-orange-100 text-orange-700 border-orange-300">
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-orange-100 text-orange-700 border-orange-300"
+                    >
                       Unverified
                     </Badge>
                   )}
                   {profile?.isVerified && (
-                    <Badge variant="outline" className="ml-auto bg-green-100 text-green-700 border-green-300">
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-green-100 text-green-700 border-green-300"
+                    >
                       Verified
                     </Badge>
                   )}
@@ -1086,33 +1120,27 @@ export default function ProfilePage() {
               <CardContent className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    {(profile as any)?.emailVerified ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <X className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className={`text-sm ${(profile as any)?.emailVerified ? "text-green-700" : "text-gray-500"}`}>
-                      Email verified
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {(profile as any)?.phoneVerified ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <X className="h-4 w-4 text-gray-400" />
-                    )}
-                    <span className={`text-sm ${(profile as any)?.phoneVerified ? "text-green-700" : "text-gray-500"}`}>
-                      Phone number verified
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     {profile?.isVerified ? (
                       <Check className="h-4 w-4 text-green-600" />
                     ) : (
                       <X className="h-4 w-4 text-gray-400" />
                     )}
-                    <span className={`text-sm ${profile?.isVerified ? "text-green-700" : "text-gray-500"}`}>
+                    <span
+                      className={`text-sm ${profile?.isVerified ? "text-green-700" : "text-gray-500"}`}
+                    >
                       ID verification
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {(profile as any)?.paymentMethodLast4 ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <X className="h-4 w-4 text-gray-400" />
+                    )}
+                    <span
+                      className={`text-sm ${(profile as any)?.paymentMethodLast4 ? "text-green-700" : "text-gray-500"}`}
+                    >
+                      Payment method on file
                     </span>
                   </div>
                 </div>
@@ -1259,10 +1287,13 @@ export default function ProfilePage() {
         )}
 
         {/* Photo Crop Dialog */}
-        <Dialog open={showCropDialog} onOpenChange={(open) => {
-          if (!open) handleCropCancel();
-          setShowCropDialog(open);
-        }}>
+        <Dialog
+          open={showCropDialog}
+          onOpenChange={(open) => {
+            if (!open) handleCropCancel();
+            setShowCropDialog(open);
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Crop Your Photo</DialogTitle>
@@ -1280,7 +1311,7 @@ export default function ProfilePage() {
                     src={imageSrc}
                     alt="Crop preview"
                     onLoad={onImageLoad}
-                    style={{ maxHeight: '400px', maxWidth: '100%' }}
+                    style={{ maxHeight: "400px", maxWidth: "100%" }}
                   />
                 </ReactCrop>
               )}
@@ -1289,11 +1320,13 @@ export default function ProfilePage() {
               <Button variant="outline" onClick={handleCropCancel}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleCropConfirm} 
+              <Button
+                onClick={handleCropConfirm}
                 disabled={profilePhotoMutation.isPending}
               >
-                {profilePhotoMutation.isPending ? "Uploading..." : "Upload Photo"}
+                {profilePhotoMutation.isPending
+                  ? "Uploading..."
+                  : "Upload Photo"}
               </Button>
             </DialogFooter>
           </DialogContent>

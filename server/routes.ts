@@ -642,15 +642,23 @@ export function registerRoutes(app: Express): Server {
         .where(eq(verifications.id, verification.id));
 
       // VERIFICATION REWARDS:
-      // 1. Set isVerified = true and verifiedAt timestamp
+      // 1. Check if user also has payment method on file - both required for full verification
       // 2. Boost trust/reputation score significantly (+50 points)
       const VERIFICATION_TRUST_BOOST = 50;
+      
+      // Check if user has payment method on file
+      const [currentUser] = await db
+        .select({ stripePaymentMethodId: users.stripePaymentMethodId })
+        .from(users)
+        .where(eq(users.id, userId));
+      
+      const hasPaymentMethod = !!currentUser?.stripePaymentMethodId;
       
       await db
         .update(users)
         .set({
-          isVerified: true,
-          verifiedAt: new Date(),
+          isVerified: hasPaymentMethod, // Only verified if both ID and payment method exist
+          verifiedAt: hasPaymentMethod ? new Date() : null,
           reputationScore: sql`COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST}`,
         })
         .where(eq(users.id, userId));
@@ -5073,7 +5081,17 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      // Update user with payment method details
+      // Check if user has approved ID verification
+      const [idVerification] = await db
+        .select({ status: verifications.status })
+        .from(verifications)
+        .where(eq(verifications.userId, req.user.id))
+        .orderBy(desc(verifications.createdAt))
+        .limit(1);
+      
+      const hasApprovedId = idVerification?.status === 'approved';
+      
+      // Update user with payment method details and potentially verify
       await db
         .update(users)
         .set({
@@ -5083,6 +5101,8 @@ Respond with ONLY the category name, nothing else.`
           paymentMethodExpMonth: paymentMethod.card.exp_month,
           paymentMethodExpYear: paymentMethod.card.exp_year,
           paymentMethodAddedAt: new Date(),
+          // Set verified if both ID and payment method are now satisfied
+          ...(hasApprovedId && { isVerified: true, verifiedAt: new Date() }),
         })
         .where(eq(users.id, req.user.id));
 
@@ -5158,7 +5178,17 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      // Update user with payment method details
+      // Check if user has approved ID verification
+      const [idVerification] = await db
+        .select({ status: verifications.status })
+        .from(verifications)
+        .where(eq(verifications.userId, req.user.id))
+        .orderBy(desc(verifications.createdAt))
+        .limit(1);
+      
+      const hasApprovedId = idVerification?.status === 'approved';
+      
+      // Update user with payment method details and potentially verify
       await db
         .update(users)
         .set({
@@ -5168,6 +5198,8 @@ Respond with ONLY the category name, nothing else.`
           paymentMethodExpMonth: paymentMethod.card.exp_month,
           paymentMethodExpYear: paymentMethod.card.exp_year,
           paymentMethodAddedAt: new Date(),
+          // Set verified if both ID and payment method are now satisfied
+          ...(hasApprovedId && { isVerified: true, verifiedAt: new Date() }),
         })
         .where(eq(users.id, req.user.id));
 
@@ -5231,7 +5263,7 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      // Clear payment method from user record
+      // Clear payment method from user record and quietly downgrade verification
       await db
         .update(users)
         .set({
@@ -5241,6 +5273,7 @@ Respond with ONLY the category name, nothing else.`
           paymentMethodExpMonth: null,
           paymentMethodExpYear: null,
           paymentMethodAddedAt: null,
+          isVerified: false, // Payment method required for verification
         })
         .where(eq(users.id, req.user.id));
 

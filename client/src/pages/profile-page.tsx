@@ -1128,7 +1128,7 @@ export default function ProfilePage() {
                     <span
                       className={`text-sm ${profile?.isVerified ? "text-green-700" : "text-gray-500"}`}
                     >
-                      ID verification
+                      Identity verified
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

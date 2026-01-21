@@ -188,6 +188,7 @@ export default function LendPage() {
   const isEditMode = !!editItemId;
 
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -765,16 +766,18 @@ export default function LendPage() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
+      const newUrls = newFiles.map(file => URL.createObjectURL(file));
       setSelectedPhotos((prev) => [...prev, ...newFiles]);
+      setPhotoPreviewUrls((prev) => [...prev, ...newUrls]);
     }
   };
 
   const removePhoto = (index: number) => {
+    if (photoPreviewUrls[index]) {
+      URL.revokeObjectURL(photoPreviewUrls[index]);
+    }
     setSelectedPhotos((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const getPhotoPreviewUrl = (file: File): string => {
-    return URL.createObjectURL(file);
+    setPhotoPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const watchIsLendable = form.watch("isLendable");
@@ -1128,7 +1131,7 @@ export default function LendPage() {
                               {selectedPhotos.map((photo, idx) => (
                                 <div key={idx} className="relative group w-16 h-16">
                                   <img
-                                    src={getPhotoPreviewUrl(photo)}
+                                    src={photoPreviewUrls[idx]}
                                     alt={`Photo ${idx + 1}`}
                                     className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                                   />
@@ -1857,7 +1860,7 @@ export default function LendPage() {
                                 className="relative group w-16 h-16"
                               >
                                 <img
-                                  src={getPhotoPreviewUrl(photo)}
+                                  src={photoPreviewUrls[idx]}
                                   alt={`Photo ${idx + 1}`}
                                   className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                                 />

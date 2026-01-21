@@ -2,13 +2,11 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { X, Shield, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useLocation } from "wouter";
+import { X, Shield, FileCheck, CreditCard } from "lucide-react";
+import { Link } from "wouter";
 
 export function VerificationNudge() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [isVisible, setIsVisible] = useState(false);
 
@@ -41,11 +39,6 @@ export function VerificationNudge() {
     return null;
   }
 
-  const handleVerifyNow = () => {
-    dismissMutation.mutate();
-    navigate("/profile/verification");
-  };
-
   const handleDismiss = () => {
     dismissMutation.mutate();
   };
@@ -64,6 +57,24 @@ export function VerificationNudge() {
             <p className="text-xs text-gray-600 mt-1">
               Verified members get lower trust deposits and faster approvals.
             </p>
+            <div className="mt-2 space-y-1">
+              <Link 
+                href="/profile/verification" 
+                onClick={handleDismiss}
+                className="flex items-center gap-1.5 text-xs text-[#0BB88C] hover:text-[#0BB88C]/80 hover:underline"
+              >
+                <FileCheck className="h-3 w-3" />
+                ID verification
+              </Link>
+              <Link 
+                href="/profile/payment-methods" 
+                onClick={handleDismiss}
+                className="flex items-center gap-1.5 text-xs text-[#0BB88C] hover:text-[#0BB88C]/80 hover:underline"
+              >
+                <CreditCard className="h-3 w-3" />
+                Payment method on file
+              </Link>
+            </div>
           </div>
           <button
             onClick={handleDismiss}
@@ -71,16 +82,6 @@ export function VerificationNudge() {
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
-        <div className="mt-3 flex gap-2">
-          <Button
-            size="sm"
-            onClick={handleVerifyNow}
-            className="flex-1 bg-[#0BB88C] hover:bg-[#0BB88C]/90 text-white text-xs"
-          >
-            Verify now
-            <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
         </div>
       </div>
     </div>

@@ -51,6 +51,7 @@ export default function AuthPage() {
   const [referralCode, setReferralCode] = useState("");
   const [showReactivate, setShowReactivate] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showReferralInput, setShowReferralInput] = useState(false);
   const { toast } = useToast();
 
   // Extract referral code from URL and pre-fill
@@ -202,20 +203,32 @@ export default function AuthPage() {
                 Sign in and discover a world of shared resources
               </h2>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <Label htmlFor="main-referral" className="text-sm text-muted-foreground">Have a referral code?</Label>
+              {!showReferralInput ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReferralInput(true)}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="underline">Have a referral code?</span>
+                </button>
+              ) : (
+                <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <Label htmlFor="main-referral" className="text-sm text-muted-foreground">Referral code</Label>
+                  </div>
+                  <Input
+                    id="main-referral"
+                    type="text"
+                    placeholder="Enter referral code"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    className="h-10"
+                    autoFocus
+                  />
                 </div>
-                <Input
-                  id="main-referral"
-                  type="text"
-                  placeholder="Enter referral code (optional)"
-                  value={referralCode}
-                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                  className="h-10"
-                />
-              </div>
+              )}
 
               <Button
                 onClick={() => {

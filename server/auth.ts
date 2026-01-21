@@ -37,6 +37,34 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
+async function generateUniqueReferralCode(): Promise<string> {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const generateCode = () => {
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+  
+  let code = generateCode();
+  let attempts = 0;
+  
+  while (attempts < 10) {
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.referralCode, code))
+      .limit(1);
+    
+    if (!existing) return code;
+    code = generateCode();
+    attempts++;
+  }
+  
+  return `${generateCode()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
+}
+
 async function comparePasswords(supplied: string, stored: string) {
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
@@ -171,6 +199,7 @@ export function setupAuth(app: Express) {
               suffix++;
             }
             
+            const newUserReferralCode = await generateUniqueReferralCode();
             const [newUser] = await db
               .insert(users)
               .values({
@@ -180,6 +209,7 @@ export function setupAuth(app: Express) {
                 isVerified: true, // Google accounts are pre-verified
                 password: null,
                 referredBy: referrerId,
+                referralCode: newUserReferralCode,
               })
               .returning();
 
@@ -347,6 +377,7 @@ export function setupAuth(app: Express) {
         }
       }
 
+      const newUserReferralCode = await generateUniqueReferralCode();
       const [user] = await db
         .insert(users)
         .values({
@@ -354,6 +385,7 @@ export function setupAuth(app: Express) {
           password: result.data.password ? await hashPassword(result.data.password) : null,
           referredBy: referrerId,
           deviceFingerprint: deviceFingerprint || null,
+          referralCode: newUserReferralCode,
         })
         .returning();
 

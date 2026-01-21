@@ -801,23 +801,19 @@ export default function LendPage() {
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
-      {/* Top section with green background to prevent gap */}
-      <div className="bg-[#a8e6cf]">
-        <div className="bg-white">
-          <Navbar />
-        </div>
+      <Navbar />
 
-        {/* Hero Section - flush with navbar */}
-        <div
-          className="w-full relative"
-          style={{
-            backgroundImage: "url('/hero-banner.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            borderBottomLeftRadius: "32px",
-            borderBottomRightRadius: "32px",
-          }}
-        >
+      {/* Hero Section */}
+      <div
+        className="w-full relative -mt-px"
+        style={{
+          backgroundImage: "url('/hero-banner.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          borderBottomLeftRadius: "32px",
+          borderBottomRightRadius: "32px",
+        }}
+      >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-12 pb-3 sm:pb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
             <div className="flex-1 min-w-0">
@@ -915,7 +911,6 @@ export default function LendPage() {
           className="absolute bottom-0 left-0 w-6 h-6 sm:w-8 sm:h-8"
           style={{ borderTopRightRadius: "100%", backgroundColor: "#f3f4f6" }}
         />
-        </div>
       </div>
 
       <VerificationModal />

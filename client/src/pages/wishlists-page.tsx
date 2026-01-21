@@ -217,7 +217,7 @@ export default function WishlistsPage() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6 items-center">
           <Button
             variant={filter === "all" ? "default" : "outline"}
             onClick={() => setFilter("all")}
@@ -239,8 +239,8 @@ export default function WishlistsPage() {
           >
             Expired ({expiredWishlists.length})
           </Button>
-          <div className="flex-1" />
-          <Button onClick={() => setShowAddDialog(true)} size="sm">
+          <div className="hidden sm:block flex-1" />
+          <Button onClick={() => setShowAddDialog(true)} size="sm" className="ml-auto sm:ml-0">
             <Plus className="h-4 w-4 mr-1" />
             Add Your Wish
           </Button>

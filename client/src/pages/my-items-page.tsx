@@ -127,7 +127,7 @@ export default function MyItemsPage() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6 items-center">
           <Button
             variant={filter === "all" ? "default" : "outline"}
             onClick={() => setFilter("all")}
@@ -149,8 +149,8 @@ export default function MyItemsPage() {
           >
             Unavailable ({items.filter((i) => !i.isAvailable).length})
           </Button>
-          <div className="flex-1" />
-          <Link href="/lend">
+          <div className="hidden sm:block flex-1" />
+          <Link href="/lend" className="ml-auto sm:ml-0">
             <Button size="sm">
               <Plus className="h-4 w-4 mr-1" />
               Add Your Item

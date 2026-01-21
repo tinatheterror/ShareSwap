@@ -1143,7 +1143,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="deposit-2b">
                 <AccordionTrigger className="text-sm">
-                  Why deposits don't increase for longer durations?
+                  Deposits don't increase for longer durations
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <p>
@@ -1156,7 +1156,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="deposit-4">
                 <AccordionTrigger className="text-sm">
-                  What is the difference between borrowing and renting?
+                  Borrowing vs. Renting
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <div className="space-y-3">
@@ -1644,7 +1644,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="privacy-6">
                 <AccordionTrigger className="text-sm">
-                  What if I want to permanently delete my account?
+                  Can I permanently delete my account?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
@@ -1693,8 +1693,8 @@ export default function FAQPage() {
 
         {/* What's Coming Next */}
         <Card className="border-0 shadow-sm">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-t-lg">
-            <CardTitle className="text-lg text-purple-800 flex items-center gap-2">
+          <CardHeader className="bg-gradient-to-r from-teal-50 to-indigo-50 rounded-t-lg">
+            <CardTitle className="text-lg text-teal-800 flex items-center gap-2">
               🚀 What's Coming Next
             </CardTitle>
           </CardHeader>
@@ -1706,13 +1706,18 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    We're exploring optional item care services for select categories in the future.
+                    We're exploring optional item care services for select
+                    categories in the future.
                   </p>
                   <p>
-                    This would allow users to choose professional cleaning for certain items before pickup or delivery. Participation would always be optional and clearly labeled.
+                    This would allow users to choose professional cleaning for
+                    certain items before pickup or delivery. Participation would
+                    always be optional and clearly labeled.
                   </p>
                   <p>
-                    For now, item condition and cleanliness are managed directly between neighbours, supported by trust scores, reviews, and clear communication.
+                    For now, item condition and cleanliness are managed directly
+                    between neighbours, supported by trust scores, reviews, and
+                    clear communication.
                   </p>
                 </AccordionContent>
               </AccordionItem>

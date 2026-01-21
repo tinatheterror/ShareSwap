@@ -291,7 +291,7 @@ export function Navbar() {
             {user && (
               <Sheet open={mobileWalletOpen} onOpenChange={setMobileWalletOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-1.5 hover:text-primary hover:border-primary pl-2 pr-2.5 py-1 h-auto" style={{ maxWidth: '115px' }}>
+                  <Button variant="outline" className="flex items-center gap-1.5 hover:text-primary hover:border-primary pl-2 pr-2.5 py-1 h-auto ml-2" style={{ maxWidth: '115px' }}>
                     <Coins className="h-3 w-3 text-primary flex-shrink-0" />
                     <div className="flex flex-col items-start min-w-0">
                       <span className="text-[8px] text-muted-foreground leading-tight">Total Balance</span>

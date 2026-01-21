@@ -166,10 +166,14 @@ export default function VerificationPage() {
         </Button>
 
         <div className="flex items-start gap-3 mb-6">
-          <BadgeCheck className="h-8 w-8 mt-1 flex-shrink-0" fill="#0DCEA1" stroke="white" />
+          <BadgeCheck
+            className="h-8 w-8 mt-1 flex-shrink-0"
+            fill="#0DCEA1"
+            stroke="white"
+          />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Verification Status
+              Identity Verification
             </h1>
             <p className="text-gray-500">Build trust with a verified profile</p>
           </div>

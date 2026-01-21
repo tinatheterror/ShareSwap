@@ -247,8 +247,8 @@ export default function PaymentMethodsPage() {
               </div>
 
               <p className="text-sm text-gray-600 mb-6">
-                Used for refundable security deposits and damage reimbursements
-                only
+                Used for rental payments, security deposits, and damage
+                reimbursements
               </p>
 
               <Separator className="my-4" />
@@ -303,9 +303,8 @@ export default function PaymentMethodsPage() {
               <Alert className="mb-6 bg-white border-blue-100">
                 <Shield className="h-4 w-4 text-blue-500" />
                 <AlertDescription className="text-blue-600 text-xs">
-                  Your card is primarily used for refundable security deposits
-                  when borrowing or renting items. It may also be used for other
-                  paid activity when applicable.
+                  Your card is used for rental payments, security deposits when
+                  borrowing items, and any damage reimbursements if applicable.
                 </AlertDescription>
               </Alert>
 

@@ -1112,8 +1112,9 @@ export default function ProfilePage() {
                     {(profile as any)?.paymentMethodLast4 ? (
                       <Check className="h-4 w-4 mr-2 text-green-600" />
                     ) : (
-                      <CreditCard className="h-4 w-4 mr-2 text-gray-400" />
+                      <X className="h-4 w-4 mr-2 text-gray-400" />
                     )}
+                    <CreditCard className="h-4 w-4 mr-2" />
                     Payment Methods
                   </Button>
                 </Link>
@@ -1122,8 +1123,9 @@ export default function ProfilePage() {
                     {profile?.isVerified ? (
                       <Check className="h-4 w-4 mr-2 text-green-600" />
                     ) : (
-                      <BadgeCheck className="h-4 w-4 mr-2 text-gray-400" />
+                      <X className="h-4 w-4 mr-2 text-gray-400" />
                     )}
+                    <BadgeCheck className="h-4 w-4 mr-2" />
                     Identity Verification
                   </Button>
                 </Link>

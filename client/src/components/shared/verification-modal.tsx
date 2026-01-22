@@ -45,7 +45,7 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
             <div>
               <p className="font-medium text-gray-900">Why verify?</p>
               <ul className="mt-2 text-sm text-gray-600 space-y-1">
-                <li>• Lower security deposits on borrows</li>
+                <li>• Lower trust deposits on borrows</li>
                 <li>• Faster request approvals</li>
                 <li>• Build trust with neighbors</li>
                 <li>• Priority in matching</li>

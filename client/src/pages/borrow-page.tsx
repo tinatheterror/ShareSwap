@@ -366,12 +366,12 @@ export default function BorrowPage() {
                   key={item.id}
                   className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white border-pink-100"
                 >
-                  <div className="p-4">
+                  <div className="p-2 md:p-4">
                     <div
                       className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative"
                       style={{ aspectRatio: "1 / 0.9" }}
                     >
-                      <Badge className="absolute top-2 right-2 bg-pink-500 text-white">
+                      <Badge className="absolute top-1 right-1 md:top-2 md:right-2 bg-pink-500 text-white text-[10px] md:text-xs">
                         FREE
                       </Badge>
                       {item.photos && item.photos[0] ? (
@@ -382,27 +382,27 @@ export default function BorrowPage() {
                         />
                       ) : (
                         <div className="w-full h-full bg-pink-100 flex items-center justify-center rounded-lg">
-                          <Gift className="h-16 w-16 text-pink-400" />
+                          <Gift className="h-10 w-10 md:h-16 md:w-16 text-pink-400" />
                         </div>
                       )}
                     </div>
                   </div>
-                  <CardContent className="px-4 pt-0 pb-4">
-                    <h3 className="font-bold text-lg mb-1 text-slate-800 truncate">
+                  <CardContent className="px-3 md:px-4 pt-0 pb-2 md:pb-4">
+                    <h3 className="font-bold text-sm md:text-lg mb-0.5 md:mb-1 text-slate-800 truncate">
                       {item.name}
                     </h3>
-                    <div className="flex items-center gap-2 text-slate-600 mb-3">
-                      <MapPin className="h-3 w-3" />
-                      <span className="text-sm">
+                    <div className="flex items-center gap-1 md:gap-2 text-slate-600 mb-1.5 md:mb-3">
+                      <MapPin className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                      <span className="text-xs md:text-sm">
                         {item.city || userPostalCode || "Nearby"}
                       </span>
                     </div>
                     <Button
                       size="sm"
-                      className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                      className="w-full bg-pink-500 hover:bg-pink-600 text-white text-[10px] md:text-xs h-6 md:h-8"
                       onClick={() => navigate(`/items/${item.id}`)}
                     >
-                      <Gift className="h-3 w-3 mr-1" />
+                      <Gift className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                       Claim Gift
                     </Button>
                   </CardContent>
@@ -469,7 +469,7 @@ export default function BorrowPage() {
                   key={item.id}
                   className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
                 >
-                  <div className="p-4">
+                  <div className="p-2 md:p-4">
                     <div
                       className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
                       style={{ aspectRatio: "1 / 0.9" }}
@@ -482,48 +482,48 @@ export default function BorrowPage() {
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                          <Camera className="h-16 w-16 text-gray-400" />
+                          <Camera className="h-10 w-10 md:h-16 md:w-16 text-gray-400" />
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <CardContent className="px-6 pt-0 pb-4">
-                    <h3 className="font-bold text-xl text-slate-800 truncate mb-1">
+                  <CardContent className="px-3 md:px-6 pt-0 pb-2 md:pb-4">
+                    <h3 className="font-bold text-sm md:text-xl text-slate-800 truncate mb-0.5 md:mb-1">
                       {item.name}
                     </h3>
 
-                    <div className="space-y-0.5 mb-3">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <MapPin className="h-4 w-4" />
-                        <span className="text-sm">
+                    <div className="space-y-0 md:space-y-0.5 mb-1.5 md:mb-3">
+                      <div className="flex items-center gap-1 md:gap-2 text-slate-700">
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="text-xs md:text-sm">
                           {item.city || userPostalCode || "Nearby"}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-sm text-slate-700">
+                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
                         <span>
                           <span className="font-medium">Condition:</span>{" "}
                           {item.conditionRating || 8}/10
                         </span>
                         {item.owner?.isVerified && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                          <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
                             Verified Owner
                           </span>
                         )}
                       </div>
 
                       {(item.isLendable || item.isRentable) && (
-                        <div className="flex items-center gap-2 text-sm text-slate-700">
-                          <div className="flex items-center gap-1">
-                            <Coins className="h-4 w-4 text-teal-600" />
+                        <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
+                          <div className="flex items-center gap-0.5 md:gap-1">
+                            <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                             <span>{item.shareCoinPrice || 50} ShareCoins</span>
                           </div>
                           {item.isRentable && item.dollarsPrice && (
                             <>
                               <span className="text-slate-400">|</span>
                               <div className="flex items-center">
-                                <DollarSign className="h-4 w-4 text-teal-600" />
+                                <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                                 <span>{item.dollarsPrice}/day</span>
                               </div>
                             </>
@@ -536,33 +536,33 @@ export default function BorrowPage() {
                       {item.isLendable && (
                         <Button
                           size="sm"
-                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                          className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                           style={{ backgroundColor: "#0DCEA1" }}
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
-                          <HandHeart className="h-3 w-3 mr-0.5" />
+                          <HandHeart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
                           Borrow It
                         </Button>
                       )}
                       {item.isRentable && (
                         <Button
                           size="sm"
-                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                          className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                           style={{ backgroundColor: "#0DCEA1" }}
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
-                          <DollarSign className="h-3 w-3 mr-0.5" />
+                          <DollarSign className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
                           Rent It
                         </Button>
                       )}
                       {item.isSwappable && (
                         <Button
                           size="sm"
-                          className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                          className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                           style={{ backgroundColor: "#0DCEA1" }}
                           onClick={() => navigate(`/items/${item.id}`)}
                         >
-                          <ArrowLeftRight className="h-3 w-3 mr-0.5" />
+                          <ArrowLeftRight className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
                           Swap It
                         </Button>
                       )}
@@ -571,7 +571,7 @@ export default function BorrowPage() {
                         !item.isSwappable && (
                           <Button
                             size="sm"
-                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                             style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >

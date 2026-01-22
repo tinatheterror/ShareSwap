@@ -295,7 +295,7 @@ export function Navbar() {
                     <Coins className="h-3 w-3 text-primary flex-shrink-0" />
                     <div className="flex flex-col items-start min-w-0">
                       <span className="text-[8px] text-muted-foreground leading-tight">Total Balance</span>
-                      <span className="text-[10px] font-medium truncate">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
+                      <span className="text-[10px] font-medium truncate flex items-center gap-0.5"><Coins className="h-2.5 w-2.5 text-primary" />{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
                     </div>
                   </Button>
                 </SheetTrigger>

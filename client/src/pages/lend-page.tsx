@@ -912,7 +912,7 @@ export default function LendPage() {
       </div>
 
       <VerificationModal />
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 pt-4 pb-8">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((data) => {

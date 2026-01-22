@@ -697,8 +697,8 @@ export default function LendPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
 
       // Check if there are wishlist matches - show modal after listing
+      setListedItemData(data);
       if (matchedWishlists.length > 0) {
-        setListedItemData(data);
         setSelectedWishlistMatch(matchedWishlists[0]);
         setShowMatchingModal(true);
       } else {
@@ -2254,7 +2254,11 @@ export default function LendPage() {
         isOpen={showWishlistFulfillmentPopup}
         onClose={() => {
           setShowWishlistFulfillmentPopup(false);
-          navigate("/borrow");
+          if (listedItemData?.id) {
+            navigate(`/items/${listedItemData.id}`);
+          } else {
+            navigate("/borrow");
+          }
         }}
       />
     </div>

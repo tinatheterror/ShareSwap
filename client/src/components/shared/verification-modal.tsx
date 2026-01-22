@@ -31,7 +31,7 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
               <BadgeCheck className="h-6 w-6 text-white" />
             </div>
             <DialogTitle className="text-xl">
-              Don't be a stranger! Verify your profile
+              To continue, please verify your profile.
             </DialogTitle>
           </div>
           <DialogDescription className="text-gray-600 pt-2">

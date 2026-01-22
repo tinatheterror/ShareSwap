@@ -287,7 +287,11 @@ export function ItemRequestForm({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((data) => {
-              requireVerification(() => createRequestMutation.mutate(data));
+              if (requestType === "SWAP") {
+                createRequestMutation.mutate(data);
+              } else {
+                requireVerification(() => createRequestMutation.mutate(data));
+              }
             })}
             className="space-y-4 mt-4"
           >

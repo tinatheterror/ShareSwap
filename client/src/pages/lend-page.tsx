@@ -94,9 +94,7 @@ const ORIGINAL_VALUES = [
   "Under $50",
   "$50–$150",
   "$150–$300",
-  "$300–$1,000",
-  "$1,000–$5,000",
-  "$5,000+",
+  "$300+",
 ] as const;
 
 const TIER_NAMES: Record<number, string> = {

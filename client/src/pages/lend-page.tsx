@@ -704,7 +704,7 @@ export default function LendPage() {
       } else {
         toast({
           title: "Successfully Listed!",
-          description: `Your item has been added to ShareChest. You'll earn ${data.shareCoinsReward || 10} ShareCoins for this listing.`,
+          description: "Your item has been added to ShareChest.",
         });
         // Show wishlist fulfillment popup after successful listing
         setShowWishlistFulfillmentPopup(true);

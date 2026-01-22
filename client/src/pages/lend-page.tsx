@@ -1277,36 +1277,23 @@ export default function LendPage() {
                   </div>
 
                   {/* Location field */}
-                  <div className="space-y-4">
-                    <div className="space-y-1">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">Location</h3>
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => setShowLocationModal(true)}
-                        className="text-primary hover:text-primary/80 text-sm h-auto p-0"
+                        className="rounded-full h-8 px-3 text-sm"
                       >
-                        Change location
+                        <MapPin className="h-3.5 w-3.5 mr-1.5" />
+                        {detectedLocality || watchPostalCode || "Set location"}
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <span>
-                        {watchPostalCode 
-                          ? `Near ${watchPostalCode}${detectedLocality ? ` (${detectedLocality})` : ""}`
-                          : detectedLocality 
-                            ? `Near ${detectedLocality}` 
-                            : "Location not set"}
-                      </span>
-                    </div>
-                    {!watchPostalCode && detectedLocality && (
-                      <p className="text-xs text-muted-foreground">
-                        Want better accuracy? Add your postal code.
-                      </p>
-                    )}
-                  </div>
+                    <p className="text-xs text-muted-foreground">
+                      Want better accuracy? Add your postal code.
+                    </p>
                   </div>
 
                   {/* Sharing options */}

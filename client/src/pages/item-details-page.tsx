@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { ItemRequestForm } from "@/components/shared/item-request-form";
 import { SwapInventorySelector } from "@/components/swap-inventory-selector";
+import { VerificationModal } from "@/components/shared/verification-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,9 +43,19 @@ export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [showSwapSelector, setShowSwapSelector] = useState(false);
   const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem | null>(null);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [location] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (user && !user.isVerified) {
+      const timer = setTimeout(() => {
+        setShowVerificationModal(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   // Extract item ID from URL
   const itemId = location.split("/").pop();
@@ -366,6 +377,11 @@ export default function ItemDetailsPage() {
             setShowSwapSelector(false);
             setRequestType("SWAP");
           }}
+        />
+        
+        <VerificationModal 
+          isOpen={showVerificationModal} 
+          onClose={() => setShowVerificationModal(false)} 
         />
       </main>
     </div>

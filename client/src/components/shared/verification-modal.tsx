@@ -6,7 +6,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Shield, UserCheck } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface VerificationModalProps {
@@ -27,27 +27,26 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-[#0BB88C]/10 rounded-lg">
-              <Shield className="h-6 w-6 text-[#0BB88C]" />
+            <div className="p-2 bg-[#0DCEA1] rounded-lg">
+              <BadgeCheck className="h-6 w-6 text-white" />
             </div>
             <DialogTitle className="text-xl">
-              Verify your profile to continue
+              Don't be a stranger! Verify your profile
             </DialogTitle>
           </div>
           <DialogDescription className="text-gray-600 pt-2">
-            Verification helps keep the community safe and lowers trust-deposit requirements.
+            Verification helps keep the community safe and builds trust with neighbors.
           </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
           <div className="flex items-start gap-3">
-            <UserCheck className="h-5 w-5 text-[#0BB88C] mt-0.5" />
+            <BadgeCheck className="h-5 w-5 text-[#0DCEA1] mt-0.5" />
             <div>
               <p className="font-medium text-gray-900">Why verify?</p>
               <ul className="mt-2 text-sm text-gray-600 space-y-1">
+                <li>• Unlocks borrowing or renting items</li>
                 <li>• Lower trust deposits on borrows</li>
-                <li>• Faster request approvals</li>
-                <li>• Build trust with neighbors</li>
                 <li>• Priority in matching</li>
               </ul>
             </div>
@@ -64,7 +63,7 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
           </Button>
           <Button
             onClick={handleVerifyNow}
-            className="flex-1 bg-[#0BB88C] hover:bg-[#0BB88C]/90"
+            className="flex-1 bg-[#0DCEA1] hover:bg-[#0DCEA1]/90"
           >
             Verify now
           </Button>

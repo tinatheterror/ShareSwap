@@ -919,7 +919,7 @@ export default function LendPage() {
               if (isEditMode) {
                 updateItemMutation.mutate(data);
               } else {
-                requireVerification(() => createItemMutation.mutate(data));
+                createItemMutation.mutate(data);
               }
             })}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"

@@ -704,7 +704,7 @@ export default function LendPage() {
       } else {
         toast({
           title: "Successfully Listed!",
-          description: "Your item has been added to ShareChest.",
+          description: "Your item has been added to the ShareChest.",
         });
         // Show wishlist fulfillment popup after successful listing
         setShowWishlistFulfillmentPopup(true);

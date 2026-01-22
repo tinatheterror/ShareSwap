@@ -1277,23 +1277,18 @@ export default function LendPage() {
                   </div>
 
                   {/* Location field */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">Location</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowLocationModal(true)}
-                        className="rounded-full h-8 px-3 text-sm"
-                      >
-                        <MapPin className="h-3.5 w-3.5 mr-1.5" />
-                        {detectedLocality || watchPostalCode || "Set location"}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Want better accuracy? Add your postal code.
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Location</h3>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowLocationModal(true)}
+                      className="rounded-full h-8 px-3 text-sm"
+                    >
+                      <MapPin className="h-3.5 w-3.5 mr-1.5" />
+                      {detectedLocality || watchPostalCode || "Set location"}
+                    </Button>
                   </div>
 
                   {/* Sharing options */}

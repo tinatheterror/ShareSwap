@@ -76,7 +76,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {recommendations.map((item) => (
           <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
-            <div className="p-2 md:p-4">
+            <div className="p-4">
               <div className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative" style={{ aspectRatio: '1 / 0.9' }}>
                 {item.photos && item.photos.length > 0 ? (
                   <img
@@ -86,13 +86,13 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                   />
                 ) : (
                   <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                    <Camera className="h-10 w-10 md:h-16 md:w-16 text-gray-400" />
+                    <Camera className="h-16 w-16 text-gray-400" />
                   </div>
                 )}
                 {item.recommendationReasons.length > 0 && (
-                  <div className="absolute top-1 right-1 md:top-3 md:right-3">
-                    <Badge variant="secondary" className="bg-teal-100 text-teal-800 text-[10px] md:text-sm border-teal-200">
-                      <Sparkles className="h-2.5 w-2.5 md:h-4 md:w-4 mr-0.5 md:mr-1" />
+                  <div className="absolute top-3 right-3">
+                    <Badge variant="secondary" className="bg-teal-100 text-teal-800 text-sm border-teal-200">
+                      <Sparkles className="h-4 w-4 mr-1" />
                       AI Pick
                     </Badge>
                   </div>
@@ -100,34 +100,34 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
               </div>
             </div>
             
-            <CardContent className="px-2 md:px-6 pt-0 pb-2 md:pb-4">
-              <h3 className="font-bold text-sm md:text-xl mb-0.5 md:mb-1 text-slate-800 truncate">
+            <CardContent className="px-6 pt-0 pb-4">
+              <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
                 {item.name}
               </h3>
               
-              <div className="space-y-0 md:space-y-0.5 mb-1.5 md:mb-3">
-                <div className="flex items-center gap-1 md:gap-2 text-slate-700">
-                  <MapPin className="h-3 w-3 md:h-4 md:w-4" />
-                  <span className="text-xs md:text-sm">
+              <div className="space-y-0.5 mb-3">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <MapPin className="h-4 w-4" />
+                  <span className="text-sm">
                     {item.city || "Nearby"}
                   </span>
                 </div>
                 
-                <div className="text-xs md:text-sm text-slate-700">
+                <div className="text-sm text-slate-700">
                   <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
                 </div>
                 
                 {(item.isLendable || item.isRentable) && (
-                  <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
-                    <div className="flex items-center gap-0.5 md:gap-1">
-                      <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
-                      <span>{item.shareCoinPrice || 50} SC</span>
+                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                    <div className="flex items-center gap-1">
+                      <Coins className="h-4 w-4 text-teal-600" />
+                      <span>{item.shareCoinPrice || 50} ShareCoins</span>
                     </div>
                     {item.isRentable && item.dollarsPrice && (
                       <>
                         <span className="text-slate-400">|</span>
                         <div className="flex items-center">
-                          <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
+                          <DollarSign className="h-4 w-4 text-teal-600" />
                           <span>{item.dollarsPrice}/day</span>
                         </div>
                       </>

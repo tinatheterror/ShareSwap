@@ -209,15 +209,15 @@ export function WishlistFulfillmentPopup({
                       )}
                     </div>
 
-                    <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-4 rounded-lg border border-teal-200/50 mb-4">
+                    <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-2 md:p-4 rounded-lg border border-teal-200/50 mb-2 md:mb-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Coins className="h-5 w-5 text-teal-600" />
-                          <span className="font-bold text-teal-800">
+                        <div className="flex items-center gap-1.5 md:gap-2">
+                          <Coins className="h-4 w-4 md:h-5 md:w-5 text-teal-600" />
+                          <span className="font-bold text-teal-800 text-sm md:text-base">
                             Earn 10 ShareCoins
                           </span>
                         </div>
-                        <span className="text-xs text-teal-600 font-medium">
+                        <span className="text-[10px] md:text-xs text-teal-600 font-medium">
                           Upon completion
                         </span>
                       </div>

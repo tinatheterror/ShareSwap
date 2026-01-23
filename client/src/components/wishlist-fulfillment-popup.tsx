@@ -103,10 +103,10 @@ export function WishlistFulfillmentPopup({
             <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-600 rounded-full mb-4 shadow-lg">
               <Coins className="h-8 w-8 text-white" />
             </div>
-            <DialogTitle className="text-2xl font-bold text-slate-800 mb-2">
+            <DialogTitle className="text-xl font-bold text-slate-800 mb-2">
               Fulfill a Wishlist + Earn ShareCoins
             </DialogTitle>
-            <p className="text-slate-600 text-lg">
+            <p className="text-slate-500 text-lg">
               See something you have? Share it and earn ShareCoins.
             </p>
           </div>
@@ -263,7 +263,7 @@ export function WishlistFulfillmentPopup({
                 Explore All Wishlists
               </Button>
             </Link>
-                      </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

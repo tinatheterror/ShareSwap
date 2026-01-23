@@ -1101,7 +1101,7 @@ export default function LendPage() {
                   <div className="lg:hidden border-t pt-4">
                     <h3 className="font-medium mb-2">Photos</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Minimum 1 photo required. AI needs it to valuate your item more accurately.
+                      Minimum 1 photo required to valuate your item more accurately.
                     </p>
                     <Tabs
                       value={uploadMethod}
@@ -1818,8 +1818,7 @@ export default function LendPage() {
                 <CardContent className="pt-6">
                   <h3 className="font-medium mb-2">Photos</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Minimum 1 photo required. AI needs it to valuate your item
-                    more accurately.
+                    Minimum 1 photo required to valuate your item more accurately.
                   </p>
                   <Tabs
                     value={uploadMethod}

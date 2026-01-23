@@ -1065,7 +1065,7 @@ export default function LendPage() {
                                   key={cond}
                                   type="button"
                                   variant="outline"
-                                  className={`h-auto min-h-[48px] py-2 px-2 flex flex-col items-center justify-center transition-all ${
+                                  className={`h-auto min-h-[48px] md:h-12 py-2 px-2 flex flex-col items-center justify-center transition-all ${
                                     field.value === cond
                                       ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
                                       : "bg-white hover:bg-gray-50"
@@ -1084,7 +1084,7 @@ export default function LendPage() {
                                     );
                                   }}
                                 >
-                                  <span className="text-xs font-medium text-center whitespace-normal">
+                                  <span className="text-xs md:text-sm font-medium text-center whitespace-normal md:whitespace-nowrap">
                                     {cond}
                                   </span>
                                 </Button>

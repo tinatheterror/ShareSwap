@@ -812,7 +812,7 @@ export default function LendPage() {
           borderBottomRightRadius: "32px",
         }}
       >
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-12 pb-4 sm:pb-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-8 sm:pt-12 pb-8 sm:pb-8">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
@@ -927,9 +927,9 @@ export default function LendPage() {
             {/* Left Column - Form Fields */}
             <div className="lg:col-span-2">
               <Card>
-                <CardContent className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+                <CardContent className="pt-6 space-y-6">
                   {/* Question 1: Item Name with Item Type inline */}
-                  <div className="space-y-2 sm:space-y-4">
+                  <div className="space-y-4">
                     <h3 className="font-medium">I'm Sharing my</h3>
                     <div className="flex flex-col sm:flex-row gap-3">
                       <FormField
@@ -998,7 +998,7 @@ export default function LendPage() {
                   </div>
 
                   {/* Features and Details + Original Value - Side by Side */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 border-t pt-3 sm:pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
                     {/* Features and Details */}
                     <div className="space-y-4">
                       <h3 className="font-medium">Features and Details</h3>
@@ -1051,7 +1051,7 @@ export default function LendPage() {
                   </div>
 
                   {/* Question 3: Condition - 4 Options */}
-                  <div className="space-y-2 sm:space-y-4 border-t pt-3 sm:pt-4">
+                  <div className="space-y-4 border-t pt-4">
                     <h3 className="font-medium">Condition</h3>
                     <FormField
                       control={form.control}
@@ -1098,7 +1098,7 @@ export default function LendPage() {
                   </div>
 
                   {/* Mobile Photos Section - shown only on small screens */}
-                  <div className="lg:hidden border-t pt-3 sm:pt-4">
+                  <div className="lg:hidden border-t pt-4">
                     <h3 className="font-medium mb-2">Photos</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       Minimum 1 photo required. AI needs it to valuate your item more accurately.
@@ -1207,7 +1207,7 @@ export default function LendPage() {
                   </div>
 
                   {/* Tier Preview - show after condition and value are selected */}
-                  <div className="border-t pt-3 sm:pt-4">
+                  <div className="border-t pt-4">
                     {calculatedTier && (
                       <TooltipProvider>
                         <div
@@ -1292,7 +1292,7 @@ export default function LendPage() {
                   </div>
 
                   {/* Sharing options */}
-                  <div className="space-y-2 sm:space-y-3 border-t pt-3 sm:pt-4">
+                  <div className="space-y-3 border-t pt-4">
                     <h3 className="font-medium">Neighbours can</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <Button
@@ -1593,7 +1593,7 @@ export default function LendPage() {
 
                   {/* Availability Period - Hide when Have It (gift) is selected */}
                   {!watchIsGift && (
-                    <div className="space-y-2 sm:space-y-4 border-t pt-3 sm:pt-4">
+                    <div className="space-y-4 border-t pt-4">
                       <h3 className="font-medium">Availability Period</h3>
 
                       {/* Quick-select Buttons - responsive wrap */}

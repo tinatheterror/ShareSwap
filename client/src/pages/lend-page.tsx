@@ -929,7 +929,7 @@ export default function LendPage() {
               <Card>
                 <CardContent className="pt-6 space-y-6">
                   {/* Question 1: Item Name with Item Type inline */}
-                  <div className="space-y-4 border-t pt-4">
+                  <div className="space-y-4">
                     <h3 className="font-medium">I'm Sharing my</h3>
                     <div className="flex flex-col sm:flex-row gap-3">
                       <FormField

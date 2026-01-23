@@ -65,36 +65,36 @@ export default function HomePage() {
         </div>
       )}
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-12">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-16">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
           <div className="flex-shrink-0">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 md:mb-8 text-center">
+            <h1 className="text-4xl font-bold tracking-tight mb-8 text-center">
               <div>Your Community</div>
               <div>ShareChest</div>
             </h1>
-            <p className="text-base md:text-lg text-muted-foreground font-semibold text-left">
+            <p className="text-lg text-muted-foreground font-semibold text-left">
               Give what you can, take what you need.
             </p>
           </div>
 
-          <Card className="flex flex-col items-center justify-center gap-4 md:gap-6 w-full max-w-sm p-6 md:p-8 bg-background shadow-lg">
+          <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-8 bg-background shadow-lg">
             <div
               data-tutorial="give"
-              className="w-full flex flex-col items-center gap-2 md:gap-3"
+              className="w-full flex flex-col items-center gap-3"
             >
               <Button
                 onClick={() => navigate("/lend")}
-                className="w-full bg-primary hover:bg-primary/90 text-base md:text-lg py-4 md:py-6 rounded-xl"
+                className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
                 size="lg"
               >
                 Give
               </Button>
-              <p className="text-center text-xs md:text-sm text-muted-foreground">
+              <p className="text-center text-sm text-muted-foreground">
                 Share your own treasures to the ShareChest
               </p>
             </div>
 
-            <div className="flex items-center justify-center w-48 md:w-64 shrink-0 py-2 md:py-4">
+            <div className="flex items-center justify-center w-64 shrink-0 py-4">
               <img
                 src="/sharechest.png"
                 alt="Community ShareChest"
@@ -104,16 +104,16 @@ export default function HomePage() {
 
             <div
               data-tutorial="take"
-              className="w-full flex flex-col items-center gap-2 md:gap-3"
+              className="w-full flex flex-col items-center gap-3"
             >
               <Button
                 onClick={() => navigate("/borrow")}
-                className="w-full bg-primary hover:bg-primary/90 text-base md:text-lg py-4 md:py-6 rounded-xl"
+                className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
                 size="lg"
               >
                 Take
               </Button>
-              <p className="text-center text-xs md:text-sm text-muted-foreground">
+              <p className="text-center text-sm text-muted-foreground">
                 Browse the ShareChest to find what you need
               </p>
             </div>

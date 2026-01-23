@@ -834,7 +834,7 @@ export default function LendPage() {
 
       {/* Transfer listings from other apps - Below Hero */}
       {!isEditMode && (
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-1.5 sm:pt-2.5">
           <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3">
             <div className="flex items-center gap-1 mb-1 sm:mb-2">
               <Download className="h-3 w-3 sm:h-4 sm:w-4 text-teal-600" />

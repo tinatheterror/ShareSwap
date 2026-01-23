@@ -92,58 +92,58 @@ export default function CommunityWishlistsPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {allWishlists.map((wishlist) => (
               <Card key={wishlist.id} className="group hover:shadow-xl transition-all duration-100 border-0 bg-white backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden">
-                <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-2"></div>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+                <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-1.5 md:h-2"></div>
+                <CardContent className="p-3 md:p-6">
+                  <div className="flex items-start justify-between mb-2 md:mb-4">
                     <div className="flex-1">
-                      <h4 className="font-bold text-xl text-slate-800 mb-1">{wishlist.itemName}</h4>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-bold text-base md:text-xl text-slate-800 mb-0.5 md:mb-1">{wishlist.itemName}</h4>
+                      <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
                         {isUrgent(wishlist.neededDate) && (
-                          <Badge className="bg-[#D4A574] text-amber-900 border-amber-200 font-medium px-3 py-1">
-                            <Clock className="h-3 w-3 mr-1" />
+                          <Badge className="bg-[#D4A574] text-amber-900 border-amber-200 font-medium px-2 py-0.5 md:px-3 md:py-1 text-xs">
+                            <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
                             URGENT
                           </Badge>
                         )}
-                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-200 px-3 py-1 font-medium">
+                        <Badge variant="secondary" className="bg-teal-50 text-teal-700 border-teal-200 px-2 py-0.5 md:px-3 md:py-1 font-medium text-xs">
                           {getNeedTypeIcon(wishlist.needType)}
-                          <span className="ml-1">{wishlist.needType.charAt(0).toUpperCase() + wishlist.needType.slice(1)}</span>
+                          <span className="ml-0.5 md:ml-1">{wishlist.needType.charAt(0).toUpperCase() + wishlist.needType.slice(1)}</span>
                         </Badge>
                       </div>
                     </div>
                   </div>
 
                   {wishlist.description && (
-                    <p className="text-slate-600 mb-4 leading-relaxed">{wishlist.description}</p>
+                    <p className="text-slate-600 mb-2 md:mb-4 leading-relaxed text-xs md:text-base">{wishlist.description}</p>
                   )}
 
-                  <div className="space-y-3 mb-6">
+                  <div className="space-y-1.5 md:space-y-3 mb-3 md:mb-6">
                     {wishlist.username && (
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                          <span className="text-teal-700 font-bold text-sm">{wishlist.username.charAt(0).toUpperCase()}</span>
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                          <span className="text-teal-700 font-bold text-xs md:text-sm">{wishlist.username.charAt(0).toUpperCase()}</span>
                         </div>
-                        <span className="text-slate-600 font-medium">{wishlist.username}</span>
+                        <span className="text-slate-600 font-medium text-xs md:text-base">{wishlist.username}</span>
                       </div>
                     )}
 
                     {wishlist.preferredLocation && (
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
-                          <MapPin className="h-4 w-4 text-slate-600" />
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                          <MapPin className="h-3 w-3 md:h-4 md:w-4 text-slate-600" />
                         </div>
-                        <span className="text-slate-600 font-medium">{wishlist.preferredLocation}</span>
+                        <span className="text-slate-600 font-medium text-xs md:text-base">{wishlist.preferredLocation}</span>
                       </div>
                     )}
 
                     {wishlist.neededDate && (
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                          <Calendar className="h-4 w-4 text-teal-600" />
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                          <Calendar className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                         </div>
                         <div>
-                          <span className="text-slate-600 font-medium">Needed: {new Date(wishlist.neededDate).toLocaleDateString()}</span>
+                          <span className="text-slate-600 font-medium text-xs md:text-base">Needed: {new Date(wishlist.neededDate).toLocaleDateString()}</span>
                           {wishlist.returnDate && wishlist.needType === 'borrow' && (
-                            <div className="text-xs text-slate-500">Return: {new Date(wishlist.returnDate).toLocaleDateString()}</div>
+                            <div className="text-[10px] md:text-xs text-slate-500">Return: {new Date(wishlist.returnDate).toLocaleDateString()}</div>
                           )}
                         </div>
                       </div>
@@ -151,7 +151,7 @@ export default function CommunityWishlistsPage() {
                   </div>
 
                   <Link href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}>
-                    <Button size="lg" className="w-full text-white font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200" style={{ backgroundColor: "#0DCEA1" }} onClick={(e) => e.stopPropagation()}>
+                    <Button size="lg" className="w-full text-white font-semibold py-2 md:py-3 shadow-lg hover:shadow-xl transition-all duration-200 text-sm md:text-base" style={{ backgroundColor: "#0DCEA1" }} onClick={(e) => e.stopPropagation()}>
                       I Have This Item!
                     </Button>
                   </Link>

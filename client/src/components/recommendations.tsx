@@ -40,15 +40,14 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
             <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="flex md:grid md:grid-cols-4 gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible scrollbar-hide">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-teal-100">
-              <div className="aspect-[16/9] bg-teal-100"></div>
-              <CardContent className="p-6">
-                <div className="h-6 bg-teal-100 rounded mb-4"></div>
+            <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-teal-100 flex-shrink-0 w-[200px] md:w-auto">
+              <div className="aspect-square bg-teal-100"></div>
+              <CardContent className="p-3">
+                <div className="h-5 bg-teal-100 rounded mb-2"></div>
                 <div className="h-4 bg-teal-100 rounded mb-2"></div>
-                <div className="h-4 bg-teal-100 rounded mb-4"></div>
-                <div className="h-10 bg-teal-100 rounded"></div>
+                <div className="h-8 bg-teal-100 rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -73,11 +72,11 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="flex md:grid md:grid-cols-4 gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible scrollbar-hide">
         {recommendations.map((item) => (
-          <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
-            <div className="p-4">
-              <div className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative" style={{ aspectRatio: '1 / 0.9' }}>
+          <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white flex-shrink-0 w-[200px] md:w-auto">
+            <div className="p-3 md:p-4">
+              <div className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative aspect-square">
                 {item.photos && item.photos.length > 0 ? (
                   <img
                     src={item.photos[0]}
@@ -100,87 +99,52 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
               </div>
             </div>
             
-            <CardContent className="px-6 pt-0 pb-4">
-              <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
+            <CardContent className="px-3 md:px-6 pt-0 pb-3 md:pb-4">
+              <h3 className="font-bold text-base md:text-xl mb-1 text-slate-800 truncate">
                 {item.name}
               </h3>
               
-              <div className="space-y-0.5 mb-3">
-                <div className="flex items-center gap-2 text-slate-700">
-                  <MapPin className="h-4 w-4" />
-                  <span className="text-sm">
+              <div className="space-y-0.5 mb-2 md:mb-3">
+                <div className="flex items-center gap-1.5 text-slate-700">
+                  <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                  <span className="text-xs md:text-sm truncate">
                     {item.city || "Nearby"}
                   </span>
                 </div>
                 
-                <div className="text-sm text-slate-700">
-                  <span className="font-medium">Condition:</span> {item.conditionRating || 8}/10
-                </div>
-                
                 {(item.isLendable || item.isRentable) && (
-                  <div className="flex items-center gap-2 text-sm text-slate-700">
-                    <div className="flex items-center gap-1">
-                      <Coins className="h-4 w-4 text-teal-600" />
-                      <span>{item.shareCoinPrice || 50} ShareCoins</span>
-                    </div>
-                    {item.isRentable && item.dollarsPrice && (
-                      <>
-                        <span className="text-slate-400">|</span>
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 text-teal-600" />
-                          <span>{item.dollarsPrice}/day</span>
-                        </div>
-                      </>
-                    )}
+                  <div className="flex items-center gap-1.5 text-xs md:text-sm text-slate-700">
+                    <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
+                    <span>{item.shareCoinPrice || 50}</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex gap-1">
-                {item.isLendable && (
-                  <Button
-                    size="sm"
-                    className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                    style={{ backgroundColor: '#0DCEA1' }}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
+              <Button
+                size="sm"
+                className="w-full text-white rounded-lg text-xs px-2 whitespace-nowrap h-7 md:h-8"
+                style={{ backgroundColor: '#0DCEA1' }}
+                onClick={() => navigate(`/items/${item.id}`)}
+              >
+                {item.isLendable ? (
+                  <>
                     <HandHeart className="h-3 w-3 mr-0.5" />
-                    Borrow It
-                  </Button>
-                )}
-                {item.isRentable && (
-                  <Button
-                    size="sm"
-                    className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                    style={{ backgroundColor: '#0DCEA1' }}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
+                    Borrow
+                  </>
+                ) : item.isRentable ? (
+                  <>
                     <DollarSign className="h-3 w-3 mr-0.5" />
-                    Rent It
-                  </Button>
-                )}
-                {item.isSwappable && (
-                  <Button
-                    size="sm"
-                    className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                    style={{ backgroundColor: '#0DCEA1' }}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
+                    Rent
+                  </>
+                ) : item.isSwappable ? (
+                  <>
                     <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                    Swap It
-                  </Button>
+                    Swap
+                  </>
+                ) : (
+                  "View"
                 )}
-                {!item.isLendable && !item.isRentable && !item.isSwappable && (
-                  <Button
-                    size="sm"
-                    className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                    style={{ backgroundColor: '#0DCEA1' }}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
-                    View
-                  </Button>
-                )}
-              </div>
+              </Button>
             </CardContent>
           </Card>
         ))}

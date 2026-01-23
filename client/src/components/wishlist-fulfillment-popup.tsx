@@ -264,16 +264,7 @@ export function WishlistFulfillmentPopup({
                 Explore All Wishlists
               </Button>
             </Link>
-            <Link href="/lend" className="block">
-              <Button
-                size="lg"
-                className="w-full h-14  font-semibold shadow-lg"
-                style={{ backgroundColor: "#0DCEA1" }}
-              >
-                Share an Item Now
-              </Button>
-            </Link>
-          </div>
+                      </div>
         </div>
       </DialogContent>
     </Dialog>

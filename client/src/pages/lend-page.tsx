@@ -1059,13 +1059,13 @@ export default function LendPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div className="grid grid-cols-4 gap-2">
                               {CONDITIONS.map((cond) => (
                                 <Button
                                   key={cond}
                                   type="button"
                                   variant="outline"
-                                  className={`h-12 flex flex-col items-center justify-center transition-all ${
+                                  className={`h-auto min-h-[48px] py-2 px-2 flex flex-col items-center justify-center transition-all ${
                                     field.value === cond
                                       ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
                                       : "bg-white hover:bg-gray-50"
@@ -1084,7 +1084,7 @@ export default function LendPage() {
                                     );
                                   }}
                                 >
-                                  <span className="text-sm font-medium">
+                                  <span className="text-xs font-medium text-center whitespace-normal">
                                     {cond}
                                   </span>
                                 </Button>

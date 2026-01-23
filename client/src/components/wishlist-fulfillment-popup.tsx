@@ -104,7 +104,7 @@ export function WishlistFulfillmentPopup({
               <Coins className="h-8 w-8 text-white" />
             </div>
             <DialogTitle className="text-2xl font-bold text-slate-800 mb-2">
-              Fulfill a Wishlist + Earn ShareCoins✨
+              Fulfill a Wishlist + Earn ShareCoins
             </DialogTitle>
             <p className="text-slate-600 text-lg">
               See something you have? Share it and earn ShareCoins.

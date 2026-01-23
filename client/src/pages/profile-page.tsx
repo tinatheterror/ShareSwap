@@ -664,17 +664,27 @@ export default function ProfilePage() {
               <CardHeader className="bg-[#D4F7F1]">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-center gap-4 min-w-0">
-                    <Avatar className="h-16 w-16 border-2 border-white shadow-md flex-shrink-0">
-                      <AvatarImage
-                        src={(user as any)?.profilePhoto}
-                        alt={user.username}
-                      />
-                      <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
-                        {profile?.fullName
-                          ? profile.fullName.charAt(0).toUpperCase()
-                          : user.username.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+                        <AvatarImage
+                          src={(user as any)?.profilePhoto}
+                          alt={user.username}
+                        />
+                        <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
+                          {profile?.fullName
+                            ? profile.fullName.charAt(0).toUpperCase()
+                            : user.username.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute -bottom-1 -right-1 p-1.5 bg-teal-500 rounded-full text-white hover:bg-teal-600 transition-colors shadow-md"
+                        disabled={profilePhotoMutation.isPending}
+                      >
+                        <Camera className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">

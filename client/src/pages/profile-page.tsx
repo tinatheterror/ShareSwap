@@ -662,9 +662,9 @@ export default function ProfilePage() {
             {/* Main Profile Card */}
             <Card className="border-2 border-teal-100 overflow-hidden">
               <CardHeader className="bg-[#D4F7F1]">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <Avatar className="h-16 w-16 border-2 border-white shadow-md flex-shrink-0">
                       <AvatarImage
                         src={(user as any)?.profilePhoto}
                         alt={user.username}
@@ -675,9 +675,9 @@ export default function ProfilePage() {
                           : user.username.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <CardTitle className="text-2xl text-slate-800">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">
                           {profile?.fullName || user.username}
                         </CardTitle>
                         <UserBadges
@@ -686,7 +686,7 @@ export default function ProfilePage() {
                           size="sm"
                         />
                       </div>
-                      <p className="text-slate-600">@{user.username}</p>
+                      <p className="text-slate-600 text-sm sm:text-base truncate">@{user.username}</p>
                       {profile?.subscription && (
                         <Badge variant="secondary" className="mt-1">
                           {profile.subscription}
@@ -694,30 +694,32 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full justify-start"
+                      className="flex-1 sm:w-full justify-center sm:justify-start"
                       onClick={isEditing ? handleCancelEdit : handleEditProfile}
                       disabled={updateProfileMutation.isPending}
                     >
                       {isEditing ? (
                         <>
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
+                          <X className="h-4 w-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Cancel</span>
                         </>
                       ) : (
                         <>
-                          <Edit3 className="h-4 w-4 mr-2" />
-                          Edit Profile
+                          <Edit3 className="h-4 w-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Edit Profile</span>
+                          <span className="sm:hidden">Edit</span>
                         </>
                       )}
                     </Button>
                     <Link href="/settings">
-                      <Button variant="outline" size="sm" className="w-full justify-start">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Account Settings
+                      <Button variant="outline" size="sm" className="flex-1 sm:w-full justify-center sm:justify-start">
+                        <Settings className="h-4 w-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">Account Settings</span>
+                        <span className="sm:hidden">Account</span>
                       </Button>
                     </Link>
                   </div>
@@ -857,25 +859,25 @@ export default function ProfilePage() {
 
                     <div className="grid md:grid-cols-2 gap-4">
                       {profile?.email && (
-                        <div className="flex items-center gap-3">
-                          <Mail className="h-4 w-4 text-slate-500" />
-                          <span className="text-slate-600">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Mail className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                          <span className="text-slate-600 text-sm truncate">
                             {profile.email}
                           </span>
                         </div>
                       )}
                       {profile?.location && (
-                        <div className="flex items-center gap-3">
-                          <MapPin className="h-4 w-4 text-slate-500" />
-                          <span className="text-slate-600">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <MapPin className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                          <span className="text-slate-600 text-sm truncate">
                             {profile.location}
                           </span>
                         </div>
                       )}
                       {profile?.phone && (
-                        <div className="flex items-center gap-3">
-                          <Phone className="h-4 w-4 text-slate-500" />
-                          <span className="text-slate-600">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Phone className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                          <span className="text-slate-600 text-sm truncate">
                             {profile.phone}
                           </span>
                         </div>

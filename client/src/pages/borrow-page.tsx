@@ -360,7 +360,7 @@ export default function BorrowPage() {
               </Badge>
               <div className="flex-1 h-px bg-gradient-to-r from-pink-200 to-transparent"></div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {filteredGiftItems.slice(0, 4).map((item) => (
                 <Card
                   key={item.id}
@@ -463,7 +463,7 @@ export default function BorrowPage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {filteredItems.map((item) => (
                 <Card
                   key={item.id}

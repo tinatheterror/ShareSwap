@@ -276,7 +276,7 @@ export default function BorrowPage() {
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
 
-      {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
+      {/* Hero Section - Inverted bottom left, rounded bottom right */}
       <div
         className="w-full relative -mt-[1px]"
         style={{
@@ -288,38 +288,14 @@ export default function BorrowPage() {
         }}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-8 sm:pt-12 pb-8 sm:pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
-            <div className="flex-1">
-              <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
-                Browse the community ShareChest
-              </h1>
-              <p className="text-[11px] sm:text-base text-black/90">
-                A trusted collection of items available{" "}
-                {userPostalCode && ` near ${userPostalCode}`}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-1 sm:gap-3 w-full md:w-72">
-              <div className="relative">
-                <Search className="absolute left-2 top-1.5 sm:top-2.5 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-                <Input
-                  placeholder="Search items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-7 sm:pl-9 bg-white rounded-lg text-[11px] sm:text-sm h-6 sm:h-[43px]"
-                />
-              </div>
-              <Button
-                variant="outline"
-                className="w-full flex items-center justify-center gap-1 sm:gap-2 bg-white hover:bg-gray-50 rounded-lg text-[11px] sm:text-sm h-6 sm:h-[43px]"
-                onClick={() => setShowLocationModal(true)}
-              >
-                <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
-                {userPostalCode
-                  ? `${userPostalCode} (${radius}km radius)`
-                  : "Set Location"}
-              </Button>
-            </div>
+          <div className="flex-1">
+            <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
+              Browse the community ShareChest
+            </h1>
+            <p className="text-[11px] sm:text-base text-black/90">
+              A trusted collection of items available{" "}
+              {userPostalCode && ` near ${userPostalCode}`}
+            </p>
           </div>
         </div>
 
@@ -328,6 +304,31 @@ export default function BorrowPage() {
           className="absolute bottom-0 left-0 w-6 h-6 sm:w-8 sm:h-8"
           style={{ borderTopRightRadius: "100%", backgroundColor: "#f3f4f6" }}
         />
+      </div>
+
+      {/* Search and Location - Below Hero */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-1.5 sm:top-2.5 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+            <Input
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-7 sm:pl-9 bg-white rounded-lg text-[11px] sm:text-sm h-6 sm:h-[43px] border"
+            />
+          </div>
+          <Button
+            variant="outline"
+            className="flex items-center justify-center gap-1 sm:gap-2 bg-white hover:bg-gray-50 rounded-lg text-[11px] sm:text-sm h-6 sm:h-[43px] sm:w-auto"
+            onClick={() => setShowLocationModal(true)}
+          >
+            <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
+            {userPostalCode
+              ? `${userPostalCode} (${radius}km radius)`
+              : "Set Location"}
+          </Button>
+        </div>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">

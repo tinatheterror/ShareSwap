@@ -59,7 +59,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
           <h3 className="text-lg font-semibold text-gray-800">Seasonal Picks</h3>
           <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse bg-white rounded-xl overflow-hidden border border-teal-100">
               <div className="aspect-[16/9] bg-teal-100"></div>
@@ -92,7 +92,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
         <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {seasonalItems.map((item) => (
           <Card key={item.id} className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
             <div className="p-4">

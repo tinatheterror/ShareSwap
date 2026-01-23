@@ -1024,13 +1024,13 @@ export default function LendPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="flex flex-nowrap gap-1 sm:gap-2">
+                              <div className="flex flex-nowrap gap-1.5 sm:gap-2">
                                 {ORIGINAL_VALUES.map((value) => (
                                   <Button
                                     key={value}
                                     type="button"
                                     variant="outline"
-                                    className={`h-7 sm:h-10 px-1.5 sm:px-4 text-[10px] sm:text-sm rounded-full transition-all flex-1 ${
+                                    className={`h-8 sm:h-10 px-2 sm:px-4 text-[11px] sm:text-sm rounded-full transition-all flex-1 ${
                                       field.value === value
                                         ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
                                         : "bg-white hover:bg-gray-50"

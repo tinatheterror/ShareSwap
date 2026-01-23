@@ -813,94 +813,15 @@ export default function LendPage() {
         }}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-8 sm:pt-12 pb-8 sm:pb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
-                {isEditMode ? "Edit Your Item" : "List Your Item"}
-              </h1>
-              <p className="text-black/90 text-[11px] sm:text-base">
-                {isEditMode
-                  ? " "
-                  : "Make your neighbourhood richer without spending a cent"}
-              </p>
-            </div>
-
-            {!isEditMode && (
-              <div className="flex flex-col gap-1 sm:gap-2 w-full md:w-80 md:max-w-80 flex-shrink-0">
-                <div className="bg-white rounded-lg shadow-sm p-1.5 sm:p-3">
-                  <div className="flex items-center gap-1 mb-1 sm:mb-2">
-                    <Download className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-teal-600" />
-                    <h3 className="font-medium text-[9px] sm:text-xs text-black">
-                      Transfer listings from other apps
-                    </h3>
-                  </div>
-                  <div className="flex gap-1.5 sm:gap-2 mb-0.5 sm:mb-2">
-                    <Input
-                      placeholder="Paste listing URL..."
-                      value={importUrl}
-                      onChange={(e) => setImportUrl(e.target.value)}
-                      className="flex-1 min-w-0 text-[10px] sm:text-xs h-6 sm:h-9 px-1.5 sm:px-3"
-                    />
-                    <Button
-                      onClick={async () => {
-                        if (!importUrl) {
-                          toast({
-                            title: "URL Required",
-                            description: "Please paste a marketplace URL",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        setIsImporting(true);
-                        try {
-                          const response = await apiRequest(
-                            "POST",
-                            "/api/import-listing",
-                            { url: importUrl },
-                          );
-                          const data = await response.json();
-
-                          form.setValue("name", data.name || "");
-                          form.setValue("description", data.description || "");
-                          form.setValue(
-                            "conditionRating",
-                            data.conditionRating || 8,
-                          );
-                          if (data.price) {
-                            form.setValue("securityDeposit", data.price);
-                          }
-
-                          toast({
-                            title: "Imported Successfully!",
-                            description:
-                              "Listing details have been auto-filled. Review and adjust as needed.",
-                          });
-                          setImportUrl("");
-                        } catch (error: any) {
-                          toast({
-                            title: "Import Failed",
-                            description:
-                              error.message ||
-                              "Unable to import listing. Please try a different URL.",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setIsImporting(false);
-                        }
-                      }}
-                      disabled={isImporting || !importUrl}
-                      className="text-white text-[10px] sm:text-xs h-6 sm:h-9 px-2 sm:px-4 shrink-0"
-                      style={{ backgroundColor: "#0DCEA1" }}
-                    >
-                      {isImporting ? "..." : "Import"}
-                    </Button>
-                  </div>
-                  <p className="text-[8px] sm:text-[10px] text-gray-400">
-                    Facebook, Marketplace & Craigslist
-                  </p>
-                </div>
-              </div>
-            )}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
+              {isEditMode ? "Edit Your Item" : "List Your Item"}
+            </h1>
+            <p className="text-black/90 text-[11px] sm:text-base">
+              {isEditMode
+                ? " "
+                : "Make your neighbourhood richer without spending a cent"}
+            </p>
           </div>
         </div>
 
@@ -910,6 +831,84 @@ export default function LendPage() {
           style={{ borderTopRightRadius: "100%", backgroundColor: "#f3f4f6" }}
         />
       </div>
+
+      {/* Transfer listings from other apps - Below Hero */}
+      {!isEditMode && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6">
+          <div className="bg-white rounded-lg shadow-sm p-2 sm:p-3">
+            <div className="flex items-center gap-1 mb-1 sm:mb-2">
+              <Download className="h-3 w-3 sm:h-4 sm:w-4 text-teal-600" />
+              <h3 className="font-medium text-[10px] sm:text-sm text-black">
+                Transfer listings from other apps
+              </h3>
+            </div>
+            <div className="flex gap-2 sm:gap-3 mb-1 sm:mb-2">
+              <Input
+                placeholder="Paste listing URL..."
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                className="flex-1 min-w-0 text-[11px] sm:text-sm h-7 sm:h-10 px-2 sm:px-3"
+              />
+              <Button
+                onClick={async () => {
+                  if (!importUrl) {
+                    toast({
+                      title: "URL Required",
+                      description: "Please paste a marketplace URL",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setIsImporting(true);
+                  try {
+                    const response = await apiRequest(
+                      "POST",
+                      "/api/import-listing",
+                      { url: importUrl },
+                    );
+                    const data = await response.json();
+
+                    form.setValue("name", data.name || "");
+                    form.setValue("description", data.description || "");
+                    form.setValue(
+                      "conditionRating",
+                      data.conditionRating || 8,
+                    );
+                    if (data.price) {
+                      form.setValue("securityDeposit", data.price);
+                    }
+
+                    toast({
+                      title: "Imported Successfully!",
+                      description:
+                        "Listing details have been auto-filled. Review and adjust as needed.",
+                    });
+                    setImportUrl("");
+                  } catch (error: any) {
+                    toast({
+                      title: "Import Failed",
+                      description:
+                        error.message ||
+                        "Unable to import listing. Please try a different URL.",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsImporting(false);
+                  }
+                }}
+                disabled={isImporting || !importUrl}
+                className="text-white text-[11px] sm:text-sm h-7 sm:h-10 px-3 sm:px-4 shrink-0"
+                style={{ backgroundColor: "#0DCEA1" }}
+              >
+                {isImporting ? "..." : "Import"}
+              </Button>
+            </div>
+            <p className="text-[9px] sm:text-xs text-gray-400">
+              Facebook, Marketplace & Craigslist
+            </p>
+          </div>
+        </div>
+      )}
 
       <VerificationModal />
       <main className="max-w-7xl mx-auto px-4 pt-4 pb-8">

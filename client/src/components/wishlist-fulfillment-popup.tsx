@@ -107,7 +107,7 @@ export function WishlistFulfillmentPopup({
               Fulfill a Wishlist + Earn ShareCoins✨
             </DialogTitle>
             <p className="text-slate-600 text-lg">
-              Neighbours need these items!! Lend, rent, or swap it out to them.
+              Neighbours need these items! Lend, rent, or swap it out to them.
               You'll earn ShareCoins.
             </p>
           </div>
@@ -223,7 +223,9 @@ export function WishlistFulfillmentPopup({
                       </div>
                     </div>
 
-                    <Link href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}>
+                    <Link
+                      href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}
+                    >
                       <Button
                         size="lg"
                         className="w-full text-black font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200"

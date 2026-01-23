@@ -89,7 +89,7 @@ export default function CommunityWishlistsPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-3 gap-6">
             {allWishlists.map((wishlist) => (
               <Card key={wishlist.id} className="group hover:shadow-xl transition-all duration-100 border-0 bg-white backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden">
                 <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-1.5 md:h-2"></div>

@@ -1109,28 +1109,32 @@ export default function ProfilePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Link href="/payment-methods">
-                  <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
-                    {(profile as any)?.paymentMethodLast4 ? (
-                      <Check className="h-4 w-4 mr-2 text-green-600" />
-                    ) : (
-                      <X className="h-4 w-4 mr-2 text-gray-400" />
-                    )}
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Payment Methods
-                  </Button>
-                </Link>
-                <Link href="/verification">
-                  <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
-                    {profile?.isVerified ? (
-                      <Check className="h-4 w-4 mr-2 text-green-600" />
-                    ) : (
-                      <X className="h-4 w-4 mr-2 text-gray-400" />
-                    )}
-                    <BadgeCheck className="h-4 w-4 mr-2" />
-                    Identity Verification
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  {(profile as any)?.paymentMethodLast4 ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/payment-methods" className="flex-1">
+                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Payment Methods
+                    </Button>
+                  </Link>
+                </div>
+                <div className="flex items-center gap-2">
+                  {profile?.isVerified ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/verification" className="flex-1">
+                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                      <BadgeCheck className="h-4 w-4 mr-2" />
+                      Identity Verification
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
 

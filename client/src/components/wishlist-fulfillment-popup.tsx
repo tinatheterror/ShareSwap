@@ -107,8 +107,7 @@ export function WishlistFulfillmentPopup({
               Fulfill a Wishlist + Earn ShareCoins✨
             </DialogTitle>
             <p className="text-slate-600 text-lg">
-              Neighbours need these items! Lend, rent, or swap it out to them.
-              You'll earn ShareCoins.
+              See something you have? Share it and earn ShareCoins.
             </p>
           </div>
         </DialogHeader>

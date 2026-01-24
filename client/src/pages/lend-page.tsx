@@ -524,9 +524,12 @@ export default function LendPage() {
     form.setValue("name", analysis.name);
     form.setValue("description", analysis.description);
     form.setValue("conditionRating", analysis.conditionRating);
-    
+
     // Auto-fill value range if AI suggested one (especially important for luxury items)
-    if (analysis.suggestedValueRange && ORIGINAL_VALUES.includes(analysis.suggestedValueRange)) {
+    if (
+      analysis.suggestedValueRange &&
+      ORIGINAL_VALUES.includes(analysis.suggestedValueRange)
+    ) {
       form.setValue("originalValue", analysis.suggestedValueRange);
     } else if (analysis.isLuxuryBrand && analysis.estimatedValue) {
       // If luxury brand detected, auto-select appropriate tier based on estimated value
@@ -539,13 +542,13 @@ export default function LendPage() {
         form.setValue("originalValue", "$300–$1,000");
       }
     }
-    
+
     setSmartScanPhotos(photos);
     setSmartScanAnalysis(analysis); // Store full analysis for submission
 
     toast({
       title: "✨ Form Auto-Filled!",
-      description: analysis.isLuxuryBrand 
+      description: analysis.isLuxuryBrand
         ? "Luxury brand detected! Value range auto-selected. Review and adjust as needed."
         : "Review and adjust the AI-detected details as needed.",
     });
@@ -553,20 +556,22 @@ export default function LendPage() {
 
   const getCurrentLocation = async () => {
     setIsLoadingLocation(true);
-    
+
     let latitude: number | null = null;
     let longitude: number | null = null;
     let postcode: string | null = null;
     let locality: string | null = null;
     let region: string | null = null;
-    
+
     // Step 1: Try IP-based geolocation first (works without permissions)
     try {
-      const ipResponse = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client');
+      const ipResponse = await fetch(
+        "https://api.bigdatacloud.net/data/reverse-geocode-client",
+      );
       if (ipResponse.ok) {
         const ipData = await ipResponse.json();
         console.log("IP geolocation response:", ipData);
-        
+
         if (ipData.latitude && ipData.longitude) {
           latitude = ipData.latitude;
           longitude = ipData.longitude;
@@ -578,7 +583,7 @@ export default function LendPage() {
     } catch (e) {
       console.log("IP-based geolocation failed, trying browser geolocation...");
     }
-    
+
     // Step 2: Try browser geolocation if IP didn't give coordinates
     if (!latitude && !longitude && "geolocation" in navigator) {
       try {
@@ -598,7 +603,7 @@ export default function LendPage() {
         console.log("Browser geolocation failed:", error?.code, error?.message);
       }
     }
-    
+
     // Step 3: If we have coordinates but no postal code, try reverse geocoding
     if (latitude && longitude && !postcode) {
       try {
@@ -616,29 +621,29 @@ export default function LendPage() {
         console.log("Reverse geocoding failed");
       }
     }
-    
+
     // Step 4: Determine success - coordinates OR city/region is enough
     const hasCoordinates = latitude !== null && longitude !== null;
     const hasLocation = hasCoordinates || locality || region;
-    
+
     if (hasLocation) {
       // Save coordinates if we have them
       if (hasCoordinates) {
         form.setValue("latitude", latitude!);
         form.setValue("longitude", longitude!);
       }
-      
+
       // Save postal code if we have it (enhancement, not required)
       if (postcode) {
         form.setValue("postalCode", postcode);
       }
-      
+
       // Save locality for display
       const displayLocality = locality || region || "";
       if (displayLocality) {
         setDetectedLocality(displayLocality);
       }
-      
+
       // No toast - auto-fill silently, UI shows the detected location
     } else {
       // Only show error if we truly have nothing (low confidence)
@@ -648,7 +653,7 @@ export default function LendPage() {
         variant: "destructive",
       });
     }
-    
+
     setIsLoadingLocation(false);
   };
 
@@ -786,7 +791,7 @@ export default function LendPage() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      const newUrls = newFiles.map(file => URL.createObjectURL(file));
+      const newUrls = newFiles.map((file) => URL.createObjectURL(file));
       setSelectedPhotos((prev) => [...prev, ...newFiles]);
       setPhotoPreviewUrls((prev) => [...prev, ...newUrls]);
     }
@@ -1110,18 +1115,25 @@ export default function LendPage() {
                   <div className="lg:hidden border-t pt-4">
                     <h3 className="font-medium mb-2">Photos</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Minimum 1 photo required. AI needs it to valuate your item more accurately.
+                      Minimum 1 photo required. AI needs it to valuate your item
+                      more accurately.
                     </p>
                     <Tabs
                       value={uploadMethod}
-                      onValueChange={(v) => setUploadMethod(v as "smartscan" | "manual")}
+                      onValueChange={(v) =>
+                        setUploadMethod(v as "smartscan" | "manual")
+                      }
                     >
                       <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="smartscan">✨ SmartScan</TabsTrigger>
+                        <TabsTrigger value="smartscan">
+                          ✨ SmartScan
+                        </TabsTrigger>
                         <TabsTrigger value="manual">Manual Upload</TabsTrigger>
                       </TabsList>
                       <TabsContent value="smartscan" className="mt-4">
-                        <SmartScan onAnalysisComplete={handleSmartScanComplete} />
+                        <SmartScan
+                          onAnalysisComplete={handleSmartScanComplete}
+                        />
                       </TabsContent>
                       <TabsContent value="manual" className="mt-4">
                         {selectedPhotos.length === 0 ? (
@@ -1137,7 +1149,9 @@ export default function LendPage() {
                             <label htmlFor="photos-mobile">
                               <div className="cursor-pointer">
                                 <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                                <p className="text-sm text-muted-foreground">Click to upload photos</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Click to upload photos
+                                </p>
                               </div>
                             </label>
                           </div>
@@ -1145,11 +1159,17 @@ export default function LendPage() {
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-sm text-green-600">
                               <Check className="w-4 h-4" />
-                              <span>{selectedPhotos.length} photo{selectedPhotos.length > 1 ? "s" : ""} added</span>
+                              <span>
+                                {selectedPhotos.length} photo
+                                {selectedPhotos.length > 1 ? "s" : ""} added
+                              </span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {selectedPhotos.map((photo, idx) => (
-                                <div key={idx} className="relative group w-16 h-16">
+                                <div
+                                  key={idx}
+                                  className="relative group w-16 h-16"
+                                >
                                   <img
                                     src={photoPreviewUrls[idx]}
                                     alt={`Photo ${idx + 1}`}
@@ -1193,26 +1213,33 @@ export default function LendPage() {
                     {smartScanPhotos.length > 0 && (
                       <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
                         <p className="text-sm text-teal-700">
-                          ✨ SmartScan detected {smartScanPhotos.length} photos - form auto-filled!
+                          ✨ SmartScan detected {smartScanPhotos.length} photos
+                          - form auto-filled!
                         </p>
                       </div>
                     )}
-                    {isEditMode && existingPhotos.length > 0 && selectedPhotos.length === 0 && (
-                      <div className="mt-4">
-                        <p className="text-sm text-muted-foreground mb-2">Current photos:</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {existingPhotos.map((photo, idx) => (
-                            <img
-                              key={idx}
-                              src={photo}
-                              alt={`Item photo ${idx + 1}`}
-                              className="w-20 h-20 object-cover rounded-lg border"
-                            />
-                          ))}
+                    {isEditMode &&
+                      existingPhotos.length > 0 &&
+                      selectedPhotos.length === 0 && (
+                        <div className="mt-4">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Current photos:
+                          </p>
+                          <div className="flex gap-2 flex-wrap">
+                            {existingPhotos.map((photo, idx) => (
+                              <img
+                                key={idx}
+                                src={photo}
+                                alt={`Item photo ${idx + 1}`}
+                                className="w-20 h-20 object-cover rounded-lg border"
+                              />
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Upload new photos to replace these
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">Upload new photos to replace these</p>
-                      </div>
-                    )}
+                      )}
                   </div>
 
                   {/* Tier Preview - show after condition and value are selected */}
@@ -1591,7 +1618,7 @@ export default function LendPage() {
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
-                                    
+
                                     {/* Swap Preferences */}
                                     <div className="mt-3 pt-3 border-t border-[#0DCEA1]/20 space-y-3">
                                       <div>
@@ -1604,20 +1631,28 @@ export default function LendPage() {
                                           {...form.register("swapDesiredItem")}
                                         />
                                         <p className="hidden md:block text-xs text-gray-500 mt-1">
-                                          Tell neighbors what you're hoping to swap for
+                                          Tell neighbors what you're hoping to
+                                          swap for
                                         </p>
                                       </div>
-                                      
+
                                       <div className="flex items-start justify-between">
                                         <div className="flex items-start gap-2">
                                           <Bell className="h-4 w-4 text-[#0DCEA1] mt-0.5 shrink-0" />
                                           <span className="text-[13px] text-gray-700">
-                                            Notify me when matching items are listed
+                                            Notify me of matching items
                                           </span>
                                         </div>
                                         <Switch
-                                          checked={form.watch("swapNotifyOnMatch")}
-                                          onCheckedChange={(checked) => form.setValue("swapNotifyOnMatch", checked)}
+                                          checked={form.watch(
+                                            "swapNotifyOnMatch",
+                                          )}
+                                          onCheckedChange={(checked) =>
+                                            form.setValue(
+                                              "swapNotifyOnMatch",
+                                              checked,
+                                            )
+                                          }
                                         />
                                       </div>
                                     </div>

@@ -5,12 +5,29 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Bell, Check, Package, Heart, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Bell, Check, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield } from "lucide-react";
 import type { SelectNotification } from "@db/schema";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface ItemDetails {
+  id: number;
+  name: string;
+  description: string | null;
+  photos: string[] | null;
+  owner?: {
+    username: string;
+    isVerified: boolean;
+  };
+}
 
 export default function NotificationsPage() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
+  const [showWishlistMatchModal, setShowWishlistMatchModal] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<SelectNotification | null>(null);
+  const [matchedItemDetails, setMatchedItemDetails] = useState<ItemDetails | null>(null);
+  const [isLoadingItem, setIsLoadingItem] = useState(false);
 
   const { data: notifications = [], isLoading } = useQuery<SelectNotification[]>({
     queryKey: ['/api/notifications'],
@@ -46,9 +63,31 @@ export default function NotificationsPage() {
     },
   });
 
-  const handleNotificationClick = (notification: SelectNotification) => {
+  const handleNotificationClick = async (notification: SelectNotification) => {
     if (!notification.isRead) {
       markAsReadMutation.mutate(notification.id);
+    }
+    
+    // Handle wishlist_match notifications with special modal
+    if (notification.type === 'wishlist_match' && notification.itemId) {
+      setSelectedNotification(notification);
+      setIsLoadingItem(true);
+      setShowWishlistMatchModal(true);
+      
+      try {
+        const response = await fetch(`/api/items/${notification.itemId}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const itemData = await response.json();
+          setMatchedItemDetails(itemData);
+        }
+      } catch (error) {
+        console.error('Error fetching item details:', error);
+      } finally {
+        setIsLoadingItem(false);
+      }
+      return;
     }
     
     // Navigate based on notification type
@@ -67,6 +106,10 @@ export default function NotificationsPage() {
         return <CheckCircle2 className="h-5 w-5 text-green-600" />;
       case 'request_declined':
         return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'wishlist_match':
+        return <Heart className="h-5 w-5 text-pink-500" />;
+      case 'swap_match':
+        return <ArrowLeftRight className="h-5 w-5 text-teal-500" />;
       default:
         return <Bell className="h-5 w-5 text-gray-600" />;
     }
@@ -168,6 +211,139 @@ export default function NotificationsPage() {
           </div>
         )}
       </main>
+
+      {/* Wishlist Match Modal */}
+      <AnimatePresence>
+        {showWishlistMatchModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
+              initial={{ scale: 0.8, opacity: 0, y: 50 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 50 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-pink-500 to-rose-500 p-4 text-white relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 text-white hover:bg-white/20"
+                  onClick={() => {
+                    setShowWishlistMatchModal(false);
+                    setMatchedItemDetails(null);
+                    setSelectedNotification(null);
+                  }}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Heart className="h-6 w-6" />
+                  <h2 className="text-lg font-bold">Great news!</h2>
+                </div>
+                <p className="text-white/90 text-sm mt-1">
+                  A neighbor has an item that matches your wishlist
+                </p>
+              </div>
+
+              {/* Content */}
+              <div className="p-4">
+                {isLoadingItem ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-40 bg-gray-200 rounded-lg"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                ) : matchedItemDetails ? (
+                  <>
+                    {/* Item Photo */}
+                    {matchedItemDetails.photos && matchedItemDetails.photos.length > 0 && (
+                      <div className="relative h-48 rounded-lg overflow-hidden mb-4">
+                        <img
+                          src={matchedItemDetails.photos[0]}
+                          alt={matchedItemDetails.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {/* Item Info */}
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {matchedItemDetails.name}
+                    </h3>
+                    
+                    {matchedItemDetails.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                        {matchedItemDetails.description}
+                      </p>
+                    )}
+
+                    {/* Owner Info with Verified Badge */}
+                    {matchedItemDetails.owner && (
+                      <div className="flex items-center gap-2 mb-6 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-semibold">
+                          {(matchedItemDetails.owner.username || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">
+                              {matchedItemDetails.owner.username}
+                            </span>
+                            {matchedItemDetails.owner.isVerified && (
+                              <Shield className="h-4 w-4 text-teal-500" />
+                            )}
+                          </div>
+                          {matchedItemDetails.owner.isVerified ? (
+                            <span className="text-xs text-teal-600">Verified user</span>
+                          ) : (
+                            <span className="text-xs text-gray-500">Not verified</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">Could not load item details</p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 mt-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowWishlistMatchModal(false);
+                      setMatchedItemDetails(null);
+                      setSelectedNotification(null);
+                    }}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    className="flex-1 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white"
+                    onClick={() => {
+                      if (matchedItemDetails?.id) {
+                        navigate(`/items/${matchedItemDetails.id}`);
+                      }
+                      setShowWishlistMatchModal(false);
+                      setMatchedItemDetails(null);
+                      setSelectedNotification(null);
+                    }}
+                    disabled={!matchedItemDetails}
+                  >
+                    Request this item
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

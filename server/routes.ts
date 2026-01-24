@@ -2341,11 +2341,11 @@ Respond with ONLY the category name, nothing else.`
 
       // Get the lister's username
       const [lister] = await db
-        .select({ username: users.username, firstName: users.firstName })
+        .select({ username: users.username })
         .from(users)
         .where(eq(users.id, req.user.id));
 
-      const listerName = lister?.firstName || lister?.username || "A neighbor";
+      const listerName = lister?.username || "A neighbor";
 
       // Create notification for the wishlist owner
       await db.insert(notifications).values({

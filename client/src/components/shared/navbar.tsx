@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -100,6 +100,10 @@ function NotificationBell() {
       return <AlertCircle className="h-4 w-4 text-red-500" />;
     } else if (type.includes('return_reminder')) {
       return <Clock className="h-4 w-4 text-orange-500" />;
+    } else if (type === 'wishlist_match') {
+      return <Heart className="h-4 w-4 text-pink-500" />;
+    } else if (type === 'swap_match') {
+      return <ArrowLeftRight className="h-4 w-4 text-teal-500" />;
     }
     return <Bell className="h-4 w-4 text-primary" />;
   };

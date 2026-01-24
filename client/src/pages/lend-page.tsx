@@ -216,6 +216,8 @@ export default function LendPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] =
     useState(false);
+  const [showMatchConfirmation, setShowMatchConfirmation] = useState(false);
+  const [matchedRequesterName, setMatchedRequesterName] = useState("");
   const [availabilityOption, setAvailabilityOption] = useState<
     "indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom"
   >("indefinitely");
@@ -2287,28 +2289,27 @@ export default function LendPage() {
                     >
                       <Button
                         onClick={async () => {
-                          // Create the auto-match connection
+                          // Send notification to wishlist owner
                           if (listedItemData && selectedWishlistMatch) {
                             try {
-                              await apiRequest("POST", "/api/auto-match", {
+                              await apiRequest("POST", "/api/wishlist-match-notification", {
                                 itemId: listedItemData.id,
                                 wishlistId: selectedWishlistMatch.id,
-                                lenderUserId: listedItemData.userId,
-                                borrowerUserId: selectedWishlistMatch.userId,
+                                wishlistOwnerId: selectedWishlistMatch.userId,
                               });
-                              toast({
-                                title: "🎉 It's a Match!",
-                                description: `Your ${form.getValues("name")} has been matched with ${selectedWishlistMatch.username}'s request!`,
-                              });
+                              // Show confirmation modal
+                              setMatchedRequesterName(selectedWishlistMatch.username || selectedWishlistMatch.firstName || "this neighbor");
+                              setShowMatchingModal(false);
+                              setShowMatchConfirmation(true);
                             } catch (error) {
                               toast({
                                 title: "Successfully Listed!",
                                 description: `Your item has been added to ShareChest.`,
                               });
+                              setShowMatchingModal(false);
+                              navigate("/borrow");
                             }
                           }
-                          setShowMatchingModal(false);
-                          navigate("/borrow");
                         }}
                         className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold shadow-lg"
                       >
@@ -2316,6 +2317,56 @@ export default function LendPage() {
                       </Button>
                     </motion.div>
                   </motion.div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Match Confirmation Modal */}
+        <AnimatePresence>
+          {showMatchConfirmation && (
+            <motion.div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden"
+                initial={{ scale: 0.8, opacity: 0, y: 50 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 50 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              >
+                <div className="bg-gradient-to-r from-teal-500 to-teal-600 p-6 text-white text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", delay: 0.2, damping: 10 }}
+                    className="mb-3"
+                  >
+                    <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto">
+                      <CheckCircle className="h-8 w-8 text-white" />
+                    </div>
+                  </motion.div>
+                  <h2 className="text-xl font-bold">Nice!</h2>
+                  <p className="text-white/90 mt-1">You matched with {matchedRequesterName}</p>
+                </div>
+                
+                <div className="p-6 text-center">
+                  <p className="text-gray-600 mb-6">
+                    We've let them know your item matches what they're looking for. If they want it, they'll send you a request.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setShowMatchConfirmation(false);
+                      navigate("/borrow");
+                    }}
+                    className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold"
+                  >
+                    Got it
+                  </Button>
                 </div>
               </motion.div>
             </motion.div>

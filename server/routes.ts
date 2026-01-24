@@ -1580,6 +1580,10 @@ Respond with ONLY the category name, nothing else.`
     // Calculate replacement value for borrowable items (locked at listing time)
     const replacementValue = isLendable ? calculateReplacementValue(tier) : null;
 
+    // Parse swap preferences
+    const swapDesiredItem = req.body.swapDesiredItem || null;
+    const swapNotifyOnMatch = req.body.swapNotifyOnMatch === "true";
+
     const itemData: InsertItem = {
       name: req.body.name,
       description: req.body.description,
@@ -1609,6 +1613,8 @@ Respond with ONLY the category name, nothing else.`
       isAvailable: true,
       isConditionVerified: false,
       wasSmartScanned: wasSmartScanned,
+      swapDesiredItem: swapDesiredItem,
+      swapNotifyOnMatch: swapNotifyOnMatch,
       ownerId: req.user.id,
     };
 
@@ -1647,6 +1653,82 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(users.id, req.user.id));
 
       console.log(`✅ Awarded 1 ShareCoin to user ${req.user.id} for first listing`);
+    }
+
+    // Check for swap match notifications
+    // Find items where owners want to be notified when matching items are listed
+    if (item.isSwappable) {
+      try {
+        // Get all items with swapNotifyOnMatch enabled (exclude current user's items)
+        const itemsWantingMatches = await db
+          .select({
+            id: items.id,
+            ownerId: items.ownerId,
+            name: items.name,
+            swapDesiredItem: items.swapDesiredItem,
+            itemType: items.itemType,
+            category: items.category,
+          })
+          .from(items)
+          .where(
+            and(
+              eq(items.swapNotifyOnMatch, true),
+              eq(items.isSwappable, true),
+              eq(items.isAvailable, true),
+              ne(items.ownerId, req.user.id)
+            )
+          );
+
+        // Check for matches based on keyword or category
+        const newItemName = item.name?.toLowerCase() || "";
+        const newItemCategory = item.category?.toLowerCase() || "";
+        const newItemType = item.itemType?.toLowerCase() || "";
+
+        for (const existingItem of itemsWantingMatches) {
+          const desiredItem = existingItem.swapDesiredItem?.toLowerCase().trim() || "";
+          
+          // Skip if no swap desired item specified
+          if (!desiredItem) continue;
+          
+          // Split desired item into keywords (handles comma-separated and space-separated)
+          const desiredKeywords = desiredItem
+            .split(/[,\s]+/)
+            .map(k => k.trim())
+            .filter(k => k.length > 2);
+
+          // Match criteria:
+          // 1. Keyword match: new item name contains desired item keywords
+          // 2. Category match: desired item keywords match new item's category or type
+          const keywordMatch = 
+            // Full phrase match
+            newItemName.includes(desiredItem) ||
+            // Individual keyword matches in name
+            desiredKeywords.some(keyword => newItemName.includes(keyword));
+          
+          const categoryMatch = 
+            // Desired keywords match the new item's category
+            desiredKeywords.some(keyword => newItemCategory.includes(keyword)) ||
+            // Desired keywords match the new item's type
+            desiredKeywords.some(keyword => newItemType.includes(keyword));
+
+          if (keywordMatch || categoryMatch) {
+            // Create notification for the item owner
+            await db.insert(notifications).values({
+              userId: existingItem.ownerId!,
+              type: "swap_match",
+              title: "Swap Match Found!",
+              message: `A new item matches what you're looking to trade for: ${item.name}`,
+              itemId: item.id,
+              isRead: false,
+            });
+            
+            console.log(`📣 Swap match notification sent to user ${existingItem.ownerId} for item "${item.name}"`);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking swap matches:", error);
+        // Don't fail the request if notification fails
+      }
     }
 
     // Prepare response with AI valuation details
@@ -1715,6 +1797,14 @@ Respond with ONLY the category name, nothing else.`
       // Parse tier
       const tier = req.body.tier ? parseInt(req.body.tier) : existingItem.tier;
 
+      // Parse swap preferences
+      const swapDesiredItem = req.body.swapDesiredItem !== undefined 
+        ? (req.body.swapDesiredItem || null)
+        : existingItem.swapDesiredItem;
+      const swapNotifyOnMatch = req.body.swapNotifyOnMatch !== undefined
+        ? req.body.swapNotifyOnMatch === "true"
+        : existingItem.swapNotifyOnMatch;
+
       const updateData = {
         name: req.body.name || existingItem.name,
         description: req.body.description || existingItem.description,
@@ -1731,6 +1821,8 @@ Respond with ONLY the category name, nothing else.`
         isRentable,
         isGift,
         securityDeposit: req.body.securityDeposit || existingItem.securityDeposit,
+        swapDesiredItem: swapDesiredItem,
+        swapNotifyOnMatch: swapNotifyOnMatch,
         updatedAt: new Date(),
       };
 

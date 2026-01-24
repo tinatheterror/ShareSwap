@@ -58,6 +58,7 @@ import {
   Info,
   Plus,
   Check,
+  Bell,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -76,6 +77,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { SmartScan } from "@/components/smartscan";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVerification } from "@/hooks/use-verification";
 
@@ -158,6 +160,8 @@ const formSchema = z
     isSwappable: z.boolean().default(false),
     isRentable: z.boolean().default(false),
     isGift: z.boolean().default(false),
+    swapDesiredItem: z.string().optional(),
+    swapNotifyOnMatch: z.boolean().default(false),
     availableFromDate: z.string().optional(),
     availableToDate: z.string().optional(),
     securityDeposit: z.coerce
@@ -247,6 +251,9 @@ export default function LendPage() {
       isLendable: true,
       isSwappable: false,
       isRentable: false,
+      isGift: false,
+      swapDesiredItem: "",
+      swapNotifyOnMatch: false,
       availableFromDate: undefined,
       availableToDate: undefined,
       securityDeposit: undefined,
@@ -314,6 +321,8 @@ export default function LendPage() {
         isSwappable: item.isSwappable || false,
         isRentable: item.isRentable || false,
         isGift: item.isGift || false,
+        swapDesiredItem: item.swapDesiredItem || "",
+        swapNotifyOnMatch: item.swapNotifyOnMatch || false,
         availableFromDate: item.availableFromDate || undefined,
         availableToDate: item.availableToDate || undefined,
         securityDeposit: item.securityDeposit || undefined,
@@ -1582,6 +1591,36 @@ export default function LendPage() {
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
+                                    
+                                    {/* Swap Preferences */}
+                                    <div className="mt-3 pt-3 border-t border-[#0DCEA1]/20 space-y-3">
+                                      <div>
+                                        <label className="block text-xs text-[#0BB88C] mb-1">
+                                          What would you like to trade for?
+                                        </label>
+                                        <Input
+                                          placeholder="e.g. Bottle warmer, baby monitor, or similar"
+                                          className="text-sm h-9"
+                                          {...form.register("swapDesiredItem")}
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Tell neighbors what you're hoping to swap for
+                                        </p>
+                                      </div>
+                                      
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Bell className="h-4 w-4 text-[#0DCEA1]" />
+                                          <span className="text-xs text-gray-700">
+                                            Notify me when a matching item is listed
+                                          </span>
+                                        </div>
+                                        <Switch
+                                          checked={form.watch("swapNotifyOnMatch")}
+                                          onCheckedChange={(checked) => form.setValue("swapNotifyOnMatch", checked)}
+                                        />
+                                      </div>
+                                    </div>
                                   </>
                                 );
                               })()}

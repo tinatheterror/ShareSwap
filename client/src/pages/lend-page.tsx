@@ -1603,15 +1603,15 @@ export default function LendPage() {
                                           className="text-sm h-9"
                                           {...form.register("swapDesiredItem")}
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="hidden md:block text-xs text-gray-500 mt-1">
                                           Tell neighbors what you're hoping to swap for
                                         </p>
                                       </div>
                                       
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          <Bell className="h-4 w-4 text-[#0DCEA1]" />
-                                          <span className="text-xs text-gray-700">
+                                      <div className="flex items-start justify-between">
+                                        <div className="flex items-start gap-2">
+                                          <Bell className="h-4 w-4 text-[#0DCEA1] mt-0.5 shrink-0" />
+                                          <span className="text-[11px] md:text-xs text-gray-700 leading-tight">
                                             Notify me when a matching item is listed
                                           </span>
                                         </div>

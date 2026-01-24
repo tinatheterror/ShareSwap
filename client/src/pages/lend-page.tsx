@@ -1611,8 +1611,8 @@ export default function LendPage() {
                                       <div className="flex items-start justify-between">
                                         <div className="flex items-start gap-2">
                                           <Bell className="h-4 w-4 text-[#0DCEA1] mt-0.5 shrink-0" />
-                                          <span className="text-sm text-gray-700 leading-tight">
-                                            Notify me when a matching item is listed
+                                          <span className="text-[13px] text-gray-700">
+                                            Notify me when matching items are listed
                                           </span>
                                         </div>
                                         <Switch

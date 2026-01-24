@@ -808,7 +808,7 @@ export default function ProfilePage() {
                         onChange={(e) =>
                           setEditForm({ ...editForm, location: e.target.value })
                         }
-                        placeholder="Your city or neighborhood"
+                        placeholder="Your city or neighbourhood"
                       />
                     </div>
                     <div>

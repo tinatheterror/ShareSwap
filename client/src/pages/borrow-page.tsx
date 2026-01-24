@@ -603,7 +603,7 @@ export default function BorrowPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground">
-                      Search by city, neighborhood or ZIP code.
+                      Search by city, neighbourhood or postal code.
                     </label>
                     <Input
                       value={userPostalCode}

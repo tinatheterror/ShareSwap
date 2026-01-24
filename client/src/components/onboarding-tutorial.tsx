@@ -25,7 +25,7 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: 2,
     title: 'Give to the ShareChest',
-    description: 'Share your own treasures to the community ShareChest. Help your neighbors and earn ShareCoins!',
+    description: 'Share your own treasures to the community ShareChest. Help your neighbours and earn ShareCoins!',
     icon: <Home className="h-8 w-8 text-teal-600" />,
     highlightSelector: '[data-tutorial="give"]',
     position: 'bottom'
@@ -80,7 +80,7 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: 9,
     title: 'Earn Achievements',
-    description: 'Unlock badges by participating in the sharing community. Complete milestones, help neighbors, and earn rewards!',
+    description: 'Unlock badges by participating in the sharing community. Complete milestones, help neighbours, and earn rewards!',
     icon: <Trophy className="h-8 w-8 text-teal-600" />,
     position: 'center'
   },

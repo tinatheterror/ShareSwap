@@ -1633,7 +1633,7 @@ export default function LendPage() {
                                           {...form.register("swapDesiredItem")}
                                         />
                                         <p className="hidden md:block text-xs text-gray-500 mt-1">
-                                          Tell neighbors what you're hoping to
+                                          Tell neighbours what you're hoping to
                                           swap for
                                         </p>
                                       </div>
@@ -2298,7 +2298,7 @@ export default function LendPage() {
                                 wishlistOwnerId: selectedWishlistMatch.userId,
                               });
                               // Show confirmation modal
-                              setMatchedRequesterName(selectedWishlistMatch.username || selectedWishlistMatch.firstName || "this neighbor");
+                              setMatchedRequesterName(selectedWishlistMatch.username || selectedWishlistMatch.firstName || "this neighbour");
                               setShowMatchingModal(false);
                               setShowMatchConfirmation(true);
                             } catch (error) {

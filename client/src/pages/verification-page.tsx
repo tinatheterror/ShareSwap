@@ -349,7 +349,7 @@ export default function VerificationPage() {
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">
                     <BadgeCheck className="h-8 w-8 sm:h-12 sm:w-12 flex-shrink-0 text-teal-600" />
                     <span>
-                      A verified badge builds instant trust with neighbors
+                      A verified badge builds instant trust with neighbours
                     </span>
                   </div>
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">

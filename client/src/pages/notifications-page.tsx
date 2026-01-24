@@ -247,7 +247,7 @@ export default function NotificationsPage() {
                   <h2 className="text-lg font-bold">Great news!</h2>
                 </div>
                 <p className="text-white/90 text-sm mt-1">
-                  A neighbor has an item that matches your wishlist
+                  A neighbour has an item that matches your wishlist
                 </p>
               </div>
 

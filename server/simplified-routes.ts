@@ -17,7 +17,7 @@ export function addSimplifiedRoutes(app: Express) {
         {
           id: 1,
           name: "First Lender",
-          description: "Lend your first item to a neighbor",
+          description: "Lend your first item to a neighbour",
           badgeIcon: "🤝",
           badgeColor: "#10b981",
           pointsRequired: 0,
@@ -26,7 +26,7 @@ export function addSimplifiedRoutes(app: Express) {
         },
         {
           id: 2,
-          name: "Trusted Neighbor", 
+          name: "Trusted Neighbour", 
           description: "Maintain a 4.5+ star rating with 10+ transactions",
           badgeIcon: "⭐",
           badgeColor: "#f59e0b",

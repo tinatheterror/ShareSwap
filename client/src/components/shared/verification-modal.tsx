@@ -35,7 +35,7 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
             </DialogTitle>
           </div>
           <DialogDescription className="text-gray-600 pt-2">
-            Verification helps keep the community safe and builds trust with neighbors.
+            Verification helps keep the community safe and builds trust with neighbours.
           </DialogDescription>
         </DialogHeader>
 

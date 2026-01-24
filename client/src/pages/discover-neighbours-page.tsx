@@ -17,7 +17,7 @@ interface User {
   isFollowing: boolean;
 }
 
-export default function DiscoverNeighborsPage() {
+export default function DiscoverNeighboursPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -49,7 +49,7 @@ export default function DiscoverNeighborsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/feed/following-items'] });
       toast({
         title: "Followed!",
-        description: "You're now following this neighbor",
+        description: "You're now following this neighbour",
       });
     },
     onError: (error, userId, context) => {
@@ -88,7 +88,7 @@ export default function DiscoverNeighborsPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/feed/following-items'] });
       toast({
         title: "Unfollowed",
-        description: "You unfollowed this neighbor",
+        description: "You unfollowed this neighbour",
       });
     },
     onError: (error, userId, context) => {
@@ -113,7 +113,7 @@ export default function DiscoverNeighborsPage() {
             <h1 className="text-3xl font-bold">Find Neighbours</h1>
           </div>
           <p className="text-muted-foreground">
-            Discover and follow neighbors in your community to see what they're sharing
+            Discover and follow neighbours in your community to see what they're sharing
           </p>
         </div>
 
@@ -132,7 +132,7 @@ export default function DiscoverNeighborsPage() {
         ) : users.length === 0 ? (
           <div className="text-center py-12">
             <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-muted-foreground">No neighbors found at the moment</p>
+            <p className="text-muted-foreground">No neighbours found at the moment</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

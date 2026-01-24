@@ -40,7 +40,7 @@ import MyItemsPage from "@/pages/my-items-page";
 import ShareCoinsInfoPage from "@/pages/sharecoins-info-page";
 import NotificationsPage from "@/pages/notifications-page";
 import RequestsPage from "@/pages/requests-page";
-import DiscoverNeighborsPage from "@/pages/discover-neighbors-page";
+import DiscoverNeighboursPage from "@/pages/discover-neighbours-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentMethodsPage from "@/pages/payment-methods-page";
 import { VerificationNudge } from "@/components/verification-nudge";
@@ -78,7 +78,7 @@ function Router() {
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />
       <ProtectedRoute path="/notifications" component={NotificationsPage} />
-      <ProtectedRoute path="/discover-neighbors" component={DiscoverNeighborsPage} />
+      <ProtectedRoute path="/discover-neighbours" component={DiscoverNeighboursPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/payment-methods" component={PaymentMethodsPage} />
       <Route component={NotFound} />

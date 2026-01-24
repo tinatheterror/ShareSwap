@@ -177,7 +177,7 @@ export function DeliveryDepositModal({
                         <h3 className="font-semibold text-lg">Arrange Yourself</h3>
                       </div>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Coordinate directly with your neighbor
+                        Coordinate directly with your neighbour
                       </p>
                     </div>
                     <RadioGroupItem value="self_arrange" className="mt-1" />
@@ -286,7 +286,7 @@ export function DeliveryDepositModal({
                         <h3 className="font-semibold text-lg">Arrange Deposit Yourself</h3>
                       </div>
                       <p className="text-sm text-muted-foreground mb-3">
-                        Coordinate directly with your neighbor
+                        Coordinate directly with your neighbour
                       </p>
                     </div>
                     <RadioGroupItem value="self_arrange" className="mt-1" />

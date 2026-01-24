@@ -69,7 +69,7 @@ export default function CommunityWishlistsPage() {
             Community Wishlists
           </h1>
           <p className="text-muted-foreground">
-            Help your neighbors by lending items they need. Earn ShareCoins and build trust!
+            Help your neighbours by lending items they need. Earn ShareCoins and build trust!
           </p>
         </div>
 

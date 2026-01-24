@@ -1,7 +1,7 @@
 # Peer-to-Peer Sharing Marketplace
 
 ## Overview
-A comprehensive peer-to-peer sharing marketplace platform enabling secure and engaging item borrowing, lending, and swapping. The platform features an advanced verification system, robust real-time communication, and focuses on creating trust-driven item exchange experiences. It aims to connect neighbors and foster a community of shared resources, with a vision of "Share more, own less." Key capabilities include AI-powered item recognition (SmartScan), intelligent matching, a gamified user progression system, and a flexible commission structure.
+A comprehensive peer-to-peer sharing marketplace platform enabling secure and engaging item borrowing, lending, and swapping. The platform features an advanced verification system, robust real-time communication, and focuses on creating trust-driven item exchange experiences. It aims to connect neighbours and foster a community of shared resources, with a vision of "Share more, own less." Key capabilities include AI-powered item recognition (SmartScan), intelligent matching, a gamified user progression system, and a flexible commission structure.
 
 ## User Preferences
 - Keep original design (not the fresh green design)
@@ -28,7 +28,7 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
 - **Transactional System**: Supports distinct transaction flows for Borrow (ShareCoins), Rent (Cash), Swap, and Gift. Includes in-app scheduling, security deposit options, and an anti-farming system for ShareCoin exploitation. All transaction lifecycle actions are managed through a unified inbox.
 - **Messaging**: Automated messaging system for item requests with template generation.
 - **Inventory Management**: "My ShareChest" for intuitive item management.
-- **Follow System**: Allows users to follow neighbors to see their items in a personalized feed.
+- **Follow System**: Allows users to follow neighbours to see their items in a personalized feed.
 - **No Results Wishlist Prompt**: Engages users by prompting them to add to a wishlist when search yields no results.
 - **Automated Return Reminders**: Intelligent notification system for upcoming and overdue returns, with client-side polling and distinct notification icons.
 - **Account Deactivation System**: Self-service deactivation that hides user profiles and listings while preserving transaction history for compliance. Reactivation is instant. Permanent deletion requires contacting support.

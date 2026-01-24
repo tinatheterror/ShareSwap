@@ -2345,13 +2345,13 @@ Respond with ONLY the category name, nothing else.`
         .from(users)
         .where(eq(users.id, req.user.id));
 
-      const listerName = lister?.username || "A neighbor";
+      const listerName = lister?.username || "A neighbour";
 
       // Create notification for the wishlist owner
       await db.insert(notifications).values({
         userId: wishlistOwnerId,
         type: "wishlist_match",
-        title: "Good news! A neighbor has an item that matches your wishlist",
+        title: "Good news! A neighbour has an item that matches your wishlist",
         message: `${listerName} has listed "${item.name}" which matches what you're looking for.`,
         itemId: itemId,
         isRead: false,

@@ -1171,7 +1171,7 @@ export default function FAQPage() {
                         <li>Community-based</li>
                         <li>Pay in ShareCoins</li>
                         <li>Lower cash trust-based deposit</li>
-                        <li>Good for helping neighbors</li>
+                        <li>Good for helping neighbours</li>
                         <li>No cash earnings</li>
                       </ul>
                     </div>
@@ -1438,7 +1438,7 @@ export default function FAQPage() {
                       <span>
                         <span className="font-semibold">Rentals & Gifting</span>{" "}
                         — Completing rentals without issues and gifting items to
-                        neighbors also contribute positively.
+                        neighbours also contribute positively.
                       </span>
                     </li>
                   </ul>
@@ -1521,7 +1521,7 @@ export default function FAQPage() {
                   Is my address shown to other users?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. Only approximate neighborhood is shown.
+                  No. Only approximate neighbourhood is shown.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="privacy-2">

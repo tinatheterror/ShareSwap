@@ -9,14 +9,14 @@ export const initializeAchievements = async () => {
       await db.insert(achievements).values([
         {
           name: "First Lender",
-          description: "Lend your first item to a neighbor",
+          description: "Lend your first item to a neighbour",
           badgeIcon: "🤝",
           badgeColor: "#10b981",
           pointsRequired: 0,
           category: "milestone",
         },
         {
-          name: "Trusted Neighbor",
+          name: "Trusted Neighbour",
           description: "Maintain a 4.5+ star rating with 10+ transactions",
           badgeIcon: "⭐",
           badgeColor: "#f59e0b",
@@ -33,7 +33,7 @@ export const initializeAchievements = async () => {
         },
         {
           name: "Community Champion",
-          description: "Help 25+ neighbors by lending items",
+          description: "Help 25+ neighbours by lending items",
           badgeIcon: "🏆",
           badgeColor: "#dc2626",
           pointsRequired: 150,

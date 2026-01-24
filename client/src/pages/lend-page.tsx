@@ -1599,7 +1599,7 @@ export default function LendPage() {
                                           What would you like to trade for?
                                         </label>
                                         <Input
-                                          placeholder="e.g. Bottle warmer, baby monitor, or similar"
+                                          placeholder="e.g. baby monitor, stroller, or similar"
                                           className="text-sm h-9"
                                           {...form.register("swapDesiredItem")}
                                         />

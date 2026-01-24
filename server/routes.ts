@@ -2316,6 +2316,60 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Notify wishlist owner about a matching item
+  app.post("/api/wishlist-match-notification", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { itemId, wishlistId, wishlistOwnerId } = req.body;
+
+      if (!itemId || !wishlistId || !wishlistOwnerId) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Get the item details
+      const [item] = await db
+        .select()
+        .from(items)
+        .where(eq(items.id, itemId));
+
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+
+      // Get the lister's username
+      const [lister] = await db
+        .select({ username: users.username, firstName: users.firstName })
+        .from(users)
+        .where(eq(users.id, req.user.id));
+
+      const listerName = lister?.firstName || lister?.username || "A neighbor";
+
+      // Create notification for the wishlist owner
+      await db.insert(notifications).values({
+        userId: wishlistOwnerId,
+        type: "wishlist_match",
+        title: "Good news! A neighbor has an item that matches your wishlist",
+        message: `${listerName} has listed "${item.name}" which matches what you're looking for.`,
+        itemId: itemId,
+        isRead: false,
+      });
+
+      console.log(`📣 Wishlist match notification sent to user ${wishlistOwnerId} for item "${item.name}"`);
+
+      res.json({ 
+        success: true, 
+        message: "Notification sent to wishlist owner",
+        listerName: listerName
+      });
+    } catch (error) {
+      console.error("Error sending wishlist match notification:", error);
+      res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
   // Smart swap matching
   app.get("/api/swap-matches/:requestId/:userItemId", async (req, res) => {
     if (!req.isAuthenticated()) {

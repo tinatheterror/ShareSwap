@@ -304,16 +304,18 @@ export function Navbar() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="top" className="rounded-b-2xl pt-12 pb-6">
-                  <div className="flex flex-col gap-4 pt-2">
-                    <h2 className="text-lg font-semibold text-center">Wallet</h2>
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="flex flex-col items-center gap-1">
+                      <h2 className="text-lg font-semibold text-center">Wallet</h2>
                     
-                    {/* Balance Display */}
-                    <div className="flex flex-col items-center py-1 rounded-lg">
+                      {/* Balance Display */}
+                      <div className="flex flex-col items-center rounded-lg">
                       <div className="flex items-center gap-2">
                         <Coins className="h-8 w-8 text-primary" />
                         <span className="text-3xl font-bold text-primary">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"}</span>
                       </div>
                       <span className="text-sm text-muted-foreground mt-1">ShareCoins</span>
+                      </div>
                     </div>
 
                     {/* Wallet Actions */}

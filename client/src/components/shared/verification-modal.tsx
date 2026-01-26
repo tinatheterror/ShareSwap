@@ -30,7 +30,7 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
             <div className="p-2 bg-[#0DCEA1] rounded-lg">
               <BadgeCheck className="h-6 w-6 text-white" />
             </div>
-            <DialogTitle className="text-xl">
+            <DialogTitle className="text-base sm:text-xl whitespace-nowrap">
               To continue, please verify your profile.
             </DialogTitle>
           </div>

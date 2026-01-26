@@ -12,6 +12,9 @@ export const users = pgTable("users", {
   googleId: text("google_id").unique(),
   phoneNumber: text("phone_number").unique(),
   phoneVerified: boolean("phone_verified").default(false),
+  emailVerified: boolean("email_verified").default(false),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerificationExpires: timestamp("email_verification_expires"),
   isVerified: boolean("is_verified").default(false),
   verifiedAt: timestamp("verified_at"),
   profilePhoto: text("profile_photo"), // URL to uploaded profile photo

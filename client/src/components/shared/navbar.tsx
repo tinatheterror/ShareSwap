@@ -295,11 +295,11 @@ export function Navbar() {
             {user && (
               <Sheet open={mobileWalletOpen} onOpenChange={setMobileWalletOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-1.5 hover:text-primary hover:border-primary pl-2 pr-2.5 py-1 h-auto ml-2" style={{ maxWidth: '115px' }}>
+                  <Button variant="outline" className="flex items-center gap-1 hover:text-primary hover:border-primary px-2 py-1 h-auto ml-1">
                     <Coins className="h-3 w-3 text-primary flex-shrink-0" />
-                    <div className="flex flex-col items-start min-w-0">
-                      <span className="text-[8px] text-muted-foreground leading-tight">Total Balance</span>
-                      <span className="text-[10px] font-medium truncate">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[7px] text-muted-foreground leading-tight whitespace-nowrap">Total Balance</span>
+                      <span className="text-[9px] font-medium whitespace-nowrap">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
                     </div>
                   </Button>
                 </SheetTrigger>

@@ -41,7 +41,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="h-screen bg-[#F3F4F6] overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col pb-safe pt-safe">
       <Navbar />
       
       {/* Referral Applied Banner */}

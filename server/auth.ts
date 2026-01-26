@@ -65,6 +65,51 @@ async function generateUniqueReferralCode(): Promise<string> {
   return `${generateCode()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
 }
 
+// Generate unique human-readable handle (e.g., jessica483, alex17)
+async function generateUniqueHandle(baseName: string): Promise<string> {
+  // Clean the base name - only lowercase letters
+  const cleaned = baseName.toLowerCase().replace(/[^a-z]/g, '').slice(0, 12) || 'user';
+  
+  let attempts = 0;
+  while (attempts < 50) {
+    // Generate 2-4 digit random number
+    const digits = Math.floor(Math.random() * 9000) + 10; // 10-9999
+    const handle = `${cleaned}${digits}`;
+    
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.handle, handle))
+      .limit(1);
+    
+    if (!existing) return handle;
+    attempts++;
+  }
+  
+  // Fallback with timestamp
+  return `${cleaned}${Date.now().toString(36).slice(-5)}`;
+}
+
+// Generate display name from Google profile or email
+function generateDisplayName(email?: string, googleName?: string): string {
+  if (googleName) {
+    // Use Google profile name, optionally abbreviate last name
+    const parts = googleName.trim().split(' ');
+    if (parts.length > 1) {
+      return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+    }
+    return parts[0];
+  }
+  
+  if (email) {
+    // Capitalize first letter of email prefix
+    const prefix = email.split('@')[0].replace(/[^a-zA-Z]/g, '');
+    return prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+  }
+  
+  return 'User';
+}
+
 async function comparePasswords(supplied: string, stored: string) {
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
@@ -182,7 +227,8 @@ export function setupAuth(app: Express) {
             }
 
             // Create new user from Google profile
-            let baseUsername = profile.emails?.[0]?.value?.split('@')[0] || `google_${profile.id.slice(0, 10)}`;
+            const email = profile.emails?.[0]?.value;
+            let baseUsername = email?.split('@')[0] || `google_${profile.id.slice(0, 10)}`;
             let username = baseUsername;
             let suffix = 1;
             
@@ -199,11 +245,19 @@ export function setupAuth(app: Express) {
               suffix++;
             }
             
+            // Generate unique handle and display name
+            const googleName = profile.displayName || profile.name?.givenName;
+            const handleBase = googleName || email?.split('@')[0] || 'user';
+            const handle = await generateUniqueHandle(handleBase);
+            const displayName = generateDisplayName(email, googleName);
+            
             const newUserReferralCode = await generateUniqueReferralCode();
             const [newUser] = await db
               .insert(users)
               .values({
                 username,
+                handle,
+                displayName,
                 googleId: profile.id,
                 authProvider: 'google',
                 isVerified: true, // Google accounts are pre-verified
@@ -377,11 +431,18 @@ export function setupAuth(app: Express) {
         }
       }
 
+      // Generate unique handle and display name from email
+      const emailUsername = result.data.username; // username is email in our system
+      const handle = await generateUniqueHandle(emailUsername.split('@')[0]);
+      const displayName = generateDisplayName(emailUsername);
+      
       const newUserReferralCode = await generateUniqueReferralCode();
       const [user] = await db
         .insert(users)
         .values({
           ...result.data,
+          handle,
+          displayName,
           password: result.data.password ? await hashPassword(result.data.password) : null,
           referredBy: referrerId,
           deviceFingerprint: deviceFingerprint || null,

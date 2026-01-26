@@ -11,7 +11,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, sql, gte, ne } from "drizzle-orm";
+import { eq, and, or, desc, sql, gte, ne, isNull } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -4889,14 +4889,15 @@ Respond with ONLY the category name, nothing else.`
       return res.sendStatus(401);
     }
 
-    const { fullName, bio, location, phone } = req.body;
+    const { fullName, bio, location, phone, displayName } = req.body;
 
     // Build update object with only provided fields
-    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string }> = {};
+    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string; displayName: string }> = {};
     if (fullName !== undefined) updateData.fullName = fullName;
     if (bio !== undefined) updateData.bio = bio;
     if (location !== undefined) updateData.location = location;
     if (phone !== undefined) updateData.phone = phone;
+    if (displayName !== undefined) updateData.displayName = displayName;
 
     // If no fields to update, just return current profile
     if (Object.keys(updateData).length === 0) {
@@ -4904,6 +4905,8 @@ Respond with ONLY the category name, nothing else.`
         .select({
           id: users.id,
           username: users.username,
+          handle: users.handle,
+          displayName: users.displayName,
           fullName: users.fullName,
           bio: users.bio,
           location: users.location,
@@ -4930,6 +4933,8 @@ Respond with ONLY the category name, nothing else.`
         .returning({
           id: users.id,
           username: users.username,
+          handle: users.handle,
+          displayName: users.displayName,
           fullName: users.fullName,
           bio: users.bio,
           location: users.location,
@@ -6776,6 +6781,67 @@ Respond with ONLY the category name, nothing else.`
       res.status(500).json({ message: "Failed to get account status" });
     }
   });
+
+  // Migrate existing users to have handles (runs once at startup)
+  (async () => {
+    try {
+      const usersWithoutHandles = await db
+        .select({ id: users.id, username: users.username, fullName: users.fullName })
+        .from(users)
+        .where(isNull(users.handle));
+      
+      if (usersWithoutHandles.length > 0) {
+        console.log(`[Migration] Generating handles for ${usersWithoutHandles.length} existing users...`);
+        
+        for (const user of usersWithoutHandles) {
+          // Generate handle from username (email) or fullName
+          const baseName = user.fullName?.split(' ')[0] || user.username.split('@')[0];
+          const cleaned = baseName.toLowerCase().replace(/[^a-z]/g, '').slice(0, 12) || 'user';
+          
+          let handle = '';
+          let attempts = 0;
+          while (attempts < 50) {
+            const digits = Math.floor(Math.random() * 9000) + 10;
+            handle = `${cleaned}${digits}`;
+            
+            const [existing] = await db
+              .select()
+              .from(users)
+              .where(eq(users.handle, handle))
+              .limit(1);
+            
+            if (!existing) break;
+            attempts++;
+          }
+          
+          if (!handle) {
+            handle = `${cleaned}${Date.now().toString(36).slice(-5)}`;
+          }
+          
+          // Generate display name
+          let displayName = 'User';
+          if (user.fullName) {
+            const parts = user.fullName.trim().split(' ');
+            displayName = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+          } else {
+            const prefix = user.username.split('@')[0].replace(/[^a-zA-Z]/g, '');
+            displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+          }
+          
+          await db
+            .update(users)
+            .set({ handle, displayName })
+            .where(eq(users.id, user.id));
+          
+          console.log(`[Migration] User ${user.id} assigned handle: ${handle}, displayName: ${displayName}`);
+        }
+        
+        console.log(`[Migration] Handle migration complete!`);
+      }
+    } catch (error) {
+      console.error('[Migration] Error migrating user handles:', error);
+    }
+  })();
 
   setupAuth(app);
   

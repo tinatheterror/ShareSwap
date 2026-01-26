@@ -450,7 +450,7 @@ export function setupAuth(app: Express) {
       const [user] = await db
         .insert(users)
         .values({
-          ...result.data,
+          username: result.data.username, // Email is stored as username for login
           handle,
           displayName,
           password: result.data.password ? await hashPassword(result.data.password) : null,
@@ -460,6 +460,7 @@ export function setupAuth(app: Express) {
           emailVerified: false,
           emailVerificationToken,
           emailVerificationExpires,
+          authProvider: 'local',
         })
         .returning();
       

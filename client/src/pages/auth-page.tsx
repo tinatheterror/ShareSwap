@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { Lock, Mail, RotateCcw, AlertCircle, Eye, EyeOff, Users } from "lucide-react";
+import { Lock, Mail, RotateCcw, AlertCircle, Eye, EyeOff, Users, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -54,7 +54,7 @@ export default function AuthPage() {
   const [showReferralInput, setShowReferralInput] = useState(false);
   const { toast } = useToast();
 
-  // Extract referral code from URL and pre-fill
+  // Extract referral code from URL and handle verification status
   useEffect(() => {
     const params = new URLSearchParams(searchString);
     const ref = params.get("ref");
@@ -62,7 +62,30 @@ export default function AuthPage() {
       setReferralCode(ref);
       setIsLogin(false); // Switch to signup mode when coming from referral
     }
-  }, [searchString]);
+    
+    // Handle email verification status
+    const verified = params.get("verified");
+    const error = params.get("error");
+    
+    if (verified === "true") {
+      toast({
+        title: "Email verified!",
+        description: "Your email has been successfully verified. You can now log in.",
+      });
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        missing_token: "Verification link is invalid.",
+        invalid_token: "This verification link is invalid or has already been used.",
+        token_expired: "This verification link has expired. Please request a new one.",
+        verification_failed: "Email verification failed. Please try again.",
+      };
+      toast({
+        title: "Verification failed",
+        description: errorMessages[error] || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [searchString, toast]);
 
   // Fetch platform statistics
   const { data: stats, isLoading: statsLoading } = useQuery<{
@@ -152,6 +175,10 @@ export default function AuthPage() {
       if (data.referralApplied) {
         sessionStorage.setItem("referralApplied", "true");
       }
+      toast({
+        title: "Account created!",
+        description: "Please check your email to verify your account.",
+      });
       window.location.href = "/";
     },
     onError: (error: Error) => {

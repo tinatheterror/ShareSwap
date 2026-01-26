@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -165,6 +165,59 @@ function NotificationBell() {
   );
 }
 
+function EmailVerificationBanner() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [isResending, setIsResending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  
+  if (!user || user.emailVerified || user.authProvider === 'google') {
+    return null;
+  }
+  
+  const handleResend = async () => {
+    setIsResending(true);
+    setMessage(null);
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        setMessage('Verification email sent! Please check your inbox.');
+      } else {
+        setMessage('Failed to send verification email. Please try again.');
+      }
+    } catch (error) {
+      setMessage('Failed to send verification email. Please try again.');
+    }
+    setIsResending(false);
+  };
+  
+  return (
+    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 text-sm">
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-amber-600 flex-shrink-0" />
+          <span className="text-amber-800">
+            {message || 'Please verify your email address to access all features.'}
+          </span>
+        </div>
+        {!message && (
+          <button
+            onClick={handleResend}
+            disabled={isResending}
+            className="text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2 disabled:opacity-50 text-left sm:text-right"
+          >
+            {isResending ? 'Sending...' : 'Resend email'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Navbar() {
   const { user, logoutMutation } = useAuth();
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
@@ -172,6 +225,8 @@ export function Navbar() {
   const [mobileWalletOpen, setMobileWalletOpen] = useState(false);
 
   return (
+    <>
+    <EmailVerificationBanner />
     <nav className="border-b bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 sm:h-16 items-center">
@@ -454,5 +509,6 @@ export function Navbar() {
         onClose={() => setShowWishlistPopup(false)}
       />
     </nav>
+    </>
   );
 }

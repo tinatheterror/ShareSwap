@@ -12,7 +12,7 @@ A comprehensive peer-to-peer sharing marketplace platform enabling secure and en
 The platform is a full-stack JavaScript application utilizing modern patterns. The frontend, built with React TypeScript and Wouter, handles most application logic, while the Express.js backend with TypeScript manages data persistence and API calls. PostgreSQL with Drizzle ORM is used for the database.
 
 **Key architectural decisions and features include:**
-- **Authentication**: Custom Passport-based system with multi-provider support (local, Google OAuth, and optional phone verification).
+- **Authentication**: Custom Passport-based system with multi-provider support (local email/password, Google OAuth, and optional phone verification). Email registration includes verification via SendGrid - users receive a verification link valid for 24 hours.
 - **Real-time Communication**: WebSocket server with reconnection strategies for chat.
 - **Verification System**: Separate pages for identity verification (government ID upload) and payment methods (Stripe Elements for secure card entry), adhering to best practices.
 - **AI-Powered Features**:
@@ -48,3 +48,4 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
 - **Routing**: Wouter
 - **Styling**: Tailwind CSS, shadcn UI components
 - **Delivery Service**: Simulated Uber Direct (for testing)
+- **Email Service**: SendGrid (via Replit integration for transactional emails including verification)

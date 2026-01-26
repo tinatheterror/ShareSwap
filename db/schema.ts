@@ -5,6 +5,8 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
+  handle: text("handle").unique(), // Auto-generated unique handle (e.g., jessica483) - never changes
+  displayName: text("display_name"), // User-editable display name shown on cards, chats, reviews
   password: text("password"), // Made nullable for OAuth/phone auth
   authProvider: text("auth_provider").default("local"), // 'local', 'google', 'phone'
   googleId: text("google_id").unique(),

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { X, Shield, ArrowRight } from "lucide-react";
+import { X, Shield, ArrowRight, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
@@ -55,7 +55,10 @@ export function VerificationNudge() {
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-[#0BB88C]/10 rounded-lg flex-shrink-0">
-            <Shield className="h-5 w-5 text-[#0BB88C]" />
+            <BadgeCheck
+              className="h-5 w-5 flex-shrink-0"
+              fill="#0DCEA1"
+              stroke="white"/>
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900 text-sm">

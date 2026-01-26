@@ -11,6 +11,7 @@ import { users, items, referrals, insertUserSchema, type SelectUser } from "@db/
 import { db, pool } from "@db";
 import { eq, or, and } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
+import { sendVerificationEmail } from "./sendgrid";
 
 // Security: Rate limiter for authentication endpoints
 const authLimiter = rateLimit({
@@ -63,6 +64,11 @@ async function generateUniqueReferralCode(): Promise<string> {
   }
   
   return `${generateCode()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
+}
+
+// Generate email verification token
+function generateEmailVerificationToken(): string {
+  return randomBytes(32).toString('hex');
 }
 
 // Generate unique human-readable handle (e.g., jessica483, alex17)
@@ -436,6 +442,10 @@ export function setupAuth(app: Express) {
       const handle = await generateUniqueHandle(emailUsername.split('@')[0]);
       const displayName = generateDisplayName(emailUsername);
       
+      // Generate email verification token
+      const emailVerificationToken = generateEmailVerificationToken();
+      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
       const newUserReferralCode = await generateUniqueReferralCode();
       const [user] = await db
         .insert(users)
@@ -447,8 +457,16 @@ export function setupAuth(app: Express) {
           referredBy: referrerId,
           deviceFingerprint: deviceFingerprint || null,
           referralCode: newUserReferralCode,
+          emailVerified: false,
+          emailVerificationToken,
+          emailVerificationExpires,
         })
         .returning();
+      
+      // Send verification email (don't block registration on email failure)
+      sendVerificationEmail(emailUsername, emailVerificationToken, displayName).catch(err => {
+        console.error('[Auth] Failed to send verification email:', err);
+      });
 
       // Create referral record if user was referred
       if (referrerId && referralCode) {
@@ -506,6 +524,94 @@ export function setupAuth(app: Express) {
         res.redirect("/");
       }
     });
+  });
+
+  // Email verification endpoint
+  app.get("/api/auth/verify-email", async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      
+      if (!token) {
+        return res.redirect("/auth?error=missing_token");
+      }
+      
+      // Find user with this token
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.emailVerificationToken, token))
+        .limit(1);
+      
+      if (!user) {
+        return res.redirect("/auth?error=invalid_token");
+      }
+      
+      // Check if token has expired
+      if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
+        return res.redirect("/auth?error=token_expired");
+      }
+      
+      // Mark email as verified
+      await db
+        .update(users)
+        .set({
+          emailVerified: true,
+          emailVerificationToken: null,
+          emailVerificationExpires: null,
+        })
+        .where(eq(users.id, user.id));
+      
+      console.log(`[Auth] Email verified for user ${user.id} (${user.username})`);
+      
+      // Redirect to success page
+      return res.redirect("/auth?verified=true");
+    } catch (error) {
+      console.error("[Auth] Email verification error:", error);
+      return res.redirect("/auth?error=verification_failed");
+    }
+  });
+  
+  // Resend verification email endpoint
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    
+    try {
+      const user = req.user;
+      
+      if (user.emailVerified) {
+        return res.status(400).json({ message: "Email already verified" });
+      }
+      
+      // Generate new token
+      const emailVerificationToken = generateEmailVerificationToken();
+      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      await db
+        .update(users)
+        .set({
+          emailVerificationToken,
+          emailVerificationExpires,
+        })
+        .where(eq(users.id, user.id));
+      
+      // Send verification email
+      const sent = await sendVerificationEmail(
+        user.username,
+        emailVerificationToken,
+        user.displayName || undefined
+      );
+      
+      if (sent) {
+        res.json({ message: "Verification email sent" });
+      } else {
+        res.status(500).json({ message: "Failed to send verification email" });
+      }
+    } catch (error) {
+      console.error("[Auth] Resend verification error:", error);
+      res.status(500).json({ message: "Failed to resend verification email" });
+    }
   });
 
   app.post("/api/logout", (req, res, next) => {

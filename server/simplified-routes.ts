@@ -180,8 +180,10 @@ export function addSimplifiedRoutes(app: Express) {
           neededDate: fiveDaysLater.toISOString().split('T')[0],
           returnDate: new Date(fiveDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: true,
+          isPrivate: false,
           createdAt: new Date().toISOString(),
-          username: "Sarah M.",
+          username: "sarah_m",
+          displayName: "Sarah M.",
           distance: "0.8 miles away"
         },
         {
@@ -194,8 +196,10 @@ export function addSimplifiedRoutes(app: Express) {
           preferredLocation: "North side",
           neededDate: threeDaysLater.toISOString().split('T')[0],
           isActive: true,
+          isPrivate: true,
           createdAt: new Date().toISOString(),
-          username: "Mike R.",
+          username: "mike_r",
+          displayName: "Mike R.",
           distance: "1.2 miles away"
         },
         {
@@ -209,8 +213,10 @@ export function addSimplifiedRoutes(app: Express) {
           neededDate: fiveDaysLater.toISOString().split('T')[0],
           returnDate: new Date(fiveDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: true,
+          isPrivate: false,
           createdAt: new Date().toISOString(),
-          username: "Emma L.",
+          username: "emma_l",
+          displayName: "Emma L.",
           distance: "0.5 miles away"
         },
         {
@@ -219,13 +225,15 @@ export function addSimplifiedRoutes(app: Express) {
           itemName: "Lawn Mower",
           description: "Spring cleaning - need to mow overgrown yard",
           category: "garden",
-          needType: "borrow",
+          needType: "gift",
           preferredLocation: "Suburban area",
           neededDate: fifteenDaysLater.toISOString().split('T')[0],
           returnDate: new Date(fifteenDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           isActive: true,
+          isPrivate: false,
           createdAt: new Date().toISOString(),
-          username: "David K.",
+          username: "david_k",
+          displayName: "David K.",
           distance: "2.1 miles away"
         }
       ];
@@ -363,7 +371,7 @@ export function addSimplifiedRoutes(app: Express) {
     }
 
     try {
-      const { itemName, description, category, needType, preferredLocation, urgency, neededDate, returnDate } = req.body;
+      const { itemName, description, category, needType, preferredLocation, urgency, neededDate, returnDate, isPrivate } = req.body;
 
       if (!itemName) {
         return res.status(400).json({ error: "Item name is required" });
@@ -382,6 +390,7 @@ export function addSimplifiedRoutes(app: Express) {
         neededDate,
         returnDate,
         isActive: true,
+        isPrivate: isPrivate || false,
         createdAt: new Date().toISOString(),
       };
 

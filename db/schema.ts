@@ -398,7 +398,7 @@ export const wishlists = pgTable("wishlists", {
   itemName: text("item_name").notNull(),
   description: text("description"),
   category: text("category"),
-  needType: text("need_type").default("borrow"), // comma-separated: 'borrow', 'rent', 'swap'
+  needType: text("need_type").default("borrow"), // comma-separated: 'borrow', 'rent', 'swap', 'gift'
   maxShareCoinPrice: decimal("max_share_coin_price", { precision: 10, scale: 2 }),
   maxDollarPrice: decimal("max_dollar_price", { precision: 10, scale: 2 }),
   preferredLocation: text("preferred_location"),
@@ -406,6 +406,7 @@ export const wishlists = pgTable("wishlists", {
   returnDate: date("return_date"),
   urgency: text("urgency").default("normal"), // 'low', 'normal', 'high', 'urgent'
   isActive: boolean("is_active").default(true),
+  isPrivate: boolean("is_private").default(false), // Hide requester identity until they send a request
   createdAt: timestamp("created_at").defaultNow(),
 });
 

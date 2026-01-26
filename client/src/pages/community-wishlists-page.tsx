@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/shared/navbar";
-import { Heart, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, HandHeart, Calendar } from "lucide-react";
+import { Heart, MapPin, Clock, ArrowRightLeft, ShoppingCart, Repeat, HandHeart, Calendar, Gift, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 
 interface Wishlist {
@@ -18,8 +18,10 @@ interface Wishlist {
   neededDate?: string;
   returnDate?: string;
   isActive: boolean;
+  isPrivate?: boolean;
   createdAt: string;
   username?: string;
+  displayName?: string;
   distance?: string;
 }
 
@@ -42,6 +44,7 @@ export default function CommunityWishlistsPage() {
       case 'borrow': return <HandHeart className="h-4 w-4" />;
       case 'rent': return <ArrowRightLeft className="h-4 w-4" />;
       case 'swap': return <Repeat className="h-4 w-4" />;
+      case 'gift': return <Gift className="h-4 w-4" />;
       default: return <ShoppingCart className="h-4 w-4" />;
     }
   };
@@ -117,14 +120,21 @@ export default function CommunityWishlistsPage() {
                   )}
 
                   <div className="space-y-1.5 md:space-y-3 mb-3 md:mb-6">
-                    {wishlist.username && (
+                    {wishlist.isPrivate ? (
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                          <EyeOff className="h-3 w-3 md:h-4 md:w-4 text-slate-500" />
+                        </div>
+                        <span className="text-slate-500 font-medium text-xs md:text-base italic">Private request</span>
+                      </div>
+                    ) : wishlist.displayName || wishlist.username ? (
                       <div className="flex items-center gap-2 md:gap-3">
                         <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                          <span className="text-teal-700 font-bold text-xs md:text-sm">{wishlist.username.charAt(0).toUpperCase()}</span>
+                          <span className="text-teal-700 font-bold text-xs md:text-sm">{(wishlist.displayName || wishlist.username || '?').charAt(0).toUpperCase()}</span>
                         </div>
-                        <span className="text-slate-600 font-medium text-xs md:text-base">{wishlist.username}</span>
+                        <span className="text-slate-600 font-medium text-xs md:text-base">{wishlist.displayName || wishlist.username}</span>
                       </div>
-                    )}
+                    ) : null}
 
                     {wishlist.preferredLocation && (
                       <div className="flex items-center gap-2 md:gap-3">

@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, HandHeart, ArrowRightLeft, Repeat, MapPin, Calendar } from "lucide-react";
+import { Heart, HandHeart, ArrowRightLeft, Repeat, MapPin, Calendar, Gift, EyeOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useState, useEffect } from "react";
 
 type Props = {
@@ -31,6 +32,7 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
     preferredLocation: "",
     neededFromDate: "",
     neededToDate: "",
+    isPrivate: false,
   });
 
   useEffect(() => {
@@ -42,6 +44,7 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
         preferredLocation: "",
         neededFromDate: "",
         neededToDate: "",
+        isPrivate: false,
       });
     }
   }, [isOpen, initialItemName]);
@@ -95,6 +98,7 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
       needType: formData.needTypes.join(","),
       neededDate: formData.neededFromDate,
       returnDate: formData.neededToDate,
+      isPrivate: formData.isPrivate,
     });
   };
 
@@ -143,7 +147,7 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
             <label className="block text-sm font-medium mb-2">
               I want to
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant={
@@ -186,6 +190,38 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
                 <Repeat className="h-4 w-4 mr-1" />
                 Swap It
               </Button>
+              <Button
+                type="button"
+                variant={
+                  formData.needTypes.includes("gift")
+                    ? "default"
+                    : "outline"
+                }
+                size="sm"
+                className="justify-center"
+                onClick={() => toggleNeedType("gift")}
+              >
+                <Gift className="h-4 w-4 mr-1" />
+                Be Gifted
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <Switch
+              checked={formData.isPrivate}
+              onCheckedChange={(checked) => setFormData({ ...formData, isPrivate: checked })}
+            />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <EyeOff className="h-4 w-4 text-slate-500" />
+                <span className="font-medium text-sm">Private request</span>
+              </div>
+              {formData.isPrivate && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Your name will be hidden until you send a request for an item someone offers.
+                </p>
+              )}
             </div>
           </div>
 

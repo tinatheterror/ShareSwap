@@ -348,12 +348,6 @@ export default function MyItemsPage() {
         {/* No Items Notification Dialog */}
         <Dialog open={showNoItemsDialog} onOpenChange={setShowNoItemsDialog}>
           <DialogContent className="sm:max-w-md">
-            <button
-              onClick={() => setShowNoItemsDialog(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              ✕
-            </button>
             <DialogHeader>
               <div className="flex items-start gap-3">
                 <div className="text-4xl">📦</div>

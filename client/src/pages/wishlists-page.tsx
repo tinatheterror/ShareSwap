@@ -26,7 +26,10 @@ import {
   Trash2,
   HandHeart,
   X,
+  Gift,
+  EyeOff,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface Wishlist {
   id: number;
@@ -61,6 +64,7 @@ export default function WishlistsPage() {
     preferredLocation: "",
     neededFromDate: "",
     neededToDate: "",
+    isPrivate: false,
   });
 
   const toggleNeedType = (type: string) => {
@@ -112,6 +116,7 @@ export default function WishlistsPage() {
         preferredLocation: "",
         neededFromDate: "",
         neededToDate: "",
+        isPrivate: false,
       });
       toast({
         title: "Wishlist item added!",
@@ -240,7 +245,11 @@ export default function WishlistsPage() {
             Expired ({expiredWishlists.length})
           </Button>
           <div className="hidden sm:block flex-1" />
-          <Button onClick={() => setShowAddDialog(true)} size="sm" className="ml-auto sm:ml-0">
+          <Button
+            onClick={() => setShowAddDialog(true)}
+            size="sm"
+            className="ml-auto sm:ml-0"
+          >
             <Plus className="h-4 w-4 mr-1" />
             Add Your Wish
           </Button>
@@ -383,8 +392,7 @@ export default function WishlistsPage() {
                 Add to Wishlist
               </DialogTitle>
               <DialogDescription>
-                Tell us what you're looking for and we'll notify you when it is
-                available.
+                Tell us you need and get notified when it is available.
               </DialogDescription>
             </DialogHeader>
 
@@ -419,7 +427,7 @@ export default function WishlistsPage() {
                 <label className="block text-sm font-medium mb-2">
                   I want to
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     type="button"
                     variant={
@@ -462,10 +470,42 @@ export default function WishlistsPage() {
                     <Repeat className="h-4 w-4 mr-1" />
                     Swap It
                   </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      formData.needTypes.includes("gift")
+                        ? "default"
+                        : "outline"
+                    }
+                    size="sm"
+                    className="justify-center"
+                    onClick={() => toggleNeedType("gift")}
+                  >
+                    <Gift className="h-4 w-4 mr-1" />
+                    Be Gifted
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Select one or more options
                 </p>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <Switch
+                  checked={formData.isPrivate}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isPrivate: checked })}
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="h-4 w-4 text-slate-500" />
+                    <span className="font-medium text-sm">Private request</span>
+                  </div>
+                  {formData.isPrivate && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Your name will be hidden until you send a request for an item someone offers.
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>

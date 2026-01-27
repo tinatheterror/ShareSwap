@@ -14,7 +14,11 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
 **Key architectural decisions and features include:**
 - **Authentication**: Custom Passport-based system with multi-provider support (local email/password, Google OAuth, and optional phone verification). Email registration includes verification via SendGrid - users receive a verification link valid for 24 hours.
 - **Real-time Communication**: WebSocket server with reconnection strategies for chat.
-- **Verification System**: Separate pages for identity verification (government ID upload) and payment methods (Stripe Elements for secure card entry), adhering to best practices.
+- **Verification System**: Three-tiered verification with progressive access:
+    - **Unverified (no email verification)**: Can only create account and browse items
+    - **Email Verified (no ID/payment)**: Can create items, send messages, make swaps/gifts, add wishlists, leave reviews - but cannot borrow or rent items
+    - **Fully Verified (email + ID + payment)**: No restrictions - full access to borrow and rent items
+    - Identity verification via government ID upload, payment verification via Stripe payment method on file
 - **AI-Powered Features**:
     - **SmartScan**: Uses GPT-4 Vision API for AI-powered item recognition from 360° photo scans, with auto-filling item details and AI value estimates for premium users.
     - **Marketplace Import**: AI-powered listing import from external marketplaces (e.g., Facebook Marketplace) using GPT-5 to extract and auto-fill item details, with robust security controls.

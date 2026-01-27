@@ -77,9 +77,16 @@ export function ItemRequestForm({
   const { requireVerification, VerificationModal } = useVerification();
 
   // Get current user info for personalized messages
-  const { data: user } = useQuery({
+  const { data: userData } = useQuery({
     queryKey: ["/api/user"],
   });
+  const user = userData as { 
+    id?: number;
+    username?: string;
+    verificationLevel?: 'unverified' | 'email_only' | 'fully_verified';
+    idVerified?: boolean;
+    paymentVerified?: boolean;
+  } | null;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -163,6 +170,12 @@ export function ItemRequestForm({
         deliveryMethod: data.deliveryMethod,
         depositMethod: data.depositMethod,
       });
+      if (!res.ok) {
+        const errorData = await res.json();
+        const error = new Error(errorData.error || "Failed to send request") as Error & { code?: string };
+        (error as any).code = errorData.code;
+        throw error;
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -173,12 +186,26 @@ export function ItemRequestForm({
       });
       onClose();
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to send request",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: Error & { code?: string }) => {
+      if ((error as any).code === "EMAIL_NOT_VERIFIED") {
+        toast({
+          title: "Email Verification Required",
+          description: "Please verify your email address to send requests.",
+          variant: "destructive",
+        });
+      } else if ((error as any).code === "FULL_VERIFICATION_REQUIRED") {
+        toast({
+          title: "Verification Required",
+          description: "Please complete identity and payment verification to borrow or rent items.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to send request",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -190,6 +217,44 @@ export function ItemRequestForm({
             Request to {requestType.toLowerCase()} {item.name}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Verification warning for BORROW/RENT if user is not fully verified */}
+        {(requestType === "BORROW" || requestType === "RENT") && user && user.verificationLevel !== 'fully_verified' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2 text-amber-800 font-medium">
+              <Shield className="h-4 w-4" />
+              Verification Required
+            </div>
+            <p className="text-sm text-amber-700">
+              To {requestType.toLowerCase()} items, you need to complete both identity and payment verification.
+            </p>
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="flex items-center gap-2">
+                {user.idVerified ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full border-2 border-amber-400" />
+                )}
+                <span className={user.idVerified ? "text-green-700" : "text-amber-700"}>
+                  Identity verification
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {user.paymentVerified ? (
+                  <Check className="h-4 w-4 text-green-600" />
+                ) : (
+                  <div className="h-4 w-4 rounded-full border-2 border-amber-400" />
+                )}
+                <span className={user.paymentVerified ? "text-green-700" : "text-amber-700"}>
+                  Payment method on file
+                </span>
+              </div>
+            </div>
+            <Link href="/verification" className="text-sm text-teal-600 hover:text-teal-700 font-medium underline">
+              Complete verification →
+            </Link>
+          </div>
+        )}
 
         {requestType === "SWAP" && swapOfferItem && (
           <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-lg p-4 space-y-3">

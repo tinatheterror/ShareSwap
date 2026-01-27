@@ -416,6 +416,106 @@ const upload = multer({
   },
 });
 
+// Verification level helper types and functions
+type VerificationLevel = 'unverified' | 'email_only' | 'fully_verified';
+
+interface VerificationCheckResult {
+  level: VerificationLevel;
+  emailVerified: boolean;
+  idVerified: boolean;
+  paymentVerified: boolean;
+}
+
+// Check user's verification level
+async function checkVerificationLevel(userId: number): Promise<VerificationCheckResult> {
+  const [user] = await db
+    .select({
+      emailVerified: users.emailVerified,
+      googleId: users.googleId,
+      authProvider: users.authProvider,
+      stripePaymentMethodId: users.stripePaymentMethodId,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  // Google OAuth users are automatically email verified
+  const emailVerified = user?.emailVerified || !!user?.googleId || user?.authProvider === 'google';
+
+  // Check identity verification (verifications table has an approved record)
+  const [idVerification] = await db
+    .select({ status: verifications.status })
+    .from(verifications)
+    .where(
+      and(
+        eq(verifications.userId, userId),
+        eq(verifications.status, 'approved')
+      )
+    )
+    .limit(1);
+  const idVerified = !!idVerification;
+
+  // Check payment method verification (user has Stripe payment method on file)
+  const paymentVerified = !!user?.stripePaymentMethodId;
+
+  let level: VerificationLevel = 'unverified';
+  if (emailVerified && idVerified && paymentVerified) {
+    level = 'fully_verified';
+  } else if (emailVerified) {
+    level = 'email_only';
+  }
+
+  return { level, emailVerified, idVerified, paymentVerified };
+}
+
+// Middleware to require email verification for most actions
+async function requireEmailVerified(req: any, res: any, next: any) {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).json({ error: "Please sign in to continue" });
+  }
+
+  const verification = await checkVerificationLevel(req.user.id);
+  if (!verification.emailVerified) {
+    return res.status(403).json({ 
+      error: "Please verify your email address to access this feature",
+      code: "EMAIL_NOT_VERIFIED"
+    });
+  }
+
+  req.verificationLevel = verification;
+  next();
+}
+
+// Middleware to require full verification (email + ID + payment) for borrow/rent
+async function requireFullVerification(req: any, res: any, next: any) {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).json({ error: "Please sign in to continue" });
+  }
+
+  const verification = await checkVerificationLevel(req.user.id);
+  
+  if (!verification.emailVerified) {
+    return res.status(403).json({ 
+      error: "Please verify your email address to access this feature",
+      code: "EMAIL_NOT_VERIFIED"
+    });
+  }
+
+  if (verification.level !== 'fully_verified') {
+    return res.status(403).json({ 
+      error: "Please complete identity and payment verification to borrow or rent items",
+      code: "FULL_VERIFICATION_REQUIRED",
+      missing: {
+        idVerified: verification.idVerified,
+        paymentVerified: verification.paymentVerified
+      }
+    });
+  }
+
+  req.verificationLevel = verification;
+  next();
+}
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -1457,11 +1557,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Item endpoints
-  app.post("/api/items", upload.array("photos"), async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/items", upload.array("photos"), requireEmailVerified, async (req: any, res) => {
     try {
       // Log the received data for debugging
       console.log("Received request body:", req.body);
@@ -1753,11 +1849,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Update item endpoint
-  app.patch("/api/items/:id", upload.array("photos"), async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.patch("/api/items/:id", upload.array("photos"), requireEmailVerified, async (req: any, res) => {
     try {
       const itemId = parseInt(req.params.id);
       
@@ -1840,10 +1932,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Delete item (hard delete - permanently removes from database)
-  app.delete("/api/items/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
+  app.delete("/api/items/:id", requireEmailVerified, async (req: any, res) => {
 
     try {
       const itemId = parseInt(req.params.id);
@@ -2181,11 +2270,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Create wishlist item
-  app.post("/api/wishlists", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/wishlists", requireEmailVerified, async (req: any, res) => {
     try {
       const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency } = req.body;
 
@@ -2218,11 +2303,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Update wishlist item
-  app.patch("/api/wishlists/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.patch("/api/wishlists/:id", requireEmailVerified, async (req: any, res) => {
     try {
       const wishlistId = parseInt(req.params.id);
       if (isNaN(wishlistId)) {
@@ -2266,11 +2347,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Delete wishlist item
-  app.delete("/api/wishlists/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.delete("/api/wishlists/:id", requireEmailVerified, async (req: any, res) => {
     try {
       const wishlistId = parseInt(req.params.id);
       if (isNaN(wishlistId)) {
@@ -2649,11 +2726,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Chat API endpoints
-  app.post("/api/messages", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/messages", requireEmailVerified, async (req: any, res) => {
     const { receiverId, content } = req.body;
     const [message] = await db
       .insert(messages)
@@ -3017,13 +3090,21 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Create item request
-  app.post("/api/items/:itemId/request", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/items/:itemId/request", requireEmailVerified, async (req: any, res) => {
     const itemId = parseInt(req.params.itemId);
     const { requestType, message, startDate, endDate, deliveryMethod } = req.body;
+
+    // BORROW and RENT require full verification (email + ID + payment)
+    if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
+      return res.status(403).json({ 
+        error: "Please complete identity and payment verification to borrow or rent items",
+        code: "FULL_VERIFICATION_REQUIRED",
+        missing: {
+          idVerified: req.verificationLevel.idVerified,
+          paymentVerified: req.verificationLevel.paymentVerified
+        }
+      });
+    }
 
     // Validate deliveryMethod
     const validDeliveryMethods = ["in_person", "courier"];
@@ -6055,11 +6136,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Submit a review for a user
-  app.post("/api/users/:userId/reviews", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/users/:userId/reviews", requireEmailVerified, async (req: any, res) => {
     const reviewedUserId = parseInt(req.params.userId);
     const { rating, comment, transactionId, feedbackTags } = req.body;
 

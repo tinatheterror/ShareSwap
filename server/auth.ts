@@ -7,7 +7,7 @@ import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, items, referrals, insertUserSchema, type SelectUser } from "@db/schema";
+import { users, items, referrals, verifications, insertUserSchema, type SelectUser } from "@db/schema";
 import { db, pool } from "@db";
 import { eq, or, and } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
@@ -625,10 +625,44 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req, res) => {
+  app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    res.json(req.user);
+    
+    // Check verification levels
+    const emailVerified = req.user.emailVerified || !!req.user.googleId || req.user.authProvider === 'google';
+    
+    // Check identity verification (verifications table has an approved record)
+    const [idVerification] = await db
+      .select({ status: verifications.status })
+      .from(verifications)
+      .where(
+        and(
+          eq(verifications.userId, req.user.id),
+          eq(verifications.status, 'approved')
+        )
+      )
+      .limit(1);
+    const idVerified = !!idVerification;
+
+    // Check payment method verification (user has a Stripe payment method on file)
+    const paymentVerified = !!req.user.stripePaymentMethodId;
+
+    // Determine verification level
+    let verificationLevel: 'unverified' | 'email_only' | 'fully_verified' = 'unverified';
+    if (emailVerified && idVerified && paymentVerified) {
+      verificationLevel = 'fully_verified';
+    } else if (emailVerified) {
+      verificationLevel = 'email_only';
+    }
+
+    res.json({
+      ...req.user,
+      emailVerified,
+      idVerified,
+      paymentVerified,
+      verificationLevel,
+    });
   });
 }

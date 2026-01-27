@@ -11,11 +11,14 @@ async function getCredentials() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL 
     : null;
 
+  console.log('[SendGrid] Fetching credentials, hostname:', hostname ? 'present' : 'missing');
+  console.log('[SendGrid] Token type:', process.env.REPL_IDENTITY ? 'REPL_IDENTITY' : process.env.WEB_REPL_RENEWAL ? 'WEB_REPL_RENEWAL' : 'none');
+
   if (!xReplitToken) {
     throw new Error('X_REPLIT_TOKEN not found for repl/depl');
   }
 
-  connectionSettings = await fetch(
+  const response = await fetch(
     'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=sendgrid',
     {
       headers: {
@@ -23,12 +26,23 @@ async function getCredentials() {
         'X_REPLIT_TOKEN': xReplitToken
       }
     }
-  ).then(res => res.json()).then(data => data.items?.[0]);
+  );
+  
+  const data = await response.json();
+  console.log('[SendGrid] Connection response status:', response.status);
+  console.log('[SendGrid] Connection data:', JSON.stringify(data, null, 2));
+  
+  connectionSettings = data.items?.[0];
 
-  if (!connectionSettings || (!connectionSettings.settings.api_key || !connectionSettings.settings.from_email)) {
-    throw new Error('SendGrid not connected');
+  if (!connectionSettings || (!connectionSettings.settings?.api_key || !connectionSettings.settings?.from_email)) {
+    console.log('[SendGrid] Missing settings - api_key:', !!connectionSettings?.settings?.api_key, 'from_email:', !!connectionSettings?.settings?.from_email);
+    throw new Error('SendGrid not connected - missing api_key or from_email');
   }
-  return { apiKey: connectionSettings.settings.api_key, email: connectionSettings.settings.from_email };
+  
+  const apiKey = connectionSettings.settings.api_key;
+  console.log('[SendGrid] API key starts with SG.:', apiKey?.startsWith('SG.'));
+  
+  return { apiKey, email: connectionSettings.settings.from_email };
 }
 
 // WARNING: Never cache this client - access tokens expire

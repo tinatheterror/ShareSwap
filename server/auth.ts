@@ -564,8 +564,8 @@ export function setupAuth(app: Express) {
       
       console.log(`[Auth] Email verified for user ${user.id} (${user.username})`);
       
-      // Redirect to success page
-      return res.redirect("/auth?verified=true");
+      // Redirect to homepage with success notification
+      return res.redirect("/?verified=true");
     } catch (error) {
       console.error("[Auth] Email verification error:", error);
       return res.redirect("/auth?error=verification_failed");

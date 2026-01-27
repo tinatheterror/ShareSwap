@@ -11,8 +11,9 @@ export default function HomePage() {
   const searchString = useSearch();
   const [showTutorial, setShowTutorial] = useState(false);
   const [showReferralBanner, setShowReferralBanner] = useState(false);
+  const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
 
-  // Check if user has seen tutorial and referral status
+  // Check if user has seen tutorial, referral status, and email verification
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem("hasSeenTutorial");
     if (!hasSeenTutorial) {
@@ -20,8 +21,17 @@ export default function HomePage() {
       setShowTutorial(true);
     }
     
-    // Check for referral applied - from sessionStorage (email signup) or URL (Google OAuth)
     const params = new URLSearchParams(searchString);
+    
+    // Check for email verification success
+    const emailVerified = params.get("verified") === "true";
+    if (emailVerified) {
+      setShowVerifiedBanner(true);
+      // Clean up URL
+      window.history.replaceState({}, "", "/");
+    }
+    
+    // Check for referral applied - from sessionStorage (email signup) or URL (Google OAuth)
     const referralFromUrl = params.get("referral") === "applied";
     const referralFromSession = sessionStorage.getItem("referralApplied") === "true";
     
@@ -43,6 +53,24 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col pb-safe pt-safe">
       <Navbar />
+      
+      {/* Email Verified Banner */}
+      {showVerifiedBanner && (
+        <div className="bg-green-50 border-b border-green-200">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="font-medium text-green-800">Your email is verified!</span>
+            </div>
+            <button 
+              onClick={() => setShowVerifiedBanner(false)}
+              className="text-green-600 hover:text-green-800 p-1"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Referral Applied Banner */}
       {showReferralBanner && (

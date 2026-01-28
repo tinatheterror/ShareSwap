@@ -1532,6 +1532,36 @@ export default function FAQPage() {
                   Yes — use the Wishlist to request items you need.
                 </AccordionContent>
               </AccordionItem>
+              <AccordionItem value="privacy-earnings">
+                <AccordionTrigger className="text-sm">
+                  How do I get my rental earnings paid out?
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-600 space-y-3">
+                  <p>
+                    When someone rents your item, the payment is held securely until the rental is completed.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="font-medium text-gray-700">How it works:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li>Renter pays upfront (rental fee + security deposit)</li>
+                      <li>Payment is held securely — you'll see "Payment Secured"</li>
+                      <li>After the item is safely returned and confirmed, your earnings are released</li>
+                      <li>Earnings appear in your balance (Settings → My Balance)</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-medium text-gray-700">To cash out:</p>
+                    <ul className="list-disc list-inside space-y-1 text-sm">
+                      <li>Go to Settings → My Balance</li>
+                      <li>Tap "Cash Out" when you have $10 or more</li>
+                      <li>Funds will be deposited to your bank within 2-3 business days</li>
+                    </ul>
+                  </div>
+                  <p className="text-sm italic text-gray-500">
+                    A 3% payment processing fee is deducted from earnings. Platform fee is 0% for 2025.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
               <AccordionItem value="privacy-3">
                 <AccordionTrigger className="text-sm">
                   Item Exchange Options

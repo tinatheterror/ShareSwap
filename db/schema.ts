@@ -52,6 +52,9 @@ export const users = pgTable("users", {
   paymentMethodExpYear: integer("payment_method_exp_year"),
   paymentMethodAddedAt: timestamp("payment_method_added_at"),
   deviceFingerprint: text("device_fingerprint"), // For referral fraud detection
+  rentalBalance: decimal("rental_balance", { precision: 10, scale: 2 }).default("0.00"), // Available balance from rental earnings
+  pendingRentalBalance: decimal("pending_rental_balance", { precision: 10, scale: 2 }).default("0.00"), // Pending balance (in escrow)
+  stripeConnectedAccountId: text("stripe_connected_account_id"), // For Stripe Connect payouts
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -457,6 +460,36 @@ export const userSubscriptions = pgTable("user_subscriptions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const rentalPayouts = pgTable("rental_payouts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  requestId: integer("request_id").references(() => itemRequests.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  rentalAmount: decimal("rental_amount", { precision: 10, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }).default("0.00"),
+  processingFee: decimal("processing_fee", { precision: 10, scale: 2 }).default("0.00"),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").default("pending"), // 'pending', 'held', 'released', 'paid_out', 'disputed'
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeTransferId: text("stripe_transfer_id"),
+  holdUntil: timestamp("hold_until"),
+  releasedAt: timestamp("released_at"),
+  paidOutAt: timestamp("paid_out_at"),
+  disputeStatus: text("dispute_status"),
+  disputeReason: text("dispute_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const rentalPayoutRelations = relations(rentalPayouts, ({ one }) => ({
+  user: one(users, {
+    fields: [rentalPayouts.userId],
+    references: [users.id],
+  }),
+  request: one(itemRequests, {
+    fields: [rentalPayouts.requestId],
+    references: [itemRequests.id],
+  }),
+}));
 
 export const userRelations = relations(users, ({ many }) => ({
   verifications: many(verifications),

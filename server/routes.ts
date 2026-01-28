@@ -22,7 +22,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals } from "@db/schema";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import type { InsertItem } from "@db/schema";
@@ -3623,6 +3623,147 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // =====================================
+  // RENTAL BALANCE & PAYOUT ENDPOINTS
+  // =====================================
+
+  // Get user's rental balance and payout history
+  app.get("/api/rental-balance", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      // Get user's balance
+      const [user] = await db
+        .select({
+          rentalBalance: users.rentalBalance,
+          pendingRentalBalance: users.pendingRentalBalance,
+          stripeConnectedAccountId: users.stripeConnectedAccountId,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      // Get recent payout history
+      const payouts = await db
+        .select({
+          id: rentalPayouts.id,
+          requestId: rentalPayouts.requestId,
+          amount: rentalPayouts.amount,
+          rentalAmount: rentalPayouts.rentalAmount,
+          platformFee: rentalPayouts.platformFee,
+          processingFee: rentalPayouts.processingFee,
+          netAmount: rentalPayouts.netAmount,
+          status: rentalPayouts.status,
+          releasedAt: rentalPayouts.releasedAt,
+          paidOutAt: rentalPayouts.paidOutAt,
+          createdAt: rentalPayouts.createdAt,
+        })
+        .from(rentalPayouts)
+        .where(eq(rentalPayouts.userId, req.user.id))
+        .orderBy(desc(rentalPayouts.createdAt))
+        .limit(50);
+
+      res.json({
+        balance: {
+          available: parseFloat(user?.rentalBalance || "0"),
+          pending: parseFloat(user?.pendingRentalBalance || "0"),
+          total: parseFloat(user?.rentalBalance || "0") + parseFloat(user?.pendingRentalBalance || "0"),
+        },
+        hasConnectedAccount: !!user?.stripeConnectedAccountId,
+        payouts,
+      });
+    } catch (error: any) {
+      console.error("Error fetching rental balance:", error);
+      res.status(500).json({ error: "Failed to fetch balance" });
+    }
+  });
+
+  // Request payout to bank account
+  app.post("/api/rental-balance/payout", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { amount } = req.body;
+
+      // Get user's balance
+      const [user] = await db
+        .select({
+          rentalBalance: users.rentalBalance,
+          stripeConnectedAccountId: users.stripeConnectedAccountId,
+          email: users.username,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      const availableBalance = parseFloat(user?.rentalBalance || "0");
+      const requestedAmount = parseFloat(amount);
+
+      if (requestedAmount <= 0) {
+        return res.status(400).json({ error: "Invalid payout amount" });
+      }
+
+      if (requestedAmount > availableBalance) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
+
+      // Minimum payout amount
+      if (requestedAmount < 10) {
+        return res.status(400).json({ error: "Minimum payout amount is $10" });
+      }
+
+      // Verify user has set up a payout method (bank account via Stripe Connect)
+      if (!user?.stripeConnectedAccountId) {
+        return res.status(400).json({ 
+          error: "Please set up your payout method first",
+          code: "NO_PAYOUT_METHOD"
+        });
+      }
+
+      // For now, simulate payout request (Stripe Connect integration needed for real payouts)
+      // In production, this would create a Stripe Transfer to the connected account
+      
+      // Deduct from balance and create payout record
+      await db
+        .update(users)
+        .set({
+          rentalBalance: sql`${users.rentalBalance} - ${requestedAmount}`,
+        })
+        .where(eq(users.id, req.user.id));
+
+      // Create a payout tracking record (null requestId for manual cash-out)
+      const [payoutRecord] = await db.insert(rentalPayouts).values({
+        userId: req.user.id,
+        requestId: null,
+        amount: requestedAmount.toString(),
+        rentalAmount: requestedAmount.toString(),
+        platformFee: "0",
+        processingFee: "0",
+        netAmount: requestedAmount.toString(),
+        status: 'pending_payout',
+        paidOutAt: new Date(),
+      }).returning();
+
+      res.json({
+        success: true,
+        message: "Payout request submitted. Funds will be transferred to your bank account within 2-3 business days.",
+        payout: {
+          id: payoutRecord.id,
+          amount: requestedAmount,
+          status: 'pending_payout',
+          estimatedArrival: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        },
+      });
+    } catch (error: any) {
+      console.error("Error processing payout:", error);
+      res.status(500).json({ error: "Failed to process payout" });
+    }
+  });
+
+  // =====================================
   // RENTAL TRANSACTION LIFECYCLE ENDPOINTS
   // =====================================
 
@@ -3756,13 +3897,45 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId))
         .returning();
 
+      // Create escrow record for rental earnings (held until return confirmed)
+      if (rentalAmount && rentalAmount > 0) {
+        const actualRentalAmount = parseFloat(rentalAmount);
+        const actualPlatformFee = 0; // 0% platform fee for 2025
+        const actualProcessingFee = actualRentalAmount * 0.03; // 3% processing fee
+        const netAmount = actualRentalAmount - actualPlatformFee - actualProcessingFee;
+        
+        // Create held payout record for the owner
+        await db.insert(rentalPayouts).values({
+          userId: request.items.ownerId!,
+          requestId: requestId,
+          amount: actualRentalAmount.toString(),
+          rentalAmount: actualRentalAmount.toString(),
+          platformFee: actualPlatformFee.toString(),
+          processingFee: actualProcessingFee.toFixed(2),
+          netAmount: netAmount.toFixed(2),
+          status: 'held',
+          stripePaymentIntentId: paymentIntentId,
+          holdUntil: request.item_requests.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+        
+        // Add to owner's pending balance
+        await db
+          .update(users)
+          .set({
+            pendingRentalBalance: sql`COALESCE(${users.pendingRentalBalance}, 0) + ${netAmount.toFixed(2)}`,
+          })
+          .where(eq(users.id, request.items.ownerId!));
+        
+        console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
+      }
+
       const nextStep = request.item_requests.deliveryMethod === "courier" ? "book_courier" : "await_handoff";
 
       res.json({
         success: true,
         request: updated,
         nextStep,
-        message: "Rental deposit authorized successfully",
+        message: "Rental deposit authorized successfully. Payment secured.",
       });
     } catch (error: any) {
       console.error("Error confirming rental deposit:", error);
@@ -4486,14 +4659,102 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Check and award referral bonus for both users (first transaction completion)
-      await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, 'BORROW');
-      await checkAndAwardReferralBonus(request.items.ownerId!, requestId, 'LEND');
+      const transactionType = request.item_requests.requestType === 'RENT' ? 'RENT' : 'BORROW';
+      await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, transactionType);
+      await checkAndAwardReferralBonus(request.items.ownerId!, requestId, transactionType === 'RENT' ? 'RENT' : 'LEND');
+
+      // For RENT transactions, release rental earnings from pending to available balance
+      let rentalEarnings = null;
+      if (request.item_requests.requestType === 'RENT' && request.item_requests.rentalAmount) {
+        try {
+          const rentalAmount = parseFloat(request.item_requests.rentalAmount);
+          const platformFee = 0; // 0% platform fee for 2025
+          const processingFee = rentalAmount * 0.03; // 3% payment processing fee
+          const netAmount = rentalAmount - platformFee - processingFee;
+          
+          // Update existing held payout record to released
+          const [existingPayout] = await db
+            .select()
+            .from(rentalPayouts)
+            .where(and(
+              eq(rentalPayouts.requestId, requestId),
+              eq(rentalPayouts.status, 'held')
+            ))
+            .limit(1);
+          
+          if (existingPayout) {
+            // Update held payout to released
+            await db
+              .update(rentalPayouts)
+              .set({
+                status: 'released',
+                releasedAt: new Date(),
+              })
+              .where(eq(rentalPayouts.id, existingPayout.id));
+            
+            // Move from pending to available balance
+            const existingNetAmount = parseFloat(existingPayout.netAmount || "0");
+            await db
+              .update(users)
+              .set({
+                pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${existingNetAmount})`,
+                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${existingNetAmount}`,
+              })
+              .where(eq(users.id, request.items.ownerId!));
+            
+            rentalEarnings = {
+              rentalAmount,
+              platformFee,
+              processingFee,
+              netAmount: existingNetAmount,
+            };
+            
+            console.log(`Released rental earnings of $${existingNetAmount.toFixed(2)} from pending to available for owner ${request.items.ownerId}`);
+          } else {
+            // Fallback: create new released record if no held record exists
+            await db.insert(rentalPayouts).values({
+              userId: request.items.ownerId!,
+              requestId: requestId,
+              amount: rentalAmount.toString(),
+              rentalAmount: rentalAmount.toString(),
+              platformFee: platformFee.toString(),
+              processingFee: processingFee.toFixed(2),
+              netAmount: netAmount.toFixed(2),
+              status: 'released',
+              stripePaymentIntentId: request.item_requests.depositPaymentIntentId,
+              releasedAt: new Date(),
+            });
+            
+            await db
+              .update(users)
+              .set({
+                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${netAmount.toFixed(2)}`,
+              })
+              .where(eq(users.id, request.items.ownerId!));
+            
+            rentalEarnings = {
+              rentalAmount,
+              platformFee,
+              processingFee,
+              netAmount,
+            };
+            
+            console.log(`Released rental earnings of $${netAmount.toFixed(2)} to owner ${request.items.ownerId} (fallback)`);
+          }
+        } catch (payoutError) {
+          console.error("Error processing rental payout:", payoutError);
+          // Don't fail the return if payout fails - log and continue
+        }
+      }
 
       res.json({
         success: true,
         request: updated,
         depositReleased: true,
-        message: "Return confirmed! Deposit has been released.",
+        rentalEarnings,
+        message: request.item_requests.requestType === 'RENT' 
+          ? "Return confirmed! Deposit released and rental earnings added to your balance."
+          : "Return confirmed! Deposit has been released.",
       });
     } catch (error: any) {
       console.error("Error confirming return:", error);

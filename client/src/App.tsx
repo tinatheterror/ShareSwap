@@ -43,6 +43,7 @@ import RequestsPage from "@/pages/requests-page";
 import DiscoverNeighboursPage from "@/pages/discover-neighbours-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentMethodsPage from "@/pages/payment-methods-page";
+import MyBalancePage from "@/pages/my-balance-page";
 import { VerificationNudge } from "@/components/verification-nudge";
 
 function Router() {
@@ -81,6 +82,7 @@ function Router() {
       <ProtectedRoute path="/discover-neighbours" component={DiscoverNeighboursPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/payment-methods" component={PaymentMethodsPage} />
+      <ProtectedRoute path="/my-balance" component={MyBalancePage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -22,8 +22,18 @@ export const VALUE_RANGE_MIDPOINTS: Record<string, number> = {
   "$300+": 650, // Legacy support
 };
 
-// Default replacement value for fallback scenarios
+// Default replacement value for fallback scenarios (lowest tier midpoint)
 export const DEFAULT_REPLACEMENT_VALUE = 25;
+
+// Legacy tier-based caps (kept for reference, no longer primary logic)
+export const LEGACY_TIER_CAPS: Record<number, number> = {
+  1: 75,
+  2: 150,
+  3: 300,
+  4: 600,
+  5: 3000,
+  6: 7500,
+};
 
 /**
  * Get the midpoint value for an original value range string.

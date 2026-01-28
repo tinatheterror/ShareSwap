@@ -25,7 +25,12 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
     - **Item Category Detection**: AI-powered auto-categorization of items using GPT-4o-mini.
     - **Item Recommendations**: AI-powered recommendations based on user behavior and context.
     - **Smart Matching**: Algorithm considers item condition, category, value fairness, and distance for swap requests, and matches lenders/borrowers based on wishlists.
-- **Tier-Based Pricing System with AI Valuation**: Automatically assigns items to tiers based on original value, with AI-powered internal appraisal (using GPT-4 Vision and other factors) to determine ShareCoin valuation, trust-based borrow deposits, and rental rates. Includes condition modifiers and brand quality adjustments.
+- **Tier-Based Pricing System with AI Valuation**: Uses priority-based replacement value calculation:
+    - **Priority 1**: If AI estimated value exists (from SmartScan), use it directly as replacement value and calculate tier from it
+    - **Priority 2**: If no AI estimate, use midpoint of the original value range as replacement value and calculate tier from it
+    - Tier boundaries: Tier 1 (Under $50), Tier 2 ($50–$150), Tier 3 ($150–$300), Tier 4 ($300–$1,000), Tier 5 ($1,000–$5,000), Tier 6 ($5,000+)
+    - Condition modifier: "Fair" or "Well Loved" reduces tier by 1
+    - ShareCoin valuation, trust-based borrow deposits, and rental rates derived from tier. Includes brand quality adjustments.
 - **Rental Pricing System**: Category-based weekly rental rates and tier-based rental security deposits, both adjustable by owners within certain parameters. Features a 0% platform fee for 2025 (3% payment processing fee applies).
 - **Swap System**: Uses fixed ShareCoin values per tier to ensure fairness, allowing 1-tier difference with ShareCoin offsets. Swaps do not involve cash offsets or security deposits.
 - **UI/UX Decisions**: Intuitive interfaces with swipeable cards, stacked card UI, in-app scheduling, and a professional teal color scheme. Gamified account statistics and community impact levels incentivize sharing.

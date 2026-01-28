@@ -429,24 +429,11 @@ export function ItemRequestForm({
                 const dailyRate = Number((item as any).dollarsPrice) || 10;
                 const rentalCost = rentalDays > 0 ? dailyRate * rentalDays : 0;
 
-                // Platform fee (0% for 2026, but show the line)
-                const platformFeePercent = 0;
-                const platformFee = Math.round(rentalCost * platformFeePercent);
-
-                // Processing fee (3%)
-                const processingFeePercent = 0.03;
-                const processingFee =
-                  Math.round(rentalCost * processingFeePercent * 100) / 100;
-
                 // Delivery cost
                 const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
 
                 // Deposit (from item's securityDeposit field)
                 const deposit = Number((item as any).securityDeposit) || 25;
-
-                // Total due now (rental + fees + delivery)
-                const totalDueNow =
-                  rentalCost + platformFee + processingFee + deliveryCost;
 
                 return (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
@@ -474,29 +461,6 @@ export function ItemRequestForm({
                             <span className="font-medium">${deliveryCost}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">
-                            Platform fee (0% for 2026)
-                          </span>
-                          <span className="font-medium text-black">Free</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">
-                            Payment processing (3%)
-                          </span>
-                          <span className="font-medium">
-                            ${processingFee.toFixed(2)}
-                          </span>
-                        </div>
-
-                        <div className="border-t border-gray-200 pt-1.5 mt-1.5">
-                          <div className="flex justify-between font-medium">
-                            <span className="text-gray-700">Total due now</span>
-                            <span className="text-teal-600">
-                              ${totalDueNow.toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
 
                         <div className="border-t border-gray-200 pt-1.5 mt-1.5">
                           <div className="flex justify-between">
@@ -510,9 +474,6 @@ export function ItemRequestForm({
                           </div>
                           <p className="text-[10px] text-gray-400 mt-0.5">
                             Held securely, auto-refunded on return
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            Processing fee: ${(deposit * 0.03).toFixed(2)}
                           </p>
                         </div>
                       </div>
@@ -790,8 +751,8 @@ export function ItemRequestForm({
                             <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
                             Pick Up Yourself
                           </label>
-                          <p className="text-xs text-green-600 font-medium mt-0.5">
-                            Free
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">
+                            Direct exchange
                           </p>
                         </div>
                       </div>

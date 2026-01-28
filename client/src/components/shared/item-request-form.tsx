@@ -223,17 +223,14 @@ export function ItemRequestForm({
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2 text-amber-800 font-medium">
               <Shield className="h-4 w-4" />
-              Verification Required
+              Verification is Required to {requestType === "BORROW" ? "Borrow" : "Rent"} Items
             </div>
-            <p className="text-sm text-amber-700">
-              To {requestType.toLowerCase()} items, you need to complete both identity and payment verification.
-            </p>
             <div className="flex flex-col gap-1 text-sm">
               <div className="flex items-center gap-2">
                 {user.idVerified ? (
                   <Check className="h-4 w-4 text-green-600" />
                 ) : (
-                  <div className="h-4 w-4 rounded-full border-2 border-amber-400" />
+                  <div className="h-4 w-4 rounded border-2 border-amber-400" />
                 )}
                 <span className={user.idVerified ? "text-green-700" : "text-amber-700"}>
                   Identity verification
@@ -243,7 +240,7 @@ export function ItemRequestForm({
                 {user.paymentVerified ? (
                   <Check className="h-4 w-4 text-green-600" />
                 ) : (
-                  <div className="h-4 w-4 rounded-full border-2 border-amber-400" />
+                  <div className="h-4 w-4 rounded border-2 border-amber-400" />
                 )}
                 <span className={user.paymentVerified ? "text-green-700" : "text-amber-700"}>
                   Payment method on file
@@ -838,9 +835,6 @@ export function ItemRequestForm({
                     Maximum Charge if Item Is Not Returned: $
                     {(item as any).replacementValue}
                   </div>
-                  <p className="text-[10px] text-gray-400">
-                    Most borrowers never pay this.
-                  </p>
 
                   <div className="bg-gray-50 rounded-md p-1.5 space-y-1 text-xs">
                     <div className="flex items-center gap-2">

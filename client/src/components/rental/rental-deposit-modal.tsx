@@ -259,10 +259,6 @@ export function RentalDepositModal({
                   <span className="font-medium">${depositCalc.deposit.toFixed(2)}</span>
                 </div>
 
-                <div className="text-xs text-gray-500 ml-6">
-                  Most renters never pay this.
-                </div>
-
                 {deliveryFee > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 flex items-center gap-2">

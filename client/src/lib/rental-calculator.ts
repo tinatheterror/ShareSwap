@@ -20,23 +20,6 @@ const TIER_RENTAL_DEPOSIT_PERCENTAGES: Record<number, number> = {
   6: 0.70, // 70% for Tier 6 (Ultra Luxury)
 };
 
-// Trust score discount tiers (same as borrow flow)
-const TRUST_SCORE_DISCOUNTS: { minScore: number; maxScore: number; discount: number }[] = [
-  { minScore: 90, maxScore: 100, discount: 0.60 }, // 60% off
-  { minScore: 70, maxScore: 89, discount: 0.40 },  // 40% off
-  { minScore: 50, maxScore: 69, discount: 0.20 },  // 20% off
-  { minScore: 0, maxScore: 49, discount: 0 },      // No discount
-];
-
-function getTrustScoreDiscount(trustScore: number): { discount: number; percentage: number } {
-  for (const tier of TRUST_SCORE_DISCOUNTS) {
-    if (trustScore >= tier.minScore && trustScore <= tier.maxScore) {
-      return { discount: tier.discount, percentage: tier.discount * 100 };
-    }
-  }
-  return { discount: 0, percentage: 0 };
-}
-
 export interface RentalRateCalculation {
   weeklyRate: number;
   dailyRate: number;
@@ -45,14 +28,10 @@ export interface RentalRateCalculation {
 }
 
 export interface RentalDepositCalculation {
-  baseDeposit: number;
   deposit: number;
   depositPercentage: number;
-  discountPercentage: number;
-  trustDiscount: number;
   tier: number;
   itemValue: number;
-  trustScore: number;
 }
 
 export function calculateRentalRate(
@@ -78,33 +57,19 @@ export function calculateRentalRate(
 
 export function calculateRentalDeposit(
   itemValue: number,
-  tier: number,
-  trustScore: number = 50
+  tier: number
 ): RentalDepositCalculation {
   // Get tier-based deposit percentage
   const depositPercentage = TIER_RENTAL_DEPOSIT_PERCENTAGES[tier] || 0.30;
   
-  // Calculate base deposit
-  const baseDeposit = Math.round(itemValue * depositPercentage);
-  
-  // Get trust score discount
-  const { discount, percentage } = getTrustScoreDiscount(trustScore);
-  
-  // Calculate trust discount amount
-  const trustDiscount = Math.round(baseDeposit * discount);
-  
-  // Calculate final deposit with trust discount
-  const deposit = Math.max(5, baseDeposit - trustDiscount);
+  // Calculate deposit (no trust score discount for rentals)
+  const deposit = Math.max(5, Math.round(itemValue * depositPercentage));
   
   return {
-    baseDeposit,
     deposit,
     depositPercentage: depositPercentage * 100,
-    discountPercentage: percentage,
-    trustDiscount,
     tier,
     itemValue,
-    trustScore,
   };
 }
 

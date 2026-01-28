@@ -34,6 +34,8 @@ import {
   BadgeCheck,
   Star,
   Eye,
+  CreditCard,
+  ArrowRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -324,6 +326,31 @@ export default function VerificationPage() {
                     <span className="text-gray-500">ID Document</span>
                     <span className="font-medium text-gray-900">Uploaded</span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Shortcut to Payment Methods */}
+            <Card className="border-teal-200 bg-gradient-to-br from-teal-50 to-white">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-teal-100 rounded-full">
+                      <CreditCard className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Complete Payment Setup</h3>
+                      <p className="text-sm text-gray-500">Add a payment method to finish full verification</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => navigate("/payment-methods")}
+                    className="text-white"
+                    style={{ backgroundColor: "#0DCEA1" }}
+                  >
+                    Add Payment
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>

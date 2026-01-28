@@ -24,7 +24,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -65,6 +65,9 @@ export default function BorrowPage() {
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [showWishlistTutorial, setShowWishlistTutorial] = useState(false);
   const [showWishlistForm, setShowWishlistForm] = useState(false);
+  const [giftCarouselIndex, setGiftCarouselIndex] = useState(0);
+  const giftTouchStartX = useRef(0);
+  const giftTouchEndX = useRef(0);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -259,6 +262,25 @@ export default function BorrowPage() {
     return nameMatch || descMatch;
   });
 
+  const handleGiftTouchStart = useCallback((e: React.TouchEvent) => {
+    giftTouchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleGiftTouchMove = useCallback((e: React.TouchEvent) => {
+    giftTouchEndX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleGiftTouchEnd = useCallback(() => {
+    const diff = giftTouchStartX.current - giftTouchEndX.current;
+    const threshold = 50;
+
+    if (diff > threshold && giftCarouselIndex < filteredGiftItems.length - 1) {
+      setGiftCarouselIndex(prev => prev + 1);
+    } else if (diff < -threshold && giftCarouselIndex > 0) {
+      setGiftCarouselIndex(prev => prev - 1);
+    }
+  }, [giftCarouselIndex, filteredGiftItems.length]);
+
   // Show wishlist tutorial on first visit
   useEffect(() => {
     const hasSeenWishlistTutorial = localStorage.getItem(
@@ -356,18 +378,91 @@ export default function BorrowPage() {
               </Badge>
               <div className="flex-1 h-px bg-gradient-to-r from-pink-200 to-transparent"></div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            
+            {/* Mobile: Swipeable carousel */}
+            <div className="md:hidden">
+              <div
+                className="touch-pan-y"
+                onTouchStart={handleGiftTouchStart}
+                onTouchMove={handleGiftTouchMove}
+                onTouchEnd={handleGiftTouchEnd}
+              >
+                {filteredGiftItems[giftCarouselIndex] && (
+                  <Card className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white border-pink-100">
+                    <div className="p-4">
+                      <div
+                        className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative aspect-square"
+                      >
+                        <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-xs">
+                          FREE
+                        </Badge>
+                        {filteredGiftItems[giftCarouselIndex].photos && filteredGiftItems[giftCarouselIndex].photos[0] ? (
+                          <img
+                            src={filteredGiftItems[giftCarouselIndex].photos[0]}
+                            alt={filteredGiftItems[giftCarouselIndex].name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-pink-100 flex items-center justify-center rounded-lg">
+                            <Gift className="h-16 w-16 text-pink-400" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <CardContent className="px-4 pt-0 pb-4">
+                      <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
+                        {filteredGiftItems[giftCarouselIndex].name}
+                      </h3>
+                      <div className="flex items-center gap-2 text-slate-600 mb-3">
+                        <MapPin className="h-4 w-4" />
+                        <span className="text-sm">
+                          {filteredGiftItems[giftCarouselIndex].city || userPostalCode || "Nearby"}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="w-full bg-pink-500 hover:bg-pink-600 text-white text-sm h-10"
+                        onClick={() => navigate(`/items/${filteredGiftItems[giftCarouselIndex].id}`)}
+                      >
+                        <Gift className="h-4 w-4 mr-1" />
+                        Claim Gift
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              
+              {/* Dot indicators */}
+              {filteredGiftItems.length > 1 && (
+                <div className="flex justify-center gap-1.5 mt-3">
+                  {filteredGiftItems.slice(0, 6).map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setGiftCarouselIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        index === giftCarouselIndex 
+                          ? 'bg-pink-500 w-4' 
+                          : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Desktop: Grid layout */}
+            <div className="hidden md:grid md:grid-cols-4 gap-4">
               {filteredGiftItems.slice(0, 4).map((item) => (
                 <Card
                   key={item.id}
                   className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white border-pink-100"
                 >
-                  <div className="p-2 md:p-4">
+                  <div className="p-4">
                     <div
                       className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative"
                       style={{ aspectRatio: "1 / 0.9" }}
                     >
-                      <Badge className="absolute top-1 right-1 md:top-2 md:right-2 bg-pink-500 text-white text-[10px] md:text-xs">
+                      <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-xs">
                         FREE
                       </Badge>
                       {item.photos && item.photos[0] ? (
@@ -378,27 +473,27 @@ export default function BorrowPage() {
                         />
                       ) : (
                         <div className="w-full h-full bg-pink-100 flex items-center justify-center rounded-lg">
-                          <Gift className="h-10 w-10 md:h-16 md:w-16 text-pink-400" />
+                          <Gift className="h-16 w-16 text-pink-400" />
                         </div>
                       )}
                     </div>
                   </div>
-                  <CardContent className="px-3 md:px-4 pt-0 pb-2 md:pb-4">
-                    <h3 className="font-bold text-sm md:text-lg mb-0.5 md:mb-1 text-slate-800 truncate">
+                  <CardContent className="px-4 pt-0 pb-4">
+                    <h3 className="font-bold text-lg mb-1 text-slate-800 truncate">
                       {item.name}
                     </h3>
-                    <div className="flex items-center gap-1 md:gap-2 text-slate-600 mb-1.5 md:mb-3">
-                      <MapPin className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                      <span className="text-xs md:text-sm">
+                    <div className="flex items-center gap-2 text-slate-600 mb-3">
+                      <MapPin className="h-3 w-3" />
+                      <span className="text-sm">
                         {item.city || userPostalCode || "Nearby"}
                       </span>
                     </div>
                     <Button
                       size="sm"
-                      className="w-full bg-pink-500 hover:bg-pink-600 text-white text-[10px] md:text-xs h-6 md:h-8"
+                      className="w-full bg-pink-500 hover:bg-pink-600 text-white text-xs h-8"
                       onClick={() => navigate(`/items/${item.id}`)}
                     >
-                      <Gift className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                      <Gift className="h-3 w-3 mr-1" />
                       Claim Gift
                     </Button>
                   </CardContent>

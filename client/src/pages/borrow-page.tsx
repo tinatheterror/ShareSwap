@@ -278,13 +278,9 @@ export default function BorrowPage() {
 
       {/* Hero Section with Search - Inverted bottom left, rounded bottom right */}
       <div
-        className="w-full relative -mt-[1px]"
+        className="w-full relative -mt-[1px] bg-cover bg-bottom sm:bg-center rounded-b-[32px]"
         style={{
           backgroundImage: "url('/hero-banner.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          borderBottomLeftRadius: "32px",
-          borderBottomRightRadius: "32px",
         }}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-8 sm:pt-12 pb-8 sm:pb-8">

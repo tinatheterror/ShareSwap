@@ -47,7 +47,7 @@ import {
   applyDepositClaimedPenalty
 } from "./trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
-import { calculateReplacementValue } from "./replacement-value";
+import { calculateReplacementValueAndTier } from "./replacement-value";
 
 // Helper function to award ShareCoins with first-time bonus handling
 async function awardShareCoinsWithFirstTimeBonus(
@@ -1500,22 +1500,14 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Missing required fields: name, condition, originalValue" });
       }
 
-      // Calculate tier from originalValue and condition (same logic as frontend)
-      let baseTier = 1;
-      if (originalValue === "Under $50") baseTier = 1;
-      else if (originalValue === "$50–$150") baseTier = 2;
-      else if (originalValue === "$150–$300") baseTier = 3;
-      else if (originalValue === "$300–$1,000") baseTier = 4;
-      else if (originalValue === "$1,000–$5,000") baseTier = 5;
-      else if (originalValue === "$5,000+") baseTier = 6;
-      else if (originalValue === "$300+") baseTier = 4; // Legacy support
-
-      // Apply condition modifier
-      if (condition === "Fair" || condition === "Well Loved") {
-        baseTier = Math.max(1, baseTier - 1);
-      }
-
-      const tier = baseTier;
+      // Calculate tier and replacement value using new priority logic:
+      // 1. If AI estimated value exists → use it, calculate tier from it
+      // 2. If no AI → use midpoint of original value range, calculate tier from it
+      const { replacementValue: calculatedRV, tier, source: rvSource } = calculateReplacementValueAndTier(
+        estimatedValue,
+        originalValue,
+        condition
+      );
 
       // Validate and limit photos
       let validPhotos: string[] = [];
@@ -1544,6 +1536,8 @@ Respond with ONLY the category name, nothing else.`
       
       res.json({
         tier,
+        replacementValue: calculatedRV,
+        replacementValueSource: rvSource,
         shareCoinsValue: result.shareCoinsValue,
         tierBand: result.tierBand,
         reasoning: result.reasoning,
@@ -1596,8 +1590,16 @@ Respond with ONLY the category name, nothing else.`
       const isRentable = req.body.isRentable === "true";
       const isGift = req.body.isGift === "true";
 
-    // Parse tier from request
-    const tier = req.body.tier ? parseInt(req.body.tier) : null;
+    // Calculate tier and replacement value using new priority logic:
+    // 1. If AI estimated value exists → use it as replacement value, calculate tier from it
+    // 2. If no AI → use midpoint of original value range as replacement value, calculate tier from it
+    const { replacementValue: calculatedRV, tier: calculatedTier, source: rvSource } = calculateReplacementValueAndTier(
+      req.body.estimatedValue,
+      req.body.originalValue,
+      req.body.condition
+    );
+    
+    const tier = calculatedTier;
     
     // Calculate ShareCoins reward using AI valuation when tier is available
     let shareCoinsReward = 5; // Default base reward
@@ -1673,8 +1675,9 @@ Respond with ONLY the category name, nothing else.`
       shareCoinsReward = 5; // Fallback to base reward
     }
 
-    // Calculate replacement value for borrowable items (locked at listing time)
-    const replacementValue = isLendable ? calculateReplacementValue(tier) : null;
+    // Set replacement value for lendable/rentable items (locked at listing time)
+    // Uses AI estimated value if available, otherwise midpoint of original value range
+    const replacementValue = (isLendable || isRentable) ? calculatedRV : null;
 
     // Parse swap preferences
     const swapDesiredItem = req.body.swapDesiredItem || null;

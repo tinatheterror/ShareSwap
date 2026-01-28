@@ -748,7 +748,7 @@ export function ItemRequestForm({
                                 In person
                               </label>
                               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                                No fees
+                                Direct exchange
                               </p>
                             </div>
                           </div>

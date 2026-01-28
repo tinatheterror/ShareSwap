@@ -298,7 +298,7 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                 <Badge variant="outline" className="text-teal-600 border-teal-600">Higher Risk</Badge>
               </div>
               <p className="text-sm text-muted-foreground ml-6 mb-3">
-                Handle deposit arrangements privately between yourselves. No fees, but ShareSwap cannot assist with disputes.
+                Handle deposit arrangements privately between yourselves. Direct exchange, but ShareSwap cannot assist with disputes.
               </p>
               
               {depositMethod === 'self_facilitated' && (

@@ -283,7 +283,7 @@ export default function BorrowPage() {
           backgroundImage: "url('/hero-banner.png')",
         }}
       >
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-12 pb-8 sm:pb-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-10">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
             <div className="flex-1">
               <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">

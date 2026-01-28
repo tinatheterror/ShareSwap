@@ -849,6 +849,65 @@ export function ItemRequestForm({
                 </div>
               )}
 
+            {/* Non-Return Charge Acknowledgment - Only for RENT */}
+            {requestType === "RENT" &&
+              hasValidReplacementValue((item as any).replacementValue) && (
+                <div className="bg-white border border-gray-200 rounded-lg p-2 space-y-1">
+                  <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
+                    Maximum Charge if Item Is Not Returned: $
+                    {(item as any).replacementValue}
+                  </div>
+
+                  <div className="bg-gray-50 rounded-md p-1.5 space-y-1 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-500">🟢</span>
+                      <span className="text-gray-600">
+                        <span className="font-medium">Security Deposit</span> —
+                        temporarily held and fully refunded after a safe return
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-500">🟠</span>
+                      <span className="text-gray-600">
+                        <span className="font-medium">Non-Return Charge</span> —
+                        only applied if the item is not returned
+                      </span>
+                    </div>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="replacementValueAcknowledged"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-3.5 w-3.5 mt-0.5 accent-teal-600"
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-xs font-normal cursor-pointer text-gray-700">
+                            I understand I may be charged up to $
+                            {(item as any).replacementValue} only if the item is
+                            not returned.
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <Link
+                    href="/faq#deposits-coverage"
+                    className="text-xs text-teal-600 hover:text-teal-700 hover:underline inline-block"
+                  >
+                    How protection works
+                  </Link>
+                </div>
+              )}
+
             {/* Condition Confirmation - Only for SWAP */}
             {requestType === "SWAP" && (
               <FormField

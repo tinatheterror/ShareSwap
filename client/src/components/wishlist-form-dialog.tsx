@@ -198,7 +198,7 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
                     : "outline"
                 }
                 size="sm"
-                className="justify-center"
+                className={`justify-center ${formData.needTypes.includes("gift") ? "bg-pink-500 hover:bg-pink-600 text-white" : ""}`}
                 onClick={() => toggleNeedType("gift")}
               >
                 <Gift className="h-4 w-4 mr-1" />

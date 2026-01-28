@@ -496,7 +496,7 @@ export default function WishlistsPage() {
                         : "outline"
                     }
                     size="sm"
-                    className="justify-center"
+                    className={`justify-center ${formData.needTypes.includes("gift") ? "bg-pink-500 hover:bg-pink-600 text-white" : ""}`}
                     onClick={() => toggleNeedType("gift")}
                   >
                     <Gift className="h-4 w-4 mr-1" />
@@ -756,7 +756,7 @@ export default function WishlistsPage() {
                     type="button"
                     variant={editNeedTypes.includes("gift") ? "default" : "outline"}
                     size="sm"
-                    className="justify-center"
+                    className={`justify-center ${editNeedTypes.includes("gift") ? "bg-pink-500 hover:bg-pink-600 text-white" : ""}`}
                     onClick={() => toggleEditNeedType("gift")}
                   >
                     <Gift className="h-4 w-4 mr-1" />

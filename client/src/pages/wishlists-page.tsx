@@ -57,6 +57,7 @@ export default function WishlistsPage() {
     null,
   );
   const [wishlistToEdit, setWishlistToEdit] = useState<Wishlist | null>(null);
+  const [editNeedTypes, setEditNeedTypes] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     itemName: "",
     description: "",
@@ -77,6 +78,23 @@ export default function WishlistsPage() {
         return { ...prev, needTypes: [...current, type] };
       }
     });
+  };
+
+  const toggleEditNeedType = (type: string) => {
+    setEditNeedTypes((prev) => {
+      if (prev.includes(type)) {
+        if (prev.length === 1) return prev;
+        return prev.filter((t) => t !== type);
+      } else {
+        return [...prev, type];
+      }
+    });
+  };
+
+  const handleEditWishlist = (wishlist: Wishlist) => {
+    setWishlistToEdit(wishlist);
+    const types = wishlist.needType ? wishlist.needType.split(",") : ["borrow"];
+    setEditNeedTypes(types);
   };
 
   const isUrgent = (neededDate?: string) => {
@@ -359,7 +377,7 @@ export default function WishlistsPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => setWishlistToEdit(item)}
+                      onClick={() => handleEditWishlist(item)}
                     >
                       Edit
                     </Button>
@@ -666,6 +684,7 @@ export default function WishlistsPage() {
                   data: {
                     itemName: formData.get("itemName"),
                     description: formData.get("description"),
+                    needType: editNeedTypes.join(","),
                     preferredLocation: formData.get("preferredLocation"),
                     neededDate: formData.get("neededDate") || null,
                     returnDate: formData.get("returnDate") || null,
@@ -696,6 +715,54 @@ export default function WishlistsPage() {
                   placeholder="Describe what you need this item for or any specific requirements..."
                   rows={3}
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  I want to
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={editNeedTypes.includes("borrow") ? "default" : "outline"}
+                    size="sm"
+                    className="justify-center"
+                    onClick={() => toggleEditNeedType("borrow")}
+                  >
+                    <HandHeart className="h-4 w-4 mr-1" />
+                    Borrow It
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editNeedTypes.includes("rent") ? "default" : "outline"}
+                    size="sm"
+                    className="justify-center"
+                    onClick={() => toggleEditNeedType("rent")}
+                  >
+                    <ArrowRightLeft className="h-4 w-4 mr-1" />
+                    Rent It
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editNeedTypes.includes("swap") ? "default" : "outline"}
+                    size="sm"
+                    className="justify-center"
+                    onClick={() => toggleEditNeedType("swap")}
+                  >
+                    <Repeat className="h-4 w-4 mr-1" />
+                    Swap It
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editNeedTypes.includes("gift") ? "default" : "outline"}
+                    size="sm"
+                    className="justify-center"
+                    onClick={() => toggleEditNeedType("gift")}
+                  >
+                    <Gift className="h-4 w-4 mr-1" />
+                    Be Gifted
+                  </Button>
+                </div>
               </div>
 
               <div>

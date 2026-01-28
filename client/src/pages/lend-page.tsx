@@ -819,7 +819,7 @@ export default function LendPage() {
 
       {/* Hero Section */}
       <div
-        className="w-full relative -mt-px bg-cover bg-bottom sm:bg-center rounded-b-[32px]"
+        className="w-full relative -mt-[1px] bg-cover bg-bottom sm:bg-center rounded-b-[32px]"
         style={{
           backgroundImage: "url('/hero-banner.png')",
         }}

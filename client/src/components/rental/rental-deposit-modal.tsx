@@ -35,6 +35,7 @@ interface RentalDepositModalProps {
     dollarsPrice?: string;
     photos: string[];
   };
+  trustScore: number;
   courierFee?: number;
   onSuccess: (nextStep: string) => void;
 }
@@ -114,6 +115,7 @@ export function RentalDepositModal({
   onClose,
   request,
   item,
+  trustScore,
   courierFee = 0,
   onSuccess,
 }: RentalDepositModalProps) {
@@ -124,7 +126,7 @@ export function RentalDepositModal({
   const [step, setStep] = useState<"summary" | "payment">("summary");
 
   const itemValue = parseFloat(item.estimatedValue || "100");
-  const depositCalc = calculateRentalDeposit(itemValue, item.tier || 2);
+  const depositCalc = calculateRentalDeposit(itemValue, item.tier || 2, trustScore);
   const rentalCalc = calculateRentalRate(itemValue, item.category || "Home & Kitchen");
 
   const days = request.startDate && request.endDate
@@ -256,11 +258,29 @@ export function RentalDepositModal({
                     <Shield className="h-4 w-4 text-blue-600" />
                     Security deposit (refundable)
                   </span>
-                  <span className="font-medium">${depositCalc.deposit.toFixed(2)}</span>
+                  {depositCalc.discountPercentage > 0 ? (
+                    <span className="font-medium flex items-center gap-1.5">
+                      <span className="relative text-gray-400 text-sm">
+                        <span className="absolute inset-0 flex items-center">
+                          <span className="w-full h-[1px] bg-gray-400"></span>
+                        </span>
+                        ${depositCalc.baseDeposit}
+                      </span>
+                      <span className="text-green-600">${depositCalc.deposit.toFixed(2)}</span>
+                    </span>
+                  ) : (
+                    <span className="font-medium">${depositCalc.deposit.toFixed(2)}</span>
+                  )}
                 </div>
 
+                {depositCalc.discountPercentage > 0 && (
+                  <div className="text-xs text-green-600 ml-6">
+                    {depositCalc.discountPercentage}% trust score discount applied
+                  </div>
+                )}
+
                 <div className="text-xs text-gray-500 ml-6">
-                  Tier {depositCalc.tier}: {depositCalc.depositPercentage}% of item value
+                  Most renters never pay this.
                 </div>
 
                 {deliveryFee > 0 && (

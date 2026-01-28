@@ -940,6 +940,7 @@ export function ChatWidget() {
             dollarsPrice: (selectedRequest.item as any).dollarsPrice,
             photos: selectedRequest.item.photos,
           }}
+          trustScore={50}
           courierFee={selectedRequest.deliveryMethod === "courier" ? 8.99 : 0}
           onSuccess={(nextStep) => {
             setShowRentalDepositModal(false);

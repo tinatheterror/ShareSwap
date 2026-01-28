@@ -1273,8 +1273,8 @@ export default function FAQPage() {
                     </li>
                   </ul>
                   <p className="text-sm text-gray-500">
-                    This ensures lenders are protected without overcharging
-                    borrowers.
+                    This ensures owners are protected without overcharging
+                    borrowers or renters.
                   </p>
                 </AccordionContent>
               </AccordionItem>
@@ -1291,7 +1291,7 @@ export default function FAQPage() {
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-[#0DCEA1] mt-0.5 flex-shrink-0" />
                       <span>
-                        A trust deposit is held during each borrowing
+                        A deposit is held during each borrowing or renting
                         transaction
                       </span>
                     </li>

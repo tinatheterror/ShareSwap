@@ -1534,10 +1534,13 @@ Respond with ONLY the category name, nothing else.`
 
       const result = await calculateAIValuation(valuationInput);
       
+      // Use AI's internalItemValue if available, otherwise fall back to calculatedRV
+      const finalReplacementValue = result.internalItemValue > 0 ? result.internalItemValue : calculatedRV;
+      
       res.json({
         tier,
-        replacementValue: calculatedRV,
-        replacementValueSource: rvSource,
+        replacementValue: finalReplacementValue,
+        replacementValueSource: result.internalItemValue > 0 ? 'ai_analysis' : rvSource,
         shareCoinsValue: result.shareCoinsValue,
         tierBand: result.tierBand,
         reasoning: result.reasoning,
@@ -1676,8 +1679,21 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Set replacement value for lendable/rentable items (locked at listing time)
-    // Uses AI estimated value if available, otherwise midpoint of original value range
-    const replacementValue = (isLendable || isRentable) ? calculatedRV : null;
+    // Priority order:
+    // 1. AI valuation's internalItemValue (analyzes description/features + photos + brand)
+    // 2. SmartScan estimated value or range midpoint (calculatedRV)
+    let replacementValue: number | null = null;
+    if (isLendable || isRentable) {
+      if (aiValuationResult && aiValuationResult.internalItemValue > 0) {
+        // Use AI-calculated market value (considers description, condition, brand, photos)
+        replacementValue = aiValuationResult.internalItemValue;
+        console.log(`Replacement value from AI analysis: $${replacementValue}`);
+      } else {
+        // Fallback to SmartScan estimate or range midpoint
+        replacementValue = calculatedRV;
+        console.log(`Replacement value from ${rvSource === 'ai' ? 'SmartScan' : 'range midpoint'}: $${replacementValue}`);
+      }
+    }
 
     // Parse swap preferences
     const swapDesiredItem = req.body.swapDesiredItem || null;

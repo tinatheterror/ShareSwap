@@ -3143,6 +3143,13 @@ Respond with ONLY the category name, nothing else.`
         .send("This item cannot be borrowed because it does not have a Replacement Value set.");
     }
 
+    // Prevent renting if Replacement Value is missing
+    if (requestType === "RENT" && !item.replacementValue) {
+      return res
+        .status(400)
+        .send("This item cannot be rented because it does not have a Replacement Value set.");
+    }
+
     // Create the request
     const [request] = await db
       .insert(itemRequests)

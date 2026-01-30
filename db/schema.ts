@@ -309,9 +309,26 @@ export const itemRequests = pgTable("item_requests", {
   courierBookedAt: timestamp("courier_booked_at"),
   courierStatus: text("courier_status"), // 'pending' | 'booked' | 'picked_up' | 'delivered' | 'cancelled'
   
-  // Handoff tracking
+  // Handoff tracking - dual confirmation
+  ownerConfirmedHandoff: boolean("owner_confirmed_handoff").default(false),
+  ownerConfirmedHandoffAt: timestamp("owner_confirmed_handoff_at"),
+  borrowerConfirmedHandoff: boolean("borrower_confirmed_handoff").default(false),
+  borrowerConfirmedHandoffAt: timestamp("borrower_confirmed_handoff_at"),
+  handoffConfirmDeadline: timestamp("handoff_confirm_deadline"), // deadline for second party to confirm
+  handoffAutoAdvanced: boolean("handoff_auto_advanced").default(false), // true if auto-advanced after timeout
   handoffConfirmedAt: timestamp("handoff_confirmed_at"),
   borrowPeriodStartedAt: timestamp("borrow_period_started_at"),
+  
+  // Return tracking - dual confirmation
+  ownerConfirmedReturn: boolean("owner_confirmed_return").default(false),
+  ownerConfirmedReturnAt: timestamp("owner_confirmed_return_at"),
+  borrowerConfirmedReturn: boolean("borrower_confirmed_return").default(false),
+  borrowerConfirmedReturnAt: timestamp("borrower_confirmed_return_at"),
+  returnConfirmDeadline: timestamp("return_confirm_deadline"),
+  returnAutoAdvanced: boolean("return_auto_advanced").default(false),
+  returnConditionOk: boolean("return_condition_ok"), // true if returned in same condition
+  returnDisputeTriggered: boolean("return_dispute_triggered").default(false),
+  returnDisputeReason: text("return_dispute_reason"),
   
   // Return tracking
   returnRequestedAt: timestamp("return_requested_at"),

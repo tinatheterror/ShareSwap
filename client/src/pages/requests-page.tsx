@@ -231,10 +231,10 @@ export default function RequestsPage() {
       const response = await apiRequest("POST", `/api/requests/${requestId}/respond-to-counter`, { accept });
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       toast({
-        title: data.accept ? "Terms Accepted" : "Request Cancelled",
+        title: variables.accept ? "Terms Accepted" : "Request Cancelled",
         description: data.message,
       });
     },

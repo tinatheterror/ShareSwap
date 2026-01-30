@@ -45,6 +45,7 @@ import SettingsPage from "@/pages/settings-page";
 import PaymentMethodsPage from "@/pages/payment-methods-page";
 import MyBalancePage from "@/pages/my-balance-page";
 import { VerificationNudge } from "@/components/verification-nudge";
+import { BackgroundPolling } from "@/components/background-polling";
 
 function Router() {
   return (
@@ -95,6 +96,7 @@ function App() {
         <Router />
         <ChatWidget />
         <VerificationNudge />
+        <BackgroundPolling />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>

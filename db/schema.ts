@@ -271,6 +271,16 @@ export const itemRequests = pgTable("item_requests", {
   matchScore: integer("match_score"), // AI matching score for swap requests
   deliveryMethod: text("delivery_method").default("in_person"), // 'in_person' | 'courier'
   depositMethod: text("deposit_method").default("in_app"), // 'in_app' | 'in_person' (borrow only)
+  
+  // Terms negotiation tracking
+  negotiationStatus: text("negotiation_status").default("pending_owner"), // 'pending_owner' | 'counter_proposed' | 'terms_accepted' | 'terms_declined'
+  counterDeliveryMethod: text("counter_delivery_method"), // lender's proposed delivery method
+  counterDepositMethod: text("counter_deposit_method"), // lender's proposed deposit method
+  counterProposedAt: timestamp("counter_proposed_at"),
+  counterProposedBy: integer("counter_proposed_by"), // user ID who proposed the counter
+  termsAcceptedAt: timestamp("terms_accepted_at"),
+  termsDeclinedAt: timestamp("terms_declined_at"),
+  
   deliveryConfirmed: boolean("delivery_confirmed").default(false),
   deliveryConfirmedAt: timestamp("delivery_confirmed_at"),
   courierBookedBy: text("courier_booked_by"), // 'requester' | 'owner' - who booked the courier

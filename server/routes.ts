@@ -3496,6 +3496,158 @@ Respond with ONLY the category name, nothing else.`
     res.json(updatedRequest);
   });
 
+  // =====================================
+  // TERMS NEGOTIATION ENDPOINTS
+  // =====================================
+
+  // Lender proposes new terms (counter-proposal)
+  app.post("/api/requests/:requestId/counter-proposal", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const { deliveryMethod, depositMethod } = req.body;
+
+    // Validate the request belongs to an item owned by this user
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(
+        and(
+          eq(itemRequests.id, requestId),
+          eq(items.ownerId, req.user.id)
+        )
+      )
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    if (request.item_requests.status !== "PENDING") {
+      return res.status(400).json({ error: "Can only propose changes to pending requests" });
+    }
+
+    // Update the request with counter-proposal
+    const [updated] = await db
+      .update(itemRequests)
+      .set({
+        negotiationStatus: "counter_proposed",
+        counterDeliveryMethod: deliveryMethod || request.item_requests.deliveryMethod,
+        counterDepositMethod: depositMethod || request.item_requests.depositMethod,
+        counterProposedAt: new Date(),
+        counterProposedBy: req.user.id,
+      })
+      .where(eq(itemRequests.id, requestId))
+      .returning();
+
+    // Create notification for the requester
+    await db.insert(notifications).values({
+      userId: request.item_requests.requesterId,
+      type: "terms_counter_proposed",
+      title: "Lender Proposed New Terms",
+      message: `The owner has proposed different terms for your ${request.item_requests.requestType?.toLowerCase()} request. Please review and respond.`,
+      relatedItemId: request.items.id,
+      relatedRequestId: requestId,
+    });
+
+    res.json({
+      success: true,
+      request: updated,
+      message: "Counter-proposal sent to requester",
+    });
+  });
+
+  // Requester accepts or declines counter-proposal
+  app.post("/api/requests/:requestId/respond-to-counter", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const { accept } = req.body;
+
+    // Validate the request belongs to this requester
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(
+        and(
+          eq(itemRequests.id, requestId),
+          eq(itemRequests.requesterId, req.user.id)
+        )
+      )
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    if (request.item_requests.negotiationStatus !== "counter_proposed") {
+      return res.status(400).json({ error: "No counter-proposal to respond to" });
+    }
+
+    if (accept) {
+      // Accept the counter-proposal - update terms and set status
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          negotiationStatus: "terms_accepted",
+          deliveryMethod: request.item_requests.counterDeliveryMethod || request.item_requests.deliveryMethod,
+          depositMethod: request.item_requests.counterDepositMethod || request.item_requests.depositMethod,
+          termsAcceptedAt: new Date(),
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      // Notify the owner
+      await db.insert(notifications).values({
+        userId: request.items.ownerId!,
+        type: "terms_accepted",
+        title: "Terms Accepted",
+        message: `The requester has accepted your proposed terms. You can now accept or decline the request.`,
+        relatedItemId: request.items.id,
+        relatedRequestId: requestId,
+      });
+
+      res.json({
+        success: true,
+        request: updated,
+        message: "You've accepted the new terms. Waiting for owner to accept the request.",
+      });
+    } else {
+      // Decline the counter-proposal - cancel the request
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          negotiationStatus: "terms_declined",
+          status: "CANCELLED",
+          termsDeclinedAt: new Date(),
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      // Notify the owner
+      await db.insert(notifications).values({
+        userId: request.items.ownerId!,
+        type: "terms_declined",
+        title: "Terms Declined",
+        message: `The requester declined your proposed terms and cancelled the request.`,
+        relatedItemId: request.items.id,
+        relatedRequestId: requestId,
+      });
+
+      res.json({
+        success: true,
+        request: updated,
+        message: "Request cancelled",
+      });
+    }
+  });
+
   // Create Stripe payment authorization hold for security deposit
   app.post("/api/stripe/create-deposit-hold", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {

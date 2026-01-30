@@ -11,7 +11,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, sql, gte, ne, isNull } from "drizzle-orm";
+import { eq, and, or, desc, sql, gte, lt, ne, isNull } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -4482,7 +4482,7 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
-      const { confirmedBy } = req.body; // 'owner' or 'requester'
+      const { confirmedBy } = req.body; // 'owner' or 'borrower'
       
       const [request] = await db
         .select()
@@ -4503,95 +4503,278 @@ Respond with ONLY the category name, nothing else.`
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      // Validate status (must be DEPOSIT_CONFIRMED or COURIER_PENDING for courier deliveries)
-      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING"];
+      // Validate status (must be DEPOSIT_CONFIRMED, COURIER_PENDING, or AWAITING_HANDOFF_CONFIRM)
+      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
       if (!validStatuses.includes(request.item_requests.status)) {
         return res.status(400).json({ error: "Request is not ready for handoff" });
       }
 
-      // Charge ShareCoins from borrower
-      const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+      const now = new Date();
+      const CONFIRMATION_DEADLINE_HOURS = 24;
+      const deadline = new Date(now.getTime() + CONFIRMATION_DEADLINE_HOURS * 60 * 60 * 1000);
       
-      if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-        // Get borrower's current ShareCoin balance
-        const [borrower] = await db
-          .select({ shareCoins: users.shareCoins })
-          .from(users)
-          .where(eq(users.id, request.item_requests.requesterId))
-          .limit(1);
+      // Determine which party is confirming
+      const ownerAlreadyConfirmed = request.item_requests.ownerConfirmedHandoff;
+      const borrowerAlreadyConfirmed = request.item_requests.borrowerConfirmedHandoff;
+      
+      let updateData: any = {};
+      let waitingMessage = "";
+      let bothConfirmed = false;
 
-        const currentBalance = parseFloat(borrower?.shareCoins || "0");
+      if (isOwner && !ownerAlreadyConfirmed) {
+        updateData.ownerConfirmedHandoff = true;
+        updateData.ownerConfirmedHandoffAt = now;
         
-        if (currentBalance < shareCoinAmount) {
-          return res.status(400).json({ error: "Insufficient ShareCoins balance" });
+        if (borrowerAlreadyConfirmed) {
+          bothConfirmed = true;
+        } else {
+          updateData.status = "AWAITING_HANDOFF_CONFIRM";
+          updateData.handoffConfirmDeadline = deadline;
+          waitingMessage = `You've confirmed handoff. Waiting for borrower to confirm (${CONFIRMATION_DEADLINE_HOURS}h deadline).`;
         }
-
-        // Deduct ShareCoins from borrower
-        await db
-          .update(users)
-          .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
-          .where(eq(users.id, request.item_requests.requesterId));
-
-        // Record the transaction
-        await db.insert(shareCoinsTransactions).values({
-          userId: request.item_requests.requesterId,
-          amount: (-shareCoinAmount).toString(),
-          description: `Borrowed: ${request.items.name}`,
-          transactionType: "BORROW_CHARGE",
-        });
-
-        // Award ShareCoins to lender
-        if (request.items.ownerId) {
-          const [lender] = await db
-            .select({ shareCoins: users.shareCoins })
-            .from(users)
-            .where(eq(users.id, request.items.ownerId))
-            .limit(1);
-
-          const lenderBalance = parseFloat(lender?.shareCoins || "0");
-          await db
-            .update(users)
-            .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
-            .where(eq(users.id, request.items.ownerId));
-
-          await db.insert(shareCoinsTransactions).values({
-            userId: request.items.ownerId,
-            amount: shareCoinAmount.toString(),
-            description: `Lent: ${request.items.name}`,
-            transactionType: "LEND_REWARD",
-          });
+      } else if (isRequester && !borrowerAlreadyConfirmed) {
+        updateData.borrowerConfirmedHandoff = true;
+        updateData.borrowerConfirmedHandoffAt = now;
+        
+        if (ownerAlreadyConfirmed) {
+          bothConfirmed = true;
+        } else {
+          updateData.status = "AWAITING_HANDOFF_CONFIRM";
+          updateData.handoffConfirmDeadline = deadline;
+          waitingMessage = `You've confirmed received. Waiting for owner to confirm (${CONFIRMATION_DEADLINE_HOURS}h deadline).`;
         }
+      } else {
+        return res.status(400).json({ error: "You have already confirmed the handoff" });
       }
 
-      // Update request status
+      // If both parties have now confirmed, complete the handoff
+      if (bothConfirmed) {
+        // Charge ShareCoins from borrower (only for BORROW type)
+        const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+        
+        if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
+          const [borrower] = await db
+            .select({ shareCoins: users.shareCoins })
+            .from(users)
+            .where(eq(users.id, request.item_requests.requesterId))
+            .limit(1);
+
+          const currentBalance = parseFloat(borrower?.shareCoins || "0");
+          
+          if (currentBalance < shareCoinAmount) {
+            return res.status(400).json({ error: "Insufficient ShareCoins balance" });
+          }
+
+          // Deduct ShareCoins from borrower
+          await db
+            .update(users)
+            .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
+            .where(eq(users.id, request.item_requests.requesterId));
+
+          // Record the transaction
+          await db.insert(shareCoinsTransactions).values({
+            userId: request.item_requests.requesterId,
+            amount: (-shareCoinAmount).toString(),
+            description: `Borrowed: ${request.items.name}`,
+            transactionType: "BORROW_CHARGE",
+          });
+
+          // Award ShareCoins to lender
+          if (request.items.ownerId) {
+            const [lender] = await db
+              .select({ shareCoins: users.shareCoins })
+              .from(users)
+              .where(eq(users.id, request.items.ownerId))
+              .limit(1);
+
+            const lenderBalance = parseFloat(lender?.shareCoins || "0");
+            await db
+              .update(users)
+              .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
+              .where(eq(users.id, request.items.ownerId));
+
+            await db.insert(shareCoinsTransactions).values({
+              userId: request.items.ownerId,
+              amount: shareCoinAmount.toString(),
+              description: `Lent: ${request.items.name}`,
+              transactionType: "LEND_REWARD",
+            });
+          }
+        }
+
+        // Complete the handoff
+        updateData.status = "IN_PROGRESS";
+        updateData.handoffConfirmedAt = now;
+        updateData.borrowPeriodStartedAt = now;
+        updateData.shareCoinsCharged = true;
+        updateData.shareCoinsChargedAt = now;
+        updateData.depositStatus = "held";
+
+        // Mark item as unavailable
+        await db
+          .update(items)
+          .set({ isAvailable: false })
+          .where(eq(items.id, request.items.id));
+      }
+
+      // Update the request
       const [updated] = await db
         .update(itemRequests)
-        .set({
-          status: "IN_PROGRESS",
-          handoffConfirmedAt: new Date(),
-          borrowPeriodStartedAt: new Date(),
-          shareCoinsCharged: true,
-          shareCoinsChargedAt: new Date(),
-          depositStatus: "held",
-        })
+        .set(updateData)
         .where(eq(itemRequests.id, requestId))
         .returning();
 
-      // Mark item as unavailable
-      await db
-        .update(items)
-        .set({ isAvailable: false })
-        .where(eq(items.id, request.items.id));
+      // Send notification to the other party
+      const otherPartyId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
+      if (otherPartyId && !bothConfirmed) {
+        await db.insert(notifications).values({
+          userId: otherPartyId,
+          type: "handoff_pending",
+          title: "Handoff Confirmation Needed",
+          message: isOwner 
+            ? `Owner has confirmed handoff for "${request.items.name}". Please confirm you received the item.`
+            : `Borrower has confirmed receiving "${request.items.name}". Please confirm the handoff.`,
+          itemId: request.items.id,
+          requestId: requestId,
+        });
+      }
 
       res.json({
         success: true,
         request: updated,
-        shareCoinsCharged: shareCoinAmount,
-        message: "Handoff confirmed! Borrow period has started.",
+        bothConfirmed,
+        waitingMessage: bothConfirmed ? undefined : waitingMessage,
+        message: bothConfirmed 
+          ? "Handoff confirmed by both parties! Borrow period has started." 
+          : waitingMessage,
       });
     } catch (error: any) {
       console.error("Error confirming handoff:", error);
       res.status(500).json({ error: "Failed to confirm handoff" });
+    }
+  });
+
+  // Auto-advance handoffs that have passed their deadline (called by client-side polling)
+  app.post("/api/requests/check-handoff-deadlines", csrfProtection, async (req, res) => {
+    try {
+      const now = new Date();
+      
+      // Find requests awaiting handoff confirmation with passed deadlines
+      const expiredHandoffs = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM"),
+            lt(itemRequests.handoffConfirmDeadline, now)
+          )
+        );
+
+      let autoAdvancedCount = 0;
+
+      for (const request of expiredHandoffs) {
+        // Auto-advance: complete the handoff
+        const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+        
+        // Process ShareCoins for BORROW type
+        if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
+          const [borrower] = await db
+            .select({ shareCoins: users.shareCoins })
+            .from(users)
+            .where(eq(users.id, request.item_requests.requesterId))
+            .limit(1);
+
+          const currentBalance = parseFloat(borrower?.shareCoins || "0");
+          
+          if (currentBalance >= shareCoinAmount) {
+            // Deduct from borrower
+            await db
+              .update(users)
+              .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
+              .where(eq(users.id, request.item_requests.requesterId));
+
+            await db.insert(shareCoinsTransactions).values({
+              userId: request.item_requests.requesterId,
+              amount: (-shareCoinAmount).toString(),
+              description: `Borrowed: ${request.items.name} (auto-advanced)`,
+              transactionType: "BORROW_CHARGE",
+            });
+
+            // Award to lender
+            if (request.items.ownerId) {
+              const [lender] = await db
+                .select({ shareCoins: users.shareCoins })
+                .from(users)
+                .where(eq(users.id, request.items.ownerId))
+                .limit(1);
+
+              const lenderBalance = parseFloat(lender?.shareCoins || "0");
+              await db
+                .update(users)
+                .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
+                .where(eq(users.id, request.items.ownerId));
+
+              await db.insert(shareCoinsTransactions).values({
+                userId: request.items.ownerId,
+                amount: shareCoinAmount.toString(),
+                description: `Lent: ${request.items.name} (auto-advanced)`,
+                transactionType: "LEND_REWARD",
+              });
+            }
+          }
+        }
+
+        // Update request to IN_PROGRESS
+        await db
+          .update(itemRequests)
+          .set({
+            status: "IN_PROGRESS",
+            handoffConfirmedAt: now,
+            borrowPeriodStartedAt: now,
+            shareCoinsCharged: true,
+            shareCoinsChargedAt: now,
+            depositStatus: "held",
+            handoffAutoAdvanced: true,
+          })
+          .where(eq(itemRequests.id, request.item_requests.id));
+
+        // Mark item as unavailable
+        await db
+          .update(items)
+          .set({ isAvailable: false })
+          .where(eq(items.id, request.items.id));
+
+        // Notify both parties
+        const confirmingParty = request.item_requests.ownerConfirmedHandoff ? "Owner" : "Borrower";
+        const notificationMessage = `Handoff for "${request.items.name}" was auto-confirmed after ${confirmingParty.toLowerCase()} confirmation timed out.`;
+        
+        await db.insert(notifications).values([
+          {
+            userId: request.item_requests.requesterId,
+            type: "handoff_auto_advanced",
+            title: "Handoff Auto-Confirmed",
+            message: notificationMessage,
+            itemId: request.items.id,
+            requestId: request.item_requests.id,
+          },
+          ...(request.items.ownerId ? [{
+            userId: request.items.ownerId,
+            type: "handoff_auto_advanced",
+            title: "Handoff Auto-Confirmed",
+            message: notificationMessage,
+            itemId: request.items.id,
+            requestId: request.item_requests.id,
+          }] : []),
+        ]);
+
+        autoAdvancedCount++;
+      }
+
+      res.json({ success: true, autoAdvancedCount });
+    } catch (error: any) {
+      console.error("Error checking handoff deadlines:", error);
+      res.status(500).json({ error: "Failed to check handoff deadlines" });
     }
   });
 

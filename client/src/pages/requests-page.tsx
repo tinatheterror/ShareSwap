@@ -455,24 +455,58 @@ export default function RequestsPage() {
                           </div>
                         )}
 
+                        {/* Show waiting status if counter-proposal is pending */}
+                        {request.negotiationStatus === "counter_proposed" && (
+                          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm font-medium text-amber-800">
+                              <Clock className="h-4 w-4 inline mr-1" />
+                              Waiting for requester to respond to your proposed terms
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs">
+                                Proposed: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"} deposit
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {request.counterDeliveryMethod === "courier" ? "Uber" : "Pick up"} delivery
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Show terms accepted notification */}
+                        {request.negotiationStatus === "terms_accepted" && (
+                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <p className="text-sm font-medium text-green-800">
+                              <CheckCircle className="h-4 w-4 inline mr-1" />
+                              Requester accepted your proposed terms. You can now accept the request.
+                            </p>
+                          </div>
+                        )}
+
                         <div className="flex gap-2 mt-4">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAcceptClick(request)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Accept
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRequestChange(request)}
-                            className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                          >
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                            Request Change
-                          </Button>
+                          {/* Only show Accept if no counter-proposal is pending */}
+                          {request.negotiationStatus !== "counter_proposed" && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleAcceptClick(request)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Accept
+                            </Button>
+                          )}
+                          {/* Only show Request Change if no counter-proposal is pending */}
+                          {request.negotiationStatus !== "counter_proposed" && request.negotiationStatus !== "terms_accepted" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRequestChange(request)}
+                              className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Request Change
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"

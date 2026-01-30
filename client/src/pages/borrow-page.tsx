@@ -53,6 +53,15 @@ interface ItemWithDistance extends SelectItem {
   };
 }
 
+const ITEM_CATEGORIES = [
+  "Baby & Kids",
+  "Clothing & Accessories",
+  "Electronics",
+  "Hobbies & Collectibles",
+  "Home & Kitchen",
+  "Tools & Equipment",
+] as const;
+
 export default function BorrowPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<{
@@ -66,6 +75,8 @@ export default function BorrowPage() {
   const [showWishlistTutorial, setShowWishlistTutorial] = useState(false);
   const [showWishlistForm, setShowWishlistForm] = useState(false);
   const [giftCarouselIndex, setGiftCarouselIndex] = useState(0);
+  const [categoryCarouselIndices, setCategoryCarouselIndices] = useState<Record<string, number>>({});
+  const categoryTouchRefs = useRef<Record<string, { startX: number; endX: number }>>({});
   const giftTouchStartX = useRef(0);
   const giftTouchEndX = useRef(0);
   const { toast } = useToast();
@@ -280,6 +291,42 @@ export default function BorrowPage() {
       setGiftCarouselIndex(prev => prev - 1);
     }
   }, [giftCarouselIndex, filteredGiftItems.length]);
+
+  // Group items by category
+  const itemsByCategory = ITEM_CATEGORIES.reduce((acc, category) => {
+    acc[category] = filteredItems.filter(item => (item as any).category === category);
+    return acc;
+  }, {} as Record<string, ItemWithDistance[]>);
+
+  // Category carousel handlers
+  const handleCategoryTouchStart = useCallback((category: string, e: React.TouchEvent) => {
+    if (!categoryTouchRefs.current[category]) {
+      categoryTouchRefs.current[category] = { startX: 0, endX: 0 };
+    }
+    categoryTouchRefs.current[category].startX = e.touches[0].clientX;
+  }, []);
+
+  const handleCategoryTouchMove = useCallback((category: string, e: React.TouchEvent) => {
+    if (!categoryTouchRefs.current[category]) {
+      categoryTouchRefs.current[category] = { startX: 0, endX: 0 };
+    }
+    categoryTouchRefs.current[category].endX = e.touches[0].clientX;
+  }, []);
+
+  const handleCategoryTouchEnd = useCallback((category: string, maxIndex: number) => {
+    const refs = categoryTouchRefs.current[category];
+    if (!refs) return;
+    
+    const diff = refs.startX - refs.endX;
+    const threshold = 50;
+    const currentIndex = categoryCarouselIndices[category] || 0;
+
+    if (diff > threshold && currentIndex < maxIndex) {
+      setCategoryCarouselIndices(prev => ({ ...prev, [category]: currentIndex + 1 }));
+    } else if (diff < -threshold && currentIndex > 0) {
+      setCategoryCarouselIndices(prev => ({ ...prev, [category]: currentIndex - 1 }));
+    }
+  }, [categoryCarouselIndices]);
 
   // Show wishlist tutorial on first visit
   useEffect(() => {
@@ -503,11 +550,13 @@ export default function BorrowPage() {
           </div>
         )}
 
-        {/* All Available Items */}
+        {/* Items by Category - Mobile Carousels, Desktop Grid */}
         <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">
-            {searchQuery ? `Search Results for "${searchQuery}"` : "All Items"}
-          </h2>
+          {searchQuery && (
+            <h2 className="text-xl font-bold mb-4">
+              Search Results for "{searchQuery}"
+            </h2>
+          )}
           {filteredItems.length === 0 && searchQuery ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div
@@ -554,7 +603,151 @@ export default function BorrowPage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <>
+              {/* Mobile: Category Carousels */}
+              <div className="md:hidden space-y-6">
+                {ITEM_CATEGORIES.map((category) => {
+                  const categoryItems = itemsByCategory[category] || [];
+                  if (categoryItems.length === 0) return null;
+                  
+                  const currentIndex = categoryCarouselIndices[category] || 0;
+                  const currentItem = categoryItems[currentIndex];
+                  
+                  return (
+                    <div key={category} className="mb-6">
+                      <h3 className="text-lg font-bold mb-3 text-slate-800">{category}</h3>
+                      
+                      <div
+                        className="touch-pan-x"
+                        onTouchStart={(e) => handleCategoryTouchStart(category, e)}
+                        onTouchMove={(e) => handleCategoryTouchMove(category, e)}
+                        onTouchEnd={() => handleCategoryTouchEnd(category, categoryItems.length - 1)}
+                      >
+                        {currentItem && (
+                          <Card className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
+                            <div className="p-3">
+                              <div
+                                className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
+                                style={{ aspectRatio: "1 / 0.9" }}
+                              >
+                                {currentItem.photos && currentItem.photos[0] ? (
+                                  <img
+                                    src={currentItem.photos[0]}
+                                    alt={currentItem.name}
+                                    className="w-full h-full object-cover rounded-lg"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                                    <Camera className="h-12 w-12 text-gray-400" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <CardContent className="px-3 pt-0 pb-3">
+                              <h4 className="font-bold text-lg text-slate-800 truncate mb-1">
+                                {currentItem.name}
+                              </h4>
+                              <div className="space-y-1 mb-2">
+                                <div className="flex items-center gap-2 text-slate-700">
+                                  <MapPin className="h-4 w-4" />
+                                  <span className="text-sm">
+                                    {currentItem.city || userPostalCode || "Nearby"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-slate-700">
+                                  <span>
+                                    <span className="font-medium">Condition:</span> {currentItem.conditionRating || 8}/10
+                                  </span>
+                                  {currentItem.owner?.isVerified && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                                      Verified
+                                    </span>
+                                  )}
+                                </div>
+                                {(currentItem.isLendable || currentItem.isRentable) && (
+                                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                                    <div className="flex items-center gap-1">
+                                      <Coins className="h-4 w-4 text-teal-600" />
+                                      <span>{currentItem.shareCoinPrice || 50} ShareCoins</span>
+                                    </div>
+                                    {currentItem.isRentable && (
+                                      <>
+                                        <span className="text-slate-400">|</span>
+                                        <div className="flex items-center">
+                                          <DollarSign className="h-4 w-4 text-teal-600" />
+                                          <span>${Number(currentItem.dollarsPrice || 10).toFixed(2)}/day</span>
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                {currentItem.isLendable && (
+                                  <Button
+                                    size="sm"
+                                    className="flex-1 text-white rounded-lg text-xs"
+                                    style={{ backgroundColor: "#0DCEA1" }}
+                                    onClick={() => navigate(`/items/${currentItem.id}`)}
+                                  >
+                                    <HandHeart className="h-3 w-3 mr-1" />
+                                    Borrow
+                                  </Button>
+                                )}
+                                {currentItem.isRentable && (
+                                  <Button
+                                    size="sm"
+                                    className="flex-1 text-white rounded-lg text-xs"
+                                    style={{ backgroundColor: "#0DCEA1" }}
+                                    onClick={() => navigate(`/items/${currentItem.id}`)}
+                                  >
+                                    <DollarSign className="h-3 w-3 mr-1" />
+                                    Rent
+                                  </Button>
+                                )}
+                                {currentItem.isSwappable && (
+                                  <Button
+                                    size="sm"
+                                    className="flex-1 text-white rounded-lg text-xs"
+                                    style={{ backgroundColor: "#0DCEA1" }}
+                                    onClick={() => navigate(`/items/${currentItem.id}`)}
+                                  >
+                                    <ArrowLeftRight className="h-3 w-3 mr-1" />
+                                    Swap
+                                  </Button>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+                      
+                      {/* Dot indicators */}
+                      {categoryItems.length > 1 && (
+                        <div className="flex justify-center gap-1.5 mt-3">
+                          {categoryItems.slice(0, 8).map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCategoryCarouselIndices(prev => ({ ...prev, [category]: index }))}
+                              className={`w-2 h-2 rounded-full transition-all ${
+                                index === currentIndex 
+                                  ? 'bg-teal-500 w-4' 
+                                  : 'bg-gray-300'
+                              }`}
+                            />
+                          ))}
+                          {categoryItems.length > 8 && (
+                            <span className="text-xs text-gray-400 ml-1">+{categoryItems.length - 8}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Desktop: Grid Layout */}
+              <div className="hidden md:grid md:grid-cols-4 gap-6">
               {filteredItems.map((item) => (
                 <Card
                   key={item.id}
@@ -673,7 +866,8 @@ export default function BorrowPage() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+              </div>
+            </>
           )}
         </div>
 

@@ -4,7 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal } from "lucide-react";
+import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { useState } from "react";
 import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
@@ -40,6 +43,10 @@ interface ItemRequest {
   depositStatus: string | null;
   courierAddress: string | null;
   courierPickupWindow: string | null;
+  negotiationStatus: string | null;
+  counterDeliveryMethod: string | null;
+  counterDepositMethod: string | null;
+  counterProposedAt: string | null;
   item: {
     id: number;
     name: string;
@@ -148,6 +155,12 @@ export default function RequestsPage() {
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ItemRequest | null>(null);
+  
+  // Counter-proposal state
+  const [showCounterProposalModal, setShowCounterProposalModal] = useState(false);
+  const [counterProposalRequest, setCounterProposalRequest] = useState<ItemRequest | null>(null);
+  const [proposedDeliveryMethod, setProposedDeliveryMethod] = useState<string>("in_person");
+  const [proposedDepositMethod, setProposedDepositMethod] = useState<string>("in_app");
 
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
@@ -181,6 +194,55 @@ export default function RequestsPage() {
       toast({
         title: "Request Declined",
         description: "You've declined this request",
+      });
+    },
+  });
+
+  // Counter-proposal mutation (for lenders)
+  const counterProposalMutation = useMutation({
+    mutationFn: async ({ requestId, deliveryMethod, depositMethod }: { requestId: number; deliveryMethod: string; depositMethod: string }) => {
+      const response = await apiRequest("POST", `/api/requests/${requestId}/counter-proposal`, {
+        deliveryMethod,
+        depositMethod,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      setShowCounterProposalModal(false);
+      setCounterProposalRequest(null);
+      toast({
+        title: "New Terms Proposed",
+        description: "The requester will be notified of your proposed changes.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to propose changes",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Respond to counter-proposal mutation (for requesters)
+  const respondToCounterMutation = useMutation({
+    mutationFn: async ({ requestId, accept }: { requestId: number; accept: boolean }) => {
+      const response = await apiRequest("POST", `/api/requests/${requestId}/respond-to-counter`, { accept });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      toast({
+        title: data.accept ? "Terms Accepted" : "Request Cancelled",
+        description: data.message,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to respond",
+        variant: "destructive",
       });
     },
   });
@@ -273,6 +335,23 @@ export default function RequestsPage() {
     }
   };
 
+  const handleRequestChange = (request: ItemRequest) => {
+    setCounterProposalRequest(request);
+    setProposedDeliveryMethod(request.deliveryMethod || "in_person");
+    setProposedDepositMethod(request.depositMethod || "in_app");
+    setShowCounterProposalModal(true);
+  };
+
+  const handleSubmitCounterProposal = () => {
+    if (counterProposalRequest) {
+      counterProposalMutation.mutate({
+        requestId: counterProposalRequest.id,
+        deliveryMethod: proposedDeliveryMethod,
+        depositMethod: proposedDepositMethod,
+      });
+    }
+  };
+
   const incomingRequests = requests.filter(
     (r) => r.item.ownerId === user?.id && r.status === "PENDING"
   );
@@ -354,11 +433,25 @@ export default function RequestsPage() {
                         )}
 
                         {request.startDate && request.endDate && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                             <Clock className="h-4 w-4" />
                             <span>
                               {format(new Date(request.startDate), "MMM d")} - {format(new Date(request.endDate), "MMM d, yyyy")}
                             </span>
+                          </div>
+                        )}
+
+                        {/* Show proposed terms */}
+                        {(request.requestType === "BORROW" || request.requestType === "RENT") && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            <Badge variant="secondary" className="text-xs">
+                              <CreditCard className="h-3 w-3 mr-1" />
+                              Deposit: {request.depositMethod === "in_app" ? "In-app" : "In-person"}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              <Truck className="h-3 w-3 mr-1" />
+                              Delivery: {request.deliveryMethod === "courier" ? "Uber" : "Pick up"}
+                            </Badge>
                           </div>
                         )}
 
@@ -370,6 +463,15 @@ export default function RequestsPage() {
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRequestChange(request)}
+                            className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                          >
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                            Request Change
                           </Button>
                           <Button
                             size="sm"
@@ -425,16 +527,56 @@ export default function RequestsPage() {
                           <div>
                             <h3 className="font-semibold text-lg">{request.item.name}</h3>
                             <Badge 
-                              variant={request.status === "ACCEPTED" ? "default" : request.status === "DECLINED" ? "destructive" : "secondary"}
+                              variant={request.status === "ACCEPTED" ? "default" : request.status === "DECLINED" || request.status === "CANCELLED" ? "destructive" : "secondary"}
                               className="mt-2"
                             >
-                              {request.status}
+                              {request.negotiationStatus === "counter_proposed" ? "NEW TERMS PROPOSED" : request.status}
                             </Badge>
                           </div>
                           <Badge variant="outline">
                             {request.requestType}
                           </Badge>
                         </div>
+
+                        {/* Counter-proposal notification for requester */}
+                        {request.negotiationStatus === "counter_proposed" && (
+                          <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm font-medium text-amber-800 mb-2">
+                              <RefreshCw className="h-4 w-4 inline mr-1" />
+                              Lender proposed new terms
+                            </p>
+                            <div className="flex gap-2 mb-3">
+                              <Badge variant="secondary" className="text-xs">
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                Deposit: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                <Truck className="h-3 w-3 mr-1" />
+                                Delivery: {request.counterDeliveryMethod === "courier" ? "Uber" : "Pick up"}
+                              </Badge>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
+                                disabled={respondToCounterMutation.isPending}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Accept Terms
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: false })}
+                                disabled={respondToCounterMutation.isPending}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Decline
+                              </Button>
+                            </div>
+                          </div>
+                        )}
 
                         {request.startDate && request.endDate && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
@@ -743,6 +885,87 @@ export default function RequestsPage() {
           }}
         />
       )}
+
+      {/* Counter-Proposal Modal (for lenders) */}
+      <Dialog open={showCounterProposalModal} onOpenChange={setShowCounterProposalModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-amber-500" />
+              Propose New Terms
+            </DialogTitle>
+            <DialogDescription>
+              Suggest different deposit or delivery options for this request
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Current terms */}
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground mb-2">Requester's proposed terms:</p>
+              <div className="flex gap-2">
+                <Badge variant="outline" className="text-xs">
+                  Deposit: {counterProposalRequest?.depositMethod === "in_app" ? "In-app" : "In-person"}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  Delivery: {counterProposalRequest?.deliveryMethod === "courier" ? "Uber" : "Pick up"}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Deposit method selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Deposit Method</Label>
+              <RadioGroup value={proposedDepositMethod} onValueChange={setProposedDepositMethod}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="in_app" id="deposit-inapp" />
+                  <Label htmlFor="deposit-inapp" className="font-normal cursor-pointer">
+                    In-app (secure payment hold)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="in_person" id="deposit-inperson" />
+                  <Label htmlFor="deposit-inperson" className="font-normal cursor-pointer">
+                    In-person (cash at handoff)
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Delivery method selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Delivery Method</Label>
+              <RadioGroup value={proposedDeliveryMethod} onValueChange={setProposedDeliveryMethod}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="in_person" id="delivery-pickup" />
+                  <Label htmlFor="delivery-pickup" className="font-normal cursor-pointer">
+                    Pick up in person
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="courier" id="delivery-courier" />
+                  <Label htmlFor="delivery-courier" className="font-normal cursor-pointer">
+                    Uber delivery
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowCounterProposalModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmitCounterProposal}
+              disabled={counterProposalMutation.isPending}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              {counterProposalMutation.isPending ? "Sending..." : "Send Proposal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

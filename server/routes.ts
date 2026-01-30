@@ -3549,8 +3549,8 @@ Respond with ONLY the category name, nothing else.`
       type: "terms_counter_proposed",
       title: "Lender Proposed New Terms",
       message: `The owner has proposed different terms for your ${request.item_requests.requestType?.toLowerCase()} request. Please review and respond.`,
-      relatedItemId: request.items.id,
-      relatedRequestId: requestId,
+      itemId: request.items.id,
+      requestId: requestId,
     });
 
     res.json({
@@ -3609,8 +3609,8 @@ Respond with ONLY the category name, nothing else.`
         type: "terms_accepted",
         title: "Terms Accepted",
         message: `The requester has accepted your proposed terms. You can now accept or decline the request.`,
-        relatedItemId: request.items.id,
-        relatedRequestId: requestId,
+        itemId: request.items.id,
+        requestId: requestId,
       });
 
       res.json({
@@ -3636,8 +3636,8 @@ Respond with ONLY the category name, nothing else.`
         type: "terms_declined",
         title: "Terms Declined",
         message: `The requester declined your proposed terms and cancelled the request.`,
-        relatedItemId: request.items.id,
-        relatedRequestId: requestId,
+        itemId: request.items.id,
+        requestId: requestId,
       });
 
       res.json({

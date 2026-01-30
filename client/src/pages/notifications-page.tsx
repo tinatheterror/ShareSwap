@@ -42,7 +42,32 @@ export default function NotificationsPage() {
       if (!response.ok) throw new Error('Failed to mark as read');
       return response.json();
     },
-    onSuccess: () => {
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/notifications'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/notifications/unread-count'] });
+      
+      const previousNotifications = queryClient.getQueryData<SelectNotification[]>(['/api/notifications']);
+      const previousCount = queryClient.getQueryData<{ count: number }>(['/api/notifications/unread-count']);
+      
+      queryClient.setQueryData<SelectNotification[]>(['/api/notifications'], (old) =>
+        old?.map((n) => n.id === id ? { ...n, isRead: true } : n)
+      );
+      
+      queryClient.setQueryData<{ count: number }>(['/api/notifications/unread-count'], (old) => ({
+        count: Math.max(0, (old?.count ?? 1) - 1)
+      }));
+      
+      return { previousNotifications, previousCount };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(['/api/notifications'], context.previousNotifications);
+      }
+      if (context?.previousCount) {
+        queryClient.setQueryData(['/api/notifications/unread-count'], context.previousCount);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
     },

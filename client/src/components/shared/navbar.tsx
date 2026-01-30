@@ -78,7 +78,7 @@ function NotificationBell() {
     return () => clearInterval(interval);
   }, [user?.id, queryClient]);
 
-  // Mark notification as read
+  // Mark notification as read with optimistic update
   const markAsReadMutation = useMutation({
     mutationFn: (notificationId: number) => {
       return fetch(`/api/notifications/${notificationId}/read`, {
@@ -86,7 +86,32 @@ function NotificationBell() {
         credentials: "include",
       });
     },
-    onSuccess: () => {
+    onMutate: async (notificationId: number) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/notifications"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/notifications/unread-count"] });
+      
+      const previousNotifications = queryClient.getQueryData<Notification[]>(["/api/notifications"]);
+      const previousCount = queryClient.getQueryData<{ count: number }>(["/api/notifications/unread-count"]);
+      
+      queryClient.setQueryData<Notification[]>(["/api/notifications"], (old) =>
+        old?.map((n) => n.id === notificationId ? { ...n, isRead: true } : n)
+      );
+      
+      queryClient.setQueryData<{ count: number }>(["/api/notifications/unread-count"], (old) => ({
+        count: Math.max(0, (old?.count ?? 1) - 1)
+      }));
+      
+      return { previousNotifications, previousCount };
+    },
+    onError: (err, notificationId, context) => {
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(["/api/notifications"], context.previousNotifications);
+      }
+      if (context?.previousCount) {
+        queryClient.setQueryData(["/api/notifications/unread-count"], context.previousCount);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
       queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
     },

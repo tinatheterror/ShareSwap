@@ -15,6 +15,7 @@ import {
   ArrowLeftRight,
   Info,
   Clock,
+  Gift,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
@@ -29,7 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-type RequestType = "BORROW" | "RENT" | "SWAP";
+type RequestType = "BORROW" | "RENT" | "SWAP" | "GIFT";
 
 type ItemRequest = {
   id: number;
@@ -80,6 +81,7 @@ export default function ItemDetailsPage() {
   const hasPendingBorrow = pendingRequests.some((r) => r.requestType === "BORROW");
   const hasPendingRent = pendingRequests.some((r) => r.requestType === "RENT");
   const hasPendingSwap = pendingRequests.some((r) => r.requestType === "SWAP");
+  const hasPendingGift = pendingRequests.some((r) => r.requestType === "GIFT");
   const hasAnyPending = pendingRequests.length > 0;
 
   if (!item) return null;
@@ -239,8 +241,46 @@ export default function ItemDetailsPage() {
       </div>
     ) : null;
 
+    const giftOption = item.isGift ? (
+      <div key="gift" className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <div>
+          <p className="font-medium">Gift</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Gift className="h-4 w-4 text-pink-500" />
+            <span className="text-lg font-bold text-pink-600">
+              Free to claim
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            This item is being given away for free
+          </p>
+        </div>
+        {hasPendingGift ? (
+          <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+            <Clock className="h-4 w-4 mr-1" />
+            Request Pending
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => setRequestType("GIFT")} 
+            className="w-full sm:w-40 bg-pink-500 hover:bg-pink-600"
+            disabled={hasAnyPending}
+          >
+            <Gift className="h-4 w-4 mr-1" />
+            Send Gift Request
+          </Button>
+        )}
+      </div>
+    ) : null;
+
     // Order options based on context
     const options: JSX.Element[] = [];
+
+    // Gift items only show the gift option
+    if (giftOption) {
+      options.push(giftOption);
+      return options;
+    }
 
     if (prioritizedContext === "swap") {
       if (swapOption) options.push(swapOption);

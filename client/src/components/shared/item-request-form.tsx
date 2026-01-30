@@ -33,6 +33,7 @@ import {
   BadgeCheck,
   Truck,
   MapPin,
+  Gift,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -59,7 +60,7 @@ const formSchema = z.object({
 
 type Props = {
   item: SelectItem;
-  requestType: "BORROW" | "RENT" | "SWAP";
+  requestType: "BORROW" | "RENT" | "SWAP" | "GIFT";
   isOpen: boolean;
   onClose: () => void;
   swapOfferItem?: SelectItem | null;
@@ -126,6 +127,8 @@ export function ItemRequestForm({
       case "quick":
         if (requestType === "SWAP") {
           message = `Hi ${ownerName}! I would like to swap my ${myItemName} for your ${itemName} 😊😊`;
+        } else if (requestType === "GIFT") {
+          message = `Hi ${ownerName}! I would love to receive your ${itemName}. Thank you for sharing! 😊😊`;
         } else {
           message = `Hi ${ownerName}! I would like to ${action} your ${itemName}${dateRange}. 😊😊`;
         }
@@ -133,6 +136,8 @@ export function ItemRequestForm({
       case "polite":
         if (requestType === "SWAP") {
           message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to swap my ${myItemName} for your ${itemName}. Would this work for you?\n\nThank you so much! 😊😊`;
+        } else if (requestType === "GIFT") {
+          message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to receive your ${itemName}. Thank you so much for your generosity!\n\nBest wishes! 😊😊`;
         } else {
           message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to ${action} your ${itemName}${dateRange}. Would this work for you?\n\nThank you so much! 😊😊`;
         }
@@ -140,6 +145,8 @@ export function ItemRequestForm({
       case "detailed":
         if (requestType === "SWAP") {
           message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in swapping items with you. I would like to trade my ${myItemName} for your ${itemName}. I'll make sure my item is in the condition stated.\n\nPlease let me know if this works for you!\n\nBest regards! 😊😊`;
+        } else if (requestType === "GIFT") {
+          message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in receiving your ${itemName}. I would really appreciate it and will put it to good use.\n\nThank you so much for your generosity!\n\nBest regards! 😊😊`;
         } else {
           message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in your ${itemName}. I would like to ${action} it${dateRange}. I'll take great care of it and return it in perfect condition.\n\nPlease let me know if these dates work for you!\n\nBest regards! 😊😊`;
         }
@@ -215,7 +222,9 @@ export function ItemRequestForm({
       <DialogContent className="sm:max-w-[425px] bg-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="truncate pr-6">
-            Request to {requestType.toLowerCase()} {item.name}
+            {requestType === "GIFT" 
+              ? `Request ${item.name} as a gift`
+              : `Request to ${requestType.toLowerCase()} ${item.name}`}
           </DialogTitle>
         </DialogHeader>
 
@@ -347,11 +356,24 @@ export function ItemRequestForm({
           </div>
         )}
 
+        {requestType === "GIFT" && (
+          <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2 text-pink-600 font-medium">
+              <Gift className="h-4 w-4" />
+              Gift Request
+            </div>
+            <p className="text-sm text-pink-700">
+              You're requesting <span className="font-medium">{item.name}</span> as a free gift from the owner. 
+              No ShareCoins or payment required!
+            </p>
+          </div>
+        )}
+
         <VerificationModal />
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((data) => {
-              if (requestType === "SWAP") {
+              if (requestType === "SWAP" || requestType === "GIFT") {
                 createRequestMutation.mutate(data);
               } else {
                 requireVerification(() => createRequestMutation.mutate(data));
@@ -359,8 +381,8 @@ export function ItemRequestForm({
             })}
             className="space-y-4 mt-4"
           >
-            {/* Date Selection - Hide for SWAP */}
-            {requestType !== "SWAP" && (
+            {/* Date Selection - Hide for SWAP and GIFT */}
+            {requestType !== "SWAP" && requestType !== "GIFT" && (
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}

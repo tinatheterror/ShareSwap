@@ -4901,7 +4901,7 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
-      const { conditionRating, conditionNotes } = req.body;
+      const { conditionRating, conditionNotes, sameCondition, triggerDispute } = req.body;
       
       const [request] = await db
         .select()
@@ -4922,6 +4922,46 @@ Respond with ONLY the category name, nothing else.`
       // Must be return requested
       if (request.item_requests.status !== "RETURN_REQUESTED") {
         return res.status(400).json({ error: "No return pending" });
+      }
+
+      // Handle dispute if owner reports damage
+      if (triggerDispute) {
+        // Update request to DISPUTED status, hold deposit
+        const [disputed] = await db
+          .update(itemRequests)
+          .set({
+            status: "DISPUTED",
+            returnConfirmedAt: new Date(),
+            returnConditionRating: conditionRating || 1,
+            returnConditionNotes: conditionNotes,
+            returnDisputeTriggered: true,
+            returnDisputeReason: conditionNotes || "Item returned in damaged condition",
+            depositStatus: "disputed",
+          })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+
+        // Mark item as unavailable until dispute resolved
+        await db
+          .update(items)
+          .set({ isAvailable: false })
+          .where(eq(items.id, request.items.id));
+
+        // Create notification for borrower about the dispute
+        await db.insert(notifications).values({
+          userId: request.item_requests.requesterId,
+          type: "dispute_opened",
+          title: "Dispute Opened",
+          message: `${req.user.username} has opened a dispute for "${request.items.name}". The deposit is on hold pending review.`,
+          link: `/requests`,
+        });
+
+        return res.json({
+          success: true,
+          request: disputed,
+          disputeOpened: true,
+          message: "Dispute opened. The deposit is held pending review. We'll contact both parties to resolve this.",
+        });
       }
 
       // Release the deposit via Stripe

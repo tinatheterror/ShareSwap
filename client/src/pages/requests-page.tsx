@@ -441,13 +441,15 @@ export default function RequestsPage() {
                           </div>
                         )}
 
-                        {/* Show proposed terms */}
+                        {/* Show proposed terms - deposit method only for BORROW, delivery for both */}
                         {(request.requestType === "BORROW" || request.requestType === "RENT") && (
                           <div className="flex flex-wrap gap-2 mb-3">
-                            <Badge variant="secondary" className="text-xs">
-                              <CreditCard className="h-3 w-3 mr-1" />
-                              Deposit: {request.depositMethod === "in_app" ? "In-app" : "In-person"}
-                            </Badge>
+                            {request.requestType === "BORROW" && (
+                              <Badge variant="secondary" className="text-xs">
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                Deposit: {request.depositMethod === "in_app" ? "In-app" : "In-person"}
+                              </Badge>
+                            )}
                             <Badge variant="secondary" className="text-xs">
                               <Truck className="h-3 w-3 mr-1" />
                               Delivery: {request.deliveryMethod === "courier" ? "Uber" : "Pick up"}
@@ -463,9 +465,11 @@ export default function RequestsPage() {
                               Waiting for requester to respond to your proposed terms
                             </p>
                             <div className="flex gap-2 mt-2">
-                              <Badge variant="outline" className="text-xs">
-                                Proposed: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"} deposit
-                              </Badge>
+                              {request.requestType === "BORROW" && (
+                                <Badge variant="outline" className="text-xs">
+                                  Proposed: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"} deposit
+                                </Badge>
+                              )}
                               <Badge variant="outline" className="text-xs">
                                 {request.counterDeliveryMethod === "courier" ? "Uber" : "Pick up"} delivery
                               </Badge>
@@ -580,10 +584,12 @@ export default function RequestsPage() {
                               Lender proposed new terms
                             </p>
                             <div className="flex gap-2 mb-3">
-                              <Badge variant="secondary" className="text-xs">
-                                <CreditCard className="h-3 w-3 mr-1" />
-                                Deposit: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"}
-                              </Badge>
+                              {request.requestType === "BORROW" && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <CreditCard className="h-3 w-3 mr-1" />
+                                  Deposit: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"}
+                                </Badge>
+                              )}
                               <Badge variant="secondary" className="text-xs">
                                 <Truck className="h-3 w-3 mr-1" />
                                 Delivery: {request.counterDeliveryMethod === "courier" ? "Uber" : "Pick up"}
@@ -929,7 +935,9 @@ export default function RequestsPage() {
               Propose New Terms
             </DialogTitle>
             <DialogDescription>
-              Suggest different deposit or delivery options for this request
+              {counterProposalRequest?.requestType === "BORROW" 
+                ? "Suggest different deposit or delivery options for this request"
+                : "Suggest a different delivery option for this rental request"}
             </DialogDescription>
           </DialogHeader>
 
@@ -938,33 +946,37 @@ export default function RequestsPage() {
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-muted-foreground mb-2">Requester's proposed terms:</p>
               <div className="flex gap-2">
-                <Badge variant="outline" className="text-xs">
-                  Deposit: {counterProposalRequest?.depositMethod === "in_app" ? "In-app" : "In-person"}
-                </Badge>
+                {counterProposalRequest?.requestType === "BORROW" && (
+                  <Badge variant="outline" className="text-xs">
+                    Deposit: {counterProposalRequest?.depositMethod === "in_app" ? "In-app" : "In-person"}
+                  </Badge>
+                )}
                 <Badge variant="outline" className="text-xs">
                   Delivery: {counterProposalRequest?.deliveryMethod === "courier" ? "Uber" : "Pick up"}
                 </Badge>
               </div>
             </div>
 
-            {/* Deposit method selection */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Deposit Method</Label>
-              <RadioGroup value={proposedDepositMethod} onValueChange={setProposedDepositMethod}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="in_app" id="deposit-inapp" />
-                  <Label htmlFor="deposit-inapp" className="font-normal cursor-pointer">
-                    In-app (secure payment hold)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="in_person" id="deposit-inperson" />
-                  <Label htmlFor="deposit-inperson" className="font-normal cursor-pointer">
-                    In-person (cash at handoff)
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
+            {/* Deposit method selection - only for BORROW */}
+            {counterProposalRequest?.requestType === "BORROW" && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Deposit Method</Label>
+                <RadioGroup value={proposedDepositMethod} onValueChange={setProposedDepositMethod}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="in_app" id="deposit-inapp" />
+                    <Label htmlFor="deposit-inapp" className="font-normal cursor-pointer">
+                      In-app (secure payment hold)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="in_person" id="deposit-inperson" />
+                    <Label htmlFor="deposit-inperson" className="font-normal cursor-pointer">
+                      In-person (cash at handoff)
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
 
             {/* Delivery method selection */}
             <div className="space-y-3">

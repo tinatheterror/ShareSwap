@@ -621,7 +621,7 @@ export default function RequestsPage() {
                           </div>
                         )}
 
-                        {request.requestType === "BORROW" && (
+                        {(request.requestType === "BORROW" || request.requestType === "RENT") && (
                           <div className="flex gap-2 mt-3">
                             {request.status === "ACCEPTED" && (
                               <Button
@@ -633,7 +633,7 @@ export default function RequestsPage() {
                                 className="bg-teal-600 hover:bg-teal-700"
                               >
                                 <Shield className="h-4 w-4 mr-1" />
-                                Pay Deposit
+                                {request.requestType === "RENT" ? "Pay Rental & Deposit" : "Pay Deposit"}
                               </Button>
                             )}
 

@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Settings, Shield, AlertTriangle, UserX, Mail, User, Wallet, ChevronRight } from "lucide-react";
+import { ArrowLeft, Settings, Shield, AlertTriangle, UserX, Mail, User, ChevronRight } from "lucide-react";
 import { Navbar } from "@/components/shared/navbar";
 
 export default function SettingsPage() {
@@ -125,26 +125,6 @@ export default function SettingsPage() {
               <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                 Active
               </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="mb-4 cursor-pointer hover:bg-gray-50 transition-colors"
-          onClick={() => navigate("/my-balance")}
-        >
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Wallet className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium">My Balance</p>
-                  <p className="text-sm text-gray-500">View rental earnings and request payouts</p>
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-gray-400" />
             </div>
           </CardContent>
         </Card>

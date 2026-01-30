@@ -47,6 +47,13 @@ interface ItemRequest {
   counterDeliveryMethod: string | null;
   counterDepositMethod: string | null;
   counterProposedAt: string | null;
+  ownerConfirmedHandoff: boolean | null;
+  borrowerConfirmedHandoff: boolean | null;
+  handoffConfirmDeadline: string | null;
+  ownerConfirmedReturn: boolean | null;
+  borrowerConfirmedReturn: boolean | null;
+  returnConditionOk: boolean | null;
+  returnDisputeTriggered: boolean | null;
   item: {
     id: number;
     name: string;
@@ -657,18 +664,32 @@ export default function RequestsPage() {
                               </Button>
                             )}
 
-                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING") && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowHandoffModal(true);
-                                }}
-                              >
-                                <HandMetal className="h-4 w-4 mr-1" />
-                                Confirm Received
-                              </Button>
+                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
+                              <>
+                                {/* Show waiting status if borrower already confirmed */}
+                                {request.status === "AWAITING_HANDOFF_CONFIRM" && request.borrowerConfirmedHandoff && (
+                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Waiting for owner
+                                  </Badge>
+                                )}
+                                {/* Show confirm button if borrower hasn't confirmed yet */}
+                                {!(request.status === "AWAITING_HANDOFF_CONFIRM" && request.borrowerConfirmedHandoff) && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedRequest(request);
+                                      setShowHandoffModal(true);
+                                    }}
+                                  >
+                                    <HandMetal className="h-4 w-4 mr-1" />
+                                    {request.deliveryMethod === "courier" 
+                                      ? "Confirm Received (after delivery)" 
+                                      : "Confirm Handoff (together)"}
+                                  </Button>
+                                )}
+                              </>
                             )}
 
                             {request.status === "IN_PROGRESS" && (
@@ -702,7 +723,7 @@ export default function RequestsPage() {
         </div>
 
         {/* Active Transactions as Owner */}
-        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "IN_PROGRESS", "RETURN_REQUESTED"].includes(r.status)).length > 0 && (
+        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED"].includes(r.status)).length > 0 && (
           <div className="mt-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Package className="h-6 w-6 text-teal-600" />
@@ -710,7 +731,7 @@ export default function RequestsPage() {
             </h2>
             <div className="space-y-4">
               {requests
-                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "IN_PROGRESS", "RETURN_REQUESTED"].includes(r.status))
+                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED"].includes(r.status))
                 .map((request) => (
                   <Card key={request.id} className="bg-white border-2 border-teal-200">
                     <CardContent className="p-6">
@@ -741,18 +762,32 @@ export default function RequestsPage() {
                           </div>
 
                           <div className="flex gap-2 mt-3">
-                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING") && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowHandoffModal(true);
-                                }}
-                              >
-                                <HandMetal className="h-4 w-4 mr-1" />
-                                Confirm Handoff
-                              </Button>
+                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
+                              <>
+                                {/* Show waiting status if owner already confirmed */}
+                                {request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff && (
+                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Waiting for borrower
+                                  </Badge>
+                                )}
+                                {/* Show confirm button if owner hasn't confirmed yet */}
+                                {!(request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff) && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedRequest(request);
+                                      setShowHandoffModal(true);
+                                    }}
+                                  >
+                                    <HandMetal className="h-4 w-4 mr-1" />
+                                    {request.deliveryMethod === "courier" 
+                                      ? "Confirm Sent (via courier)" 
+                                      : "Confirm Handoff (together)"}
+                                  </Button>
+                                )}
+                              </>
                             )}
 
                             {request.status === "RETURN_REQUESTED" && (
@@ -896,13 +931,16 @@ export default function RequestsPage() {
           itemName={selectedRequest.item.name}
           shareCoinAmount={parseFloat(selectedRequest.item.shareCoinPrice || "5")}
           userRole={selectedRequest.requesterId === user?.id ? "borrower" : "owner"}
+          deliveryMethod={selectedRequest.deliveryMethod === "courier" ? "courier" : "in_person"}
+          otherPartyConfirmed={
+            selectedRequest.requesterId === user?.id 
+              ? !!selectedRequest.ownerConfirmedHandoff 
+              : !!selectedRequest.borrowerConfirmedHandoff
+          }
+          requestType={selectedRequest.requestType as "BORROW" | "RENT"}
           onSuccess={() => {
             setShowHandoffModal(false);
             setSelectedRequest(null);
-            toast({
-              title: "Handoff confirmed!",
-              description: "The borrow period has officially started.",
-            });
           }}
         />
       )}

@@ -62,6 +62,31 @@ const ITEM_CATEGORIES = [
   "Tools & Equipment",
 ] as const;
 
+const inferCategory = (itemName: string): string => {
+  const name = itemName.toLowerCase();
+  
+  if (/baby|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier/i.test(name)) {
+    return "Baby & Kids";
+  }
+  if (/clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|accessory|jewelry|watch/i.test(name)) {
+    return "Clothing & Accessories";
+  }
+  if (/phone|tablet|laptop|computer|camera|tv|television|speaker|headphone|charger|electronic|gaming|console|monitor/i.test(name)) {
+    return "Electronics";
+  }
+  if (/camping|tent|bike|bicycle|golf|sports|game|book|guitar|instrument|hobby|collect|fishing|kayak|ski|snowboard/i.test(name)) {
+    return "Hobbies & Collectibles";
+  }
+  if (/kitchen|blender|mixer|pot|pan|plate|utensil|furniture|chair|table|lamp|decor|vacuum|appliance|oven|microwave|fridge|toaster|coffee/i.test(name)) {
+    return "Home & Kitchen";
+  }
+  if (/drill|saw|hammer|tool|wrench|screwdriver|mower|lawn|garden|ladder|equipment|pressure washer|generator|chainsaw/i.test(name)) {
+    return "Tools & Equipment";
+  }
+  
+  return "Other";
+};
+
 export default function BorrowPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<{
@@ -292,9 +317,12 @@ export default function BorrowPage() {
     }
   }, [giftCarouselIndex, filteredGiftItems.length]);
 
-  // Group items by category
+  // Group items by category (infer from name if no category set)
   const itemsByCategory = ITEM_CATEGORIES.reduce((acc, category) => {
-    acc[category] = filteredItems.filter(item => (item as any).category === category);
+    acc[category] = filteredItems.filter(item => {
+      const itemCategory = (item as any).category || inferCategory(item.name);
+      return itemCategory === category;
+    });
     return acc;
   }, {} as Record<string, ItemWithDistance[]>);
 

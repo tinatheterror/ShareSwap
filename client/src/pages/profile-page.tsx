@@ -716,15 +716,15 @@ export default function ProfilePage() {
                         </>
                       )}
                     </Button>
-                    <Link href="/my-balance">
-                      <Button variant="outline" size="sm" className="flex-1 sm:w-full justify-center sm:justify-start">
+                    <Link href="/my-balance" className="flex-1 sm:w-full">
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:justify-start">
                         <Wallet className="h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">My Balance</span>
                         <span className="sm:hidden">Balance</span>
                       </Button>
                     </Link>
-                    <Link href="/settings">
-                      <Button variant="outline" size="sm" className="flex-1 sm:w-full justify-center sm:justify-start">
+                    <Link href="/settings" className="flex-1 sm:w-full">
+                      <Button variant="outline" size="sm" className="w-full justify-center sm:justify-start">
                         <Settings className="h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">Account Settings</span>
                         <span className="sm:hidden">Account</span>

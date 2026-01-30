@@ -140,12 +140,12 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                       <Coins className="h-4 w-4 text-teal-600" />
                       <span>{item.shareCoinPrice || 50} ShareCoins</span>
                     </div>
-                    {item.isRentable && item.dollarsPrice && (
+                    {item.isRentable && (
                       <>
                         <span className="text-slate-400">|</span>
                         <div className="flex items-center">
                           <DollarSign className="h-4 w-4 text-teal-600" />
-                          <span>{item.dollarsPrice}/day</span>
+                          <span>${Number(item.dollarsPrice || 10).toFixed(2)}/day</span>
                         </div>
                       </>
                     )}

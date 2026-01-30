@@ -524,11 +524,11 @@ export default function ProfilePage() {
                           <div className="flex items-center gap-2">
                             <Coins className="h-4 w-4 text-teal-600" />
                             <span>{item.shareCoinPrice || 50} ShareCoins</span>
-                            {item.isRentable && item.dollarsPrice && (
+                            {item.isRentable && (
                               <>
                                 <span className="text-slate-400">|</span>
                                 <DollarSign className="h-4 w-4 text-teal-600" />
-                                <span>${item.dollarsPrice}/day</span>
+                                <span>${Number(item.dollarsPrice || 10).toFixed(2)}/day</span>
                               </>
                             )}
                           </div>

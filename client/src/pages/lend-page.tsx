@@ -1112,7 +1112,7 @@ export default function LendPage() {
                   {/* Mobile Photos Section - shown only on small screens */}
                   <div className="lg:hidden border-t pt-4">
                     <h3 className="font-medium mb-2">Photos</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
+                    <p className="text-xs text-muted-foreground mb-4">
                       Minimum 1 photo required. AI needs it to valuate your item
                       more accurately.
                     </p>
@@ -2288,13 +2288,21 @@ export default function LendPage() {
                           // Send notification to wishlist owner
                           if (listedItemData && selectedWishlistMatch) {
                             try {
-                              await apiRequest("POST", "/api/wishlist-match-notification", {
-                                itemId: listedItemData.id,
-                                wishlistId: selectedWishlistMatch.id,
-                                wishlistOwnerId: selectedWishlistMatch.userId,
-                              });
+                              await apiRequest(
+                                "POST",
+                                "/api/wishlist-match-notification",
+                                {
+                                  itemId: listedItemData.id,
+                                  wishlistId: selectedWishlistMatch.id,
+                                  wishlistOwnerId: selectedWishlistMatch.userId,
+                                },
+                              );
                               // Show confirmation modal
-                              setMatchedRequesterName(selectedWishlistMatch.username || selectedWishlistMatch.firstName || "this neighbour");
+                              setMatchedRequesterName(
+                                selectedWishlistMatch.username ||
+                                  selectedWishlistMatch.firstName ||
+                                  "this neighbour",
+                              );
                               setShowMatchingModal(false);
                               setShowMatchConfirmation(true);
                             } catch (error) {
@@ -2347,12 +2355,15 @@ export default function LendPage() {
                     </div>
                   </motion.div>
                   <h2 className="text-xl font-bold">Nice!</h2>
-                  <p className="text-white/90 mt-1">You matched with {matchedRequesterName}</p>
+                  <p className="text-white/90 mt-1">
+                    You matched with {matchedRequesterName}
+                  </p>
                 </div>
-                
+
                 <div className="p-6 text-center">
                   <p className="text-gray-600 mb-6">
-                    We've let them know your item matches what they're looking for. If they want it, they'll send you a request.
+                    We've let them know your item matches what they're looking
+                    for. If they want it, they'll send you a request.
                   </p>
                   <Button
                     onClick={() => {

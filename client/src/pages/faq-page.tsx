@@ -374,7 +374,7 @@ export default function FAQPage() {
                       Platform Fees
                     </p>
                     <p className="text-xs text-gray-500">
-                      0% platform fee for 2025. Only 3% payment processing.
+                      0% platform fee for 2026. Only 3% payment processing.
                     </p>
                   </div>
                   <div>
@@ -1538,15 +1538,25 @@ export default function FAQPage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">
                   <p>
-                    When someone rents your item, the payment is held securely until the rental is completed.
+                    When someone rents your item, the payment is held securely
+                    until the rental is completed.
                   </p>
                   <div className="space-y-2">
                     <p className="font-medium text-gray-700">How it works:</p>
                     <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li>Renter pays upfront (rental fee + security deposit)</li>
-                      <li>Payment is held securely — you'll see "Payment Secured"</li>
-                      <li>After the item is safely returned and confirmed, your earnings are released</li>
-                      <li>Earnings appear in your balance (Settings → My Balance)</li>
+                      <li>
+                        Renter pays upfront (rental fee + security deposit)
+                      </li>
+                      <li>
+                        Payment is held securely — you'll see "Payment Secured"
+                      </li>
+                      <li>
+                        After the item is safely returned and confirmed, your
+                        earnings are released
+                      </li>
+                      <li>
+                        Earnings appear in your balance (Settings → My Balance)
+                      </li>
                     </ul>
                   </div>
                   <div className="space-y-2">
@@ -1554,11 +1564,15 @@ export default function FAQPage() {
                     <ul className="list-disc list-inside space-y-1 text-sm">
                       <li>Go to Settings → My Balance</li>
                       <li>Tap "Cash Out" when you have $10 or more</li>
-                      <li>Funds will be deposited to your bank within 2-3 business days</li>
+                      <li>
+                        Funds will be deposited to your bank within 2-3 business
+                        days
+                      </li>
                     </ul>
                   </div>
                   <p className="text-sm italic text-gray-500">
-                    A 3% payment processing fee is deducted from earnings. Platform fee is 0% for 2025.
+                    A 3% payment processing fee is deducted from earnings.
+                    Platform fee is 0% for 2026.
                   </p>
                 </AccordionContent>
               </AccordionItem>

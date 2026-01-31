@@ -95,7 +95,7 @@ export default function HomePage() {
       
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-8 md:py-8 flex items-center justify-center overflow-hidden">
         <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 mt-6 md:mt-0">
             <h1 className="text-4xl font-bold tracking-tight mb-8 text-center">
               <div>Your Community</div>
               <div>ShareChest</div>

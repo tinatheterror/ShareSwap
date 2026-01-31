@@ -390,7 +390,7 @@ export default function BorrowPage() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 pb-16 sm:py-10">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
             <div className="flex-1">
-              <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black mt-4 sm:mt-0">
+              <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
                 Browse the community ShareChest
               </h1>
               <p className="text-[11px] sm:text-base text-black/90">

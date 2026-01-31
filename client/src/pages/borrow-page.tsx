@@ -318,10 +318,17 @@ export default function BorrowPage() {
   }, [giftCarouselIndex, filteredGiftItems.length]);
 
   // Group items by category (infer from name if no category set)
+  // Sort items with photos first within each category
   const itemsByCategory = ITEM_CATEGORIES.reduce((acc, category) => {
-    acc[category] = filteredItems.filter(item => {
+    const categoryItems = filteredItems.filter(item => {
       const itemCategory = (item as any).category || inferCategory(item.name);
       return itemCategory === category;
+    });
+    // Sort: items with photos first
+    acc[category] = categoryItems.sort((a, b) => {
+      const aHasPhoto = a.photos && a.photos.length > 0 && a.photos[0] ? 1 : 0;
+      const bHasPhoto = b.photos && b.photos.length > 0 && b.photos[0] ? 1 : 0;
+      return bHasPhoto - aHasPhoto;
     });
     return acc;
   }, {} as Record<string, ItemWithDistance[]>);

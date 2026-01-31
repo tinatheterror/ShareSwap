@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw } from "lucide-react";
+import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw, Gift } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -150,6 +151,7 @@ export default function RequestsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const { requireVerification, VerificationModal } = useVerification();
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -180,9 +182,19 @@ export default function RequestsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      setShowCelebration(true);
+      if (acceptingGiftRequest) {
+        toast({
+          title: "Gift Accepted!",
+          description: "Chat opened to arrange pickup or delivery.",
+        });
+        navigate(`/chat/${acceptingGiftRequest.requesterId}`);
+        setAcceptingGiftRequest(null);
+      } else {
+        setShowCelebration(true);
+      }
     },
     onError: (error: any) => {
+      setAcceptingGiftRequest(null);
       toast({
         title: "Error",
         description: error.message || "Failed to accept request",
@@ -254,10 +266,76 @@ export default function RequestsPage() {
     },
   });
 
+  // Gift handoff confirmation mutations
+  const confirmGiftReceivedMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const response = await apiRequest("POST", `/api/requests/${requestId}/confirm-gift-handoff`, { role: "receiver" });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      if (data.completed) {
+        setShowCelebration(true);
+        toast({
+          title: "Gift Complete!",
+          description: "Thank you for being part of the sharing community! +1 ShareCoins",
+        });
+      } else {
+        toast({
+          title: "Receipt Confirmed",
+          description: "Waiting for the giver to confirm.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to confirm receipt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const confirmGiftGivenMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const response = await apiRequest("POST", `/api/requests/${requestId}/confirm-gift-handoff`, { role: "giver" });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      if (data.completed) {
+        setShowCelebration(true);
+        toast({
+          title: "Gift Complete!",
+          description: "Thank you for your generosity! +1 ShareCoins",
+        });
+      } else {
+        toast({
+          title: "Handoff Confirmed",
+          description: "Waiting for the receiver to confirm.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to confirm handoff",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [acceptingGiftRequest, setAcceptingGiftRequest] = useState<ItemRequest | null>(null);
+
   const handleAcceptClick = (request: ItemRequest) => {
     requireVerification(() => {
-      setSelectedRequestId(request.id);
-      setShowDeliveryModal(true);
+      if (request.requestType === "GIFT") {
+        setAcceptingGiftRequest(request);
+        acceptMutation.mutate(request.id);
+      } else {
+        setSelectedRequestId(request.id);
+        setShowDeliveryModal(true);
+      }
     });
   };
 
@@ -425,10 +503,16 @@ export default function RequestsPage() {
                             <h3 className="font-semibold text-lg">{request.item.name}</h3>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                               <User className="h-4 w-4" />
-                              <span>{request.requester.username} wants to {request.requestType.toLowerCase()}</span>
+                              {request.requestType === "GIFT" ? (
+                                <span className="text-pink-600 font-medium">
+                                  {request.requester.username} would love your {request.item.name}
+                                </span>
+                              ) : (
+                                <span>{request.requester.username} wants to {request.requestType.toLowerCase()}</span>
+                              )}
                             </div>
                           </div>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className={request.requestType === "GIFT" ? "border-pink-400 text-pink-600 bg-pink-50" : ""}>
                             {request.requestType}
                           </Badge>
                         </div>
@@ -495,38 +579,62 @@ export default function RequestsPage() {
                         )}
 
                         <div className="flex gap-2 mt-4">
-                          {/* Only show Accept if no counter-proposal is pending */}
-                          {request.negotiationStatus !== "counter_proposed" && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptClick(request)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Accept
-                            </Button>
+                          {request.requestType === "GIFT" ? (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAcceptClick(request)}
+                                className="bg-pink-500 hover:bg-pink-600"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Accept Gift
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => declineMutation.mutate(request.id)}
+                                disabled={declineMutation.isPending}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Decline
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              {/* Only show Accept if no counter-proposal is pending */}
+                              {request.negotiationStatus !== "counter_proposed" && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleAcceptClick(request)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Accept
+                                </Button>
+                              )}
+                              {/* Only show Request Change if no counter-proposal is pending */}
+                              {request.negotiationStatus !== "counter_proposed" && request.negotiationStatus !== "terms_accepted" && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRequestChange(request)}
+                                  className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                                >
+                                  <RefreshCw className="h-4 w-4 mr-1" />
+                                  Request Change
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => declineMutation.mutate(request.id)}
+                                disabled={declineMutation.isPending}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Decline
+                              </Button>
+                            </>
                           )}
-                          {/* Only show Request Change if no counter-proposal is pending */}
-                          {request.negotiationStatus !== "counter_proposed" && request.negotiationStatus !== "terms_accepted" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRequestChange(request)}
-                              className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                            >
-                              <RefreshCw className="h-4 w-4 mr-1" />
-                              Request Change
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => declineMutation.mutate(request.id)}
-                            disabled={declineMutation.isPending}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Decline
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -631,6 +739,33 @@ export default function RequestsPage() {
                             <span>
                               {format(new Date(request.startDate), "MMM d")} - {format(new Date(request.endDate), "MMM d, yyyy")}
                             </span>
+                          </div>
+                        )}
+
+                        {request.requestType === "GIFT" && request.status === "ACCEPTED" && (
+                          <div className="flex gap-2 mt-3 p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                            <div className="flex-1">
+                              <p className="text-sm text-pink-700 font-medium mb-2">
+                                <Gift className="h-4 w-4 inline mr-1" />
+                                Gift accepted! Arrange pickup with the giver.
+                              </p>
+                              {request.borrowerConfirmedHandoff ? (
+                                <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Waiting for giver to confirm
+                                </Badge>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => confirmGiftReceivedMutation.mutate(request.id)}
+                                  disabled={confirmGiftReceivedMutation.isPending}
+                                  className="bg-pink-500 hover:bg-pink-600"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Confirm Received
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -801,6 +936,69 @@ export default function RequestsPage() {
                               >
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 Confirm Return
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Active Gifts as Giver */}
+        {requests.filter(r => r.item.ownerId === user?.id && r.requestType === "GIFT" && r.status === "ACCEPTED").length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+              <Gift className="h-6 w-6 text-pink-500" />
+              Active Gifts
+            </h2>
+            <div className="space-y-4">
+              {requests
+                .filter(r => r.item.ownerId === user?.id && r.requestType === "GIFT" && r.status === "ACCEPTED")
+                .map((request) => (
+                  <Card key={request.id} className="bg-pink-50 border-2 border-pink-200">
+                    <CardContent className="p-6">
+                      <div className="flex gap-4">
+                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                          {request.item.photos?.[0] ? (
+                            <img src={request.item.photos[0]} alt={request.item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Gift className="h-6 w-6 text-pink-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold">{request.item.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                Gifting to {request.requester.username}
+                              </p>
+                            </div>
+                            <Badge className="bg-pink-100 text-pink-700 border-pink-300">
+                              GIFT
+                            </Badge>
+                          </div>
+
+                          <div className="flex gap-2 mt-3">
+                            {request.ownerConfirmedHandoff ? (
+                              <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Waiting for receiver to confirm
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => confirmGiftGivenMutation.mutate(request.id)}
+                                disabled={confirmGiftGivenMutation.isPending}
+                                className="bg-pink-500 hover:bg-pink-600"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Confirm Given
                               </Button>
                             )}
                           </div>

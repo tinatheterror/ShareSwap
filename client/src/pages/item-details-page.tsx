@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { ItemRequestForm } from "@/components/shared/item-request-form";
 import { SwapInventorySelector } from "@/components/swap-inventory-selector";
+import { GiftClaimModal } from "@/components/gift-claim-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [showSwapSelector, setShowSwapSelector] = useState(false);
   const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem | null>(null);
+  const [showGiftClaimModal, setShowGiftClaimModal] = useState(false);
   const [location] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -375,10 +377,32 @@ export default function ItemDetailsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="font-medium">Sharing Options</h3>
-                  {getSharingOptions()}
-                </div>
+                {item.isGift ? (
+                  <div className="pt-2">
+                    {hasPendingGift ? (
+                      <Button disabled className="w-full bg-gray-400 hover:bg-gray-400 cursor-not-allowed py-6 text-lg">
+                        <Clock className="h-5 w-5 mr-2" />
+                        Request Pending
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={() => setShowGiftClaimModal(true)} 
+                        className="w-full bg-pink-500 hover:bg-pink-600 py-6 text-lg"
+                      >
+                        <Gift className="h-5 w-5 mr-2" />
+                        Claim Gift
+                      </Button>
+                    )}
+                    <p className="text-sm text-muted-foreground text-center mt-3">
+                      This item is being given away for free
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <h3 className="font-medium">Sharing Options</h3>
+                    {getSharingOptions()}
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -406,6 +430,12 @@ export default function ItemDetailsPage() {
             setShowSwapSelector(false);
             setRequestType("SWAP");
           }}
+        />
+
+        <GiftClaimModal
+          item={item}
+          isOpen={showGiftClaimModal}
+          onClose={() => setShowGiftClaimModal(false)}
         />
       </main>
     </div>

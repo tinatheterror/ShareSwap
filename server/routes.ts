@@ -3410,37 +3410,18 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    // Award ShareCoins for accepted gift requests (gifter gets rewarded for generosity)
+    // Handle gift acceptance - send system message (rewards given when both confirm handoff)
     if (status === "ACCEPTED" && request.item_requests.requestType === "GIFT") {
       try {
-        // Award ShareCoins to the gifter (owner) for their generosity
-        const gifterResult = await awardShareCoinsWithFirstTimeBonus(
-          req.user.id,
-          'GIFT',
-          request.items.name,
-          1
-        );
-        
-        console.log(`✅ Awarded ShareCoins for gift: Gifter=${gifterResult.totalAwarded} (first-time: ${gifterResult.isFirstTime})`);
-        
-        // Award trust points for gifting (+6 to giver)
-        try {
-          await awardGiftingPoints(
-            req.user.id,
-            request.item_requests.requesterId,
-            requestId,
-            request.items.id
-          );
-          console.log(`✅ Awarded trust points for gifting`);
-        } catch (trustError) {
-          console.error("Error awarding gifting trust points:", trustError);
-        }
-
-        // Check and award referral bonus for both users (first transaction completion)
-        await checkAndAwardReferralBonus(req.user.id, requestId, 'GIFT');
-        await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, 'GIFT');
+        // Send system message to open chat with gift pickup instructions
+        await db.insert(messages).values({
+          content: `🎁 Gift accepted! Arrange pickup or delivery for "${request.items.name}".`,
+          senderId: req.user.id,
+          receiverId: request.item_requests.requesterId,
+        });
+        console.log(`✅ Gift accepted - chat message sent for pickup coordination`);
       } catch (error) {
-        console.error("Error processing gift reward:", error);
+        console.error("Error sending gift acceptance message:", error);
       }
     }
 
@@ -3646,6 +3627,167 @@ Respond with ONLY the category name, nothing else.`
         message: "Request cancelled",
       });
     }
+  });
+
+  // Gift handoff confirmation - for both giver and receiver
+  app.post("/api/requests/:requestId/confirm-gift-handoff", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const requestId = parseInt(req.params.requestId);
+    const { role } = req.body; // "giver" or "receiver"
+
+    if (!role || !["giver", "receiver"].includes(role)) {
+      return res.status(400).json({ error: "Invalid role. Must be 'giver' or 'receiver'" });
+    }
+
+    // Fetch the request with item info
+    const [request] = await db
+      .select()
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    if (request.item_requests.requestType !== "GIFT") {
+      return res.status(400).json({ error: "This endpoint is only for gift transactions" });
+    }
+
+    if (request.item_requests.status !== "ACCEPTED") {
+      return res.status(400).json({ error: "Gift must be accepted before confirming handoff" });
+    }
+
+    // Validate the user is authorized
+    const isGiver = request.items.ownerId === req.user.id;
+    const isReceiver = request.item_requests.requesterId === req.user.id;
+
+    if (role === "giver" && !isGiver) {
+      return res.status(403).json({ error: "Only the giver can confirm as giver" });
+    }
+    if (role === "receiver" && !isReceiver) {
+      return res.status(403).json({ error: "Only the receiver can confirm as receiver" });
+    }
+
+    // Idempotency: check if user already confirmed
+    if (role === "giver" && request.item_requests.ownerConfirmedHandoff) {
+      return res.json({ success: true, completed: false, message: "Already confirmed. Waiting for receiver." });
+    }
+    if (role === "receiver" && request.item_requests.borrowerConfirmedHandoff) {
+      return res.json({ success: true, completed: false, message: "Already confirmed. Waiting for giver." });
+    }
+
+    // Update the confirmation status
+    const updateData: any = {};
+    if (role === "giver") {
+      updateData.ownerConfirmedHandoff = true;
+    } else {
+      updateData.borrowerConfirmedHandoff = true;
+    }
+
+    const [updated] = await db
+      .update(itemRequests)
+      .set(updateData)
+      .where(eq(itemRequests.id, requestId))
+      .returning();
+
+    // Check if both parties have confirmed
+    const giverConfirmed = role === "giver" ? true : request.item_requests.ownerConfirmedHandoff;
+    const receiverConfirmed = role === "receiver" ? true : request.item_requests.borrowerConfirmedHandoff;
+
+    if (giverConfirmed && receiverConfirmed) {
+      // Both confirmed - complete the gift!
+      await db
+        .update(itemRequests)
+        .set({ status: "COMPLETED" })
+        .where(eq(itemRequests.id, requestId));
+
+      // Mark item as gifted/unavailable
+      await db
+        .update(items)
+        .set({ isAvailable: false })
+        .where(eq(items.id, request.items.id));
+
+      // Award ShareCoins to both parties
+      const giverId = request.items.ownerId!;
+      const receiverId = request.item_requests.requesterId;
+
+      // Award to giver
+      await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 1);
+      
+      // Award to receiver
+      await db.insert(shareCoinsTransactions).values({
+        userId: receiverId,
+        amount: "1",
+        description: `Received gift: ${request.items.name}`,
+        transactionType: "GIFT_RECEIVED",
+      });
+      await db
+        .update(users)
+        .set({ 
+          shareCoins: sql`${users.shareCoins} + 1`
+        })
+        .where(eq(users.id, receiverId));
+
+      // Update trust scores
+      try {
+        await awardGiftingPoints(giverId, receiverId, requestId, request.items.id);
+        console.log(`✅ Awarded trust points for completed gift`);
+      } catch (trustError) {
+        console.error("Error awarding gift trust points:", trustError);
+      }
+
+      // Check and award referral bonus for both users (first transaction completion)
+      await checkAndAwardReferralBonus(giverId, requestId, 'GIFT');
+      await checkAndAwardReferralBonus(receiverId, requestId, 'GIFT');
+
+      // Send completion notification to both parties
+      await db.insert(notifications).values([
+        {
+          userId: giverId,
+          type: "gift_completed",
+          title: "Gift Complete!",
+          message: `Your gift "${request.items.name}" has been received. Thank you for sharing! +1 ShareCoins`,
+          itemId: request.items.id,
+          requestId: requestId,
+        },
+        {
+          userId: receiverId,
+          type: "gift_completed",
+          title: "Gift Received!",
+          message: `You've received "${request.items.name}". Enjoy! +1 ShareCoins`,
+          itemId: request.items.id,
+          requestId: requestId,
+        },
+      ]);
+
+      return res.json({
+        success: true,
+        completed: true,
+        message: "Gift exchange complete! Both parties have been awarded ShareCoins.",
+      });
+    }
+
+    // Only one party confirmed so far
+    const otherPartyId = role === "giver" ? request.item_requests.requesterId : request.items.ownerId!;
+    await db.insert(notifications).values({
+      userId: otherPartyId,
+      type: "gift_handoff_pending",
+      title: role === "giver" ? "Giver confirmed handoff" : "Receiver confirmed receipt",
+      message: `Please confirm the gift handoff for "${request.items.name}"`,
+      itemId: request.items.id,
+      requestId: requestId,
+    });
+
+    res.json({
+      success: true,
+      completed: false,
+      message: "Confirmation recorded. Waiting for the other party to confirm.",
+    });
   });
 
   // Create Stripe payment authorization hold for security deposit

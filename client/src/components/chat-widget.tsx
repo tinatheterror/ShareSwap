@@ -323,7 +323,12 @@ export function ChatWidget() {
 
   const handleAcceptClick = (request: ItemRequest) => {
     setSelectedRequestId(request.id);
-    setShowDeliveryModal(true);
+    // Swaps and gifts don't require delivery/deposit setup - accept directly
+    if (request.requestType === "SWAP" || request.requestType === "GIFT") {
+      acceptMutation.mutate(request.id);
+    } else {
+      setShowDeliveryModal(true);
+    }
   };
 
   const handleDeliveryDepositComplete = async (selections: any) => {

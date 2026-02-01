@@ -1,9 +1,22 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -75,7 +88,7 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
   const setQuickMessage = (type: "quick" | "polite" | "detailed") => {
     const itemName = item.name;
     let message = "";
-    
+
     switch (type) {
       case "quick":
         message = `Hi! I would love to receive your ${itemName}. Thank you for sharing! 😊`;
@@ -87,7 +100,7 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
         message = `Hi there! I'm really interested in your ${itemName}. I would really appreciate receiving it and will put it to good use. Thank you so much for your generosity! 😊`;
         break;
     }
-    
+
     form.setValue("message", message);
   };
 
@@ -99,9 +112,6 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
             <Gift className="h-5 w-5" />
             Claim This Gift
           </DialogTitle>
-          <DialogDescription>
-            Send a message to let the giver know you'd love this item
-          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -114,7 +124,7 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
                   <FormLabel>Your Message</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Write a message to the giver..."
+                      placeholder="Send a message to let the giver know you'd love this item..."
                       className="min-h-[100px] resize-none"
                       {...field}
                     />
@@ -170,21 +180,31 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
                     >
                       <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
                         <RadioGroupItem value="in_person" id="pickup" />
-                        <Label htmlFor="pickup" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Label
+                          htmlFor="pickup"
+                          className="flex items-center gap-2 cursor-pointer flex-1"
+                        >
                           <MapPin className="h-4 w-4 text-teal-600" />
                           <div>
                             <div className="font-medium">Pick up in person</div>
-                            <div className="text-xs text-muted-foreground">Arrange a time to meet</div>
+                            <div className="text-xs text-muted-foreground">
+                              Arrange a time to meet
+                            </div>
                           </div>
                         </Label>
                       </div>
                       <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
                         <RadioGroupItem value="courier" id="uber" />
-                        <Label htmlFor="uber" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Label
+                          htmlFor="uber"
+                          className="flex items-center gap-2 cursor-pointer flex-1"
+                        >
                           <Truck className="h-4 w-4 text-teal-600" />
                           <div>
                             <div className="font-medium">Uber delivery</div>
-                            <div className="text-xs text-muted-foreground">Have it delivered to you</div>
+                            <div className="text-xs text-muted-foreground">
+                              Have it delivered to you
+                            </div>
                           </div>
                         </Label>
                       </div>

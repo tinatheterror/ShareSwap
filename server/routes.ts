@@ -2656,6 +2656,7 @@ Respond with ONLY the category name, nothing else.`
         wasSmartScanned: items.wasSmartScanned,
         securityDeposit: items.securityDeposit,
         replacementValue: items.replacementValue,
+        isGift: items.isGift,
         ownerId: items.ownerId,
         createdAt: items.createdAt,
         owner: {

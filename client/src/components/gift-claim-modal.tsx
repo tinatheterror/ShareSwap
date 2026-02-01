@@ -8,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -170,43 +169,54 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
               control={form.control}
               name="deliveryMethod"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>How would you like to receive it?</FormLabel>
+                <FormItem className="space-y-3">
+                  <FormLabel className="flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    How would you like to receive this item?
+                  </FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="flex flex-col space-y-2"
+                      className="grid grid-cols-2 gap-2"
                     >
-                      <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                        <RadioGroupItem value="in_person" id="pickup" />
-                        <Label
-                          htmlFor="pickup"
-                          className="flex items-center gap-2 cursor-pointer flex-1"
-                        >
-                          <MapPin className="h-4 w-4 text-teal-600" />
-                          <div>
-                            <div className="font-medium">Pick up in person</div>
-                            <div className="text-xs text-muted-foreground">
-                              Arrange a time to meet
-                            </div>
-                          </div>
-                        </Label>
+                      <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem
+                          value="in_person"
+                          id="gift_pickup"
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="gift_pickup"
+                            className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
+                          >
+                            <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+                            Pick Up Yourself
+                          </label>
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">
+                            Direct exchange
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer">
-                        <RadioGroupItem value="courier" id="uber" />
-                        <Label
-                          htmlFor="uber"
-                          className="flex items-center gap-2 cursor-pointer flex-1"
-                        >
-                          <Truck className="h-4 w-4 text-teal-600" />
-                          <div>
-                            <div className="font-medium">Uber delivery</div>
-                            <div className="text-xs text-muted-foreground">
-                              Have it delivered to you
-                            </div>
-                          </div>
-                        </Label>
+                      <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
+                        <RadioGroupItem
+                          value="courier"
+                          id="gift_courier"
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <label
+                            htmlFor="gift_courier"
+                            className="flex items-center gap-1.5 cursor-pointer font-medium text-sm"
+                          >
+                            <Truck className="h-4 w-4 text-blue-600" />
+                            Uber Direct
+                          </label>
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">
+                            +$15
+                          </p>
+                        </div>
                       </div>
                     </RadioGroup>
                   </FormControl>

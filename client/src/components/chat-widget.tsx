@@ -95,7 +95,7 @@ interface ItemRequest {
 }
 
 type MainTab = "messages" | "requests";
-type MessageFilter = "all" | "lending" | "renting" | "swapping" | "unread";
+type MessageFilter = "all" | "lending" | "renting" | "swapping" | "gifting" | "unread";
 type RequestFilter = "incoming" | "outgoing" | "active";
 
 function DepositPaymentForm({ 
@@ -232,6 +232,7 @@ export function ChatWidget() {
     if (messageFilter === "lending") return conv.transactionType?.toUpperCase() === "BORROW";
     if (messageFilter === "renting") return conv.transactionType?.toUpperCase() === "RENT";
     if (messageFilter === "swapping") return conv.transactionType?.toUpperCase() === "SWAP";
+    if (messageFilter === "gifting") return conv.transactionType?.toUpperCase() === "GIFT";
     return true;
   });
 
@@ -662,6 +663,7 @@ export function ChatWidget() {
                     { key: "lending", label: "Lending" },
                     { key: "renting", label: "Renting" },
                     { key: "swapping", label: "Swapping" },
+                    { key: "gifting", label: "Gifting" },
                     { key: "unread", label: "Unread" },
                   ].map(tab => (
                     <button
@@ -705,7 +707,8 @@ export function ChatWidget() {
                             <div className="text-xs text-muted-foreground mb-1">
                               {conv.transactionType?.toUpperCase() === "BORROW" && "Lending"} 
                               {conv.transactionType?.toUpperCase() === "RENT" && "Renting"} 
-                              {conv.transactionType?.toUpperCase() === "SWAP" && "Swapping"}: {conv.itemName}
+                              {conv.transactionType?.toUpperCase() === "SWAP" && "Swapping"}
+                              {conv.transactionType?.toUpperCase() === "GIFT" && "Gifting"}: {conv.itemName}
                             </div>
                           )}
                           <p className="text-xs text-muted-foreground truncate">

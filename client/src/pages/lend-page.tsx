@@ -2250,7 +2250,15 @@ export default function LendPage() {
                           style={{ color: "#0D9488" }}
                           className="font-semibold"
                         >
-                          Earn 10-20 ShareCoins for helping!
+                          Earn {(() => {
+                            if (selectedWishlistMatch.neededDate && selectedWishlistMatch.returnDate) {
+                              const startDate = new Date(selectedWishlistMatch.neededDate);
+                              const endDate = new Date(selectedWishlistMatch.returnDate);
+                              const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                              return 10 + Math.min(days, 10);
+                            }
+                            return 10;
+                          })()} ShareCoins for helping!
                         </span>
                       </div>
                     </motion.div>

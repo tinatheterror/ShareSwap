@@ -3145,6 +3145,7 @@ Respond with ONLY the category name, nothing else.`
             and(eq(items.isLendable, true), eq(requestType, "BORROW")),
             and(eq(items.isRentable, true), eq(requestType, "RENT")),
             and(eq(items.isSwappable, true), eq(requestType, "SWAP")),
+            and(eq(items.isGift, true), eq(requestType, "GIFT")),
           ),
         ),
       )

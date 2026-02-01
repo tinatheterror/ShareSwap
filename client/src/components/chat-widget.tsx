@@ -660,10 +660,10 @@ export function ChatWidget() {
                 <div className="flex gap-1 p-2 border-b overflow-x-auto">
                   {[
                     { key: "all", label: "All" },
-                    { key: "lending", label: "Lending" },
-                    { key: "renting", label: "Renting" },
-                    { key: "swapping", label: "Swapping" },
-                    { key: "gifting", label: "Gifting" },
+                    { key: "lending", label: "Lend" },
+                    { key: "renting", label: "Rent" },
+                    { key: "swapping", label: "Swap" },
+                    { key: "gifting", label: "Gift" },
                     { key: "unread", label: "Unread" },
                   ].map(tab => (
                     <button

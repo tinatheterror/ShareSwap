@@ -791,19 +791,27 @@ export default function LendPage() {
     },
   });
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
-      const newUrls = newFiles.map((file) => URL.createObjectURL(file));
       setSelectedPhotos((prev) => [...prev, ...newFiles]);
+      
+      // Use FileReader for better iOS compatibility (data URLs instead of blob URLs)
+      const readFileAsDataURL = (file: File): Promise<string> => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        });
+      };
+      
+      const newUrls = await Promise.all(newFiles.map(readFileAsDataURL));
       setPhotoPreviewUrls((prev) => [...prev, ...newUrls]);
     }
   };
 
   const removePhoto = (index: number) => {
-    if (photoPreviewUrls[index]) {
-      URL.revokeObjectURL(photoPreviewUrls[index]);
-    }
     setSelectedPhotos((prev) => prev.filter((_, i) => i !== index));
     setPhotoPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };

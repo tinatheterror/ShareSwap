@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDisplayName } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -452,7 +453,7 @@ export function ChatWidget() {
             <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
               <User className="h-3 w-3" />
               {isOwner ? (
-                <span>{request.requester.username} wants to {request.requestType.toLowerCase()}</span>
+                <span>{formatDisplayName(request.requester.username)} wants to {request.requestType.toLowerCase()}</span>
               ) : (
                 <span>You requested to {request.requestType.toLowerCase()}</span>
               )}
@@ -701,7 +702,7 @@ export function ChatWidget() {
                           className="w-full p-3 hover:bg-gray-50 text-left transition-colors"
                         >
                           <div className="flex items-start justify-between mb-1">
-                            <span className="font-medium text-sm">{conv.username}</span>
+                            <span className="font-medium text-sm">{formatDisplayName(conv.username)}</span>
                             {conv.unreadCount > 0 && (
                               <Badge className="bg-red-500 text-xs h-5 min-w-5 flex items-center justify-center">
                                 {conv.unreadCount}
@@ -806,7 +807,7 @@ export function ChatWidget() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <span className="font-medium text-sm">
-                  {allConversations.find((c) => c.userId === selectedConversation)?.username}
+                  {formatDisplayName(allConversations.find((c) => c.userId === selectedConversation)?.username)}
                 </span>
               </div>
 

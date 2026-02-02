@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDisplayName } from "@/lib/utils";
 import {
   calculateSecurityDeposit,
   formatDeposit,
@@ -2213,13 +2214,13 @@ export default function LendPage() {
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-gradient-to-r from-teal-400 to-teal-500 rounded-full flex items-center justify-center">
                             <span className="text-white font-bold text-sm">
-                              {selectedWishlistMatch.username
+                              {formatDisplayName(selectedWishlistMatch.username)
                                 ?.charAt(0)
                                 .toUpperCase()}
                             </span>
                           </div>
                           <span className="font-medium">
-                            {selectedWishlistMatch.username}
+                            {formatDisplayName(selectedWishlistMatch.username)}
                           </span>
                         </div>
                         <span className="flex items-center gap-1 text-gray-500">
@@ -2307,7 +2308,7 @@ export default function LendPage() {
                               );
                               // Show confirmation modal
                               setMatchedRequesterName(
-                                selectedWishlistMatch.username ||
+                                formatDisplayName(selectedWishlistMatch.username) ||
                                   selectedWishlistMatch.firstName ||
                                   "this neighbour",
                               );
@@ -2325,7 +2326,7 @@ export default function LendPage() {
                         }}
                         className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold shadow-lg"
                       >
-                        Match with {selectedWishlistMatch?.username}
+                        Match with {formatDisplayName(selectedWishlistMatch?.username)}
                       </Button>
                     </motion.div>
                   </motion.div>

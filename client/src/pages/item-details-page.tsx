@@ -24,6 +24,7 @@ import { getSwapTierLabel } from "@/lib/swap-calculator";
 import { formatReplacementValue, hasValidReplacementValue } from "@/lib/replacement-value";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { useAuth } from "@/hooks/use-auth";
+import { formatDisplayName } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -349,7 +350,7 @@ export default function ItemDetailsPage() {
                       </span>
                       <Link href={`/profile/${(item as any).owner.username}`}>
                         <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
-                          @{(item as any).owner.username}
+                          {formatDisplayName((item as any).owner.username)}
                         </span>
                       </Link>
                       <div className="shadow-sm rounded-full">

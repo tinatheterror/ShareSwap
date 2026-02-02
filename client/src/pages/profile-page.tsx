@@ -905,6 +905,68 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
+            {/* Verification Status - Mobile Only (shown above Premium) */}
+            <Card
+              className={`lg:hidden mt-6 ${
+                profile?.isVerified
+                  ? "border-green-200 bg-green-50"
+                  : "border-orange-200 bg-orange-50"
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BadgeCheck
+                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-orange-600"}`}
+                  />
+                  Verification Status
+                  {!profile?.isVerified && (
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-orange-100 text-orange-700 border-orange-300"
+                    >
+                      Unverified
+                    </Badge>
+                  )}
+                  {profile?.isVerified && (
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-green-100 text-green-700 border-green-300"
+                    >
+                      Verified
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center gap-2">
+                  {(profile as any)?.paymentMethodLast4 ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/payment-methods" className="flex-1">
+                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Payment Methods
+                    </Button>
+                  </Link>
+                </div>
+                <div className="flex items-center gap-2">
+                  {profile?.isVerified ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/verification" className="flex-1">
+                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                      <BadgeCheck className="h-4 w-4 mr-2" />
+                      Identity Verification
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Upgrade to Premium */}
             <div className="mt-6">
               <div className="text-center mb-4">
@@ -1083,14 +1145,14 @@ export default function ProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Verification Checklist */}
+            {/* Verification Checklist - Desktop Only (shown in sidebar) */}
             <Card
               id="verification-status"
-              className={
+              className={`hidden lg:block ${
                 profile?.isVerified
                   ? "border-green-200 bg-green-50"
                   : "border-orange-200 bg-orange-50"
-              }
+              }`}
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">

@@ -337,6 +337,29 @@ export default function LendPage() {
       if (item.photos && item.photos.length > 0) {
         setExistingPhotos(item.photos);
       }
+      // If we have coordinates but no address, reverse geocode to get the address
+      if (lat && lng && !item.address) {
+        (async () => {
+          try {
+            const response = await fetch(
+              `https://api-bdc.net/data/reverse-geocode?latitude=${lat}&longitude=${lng}&localityLanguage=en&key=bdc_4ab1a85e94d34be09afcd6d3c03f8bd3`
+            );
+            if (response.ok) {
+              const data = await response.json();
+              const postcode = data.postcode || "";
+              const locality = data.locality || data.city || "";
+              if (postcode) {
+                form.setValue("postalCode", postcode);
+              }
+              if (locality) {
+                setDetectedLocality(locality);
+              }
+            }
+          } catch (e) {
+            console.log("Reverse geocoding for edit failed");
+          }
+        })();
+      }
     }
   }, [editItem, isEditMode]);
 

@@ -482,6 +482,14 @@ export default function BorrowPage() {
                             src={filteredGiftItems[giftCarouselIndex].photos[0]}
                             alt={filteredGiftItems[giftCarouselIndex].name}
                             className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.parentElement?.classList.add('bg-pink-100', 'flex', 'items-center', 'justify-center');
+                              const icon = document.createElement('div');
+                              icon.innerHTML = '<svg class="h-16 w-16 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>';
+                              target.parentElement?.appendChild(icon);
+                            }}
                           />
                         ) : (
                           <div className="w-full h-full bg-pink-100 flex items-center justify-center rounded-lg">
@@ -551,6 +559,14 @@ export default function BorrowPage() {
                           src={item.photos[0]}
                           alt={item.name}
                           className="w-full h-full object-cover rounded-lg"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement?.classList.add('bg-pink-100', 'flex', 'items-center', 'justify-center');
+                            const icon = document.createElement('div');
+                            icon.innerHTML = '<svg class="h-16 w-16 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>';
+                            target.parentElement?.appendChild(icon);
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full bg-pink-100 flex items-center justify-center rounded-lg">
@@ -669,6 +685,14 @@ export default function BorrowPage() {
                                     src={currentItem.photos[0]}
                                     alt={currentItem.name}
                                     className="w-full h-full object-cover rounded-lg"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.parentElement?.classList.add('bg-gray-200', 'flex', 'items-center', 'justify-center');
+                                      const icon = document.createElement('div');
+                                      icon.innerHTML = '<svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                                      target.parentElement?.appendChild(icon);
+                                    }}
                                   />
                                 ) : (
                                   <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
@@ -797,6 +821,14 @@ export default function BorrowPage() {
                           src={item.photos[0]}
                           alt={item.name}
                           className="w-full h-full object-cover rounded-lg"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement?.classList.add('bg-gray-200', 'flex', 'items-center', 'justify-center');
+                            const icon = document.createElement('div');
+                            icon.innerHTML = '<svg class="h-10 w-10 md:h-16 md:w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                            target.parentElement?.appendChild(icon);
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">

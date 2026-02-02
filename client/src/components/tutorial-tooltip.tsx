@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -15,6 +15,15 @@ interface TutorialTooltipProps {
 
 type Position = 'top' | 'bottom' | 'left' | 'right';
 
+interface TargetRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  bottom: number;
+  right: number;
+}
+
 export function TutorialTooltip({
   isOpen,
   onClose,
@@ -26,19 +35,40 @@ export function TutorialTooltip({
 }: TutorialTooltipProps) {
   const [position, setPosition] = useState<Position>('bottom');
   const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) return;
+  const calculatePositions = useCallback(() => {
+    const targetElement = document.querySelector(targetSelector) as HTMLElement;
+    if (!targetElement) {
+      setTargetRect(null);
+      setIsReady(false);
+      return;
+    }
 
-    const updatePosition = () => {
-      const targetElement = document.querySelector(targetSelector);
-      if (!targetElement || !tooltipRef.current) return;
+    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
 
-      const targetRect = targetElement.getBoundingClientRect();
+    setTimeout(() => {
+      const rect = targetElement.getBoundingClientRect();
+      setTargetRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom,
+        right: rect.right,
+      });
+
+      if (!tooltipRef.current) {
+        setIsReady(true);
+        return;
+      }
+
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
       const padding = 12;
       const arrowSize = 8;
+      const safeArea = 20;
 
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
@@ -47,46 +77,76 @@ export function TutorialTooltip({
       let top = 0;
       let left = 0;
 
-      const spaceAbove = targetRect.top;
-      const spaceBelow = viewportHeight - targetRect.bottom;
-      const spaceLeft = targetRect.left;
-      const spaceRight = viewportWidth - targetRect.right;
+      const spaceAbove = rect.top - safeArea;
+      const spaceBelow = viewportHeight - rect.bottom - safeArea;
+      const spaceLeft = rect.left - safeArea;
+      const spaceRight = viewportWidth - rect.right - safeArea;
 
-      if (spaceBelow >= tooltipRect.height + padding + arrowSize) {
+      const tooltipHeight = tooltipRect.height || 150;
+      const tooltipWidth = tooltipRect.width || 280;
+
+      if (spaceBelow >= tooltipHeight + padding + arrowSize) {
         bestPosition = 'bottom';
-        top = targetRect.bottom + padding + arrowSize;
-        left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
-      } else if (spaceAbove >= tooltipRect.height + padding + arrowSize) {
+        top = rect.bottom + padding + arrowSize;
+        left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+      } else if (spaceAbove >= tooltipHeight + padding + arrowSize) {
         bestPosition = 'top';
-        top = targetRect.top - tooltipRect.height - padding - arrowSize;
-        left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
-      } else if (spaceRight >= tooltipRect.width + padding + arrowSize) {
+        top = rect.top - tooltipHeight - padding - arrowSize;
+        left = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+      } else if (spaceRight >= tooltipWidth + padding + arrowSize) {
         bestPosition = 'right';
-        top = targetRect.top + (targetRect.height / 2) - (tooltipRect.height / 2);
-        left = targetRect.right + padding + arrowSize;
-      } else if (spaceLeft >= tooltipRect.width + padding + arrowSize) {
+        top = rect.top + (rect.height / 2) - (tooltipHeight / 2);
+        left = rect.right + padding + arrowSize;
+      } else if (spaceLeft >= tooltipWidth + padding + arrowSize) {
         bestPosition = 'left';
-        top = targetRect.top + (targetRect.height / 2) - (tooltipRect.height / 2);
-        left = targetRect.left - tooltipRect.width - padding - arrowSize;
+        top = rect.top + (rect.height / 2) - (tooltipHeight / 2);
+        left = rect.left - tooltipWidth - padding - arrowSize;
+      } else {
+        bestPosition = 'bottom';
+        top = Math.min(rect.bottom + padding, viewportHeight - tooltipHeight - padding);
+        left = Math.max(padding, (viewportWidth - tooltipWidth) / 2);
       }
 
-      left = Math.max(padding, Math.min(left, viewportWidth - tooltipRect.width - padding));
-      top = Math.max(padding, Math.min(top, viewportHeight - tooltipRect.height - padding));
+      left = Math.max(padding, Math.min(left, viewportWidth - tooltipWidth - padding));
+      top = Math.max(safeArea, Math.min(top, viewportHeight - tooltipHeight - padding));
 
       setPosition(bestPosition);
       setCoords({ top, left });
+      setIsReady(true);
+    }, 100);
+  }, [targetSelector]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setIsReady(false);
+      setTargetRect(null);
+      return;
+    }
+
+    calculatePositions();
+
+    const retryTimer = setTimeout(calculatePositions, 300);
+
+    return () => clearTimeout(retryTimer);
+  }, [isOpen, targetSelector, calculatePositions]);
+
+  useEffect(() => {
+    if (!isOpen || !targetRect) return;
+
+    const handleUpdate = () => {
+      requestAnimationFrame(calculatePositions);
     };
 
-    const timer = setTimeout(updatePosition, 50);
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition);
+    window.addEventListener('resize', handleUpdate);
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('orientationchange', handleUpdate);
 
     return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('resize', handleUpdate);
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('orientationchange', handleUpdate);
     };
-  }, [isOpen, targetSelector]);
+  }, [isOpen, targetRect, calculatePositions]);
 
   if (!isOpen) return null;
 
@@ -99,58 +159,105 @@ export function TutorialTooltip({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/20 z-[9998]" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 z-[9998]" onClick={onClose} />
+      
+      {targetRect && (
+        <>
+          <svg
+            className="fixed inset-0 z-[9998] pointer-events-none"
+            style={{ width: '100vw', height: '100vh' }}
+          >
+            <defs>
+              <mask id="tooltip-spotlight-mask">
+                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                <rect
+                  x={targetRect.left - 8}
+                  y={targetRect.top - 8}
+                  width={targetRect.width + 16}
+                  height={targetRect.height + 16}
+                  rx="8"
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            <rect
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              fill="rgba(0,0,0,0.5)"
+              mask="url(#tooltip-spotlight-mask)"
+            />
+          </svg>
+
+          <div
+            className="fixed z-[9998] pointer-events-none"
+            style={{
+              top: targetRect.top - 8,
+              left: targetRect.left - 8,
+              width: targetRect.width + 16,
+              height: targetRect.height + 16,
+              border: '3px solid #0d9488',
+              borderRadius: '12px',
+              boxShadow: '0 0 0 4px rgba(13, 148, 136, 0.3)',
+              animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+            }}
+          />
+        </>
+      )}
       
       <AnimatePresence>
-        <motion.div
-          ref={tooltipRef}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.2 }}
-          className="fixed z-[9999] bg-white rounded-lg shadow-2xl border-2 border-teal-500 p-4 max-w-sm"
-          style={{
-            top: `${coords.top}px`,
-            left: `${coords.left}px`,
-          }}
-        >
-          <div className={`absolute w-0 h-0 ${arrowStyles[position]} drop-shadow-sm`} />
-          
-          <button
-            onClick={onClose}
-            className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+        {isReady && (
+          <motion.div
+            ref={tooltipRef}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed z-[9999] bg-white rounded-lg shadow-2xl border-2 border-teal-500 p-4 w-[calc(100vw-32px)] max-w-sm"
+            style={{
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+            }}
           >
-            <X className="h-4 w-4" />
-          </button>
-
-          <div className="pr-6">
-            <h3 className="font-semibold text-sm text-slate-800 mb-1">{title}</h3>
-            <p className="text-xs text-slate-600 mb-3 leading-relaxed">{description}</p>
+            <div className={`absolute w-0 h-0 ${arrowStyles[position]} drop-shadow-sm`} />
             
-            <div className="flex gap-2">
-              <Button
-                onClick={onClose}
-                variant="outline"
-                size="sm"
-                className="flex-1 h-8 text-xs"
-              >
-                Got It
-              </Button>
-              {actionLabel && onAction && (
+            <button
+              onClick={onClose}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="pr-6">
+              <h3 className="font-semibold text-sm text-slate-800 mb-1">{title}</h3>
+              <p className="text-xs text-slate-600 mb-3 leading-relaxed">{description}</p>
+              
+              <div className="flex gap-2">
                 <Button
-                  onClick={() => {
-                    onAction();
-                    onClose();
-                  }}
+                  onClick={onClose}
+                  variant="outline"
                   size="sm"
-                  className="flex-1 h-8 text-xs " style={{ backgroundColor: "#0DCEA1" }}
+                  className="flex-1 h-8 text-xs"
                 >
-                  {actionLabel}
+                  Got It
                 </Button>
-              )}
+                {actionLabel && onAction && (
+                  <Button
+                    onClick={() => {
+                      onAction();
+                      onClose();
+                    }}
+                    size="sm"
+                    className="flex-1 h-8 text-xs " style={{ backgroundColor: "#0DCEA1" }}
+                  >
+                    {actionLabel}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </>
   );

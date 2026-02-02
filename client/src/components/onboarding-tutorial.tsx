@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,17 @@ interface TutorialStep {
   title: string;
   description: string;
   icon: React.ReactNode;
-  highlightSelector?: string; // CSS selector for element to highlight
+  highlightSelector?: string;
   position: 'center' | 'top' | 'bottom';
+}
+
+interface ElementRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  centerX: number;
+  centerY: number;
 }
 
 const tutorialSteps: TutorialStep[] = [
@@ -100,21 +109,85 @@ interface OnboardingTutorialProps {
 export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
+  const [elementRect, setElementRect] = useState<ElementRect | null>(null);
 
   const step = tutorialSteps[currentStep];
 
-  // Highlight effect
+  const calculateElementRect = useCallback((element: HTMLElement | null): ElementRect | null => {
+    if (!element) return null;
+    
+    const rect = element.getBoundingClientRect();
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      centerX: rect.left + rect.width / 2,
+      centerY: rect.top + rect.height / 2,
+    };
+  }, []);
+
+  const updateElementPosition = useCallback(() => {
+    if (highlightedElement) {
+      const newRect = calculateElementRect(highlightedElement);
+      setElementRect(newRect);
+    }
+  }, [highlightedElement, calculateElementRect]);
+
   useEffect(() => {
     if (step.highlightSelector) {
-      const element = document.querySelector(step.highlightSelector) as HTMLElement;
-      if (element) {
-        setHighlightedElement(element);
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+      const findAndHighlightElement = () => {
+        const element = document.querySelector(step.highlightSelector!) as HTMLElement;
+        if (element) {
+          setHighlightedElement(element);
+          
+          element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+          
+          setTimeout(() => {
+            const rect = calculateElementRect(element);
+            setElementRect(rect);
+          }, 100);
+        } else {
+          setHighlightedElement(null);
+          setElementRect(null);
+        }
+      };
+
+      findAndHighlightElement();
+      
+      const retryTimer = setTimeout(findAndHighlightElement, 300);
+      
+      return () => clearTimeout(retryTimer);
     } else {
       setHighlightedElement(null);
+      setElementRect(null);
     }
-  }, [currentStep, step.highlightSelector]);
+  }, [currentStep, step.highlightSelector, calculateElementRect]);
+
+  useEffect(() => {
+    if (!highlightedElement) return;
+
+    const handleUpdate = () => {
+      requestAnimationFrame(updateElementPosition);
+    };
+
+    window.addEventListener('resize', handleUpdate);
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('orientationchange', handleUpdate);
+
+    const resizeObserver = new ResizeObserver(handleUpdate);
+    resizeObserver.observe(document.body);
+
+    const positionInterval = setInterval(handleUpdate, 500);
+
+    return () => {
+      window.removeEventListener('resize', handleUpdate);
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('orientationchange', handleUpdate);
+      resizeObserver.disconnect();
+      clearInterval(positionInterval);
+    };
+  }, [highlightedElement, updateElementPosition]);
 
   const handleNext = () => {
     if (currentStep < tutorialSteps.length - 1) {
@@ -132,39 +205,58 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
 
   const handleComplete = () => {
     setHighlightedElement(null);
+    setElementRect(null);
     onComplete();
   };
 
   const handleSkip = () => {
     setHighlightedElement(null);
+    setElementRect(null);
     onComplete();
   };
 
+  const spotlightRadius = elementRect 
+    ? Math.max(elementRect.width, elementRect.height) / 2 + 20
+    : 0;
+
   return (
     <>
-      {/* Overlay with spotlight effect */}
-      <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9998] pointer-events-none"
-          style={{
-            background: highlightedElement
-              ? 'radial-gradient(circle at var(--spotlight-x) var(--spotlight-y), transparent 120px, rgba(0,0,0,0.7) 200px)'
-              : 'rgba(0,0,0,0.7)',
-            '--spotlight-x': highlightedElement
-              ? `${highlightedElement.getBoundingClientRect().left + highlightedElement.getBoundingClientRect().width / 2}px`
-              : '50%',
-            '--spotlight-y': highlightedElement
-              ? `${highlightedElement.getBoundingClientRect().top + highlightedElement.getBoundingClientRect().height / 2}px`
-              : '50%'
-          } as React.CSSProperties}
+      {elementRect && (
+        <svg
+          className="fixed inset-0 z-[9997] pointer-events-none"
+          style={{ width: '100vw', height: '100vh' }}
+        >
+          <defs>
+            <mask id="spotlight-mask">
+              <rect x="0" y="0" width="100%" height="100%" fill="white" />
+              <ellipse
+                cx={elementRect.centerX}
+                cy={elementRect.centerY}
+                rx={spotlightRadius}
+                ry={spotlightRadius}
+                fill="black"
+              />
+            </mask>
+          </defs>
+          <rect
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            fill="rgba(0,0,0,0.7)"
+            mask="url(#spotlight-mask)"
+          />
+        </svg>
+      )}
+      
+      {!elementRect && (
+        <div 
+          className="fixed inset-0 z-[9997] pointer-events-none"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
         />
-      </AnimatePresence>
+      )}
 
-      {/* Tutorial Card - centered container */}
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none px-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -172,11 +264,10 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.3 }}
-            className="pointer-events-auto w-[90%] max-w-md"
+            className="pointer-events-auto w-full max-w-md"
           >
           <Card className="border-2 border-teal-500 shadow-2xl bg-white/95 backdrop-blur-sm">
             <CardContent className="p-6">
-              {/* Close button */}
               <button
                 onClick={handleSkip}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
@@ -184,7 +275,6 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                 <X className="h-5 w-5" />
               </button>
 
-              {/* Progress indicator */}
               <div className="flex items-center justify-center gap-1 mb-4">
                 {tutorialSteps.map((_, index) => (
                   <div
@@ -200,7 +290,6 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                 ))}
               </div>
 
-              {/* Icon */}
               <div className="flex justify-center mb-4">
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
@@ -212,20 +301,17 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                 </motion.div>
               </div>
 
-              {/* Content */}
               <div className="text-center mb-6">
                 <h3 className="text-xl font-bold text-slate-800 mb-3">{step.title}</h3>
                 <p className="text-slate-600 leading-relaxed">{step.description}</p>
               </div>
 
-              {/* Step counter */}
               <div className="text-center mb-4">
                 <Badge variant="secondary" className="bg-teal-100 text-teal-800">
                   Step {currentStep + 1} of {tutorialSteps.length}
                 </Badge>
               </div>
 
-              {/* Navigation buttons */}
               <div className="flex items-center justify-between gap-3">
                 <Button
                   variant="outline"
@@ -250,7 +336,6 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                 )}
               </div>
 
-              {/* Skip button */}
               {currentStep < tutorialSteps.length - 1 && (
                 <button
                   onClick={handleSkip}
@@ -265,18 +350,17 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
       </AnimatePresence>
       </div>
 
-      {/* Highlight pulse effect */}
-      {highlightedElement && (
+      {elementRect && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed z-[9997] pointer-events-none"
+          className="fixed z-[9998] pointer-events-none"
           style={{
-            top: highlightedElement.getBoundingClientRect().top - 8,
-            left: highlightedElement.getBoundingClientRect().left - 8,
-            width: highlightedElement.getBoundingClientRect().width + 16,
-            height: highlightedElement.getBoundingClientRect().height + 16,
+            top: elementRect.top - 8,
+            left: elementRect.left - 8,
+            width: elementRect.width + 16,
+            height: elementRect.height + 16,
             border: '3px solid #0d9488',
             borderRadius: '12px',
             boxShadow: '0 0 0 4px rgba(13, 148, 136, 0.3)',

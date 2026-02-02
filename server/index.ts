@@ -19,6 +19,7 @@ app.use(
     contentSecurityPolicy:
       process.env.NODE_ENV === "production" ? undefined : false,
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow images to load on iOS
   }),
 );
 

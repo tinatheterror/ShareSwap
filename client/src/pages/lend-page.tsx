@@ -589,44 +589,50 @@ export default function LendPage() {
     let locality: string | null = null;
     let region: string | null = null;
 
-    // Step 1: Try IP-based geolocation first (works without permissions)
-    try {
-      const ipResponse = await fetch(
-        "https://api.bigdatacloud.net/data/reverse-geocode-client",
-      );
-      if (ipResponse.ok) {
-        const ipData = await ipResponse.json();
-        console.log("IP geolocation response:", ipData);
-
-        if (ipData.latitude && ipData.longitude) {
-          latitude = ipData.latitude;
-          longitude = ipData.longitude;
-        }
-        postcode = ipData.postcode || null;
-        locality = ipData.locality || ipData.city || null;
-        region = ipData.principalSubdivision || null;
-      }
-    } catch (e) {
-      console.log("IP-based geolocation failed, trying browser geolocation...");
-    }
-
-    // Step 2: Try browser geolocation if IP didn't give coordinates
-    if (!latitude && !longitude && "geolocation" in navigator) {
+    // Step 1: Try browser geolocation first (more accurate)
+    if ("geolocation" in navigator) {
       try {
         const position = await new Promise<GeolocationPosition>(
           (resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: false,
-              timeout: 30000,
-              maximumAge: 600000,
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 300000,
             });
           },
         );
         latitude = position.coords.latitude;
         longitude = position.coords.longitude;
-        console.log("Browser geolocation:", latitude, longitude);
+        console.log("Browser geolocation success:", latitude, longitude);
       } catch (error: any) {
-        console.log("Browser geolocation failed:", error?.code, error?.message);
+        console.log("Browser geolocation failed, code:", error?.code, "message:", error?.message);
+        // Continue to try IP-based fallback
+      }
+    }
+
+    // Step 2: Fallback to IP-based geolocation if browser geolocation failed
+    if (!latitude && !longitude) {
+      try {
+        console.log("Trying IP-based geolocation...");
+        const ipResponse = await fetch(
+          "https://api.bigdatacloud.net/data/reverse-geocode-client",
+        );
+        if (ipResponse.ok) {
+          const ipData = await ipResponse.json();
+          console.log("IP geolocation response:", ipData);
+
+          if (ipData.latitude && ipData.longitude) {
+            latitude = ipData.latitude;
+            longitude = ipData.longitude;
+          }
+          postcode = ipData.postcode || null;
+          locality = ipData.locality || ipData.city || null;
+          region = ipData.principalSubdivision || null;
+        } else {
+          console.log("IP geolocation failed with status:", ipResponse.status);
+        }
+      } catch (e) {
+        console.log("IP-based geolocation failed:", e);
       }
     }
 

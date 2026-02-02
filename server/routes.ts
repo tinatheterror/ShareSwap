@@ -2582,6 +2582,11 @@ Respond with ONLY the category name, nothing else.`
         isGift: items.isGift,
         ownerId: items.ownerId,
         createdAt: items.createdAt,
+        itemType: items.itemType,
+        condition: items.condition,
+        originalValue: items.originalValue,
+        swapDesiredItem: items.swapDesiredItem,
+        swapNotifyOnMatch: items.swapNotifyOnMatch,
         owner: {
           id: users.id,
           username: users.username,

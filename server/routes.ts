@@ -5704,15 +5704,16 @@ Respond with ONLY the category name, nothing else.`
       return res.sendStatus(401);
     }
 
-    const { fullName, bio, location, phone, displayName } = req.body;
+    const { fullName, bio, location, phone, displayName, defaultPostalCode } = req.body;
 
     // Build update object with only provided fields
-    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string; displayName: string }> = {};
+    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string; displayName: string; defaultPostalCode: string }> = {};
     if (fullName !== undefined) updateData.fullName = fullName;
     if (bio !== undefined) updateData.bio = bio;
     if (location !== undefined) updateData.location = location;
     if (phone !== undefined) updateData.phone = phone;
     if (displayName !== undefined) updateData.displayName = displayName;
+    if (defaultPostalCode !== undefined) updateData.defaultPostalCode = defaultPostalCode;
 
     // If no fields to update, just return current profile
     if (Object.keys(updateData).length === 0) {
@@ -5732,6 +5733,7 @@ Respond with ONLY the category name, nothing else.`
           reputationScore: users.reputationScore,
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
+          defaultPostalCode: users.defaultPostalCode,
           createdAt: users.createdAt,
         })
         .from(users)
@@ -5760,6 +5762,7 @@ Respond with ONLY the category name, nothing else.`
           reputationScore: users.reputationScore,
           reputationLevel: users.reputationLevel,
           isPremium: users.isPremium,
+          defaultPostalCode: users.defaultPostalCode,
           createdAt: users.createdAt,
         });
 

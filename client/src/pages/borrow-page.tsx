@@ -109,6 +109,23 @@ export default function BorrowPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Load saved postal code from user profile
+  useEffect(() => {
+    if (user?.defaultPostalCode && !userPostalCode) {
+      setUserPostalCode(user.defaultPostalCode);
+    }
+  }, [user?.defaultPostalCode]);
+
+  // Save postal code to user profile mutation
+  const savePostalCodeMutation = useMutation({
+    mutationFn: (postalCode: string) => {
+      return apiRequest("PATCH", "/api/user-profile", { defaultPostalCode: postalCode });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    },
+  });
+
   // Add to wishlist mutation
   const addWishlistMutation = useMutation({
     mutationFn: (data: { itemName: string }) => {
@@ -982,7 +999,13 @@ export default function BorrowPage() {
                 </div>
                 <Button
                   className="w-full mt-6"
-                  onClick={() => setShowLocationModal(false)}
+                  onClick={() => {
+                    // Save location to user profile if logged in
+                    if (user && userPostalCode) {
+                      savePostalCodeMutation.mutate(userPostalCode);
+                    }
+                    setShowLocationModal(false);
+                  }}
                 >
                   Apply
                 </Button>

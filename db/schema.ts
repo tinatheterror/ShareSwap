@@ -55,6 +55,7 @@ export const users = pgTable("users", {
   rentalBalance: decimal("rental_balance", { precision: 10, scale: 2 }).default("0.00"), // Available balance from rental earnings
   pendingRentalBalance: decimal("pending_rental_balance", { precision: 10, scale: 2 }).default("0.00"), // Pending balance (in escrow)
   stripeConnectedAccountId: text("stripe_connected_account_id"), // For Stripe Connect payouts
+  defaultPostalCode: text("default_postal_code"), // Saved location for browsing
   createdAt: timestamp("created_at").defaultNow(),
 });
 

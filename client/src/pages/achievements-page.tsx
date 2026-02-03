@@ -315,10 +315,10 @@ export default function AchievementsPage() {
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <Shield className="h-8 w-8 text-teal-500 mb-1" />
                       <span className="text-sm font-medium text-slate-600">
-                        Community
+                        Trust
                       </span>
                       <span className="text-sm font-medium text-slate-600">
-                        Trust
+                        Score
                       </span>
                     </div>
                   </div>
@@ -332,7 +332,7 @@ export default function AchievementsPage() {
                           ? "You're doing great!"
                           : trustPercentage >= 25
                             ? "You're on your way!"
-                            : "Welcome to the community!"}
+                            : "You're new here!"}
                     </h2>
                     <p className="text-slate-600 text-sm mb-2">
                       {trustPercentage >= 80
@@ -341,7 +341,10 @@ export default function AchievementsPage() {
                           ? "Building a solid reputation."
                           : trustPercentage >= 25
                             ? "Each exchange builds more trust."
-                            : "Start sharing to build trust with your neighbours."}
+                            : "Start sharing to build your trust score."}
+                    </p>
+                    <p className="text-xs text-teal-600 mb-2">
+                      Higher trust scores unlock lower security deposits when borrowing
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {user?.isVerified && (

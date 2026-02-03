@@ -839,9 +839,9 @@ export default function FAQPage() {
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Reputation is earned through completed transactions. Reviews
-                  from neighbours help you decide who to borrow from, rent to,
-                  or swap with.
+                  Trust Scores show how reliable you are and rewards higher
+                  trust scores with discounted deposits. Reviews from neighbours
+                  help you decide who to borrow from, rent to, or swap with.
                 </p>
               </div>
 

@@ -17,16 +17,32 @@ async function getClient(): Promise<Client | null> {
     const result = await client.list({ startOffset: "", endOffset: "" });
     storageAvailable = result.ok;
     if (storageAvailable) {
-      console.log("[Storage] Object Storage initialized successfully");
+      console.log("[Storage] ✓ Object Storage initialized successfully - images will persist across redeploys");
     } else {
-      console.log("[Storage] Object Storage not available, using local fallback");
+      console.log("[Storage] ⚠ Object Storage bucket not found. Using local fallback (images may not persist).");
+      console.log("[Storage] To enable persistent storage: Tools → Object Storage → Create bucket");
     }
-  } catch (error) {
-    console.log("[Storage] Object Storage not configured, using local fallback");
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error);
+    if (errorMessage.includes("bucket name is needed") || errorMessage.includes("REPLIT_OBJECT_STORE_BUCKET_ID")) {
+      console.log("[Storage] ⚠ Object Storage not configured. Using local fallback (images may not persist).");
+      console.log("[Storage] To enable persistent storage: Tools → Object Storage → Create bucket");
+    } else {
+      console.log("[Storage] ⚠ Object Storage error:", errorMessage);
+    }
     storageAvailable = false;
   }
   
   return storageAvailable ? client : null;
+}
+
+// Check storage status on startup
+export async function checkStorageStatus(): Promise<{ available: boolean; message: string }> {
+  const storageClient = await getClient();
+  if (storageClient) {
+    return { available: true, message: "Object Storage is active - images persist across redeploys" };
+  }
+  return { available: false, message: "Using local storage fallback - images may not persist" };
 }
 
 // Ensure uploads directory exists
@@ -156,6 +172,12 @@ export async function getFromStorage(storageKey: string): Promise<Buffer | null>
 
 // Setup express route to serve files from object storage
 export function setupStorageRoutes(app: Express): void {
+  // Storage status check endpoint
+  app.get("/api/storage/status", async (req: Request, res: Response) => {
+    const status = await checkStorageStatus();
+    res.json(status);
+  });
+  
   app.get("/storage/*", async (req: Request, res: Response) => {
     const storageKey = req.path.replace("/storage/", "");
     

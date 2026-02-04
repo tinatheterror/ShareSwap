@@ -53,8 +53,17 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
 - **Authentication**: Passport.js, Google OAuth
 - **AI Integration**: OpenAI (GPT-4 Vision API)
 - **Payment Processing**: Stripe
-- **File Uploads**: Multer
+- **File Uploads**: Multer with memory storage
+- **Image Storage**: Replit Object Storage (primary) with local filesystem fallback
 - **Routing**: Wouter
 - **Styling**: Tailwind CSS, shadcn UI components
 - **Delivery Service**: Simulated Uber Direct (for testing)
 - **Email Service**: SendGrid (via Replit integration for transactional emails including verification)
+
+## Image Storage Configuration
+The platform uses Replit Object Storage for persistent image storage:
+- **Primary**: Replit Object Storage (images persist across redeploys)
+- **Fallback**: Local filesystem (used if Object Storage not configured)
+- **URL Format**: `/storage/images/filename.jpg` for Object Storage, `/uploads/filename.jpg` for local
+- **Setup**: Create a bucket via Tools → Object Storage in the Replit workspace
+- **Status Check**: GET `/api/storage/status` returns current storage configuration

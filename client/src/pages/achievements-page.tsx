@@ -259,7 +259,7 @@ export default function AchievementsPage() {
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold mb-2 flex items-start justify-center gap-2">
             <Trophy className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
-            Your Community Journey
+            Achievements
           </h1>
         </div>
 
@@ -341,7 +341,8 @@ export default function AchievementsPage() {
                             : "Start sharing to build your trust score."}
                     </p>
                     <p className="text-xs text-teal-600 mb-2">
-                      Higher trust scores unlock lower trust deposits when borrowing
+                      Higher trust scores unlock lower trust deposits when
+                      borrowing
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {user?.isVerified && (

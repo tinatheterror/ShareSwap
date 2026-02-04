@@ -20,9 +20,9 @@ export default function HomePage() {
       // Show tutorial immediately for first-time users
       setShowTutorial(true);
     }
-    
+
     const params = new URLSearchParams(searchString);
-    
+
     // Check for email verification success
     const emailVerified = params.get("verified") === "true";
     if (emailVerified) {
@@ -30,11 +30,12 @@ export default function HomePage() {
       // Clean up URL
       window.history.replaceState({}, "", "/");
     }
-    
+
     // Check for referral applied - from sessionStorage (email signup) or URL (Google OAuth)
     const referralFromUrl = params.get("referral") === "applied";
-    const referralFromSession = sessionStorage.getItem("referralApplied") === "true";
-    
+    const referralFromSession =
+      sessionStorage.getItem("referralApplied") === "true";
+
     if (referralFromUrl || referralFromSession) {
       setShowReferralBanner(true);
       sessionStorage.removeItem("referralApplied");
@@ -53,16 +54,18 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col pb-safe pt-safe">
       <Navbar />
-      
+
       {/* Email Verified Banner */}
       {showVerifiedBanner && (
         <div className="bg-green-50 border-b border-green-200">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="font-medium text-green-800">Your email is verified!</span>
+              <span className="font-medium text-green-800">
+                Your email is verified!
+              </span>
             </div>
-            <button 
+            <button
               onClick={() => setShowVerifiedBanner(false)}
               className="text-green-600 hover:text-green-800 p-1"
             >
@@ -71,7 +74,7 @@ export default function HomePage() {
           </div>
         </div>
       )}
-      
+
       {/* Referral Applied Banner */}
       {showReferralBanner && (
         <div className="bg-green-50 border-b border-green-200">
@@ -79,11 +82,15 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
-                <span className="font-medium text-green-800">Referral code applied</span>
-                <span className="text-green-700 text-sm ml-2">Your friend will earn ShareCoins after your first transaction</span>
+                <span className="font-medium text-green-800">
+                  Referral code applied
+                </span>
+                <span className="text-green-700 text-sm ml-2">
+                  Your friend will earn ShareCoins after your first transaction
+                </span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setShowReferralBanner(false)}
               className="text-green-600 hover:text-green-800 p-1"
             >
@@ -92,19 +99,18 @@ export default function HomePage() {
           </div>
         </div>
       )}
-      
+
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-8 md:py-8 flex items-center justify-center overflow-hidden">
         <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
           <div className="flex-shrink-0 mt-6 md:mt-0">
-            <h1 className="text-4xl font-bold tracking-tight mb-2 md:mb-8 text-center">
-              <div>Your Community</div>
+            <h1 className="text-3xl font-bold tracking-tight mb-2 md:mb-8 text-center">
+              <div>This is your Community</div>
               <div>ShareChest</div>
             </h1>
-            <p className="text-lg text-muted-foreground font-semibold text-left">
-              Give what you can, take what you need.
+            <p className="text-lg text-muted-foreground font-semibold text-center">
+              Share more, own less.
             </p>
           </div>
-
           <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-8 bg-background shadow-lg">
             <div
               data-tutorial="give"

@@ -794,6 +794,74 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // IP-based location detection
+  app.get("/api/geo/detect", async (req, res) => {
+    try {
+      // Get client IP from various headers
+      const clientIp = req.headers["x-forwarded-for"]?.toString().split(",")[0] || 
+                       req.headers["x-real-ip"]?.toString() || 
+                       req.socket.remoteAddress || "";
+      
+      // Use ip-api.com for free IP geolocation (no API key required)
+      const response = await fetch(`http://ip-api.com/json/${clientIp}?fields=status,city,zip,lat,lon,regionName`);
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        res.json({
+          city: data.city || data.regionName || "",
+          postalCode: data.zip || "",
+          lat: data.lat,
+          lon: data.lon,
+        });
+      } else {
+        // Fallback: return empty but valid response
+        res.json({
+          city: "",
+          postalCode: "",
+          lat: null,
+          lon: null,
+        });
+      }
+    } catch (error) {
+      console.error("Error detecting location:", error);
+      res.json({
+        city: "",
+        postalCode: "",
+        lat: null,
+        lon: null,
+      });
+    }
+  });
+
+  // Save user location preferences
+  app.post("/api/user/location", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { city, postalCode, radius } = req.body;
+      const userId = req.user.id;
+
+      await db
+        .update(users)
+        .set({
+          defaultCity: city || null,
+          defaultPostalCode: postalCode || null,
+          locationRadius: radius || 25,
+          hasCompletedLocationSetup: true,
+        })
+        .where(eq(users.id, userId));
+
+      console.log(`[Location] User ${userId} saved location: ${city || postalCode}, radius: ${radius}km`);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error saving location:", error);
+      res.status(500).json({ error: "Failed to save location" });
+    }
+  });
+
   // Profile photo upload endpoint with face validation
   app.post("/api/users/profile-photo", upload.single("profilePhoto"), async (req, res) => {
     if (!req.isAuthenticated()) {

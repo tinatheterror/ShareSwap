@@ -46,6 +46,7 @@ import PaymentMethodsPage from "@/pages/payment-methods-page";
 import MyBalancePage from "@/pages/my-balance-page";
 import { VerificationNudge } from "@/components/verification-nudge";
 import { BackgroundPolling } from "@/components/background-polling";
+import { LocationSetupWrapper } from "@/components/location-setup-wrapper";
 
 function Router() {
   return (
@@ -95,6 +96,7 @@ function App() {
       <AuthProvider>
         <Router />
         <ChatWidget />
+        <LocationSetupWrapper />
         <VerificationNudge />
         <BackgroundPolling />
         <Toaster />

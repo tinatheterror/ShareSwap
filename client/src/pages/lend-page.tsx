@@ -232,10 +232,19 @@ export default function LendPage() {
   // Auto-detect location on page load if not already set
   useEffect(() => {
     const currentPostalCode = form.getValues("postalCode");
-    if (!currentPostalCode && "geolocation" in navigator) {
-      getCurrentLocation();
+    if (!currentPostalCode) {
+      // First try user's saved location preferences
+      if (user?.defaultPostalCode) {
+        form.setValue("postalCode", user.defaultPostalCode);
+        if (user?.defaultCity) {
+          setDetectedLocality(user.defaultCity);
+        }
+      } else if ("geolocation" in navigator) {
+        // Fall back to browser geolocation
+        getCurrentLocation();
+      }
     }
-  }, []);
+  }, [user?.defaultPostalCode, user?.defaultCity]);
 
   const [isDetectingCategory, setIsDetectingCategory] = useState(false);
   const [itemTypeGlow, setItemTypeGlow] = useState(false);

@@ -93,7 +93,7 @@ export default function BorrowPage() {
     lat: number;
     lon: number;
   } | null>(null);
-  const [radius, setRadius] = useState(72); // Default 72km radius
+  const [radius, setRadius] = useState(25); // Default 25km radius (user preference)
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
@@ -109,12 +109,15 @@ export default function BorrowPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Load saved postal code from user profile
+  // Load saved location preferences from user profile
   useEffect(() => {
     if (user?.defaultPostalCode && !userPostalCode) {
       setUserPostalCode(user.defaultPostalCode);
     }
-  }, [user?.defaultPostalCode]);
+    if (user?.locationRadius) {
+      setRadius(user.locationRadius);
+    }
+  }, [user?.defaultPostalCode, user?.locationRadius]);
 
   // Save postal code to user profile mutation
   const savePostalCodeMutation = useMutation({

@@ -115,7 +115,7 @@ export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps
             Find items near you
           </DialogTitle>
           <DialogDescription className="text-center text-gray-600">
-            We use your location to show nearby sharers
+            We use your location to show nearby neighbours. Your address is kept private.
           </DialogDescription>
         </DialogHeader>
 

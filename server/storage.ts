@@ -67,14 +67,19 @@ export async function uploadToStorage(
   }
   
   // Fallback to local file system
-  const localFilename = `${randomBytes(16).toString('hex')}-${timestamp}${ext}`;
-  const localPath = path.join(uploadsDir, localFilename);
-  fs.writeFileSync(localPath, fileBuffer);
-  
-  const localUrl = `/uploads/${localFilename}`;
-  console.log(`[Storage] Uploaded locally: ${filename} -> ${localUrl}`);
-  
-  return localUrl;
+  try {
+    const localFilename = `${randomBytes(16).toString('hex')}-${timestamp}${ext}`;
+    const localPath = path.join(uploadsDir, localFilename);
+    fs.writeFileSync(localPath, fileBuffer);
+    
+    const localUrl = `/uploads/${localFilename}`;
+    console.log(`[Storage] Uploaded locally: ${filename} -> ${localUrl}`);
+    
+    return localUrl;
+  } catch (localError) {
+    console.error(`[Storage] Local fallback also failed:`, localError);
+    throw new Error(`Failed to upload ${filename}: all storage methods failed`);
+  }
 }
 
 export async function uploadFileToStorage(filePath: string): Promise<string> {
@@ -96,14 +101,37 @@ export function getMimeType(filename: string): string {
   return mimeTypes[ext] || "application/octet-stream";
 }
 
-export async function deleteFromStorage(storageKey: string): Promise<void> {
+export async function deleteFromStorage(urlOrKey: string): Promise<void> {
+  // Handle local uploads
+  if (urlOrKey.startsWith('/uploads/')) {
+    const filename = urlOrKey.replace('/uploads/', '');
+    const localPath = path.join(uploadsDir, filename);
+    try {
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+        console.log(`[Storage] Deleted local file: ${localPath}`);
+      }
+    } catch (error) {
+      console.error(`[Storage] Local delete failed for ${localPath}:`, error);
+    }
+    return;
+  }
+  
+  // Handle Object Storage
+  const storageKey = urlOrKey.startsWith('/storage/') 
+    ? urlOrKey.replace('/storage/', '') 
+    : urlOrKey;
+    
   const storageClient = await getClient();
-  if (!storageClient) return;
+  if (!storageClient) {
+    console.log(`[Storage] Cannot delete ${storageKey}: Object Storage not available`);
+    return;
+  }
   
   try {
     const result = await storageClient.delete(storageKey);
     if (result.ok) {
-      console.log(`[Storage] Deleted: ${storageKey}`);
+      console.log(`[Storage] Deleted from Object Storage: ${storageKey}`);
     }
   } catch (error) {
     console.error(`[Storage] Delete failed for ${storageKey}:`, error);

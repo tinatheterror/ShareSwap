@@ -86,9 +86,13 @@ export const userReviews = pgTable("user_reviews", {
 export const verifications = pgTable("verifications", {
   id: serial("id").primaryKey(),
   userId: serial("user_id").references(() => users.id),
-  fullName: text("full_name").notNull(),
-  idNumber: text("id_number").notNull(),
+  fullName: text("full_name"),
+  idNumber: text("id_number"),
   status: text("status").default("pending"),
+  personaInquiryId: text("persona_inquiry_id"),
+  personaStatus: text("persona_status"),
+  verifiedAt: timestamp("verified_at"),
+  failureReason: text("failure_reason"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

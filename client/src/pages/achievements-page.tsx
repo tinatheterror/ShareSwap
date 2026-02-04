@@ -261,9 +261,6 @@ export default function AchievementsPage() {
             <Trophy className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
             Your Community Journey
           </h1>
-          <p className="text-muted-foreground">
-            Every share makes our neighbourhood stronger
-          </p>
         </div>
 
         {/* Main 2-Column Layout: Left (Trust/Level/Milestones) + Right (Badges) */}

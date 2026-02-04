@@ -15,6 +15,7 @@ import { eq, and, or, desc, sql, gte, lt, ne, isNull } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
+import { uploadToStorage } from "./storage";
 import path from "path";
 import * as express from "express";
 import { itemConditionVerifications } from "@db/schema";
@@ -382,20 +383,12 @@ function calculateBoundingBox(lat: number, lon: number, radiusKm: number) {
   return { minLat, maxLat, minLon, maxLon, crossesAntimeridian };
 }
 
-// Security: Configure multer for secure file uploads
-const storage = multer.diskStorage({
-  destination: "./uploads/",
-  filename: function (req, file, cb) {
-    // Sanitize filename to prevent directory traversal attacks
-    const sanitizedOriginalName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.-]/g, '_');
-    const randomPrefix = randomBytes(16).toString('hex');
-    cb(null, `${randomPrefix}-${Date.now()}${path.extname(sanitizedOriginalName)}`);
-  },
-});
+// Security: Configure multer with memory storage for object storage uploads
+const memoryStorage = multer.memoryStorage();
 
 // Security: File upload validation and limits
 const upload = multer({
-  storage: storage,
+  storage: memoryStorage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max file size
     files: 10, // Max 10 files per request
@@ -812,7 +805,10 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Profile photo is required" });
       }
 
-      const photoUrl = `/uploads/${req.file.filename}`;
+      // Upload photo to object storage
+      const photoUrl = await uploadToStorage(req.file.buffer, req.file.originalname);
+      console.log(`[Profile Photo] Uploaded: ${req.file.originalname} -> ${photoUrl}`);
+      
       const userId = req.user.id;
 
       // Get user to check if they've already earned the bonus
@@ -831,12 +827,8 @@ export function registerRoutes(app: Express): Server {
 
       if (!hasAlreadyEarnedBonus) {
         try {
-          // Read the uploaded file and convert to base64
-          const fs = await import("fs");
-          const path = await import("path");
-          const filePath = path.join(process.cwd(), "uploads", req.file.filename);
-          const imageBuffer = fs.readFileSync(filePath);
-          const base64Image = imageBuffer.toString("base64");
+          // Use buffer directly instead of reading from file
+          const base64Image = req.file.buffer.toString("base64");
           const mimeType = req.file.mimetype || "image/jpeg";
 
           // Call GPT-4 Vision for face validation
@@ -1573,12 +1565,22 @@ Respond with ONLY the category name, nothing else.`
       const wasSmartScanned = req.body.wasSmartScanned === "true";
       
       if (wasSmartScanned && req.body.smartScanPhotos) {
-        // Use SmartScan photos (already uploaded)
+        // Use SmartScan photos (already uploaded to object storage)
         photoUrls = JSON.parse(req.body.smartScanPhotos);
       } else {
-        // Use manually uploaded photos
+        // Upload photos to object storage for persistence
         const files = req.files as Express.Multer.File[];
-        photoUrls = files ? files.map((file) => `/uploads/${file.filename}`) : [];
+        if (files && files.length > 0) {
+          for (const file of files) {
+            try {
+              const storageUrl = await uploadToStorage(file.buffer, file.originalname);
+              photoUrls.push(storageUrl);
+              console.log(`[Item Upload] Photo uploaded: ${file.originalname} -> ${storageUrl}`);
+            } catch (error) {
+              console.error(`[Item Upload] Failed to upload ${file.originalname}:`, error);
+            }
+          }
+        }
       }
 
       // Parse location data
@@ -1888,8 +1890,17 @@ Respond with ONLY the category name, nothing else.`
       const files = req.files as Express.Multer.File[];
       
       if (files && files.length > 0) {
-        // New photos uploaded
-        photoUrls = files.map((file) => `/uploads/${file.filename}`);
+        // Upload new photos to object storage
+        photoUrls = [];
+        for (const file of files) {
+          try {
+            const storageUrl = await uploadToStorage(file.buffer, file.originalname);
+            photoUrls.push(storageUrl);
+            console.log(`[Item Update] Photo uploaded: ${file.originalname} -> ${storageUrl}`);
+          } catch (error) {
+            console.error(`[Item Update] Failed to upload ${file.originalname}:`, error);
+          }
+        }
       } else if (req.body.existingPhotos) {
         // Keep existing photos
         photoUrls = JSON.parse(req.body.existingPhotos);

@@ -10,6 +10,7 @@ import {
 } from "./init-achievements";
 import { setupVite, serveStatic, log } from "./vite";
 import { attachCsrfToken } from "./csrf";
+import { setupStorageRoutes } from "./storage";
 
 const app = express();
 
@@ -79,6 +80,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Setup object storage routes for serving uploaded images
+  setupStorageRoutes(app);
+  
   const server = registerRoutes(app);
 
   // Initialize sample games and features

@@ -56,6 +56,9 @@ export const users = pgTable("users", {
   pendingRentalBalance: decimal("pending_rental_balance", { precision: 10, scale: 2 }).default("0.00"), // Pending balance (in escrow)
   stripeConnectedAccountId: text("stripe_connected_account_id"), // For Stripe Connect payouts
   defaultPostalCode: text("default_postal_code"), // Saved location for browsing
+  defaultCity: text("default_city"), // Saved city for browsing
+  locationRadius: integer("location_radius").default(25), // Search radius in km (5, 25, or custom)
+  hasCompletedLocationSetup: boolean("has_completed_location_setup").default(false), // Track if user completed location setup
   createdAt: timestamp("created_at").defaultNow(),
 });
 

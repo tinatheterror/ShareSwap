@@ -341,7 +341,7 @@ export default function AchievementsPage() {
                             : "Start sharing to build your trust score."}
                     </p>
                     <p className="text-xs text-teal-600 mb-2">
-                      Higher trust scores unlock lower security deposits when borrowing
+                      Higher trust scores unlock lower trust deposits when borrowing
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {user?.isVerified && (

@@ -239,6 +239,22 @@ export default function LendPage() {
         if (user?.defaultCity) {
           setDetectedLocality(user.defaultCity);
         }
+        // Geocode the postal code to get coordinates
+        const geocodePostalCode = async () => {
+          try {
+            const response = await fetch(`/api/geo/geocode?query=${encodeURIComponent(user.defaultPostalCode || "")}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.lat && data.lon) {
+                form.setValue("latitude", data.lat);
+                form.setValue("longitude", data.lon);
+              }
+            }
+          } catch (e) {
+            console.log("Geocoding saved postal code failed:", e);
+          }
+        };
+        geocodePostalCode();
       } else if ("geolocation" in navigator) {
         // Fall back to browser geolocation
         getCurrentLocation();

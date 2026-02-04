@@ -205,23 +205,36 @@ export default function BorrowPage() {
             console.log("Could not determine postal code from coordinates");
           }
         },
-        (error: GeolocationPositionError) => {
-          console.error("Error getting location:", error);
-          let errorMessage = "Could not get your location. Some features may be limited.";
+        async (error: GeolocationPositionError) => {
+          console.log("Geolocation error, falling back to saved location:", error.message);
           
-          if (error.code === 1) {
-            errorMessage = "Location permission denied. Enable location in browser settings for nearby items.";
-          } else if (error.code === 2) {
-            errorMessage = "Location unavailable. Check your device's location settings.";
-          } else if (error.code === 3) {
-            errorMessage = "Location request timed out. Please refresh to try again.";
+          // Fall back to geocoding user's saved postal code or city
+          if (user?.defaultPostalCode || user?.defaultCity) {
+            const query = user.defaultPostalCode || user.defaultCity || "";
+            try {
+              const response = await fetch(`/api/geo/geocode?query=${encodeURIComponent(query)}`);
+              if (response.ok) {
+                const data = await response.json();
+                if (data.lat && data.lon) {
+                  setUserLocation({ lat: data.lat, lon: data.lon });
+                  setUserPostalCode(user.defaultPostalCode || "");
+                  console.log("Using geocoded saved location:", data);
+                  return; // Success - no error message needed
+                }
+              }
+            } catch (e) {
+              console.log("Geocoding failed:", e);
+            }
           }
           
-          toast({
-            title: "Location Error",
-            description: errorMessage,
-            variant: "destructive",
-          });
+          // Only show error if we couldn't fall back to saved location
+          if (error.code === 1 && !user?.defaultPostalCode && !user?.defaultCity) {
+            toast({
+              title: "Location Needed",
+              description: "Enable location or set your city in settings for nearby items.",
+              variant: "default",
+            });
+          }
         },
         {
           enableHighAccuracy: false,

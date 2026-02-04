@@ -833,6 +833,41 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Geocode a postal code or city name to coordinates
+  app.get("/api/geo/geocode", async (req, res) => {
+    try {
+      const { query } = req.query;
+      
+      if (!query || typeof query !== "string") {
+        return res.status(400).json({ error: "Query parameter required" });
+      }
+
+      // Use Nominatim for free geocoding (OpenStreetMap)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+        {
+          headers: {
+            "User-Agent": "ShareSwap/1.0",
+          },
+        }
+      );
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        res.json({
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon),
+          displayName: data[0].display_name,
+        });
+      } else {
+        res.json({ lat: null, lon: null, displayName: null });
+      }
+    } catch (error) {
+      console.error("Error geocoding:", error);
+      res.json({ lat: null, lon: null, displayName: null });
+    }
+  });
+
   // Save user location preferences
   app.post("/api/user/location", async (req, res) => {
     if (!req.isAuthenticated()) {

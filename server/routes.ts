@@ -653,8 +653,9 @@ export function registerRoutes(app: Express): Server {
       status,
       legalFullName: verification.fullName,
       submittedAt: verification.createdAt,
-      verifiedAt: user?.verifiedAt || null,
-      failureReason: status === 'failed' ? 'Document could not be verified. Please upload a clearer image.' : null,
+      verifiedAt: verification.verifiedAt || user?.verifiedAt || null,
+      failureReason: verification.failureReason || (status === 'failed' ? 'Verification could not be completed. Please try again.' : null),
+      personaInquiryId: verification.personaInquiryId || null,
     });
   });
 
@@ -791,6 +792,182 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error approving verification:", error);
       res.status(500).json({ error: "Failed to approve verification" });
+    }
+  });
+
+  // Persona configuration endpoint
+  app.get("/api/persona/config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const templateId = process.env.PERSONA_TEMPLATE_ID;
+    const environment = process.env.PERSONA_ENVIRONMENT || "sandbox";
+
+    if (!templateId) {
+      return res.status(500).json({ error: "Persona not configured" });
+    }
+
+    // Generate a user-specific reference ID for binding inquiry to user
+    const referenceId = `user_${req.user.id}`;
+
+    res.json({ templateId, environment, referenceId });
+  });
+
+  // Persona verification complete callback - validates with Persona API
+  app.post("/api/persona/complete", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { inquiryId, status } = req.body;
+
+      if (!inquiryId) {
+        return res.status(400).json({ error: "Inquiry ID is required" });
+      }
+
+      // Check for existing verification with this inquiry ID
+      const [existing] = await db
+        .select()
+        .from(verifications)
+        .where(eq(verifications.personaInquiryId, inquiryId))
+        .limit(1);
+
+      if (existing) {
+        return res.json({ success: true, status: existing.status });
+      }
+
+      // Check if user already has an approved verification (prevent duplicate rewards)
+      const [existingApproved] = await db
+        .select()
+        .from(verifications)
+        .where(and(
+          eq(verifications.userId, req.user.id),
+          eq(verifications.status, "approved")
+        ))
+        .limit(1);
+
+      const alreadyVerified = !!existingApproved;
+
+      // Verify the inquiry status with Persona API if API key is available
+      let verifiedStatus = status;
+      let extractedName: string | null = null;
+      let failureReason: string | null = null;
+      const expectedReferenceId = `user_${req.user.id}`;
+      
+      const personaApiKey = process.env.PERSONA_API_KEY;
+      if (personaApiKey && inquiryId) {
+        try {
+          const personaResponse = await fetch(`https://withpersona.com/api/v1/inquiries/${inquiryId}`, {
+            headers: {
+              'Authorization': `Bearer ${personaApiKey}`,
+              'Persona-Version': '2023-01-05',
+            }
+          });
+          
+          if (personaResponse.ok) {
+            const personaData = await personaResponse.json();
+            
+            // Validate that the inquiry belongs to this user via reference ID
+            const inquiryReferenceId = personaData.data?.attributes?.['reference-id'];
+            if (inquiryReferenceId && inquiryReferenceId !== expectedReferenceId) {
+              console.warn(`Reference ID mismatch: expected ${expectedReferenceId}, got ${inquiryReferenceId}`);
+              return res.status(403).json({ error: "Inquiry does not belong to this user" });
+            }
+            
+            verifiedStatus = personaData.data?.attributes?.status || status;
+            
+            // Extract name from verification fields if available
+            const fields = personaData.data?.attributes?.fields || {};
+            if (fields['name-first'] && fields['name-last']) {
+              extractedName = `${fields['name-first'].value} ${fields['name-last'].value}`;
+            }
+            
+            // Check for failure reasons
+            if (verifiedStatus === 'failed' || verifiedStatus === 'declined') {
+              failureReason = personaData.data?.attributes?.['failure-reason'] || 'Verification could not be completed';
+            }
+          } else {
+            console.warn("Could not verify Persona inquiry:", await personaResponse.text());
+          }
+        } catch (apiError) {
+          console.warn("Persona API verification failed, using client status:", apiError);
+        }
+      }
+
+      // Map Persona statuses to our status
+      let verificationStatus: string;
+      if (verifiedStatus === "completed" || verifiedStatus === "approved") {
+        verificationStatus = "approved";
+      } else if (verifiedStatus === "failed" || verifiedStatus === "declined" || verifiedStatus === "expired") {
+        verificationStatus = "rejected";
+        failureReason = failureReason || "Verification could not be completed. Please try again.";
+      } else {
+        verificationStatus = "pending";
+      }
+
+      await db
+        .insert(verifications)
+        .values({
+          userId: req.user.id,
+          fullName: extractedName,
+          idNumber: null,
+          status: verificationStatus,
+          personaInquiryId: inquiryId,
+          personaStatus: verifiedStatus,
+          verifiedAt: verificationStatus === "approved" ? new Date() : null,
+          failureReason: failureReason,
+        });
+
+      // Only apply rewards if approved AND user hasn't already been verified before
+      if (verificationStatus === "approved" && !alreadyVerified) {
+        const VERIFICATION_TRUST_BOOST = 50;
+        const VERIFICATION_SHARECOIN_REWARD = 5;
+
+        // Check if user has payment method on file
+        const [currentUser] = await db
+          .select({ stripePaymentMethodId: users.stripePaymentMethodId })
+          .from(users)
+          .where(eq(users.id, req.user.id));
+        
+        const hasPaymentMethod = !!currentUser?.stripePaymentMethodId;
+        
+        await db
+          .update(users)
+          .set({
+            isVerified: hasPaymentMethod,
+            verifiedAt: hasPaymentMethod ? new Date() : null,
+            reputationScore: sql`COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST}`,
+            shareCoins: sql`share_coins + ${VERIFICATION_SHARECOIN_REWARD}`,
+          })
+          .where(eq(users.id, req.user.id));
+
+        // Log the reputation activity
+        await db.insert(reputationActivities).values({
+          userId: req.user.id,
+          activityType: "VERIFICATION_APPROVED",
+          points: VERIFICATION_TRUST_BOOST,
+          description: "Identity verified via Persona selfie + ID match",
+        });
+
+        // Log ShareCoins transaction
+        await db.insert(shareCoinsTransactions).values({
+          userId: req.user.id,
+          amount: VERIFICATION_SHARECOIN_REWARD.toString(),
+          description: "Profile Verification Bonus",
+          transactionType: "EARNED",
+        });
+
+        console.log(`✅ Persona verification completed for user ${req.user.id}`);
+      } else if (verificationStatus === "approved" && alreadyVerified) {
+        console.log(`ℹ️ User ${req.user.id} already verified, no additional rewards`);
+      }
+
+      res.json({ success: true, status: verificationStatus });
+    } catch (error) {
+      console.error("Error processing Persona verification:", error);
+      res.status(500).json({ error: "Failed to process verification" });
     }
   });
 

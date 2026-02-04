@@ -355,7 +355,7 @@ export default function ProfilePage() {
       setEditForm({
         fullName: profile.fullName || "",
         bio: profile.bio || "",
-        location: profile.location || "",
+        location: profile.location || user?.defaultCity || user?.defaultPostalCode || "",
         phone: profile.phone || "",
       });
       setIsEditing(true);

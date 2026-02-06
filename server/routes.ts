@@ -148,21 +148,20 @@ async function checkAndAwardReferralBonus(
       const immediateCompletionTypes = ['SWAP', 'GIFT'];
       const requiresReturnTypes = ['BORROW', 'LEND', 'RENT'];
       
+      const isCompleted = (s: string | null) => s === 'COMPLETED' || s === 'COMPLETED_EARLY';
+      
       if (transactionType && immediateCompletionTypes.includes(transactionType)) {
-        // For swaps and gifts, ACCEPTED is valid completion
-        if (!['ACCEPTED', 'COMPLETED'].includes(transaction.status || '')) {
+        if (!['ACCEPTED', 'COMPLETED', 'COMPLETED_EARLY'].includes(transaction.status || '')) {
           console.log(`🚫 Referral not awarded: ${transactionType} transaction ${transactionId} not yet accepted/completed (status: ${transaction.status})`);
           return { awarded: false, reason: "Transaction not yet completed" };
         }
       } else if (transactionType && requiresReturnTypes.includes(transactionType)) {
-        // For borrows, lends, and rentals, require COMPLETED status (after return)
-        if (transaction.status !== 'COMPLETED') {
+        if (!isCompleted(transaction.status)) {
           console.log(`🚫 Referral not awarded: ${transactionType} transaction ${transactionId} not yet completed (status: ${transaction.status})`);
           return { awarded: false, reason: "Transaction not yet completed - item must be returned" };
         }
       } else {
-        // Fallback: require COMPLETED for unknown types
-        if (transaction.status !== 'COMPLETED') {
+        if (!isCompleted(transaction.status)) {
           console.log(`🚫 Referral not awarded: Transaction ${transactionId} not yet completed (status: ${transaction.status})`);
           return { awarded: false, reason: "Transaction not yet completed" };
         }
@@ -5170,11 +5169,11 @@ Respond with ONLY the category name, nothing else.`
       const isEarlyReturn = request.item_requests.isEarlyReturn || false;
       const isRental = request.item_requests.requestType === 'RENT';
 
-      // Update request to completed
+      // Update request to completed (early returns get "COMPLETED_EARLY" status)
       const [updated] = await db
         .update(itemRequests)
         .set({
-          status: "COMPLETED",
+          status: isEarlyReturn ? "COMPLETED_EARLY" : "COMPLETED",
           returnConfirmedAt: new Date(),
           returnConditionRating: conditionRating || 5,
           returnConditionNotes: conditionNotes,
@@ -5698,6 +5697,8 @@ Respond with ONLY the category name, nothing else.`
     try {
       const userId = req.user.id;
 
+      const completedStatuses = or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY"));
+
       // Count items borrowed (as requester with BORROW type and COMPLETED status)
       const [borrowedCount] = await db
         .select({ count: sql<number>`count(*)` })
@@ -5705,7 +5706,7 @@ Respond with ONLY the category name, nothing else.`
         .where(and(
           eq(itemRequests.requesterId, userId),
           eq(itemRequests.requestType, "BORROW"),
-          eq(itemRequests.status, "COMPLETED")
+          completedStatuses
         ));
 
       // Count items lent (as owner with COMPLETED status)
@@ -5715,7 +5716,7 @@ Respond with ONLY the category name, nothing else.`
         .innerJoin(items, eq(items.id, itemRequests.itemId))
         .where(and(
           eq(items.ownerId, userId),
-          eq(itemRequests.status, "COMPLETED")
+          completedStatuses
         ));
 
       // Count swaps completed
@@ -5728,7 +5729,7 @@ Respond with ONLY the category name, nothing else.`
             sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
           ),
           eq(itemRequests.requestType, "SWAP"),
-          eq(itemRequests.status, "COMPLETED")
+          completedStatuses
         ));
 
       // Count gifts given (as owner with GIFT type)
@@ -5739,7 +5740,7 @@ Respond with ONLY the category name, nothing else.`
         .where(and(
           eq(items.ownerId, userId),
           eq(itemRequests.requestType, "GIFT"),
-          eq(itemRequests.status, "COMPLETED")
+          completedStatuses
         ));
 
       // Count successful handoffs (only COMPLETED transactions)
@@ -5751,7 +5752,7 @@ Respond with ONLY the category name, nothing else.`
             eq(itemRequests.requesterId, userId),
             sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
           ),
-          eq(itemRequests.status, "COMPLETED")
+          completedStatuses
         ));
 
       // Count referrals
@@ -5769,7 +5770,7 @@ Respond with ONLY the category name, nothing else.`
         .innerJoin(wishlists, sql`${wishlists.itemName} ILIKE '%' || ${items.name} || '%'`)
         .where(and(
           eq(items.ownerId, userId),
-          eq(itemRequests.status, "COMPLETED"),
+          or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
           eq(wishlists.urgency, "urgent")
         ));
 

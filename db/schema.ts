@@ -333,6 +333,7 @@ export const itemRequests = pgTable("item_requests", {
   returnConditionOk: boolean("return_condition_ok"), // true if returned in same condition
   returnDisputeTriggered: boolean("return_dispute_triggered").default(false),
   returnDisputeReason: text("return_dispute_reason"),
+  isEarlyReturn: boolean("is_early_return").default(false),
   
   // Return tracking
   returnRequestedAt: timestamp("return_requested_at"),

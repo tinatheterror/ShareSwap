@@ -470,7 +470,7 @@ export function Navbar() {
                             <p className="font-medium">{user.username}</p>
                             <p className="text-sm text-muted-foreground flex items-center gap-1">
                               <User className="h-4 w-4" />
-                              View Profile
+                              My Profile
                             </p>
                           </div>
                         </div>

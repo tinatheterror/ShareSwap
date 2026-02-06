@@ -1002,6 +1002,8 @@ export function ChatWidget() {
           itemName={selectedRequest.item.name}
           depositAmount={parseFloat(selectedRequest.trustDepositAmount || "20")}
           userRole={selectedRequest.requesterId === user?.id ? "borrower" : "owner"}
+          requestType={selectedRequest.requestType as "BORROW" | "RENT"}
+          endDate={selectedRequest.endDate}
           onSuccess={() => { setShowReturnModal(false); setSelectedRequest(null); }}
         />
       )}

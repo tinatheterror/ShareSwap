@@ -986,6 +986,7 @@ export function ChatWidget() {
           itemName={selectedRequest.item.name}
           shareCoinAmount={parseFloat(selectedRequest.item.shareCoinPrice || "5")}
           userRole={selectedRequest.requesterId === user?.id ? "borrower" : "owner"}
+          deliveryMethod={(selectedRequest.deliveryMethod as "in_person" | "courier") || "in_person"}
           onSuccess={() => {
             setShowHandoffModal(false);
             setSelectedRequest(null);

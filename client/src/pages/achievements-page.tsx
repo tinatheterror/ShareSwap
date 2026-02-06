@@ -270,9 +270,10 @@ export default function AchievementsPage() {
             {/* Community Trust - Visual Ring */}
             <Card className="overflow-hidden">
               <CardContent className="py-4 px-5">
-                <div className="flex items-center gap-5">
+                <div className="flex items-start gap-5">
                   {/* Trust Ring */}
-                  <div className="relative w-28 h-28 flex-shrink-0">
+                  <div className="flex flex-col items-center flex-shrink-0">
+                  <div className="relative w-28 h-28">
                     <svg
                       className="w-full h-full transform -rotate-90"
                       viewBox="0 0 100 100"
@@ -319,6 +320,10 @@ export default function AchievementsPage() {
                       </span>
                     </div>
                   </div>
+                  <p className="text-xs text-teal-600 mt-2 text-center max-w-[8rem]">
+                    Higher trust scores unlock lower trust deposits when borrowing
+                  </p>
+                  </div>
 
                   {/* Trust Message */}
                   <div className="flex-1">
@@ -339,10 +344,6 @@ export default function AchievementsPage() {
                           : trustPercentage >= 25
                             ? "Each exchange builds more trust."
                             : "Start sharing to build your trust score."}
-                    </p>
-                    <p className="text-xs text-teal-600 mb-2">
-                      Higher trust scores unlock lower trust deposits when
-                      borrowing
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {user?.isVerified && (

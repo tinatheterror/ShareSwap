@@ -27,17 +27,26 @@ interface GeoLocation {
   lon: number;
 }
 
-export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps) {
+export function LocationSetupModal({
+  open,
+  onComplete,
+}: LocationSetupModalProps) {
   const [locationInput, setLocationInput] = useState("");
   const [radiusOption, setRadiusOption] = useState("25");
   const [isDetecting, setIsDetecting] = useState(true);
-  const [detectedLocation, setDetectedLocation] = useState<GeoLocation | null>(null);
+  const [detectedLocation, setDetectedLocation] = useState<GeoLocation | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const saveLocationMutation = useMutation({
-    mutationFn: async (data: { city: string; postalCode: string; radius: number }) => {
+    mutationFn: async (data: {
+      city: string;
+      postalCode: string;
+      radius: number;
+    }) => {
       const response = await apiRequest("POST", "/api/user/location", data);
       return response.json();
     },
@@ -67,7 +76,7 @@ export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps
   const detectLocation = async () => {
     setIsDetecting(true);
     setError("");
-    
+
     try {
       const response = await fetch("/api/geo/detect");
       if (response.ok) {
@@ -86,27 +95,33 @@ export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps
 
   const handleContinue = () => {
     const trimmedInput = locationInput.trim();
-    
+
     if (!trimmedInput) {
       setError("Please enter your city or postal code.");
       return;
     }
 
     setError("");
-    
-    const isPostalCode = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(trimmedInput) || 
-                         /^\d{5}(-\d{4})?$/.test(trimmedInput);
-    
+
+    const isPostalCode =
+      /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(trimmedInput) ||
+      /^\d{5}(-\d{4})?$/.test(trimmedInput);
+
     saveLocationMutation.mutate({
-      city: isPostalCode ? (detectedLocation?.city || "") : trimmedInput,
-      postalCode: isPostalCode ? trimmedInput : (detectedLocation?.postalCode || ""),
+      city: isPostalCode ? detectedLocation?.city || "" : trimmedInput,
+      postalCode: isPostalCode
+        ? trimmedInput
+        : detectedLocation?.postalCode || "",
       radius: parseInt(radiusOption),
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="text-center">
           <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center">
             <MapPin className="h-8 w-8 text-white" />
@@ -115,7 +130,8 @@ export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps
             Find items near you
           </DialogTitle>
           <DialogDescription className="text-center text-gray-600">
-            We use your location to show nearby neighbours. Your address is kept private.
+            We only use your location to show nearby neighbours. Your address is
+            kept private.
           </DialogDescription>
         </DialogHeader>
 
@@ -142,9 +158,7 @@ export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps
                 </div>
               )}
             </div>
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-500">{error}</p>}
             {detectedLocation && !isDetecting && (
               <p className="text-sm text-teal-600">
                 Location detected automatically
@@ -161,20 +175,31 @@ export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps
             >
               <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50 transition-colors">
                 <RadioGroupItem value="5" id="near" />
-                <Label htmlFor="near" className="flex-1 cursor-pointer font-normal">
+                <Label
+                  htmlFor="near"
+                  className="flex-1 cursor-pointer font-normal"
+                >
                   Near me (5 km)
                 </Label>
               </div>
               <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50 transition-colors border-teal-500 bg-teal-50">
                 <RadioGroupItem value="25" id="city" />
-                <Label htmlFor="city" className="flex-1 cursor-pointer font-normal">
+                <Label
+                  htmlFor="city"
+                  className="flex-1 cursor-pointer font-normal"
+                >
                   My city (25 km)
                 </Label>
-                <span className="text-xs text-teal-600 font-medium">Recommended</span>
+                <span className="text-xs text-teal-600 font-medium">
+                  Recommended
+                </span>
               </div>
               <div className="flex items-center space-x-3 rounded-lg border p-3 cursor-pointer hover:bg-gray-50 transition-colors">
                 <RadioGroupItem value="50" id="region" />
-                <Label htmlFor="region" className="flex-1 cursor-pointer font-normal">
+                <Label
+                  htmlFor="region"
+                  className="flex-1 cursor-pointer font-normal"
+                >
                   My region (50 km)
                 </Label>
               </div>
@@ -182,7 +207,7 @@ export function LocationSetupModal({ open, onComplete }: LocationSetupModalProps
           </div>
 
           <p className="text-xs text-gray-500 text-center">
-            You can change this anytime in settings.
+            Change this anytime in settings.
           </p>
         </div>
 

@@ -21,6 +21,7 @@ import {
   Star,
   AlertCircle,
   AlertTriangle,
+  Clock,
 } from "lucide-react";
 
 interface ReturnConfirmationModalProps {
@@ -30,6 +31,8 @@ interface ReturnConfirmationModalProps {
   itemName: string;
   depositAmount: number;
   userRole: "owner" | "borrower";
+  requestType?: "BORROW" | "RENT";
+  endDate?: string | Date | null;
   onSuccess: () => void;
 }
 
@@ -48,6 +51,8 @@ export function ReturnConfirmationModal({
   itemName,
   depositAmount,
   userRole,
+  requestType = "BORROW",
+  endDate,
   onSuccess,
 }: ReturnConfirmationModalProps) {
   const { toast } = useToast();
@@ -59,6 +64,8 @@ export function ReturnConfirmationModal({
   const [confirmDispute, setConfirmDispute] = useState(false);
   
   const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
+  const isRental = requestType === "RENT";
+  const isEarlyReturn = endDate ? new Date() < new Date(endDate) : false;
 
   const initiateReturnMutation = useMutation({
     mutationFn: async () => {
@@ -73,10 +80,19 @@ export function ReturnConfirmationModal({
     },
     onSuccess: (data) => {
       setIsProcessing(false);
-      toast({
-        title: "Return initiated!",
-        description: "Waiting for lender to confirm the return.",
-      });
+      if (isEarlyReturn) {
+        toast({
+          title: "Early return initiated!",
+          description: isRental
+            ? "Waiting for owner to confirm. No refund for unused days."
+            : "Waiting for lender to confirm the return.",
+        });
+      } else {
+        toast({
+          title: "Return initiated!",
+          description: "Waiting for lender to confirm the return.",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       onSuccess();
     },
@@ -113,10 +129,22 @@ export function ReturnConfirmationModal({
           title: "Dispute opened",
           description: "We'll review your claim and contact both parties.",
         });
+      } else if (isEarlyReturn && isRental) {
+        toast({
+          title: "Item returned early. Rental period completed.",
+          description: `Deposit released. Full rental amount kept.`,
+        });
+      } else if (isEarlyReturn) {
+        toast({
+          title: "Item returned early. Deposit released.",
+          description: `Deposit of $${depositAmount} has been released.`,
+        });
       } else {
         toast({
           title: "Return confirmed!",
-          description: `Deposit of $${depositAmount} has been released.`,
+          description: isRental
+            ? `Deposit released and rental earnings added to your balance.`
+            : `Deposit of $${depositAmount} has been released.`,
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -140,7 +168,7 @@ export function ReturnConfirmationModal({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-blue-600" />
-              Return Item
+              {isEarlyReturn ? "Return Item Early" : "Return Item"}
             </DialogTitle>
             <DialogDescription>
               Initiate the return of{" "}
@@ -149,14 +177,31 @@ export function ReturnConfirmationModal({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {isEarlyReturn && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-amber-700 font-medium">
+                  <Clock className="h-4 w-4" />
+                  Early Return
+                </div>
+                <p className="text-sm text-amber-600 mt-1">
+                  {isRental
+                    ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
+                    : "You're returning this item before your borrow period ends. No penalty applies."}
+                </p>
+              </div>
+            )}
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center gap-2 text-blue-700 font-medium">
                 <Shield className="h-4 w-4" />
-                Your deposit will be released after lender confirms
+                {isRental
+                  ? "Your deposit will be released after owner confirms"
+                  : "Your deposit will be released after lender confirms"}
               </div>
               <p className="text-sm text-blue-600 mt-1">
-                Once the lender confirms the item is returned in good condition,
-                your ${depositAmount} deposit will be automatically released.
+                {isRental
+                  ? `Once the owner confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`
+                  : `Once the lender confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`}
               </p>
             </div>
 
@@ -164,7 +209,7 @@ export function ReturnConfirmationModal({
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  Make sure you've returned the item to the lender before
+                  Make sure you've returned the item to the {isRental ? "owner" : "lender"} before
                   initiating the return process.
                 </p>
               </div>
@@ -193,7 +238,7 @@ export function ReturnConfirmationModal({
               ) : (
                 <>
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  Initiate Return
+                  {isEarlyReturn ? "Return Early" : "Initiate Return"}
                 </>
               )}
             </Button>
@@ -209,7 +254,7 @@ export function ReturnConfirmationModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
-            Confirm Item Return
+            {isEarlyReturn ? "Confirm Early Return" : "Confirm Item Return"}
           </DialogTitle>
           <DialogDescription>
             Confirm that{" "}
@@ -219,7 +264,20 @@ export function ReturnConfirmationModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Same Condition Checkbox */}
+          {isEarlyReturn && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-blue-700 font-medium">
+                <Clock className="h-4 w-4" />
+                Early Return
+              </div>
+              <p className="text-sm text-blue-600 mt-1">
+                {isRental
+                  ? "This item is being returned early. You keep the full rental amount — no refund for unused days."
+                  : "This item is being returned early. The deposit will be released immediately."}
+              </p>
+            </div>
+          )}
+
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <Checkbox
@@ -245,7 +303,6 @@ export function ReturnConfirmationModal({
             </div>
           </div>
           
-          {/* Show condition rating only if NOT same condition */}
           {!sameCondition && (
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
@@ -299,7 +356,6 @@ export function ReturnConfirmationModal({
             />
           </div>
 
-          {/* Dispute Warning */}
           {shouldTriggerDispute && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
@@ -307,7 +363,7 @@ export function ReturnConfirmationModal({
                 <div className="flex-1">
                   <h4 className="font-medium text-red-800 text-sm">This will open a dispute</h4>
                   <p className="text-xs text-red-600 mt-1">
-                    Since you reported damage, we'll hold the borrower's ${depositAmount} deposit while we review. 
+                    Since you reported damage, we'll hold the {isRental ? "renter's" : "borrower's"} ${depositAmount} deposit while we review. 
                     Both parties will be contacted to resolve this.
                   </p>
                   <div className="flex items-center gap-2 mt-3">
@@ -325,15 +381,18 @@ export function ReturnConfirmationModal({
             </div>
           )}
 
-          {/* Normal deposit release message */}
           {!shouldTriggerDispute && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
                 <Shield className="h-4 w-4" />
-                Borrower's deposit of ${depositAmount} will be released
+                {isRental
+                  ? `Renter's deposit of $${depositAmount} will be released`
+                  : `Borrower's deposit of $${depositAmount} will be released`}
               </div>
               <p className="text-xs text-green-600 mt-1">
-                The borrower's trust score will also be updated based on your rating.
+                {isRental
+                  ? "The renter's trust score will also be updated based on your rating."
+                  : "The borrower's trust score will also be updated based on your rating."}
               </p>
             </div>
           )}

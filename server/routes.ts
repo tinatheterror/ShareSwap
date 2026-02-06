@@ -5059,11 +5059,15 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Request is not in progress" });
       }
 
+      const endDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
+      const isEarlyReturn = endDate ? new Date() < endDate : false;
+
       const [updated] = await db
         .update(itemRequests)
         .set({
           status: "RETURN_REQUESTED",
           returnRequestedAt: new Date(),
+          isEarlyReturn,
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
@@ -5071,7 +5075,10 @@ Respond with ONLY the category name, nothing else.`
       res.json({
         success: true,
         request: updated,
-        message: "Return initiated. Waiting for lender confirmation.",
+        isEarlyReturn,
+        message: isEarlyReturn 
+          ? "Early return initiated. Waiting for lender confirmation."
+          : "Return initiated. Waiting for lender confirmation.",
       });
     } catch (error: any) {
       console.error("Error initiating return:", error);
@@ -5159,6 +5166,9 @@ Respond with ONLY the category name, nothing else.`
           // Continue even if Stripe fails - we don't want to block the return
         }
       }
+
+      const isEarlyReturn = request.item_requests.isEarlyReturn || false;
+      const isRental = request.item_requests.requestType === 'RENT';
 
       // Update request to completed
       const [updated] = await db
@@ -5308,14 +5318,24 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
+      let message: string;
+      if (isEarlyReturn && isRental) {
+        message = "Item returned early. Rental period completed.";
+      } else if (isEarlyReturn) {
+        message = "Item returned early. Deposit released.";
+      } else if (isRental) {
+        message = "Return confirmed! Deposit released and rental earnings added to your balance.";
+      } else {
+        message = "Return confirmed! Deposit has been released.";
+      }
+
       res.json({
         success: true,
         request: updated,
         depositReleased: true,
+        isEarlyReturn,
         rentalEarnings,
-        message: request.item_requests.requestType === 'RENT' 
-          ? "Return confirmed! Deposit released and rental earnings added to your balance."
-          : "Return confirmed! Deposit has been released.",
+        message,
       });
     } catch (error: any) {
       console.error("Error confirming return:", error);

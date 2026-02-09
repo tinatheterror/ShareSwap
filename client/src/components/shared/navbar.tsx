@@ -14,12 +14,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight, Mail } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight, Mail, MessageSquareText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
+import { useUserJot } from "@/hooks/use-userjot";
 import { Clock, AlertCircle } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { formatDistanceToNow } from "date-fns";
@@ -248,6 +249,10 @@ export function Navbar() {
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileWalletOpen, setMobileWalletOpen] = useState(false);
+  const { openFeedback } = useUserJot({
+    userId: user?.id,
+    username: user?.username,
+  });
 
   return (
     <>
@@ -340,6 +345,15 @@ export function Navbar() {
                   </NavigationMenuItem>
                   <NavigationMenuItem>
                     <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={openFeedback}
+                        className="flex items-center gap-1.5 text-muted-foreground hover:text-primary hover:border-primary"
+                      >
+                        <MessageSquareText className="h-4 w-4" />
+                        <span className="text-xs">Feedback</span>
+                      </Button>
                       <NotificationBell />
                       <Link href="/profile">
                         <Avatar className="border-2 border-primary cursor-pointer hover:border-primary/80 transition-colors">
@@ -503,6 +517,17 @@ export function Navbar() {
                       </Link>
 
                       <div className="border-t pt-4 mt-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            openFeedback();
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full justify-start gap-3 text-muted-foreground hover:text-primary"
+                        >
+                          <MessageSquareText className="h-5 w-5" />
+                          Send Feedback
+                        </Button>
                         <Button
                           variant="ghost"
                           onClick={() => {

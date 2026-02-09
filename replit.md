@@ -59,6 +59,7 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
 - **Styling**: Tailwind CSS, shadcn UI components
 - **Delivery Service**: Simulated Uber Direct (for testing)
 - **Email Service**: SendGrid (via Replit integration for transactional emails including verification)
+- **Beta Feedback**: UserJot widget (SDK v2, custom trigger, logged-in users only via VITE_USERJOT_PROJECT_ID env var)
 
 ## Image Storage Configuration
 The platform uses Replit Object Storage for persistent image storage:

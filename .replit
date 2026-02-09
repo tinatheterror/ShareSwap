@@ -46,3 +46,8 @@ integrations = ["javascript_openai_ai_integrations:1.0.0", "stripe:2.0.0", "send
 
 [objectStorage]
 defaultBucketID = "replit-objstore-cb3aab52-ac42-40ef-9d04-b5fbb6285151"
+
+[userenv]
+
+[userenv.shared]
+VITE_USERJOT_PROJECT_ID = "cmlfkklda161o0ilgvmmecwhh"

@@ -1782,21 +1782,17 @@ Respond with ONLY the category name, nothing else.`
       shareCoinsReward = 5; // Fallback to base reward
     }
 
-    // Set replacement value for lendable/rentable items (locked at listing time)
+    // Set replacement value for all items (locked at listing time)
     // Priority order:
     // 1. AI valuation's internalItemValue (analyzes description/features + photos + brand)
     // 2. SmartScan estimated value or range midpoint (calculatedRV)
     let replacementValue: number | null = null;
-    if (isLendable || isRentable) {
-      if (aiValuationResult && aiValuationResult.internalItemValue > 0) {
-        // Use AI-calculated market value (considers description, condition, brand, photos)
-        replacementValue = aiValuationResult.internalItemValue;
-        console.log(`Replacement value from AI analysis: $${replacementValue}`);
-      } else {
-        // Fallback to SmartScan estimate or range midpoint
-        replacementValue = calculatedRV;
-        console.log(`Replacement value from ${rvSource === 'ai' ? 'SmartScan' : 'range midpoint'}: $${replacementValue}`);
-      }
+    if (aiValuationResult && aiValuationResult.internalItemValue > 0) {
+      replacementValue = aiValuationResult.internalItemValue;
+      console.log(`Replacement value from AI analysis: $${replacementValue}`);
+    } else {
+      replacementValue = calculatedRV;
+      console.log(`Replacement value from ${rvSource === 'ai' ? 'SmartScan' : 'range midpoint'}: $${replacementValue}`);
     }
 
     // Parse swap preferences
@@ -1828,7 +1824,7 @@ Respond with ONLY the category name, nothing else.`
       lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
       shareCoinsReward: shareCoinsReward.toString(),
       shareCoinPrice: shareCoinsReward.toString(),
-      estimatedValue: req.body.estimatedValue || null,
+      estimatedValue: replacementValue ? replacementValue.toString() : null,
       replacementValue: replacementValue,
       isAvailable: true,
       isConditionVerified: false,

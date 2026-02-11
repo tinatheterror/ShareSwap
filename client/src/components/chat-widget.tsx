@@ -89,6 +89,7 @@ interface ItemRequest {
     description: string;
     photos: string[];
     estimatedValue: string;
+    replacementValue: number;
     ownerId: number;
     tier: number;
     originalValue: string;
@@ -380,7 +381,7 @@ export function ChatWidget() {
     const request = requests.find((r) => r.id === selectedRequestId);
     if (!request) return;
 
-    const itemValue = parseFloat(request.item.estimatedValue || "50");
+    const itemValue = request.item.replacementValue || parseFloat(request.item.estimatedValue || "50");
 
     if (selections.depositMethod === "shareswap_deposit") {
       try {
@@ -1079,7 +1080,7 @@ export function ChatWidget() {
             setSelectedRequestId(null);
           }}
           onComplete={handleDeliveryDepositComplete}
-          itemValue={parseFloat(
+          itemValue={requests.find((r) => r.id === selectedRequestId)?.item.replacementValue || parseFloat(
             requests.find((r) => r.id === selectedRequestId)?.item
               .estimatedValue || "50",
           )}
@@ -1173,7 +1174,7 @@ export function ChatWidget() {
             tier: selectedRequest.item.tier || 2,
             category:
               (selectedRequest.item as any).category || "Home & Kitchen",
-            estimatedValue: selectedRequest.item.estimatedValue || "100",
+            estimatedValue: String(selectedRequest.item.replacementValue || selectedRequest.item.estimatedValue || "100"),
             dollarsPrice: (selectedRequest.item as any).dollarsPrice,
             photos: selectedRequest.item.photos,
           }}

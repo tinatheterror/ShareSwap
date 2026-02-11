@@ -1827,6 +1827,7 @@ Respond with ONLY the category name, nothing else.`
       securityDeposit: req.body.securityDeposit || "0",
       lendingDuration: parseInt(req.body.lendingDuration || "0") || 0,
       shareCoinsReward: shareCoinsReward.toString(),
+      shareCoinPrice: shareCoinsReward.toString(),
       estimatedValue: req.body.estimatedValue || null,
       replacementValue: replacementValue,
       isAvailable: true,

@@ -523,7 +523,7 @@ export default function ProfilePage() {
                         {(item.isLendable || item.isRentable) && (
                           <div className="flex items-center gap-2">
                             <Coins className="h-4 w-4 text-teal-600" />
-                            <span>{item.shareCoinPrice || 50} ShareCoins</span>
+                            <span>{item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins</span>
                             {item.isRentable && (
                               <>
                                 <span className="text-slate-400">|</span>

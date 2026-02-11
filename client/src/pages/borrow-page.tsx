@@ -759,7 +759,7 @@ export default function BorrowPage() {
                                   <div className="flex items-center gap-2 text-sm text-slate-700">
                                     <div className="flex items-center gap-1">
                                       <Coins className="h-4 w-4 text-teal-600" />
-                                      <span>{currentItem.shareCoinPrice || 50} ShareCoins</span>
+                                      <span>{currentItem.shareCoinPrice || currentItem.shareCoinsReward || "5"} ShareCoins</span>
                                     </div>
                                     {currentItem.isRentable && (
                                       <>
@@ -900,7 +900,7 @@ export default function BorrowPage() {
                         <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
                           <div className="flex items-center gap-0.5 md:gap-1">
                             <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
-                            <span>{item.shareCoinPrice || 50} ShareCoins</span>
+                            <span>{item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins</span>
                           </div>
                           {item.isRentable && (
                             <>

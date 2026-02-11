@@ -531,7 +531,7 @@ export function ChatWidget() {
                 {request.item.name}
               </h4>
               <Badge
-                className={`text-[10px] px-1.5 py-0 shrink-0 pointer-events-none ${getStatusColor(request.status)}`}
+                className={`text-[10px] px-1.5 py-0 shrink-0 ${getStatusColor(request.status)}`}
               >
                 {request.status.replace(/_/g, " ")}
               </Badge>

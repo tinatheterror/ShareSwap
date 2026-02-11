@@ -5,8 +5,6 @@ const TIER_BANDS: Record<number, { min: number; max: number }> = {
   2: { min: 10, max: 10 },
   3: { min: 20, max: 20 },
   4: { min: 40, max: 40 },
-  5: { min: 80, max: 80 },   // Luxury tier
-  6: { min: 150, max: 150 }, // Ultra Luxury tier
 };
 
 const CONDITION_MODIFIERS: Record<string, number> = {

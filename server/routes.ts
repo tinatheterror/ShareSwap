@@ -1795,6 +1795,12 @@ Respond with ONLY the category name, nothing else.`
       console.log(`Replacement value from ${rvSource === 'ai' ? 'SmartScan' : 'range midpoint'}: $${replacementValue}`);
     }
 
+    if (replacementValue !== null && replacementValue > 1500) {
+      return res.status(400).json({
+        message: "Items with a replacement value over $1,500 cannot be listed at this time. Please select a lower value range.",
+      });
+    }
+
     // Parse swap preferences
     const swapDesiredItem = req.body.swapDesiredItem || null;
     const swapNotifyOnMatch = req.body.swapNotifyOnMatch === "true";

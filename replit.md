@@ -28,7 +28,7 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
 - **Tier-Based Pricing System with AI Valuation**: Uses priority-based replacement value calculation:
     - **Priority 1**: If AI estimated value exists (from SmartScan), use it directly as replacement value and calculate tier from it
     - **Priority 2**: If no AI estimate, use midpoint of the original value range as replacement value and calculate tier from it
-    - Tier boundaries: Tier 1 (Under $50), Tier 2 ($50–$150), Tier 3 ($150–$300), Tier 4 ($300–$1,000), Tier 5 ($1,000–$5,000), Tier 6 ($5,000+)
+    - Tier boundaries: Tier 1 (Under $50), Tier 2 ($50–$199), Tier 3 ($200–$499), Tier 4 ($500–$1,500). Items over $1,500 replacement value cannot be listed.
     - Condition modifier: "Fair" or "Well Loved" reduces tier by 1
     - ShareCoin valuation, trust-based borrow deposits, and rental rates derived from tier. Includes brand quality adjustments.
 - **Rental Pricing System**: Category-based weekly rental rates and tier-based rental security deposits, both adjustable by owners within certain parameters. Features a 0% platform fee for 2025 (3% payment processing fee applies).

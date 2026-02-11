@@ -4,22 +4,21 @@
 // Tier boundaries based on item value (in dollars)
 export const TIER_BOUNDARIES = [
   { tier: 1, min: 0, max: 50 },
-  { tier: 2, min: 50, max: 150 },
-  { tier: 3, min: 150, max: 300 },
-  { tier: 4, min: 300, max: 1000 },
-  { tier: 5, min: 1000, max: 5000 },
-  { tier: 6, min: 5000, max: Infinity },
+  { tier: 2, min: 50, max: 200 },
+  { tier: 3, min: 200, max: 500 },
+  { tier: 4, min: 500, max: 1500 },
 ];
 
 // Midpoints for each original value range (used when no AI estimate)
 export const VALUE_RANGE_MIDPOINTS: Record<string, number> = {
   "Under $50": 25,
+  "$50–$199": 125,
+  "$200–$499": 350,
+  "$500–$1,500": 1000,
   "$50–$150": 100,
   "$150–$300": 225,
   "$300–$1,000": 650,
-  "$1,000–$5,000": 3000,
-  "$5,000+": 7500,
-  "$300+": 650, // Legacy support
+  "$300+": 650,
 };
 
 // Default replacement value for fallback scenarios (lowest tier midpoint)
@@ -27,12 +26,10 @@ export const DEFAULT_REPLACEMENT_VALUE = 25;
 
 // Legacy tier-based caps (kept for reference, no longer primary logic)
 export const LEGACY_TIER_CAPS: Record<number, number> = {
-  1: 75,
-  2: 150,
-  3: 300,
-  4: 600,
-  5: 3000,
-  6: 7500,
+  1: 50,
+  2: 200,
+  3: 500,
+  4: 1500,
 };
 
 /**
@@ -50,7 +47,7 @@ export function getValueRangeMidpoint(originalValue: string | null | undefined):
 /**
  * Calculate tier from a dollar value.
  * @param value - The dollar value
- * @returns The tier (1-6)
+ * @returns The tier (1-4)
  */
 export function getTierFromValue(value: number): number {
   for (const boundary of TIER_BOUNDARIES) {
@@ -149,7 +146,7 @@ export function calculateReplacementValue(tier: number | null | undefined): numb
   
   // Return the midpoint of the tier's range
   if (boundary.max === Infinity) {
-    return 7500; // Tier 6 default
+    return 1000;
   }
   
   return Math.round((boundary.min + boundary.max) / 2);

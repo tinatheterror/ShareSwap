@@ -16,8 +16,6 @@ const TIER_RENTAL_DEPOSIT_PERCENTAGES: Record<number, number> = {
   2: 0.30, // 30% for Tier 2
   3: 0.40, // 40% for Tier 3
   4: 0.50, // 50% for Tier 4
-  5: 0.60, // 60% for Tier 5 (Luxury)
-  6: 0.70, // 70% for Tier 6 (Ultra Luxury)
 };
 
 export interface RentalRateCalculation {

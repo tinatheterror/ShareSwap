@@ -3,11 +3,9 @@
 // Tier-based deposit percentages
 const TIER_DEPOSIT_PERCENTAGES: Record<number, number> = {
   1: 0.10, // 10% for Tier 1 (Under $50)
-  2: 0.20, // 20% for Tier 2 ($50-$150)
-  3: 0.30, // 30% for Tier 3 ($150-$300)
-  4: 0.40, // 40% for Tier 4 ($300-$1,000)
-  5: 0.50, // 50% for Tier 5 ($1,000-$5,000) - Luxury
-  6: 0.60, // 60% for Tier 6 ($5,000+) - Ultra Luxury
+  2: 0.20, // 20% for Tier 2 ($50-$199)
+  3: 0.30, // 30% for Tier 3 ($200-$499)
+  4: 0.40, // 40% for Tier 4 ($500-$1,500)
 };
 
 // Trust score discount tiers
@@ -21,12 +19,13 @@ const TRUST_SCORE_DISCOUNTS: { minScore: number; maxScore: number; discount: num
 // Estimated midpoint values for each original value range
 const VALUE_RANGE_MIDPOINTS: Record<string, number> = {
   "Under $50": 25,
+  "$50–$199": 125,
+  "$200–$499": 350,
+  "$500–$1,500": 1000,
   "$50–$150": 100,
   "$150–$300": 225,
   "$300–$1,000": 650,
-  "$1,000–$5,000": 3000, // Luxury items
-  "$5,000+": 10000, // Ultra luxury items
-  "$300+": 500, // Legacy support
+  "$300+": 500,
 };
 
 export interface DepositCalculation {

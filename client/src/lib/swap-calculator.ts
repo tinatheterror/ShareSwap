@@ -3,14 +3,12 @@
 // Fixed ShareCoin values per tier
 const TIER_SHARECOIN_VALUES: Record<number, number> = {
   1: 5,   // Tier 1: Under $50
-  2: 10,  // Tier 2: $50-$150
-  3: 20,  // Tier 3: $150-$300
-  4: 40,  // Tier 4: $300-$1,000
-  5: 80,  // Tier 5: $1,000-$5,000 (Luxury)
-  6: 150, // Tier 6: $5,000+ (Ultra Luxury)
+  2: 10,  // Tier 2: $50-$199
+  3: 20,  // Tier 3: $200-$499
+  4: 40,  // Tier 4: $500-$1,500
 };
 
-const MAX_TIER = 6;
+const MAX_TIER = 4;
 
 export type SwapFairness = 'fair' | 'offset_required' | 'not_allowed';
 

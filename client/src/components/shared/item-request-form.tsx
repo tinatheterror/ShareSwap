@@ -514,11 +514,9 @@ export function ItemRequestForm({
                 // Tier-based weekly ShareCoin borrow rates
                 const TIER_WEEKLY_RATES: Record<number, number> = {
                   1: 2, // Tier 1: Under $50 - 2 SC/week
-                  2: 5, // Tier 2: $50-$150 - 5 SC/week
-                  3: 10, // Tier 3: $150-$300 - 10 SC/week
-                  4: 20, // Tier 4: $300-$1,000 - 20 SC/week
-                  5: 40, // Tier 5: $1,000-$5,000 (Luxury) - 40 SC/week
-                  6: 80, // Tier 6: $5,000+ (Ultra Luxury) - 80 SC/week
+                  2: 5, // Tier 2: $50-$199 - 5 SC/week
+                  3: 10, // Tier 3: $200-$499 - 10 SC/week
+                  4: 20, // Tier 4: $500-$1,500 - 20 SC/week
                 };
                 const itemTierForRate = (item as any).tier || 2;
                 const weeklyRate = TIER_WEEKLY_RATES[itemTierForRate] || 5;

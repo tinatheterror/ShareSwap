@@ -11,22 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  MessageCircle, 
-  Send, 
-  ChevronDown, 
-  Loader2, 
-  Package, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  User, 
+import {
+  MessageCircle,
+  Send,
+  ChevronDown,
+  Loader2,
+  Package,
+  CheckCircle,
+  XCircle,
+  Clock,
+  User,
   Shield,
   Truck,
   HandMetal,
   RotateCcw,
   ArrowLeft,
-  Inbox
+  Inbox,
 } from "lucide-react";
 import { format } from "date-fns";
 import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
@@ -36,7 +36,12 @@ import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
 import { CelebrationAnimation } from "@/components/celebration-animation";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
 
 const stripePromise = getStripePromise();
@@ -96,16 +101,22 @@ interface ItemRequest {
 }
 
 type MainTab = "messages" | "requests";
-type MessageFilter = "all" | "lending" | "renting" | "swapping" | "gifting" | "unread";
+type MessageFilter =
+  | "all"
+  | "lending"
+  | "renting"
+  | "swapping"
+  | "gifting"
+  | "unread";
 type RequestFilter = "incoming" | "outgoing" | "active";
 
-function DepositPaymentForm({ 
-  clientSecret, 
-  onSuccess, 
-  onCancel 
-}: { 
-  clientSecret: string; 
-  onSuccess: (paymentIntentId: string) => void; 
+function DepositPaymentForm({
+  clientSecret,
+  onSuccess,
+  onCancel,
+}: {
+  clientSecret: string;
+  onSuccess: (paymentIntentId: string) => void;
   onCancel: () => void;
 }) {
   const stripe = useStripe();
@@ -148,10 +159,20 @@ function DepositPaymentForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <PaymentElement />
       <div className="flex gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isProcessing}
+          className="flex-1"
+        >
           Cancel
         </Button>
-        <Button type="submit" disabled={!stripe || isProcessing} className="flex-1 bg-primary hover:bg-primary/90">
+        <Button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="flex-1 bg-primary hover:bg-primary/90"
+        >
           {isProcessing ? "Processing..." : "Authorize Deposit"}
         </Button>
       </div>
@@ -168,22 +189,30 @@ export function ChatWidget() {
   const [mainTab, setMainTab] = useState<MainTab>("messages");
   const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [requestFilter, setRequestFilter] = useState<RequestFilter>("incoming");
-  const [selectedConversation, setSelectedConversation] = useState<number | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<
+    number | null
+  >(null);
   const [message, setMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Request handling state
-  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
+    null,
+  );
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [depositClientSecret, setDepositClientSecret] = useState<string | null>(null);
+  const [depositClientSecret, setDepositClientSecret] = useState<string | null>(
+    null,
+  );
   const [pendingDeliveryData, setPendingDeliveryData] = useState<any>(null);
   const [showTrustDepositModal, setShowTrustDepositModal] = useState(false);
   const [showRentalDepositModal, setShowRentalDepositModal] = useState(false);
   const [showCourierModal, setShowCourierModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<ItemRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<ItemRequest | null>(
+    null,
+  );
 
   // WebSocket setup
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -221,7 +250,9 @@ export function ChatWidget() {
   });
 
   // Fetch requests
-  const { data: requests = [], isLoading: isLoadingRequests } = useQuery<ItemRequest[]>({
+  const { data: requests = [], isLoading: isLoadingRequests } = useQuery<
+    ItemRequest[]
+  >({
     queryKey: ["/api/requests"],
     enabled: !!user,
   });
@@ -230,15 +261,21 @@ export function ChatWidget() {
   const filteredConversations = allConversations.filter((conv) => {
     if (messageFilter === "all") return true;
     if (messageFilter === "unread") return conv.unreadCount > 0;
-    if (messageFilter === "lending") return conv.transactionType?.toUpperCase() === "BORROW";
-    if (messageFilter === "renting") return conv.transactionType?.toUpperCase() === "RENT";
-    if (messageFilter === "swapping") return conv.transactionType?.toUpperCase() === "SWAP";
-    if (messageFilter === "gifting") return conv.transactionType?.toUpperCase() === "GIFT";
+    if (messageFilter === "lending")
+      return conv.transactionType?.toUpperCase() === "BORROW";
+    if (messageFilter === "renting")
+      return conv.transactionType?.toUpperCase() === "RENT";
+    if (messageFilter === "swapping")
+      return conv.transactionType?.toUpperCase() === "SWAP";
+    if (messageFilter === "gifting")
+      return conv.transactionType?.toUpperCase() === "GIFT";
     return true;
   });
 
   // Fetch messages for selected conversation
-  const { data: messages = [], isLoading: isLoadingMessages } = useQuery<Message[]>({
+  const { data: messages = [], isLoading: isLoadingMessages } = useQuery<
+    Message[]
+  >({
     queryKey: ["/api/messages", selectedConversation],
     enabled: !!selectedConversation && !!user,
   });
@@ -246,7 +283,9 @@ export function ChatWidget() {
   // Request mutations
   const acceptMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      const response = await apiRequest("PATCH", `/api/requests/${requestId}`, { status: "ACCEPTED" });
+      const response = await apiRequest("PATCH", `/api/requests/${requestId}`, {
+        status: "ACCEPTED",
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -264,7 +303,9 @@ export function ChatWidget() {
 
   const declineMutation = useMutation({
     mutationFn: async (requestId: number) => {
-      const response = await apiRequest("PATCH", `/api/requests/${requestId}`, { status: "DECLINED" });
+      const response = await apiRequest("PATCH", `/api/requests/${requestId}`, {
+        status: "DECLINED",
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -336,21 +377,28 @@ export function ChatWidget() {
     setShowDeliveryModal(false);
     if (!selectedRequestId) return;
 
-    const request = requests.find(r => r.id === selectedRequestId);
+    const request = requests.find((r) => r.id === selectedRequestId);
     if (!request) return;
 
     const itemValue = parseFloat(request.item.estimatedValue || "50");
 
-    if (selections.depositMethod === 'shareswap_deposit') {
+    if (selections.depositMethod === "shareswap_deposit") {
       try {
-        const response = await apiRequest("POST", "/api/stripe/create-deposit-hold", {
-          depositAmount: itemValue,
-          requestId: selectedRequestId,
-        });
+        const response = await apiRequest(
+          "POST",
+          "/api/stripe/create-deposit-hold",
+          {
+            depositAmount: itemValue,
+            requestId: selectedRequestId,
+          },
+        );
         const data = await response.json();
 
         if (data.clientSecret) {
-          setPendingDeliveryData({ ...selections, requestId: selectedRequestId });
+          setPendingDeliveryData({
+            ...selections,
+            requestId: selectedRequestId,
+          });
           setDepositClientSecret(data.clientSecret);
         }
       } catch (error: any) {
@@ -367,12 +415,20 @@ export function ChatWidget() {
 
   const handleDepositPaymentSuccess = async (paymentIntentId: string) => {
     if (!pendingDeliveryData || !selectedRequestId) return;
-    await finalizeAcceptance(selectedRequestId, pendingDeliveryData, paymentIntentId);
+    await finalizeAcceptance(
+      selectedRequestId,
+      pendingDeliveryData,
+      paymentIntentId,
+    );
     setDepositClientSecret(null);
     setPendingDeliveryData(null);
   };
 
-  const finalizeAcceptance = async (requestId: number, selections: any, stripePaymentIntentId: string | null) => {
+  const finalizeAcceptance = async (
+    requestId: number,
+    selections: any,
+    stripePaymentIntentId: string | null,
+  ) => {
     try {
       await apiRequest("POST", "/api/delivery-arrangements", {
         requestId,
@@ -394,11 +450,20 @@ export function ChatWidget() {
   };
 
   // Filter requests
-  const incomingRequests = requests.filter(r => r.item.ownerId === user?.id && r.status === "PENDING");
-  const myRequests = requests.filter(r => r.requesterId === user?.id);
-  const activeTransactions = requests.filter(r => 
-    (r.item.ownerId === user?.id || r.requesterId === user?.id) && 
-    ["ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "IN_PROGRESS", "RETURN_REQUESTED"].includes(r.status)
+  const incomingRequests = requests.filter(
+    (r) => r.item.ownerId === user?.id && r.status === "PENDING",
+  );
+  const myRequests = requests.filter((r) => r.requesterId === user?.id);
+  const activeTransactions = requests.filter(
+    (r) =>
+      (r.item.ownerId === user?.id || r.requesterId === user?.id) &&
+      [
+        "ACCEPTED",
+        "DEPOSIT_CONFIRMED",
+        "COURIER_PENDING",
+        "IN_PROGRESS",
+        "RETURN_REQUESTED",
+      ].includes(r.status),
   );
 
   const getFilteredRequests = () => {
@@ -408,20 +473,31 @@ export function ChatWidget() {
     return [];
   };
 
-  const totalUnread = allConversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+  const totalUnread = allConversations.reduce(
+    (sum, conv) => sum + conv.unreadCount,
+    0,
+  );
   const pendingRequestCount = incomingRequests.length;
   const totalBadge = totalUnread + pendingRequestCount;
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "PENDING": return "bg-amber-100 text-amber-800";
-      case "ACCEPTED": return "bg-blue-100 text-blue-800";
-      case "DEPOSIT_CONFIRMED": return "bg-teal-100 text-teal-800";
-      case "IN_PROGRESS": return "bg-green-100 text-green-800";
-      case "RETURN_REQUESTED": return "bg-purple-100 text-purple-800";
-      case "DECLINED": return "bg-red-100 text-red-800";
-      case "COMPLETED": return "bg-gray-100 text-gray-800";
-      default: return "bg-gray-100 text-gray-600";
+      case "PENDING":
+        return "bg-amber-100 text-amber-800";
+      case "ACCEPTED":
+        return "bg-blue-100 text-blue-800";
+      case "DEPOSIT_CONFIRMED":
+        return "bg-teal-100 text-teal-800";
+      case "IN_PROGRESS":
+        return "bg-green-100 text-green-800";
+      case "RETURN_REQUESTED":
+        return "bg-purple-100 text-purple-800";
+      case "DECLINED":
+        return "bg-red-100 text-red-800";
+      case "COMPLETED":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-gray-100 text-gray-600";
     }
   };
 
@@ -430,11 +506,18 @@ export function ChatWidget() {
     const isBorrower = request.requesterId === user?.id;
 
     return (
-      <div key={request.id} className="p-3 border-b hover:bg-gray-50 transition-colors">
+      <div
+        key={request.id}
+        className="p-3 border-b hover:bg-gray-50 transition-colors"
+      >
         <div className="flex gap-3">
           <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
             {request.item.photos?.[0] ? (
-              <img src={request.item.photos[0]} alt={request.item.name} className="w-full h-full object-cover" />
+              <img
+                src={request.item.photos[0]}
+                alt={request.item.name}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <Package className="h-5 w-5 text-gray-400" />
@@ -444,8 +527,12 @@ export function ChatWidget() {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1">
-              <h4 className="font-medium text-sm truncate">{request.item.name}</h4>
-              <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${getStatusColor(request.status)}`}>
+              <h4 className="font-medium text-sm truncate">
+                {request.item.name}
+              </h4>
+              <Badge
+                className={`text-[10px] px-1.5 py-0 shrink-0 pointer-events-none ${getStatusColor(request.status)}`}
+              >
                 {request.status.replace(/_/g, " ")}
               </Badge>
             </div>
@@ -453,9 +540,14 @@ export function ChatWidget() {
             <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
               <User className="h-3 w-3" />
               {isOwner ? (
-                <span>{formatDisplayName(request.requester.username)} wants to {request.requestType.toLowerCase()}</span>
+                <span>
+                  {formatDisplayName(request.requester.username)} wants to{" "}
+                  {request.requestType.toLowerCase()}
+                </span>
               ) : (
-                <span>You requested to {request.requestType.toLowerCase()}</span>
+                <span>
+                  You requested to {request.requestType.toLowerCase()}
+                </span>
               )}
             </div>
 
@@ -463,7 +555,8 @@ export function ChatWidget() {
               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
                 <Clock className="h-3 w-3" />
                 <span>
-                  {format(new Date(request.startDate), "MMM d")} - {format(new Date(request.endDate), "MMM d")}
+                  {format(new Date(request.startDate), "MMM d")} -{" "}
+                  {format(new Date(request.endDate), "MMM d")}
                 </span>
               </div>
             )}
@@ -473,11 +566,21 @@ export function ChatWidget() {
               {/* Owner actions for pending requests */}
               {isOwner && request.status === "PENDING" && (
                 <>
-                  <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => handleAcceptClick(request)}>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs bg-green-600"
+                    onClick={() => handleAcceptClick(request)}
+                  >
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Accept
                   </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => declineMutation.mutate(request.id)} disabled={declineMutation.isPending}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => declineMutation.mutate(request.id)}
+                    disabled={declineMutation.isPending}
+                  >
                     <XCircle className="h-3 w-3 mr-1" />
                     Decline
                   </Button>
@@ -488,35 +591,69 @@ export function ChatWidget() {
               {isBorrower && request.requestType === "BORROW" && (
                 <>
                   {request.status === "ACCEPTED" && (
-                    <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700" onClick={() => { setSelectedRequest(request); setShowTrustDepositModal(true); }}>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-teal-600 hover:bg-teal-700"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowTrustDepositModal(true);
+                      }}
+                    >
                       <Shield className="h-3 w-3 mr-1" />
                       Pay Deposit
                     </Button>
                   )}
 
-                  {request.status === "DEPOSIT_CONFIRMED" && request.deliveryMethod === "courier" && (
-                    <Button size="sm" className="h-7 text-xs bg-orange-600 hover:bg-orange-700" onClick={() => { setSelectedRequest(request); setShowCourierModal(true); }}>
-                      <Truck className="h-3 w-3 mr-1" />
-                      Book Courier
-                    </Button>
-                  )}
+                  {request.status === "DEPOSIT_CONFIRMED" &&
+                    request.deliveryMethod === "courier" && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs bg-orange-600 hover:bg-orange-700"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setShowCourierModal(true);
+                        }}
+                      >
+                        <Truck className="h-3 w-3 mr-1" />
+                        Book Courier
+                      </Button>
+                    )}
 
-                  {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING") && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelectedRequest(request); setShowHandoffModal(true); }}>
+                  {(request.status === "DEPOSIT_CONFIRMED" ||
+                    request.status === "COURIER_PENDING") && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowHandoffModal(true);
+                      }}
+                    >
                       <HandMetal className="h-3 w-3 mr-1" />
                       Confirm Received
                     </Button>
                   )}
 
                   {request.status === "IN_PROGRESS" && (
-                    <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => { setSelectedRequest(request); setShowReturnModal(true); }}>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowReturnModal(true);
+                      }}
+                    >
                       <RotateCcw className="h-3 w-3 mr-1" />
                       Return Item
                     </Button>
                   )}
 
                   {request.status === "RETURN_REQUESTED" && (
-                    <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-[10px]">
+                    <Badge
+                      variant="secondary"
+                      className="bg-amber-100 text-amber-800 text-[10px]"
+                    >
                       Awaiting confirmation
                     </Badge>
                   )}
@@ -527,35 +664,69 @@ export function ChatWidget() {
               {isBorrower && request.requestType === "RENT" && (
                 <>
                   {request.status === "ACCEPTED" && (
-                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => { setSelectedRequest(request); setShowRentalDepositModal(true); }}>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowRentalDepositModal(true);
+                      }}
+                    >
                       <Shield className="h-3 w-3 mr-1" />
                       Pay Rental Deposit
                     </Button>
                   )}
 
-                  {request.status === "DEPOSIT_CONFIRMED" && request.deliveryMethod === "courier" && (
-                    <Button size="sm" className="h-7 text-xs bg-orange-600 hover:bg-orange-700" onClick={() => { setSelectedRequest(request); setShowCourierModal(true); }}>
-                      <Truck className="h-3 w-3 mr-1" />
-                      Book Courier
-                    </Button>
-                  )}
+                  {request.status === "DEPOSIT_CONFIRMED" &&
+                    request.deliveryMethod === "courier" && (
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs bg-orange-600 hover:bg-orange-700"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setShowCourierModal(true);
+                        }}
+                      >
+                        <Truck className="h-3 w-3 mr-1" />
+                        Book Courier
+                      </Button>
+                    )}
 
-                  {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING") && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelectedRequest(request); setShowHandoffModal(true); }}>
+                  {(request.status === "DEPOSIT_CONFIRMED" ||
+                    request.status === "COURIER_PENDING") && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowHandoffModal(true);
+                      }}
+                    >
                       <HandMetal className="h-3 w-3 mr-1" />
                       Confirm Received
                     </Button>
                   )}
 
                   {request.status === "IN_PROGRESS" && (
-                    <Button size="sm" className="h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => { setSelectedRequest(request); setShowReturnModal(true); }}>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowReturnModal(true);
+                      }}
+                    >
                       <RotateCcw className="h-3 w-3 mr-1" />
                       Return Item
                     </Button>
                   )}
 
                   {request.status === "RETURN_REQUESTED" && (
-                    <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-[10px]">
+                    <Badge
+                      variant="secondary"
+                      className="bg-amber-100 text-amber-800 text-[10px]"
+                    >
                       Awaiting confirmation
                     </Badge>
                   )}
@@ -563,15 +734,32 @@ export function ChatWidget() {
               )}
 
               {/* Owner actions for active transactions */}
-              {isOwner && (request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING") && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setSelectedRequest(request); setShowHandoffModal(true); }}>
-                  <HandMetal className="h-3 w-3 mr-1" />
-                  Confirm Handoff
-                </Button>
-              )}
+              {isOwner &&
+                (request.status === "DEPOSIT_CONFIRMED" ||
+                  request.status === "COURIER_PENDING") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setSelectedRequest(request);
+                      setShowHandoffModal(true);
+                    }}
+                  >
+                    <HandMetal className="h-3 w-3 mr-1" />
+                    Confirm Handoff
+                  </Button>
+                )}
 
               {isOwner && request.status === "RETURN_REQUESTED" && (
-                <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => { setSelectedRequest(request); setShowReturnModal(true); }}>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setSelectedRequest(request);
+                    setShowReturnModal(true);
+                  }}
+                >
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Confirm Return
                 </Button>
@@ -615,7 +803,7 @@ export function ChatWidget() {
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {/* Main tabs: Messages | Requests */}
             {!selectedConversation && (
               <div className="flex border-t">
@@ -671,7 +859,7 @@ export function ChatWidget() {
                     { key: "swapping", label: "Swap" },
                     { key: "gifting", label: "Gift" },
                     { key: "unread", label: "Unread" },
-                  ].map(tab => (
+                  ].map((tab) => (
                     <button
                       key={tab.key}
                       onClick={() => setMessageFilter(tab.key as MessageFilter)}
@@ -702,7 +890,9 @@ export function ChatWidget() {
                           className="w-full p-3 hover:bg-gray-50 text-left transition-colors"
                         >
                           <div className="flex items-start justify-between mb-1">
-                            <span className="font-medium text-sm">{formatDisplayName(conv.username)}</span>
+                            <span className="font-medium text-sm">
+                              {formatDisplayName(conv.username)}
+                            </span>
                             {conv.unreadCount > 0 && (
                               <Badge className="bg-red-500 text-xs h-5 min-w-5 flex items-center justify-center">
                                 {conv.unreadCount}
@@ -711,10 +901,15 @@ export function ChatWidget() {
                           </div>
                           {conv.itemName && (
                             <div className="text-xs text-muted-foreground mb-1">
-                              {conv.transactionType?.toUpperCase() === "BORROW" && "Lending"} 
-                              {conv.transactionType?.toUpperCase() === "RENT" && "Renting"} 
-                              {conv.transactionType?.toUpperCase() === "SWAP" && "Swapping"}
-                              {conv.transactionType?.toUpperCase() === "GIFT" && "Gifting"}: {conv.itemName}
+                              {conv.transactionType?.toUpperCase() ===
+                                "BORROW" && "Lending"}
+                              {conv.transactionType?.toUpperCase() === "RENT" &&
+                                "Renting"}
+                              {conv.transactionType?.toUpperCase() === "SWAP" &&
+                                "Swapping"}
+                              {conv.transactionType?.toUpperCase() === "GIFT" &&
+                                "Gifting"}
+                              : {conv.itemName}
                             </div>
                           )}
                           <p className="text-xs text-muted-foreground truncate">
@@ -743,9 +938,13 @@ export function ChatWidget() {
                   >
                     Incoming
                     {incomingRequests.length > 0 && (
-                      <span className={`inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] rounded-full ${
-                        requestFilter === "incoming" ? "bg-white/20" : "bg-amber-500 text-white"
-                      }`}>
+                      <span
+                        className={`inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] rounded-full ${
+                          requestFilter === "incoming"
+                            ? "bg-white/20"
+                            : "bg-amber-500 text-white"
+                        }`}
+                      >
                         {incomingRequests.length}
                       </span>
                     )}
@@ -783,14 +982,13 @@ export function ChatWidget() {
                       <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">
                         {requestFilter === "incoming" && "No pending requests"}
-                        {requestFilter === "outgoing" && "You haven't made any requests"}
+                        {requestFilter === "outgoing" &&
+                          "You haven't made any requests"}
                         {requestFilter === "active" && "No active transactions"}
                       </p>
                     </div>
                   ) : (
-                    <div>
-                      {getFilteredRequests().map(renderRequestCard)}
-                    </div>
+                    <div>{getFilteredRequests().map(renderRequestCard)}</div>
                   )}
                 </ScrollArea>
               </>
@@ -807,7 +1005,11 @@ export function ChatWidget() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <span className="font-medium text-sm">
-                  {formatDisplayName(allConversations.find((c) => c.userId === selectedConversation)?.username)}
+                  {formatDisplayName(
+                    allConversations.find(
+                      (c) => c.userId === selectedConversation,
+                    )?.username,
+                  )}
                 </span>
               </div>
 
@@ -821,7 +1023,9 @@ export function ChatWidget() {
                     <div
                       key={msg.id}
                       className={`mb-2 flex ${
-                        msg.senderId === user.id ? "justify-end" : "justify-start"
+                        msg.senderId === user.id
+                          ? "justify-end"
+                          : "justify-start"
                       }`}
                     >
                       <div
@@ -870,9 +1074,15 @@ export function ChatWidget() {
       {selectedRequestId && (
         <DeliveryDepositModal
           isOpen={showDeliveryModal}
-          onClose={() => { setShowDeliveryModal(false); setSelectedRequestId(null); }}
+          onClose={() => {
+            setShowDeliveryModal(false);
+            setSelectedRequestId(null);
+          }}
           onComplete={handleDeliveryDepositComplete}
-          itemValue={parseFloat(requests.find(r => r.id === selectedRequestId)?.item.estimatedValue || "50")}
+          itemValue={parseFloat(
+            requests.find((r) => r.id === selectedRequestId)?.item
+              .estimatedValue || "50",
+          )}
         />
       )}
 
@@ -880,12 +1090,20 @@ export function ChatWidget() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <Card className="max-w-md w-full">
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Authorize Security Deposit</h3>
-              <Elements stripe={stripePromise} options={{ clientSecret: depositClientSecret }}>
+              <h3 className="text-lg font-semibold mb-4">
+                Authorize Security Deposit
+              </h3>
+              <Elements
+                stripe={stripePromise}
+                options={{ clientSecret: depositClientSecret }}
+              >
                 <DepositPaymentForm
                   clientSecret={depositClientSecret}
                   onSuccess={handleDepositPaymentSuccess}
-                  onCancel={() => { setDepositClientSecret(null); setPendingDeliveryData(null); }}
+                  onCancel={() => {
+                    setDepositClientSecret(null);
+                    setPendingDeliveryData(null);
+                  }}
                 />
               </Elements>
             </CardContent>
@@ -902,7 +1120,10 @@ export function ChatWidget() {
       {selectedRequest && showTrustDepositModal && (
         <TrustDepositModal
           isOpen={showTrustDepositModal}
-          onClose={() => { setShowTrustDepositModal(false); setSelectedRequest(null); }}
+          onClose={() => {
+            setShowTrustDepositModal(false);
+            setSelectedRequest(null);
+          }}
           request={{
             id: selectedRequest.id,
             itemId: selectedRequest.itemId,
@@ -924,7 +1145,10 @@ export function ChatWidget() {
               setShowCourierModal(true);
             } else {
               setSelectedRequest(null);
-              toast({ title: "Ready for handoff!", description: "Coordinate with the lender to pick up your item." });
+              toast({
+                title: "Ready for handoff!",
+                description: "Coordinate with the lender to pick up your item.",
+              });
             }
           }}
         />
@@ -933,7 +1157,10 @@ export function ChatWidget() {
       {selectedRequest && showRentalDepositModal && (
         <RentalDepositModal
           isOpen={showRentalDepositModal}
-          onClose={() => { setShowRentalDepositModal(false); setSelectedRequest(null); }}
+          onClose={() => {
+            setShowRentalDepositModal(false);
+            setSelectedRequest(null);
+          }}
           request={{
             id: selectedRequest.id,
             itemId: selectedRequest.itemId,
@@ -944,7 +1171,8 @@ export function ChatWidget() {
           item={{
             name: selectedRequest.item.name,
             tier: selectedRequest.item.tier || 2,
-            category: (selectedRequest.item as any).category || "Home & Kitchen",
+            category:
+              (selectedRequest.item as any).category || "Home & Kitchen",
             estimatedValue: selectedRequest.item.estimatedValue || "100",
             dollarsPrice: (selectedRequest.item as any).dollarsPrice,
             photos: selectedRequest.item.photos,
@@ -956,7 +1184,11 @@ export function ChatWidget() {
               setShowCourierModal(true);
             } else {
               setSelectedRequest(null);
-              toast({ title: "Rental deposit secured!", description: "Coordinate with the owner to pick up your rental." });
+              toast({
+                title: "Rental deposit secured!",
+                description:
+                  "Coordinate with the owner to pick up your rental.",
+              });
             }
           }}
         />
@@ -965,32 +1197,56 @@ export function ChatWidget() {
       {selectedRequest && showCourierModal && (
         <CourierBookingModal
           isOpen={showCourierModal}
-          onClose={() => { setShowCourierModal(false); setSelectedRequest(null); }}
+          onClose={() => {
+            setShowCourierModal(false);
+            setSelectedRequest(null);
+          }}
           requestId={selectedRequest.id}
           itemName={selectedRequest.item.name}
           defaultAddress={selectedRequest.courierAddress || ""}
           onSuccess={() => {
             setShowCourierModal(false);
             setSelectedRequest(null);
-            toast({ title: "Courier booked!", description: "You'll receive updates when the courier picks up your item." });
+            toast({
+              title: "Courier booked!",
+              description:
+                "You'll receive updates when the courier picks up your item.",
+            });
           }}
-          onCancel={() => { setShowCourierModal(false); setSelectedRequest(null); }}
+          onCancel={() => {
+            setShowCourierModal(false);
+            setSelectedRequest(null);
+          }}
         />
       )}
 
       {selectedRequest && showHandoffModal && (
         <HandoffConfirmationModal
           isOpen={showHandoffModal}
-          onClose={() => { setShowHandoffModal(false); setSelectedRequest(null); }}
+          onClose={() => {
+            setShowHandoffModal(false);
+            setSelectedRequest(null);
+          }}
           requestId={selectedRequest.id}
           itemName={selectedRequest.item.name}
-          shareCoinAmount={parseFloat(selectedRequest.item.shareCoinPrice || "5")}
-          userRole={selectedRequest.requesterId === user?.id ? "borrower" : "owner"}
-          deliveryMethod={(selectedRequest.deliveryMethod === "courier" ? "courier" : "in_person") as "in_person" | "courier"}
+          shareCoinAmount={parseFloat(
+            selectedRequest.item.shareCoinPrice || "5",
+          )}
+          userRole={
+            selectedRequest.requesterId === user?.id ? "borrower" : "owner"
+          }
+          deliveryMethod={
+            (selectedRequest.deliveryMethod === "courier"
+              ? "courier"
+              : "in_person") as "in_person" | "courier"
+          }
           onSuccess={() => {
             setShowHandoffModal(false);
             setSelectedRequest(null);
-            toast({ title: "Handoff confirmed!", description: "The borrow period has officially started." });
+            toast({
+              title: "Handoff confirmed!",
+              description: "The borrow period has officially started.",
+            });
           }}
         />
       )}
@@ -998,14 +1254,22 @@ export function ChatWidget() {
       {selectedRequest && showReturnModal && (
         <ReturnConfirmationModal
           isOpen={showReturnModal}
-          onClose={() => { setShowReturnModal(false); setSelectedRequest(null); }}
+          onClose={() => {
+            setShowReturnModal(false);
+            setSelectedRequest(null);
+          }}
           requestId={selectedRequest.id}
           itemName={selectedRequest.item.name}
           depositAmount={parseFloat(selectedRequest.trustDepositAmount || "20")}
-          userRole={selectedRequest.requesterId === user?.id ? "borrower" : "owner"}
+          userRole={
+            selectedRequest.requesterId === user?.id ? "borrower" : "owner"
+          }
           requestType={selectedRequest.requestType as "BORROW" | "RENT"}
           endDate={selectedRequest.endDate}
-          onSuccess={() => { setShowReturnModal(false); setSelectedRequest(null); }}
+          onSuccess={() => {
+            setShowReturnModal(false);
+            setSelectedRequest(null);
+          }}
         />
       )}
     </div>

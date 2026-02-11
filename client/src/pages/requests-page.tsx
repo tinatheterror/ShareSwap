@@ -60,7 +60,6 @@ interface ItemRequest {
     name: string;
     description: string;
     photos: string[];
-    estimatedValue: string;
     replacementValue: number;
     ownerId: number;
     tier: number;
@@ -348,7 +347,7 @@ export default function RequestsPage() {
     const request = requests.find(r => r.id === selectedRequestId);
     if (!request) return;
 
-    const itemValue = request.item.replacementValue || parseFloat(request.item.estimatedValue || "50");
+    const itemValue = request.item.replacementValue || 50;
 
     // If ShareSwap Deposit is selected, create Stripe payment hold first
     if (selections.depositMethod === 'shareswap_deposit') {
@@ -1022,7 +1021,7 @@ export default function RequestsPage() {
             setSelectedRequestId(null);
           }}
           onComplete={handleDeliveryDepositComplete}
-          itemValue={requests.find(r => r.id === selectedRequestId)?.item.replacementValue || parseFloat(requests.find(r => r.id === selectedRequestId)?.item.estimatedValue || "50")}
+          itemValue={requests.find(r => r.id === selectedRequestId)?.item.replacementValue || 50}
         />
       )}
 

@@ -88,7 +88,6 @@ interface ItemRequest {
     name: string;
     description: string;
     photos: string[];
-    estimatedValue: string;
     replacementValue: number;
     ownerId: number;
     tier: number;
@@ -374,7 +373,7 @@ export function ChatWidget() {
     const request = requests.find((r) => r.id === selectedRequestId);
     if (!request) return;
 
-    const itemValue = request.item.replacementValue || parseFloat(request.item.estimatedValue || "50");
+    const itemValue = request.item.replacementValue || 50;
 
     if (selections.depositMethod === "shareswap_deposit") {
       try {
@@ -1073,10 +1072,7 @@ export function ChatWidget() {
             setSelectedRequestId(null);
           }}
           onComplete={handleDeliveryDepositComplete}
-          itemValue={requests.find((r) => r.id === selectedRequestId)?.item.replacementValue || parseFloat(
-            requests.find((r) => r.id === selectedRequestId)?.item
-              .estimatedValue || "50",
-          )}
+          itemValue={requests.find((r) => r.id === selectedRequestId)?.item.replacementValue || 50}
         />
       )}
 
@@ -1167,7 +1163,7 @@ export function ChatWidget() {
             tier: selectedRequest.item.tier || 2,
             category:
               (selectedRequest.item as any).category || "Home & Kitchen",
-            estimatedValue: String(selectedRequest.item.replacementValue || selectedRequest.item.estimatedValue || "100"),
+            replacementValue: selectedRequest.item.replacementValue || 100,
             dollarsPrice: (selectedRequest.item as any).dollarsPrice,
             photos: selectedRequest.item.photos,
           }}

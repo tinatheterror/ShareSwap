@@ -76,7 +76,7 @@ export function ItemRequestForm({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showTemplates, setShowTemplates] = useState(false);
-  const { requireVerification, VerificationModal } = useVerification();
+  const { requireVerification, showVerificationModal, VerificationModal } = useVerification();
 
   // Get current user info for personalized messages
   const { data: userData } = useQuery({
@@ -202,11 +202,7 @@ export function ItemRequestForm({
           variant: "destructive",
         });
       } else if ((error as any).code === "FULL_VERIFICATION_REQUIRED") {
-        toast({
-          title: "Verification Required",
-          description: "Please complete identity and payment verification to borrow or rent items.",
-          variant: "destructive",
-        });
+        showVerificationModal();
       } else {
         toast({
           title: "Failed to send request",
@@ -218,7 +214,7 @@ export function ItemRequestForm({
   });
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <><Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] bg-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="truncate pr-6">
@@ -1040,5 +1036,8 @@ export function ItemRequestForm({
         </Form>
       </DialogContent>
     </Dialog>
+
+    <VerificationModal />
+    </>
   );
 }

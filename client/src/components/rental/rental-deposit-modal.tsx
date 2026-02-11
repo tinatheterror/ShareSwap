@@ -31,7 +31,7 @@ interface RentalDepositModalProps {
     name: string;
     tier: number;
     category: string;
-    estimatedValue: string;
+    replacementValue: number;
     dollarsPrice?: string;
     photos: string[];
   };
@@ -123,7 +123,7 @@ export function RentalDepositModal({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [step, setStep] = useState<"summary" | "payment">("summary");
 
-  const itemValue = parseFloat(item.estimatedValue || "100");
+  const itemValue = item.replacementValue || 100;
   const depositCalc = calculateRentalDeposit(itemValue, item.tier || 2);
   const rentalCalc = calculateRentalRate(itemValue, item.category || "Home & Kitchen");
 

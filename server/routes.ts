@@ -3282,7 +3282,10 @@ Respond with ONLY the category name, nothing else.`
           name: items.name,
           description: items.description,
           photos: items.photos,
-          estimatedValue: items.estimatedValue,
+          replacementValue: items.replacementValue,
+          tier: items.tier,
+          originalValue: items.originalValue,
+          shareCoinPrice: items.shareCoinPrice,
           ownerId: items.ownerId,
         },
         requester: {

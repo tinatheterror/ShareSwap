@@ -43,6 +43,16 @@ const PREMIUM_BRANDS = [
   "makita", "bosch", "milwaukee", "festool", "snap-on", "leica", "hasselblad"
 ];
 
+const PREMIUM_BABY_BRANDS = [
+  "uppababy", "bugaboo", "stokke", "nuna", "babyzen", "cybex", "silver cross",
+  "doona", "clek", "britax", "maxi-cosi", "peg perego", "baby jogger",
+  "ergobaby", "baby bjorn", "babybjörn", "snoo", "happiest baby", "halo",
+  "pottery barn kids", "restoration hardware baby", "rh baby", "oeuf",
+  "monte design", "nursery works", "babyletto", "dadada", "kalon",
+  "artipoppe", "solly baby", "sakura bloom", "wildbird", "tula",
+  "wonderfold", "veer", "thule", "bumbleride", "joolz", "mima"
+];
+
 export interface ItemValuationInput {
   tier: number;
   condition: string;
@@ -121,6 +131,7 @@ export async function calculateAIValuation(
     // Detect luxury brand and high value
     const itemBrand = (item.brand || item.name || "").toLowerCase();
     const isLuxuryBrand = LUXURY_BRANDS.some(b => itemBrand.includes(b));
+    const isPremiumBabyBrand = PREMIUM_BABY_BRANDS.some(b => itemBrand.includes(b));
     const isHighValue = item.originalValue === "$300+" || 
       item.originalValue === "$300–$1,000" ||
       item.originalValue === "$1,000–$5,000" ||
@@ -140,7 +151,7 @@ BAND RANGE: ${bandRange} ShareCoins
 ITEM DETAILS:
 - Name: ${item.name}
 - Category/Type: ${item.itemType || "Unknown"}
-- Brand: ${item.brand || "Unknown/Generic"}${isLuxuryBrand ? " ⭐ LUXURY/DESIGNER BRAND" : ""}
+- Brand: ${item.brand || "Unknown/Generic"}${isLuxuryBrand ? " ⭐ LUXURY/DESIGNER BRAND" : isPremiumBabyBrand ? " ⭐ PREMIUM BABY BRAND" : ""}
 - Condition (stated): ${item.condition} (Rating: ${item.conditionRating}/10)
 - Original Value: ${item.originalValue || "Unknown"}
 - Estimated Market Value: ${item.estimatedValue || "Unknown"}
@@ -281,6 +292,7 @@ function calculateFallbackValuation(
   const brandText = (item.brand || item.name || "").toLowerCase();
   const isLuxuryBrand = LUXURY_BRANDS.some(b => brandText.includes(b));
   const isPremiumBrand = PREMIUM_BRANDS.some(b => brandText.includes(b));
+  const isPremiumBabyBrand = PREMIUM_BABY_BRANDS.some(b => brandText.includes(b));
   const budgetIndicators = ["generic", "unknown", "off-brand", "no-name", "unbranded"];
   const isBudgetBrand = budgetIndicators.some(b => brandText.includes(b)) || !item.brand;
   
@@ -304,8 +316,8 @@ function calculateFallbackValuation(
   // Calculate internal item value with adjustments
   let internalItemValue = baseItemValue;
   if (isLuxuryBrand) {
-    internalItemValue = baseItemValue * 2; // Luxury items worth more
-  } else if (isPremiumBrand) {
+    internalItemValue = baseItemValue * 2;
+  } else if (isPremiumBrand || isPremiumBabyBrand) {
     internalItemValue = baseItemValue * 1.3;
   }
   // Condition adjustment
@@ -350,9 +362,9 @@ function calculateFallbackValuation(
 
   let brandMod = 0;
   if (isLuxuryBrand) {
-    brandMod = 0.30; // Luxury brands get +30% towards max
-  } else if (isPremiumBrand) {
-    brandMod = 0.15; // Premium tech/tool brands get +15%
+    brandMod = 0.30;
+  } else if (isPremiumBrand || isPremiumBabyBrand) {
+    brandMod = 0.15;
   } else if (isBudgetBrand) {
     brandMod = -0.10;
   }
@@ -364,7 +376,7 @@ function calculateFallbackValuation(
   const categoryContext = itemType + " " + category;
   
   if (categoryContext.includes("baby") || categoryContext.includes("kids")) {
-    categoryMod = -0.15;
+    categoryMod = isPremiumBabyBrand ? 0.10 : -0.15;
   } else if (categoryContext.includes("electronics") || categoryContext.includes("tech")) {
     categoryMod = 0.15;
   } else if (categoryContext.includes("tools") || categoryContext.includes("equipment")) {

@@ -332,33 +332,26 @@ export function ChatWidget() {
     if (!message.trim() || !selectedConversation) return;
 
     try {
-      const response = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          receiverId: selectedConversation,
-          content: message,
-        }),
+      const response = await apiRequest("POST", "/api/messages", {
+        receiverId: selectedConversation,
+        content: message,
       });
 
-      if (response.ok) {
-        setMessage("");
-        if (isConnected) {
-          send({
-            type: "new_message",
-            payload: {
-              senderId: user.id,
-              receiverId: selectedConversation,
-              content: message,
-            },
-          });
-        }
-        queryClient.invalidateQueries({
-          queryKey: ["/api/messages", selectedConversation],
+      setMessage("");
+      if (isConnected) {
+        send({
+          type: "new_message",
+          payload: {
+            senderId: user.id,
+            receiverId: selectedConversation,
+            content: message,
+          },
         });
-        queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       }
+      queryClient.invalidateQueries({
+        queryKey: ["/api/messages", selectedConversation],
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
     } catch (error) {
       console.error("Failed to send message:", error);
     }

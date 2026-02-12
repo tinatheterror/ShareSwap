@@ -38,6 +38,8 @@ export function TutorialTooltip({
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
+  const hasScrolledRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
 
   const calculatePositions = useCallback(() => {
     const targetElement = document.querySelector(targetSelector) as HTMLElement;
@@ -47,7 +49,10 @@ export function TutorialTooltip({
       return;
     }
 
-    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    if (!hasScrolledRef.current) {
+      hasScrolledRef.current = true;
+      targetElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
 
     setTimeout(() => {
       const rect = targetElement.getBoundingClientRect();
@@ -120,6 +125,7 @@ export function TutorialTooltip({
     if (!isOpen) {
       setIsReady(false);
       setTargetRect(null);
+      hasScrolledRef.current = false;
       return;
     }
 
@@ -133,18 +139,25 @@ export function TutorialTooltip({
   useEffect(() => {
     if (!isOpen || !targetRect) return;
 
+    let lastUpdate = 0;
+    const throttleMs = 250;
+
     const handleUpdate = () => {
-      requestAnimationFrame(calculatePositions);
+      const now = Date.now();
+      if (now - lastUpdate < throttleMs) return;
+      lastUpdate = now;
+
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(calculatePositions);
     };
 
     window.addEventListener('resize', handleUpdate);
-    window.addEventListener('scroll', handleUpdate, true);
     window.addEventListener('orientationchange', handleUpdate);
 
     return () => {
       window.removeEventListener('resize', handleUpdate);
-      window.removeEventListener('scroll', handleUpdate, true);
       window.removeEventListener('orientationchange', handleUpdate);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [isOpen, targetRect, calculatePositions]);
 

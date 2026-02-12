@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -131,6 +131,7 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
   const [highlightedElement, setHighlightedElement] =
     useState<HTMLElement | null>(null);
   const [elementRect, setElementRect] = useState<ElementRect | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   const step = tutorialSteps[currentStep];
 
@@ -150,13 +151,6 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
     },
     [],
   );
-
-  const updateElementPosition = useCallback(() => {
-    if (highlightedElement) {
-      const newRect = calculateElementRect(highlightedElement);
-      setElementRect(newRect);
-    }
-  }, [highlightedElement, calculateElementRect]);
 
   useEffect(() => {
     if (step.highlightSelector) {
@@ -197,27 +191,30 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
   useEffect(() => {
     if (!highlightedElement) return;
 
+    let lastUpdate = 0;
+    const throttleMs = 200;
+
     const handleUpdate = () => {
-      requestAnimationFrame(updateElementPosition);
+      const now = Date.now();
+      if (now - lastUpdate < throttleMs) return;
+      lastUpdate = now;
+
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const newRect = calculateElementRect(highlightedElement);
+        setElementRect(newRect);
+      });
     };
 
     window.addEventListener("resize", handleUpdate);
-    window.addEventListener("scroll", handleUpdate, true);
     window.addEventListener("orientationchange", handleUpdate);
-
-    const resizeObserver = new ResizeObserver(handleUpdate);
-    resizeObserver.observe(document.body);
-
-    const positionInterval = setInterval(handleUpdate, 500);
 
     return () => {
       window.removeEventListener("resize", handleUpdate);
-      window.removeEventListener("scroll", handleUpdate, true);
       window.removeEventListener("orientationchange", handleUpdate);
-      resizeObserver.disconnect();
-      clearInterval(positionInterval);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [highlightedElement, updateElementPosition]);
+  }, [highlightedElement, calculateElementRect]);
 
   const handleNext = () => {
     if (currentStep < tutorialSteps.length - 1) {

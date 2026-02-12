@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -9,35 +9,47 @@ export function BackgroundPolling() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isPolling = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const checkExpiredHandoffs = useCallback(async () => {
+    if (isPolling.current || !document.hasFocus()) return;
+    isPolling.current = true;
+
+    try {
+      const response = await apiRequest("POST", "/api/requests/check-handoff-deadlines", {});
+      const result = await response.json();
+      if (result.autoAdvancedCount > 0) {
+        queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+        toast({
+          title: "Handoff completed",
+          description: `${result.autoAdvancedCount} handoff(s) auto-completed after deadline.`,
+        });
+      }
+    } catch (error) {
+      // Silently ignore - no need to log polling failures
+    } finally {
+      isPolling.current = false;
+    }
+  }, [queryClient, toast]);
 
   useEffect(() => {
     if (!user) return;
 
-    const checkExpiredHandoffs = async () => {
-      if (isPolling.current) return;
-      isPolling.current = true;
-      
-      try {
-        const response = await apiRequest("POST", "/api/requests/process-expired-handoffs", {});
-        const result = await response.json();
-        if (result.advanced > 0) {
-          queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-          toast({
-            title: "Handoff completed",
-            description: `${result.advanced} handoff(s) auto-completed after deadline.`,
-          });
-        }
-      } catch (error) {
-        console.log("Background handoff check:", error);
-      } finally {
-        isPolling.current = false;
+    checkExpiredHandoffs();
+    intervalRef.current = setInterval(checkExpiredHandoffs, 120000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkExpiredHandoffs();
       }
     };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    checkExpiredHandoffs();
-    const interval = setInterval(checkExpiredHandoffs, 60000);
-    return () => clearInterval(interval);
-  }, [user, queryClient, toast]);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [user, checkExpiredHandoffs]);
 
   return null;
 }

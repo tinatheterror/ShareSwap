@@ -55,29 +55,33 @@ function NotificationBell() {
     refetchInterval: 120000, // Refetch every 2 minutes
   });
 
-  // Check for return reminders periodically
   useEffect(() => {
     if (!user?.id) return;
 
+    let isCancelled = false;
+
     const checkReminders = async () => {
+      if (isCancelled || !document.hasFocus()) return;
       try {
         await apiRequest("POST", "/api/notifications/check-return-reminders", {});
-        // Refresh notifications after checking
-        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+        if (!isCancelled) {
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+        }
       } catch (error) {
-        console.error("Error checking return reminders:", error);
+        // Silently ignore reminder check failures
       }
     };
 
-    // Check immediately on mount
-    checkReminders();
-
-    // Then check every 15 minutes (reduced from 5min to reduce server load)
+    const timer = setTimeout(checkReminders, 5000);
     const interval = setInterval(checkReminders, 15 * 60 * 1000);
 
-    return () => clearInterval(interval);
-  }, [user?.id, queryClient]);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [user?.id]);
 
   // Mark notification as read with optimistic update
   const markAsReadMutation = useMutation({

@@ -166,7 +166,12 @@ function NotificationBell() {
                 <div key={notification.id}>
                   <DropdownMenuItem 
                     className="cursor-pointer hover:bg-gray-100 flex flex-col items-start p-3 gap-1"
-                    onClick={() => markAsReadMutation.mutate(notification.id)}
+                    onClick={() => {
+                      markAsReadMutation.mutate(notification.id);
+                      if (notification.requestId) {
+                        window.dispatchEvent(new CustomEvent("open-chat-requests"));
+                      }
+                    }}
                   >
                     <div className="flex items-start gap-2 w-full">
                       {getNotificationIcon(notification.type)}

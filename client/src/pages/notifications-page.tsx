@@ -115,9 +115,8 @@ export default function NotificationsPage() {
       return;
     }
     
-    // Navigate based on notification type
     if (notification.requestId) {
-      navigate('/requests');
+      window.dispatchEvent(new CustomEvent("open-chat-requests"));
     } else if (notification.itemId) {
       navigate(`/items/${notification.itemId}`);
     }

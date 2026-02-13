@@ -317,6 +317,16 @@ export function ChatWidget() {
     },
   });
 
+  useEffect(() => {
+    const handleOpenRequests = () => {
+      setIsOpen(true);
+      setMainTab("requests");
+      setSelectedConversation(null);
+    };
+    window.addEventListener("open-chat-requests", handleOpenRequests);
+    return () => window.removeEventListener("open-chat-requests", handleOpenRequests);
+  }, []);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) {

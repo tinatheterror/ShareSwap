@@ -83,13 +83,9 @@ function NotificationBell() {
     };
   }, [user?.id]);
 
-  // Mark notification as read with optimistic update
   const markAsReadMutation = useMutation({
     mutationFn: (notificationId: number) => {
-      return fetch(`/api/notifications/${notificationId}/read`, {
-        method: "PATCH",
-        credentials: "include",
-      });
+      return apiRequest("PATCH", `/api/notifications/${notificationId}/read`);
     },
     onMutate: async (notificationId: number) => {
       await queryClient.cancelQueries({ queryKey: ["/api/notifications"] });

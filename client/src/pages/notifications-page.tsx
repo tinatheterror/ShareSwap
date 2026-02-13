@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { Bell, Check, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield } from "lucide-react";
 import type { SelectNotification } from "@db/schema";
@@ -35,11 +36,7 @@ export default function NotificationsPage() {
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/notifications/${id}/read`, {
-        method: 'PATCH',
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to mark as read');
+      const response = await apiRequest("PATCH", `/api/notifications/${id}/read`);
       return response.json();
     },
     onMutate: async (id: number) => {
@@ -75,11 +72,7 @@ export default function NotificationsPage() {
 
   const markAllReadMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/notifications/read-all', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to mark all as read');
+      const response = await apiRequest("POST", "/api/notifications/read-all");
       return response.json();
     },
     onSuccess: () => {

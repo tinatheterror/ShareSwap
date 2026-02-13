@@ -2829,6 +2829,35 @@ Respond with ONLY the category name, nothing else.`
     res.json(chatMessages);
   });
 
+  app.post("/api/messages/mark-read/:partnerId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    const partnerId = parseInt(req.params.partnerId);
+    if (isNaN(partnerId)) {
+      return res.status(400).json({ error: "Invalid partner ID" });
+    }
+
+    try {
+      await db
+        .update(messages)
+        .set({ isRead: true })
+        .where(
+          and(
+            eq(messages.senderId, partnerId),
+            eq(messages.receiverId, req.user.id),
+            eq(messages.isRead, false)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ error: "Failed to mark messages as read" });
+    }
+  });
+
   // Get all conversations for the current user
   app.get("/api/conversations", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -2858,9 +2887,8 @@ Respond with ONLY the category name, nothing else.`
       const partnerId = msg.senderId === req.user.id ? msg.receiverId : msg.senderId;
       
       if (!conversationMap.has(partnerId)) {
-        // Count unread messages from this partner
         const unread = allMessages.filter(
-          m => m.senderId === partnerId && m.receiverId === req.user.id
+          m => m.senderId === partnerId && m.receiverId === req.user.id && !m.isRead
         ).length;
 
         conversationMap.set(partnerId, {

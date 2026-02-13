@@ -889,7 +889,16 @@ export function ChatWidget() {
                       {filteredConversations.map((conv) => (
                         <button
                           key={conv.userId}
-                          onClick={() => setSelectedConversation(conv.userId)}
+                          onClick={() => {
+                            setSelectedConversation(conv.userId);
+                            if (conv.unreadCount > 0) {
+                              apiRequest("POST", `/api/messages/mark-read/${conv.userId}`)
+                                .then(() => {
+                                  qc.invalidateQueries({ queryKey: ["/api/conversations"] });
+                                })
+                                .catch(() => {});
+                            }
+                          }}
                           className="w-full p-3 hover:bg-gray-50 text-left transition-colors"
                         >
                           <div className="flex items-start justify-between mb-1">

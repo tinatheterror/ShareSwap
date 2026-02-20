@@ -18,7 +18,8 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
     - **Unverified (no email verification)**: Can only create account and browse items
     - **Email Verified (no ID/payment)**: Can create items, send messages, make swaps/gifts, add wishlists, leave reviews - but cannot borrow or rent items
     - **Fully Verified (email + ID + payment)**: No restrictions - full access to borrow and rent items
-    - Identity verification via government ID upload, payment verification via Stripe payment method on file
+    - Identity verification via Persona embedded flow (selfie + government ID matching), payment verification via Stripe payment method on file
+    - Persona integration: Server creates inquiry via API, frontend launches modal SDK, server verifies status via Persona API before awarding rewards (idempotent)
 - **AI-Powered Features**:
     - **SmartScan**: Uses GPT-4 Vision API for AI-powered item recognition from 360° photo scans, with auto-filling item details and AI value estimates for premium users.
     - **Marketplace Import**: AI-powered listing import from external marketplaces (e.g., Facebook Marketplace) using GPT-5 to extract and auto-fill item details, with robust security controls.

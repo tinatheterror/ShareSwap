@@ -6,26 +6,12 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Loader2,
-  Upload,
   ArrowLeft,
   Shield,
   CheckCircle2,
@@ -36,17 +22,13 @@ import {
   Eye,
   CreditCard,
   ArrowRight,
+  Camera,
+  ScanFace,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
-
-const formSchema = z.object({
-  legalFullName: z
-    .string()
-    .min(3, "Please enter your full legal name as it appears on your ID"),
-});
 
 type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
 
@@ -95,60 +77,105 @@ function StatusBadge({ status }: { status: VerificationStatus }) {
 }
 
 export default function VerificationPage() {
-  const [selectedIdFile, setSelectedIdFile] = useState<File | null>(null);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [personaLoading, setPersonaLoading] = useState(false);
+  const [personaError, setPersonaError] = useState<string | null>(null);
 
   const { data: verification, isLoading } = useQuery<VerificationData>({
     queryKey: ["/api/verification-status"],
   });
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      legalFullName: "",
+  const createInquiryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/persona/create-inquiry");
+      return res.json();
+    },
+    onError: (error: Error) => {
+      setPersonaError(error.message);
+      setPersonaLoading(false);
     },
   });
 
-  const verificationMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      if (!selectedIdFile) {
-        throw new Error("Please upload an ID document");
-      }
-
-      const formData = new FormData();
-      formData.append("idDocument", selectedIdFile);
-      formData.append("legalFullName", data.legalFullName);
-
-      const res = await apiRequest("POST", "/api/verify-identity", formData);
+  const completeInquiryMutation = useMutation({
+    mutationFn: async ({ inquiryId, status }: { inquiryId: string; status: string }) => {
+      const res = await apiRequest("POST", "/api/persona/inquiry-complete", {
+        inquiryId,
+        status,
+      });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/verification-status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({
-        title: "Verification Submitted",
-        description:
-          "We're reviewing your documents. This usually takes 1-2 business days.",
-      });
-      form.reset();
-      setSelectedIdFile(null);
+      if (data.status === "approved") {
+        toast({
+          title: "Identity Verified!",
+          description: data.message || "Your identity has been verified successfully.",
+        });
+      } else if (data.status === "failed") {
+        toast({
+          title: "Verification Failed",
+          description: data.message || "Please try again.",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
-        title: "Submission Failed",
+        title: "Verification Error",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const handleIdFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedIdFile(e.target.files[0]);
+  const startPersonaVerification = useCallback(async () => {
+    setPersonaLoading(true);
+    setPersonaError(null);
+
+    try {
+      const result = await createInquiryMutation.mutateAsync();
+      const inquiryId = result.inquiryId;
+
+      if (!inquiryId) {
+        throw new Error("Could not start verification");
+      }
+
+      const { Client } = await import("persona");
+
+      const client = new Client({
+        inquiryId,
+        onReady: () => {
+          setPersonaLoading(false);
+          client.open();
+        },
+        onComplete: ({ inquiryId: completedId, status }: { inquiryId: string; status: string }) => {
+          completeInquiryMutation.mutate({
+            inquiryId: completedId || inquiryId,
+            status: status || "completed",
+          });
+        },
+        onCancel: () => {
+          toast({
+            title: "Verification Cancelled",
+            description: "You can resume verification anytime.",
+          });
+          setPersonaLoading(false);
+        },
+        onError: (error: any) => {
+          console.error("Persona error:", error);
+          setPersonaError("Verification encountered an error. Please try again.");
+          setPersonaLoading(false);
+        },
+      });
+    } catch (err: any) {
+      console.error("Error starting Persona:", err);
+      setPersonaError(err.message || "Failed to start verification");
+      setPersonaLoading(false);
     }
-  };
+  }, [createInquiryMutation, completeInquiryMutation, toast]);
 
   const isVerified = verification?.status === "verified";
   const isPending = verification?.status === "pending";
@@ -223,8 +250,8 @@ export default function VerificationPage() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">ID Document</span>
-                    <span className="font-medium text-gray-900">On file</span>
+                    <span className="text-gray-500">Verification Method</span>
+                    <span className="font-medium text-gray-900">ID + Selfie Match</span>
                   </div>
                 </div>
               </CardContent>
@@ -308,8 +335,8 @@ export default function VerificationPage() {
 
                 <Alert className="bg-amber-50 border-amber-100">
                   <AlertDescription className="text-amber-800 text-sm">
-                    We're reviewing your documents. This usually takes 1-2
-                    business days. We'll notify you once complete.
+                    We're reviewing your documents. This usually takes a few minutes.
+                    We'll notify you once complete.
                   </AlertDescription>
                 </Alert>
 
@@ -319,18 +346,17 @@ export default function VerificationPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">Legal Name</span>
                     <span className="font-medium text-gray-900">
-                      {verification.legalFullName}
+                      {verification.legalFullName || "Processing..."}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">ID Document</span>
-                    <span className="font-medium text-gray-900">Uploaded</span>
+                    <span className="text-gray-500">Verification Method</span>
+                    <span className="font-medium text-gray-900">ID + Selfie Match</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Shortcut to Payment Methods */}
             <Card className="border-teal-200 bg-gradient-to-br from-teal-50 to-white">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -362,7 +388,16 @@ export default function VerificationPage() {
                 <AlertTriangle className="h-4 w-4 text-red-600" />
                 <AlertDescription className="text-red-800">
                   {verification?.failureReason ||
-                    "Your verification couldn't be completed. Please try again with a clearer image of your ID."}
+                    "Your verification couldn't be completed. Please try again."}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {personaError && (
+              <Alert className="bg-red-50 border-red-100">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  {personaError}
                 </AlertDescription>
               </Alert>
             )}
@@ -401,100 +436,70 @@ export default function VerificationPage() {
               <CardHeader>
                 <CardTitle className="text-lg">Verify Your Identity</CardTitle>
                 <CardDescription>
-                  Upload a government-issued ID and confirm your legal name
+                  Securely verify with a government ID and a quick selfie
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit((data) =>
-                      verificationMutation.mutate(data),
-                    )}
-                    className="space-y-6"
-                  >
-                    <div>
-                      <Label className="text-sm font-medium">
-                        Government ID
-                      </Label>
-                      <p className="text-xs text-gray-500 mb-2">
-                        Driver's license, passport, or national ID card
-                      </p>
-                      <div className="mt-2 border-2 border-dashed rounded-lg p-6 text-center hover:border-teal-300 transition-colors">
-                        <Input
-                          type="file"
-                          accept="image/*,.pdf"
-                          className="hidden"
-                          id="id-upload"
-                          onChange={handleIdFileChange}
-                        />
-                        <label htmlFor="id-upload" className="cursor-pointer">
-                          <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                          {selectedIdFile ? (
-                            <p className="text-sm text-teal-600 font-medium">
-                              {selectedIdFile.name}
-                            </p>
-                          ) : (
-                            <>
-                              <Button
-                                variant="outline"
-                                type="button"
-                                className="pointer-events-none"
-                              >
-                                Add ID Photo
-                              </Button>
-                              <p className="text-xs text-gray-400 mt-2">
-                                JPG, PNG, or PDF up to 10MB
-                              </p>
-                            </>
-                          )}
-                        </label>
-                      </div>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
+                      <CreditCard className="h-5 w-5 text-teal-600" />
                     </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">Step 1: Scan your ID</p>
+                      <p className="text-xs text-gray-500">Take a photo of your driver's license, passport, or national ID</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
+                      <ScanFace className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">Step 2: Take a selfie</p>
+                      <p className="text-xs text-gray-500">We'll match your selfie to your ID photo for security</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="p-2 bg-teal-100 rounded-full flex-shrink-0">
+                      <CheckCircle2 className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">Step 3: Get verified</p>
+                      <p className="text-xs text-gray-500">Results are usually instant - earn your verified badge right away</p>
+                    </div>
+                  </div>
+                </div>
 
-                    <FormField
-                      control={form.control}
-                      name="legalFullName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Legal Full Name</FormLabel>
-                          <p className="text-xs text-gray-500 mb-1">
-                            Enter your name exactly as it appears on your ID
-                          </p>
-                          <FormControl>
-                            <Input
-                              placeholder="e.g. John Michael Smith"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <Button
+                  onClick={startPersonaVerification}
+                  disabled={personaLoading || createInquiryMutation.isPending}
+                  className="w-full text-white"
+                  style={{ backgroundColor: "#0DCEA1" }}
+                  size="lg"
+                >
+                  {personaLoading || createInquiryMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Starting Verification...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="mr-2 h-5 w-5" />
+                      {isFailed ? "Try Again" : "Start Verification"}
+                    </>
+                  )}
+                </Button>
 
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={
-                        verificationMutation.isPending || !selectedIdFile
-                      }
-                    >
-                      {verificationMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Submitting...
-                        </>
-                      ) : (
-                        "Submit for Verification"
-                      )}
-                    </Button>
-                  </form>
-                </Form>
+                <div className="flex items-center gap-2 text-xs text-gray-400 justify-center">
+                  <Shield className="h-3 w-3" />
+                  <span>Powered by Persona - bank-level identity verification</span>
+                </div>
               </CardContent>
             </Card>
 
             <p className="text-xs text-gray-400 text-center">
-              Your ID is encrypted and stored securely. We only use it to verify
-              your identity.
+              Your data is encrypted and processed securely. We only use it to
+              verify your identity.
             </p>
           </div>
         )}

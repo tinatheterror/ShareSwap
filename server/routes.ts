@@ -793,6 +793,259 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post("/api/persona/create-inquiry", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const userId = req.user.id;
+      const personaApiKey = process.env.PERSONA_API_KEY;
+      const templateId = process.env.PERSONA_TEMPLATE_ID;
+
+      if (!personaApiKey || !templateId) {
+        return res.status(500).json({ error: "Persona is not configured" });
+      }
+
+      const [existingPending] = await db
+        .select()
+        .from(verifications)
+        .where(and(
+          eq(verifications.userId, userId),
+          eq(verifications.status, "pending")
+        ))
+        .limit(1);
+
+      if (existingPending && existingPending.personaInquiryId) {
+        return res.json({
+          inquiryId: existingPending.personaInquiryId,
+          status: "existing",
+        });
+      }
+
+      const [currentUser] = await db
+        .select({ username: users.username, fullName: users.fullName })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const response = await fetch("https://api.withpersona.com/api/v1/inquiries", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${personaApiKey}`,
+          "Content-Type": "application/json",
+          "Persona-Version": "2023-01-05",
+          "Key-Inflection": "camel",
+        },
+        body: JSON.stringify({
+          data: {
+            type: "inquiry",
+            attributes: {
+              "inquiry-template-id": templateId,
+              "reference-id": `user_${userId}`,
+              fields: {
+                nameFirst: currentUser?.fullName?.split(" ")[0] || "",
+                nameLast: currentUser?.fullName?.split(" ").slice(1).join(" ") || "",
+              },
+            },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Persona API error:", errorText);
+        return res.status(500).json({ error: "Failed to create verification inquiry" });
+      }
+
+      const result = await response.json();
+      const inquiryId = result.data?.id;
+
+      if (!inquiryId) {
+        return res.status(500).json({ error: "Invalid response from verification service" });
+      }
+
+      if (existingPending) {
+        await db
+          .update(verifications)
+          .set({ personaInquiryId: inquiryId, personaStatus: "created" })
+          .where(eq(verifications.id, existingPending.id));
+      } else {
+        await db
+          .insert(verifications)
+          .values({
+            userId,
+            personaInquiryId: inquiryId,
+            personaStatus: "created",
+            status: "pending",
+          });
+      }
+
+      res.json({ inquiryId });
+    } catch (error) {
+      console.error("Error creating Persona inquiry:", error);
+      res.status(500).json({ error: "Failed to start verification" });
+    }
+  });
+
+  app.post("/api/persona/inquiry-complete", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { inquiryId, status } = req.body;
+      const userId = req.user.id;
+
+      if (!inquiryId) {
+        return res.status(400).json({ error: "Inquiry ID is required" });
+      }
+
+      const personaApiKey = process.env.PERSONA_API_KEY;
+      if (!personaApiKey) {
+        return res.status(500).json({ error: "Persona is not configured" });
+      }
+
+      const checkResponse = await fetch(`https://api.withpersona.com/api/v1/inquiries/${inquiryId}`, {
+        headers: {
+          "Authorization": `Bearer ${personaApiKey}`,
+          "Persona-Version": "2023-01-05",
+          "Key-Inflection": "camel",
+        },
+      });
+
+      if (!checkResponse.ok) {
+        return res.status(500).json({ error: "Failed to verify inquiry status" });
+      }
+
+      const inquiryData = await checkResponse.json();
+      const personaStatus = inquiryData.data?.attributes?.status;
+      const nameFirst = inquiryData.data?.attributes?.nameFirst || "";
+      const nameLast = inquiryData.data?.attributes?.nameLast || "";
+      const fullName = `${nameFirst} ${nameLast}`.trim();
+
+      const [verification] = await db
+        .select()
+        .from(verifications)
+        .where(and(
+          eq(verifications.userId, userId),
+          eq(verifications.personaInquiryId, inquiryId)
+        ))
+        .limit(1);
+
+      if (!verification) {
+        return res.status(404).json({ error: "Verification record not found" });
+      }
+
+      if (verification.status === "approved") {
+        return res.json({
+          success: true,
+          status: "approved",
+          message: "Identity already verified.",
+        });
+      }
+
+      if (personaStatus === "approved") {
+        await db
+          .update(verifications)
+          .set({
+            status: "approved",
+            personaStatus,
+            fullName: fullName || verification.fullName,
+            idNumber: "PERSONA_VERIFIED",
+          })
+          .where(eq(verifications.id, verification.id));
+
+        const VERIFICATION_TRUST_BOOST = 50;
+        const [currentUser] = await db
+          .select({ stripePaymentMethodId: users.stripePaymentMethodId })
+          .from(users)
+          .where(eq(users.id, userId));
+
+        const hasPaymentMethod = !!currentUser?.stripePaymentMethodId;
+
+        await db
+          .update(users)
+          .set({
+            isVerified: hasPaymentMethod,
+            verifiedAt: hasPaymentMethod ? new Date() : null,
+            fullName: fullName || undefined,
+            reputationScore: sql`COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST}`,
+          })
+          .where(eq(users.id, userId));
+
+        await db.insert(reputationActivities).values({
+          userId,
+          activityType: "VERIFICATION_APPROVED",
+          points: VERIFICATION_TRUST_BOOST,
+          description: "Identity verified via Persona (ID + selfie match)",
+        });
+
+        const VERIFICATION_SHARECOIN_REWARD = 5;
+        await db.insert(shareCoinsTransactions).values({
+          userId,
+          amount: VERIFICATION_SHARECOIN_REWARD.toString(),
+          description: "Profile Verification Bonus",
+          transactionType: "EARNED",
+        });
+
+        await db
+          .update(users)
+          .set({
+            shareCoins: sql`share_coins + ${VERIFICATION_SHARECOIN_REWARD}`,
+          })
+          .where(eq(users.id, userId));
+
+        console.log(`✅ Persona verification approved for user ${userId}`);
+
+        res.json({
+          success: true,
+          status: "approved",
+          message: "Identity verified! You received a trust score boost and 5 ShareCoins.",
+        });
+      } else if (personaStatus === "completed") {
+        await db
+          .update(verifications)
+          .set({ personaStatus: "completed" })
+          .where(eq(verifications.id, verification.id));
+
+        res.json({
+          success: true,
+          status: "pending",
+          message: "Verification is being reviewed. You'll be notified when complete.",
+        });
+      } else if (personaStatus === "declined" || personaStatus === "failed") {
+        await db
+          .update(verifications)
+          .set({
+            status: "rejected",
+            personaStatus,
+          })
+          .where(eq(verifications.id, verification.id));
+
+        res.json({
+          success: true,
+          status: "failed",
+          message: "Verification could not be completed. Please try again.",
+        });
+      } else {
+        await db
+          .update(verifications)
+          .set({ personaStatus })
+          .where(eq(verifications.id, verification.id));
+
+        res.json({
+          success: true,
+          status: "pending",
+          message: "Verification is being processed.",
+        });
+      }
+    } catch (error) {
+      console.error("Error processing Persona inquiry:", error);
+      res.status(500).json({ error: "Failed to process verification" });
+    }
+  });
+
   // IP-based location detection
   app.get("/api/geo/detect", async (req, res) => {
     try {

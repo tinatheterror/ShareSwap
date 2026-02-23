@@ -1684,17 +1684,7 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
         });
       }
 
-      // Call GPT to extract listing details
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert at extracting structured data from marketplace listings (Facebook Marketplace, Craigslist, Facebook Groups, etc.). Extract item details and return valid JSON only.",
-          },
-          {
-            role: "user",
-            content: `Extract item listing details from this marketplace URL and content. Return ONLY valid JSON with this exact structure:
+      const aiPrompt = `Extract item listing details from this marketplace URL and content. Return ONLY valid JSON with this exact structure:
 
 {
   "name": "Item name (max 60 chars)",
@@ -1704,37 +1694,44 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
 }
 
 URL: ${url}
-${pageContent ? `\nPage Content:\n${pageContent}` : '\nNote: Could not fetch page content. Extract what you can from the URL.'}
+${pageContent ? `\nPage Content:\n${pageContent}` : '\nNote: Could not fetch page content directly (the page likely requires login or JavaScript). Analyze the URL structure to extract any item identifiers, and provide your best guess at what the listing might contain based on the URL patterns. If you truly cannot determine anything, use "Imported Item" as the name.'}
 
-Return only the JSON object, no other text.`,
-          },
-        ],
-        max_completion_tokens: 500,
-        response_format: { type: "json_object" },
-      });
+Return only the JSON object, no other text.`;
 
-      // Parse AI response with validation
-      const aiResponse = completion.choices[0]?.message?.content;
-      if (!aiResponse) {
-        return res.status(500).json({ 
-          error: "AI analysis failed. Please try again or enter details manually." 
-        });
+      let listingData: any = null;
+      const models = ["gpt-5", "gpt-4o-mini"];
+      
+      for (const model of models) {
+        try {
+          const completion = await openai.chat.completions.create({
+            model,
+            messages: [
+              {
+                role: "system",
+                content: "You are an expert at extracting structured data from marketplace listings (Facebook Marketplace, Craigslist, Facebook Groups, etc.). Extract item details and return valid JSON only. Always return a valid JSON object even if you have limited information.",
+              },
+              { role: "user", content: aiPrompt },
+            ],
+            max_completion_tokens: 500,
+            response_format: { type: "json_object" },
+          });
+
+          const aiResponse = completion.choices[0]?.message?.content;
+          if (aiResponse) {
+            listingData = JSON.parse(aiResponse);
+            if (listingData.name && listingData.name.trim().length > 0) {
+              break;
+            }
+          }
+        } catch (modelError: any) {
+          console.log(`Import listing: ${model} failed, trying next model...`, modelError.message);
+          continue;
+        }
       }
 
-      let listingData;
-      try {
-        listingData = JSON.parse(aiResponse);
-      } catch (parseError) {
-        console.error("Failed to parse AI response:", aiResponse);
-        return res.status(500).json({ 
-          error: "Could not extract listing details. Please enter details manually." 
-        });
-      }
-
-      // Validate extracted data
-      if (!listingData.name || listingData.name.trim().length === 0) {
+      if (!listingData || !listingData.name || listingData.name.trim().length === 0) {
         return res.status(400).json({ 
-          error: "Could not extract item name from listing. Please verify the URL is correct." 
+          error: "Could not extract item details from this listing. The page may require login. Please enter details manually." 
         });
       }
 

@@ -277,6 +277,11 @@ export function ChatWidget() {
     Message[]
   >({
     queryKey: ["/api/messages", selectedConversation],
+    queryFn: async () => {
+      const res = await fetch(`/api/messages/${selectedConversation}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch messages");
+      return res.json();
+    },
     enabled: !!selectedConversation && !!user,
   });
 

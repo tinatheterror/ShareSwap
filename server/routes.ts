@@ -4246,6 +4246,184 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // =====================================
+  // OPTIMAL RENTAL PRICING SUGGESTION
+  // =====================================
+
+  app.get("/api/rental-pricing-suggestion", async (req: any, res) => {
+    try {
+      const { category, itemValue, tier, condition } = req.query;
+      const parsedValue = parseFloat(itemValue as string) || 100;
+      const parsedTier = parseInt(tier as string) || 2;
+      const categoryStr = (category as string) || "";
+      const conditionStr = (condition as string) || "Good";
+
+      const similarItems = await db
+        .select({
+          dollarsPrice: items.dollarsPrice,
+          securityDeposit: items.securityDeposit,
+          itemType: items.itemType,
+          tier: items.tier,
+          condition: items.condition,
+          replacementValue: items.replacementValue,
+        })
+        .from(items)
+        .where(
+          and(
+            eq(items.isRentable, true),
+            eq(items.isAvailable, true),
+            items.dollarsPrice ? sql`${items.dollarsPrice} IS NOT NULL AND ${items.dollarsPrice} != '0'` : sql`true`,
+          )
+        )
+        .limit(100);
+
+      const sameCategoryItems = similarItems.filter(
+        (i) => i.itemType === categoryStr && i.dollarsPrice && parseFloat(i.dollarsPrice) > 0
+      );
+      const sameTierItems = similarItems.filter(
+        (i) => i.tier === parsedTier && i.dollarsPrice && parseFloat(i.dollarsPrice) > 0
+      );
+
+      const rentalDemand = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(eq(itemRequests.requestType, "RENT"));
+      const totalRentalRequests = Number(rentalDemand[0]?.count) || 0;
+
+      const wishlistDemand = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(wishlists)
+        .where(
+          and(
+            eq(wishlists.isActive, true),
+            sql`${wishlists.needType} LIKE '%rent%'`,
+          )
+        );
+      const rentWishlistCount = Number(wishlistDemand[0]?.count) || 0;
+
+      const categoryWishlistDemand = categoryStr ? await db
+        .select({ count: sql<number>`count(*)` })
+        .from(wishlists)
+        .where(
+          and(
+            eq(wishlists.isActive, true),
+            eq(wishlists.category, categoryStr),
+          )
+        ) : [{ count: 0 }];
+      const categoryWishlistCount = Number(categoryWishlistDemand[0]?.count) || 0;
+
+      const totalRentableItems = similarItems.length;
+
+      let demandLevel: "low" | "moderate" | "high" = "moderate";
+      let demandMultiplier = 1.0;
+
+      if (totalRentableItems > 0) {
+        const requestToSupplyRatio = totalRentalRequests / Math.max(1, totalRentableItems);
+        if (requestToSupplyRatio > 2 || categoryWishlistCount >= 3) {
+          demandLevel = "high";
+          demandMultiplier = 1.15;
+        } else if (requestToSupplyRatio < 0.5 && categoryWishlistCount === 0) {
+          demandLevel = "low";
+          demandMultiplier = 0.90;
+        }
+      }
+
+      if (categoryWishlistCount >= 5) {
+        demandLevel = "high";
+        demandMultiplier = Math.max(demandMultiplier, 1.20);
+      }
+
+      const CATEGORY_RATES: Record<string, number> = {
+        "Baby & Kids": 0.15,
+        "Electronics": 0.20,
+        "Tools & Equipment": 0.18,
+        "Home & Kitchen": 0.15,
+        "Clothing & Accessories": 0.25,
+        "Hobbies & Collectibles": 0.12,
+      };
+
+      const TIER_DEPOSIT_PCT: Record<number, number> = {
+        1: 0.60,
+        2: 0.55,
+        3: 0.50,
+        4: 0.45,
+      };
+
+      const baseRate = CATEGORY_RATES[categoryStr] || 0.15;
+      let suggestedWeeklyRate = Math.max(3, Math.round(parsedValue * baseRate));
+      const baseDeposit = TIER_DEPOSIT_PCT[parsedTier] || 0.50;
+      let suggestedDeposit = Math.max(10, Math.round(parsedValue * baseDeposit));
+
+      let marketAvgRate: number | null = null;
+      let marketAvgDeposit: number | null = null;
+      const dataSource: string[] = [];
+
+      if (sameCategoryItems.length >= 2) {
+        const rates = sameCategoryItems.map((i) => parseFloat(i.dollarsPrice!));
+        marketAvgRate = Math.round(rates.reduce((a, b) => a + b, 0) / rates.length);
+        const deposits = sameCategoryItems
+          .filter((i) => i.securityDeposit && parseFloat(i.securityDeposit) > 0)
+          .map((i) => parseFloat(i.securityDeposit!));
+        if (deposits.length > 0) {
+          marketAvgDeposit = Math.round(deposits.reduce((a, b) => a + b, 0) / deposits.length);
+        }
+        dataSource.push(`${sameCategoryItems.length} similar ${categoryStr} listings`);
+      } else if (sameTierItems.length >= 2) {
+        const rates = sameTierItems.map((i) => parseFloat(i.dollarsPrice!));
+        marketAvgRate = Math.round(rates.reduce((a, b) => a + b, 0) / rates.length);
+        dataSource.push(`${sameTierItems.length} items in the same value tier`);
+      }
+
+      if (marketAvgRate !== null) {
+        suggestedWeeklyRate = Math.round((suggestedWeeklyRate * 0.6 + marketAvgRate * 0.4));
+        dataSource.push("blended with category base rate");
+      }
+
+      suggestedWeeklyRate = Math.max(3, Math.round(suggestedWeeklyRate * demandMultiplier));
+
+      if (conditionStr === "Like New" || conditionStr === "New") {
+        suggestedWeeklyRate = Math.round(suggestedWeeklyRate * 1.10);
+      } else if (conditionStr === "Fair" || conditionStr === "Well Loved") {
+        suggestedWeeklyRate = Math.round(suggestedWeeklyRate * 0.85);
+      }
+
+      if (marketAvgDeposit !== null) {
+        suggestedDeposit = Math.round((suggestedDeposit * 0.7 + marketAvgDeposit * 0.3));
+      }
+
+      const reasoning: string[] = [];
+      reasoning.push(`Based on ${baseRate * 100}% weekly rate for ${categoryStr || "general"} items`);
+      if (dataSource.length > 0) reasoning.push(`Market data: ${dataSource.join(", ")}`);
+      if (demandLevel === "high") reasoning.push("High demand in this category (+15% boost)");
+      if (demandLevel === "low") reasoning.push("Lower demand (-10% adjustment)");
+      if (conditionStr === "Like New" || conditionStr === "New") reasoning.push("Premium condition (+10%)");
+      if (conditionStr === "Fair" || conditionStr === "Well Loved") reasoning.push("Condition adjustment (-15%)");
+
+      res.json({
+        suggestedWeeklyRate,
+        suggestedDeposit,
+        demandLevel,
+        demandSignals: {
+          totalRentalRequests,
+          rentWishlistCount,
+          categoryWishlistCount,
+          totalRentableItems,
+        },
+        marketData: {
+          sameCategoryCount: sameCategoryItems.length,
+          sameTierCount: sameTierItems.length,
+          marketAvgRate,
+          marketAvgDeposit,
+        },
+        reasoning,
+        itemValue: parsedValue,
+      });
+    } catch (error) {
+      console.error("Error calculating rental pricing suggestion:", error);
+      res.status(500).json({ error: "Failed to calculate pricing suggestion" });
+    }
+  });
+
+  // =====================================
   // RENTAL BALANCE & PAYOUT ENDPOINTS
   // =====================================
 

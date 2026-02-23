@@ -626,6 +626,41 @@ export default function LendPage() {
     queryKey: ["/api/all-wishlists"],
   });
 
+  const watchIsRentableForQuery = form.watch("isRentable");
+  const { data: marketPricing } = useQuery<{
+    suggestedWeeklyRate: number;
+    suggestedDeposit: number;
+    demandLevel: "low" | "moderate" | "high";
+    demandSignals: { totalRentalRequests: number; rentWishlistCount: number; categoryWishlistCount: number; totalRentableItems: number };
+    marketData: { sameCategoryCount: number; sameTierCount: number; marketAvgRate: number | null; marketAvgDeposit: number | null };
+    reasoning: string[];
+    itemValue: number;
+  }>({
+    queryKey: ["/api/rental-pricing-suggestion", watchItemType, watchOriginalValue, calculatedTier, watchCondition],
+    queryFn: async () => {
+      const getVal = () => {
+        if (valuationResult?.internalItemValue) return valuationResult.internalItemValue;
+        if (smartScanAnalysis?.estimatedValue) {
+          const v = parseFloat(smartScanAnalysis.estimatedValue);
+          if (!isNaN(v) && v > 0) return v;
+        }
+        const map: Record<string, number> = { "Under $50": 30, "$50–$199": 125, "$200–$499": 350, "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
+        return map[watchOriginalValue] || 100;
+      };
+      const params = new URLSearchParams({
+        category: watchItemType || "",
+        itemValue: String(getVal()),
+        tier: String(calculatedTier),
+        condition: watchCondition || "Good",
+      });
+      const res = await fetch(`/api/rental-pricing-suggestion?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch pricing");
+      return res.json();
+    },
+    enabled: !!watchIsRentableForQuery && !!watchOriginalValue,
+    staleTime: 30000,
+  });
+
   // Smart matching function: requires substantial word coverage before showing match
   const isGoodMatch = (typed: string, wishlistName: string): boolean => {
     const typedWords = typed
@@ -1773,6 +1808,10 @@ export default function LendPage() {
                                   if (valuationResult?.internalItemValue) {
                                     return valuationResult.internalItemValue;
                                   }
+                                  if (smartScanAnalysis?.estimatedValue) {
+                                    const aiVal = parseFloat(smartScanAnalysis.estimatedValue);
+                                    if (!isNaN(aiVal) && aiVal > 0) return aiVal;
+                                  }
                                   const valueMap: Record<string, number> = {
                                     "Under $50": 30,
                                     "$50–$199": 125,
@@ -1844,10 +1883,30 @@ export default function LendPage() {
                                         /week
                                       </span>
                                     </div>
-                                    <div className="text-[10px] text-gray-400 mt-0.5">
-                                      AI suggested: ${rentalCalc.weeklyRate}
-                                      /week
-                                    </div>
+                                    {marketPricing ? (
+                                      <div className="mt-1 p-1.5 bg-white/60 rounded border border-emerald-200/50">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] text-emerald-700 font-medium">Optimal: ${marketPricing.suggestedWeeklyRate}/wk</span>
+                                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                                            marketPricing.demandLevel === "high" ? "bg-orange-100 text-orange-700" :
+                                            marketPricing.demandLevel === "low" ? "bg-blue-100 text-blue-700" :
+                                            "bg-gray-100 text-gray-600"
+                                          }`}>
+                                            {marketPricing.demandLevel === "high" ? "High demand" :
+                                             marketPricing.demandLevel === "low" ? "Low demand" : "Moderate demand"}
+                                          </span>
+                                        </div>
+                                        {marketPricing.reasoning.length > 0 && (
+                                          <div className="text-[9px] text-gray-400 mt-0.5 leading-tight">
+                                            {marketPricing.reasoning[0]}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="text-[10px] text-gray-400 mt-0.5">
+                                        Suggested: ${rentalCalc.weeklyRate}/week
+                                      </div>
+                                    )}
                                     <div className="mt-2 pt-2 border-t border-emerald-100">
                                       <div className="text-xs font-medium text-gray-700">
                                         Security Deposit:
@@ -1879,9 +1938,15 @@ export default function LendPage() {
                                           className="w-20 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                         />
                                       </div>
-                                      <div className="text-[10px] text-gray-400 mt-0.5">
-                                        AI suggested: ${depositCalc.deposit}
-                                      </div>
+                                      {marketPricing ? (
+                                        <div className="text-[10px] text-emerald-700 mt-0.5">
+                                          Optimal: ${marketPricing.suggestedDeposit}
+                                        </div>
+                                      ) : (
+                                        <div className="text-[10px] text-gray-400 mt-0.5">
+                                          Suggested: ${depositCalc.deposit}
+                                        </div>
+                                      )}
                                     </div>
                                     <div className="mt-2 pt-2 border-t border-emerald-100">
                                       <div className="flex justify-between text-xs">

@@ -6321,23 +6321,34 @@ Respond with ONLY the category name, nothing else.`
       let customerId = user.stripeCustomerId;
       const stripeInstance = await getStripe();
 
-      // Create Stripe customer if doesn't exist
-      if (!customerId) {
+      const ensureValidCustomer = async (): Promise<string> => {
+        if (customerId) {
+          try {
+            await stripeInstance.customers.retrieve(customerId);
+            return customerId!;
+          } catch (err: any) {
+            if (err?.statusCode === 404 || err?.code === 'resource_missing') {
+              console.log(`Stripe customer ${customerId} not found, creating new one for user ${user.id}`);
+            } else {
+              throw err;
+            }
+          }
+        }
         const customer = await stripeInstance.customers.create({
           metadata: {
             userId: user.id.toString(),
             username: user.username,
           },
         });
-        customerId = customer.id;
-
         await db
           .update(users)
-          .set({ stripeCustomerId: customerId })
+          .set({ stripeCustomerId: customer.id })
           .where(eq(users.id, req.user.id));
-      }
+        return customer.id;
+      };
 
-      // Create SetupIntent
+      customerId = await ensureValidCustomer();
+
       const setupIntent = await stripeInstance.setupIntents.create({
         customer: customerId,
         payment_method_types: ['card'],
@@ -6378,31 +6389,40 @@ Respond with ONLY the category name, nothing else.`
 
       let customerId = user.stripeCustomerId;
 
-      // Get stripe instance
       const stripeInstance = await getStripe();
 
-      // Create Stripe customer if doesn't exist
-      if (!customerId) {
+      const ensureValidCustomer = async (): Promise<string> => {
+        if (customerId) {
+          try {
+            await stripeInstance.customers.retrieve(customerId);
+            return customerId!;
+          } catch (err: any) {
+            if (err?.statusCode === 404 || err?.code === 'resource_missing') {
+              console.log(`Stripe customer ${customerId} not found, creating new one for user ${user.id}`);
+            } else {
+              throw err;
+            }
+          }
+        }
         const customer = await stripeInstance.customers.create({
           metadata: {
             userId: user.id.toString(),
             username: user.username,
           },
         });
-        customerId = customer.id;
-
         await db
           .update(users)
-          .set({ stripeCustomerId: customerId })
+          .set({ stripeCustomerId: customer.id })
           .where(eq(users.id, req.user.id));
-      }
+        return customer.id;
+      };
 
-      // Determine the base URL for redirects
+      customerId = await ensureValidCustomer();
+
       const protocol = req.headers['x-forwarded-proto'] || 'https';
       const host = req.headers.host;
       const baseUrl = `${protocol}://${host}`;
 
-      // Create Checkout Session in setup mode for saving payment method
       const session = await stripeInstance.checkout.sessions.create({
         mode: 'setup',
         customer: customerId,

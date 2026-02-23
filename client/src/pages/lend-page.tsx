@@ -60,8 +60,11 @@ import {
   Plus,
   Check,
   Bell,
+  Camera,
+  Video,
+  VideoOff,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Select,
   SelectContent,
@@ -206,7 +209,90 @@ export default function LendPage() {
   const [showMatchingModal, setShowMatchingModal] = useState(false);
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
   const [listedItemData, setListedItemData] = useState<any>(null);
-  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">(
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  const startCamera = useCallback(async () => {
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: cameraFacing, width: { ideal: 1280 }, height: { ideal: 960 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setIsCameraOpen(true);
+    } catch (err) {
+      toast({ title: "Camera unavailable", description: "Could not access camera. Please check your browser permissions.", variant: "destructive" });
+    }
+  }, [cameraFacing, toast]);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setIsCameraOpen(false);
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `camera-${Date.now()}.jpg`, { type: "image/jpeg" });
+      setSelectedPhotos(prev => [...prev, file]);
+      const reader = new FileReader();
+      reader.onload = () => setPhotoPreviewUrls(prev => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+      toast({ title: "Photo captured!", description: "You can take more or proceed." });
+    }, "image/jpeg", 0.85);
+  }, [toast]);
+
+  const handleMobileCameraCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setSelectedPhotos(prev => [...prev, file]);
+      const reader = new FileReader();
+      reader.onload = () => setPhotoPreviewUrls(prev => [...prev, reader.result as string]);
+      reader.readAsDataURL(file);
+      toast({ title: "Photo captured!", description: "You can take more or proceed." });
+    }
+    if (e.target) e.target.value = "";
+  }, [toast]);
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  const handleTabChange = useCallback((v: string) => {
+    if (v !== "camera") {
+      stopCamera();
+    }
+    setUploadMethod(v as "smartscan" | "manual" | "camera");
+  }, [stopCamera]);
+
+  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual" | "camera">(
     "manual",
   );
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
@@ -1188,16 +1274,106 @@ export default function LendPage() {
                     </p>
                     <Tabs
                       value={uploadMethod}
-                      onValueChange={(v) =>
-                        setUploadMethod(v as "smartscan" | "manual")
-                      }
+                      onValueChange={handleTabChange}
                     >
-                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="camera">
+                          <Camera className="w-3.5 h-3.5 mr-1" />
+                          Photo
+                        </TabsTrigger>
                         <TabsTrigger value="smartscan">
                           ✨ SmartScan
                         </TabsTrigger>
-                        <TabsTrigger value="manual">Manual Upload</TabsTrigger>
+                        <TabsTrigger value="manual">Upload</TabsTrigger>
                       </TabsList>
+                      <TabsContent value="camera" className="mt-4">
+                        <input
+                          ref={cameraInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={handleMobileCameraCapture}
+                        />
+                        {isMobileDevice ? (
+                          <div className="space-y-3">
+                            <Button
+                              type="button"
+                              className="w-full bg-teal-500 hover:bg-teal-600 text-white h-12"
+                              onClick={() => cameraInputRef.current?.click()}
+                            >
+                              <Camera className="w-5 h-5 mr-2" />
+                              Take a Photo
+                            </Button>
+                            <p className="text-xs text-center text-muted-foreground">
+                              Opens your device camera directly
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {!isCameraOpen ? (
+                              <Button
+                                type="button"
+                                className="w-full bg-teal-500 hover:bg-teal-600 text-white h-12"
+                                onClick={startCamera}
+                              >
+                                <Video className="w-5 h-5 mr-2" />
+                                Open Webcam
+                              </Button>
+                            ) : (
+                              <div className="space-y-3">
+                                <div className="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
+                                  <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <canvas ref={canvasRef} className="hidden" />
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white h-10"
+                                    onClick={capturePhoto}
+                                  >
+                                    <Camera className="w-4 h-4 mr-2" />
+                                    Capture
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-10"
+                                    onClick={stopCamera}
+                                  >
+                                    <VideoOff className="w-4 h-4 mr-1" />
+                                    Close
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {selectedPhotos.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {selectedPhotos.map((_, idx) => (
+                              <div key={idx} className="relative group w-16 h-16">
+                                <img
+                                  src={photoPreviewUrls[idx]}
+                                  alt={`Photo ${idx + 1}`}
+                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                                />
+                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                                    <X className="w-3 h-3 text-gray-700" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </TabsContent>
                       <TabsContent value="smartscan" className="mt-4">
                         <SmartScan
                           onAnalysisComplete={handleSmartScanComplete}
@@ -1966,14 +2142,81 @@ export default function LendPage() {
                   </p>
                   <Tabs
                     value={uploadMethod}
-                    onValueChange={(v) =>
-                      setUploadMethod(v as "smartscan" | "manual")
-                    }
+                    onValueChange={handleTabChange}
                   >
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="camera">
+                        <Camera className="w-3.5 h-3.5 mr-1" />
+                        Photo
+                      </TabsTrigger>
                       <TabsTrigger value="smartscan">✨ SmartScan</TabsTrigger>
-                      <TabsTrigger value="manual">Manual Upload</TabsTrigger>
+                      <TabsTrigger value="manual">Upload</TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="camera" className="mt-4">
+                      <div className="space-y-3">
+                        {!isCameraOpen ? (
+                          <Button
+                            type="button"
+                            className="w-full bg-teal-500 hover:bg-teal-600 text-white h-12"
+                            onClick={startCamera}
+                          >
+                            <Video className="w-5 h-5 mr-2" />
+                            Open Webcam
+                          </Button>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
+                              <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <canvas ref={canvasRef} className="hidden" />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white h-10"
+                                onClick={capturePhoto}
+                              >
+                                <Camera className="w-4 h-4 mr-2" />
+                                Capture
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-10"
+                                onClick={stopCamera}
+                              >
+                                <VideoOff className="w-4 h-4 mr-1" />
+                                Close
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {selectedPhotos.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {selectedPhotos.map((_, idx) => (
+                              <div key={idx} className="relative group w-16 h-16">
+                                <img
+                                  src={photoPreviewUrls[idx]}
+                                  alt={`Photo ${idx + 1}`}
+                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                                />
+                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                                    <X className="w-3 h-3 text-gray-700" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
 
                     <TabsContent value="smartscan" className="mt-4">
                       <SmartScan onAnalysisComplete={handleSmartScanComplete} />

@@ -131,7 +131,7 @@ export function LocationSetupModal({
           </DialogTitle>
           <DialogDescription className="text-center text-gray-600">
             We only use your location to show nearby neighbours. Your address is
-            kept private.
+            kept secure.
           </DialogDescription>
         </DialogHeader>
 

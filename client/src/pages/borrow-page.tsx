@@ -22,6 +22,7 @@ import {
   Gift,
   Heart,
   BadgeCheck,
+  LayoutGrid,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -635,10 +636,23 @@ export default function BorrowPage() {
 
         {/* Items by Category - Mobile Carousels, Desktop Grid */}
         <div className="mt-8">
-          {searchQuery && (
+          {searchQuery ? (
             <h2 className="text-xl font-bold mb-4">
               Search Results for "{searchQuery}"
             </h2>
+          ) : (
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg">
+                <LayoutGrid className="h-4 w-4 text-teal-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                All Items
+              </h3>
+              <Badge className="bg-teal-100 text-teal-800 border-teal-200">
+                {filteredItems.length} available
+              </Badge>
+              <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
+            </div>
           )}
           {filteredItems.length === 0 && searchQuery ? (
             <div className="flex flex-col items-center justify-center py-16">

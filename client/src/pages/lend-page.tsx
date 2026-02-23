@@ -333,15 +333,15 @@ export default function LendPage() {
   useEffect(() => {
     if (editItem && isEditMode) {
       const item = editItem as any;
-      // Parse lat/lng as numbers (they come as strings from database)
       const lat = item.latitude ? parseFloat(item.latitude) : undefined;
       const lng = item.longitude ? parseFloat(item.longitude) : undefined;
+      const originalVal = item.originalValue || "";
       form.reset({
         name: item.name || "",
         description: item.description || "",
         itemType: item.itemType || "",
         condition: item.condition || "",
-        originalValue: item.originalValue || "",
+        originalValue: originalVal,
         isLendable: item.isLendable || false,
         isSwappable: item.isSwappable || false,
         isRentable: item.isRentable || false,
@@ -356,6 +356,17 @@ export default function LendPage() {
         latitude: lat,
         longitude: lng,
       });
+      setTimeout(() => {
+        if (originalVal) {
+          form.setValue("originalValue", originalVal, { shouldDirty: false, shouldValidate: false });
+        }
+        if (item.condition) {
+          form.setValue("condition", item.condition, { shouldDirty: false, shouldValidate: false });
+        }
+        if (item.itemType) {
+          form.setValue("itemType", item.itemType, { shouldDirty: false, shouldValidate: false });
+        }
+      }, 100);
       if (item.photos && item.photos.length > 0) {
         setExistingPhotos(item.photos);
       }

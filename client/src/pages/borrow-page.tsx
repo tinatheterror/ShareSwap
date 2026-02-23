@@ -795,7 +795,7 @@ export default function BorrowPage() {
                                         <span className="text-slate-400">|</span>
                                         <div className="flex items-center">
                                           <DollarSign className="h-4 w-4 text-teal-600" />
-                                          <span>${Number(currentItem.dollarsPrice || 10).toFixed(2)}/day</span>
+                                          <span>${Number(currentItem.dollarsPrice || 10).toFixed(0)}/wk</span>
                                         </div>
                                       </>
                                     )}
@@ -936,7 +936,7 @@ export default function BorrowPage() {
                               <span className="text-slate-400">|</span>
                               <div className="flex items-center">
                                 <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
-                                <span>${Number(item.dollarsPrice || 10).toFixed(2)}/day</span>
+                                <span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span>
                               </div>
                             </>
                           )}

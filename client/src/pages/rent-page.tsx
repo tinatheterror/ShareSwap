@@ -270,7 +270,7 @@ export default function RentPage() {
                   )}
                   <div className="flex items-center justify-center gap-1 mb-1 mt-1">
                     <span className="text-xs font-semibold text-teal-700">
-                      ${Number(item.dollarsPrice || 10).toFixed(2)}/day
+                      ${Number(item.dollarsPrice || 10).toFixed(0)}/wk
                     </span>
                   </div>
                   <p className="text-xs text-gray-600">

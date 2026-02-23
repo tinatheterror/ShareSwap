@@ -95,10 +95,12 @@ export default function ItemDetailsPage() {
     const itemTier = (item as any).tier || 2;
     const itemOriginalValue = (item as any).originalValue || "$50–$150";
     
-    // Calculate personalized trust-based deposit for the viewer
+    const isOwner = user?.id === (item as any).ownerId;
     const reputationScore = user?.reputationScore || 0;
     const viewerTrustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
-    const depositCalc = calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);
+    const depositCalc = isOwner
+      ? calculateSecurityDeposit(itemTier, itemOriginalValue, 0)
+      : calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);
     
     const borrowOption = item.isLendable ? (
       <div key="borrow" className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -168,11 +170,11 @@ export default function ItemDetailsPage() {
           <p className="font-medium">Rent</p>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg font-bold text-teal-700">
-              $ {Number(item.dollarsPrice || 10).toFixed(2)}/day
+              ${Number(item.dollarsPrice || 10).toFixed(0)}/week
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Security Deposit: ${Number(item.securityDeposit).toFixed(2)}
+            Security Deposit: ${Number(item.securityDeposit || 0).toFixed(0)}
           </p>
         </div>
         {hasPendingRent ? (

@@ -444,6 +444,12 @@ export default function LendPage() {
         latitude: lat,
         longitude: lng,
       });
+      if (item.dollarsPrice) {
+        setCustomRentalRate(Number(item.dollarsPrice));
+      }
+      if (item.securityDeposit && Number(item.securityDeposit) > 0) {
+        setCustomRentalDeposit(Number(item.securityDeposit));
+      }
       setTimeout(() => {
         if (originalVal) {
           form.setValue("originalValue", originalVal, { shouldDirty: false, shouldValidate: false });
@@ -852,6 +858,32 @@ export default function LendPage() {
         formData.append("tier", String(tier));
       }
 
+      // Include custom rental rate and rental security deposit if rentable
+      if (data.isRentable) {
+        const rentalRate = customRentalRate !== null ? customRentalRate : (() => {
+          const valueMap: Record<string, number> = {
+            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
+            "$300–$1,000": 650, "$300+": 500,
+          };
+          const itemValue = valueMap[data.originalValue] || 100;
+          return calculateRentalRate(itemValue, data.itemType || "").weeklyRate;
+        })();
+        formData.append("dollarsPrice", String(rentalRate));
+
+        const rentalDeposit = customRentalDeposit !== null ? customRentalDeposit : (() => {
+          const valueMap: Record<string, number> = {
+            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
+            "$300–$1,000": 650, "$300+": 500,
+          };
+          const itemValue = valueMap[data.originalValue] || 100;
+          const tier = calculateTier(data.originalValue, data.condition);
+          return calculateRentalDeposit(itemValue, tier).deposit;
+        })();
+        formData.append("rentalSecurityDeposit", String(rentalDeposit));
+      }
+
       const res = await apiRequest("POST", "/api/items", formData);
       const result = await res.json();
       return result;
@@ -909,6 +941,32 @@ export default function LendPage() {
       if (data.condition && data.originalValue) {
         const tier = calculateTier(data.originalValue, data.condition);
         formData.append("tier", String(tier));
+      }
+
+      // Include custom rental rate and rental security deposit if rentable
+      if (data.isRentable) {
+        const rentalRate = customRentalRate !== null ? customRentalRate : (() => {
+          const valueMap: Record<string, number> = {
+            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
+            "$300–$1,000": 650, "$300+": 500,
+          };
+          const itemValue = valueMap[data.originalValue] || 100;
+          return calculateRentalRate(itemValue, data.itemType || "").weeklyRate;
+        })();
+        formData.append("dollarsPrice", String(rentalRate));
+
+        const rentalDeposit = customRentalDeposit !== null ? customRentalDeposit : (() => {
+          const valueMap: Record<string, number> = {
+            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
+            "$300–$1,000": 650, "$300+": 500,
+          };
+          const itemValue = valueMap[data.originalValue] || 100;
+          const tier = calculateTier(data.originalValue, data.condition);
+          return calculateRentalDeposit(itemValue, tier).deposit;
+        })();
+        formData.append("rentalSecurityDeposit", String(rentalDeposit));
       }
 
       const res = await apiRequest(

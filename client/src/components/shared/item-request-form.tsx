@@ -443,8 +443,8 @@ export function ItemRequestForm({
                   );
                 }
 
-                // Get rental rate from item (daily rate stored in dollarsPrice)
-                const dailyRate = Number((item as any).dollarsPrice) || 10;
+                const weeklyRate = Number((item as any).dollarsPrice) || 10;
+                const dailyRate = Math.max(1, Math.round(weeklyRate / 7));
                 const rentalCost = rentalDays > 0 ? dailyRate * rentalDays : 0;
 
                 // Delivery cost

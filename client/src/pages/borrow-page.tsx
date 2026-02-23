@@ -102,9 +102,11 @@ export default function BorrowPage() {
   const [showWishlistForm, setShowWishlistForm] = useState(false);
   const [giftCarouselIndex, setGiftCarouselIndex] = useState(0);
   const [categoryCarouselIndices, setCategoryCarouselIndices] = useState<Record<string, number>>({});
-  const categoryTouchRefs = useRef<Record<string, { startX: number; endX: number }>>({});
+  const categoryTouchRefs = useRef<Record<string, { startX: number; endX: number; startY: number; isHorizontal: boolean | null }>>({});
   const giftTouchStartX = useRef(0);
   const giftTouchEndX = useRef(0);
+  const giftTouchStartY = useRef(0);
+  const giftIsHorizontal = useRef<boolean | null>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -333,10 +335,20 @@ export default function BorrowPage() {
 
   const handleGiftTouchStart = useCallback((e: React.TouchEvent) => {
     giftTouchStartX.current = e.touches[0].clientX;
+    giftTouchStartY.current = e.touches[0].clientY;
+    giftTouchEndX.current = e.touches[0].clientX;
+    giftIsHorizontal.current = null;
   }, []);
 
   const handleGiftTouchMove = useCallback((e: React.TouchEvent) => {
-    giftTouchEndX.current = e.touches[0].clientX;
+    const dx = Math.abs(e.touches[0].clientX - giftTouchStartX.current);
+    const dy = Math.abs(e.touches[0].clientY - giftTouchStartY.current);
+    if (giftIsHorizontal.current === null && (dx > 5 || dy > 5)) {
+      giftIsHorizontal.current = dx > dy;
+    }
+    if (giftIsHorizontal.current) {
+      giftTouchEndX.current = e.touches[0].clientX;
+    }
   }, []);
 
   const handleGiftTouchEnd = useCallback(() => {
@@ -368,17 +380,20 @@ export default function BorrowPage() {
 
   // Category carousel handlers
   const handleCategoryTouchStart = useCallback((category: string, e: React.TouchEvent) => {
-    if (!categoryTouchRefs.current[category]) {
-      categoryTouchRefs.current[category] = { startX: 0, endX: 0 };
-    }
-    categoryTouchRefs.current[category].startX = e.touches[0].clientX;
+    categoryTouchRefs.current[category] = { startX: e.touches[0].clientX, endX: e.touches[0].clientX, startY: e.touches[0].clientY, isHorizontal: null };
   }, []);
 
   const handleCategoryTouchMove = useCallback((category: string, e: React.TouchEvent) => {
-    if (!categoryTouchRefs.current[category]) {
-      categoryTouchRefs.current[category] = { startX: 0, endX: 0 };
+    const ref = categoryTouchRefs.current[category];
+    if (!ref) return;
+    const dx = Math.abs(e.touches[0].clientX - ref.startX);
+    const dy = Math.abs(e.touches[0].clientY - ref.startY);
+    if (ref.isHorizontal === null && (dx > 5 || dy > 5)) {
+      ref.isHorizontal = dx > dy;
     }
-    categoryTouchRefs.current[category].endX = e.touches[0].clientX;
+    if (ref.isHorizontal) {
+      ref.endX = e.touches[0].clientX;
+    }
   }, []);
 
   const handleCategoryTouchEnd = useCallback((category: string, maxIndex: number) => {
@@ -715,7 +730,7 @@ export default function BorrowPage() {
                       <h3 className="text-lg font-bold mb-3 text-slate-800">{category}</h3>
                       
                       <div
-                        className="touch-pan-x"
+                        className="touch-pan-y"
                         onTouchStart={(e) => handleCategoryTouchStart(category, e)}
                         onTouchMove={(e) => handleCategoryTouchMove(category, e)}
                         onTouchEnd={() => handleCategoryTouchEnd(category, categoryItems.length - 1)}

@@ -405,6 +405,8 @@ export default function LendPage() {
 
   // Rental rate state
   const [customRentalRate, setCustomRentalRate] = useState<number | null>(null);
+  const [rentalRateInput, setRentalRateInput] = useState<string>("");
+  const [rentalDepositInput, setRentalDepositInput] = useState<string>("");
   const [rentalRateWarning, setRentalRateWarning] = useState<string | null>(
     null,
   );
@@ -1744,17 +1746,8 @@ export default function LendPage() {
                                     ? customRentalDeposit
                                     : depositCalc.deposit;
 
-                                const handleRateChange = (newRate: number) => {
-                                  setCustomRentalRate(newRate);
-                                };
-
-                                const handleDepositChange = (
-                                  newDeposit: number,
-                                ) => {
-                                  setCustomRentalDeposit(
-                                    Math.max(0, newDeposit),
-                                  );
-                                };
+                                const rateInputValue = rentalRateInput !== "" ? rentalRateInput : (customRentalRate !== null ? String(customRentalRate) : String(rentalCalc.weeklyRate));
+                                const depositInputValue = rentalDepositInput !== "" ? rentalDepositInput : (customRentalDeposit !== null ? String(customRentalDeposit) : String(depositCalc.deposit));
 
                                 return (
                                   <>
@@ -1769,15 +1762,24 @@ export default function LendPage() {
                                       <input
                                         type="number"
                                         min="1"
-                                        value={displayRate}
-                                        onChange={(e) =>
-                                          handleRateChange(
-                                            Math.max(
-                                              1,
-                                              parseInt(e.target.value) || 1,
-                                            ),
-                                          )
-                                        }
+                                        value={rateInputValue}
+                                        onChange={(e) => {
+                                          setRentalRateInput(e.target.value);
+                                          const val = parseInt(e.target.value);
+                                          if (!isNaN(val)) {
+                                            setCustomRentalRate(Math.max(1, val));
+                                          }
+                                        }}
+                                        onBlur={() => {
+                                          const val = parseInt(rentalRateInput);
+                                          if (isNaN(val) || val < 1) {
+                                            setCustomRentalRate(rentalCalc.weeklyRate);
+                                          }
+                                          setRentalRateInput("");
+                                        }}
+                                        onFocus={(e) => {
+                                          setRentalRateInput(e.target.value);
+                                        }}
                                         className="w-16 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                       />
                                       <span className="text-xs text-gray-500">
@@ -1798,12 +1800,24 @@ export default function LendPage() {
                                           type="number"
                                           min="0"
                                           step="1"
-                                          value={displayDeposit}
-                                          onChange={(e) =>
-                                            handleDepositChange(
-                                              parseInt(e.target.value) || 0,
-                                            )
-                                          }
+                                          value={depositInputValue}
+                                          onChange={(e) => {
+                                            setRentalDepositInput(e.target.value);
+                                            const val = parseInt(e.target.value);
+                                            if (!isNaN(val)) {
+                                              setCustomRentalDeposit(Math.max(0, val));
+                                            }
+                                          }}
+                                          onBlur={() => {
+                                            const val = parseInt(rentalDepositInput);
+                                            if (isNaN(val) || val < 0) {
+                                              setCustomRentalDeposit(depositCalc.deposit);
+                                            }
+                                            setRentalDepositInput("");
+                                          }}
+                                          onFocus={(e) => {
+                                            setRentalDepositInput(e.target.value);
+                                          }}
                                           className="w-20 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                         />
                                       </div>

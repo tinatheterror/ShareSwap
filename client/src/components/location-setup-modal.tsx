@@ -207,7 +207,7 @@ export function LocationSetupModal({
           </div>
 
           <p className="text-xs text-gray-500 text-center">
-            Change this anytime in settings.
+            You can change this anytime in settings.
           </p>
         </div>
 

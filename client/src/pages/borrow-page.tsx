@@ -1073,7 +1073,7 @@ export default function BorrowPage() {
           }}
           targetSelector="[data-tutorial='wishlist']"
           title="Can't Find What You Need?"
-          description="Add it to your wishlist and get notified when it is available in the community!"
+          description="If the item you're looking for isn't listed yet, you can add it to your wishlist. When a neighbour in your area shares a matching item, you'll get a notification so you can be the first to request it. Your wishlist also helps the community know what items are in demand."
           actionLabel="View Wishlist"
           onAction={() => navigate("/wishlists")}
         />

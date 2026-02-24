@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 
 interface TutorialTooltipProps {
   isOpen: boolean;
@@ -36,18 +36,30 @@ export function TutorialTooltip({
   const [position, setPosition] = useState<Position>('bottom');
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [hasTarget, setHasTarget] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
   const hasScrolledRef = useRef(false);
   const rafRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const calculatePositions = useCallback(() => {
     const targetElement = document.querySelector(targetSelector) as HTMLElement;
     if (!targetElement) {
       setTargetRect(null);
-      setIsReady(false);
+      setHasTarget(false);
+      setIsReady(true);
       return;
     }
+
+    setHasTarget(true);
 
     if (!hasScrolledRef.current) {
       hasScrolledRef.current = true;
@@ -125,6 +137,7 @@ export function TutorialTooltip({
     if (!isOpen) {
       setIsReady(false);
       setTargetRect(null);
+      setHasTarget(false);
       hasScrolledRef.current = false;
       return;
     }
@@ -162,6 +175,70 @@ export function TutorialTooltip({
   }, [isOpen, targetRect, calculatePositions]);
 
   if (!isOpen) return null;
+
+  if (isMobile || !hasTarget) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-black/40 z-[9998]" onClick={onClose} />
+        <AnimatePresence>
+          <motion.div
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 z-[9999] bg-white rounded-t-2xl shadow-2xl p-5 pb-8"
+            style={{ maxHeight: '60vh' }}
+          >
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-start gap-3">
+              <div
+                className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: '#0DCEA1' }}
+              >
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-base text-slate-800 mb-1">{title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <Button
+                onClick={onClose}
+                variant="outline"
+                size="lg"
+                className="flex-1 h-11 text-sm font-medium"
+              >
+                Got It
+              </Button>
+              {actionLabel && onAction && (
+                <Button
+                  onClick={() => {
+                    onAction();
+                    onClose();
+                  }}
+                  size="lg"
+                  className="flex-1 h-11 text-sm font-medium text-white"
+                  style={{ backgroundColor: '#0DCEA1' }}
+                >
+                  {actionLabel}
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </>
+    );
+  }
 
   const arrowStyles = {
     top: 'bottom-[-8px] left-1/2 -translate-x-1/2 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-white',

@@ -4333,24 +4333,24 @@ Respond with ONLY the category name, nothing else.`
       }
 
       const CATEGORY_RATES: Record<string, number> = {
-        "Baby & Kids": 0.15,
-        "Electronics": 0.20,
-        "Tools & Equipment": 0.18,
-        "Home & Kitchen": 0.15,
-        "Clothing & Accessories": 0.25,
-        "Hobbies & Collectibles": 0.12,
+        "Baby & Kids": 0.05,
+        "Electronics": 0.07,
+        "Tools & Equipment": 0.06,
+        "Home & Kitchen": 0.05,
+        "Clothing & Accessories": 0.08,
+        "Hobbies & Collectibles": 0.04,
       };
 
       const TIER_DEPOSIT_PCT: Record<number, number> = {
-        1: 0.60,
-        2: 0.55,
-        3: 0.50,
-        4: 0.45,
+        1: 0.40,
+        2: 0.35,
+        3: 0.30,
+        4: 0.25,
       };
 
-      const baseRate = CATEGORY_RATES[categoryStr] || 0.15;
+      const baseRate = CATEGORY_RATES[categoryStr] || 0.05;
       let suggestedWeeklyRate = Math.max(3, Math.round(parsedValue * baseRate));
-      const baseDeposit = TIER_DEPOSIT_PCT[parsedTier] || 0.50;
+      const baseDeposit = TIER_DEPOSIT_PCT[parsedTier] || 0.30;
       let suggestedDeposit = Math.max(10, Math.round(parsedValue * baseDeposit));
 
       let marketAvgRate: number | null = null;

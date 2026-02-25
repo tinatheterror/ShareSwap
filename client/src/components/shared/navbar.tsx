@@ -254,6 +254,17 @@ export function Navbar() {
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileWalletOpen, setMobileWalletOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenMenu = () => setMobileMenuOpen(true);
+    const handleCloseMenu = () => setMobileMenuOpen(false);
+    window.addEventListener("tutorial-open-mobile-menu", handleOpenMenu);
+    window.addEventListener("tutorial-close-mobile-menu", handleCloseMenu);
+    return () => {
+      window.removeEventListener("tutorial-open-mobile-menu", handleOpenMenu);
+      window.removeEventListener("tutorial-close-mobile-menu", handleCloseMenu);
+    };
+  }, []);
   const { openFeedback } = useUserJot({
     userId: user?.id,
     username: user?.username,

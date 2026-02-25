@@ -7,22 +7,15 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Home,
-  Coins,
-  Gamepad2,
-  Heart,
   CheckCircle,
-  Package,
-  Trophy,
 } from "lucide-react";
 
 interface TutorialStep {
   id: number;
   title: string;
   description: string;
-  icon: React.ReactNode;
   highlightSelector?: string;
-  position: "center" | "top" | "bottom";
+  requiresMenu?: boolean;
 }
 
 interface ElementRect {
@@ -37,88 +30,72 @@ interface ElementRect {
 const tutorialSteps: TutorialStep[] = [
   {
     id: 1,
-    title: "Welcome to ShareSwap! 🥳",
+    title: "Welcome to ShareSwap!",
     description:
-      "Let's tour all the amazing features. You can skip this tutorial at any time.",
-    icon: <Home className="h-8 w-8 text-teal-600" />,
-    position: "center",
+      "ShareSwap is your neighbourhood sharing marketplace where you can borrow, lend, rent, swap, and gift items with people nearby. This quick tour will walk you through each feature so you can get started right away. You can skip at any time.",
   },
   {
     id: 2,
     title: "Give to the ShareChest",
     description:
-      "Add in your own items to the ShareChest. Earn ShareCoins for helping neighbours!",
-    icon: <Home className="h-8 w-8 text-teal-600" />,
+      "This is where you list items you'd like to share with your community. You can lend, rent, swap, or gift anything you're not using. When someone borrows your item, you earn ShareCoins as a reward — and you'll always stay in control of who gets to use your things.",
     highlightSelector: '[data-tutorial="give"]',
-    position: "bottom",
   },
   {
     id: 3,
     title: "Take from the ShareChest",
     description:
-      "Browse the ShareChest for what you need. Use ShareCoins to borrow items!",
-    icon: <Home className="h-8 w-8 text-teal-600" />,
+      "Browse the ShareChest to find items available near you. You can borrow items using your ShareCoins, rent them with cash, request a swap for something you own, or claim free gifts. Use filters and search to find exactly what you need.",
     highlightSelector: '[data-tutorial="take"]',
-    position: "bottom",
   },
   {
     id: 4,
     title: "My ShareChest",
     description:
-      "View all your listed items. Manage, edit, and track everything you're sharing with the community.",
-    icon: <Home className="h-8 w-8 text-teal-600" />,
+      "This is your personal inventory — a place to view, edit, and manage all the items you've listed. You can update availability, adjust pricing, check who's requested your items, and track items that are currently out on loan.",
     highlightSelector: '[data-tutorial="sharechest"]',
-    position: "bottom",
+    requiresMenu: true,
   },
   {
     id: 5,
     title: "ShareCoin Wallet",
     description:
-      "View your ShareCoin balance. ShareCoins are the currency of our marketplace - use them to borrow items!",
-    icon: <Coins className="h-8 w-8 text-teal-600" />,
+      "Your ShareCoin balance is shown here. ShareCoins are the currency of ShareSwap — you earn them by lending items and helping neighbours, and spend them to borrow things you need. Tap your wallet to see your full transaction history.",
     highlightSelector: '[data-tutorial="wallet"]',
-    position: "bottom",
   },
   {
     id: 6,
     title: "Earn More ShareCoins",
     description:
-      "Tap on your wallet to see ways to earn ShareCoins: play games, fulfill wishlists, and invite friends!",
-    icon: <Coins className="h-8 w-8 text-teal-600" />,
+      "Need more ShareCoins? Tap on your wallet to discover all the ways you can earn: list new items to share, fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
     highlightSelector: '[data-tutorial="wallet"]',
-    position: "bottom",
   },
   {
     id: 7,
     title: "Play Games to Earn",
     description:
-      'Complete sponsored games and get rewarded with ShareCoins! Find it in the "Earn More ShareCoins" dropdown.',
-    icon: <Gamepad2 className="h-8 w-8 text-teal-600" />,
+      "ShareSwap partners with brands to offer sponsored games you can play to earn ShareCoins instantly. Just look for the games section inside the \"Earn More ShareCoins\" dropdown in your wallet — it's a fun way to build up your balance.",
     highlightSelector: '[data-tutorial="wallet"]',
-    position: "bottom",
   },
   {
     id: 8,
     title: "My Wishlist",
     description:
-      "Need anything? Add items to your wishlist and get notified when they become available in your area!",
-    icon: <Heart className="h-8 w-8 text-teal-600" />,
-    position: "center",
+      "If you can't find what you're looking for, add it to your wishlist. Your neighbours will be able to see what you need, and you'll get a notification the moment a matching item is listed. It's a great way to let others know how they can help.",
+    highlightSelector: '[data-tutorial="wishlist"]',
+    requiresMenu: true,
   },
   {
     id: 9,
     title: "Earn Achievements",
     description:
-      "Unlock badges by participating in the sharing community. Complete milestones, help neighbours, and earn rewards!",
-    icon: <Trophy className="h-8 w-8 text-teal-600" />,
-    position: "center",
+      "As you participate in the sharing community, you'll unlock badges and achievements. Complete milestones like your first lend, your first borrow, or reaching a certain trust score. These show other members that you're an active and reliable neighbour.",
   },
   {
     id: 10,
-    title: "You're All Set! 🎊",
-    description: "Start sharing, earning, and connecting with your village!",
-    icon: <CheckCircle className="h-8 w-8 text-teal-600" />,
-    position: "center",
+    title: "You're All Set!",
+    description:
+      "You now know the basics of ShareSwap. Start by listing an item you'd like to share, or browse the ShareChest to see what's available near you. The more you share, the more you earn — and the stronger your community becomes.",
   },
 ];
 
@@ -131,9 +108,18 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
   const [highlightedElement, setHighlightedElement] =
     useState<HTMLElement | null>(null);
   const [elementRect, setElementRect] = useState<ElementRect | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const rafRef = useRef<number | null>(null);
+  const menuOpenedForStep = useRef<number | null>(null);
 
   const step = tutorialSteps[currentStep];
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const calculateElementRect = useCallback(
     (element: HTMLElement | null): ElementRect | null => {
@@ -154,6 +140,18 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
 
   useEffect(() => {
     if (step.highlightSelector) {
+      const needsMenu = step.requiresMenu && isMobile;
+
+      if (needsMenu) {
+        window.dispatchEvent(new CustomEvent("tutorial-open-mobile-menu"));
+        menuOpenedForStep.current = currentStep;
+      } else if (menuOpenedForStep.current !== null && menuOpenedForStep.current !== currentStep) {
+        window.dispatchEvent(new CustomEvent("tutorial-close-mobile-menu"));
+        menuOpenedForStep.current = null;
+      }
+
+      const delay = needsMenu ? 400 : 50;
+
       const findAndHighlightElement = () => {
         const element = document.querySelector(
           step.highlightSelector!,
@@ -177,16 +175,22 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
         }
       };
 
-      findAndHighlightElement();
+      const initialTimer = setTimeout(findAndHighlightElement, delay);
+      const retryTimer = setTimeout(findAndHighlightElement, delay + 300);
 
-      const retryTimer = setTimeout(findAndHighlightElement, 300);
-
-      return () => clearTimeout(retryTimer);
+      return () => {
+        clearTimeout(initialTimer);
+        clearTimeout(retryTimer);
+      };
     } else {
+      if (menuOpenedForStep.current !== null) {
+        window.dispatchEvent(new CustomEvent("tutorial-close-mobile-menu"));
+        menuOpenedForStep.current = null;
+      }
       setHighlightedElement(null);
       setElementRect(null);
     }
-  }, [currentStep, step.highlightSelector, calculateElementRect]);
+  }, [currentStep, step.highlightSelector, step.requiresMenu, isMobile, calculateElementRect]);
 
   useEffect(() => {
     if (!highlightedElement) return;
@@ -231,12 +235,16 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
   };
 
   const handleComplete = () => {
+    window.dispatchEvent(new CustomEvent("tutorial-close-mobile-menu"));
+    menuOpenedForStep.current = null;
     setHighlightedElement(null);
     setElementRect(null);
     onComplete();
   };
 
   const handleSkip = () => {
+    window.dispatchEvent(new CustomEvent("tutorial-close-mobile-menu"));
+    menuOpenedForStep.current = null;
     setHighlightedElement(null);
     setElementRect(null);
     onComplete();
@@ -245,6 +253,51 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
   const spotlightRadius = elementRect
     ? Math.max(elementRect.width, elementRect.height) / 2 + 20
     : 0;
+
+  const getCardPosition = (): React.CSSProperties => {
+    if (!elementRect) {
+      return {};
+    }
+
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const cardMaxWidth = Math.min(400, viewportWidth - 32);
+    const estimatedCardHeight = 280;
+    const gap = 16;
+
+    const spotlightTop = elementRect.top - 28;
+    const spotlightBottom = elementRect.top + elementRect.height + 28;
+
+    const spaceBelow = viewportHeight - spotlightBottom;
+    const spaceAbove = spotlightTop;
+
+    let top: number;
+
+    if (spaceBelow >= estimatedCardHeight + gap) {
+      top = spotlightBottom + gap;
+    } else if (spaceAbove >= estimatedCardHeight + gap) {
+      top = spotlightTop - estimatedCardHeight - gap;
+    } else if (spaceBelow > spaceAbove) {
+      top = spotlightBottom + gap;
+    } else {
+      top = Math.max(gap, spotlightTop - estimatedCardHeight - gap);
+    }
+
+    top = Math.max(gap, Math.min(top, viewportHeight - estimatedCardHeight - gap));
+
+    let left = elementRect.centerX - cardMaxWidth / 2;
+    left = Math.max(16, Math.min(left, viewportWidth - cardMaxWidth - 16));
+
+    return {
+      position: "fixed" as const,
+      top: `${top}px`,
+      left: `${left}px`,
+      width: `${cardMaxWidth}px`,
+    };
+  };
+
+  const hasSpotlight = !!elementRect;
+  const cardStyle = hasSpotlight ? getCardPosition() : {};
 
   return (
     <>
@@ -283,7 +336,12 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
         />
       )}
 
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none px-4">
+      <div
+        className={`fixed z-[9999] pointer-events-none px-4 ${
+          hasSpotlight ? "" : "inset-0 flex items-center justify-center"
+        }`}
+        style={hasSpotlight ? { ...cardStyle } : {}}
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
@@ -294,10 +352,10 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
             className="pointer-events-auto w-full max-w-md"
           >
             <Card className="border-2 border-teal-500 shadow-2xl bg-white/95 backdrop-blur-sm">
-              <CardContent className="p-6">
+              <CardContent className="p-5">
                 <button
                   onClick={handleSkip}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -317,27 +375,16 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                   ))}
                 </div>
 
-                <div className="flex justify-center mb-4">
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", duration: 0.6 }}
-                    className="w-16 h-16 bg-gradient-to-br from-teal-50 to-teal-100 rounded-full flex items-center justify-center"
-                  >
-                    {step.icon}
-                  </motion.div>
-                </div>
-
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-slate-800 mb-3">
+                <div className="text-left mb-4 pr-4">
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">
                     {step.title}
                   </h3>
-                  <p className="text-slate-600 leading-relaxed">
+                  <p className="text-sm text-slate-600 leading-relaxed">
                     {step.description}
                   </p>
                 </div>
 
-                <div className="text-center mb-4">
+                <div className="text-center mb-3">
                   <Badge
                     variant="secondary"
                     className="bg-teal-100 text-teal-800"
@@ -360,7 +407,7 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                   {currentStep < tutorialSteps.length - 1 ? (
                     <Button
                       onClick={handleNext}
-                      className="flex-1 "
+                      className="flex-1"
                       style={{ backgroundColor: "#0DCEA1" }}
                     >
                       Next
@@ -369,7 +416,7 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                   ) : (
                     <Button
                       onClick={handleComplete}
-                      className="flex-1 "
+                      className="flex-1"
                       style={{ backgroundColor: "#0DCEA1" }}
                     >
                       Finish

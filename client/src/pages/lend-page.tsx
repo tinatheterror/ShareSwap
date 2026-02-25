@@ -639,13 +639,16 @@ export default function LendPage() {
     queryKey: ["/api/rental-pricing-suggestion", watchItemType, watchOriginalValue, calculatedTier, watchCondition],
     queryFn: async () => {
       const getVal = () => {
-        if (valuationResult?.internalItemValue) return valuationResult.internalItemValue;
+        const rangeMap: Record<string, number> = { "Under $50": 30, "$50–$199": 125, "$200–$499": 350, "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
+        const rangeMidpoint = rangeMap[watchOriginalValue] || 100;
+        if (valuationResult?.internalItemValue && valuationResult.internalItemValue >= rangeMidpoint * 0.3) {
+          return valuationResult.internalItemValue;
+        }
         if (smartScanAnalysis?.estimatedValue) {
           const v = parseFloat(smartScanAnalysis.estimatedValue);
-          if (!isNaN(v) && v > 0) return v;
+          if (!isNaN(v) && v > 0 && v >= rangeMidpoint * 0.3) return v;
         }
-        const map: Record<string, number> = { "Under $50": 30, "$50–$199": 125, "$200–$499": 350, "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
-        return map[watchOriginalValue] || 100;
+        return rangeMidpoint;
       };
       const params = new URLSearchParams({
         category: watchItemType || "",
@@ -1805,13 +1808,6 @@ export default function LendPage() {
                             <div className="p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
                               {(() => {
                                 const getEstimatedValue = () => {
-                                  if (valuationResult?.internalItemValue) {
-                                    return valuationResult.internalItemValue;
-                                  }
-                                  if (smartScanAnalysis?.estimatedValue) {
-                                    const aiVal = parseFloat(smartScanAnalysis.estimatedValue);
-                                    if (!isNaN(aiVal) && aiVal > 0) return aiVal;
-                                  }
                                   const valueMap: Record<string, number> = {
                                     "Under $50": 30,
                                     "$50–$199": 125,
@@ -1822,7 +1818,15 @@ export default function LendPage() {
                                     "$300–$1,000": 650,
                                     "$300+": 500,
                                   };
-                                  return valueMap[watchOriginalValue] || 100;
+                                  const rangeMidpoint = valueMap[watchOriginalValue] || 100;
+                                  if (valuationResult?.internalItemValue && valuationResult.internalItemValue >= rangeMidpoint * 0.3) {
+                                    return valuationResult.internalItemValue;
+                                  }
+                                  if (smartScanAnalysis?.estimatedValue) {
+                                    const aiVal = parseFloat(smartScanAnalysis.estimatedValue);
+                                    if (!isNaN(aiVal) && aiVal > 0 && aiVal >= rangeMidpoint * 0.3) return aiVal;
+                                  }
+                                  return rangeMidpoint;
                                 };
 
                                 const itemValue = getEstimatedValue();
@@ -1883,30 +1887,9 @@ export default function LendPage() {
                                         /week
                                       </span>
                                     </div>
-                                    {marketPricing ? (
-                                      <div className="mt-1 p-1.5 bg-white/60 rounded border border-emerald-200/50">
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-[10px] text-emerald-700 font-medium">Optimal: ${marketPricing.suggestedWeeklyRate}/wk</span>
-                                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                                            marketPricing.demandLevel === "high" ? "bg-orange-100 text-orange-700" :
-                                            marketPricing.demandLevel === "low" ? "bg-blue-100 text-blue-700" :
-                                            "bg-gray-100 text-gray-600"
-                                          }`}>
-                                            {marketPricing.demandLevel === "high" ? "High demand" :
-                                             marketPricing.demandLevel === "low" ? "Low demand" : "Moderate demand"}
-                                          </span>
-                                        </div>
-                                        {marketPricing.reasoning.length > 0 && (
-                                          <div className="text-[9px] text-gray-400 mt-0.5 leading-tight">
-                                            {marketPricing.reasoning[0]}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="text-[10px] text-gray-400 mt-0.5">
-                                        Suggested: ${rentalCalc.weeklyRate}/week
-                                      </div>
-                                    )}
+                                    <div className="text-[10px] text-emerald-700 mt-0.5">
+                                      AI Suggestion: ${marketPricing ? marketPricing.suggestedWeeklyRate : rentalCalc.weeklyRate}/wk
+                                    </div>
                                     <div className="mt-2 pt-2 border-t border-emerald-100">
                                       <div className="text-xs font-medium text-gray-700">
                                         Security Deposit:
@@ -1938,15 +1921,9 @@ export default function LendPage() {
                                           className="w-20 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                         />
                                       </div>
-                                      {marketPricing ? (
-                                        <div className="text-[10px] text-emerald-700 mt-0.5">
-                                          Optimal: ${marketPricing.suggestedDeposit}
-                                        </div>
-                                      ) : (
-                                        <div className="text-[10px] text-gray-400 mt-0.5">
-                                          Suggested: ${depositCalc.deposit}
-                                        </div>
-                                      )}
+                                      <div className="text-[10px] text-emerald-700 mt-0.5">
+                                        AI Suggestion: ${marketPricing ? marketPricing.suggestedDeposit : depositCalc.deposit}
+                                      </div>
                                     </div>
                                     <div className="mt-2 pt-2 border-t border-emerald-100">
                                       <div className="flex justify-between text-xs">

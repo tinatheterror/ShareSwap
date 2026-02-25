@@ -5,7 +5,7 @@ const TIER_SHARECOIN_VALUES: Record<number, number> = {
   1: 5,   // Tier 1: Under $50
   2: 10,  // Tier 2: $50-$199
   3: 20,  // Tier 3: $200-$499
-  4: 40,  // Tier 4: $500-$2,000
+  4: 40,  // Tier 4: $500-$1,500
 };
 
 const MAX_TIER = 4;

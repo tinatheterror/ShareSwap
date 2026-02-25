@@ -100,7 +100,7 @@ const ORIGINAL_VALUES = [
   "Under $50",
   "$50–$199",
   "$200–$499",
-  "$500–$2,000",
+  "$500–$1,500",
 ] as const;
 
 const TIER_NAMES: Record<number, string> = {
@@ -125,7 +125,7 @@ const calculateTier = (originalValue: string, condition: string): number => {
   if (originalValue === "Under $50") baseTier = 1;
   else if (originalValue === "$50–$199") baseTier = 2;
   else if (originalValue === "$200–$499") baseTier = 3;
-  else if (originalValue === "$500–$2,000") baseTier = 4;
+  else if (originalValue === "$500–$1,500") baseTier = 4;
   else if (originalValue === "$50–$150") baseTier = 2;
   else if (originalValue === "$150–$300") baseTier = 3;
   else if (originalValue === "$300–$1,000") baseTier = 4;
@@ -639,7 +639,7 @@ export default function LendPage() {
     queryKey: ["/api/rental-pricing-suggestion", watchItemType, watchOriginalValue, calculatedTier, watchCondition],
     queryFn: async () => {
       const getVal = () => {
-        const rangeMap: Record<string, number> = { "Under $50": 30, "$50–$199": 125, "$200–$499": 350, "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
+        const rangeMap: Record<string, number> = { "Under $50": 30, "$50–$199": 125, "$200–$499": 350, "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
         const rangeMidpoint = rangeMap[watchOriginalValue] || 100;
         if (valuationResult?.internalItemValue && valuationResult.internalItemValue >= rangeMidpoint * 0.3) {
           return valuationResult.internalItemValue;
@@ -725,7 +725,7 @@ export default function LendPage() {
     } else if (analysis.isLuxuryBrand && analysis.estimatedValue) {
       const value = parseFloat(analysis.estimatedValue);
       if (value >= 500) {
-        form.setValue("originalValue", "$500–$2,000");
+        form.setValue("originalValue", "$500–$1,500");
       } else if (value >= 200) {
         form.setValue("originalValue", "$200–$499");
       } else if (value >= 50) {
@@ -901,7 +901,7 @@ export default function LendPage() {
         const rentalRate = customRentalRate !== null ? customRentalRate : (() => {
           const valueMap: Record<string, number> = {
             "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
             "$300–$1,000": 650, "$300+": 500,
           };
           const itemValue = valueMap[data.originalValue] || 100;
@@ -912,7 +912,7 @@ export default function LendPage() {
         const rentalDeposit = customRentalDeposit !== null ? customRentalDeposit : (() => {
           const valueMap: Record<string, number> = {
             "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
             "$300–$1,000": 650, "$300+": 500,
           };
           const itemValue = valueMap[data.originalValue] || 100;
@@ -986,7 +986,7 @@ export default function LendPage() {
         const rentalRate = customRentalRate !== null ? customRentalRate : (() => {
           const valueMap: Record<string, number> = {
             "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
             "$300–$1,000": 650, "$300+": 500,
           };
           const itemValue = valueMap[data.originalValue] || 100;
@@ -997,7 +997,7 @@ export default function LendPage() {
         const rentalDeposit = customRentalDeposit !== null ? customRentalDeposit : (() => {
           const valueMap: Record<string, number> = {
             "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
+            "$500–$1,500": 1000, "$50–$150": 100, "$150–$300": 225,
             "$300–$1,000": 650, "$300+": 500,
           };
           const itemValue = valueMap[data.originalValue] || 100;
@@ -1812,7 +1812,7 @@ export default function LendPage() {
                                     "Under $50": 30,
                                     "$50–$199": 125,
                                     "$200–$499": 350,
-                                    "$500–$2,000": 1250,
+                                    "$500–$1,500": 1000,
                                     "$50–$150": 100,
                                     "$150–$300": 225,
                                     "$300–$1,000": 650,

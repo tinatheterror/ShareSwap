@@ -14,7 +14,7 @@ export default function ShareOptionsPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Choose Your Option</h1>
           <p className="text-muted-foreground">
-            Would you like to give your items or take from others?
+            Would you like to lend out your items or borrow from others?
           </p>
         </div>
 
@@ -25,7 +25,7 @@ export default function ShareOptionsPage() {
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Upload className="w-6 h-6 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold">Give</h2>
+                <h2 className="text-xl font-semibold">Lend Out</h2>
                 <p className="text-sm text-muted-foreground mt-2">
                   Share your items and earn ShareCoins
                 </p>
@@ -36,7 +36,7 @@ export default function ShareOptionsPage() {
                 className="w-full" 
                 onClick={() => navigate("/lend")}
               >
-                Start Giving
+                Start Lending
               </Button>
             </CardFooter>
           </Card>
@@ -47,9 +47,9 @@ export default function ShareOptionsPage() {
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <HandHeart className="w-6 h-6 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold">Take</h2>
+                <h2 className="text-xl font-semibold">Borrow</h2>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Browse and take items from the community
+                  Browse and borrow items from the community
                 </p>
               </div>
             </CardContent>

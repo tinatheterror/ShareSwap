@@ -182,9 +182,10 @@ export function setupAuth(app: Express) {
     })
   );
 
-  // Google OAuth Strategy - use absolute production URL for callback
-  // This must match exactly what's configured in Google Cloud Console
-  const googleCallbackURL = 'https://share-swap-mvp.replit.app/api/auth/google/callback';
+  // Google OAuth Strategy - use custom domain if available, fallback to Replit URL
+  const googleCallbackURL = process.env.CUSTOM_DOMAIN
+    ? `https://${process.env.CUSTOM_DOMAIN}/api/auth/google/callback`
+    : 'https://share-swap-mvp.replit.app/api/auth/google/callback';
   
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     console.log("[Google OAuth] Strategy configured with callback URL:", googleCallbackURL);

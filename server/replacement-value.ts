@@ -6,7 +6,7 @@ export const TIER_BOUNDARIES = [
   { tier: 1, min: 0, max: 50 },
   { tier: 2, min: 50, max: 200 },
   { tier: 3, min: 200, max: 500 },
-  { tier: 4, min: 500, max: 1500 },
+  { tier: 4, min: 500, max: 2000 },
 ];
 
 // Midpoints for each original value range (used when no AI estimate)
@@ -14,7 +14,7 @@ export const VALUE_RANGE_MIDPOINTS: Record<string, number> = {
   "Under $50": 25,
   "$50–$199": 125,
   "$200–$499": 350,
-  "$500–$1,500": 1000,
+  "$500–$2,000": 1250,
   "$50–$150": 100,
   "$150–$300": 225,
   "$300–$1,000": 650,
@@ -29,7 +29,7 @@ export const LEGACY_TIER_CAPS: Record<number, number> = {
   1: 50,
   2: 200,
   3: 500,
-  4: 1500,
+  4: 2000,
 };
 
 /**

@@ -4342,10 +4342,10 @@ Respond with ONLY the category name, nothing else.`
       };
 
       const TIER_DEPOSIT_PCT: Record<number, number> = {
-        1: 0.40,
-        2: 0.35,
-        3: 0.30,
-        4: 0.25,
+        1: 0.25,
+        2: 0.30,
+        3: 0.35,
+        4: 0.40,
       };
 
       const baseRate = CATEGORY_RATES[categoryStr] || 0.05;

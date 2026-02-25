@@ -14,10 +14,10 @@ const DEFAULT_RENTAL_RATE = 0.05;
 
 // Tier-based rental security deposit percentages
 const TIER_RENTAL_DEPOSIT_PERCENTAGES: Record<number, number> = {
-  1: 0.40,
-  2: 0.35,
-  3: 0.30,
-  4: 0.25,
+  1: 0.25,
+  2: 0.30,
+  3: 0.35,
+  4: 0.40,
 };
 
 export interface RentalRateCalculation {

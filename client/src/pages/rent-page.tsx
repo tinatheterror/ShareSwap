@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Search, Filter, MapPin, Coins, Camera, Heart, Sparkles, BadgeCheck } from "lucide-react";
+import { Search, Filter, MapPin, Coins, Camera, Heart, Sparkles, BadgeCheck, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -36,7 +36,7 @@ type ItemWithDistance = {
 export default function RentPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [radius, setRadius] = useState(72); // Default 72km radius
+  const [radius, setRadius] = useState(25); // Default 25km radius
   const [userPostalCode, setUserPostalCode] = useState<string>("");
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showShareCoinsPrompt, setShowShareCoinsPrompt] = useState(false);
@@ -68,6 +68,19 @@ export default function RentPage() {
       });
     },
   });
+
+  // Load saved location preferences from user profile
+  useEffect(() => {
+    if (!userPostalCode) {
+      const savedLocation = user?.defaultCity || user?.defaultPostalCode;
+      if (savedLocation) {
+        setUserPostalCode(savedLocation);
+      }
+    }
+    if (user?.locationRadius) {
+      setRadius(user.locationRadius);
+    }
+  }, [user?.defaultPostalCode, user?.defaultCity, user?.locationRadius]);
 
   // Get user's location when the component mounts
   useEffect(() => {
@@ -380,33 +393,62 @@ export default function RentPage() {
         </Dialog>
 
         {showLocationModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold mb-4">Change Location</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Search Radius</label>
-                  <select
-                    value={radius}
-                    onChange={(e) => setRadius(Number(e.target.value))}
-                    className="w-full p-2 border rounded-lg"
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg w-full max-w-md">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Change location</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowLocationModal(false)}
                   >
-                    <option value={1}>1 kilometer</option>
-                    <option value={5}>5 kilometers</option>
-                    <option value={10}>10 kilometers</option>
-                    <option value={24}>24 kilometers</option>
-                    <option value={40}>40 kilometers</option>
-                    <option value={72}>72 kilometers</option>
-                    <option value={100}>100 kilometers</option>
-                  </select>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Search by city, neighbourhood or postal code.
+                    </label>
+                    <Input
+                      value={userPostalCode}
+                      onChange={(e) => setUserPostalCode(e.target.value)}
+                      placeholder="Enter location"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">
+                      Radius
+                    </label>
+                    <select
+                      value={radius}
+                      onChange={(e) => setRadius(Number(e.target.value))}
+                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
+                    >
+                      <option value={8}>8 kilometers</option>
+                      <option value={25}>25 kilometers</option>
+                      <option value={40}>40 kilometers</option>
+                      <option value={72}>72 kilometers</option>
+                      <option value={100}>100 kilometers</option>
+                    </select>
+                  </div>
+                </div>
+                <Button
+                  className="w-full mt-6"
+                  onClick={() => {
+                    if (user && userPostalCode) {
+                      apiRequest("POST", "/api/user/location", { city: userPostalCode, postalCode: userPostalCode, radius });
+                      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+                    }
+                    setUserLocation(null);
+                    setShowLocationModal(false);
+                  }}
+                >
+                  Apply
+                </Button>
               </div>
-              <Button
-                className="w-full mt-6"
-                onClick={() => setShowLocationModal(false)}
-              >
-                Apply
-              </Button>
             </div>
           </div>
         )}

@@ -114,18 +114,21 @@ export default function BorrowPage() {
 
   // Load saved location preferences from user profile
   useEffect(() => {
-    if (user?.defaultPostalCode && !userPostalCode) {
-      setUserPostalCode(user.defaultPostalCode);
+    if (!userPostalCode) {
+      const savedLocation = user?.defaultCity || user?.defaultPostalCode;
+      if (savedLocation) {
+        setUserPostalCode(savedLocation);
+      }
     }
     if (user?.locationRadius) {
       setRadius(user.locationRadius);
     }
-  }, [user?.defaultPostalCode, user?.locationRadius]);
+  }, [user?.defaultPostalCode, user?.defaultCity, user?.locationRadius]);
 
-  // Save postal code to user profile mutation
-  const savePostalCodeMutation = useMutation({
-    mutationFn: (postalCode: string) => {
-      return apiRequest("PATCH", "/api/user-profile", { defaultPostalCode: postalCode });
+  // Save location to user profile mutation
+  const saveLocationMutation = useMutation({
+    mutationFn: ({ location, radius: r }: { location: string; radius: number }) => {
+      return apiRequest("POST", "/api/user/location", { city: location, postalCode: location, radius: r });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -213,14 +216,14 @@ export default function BorrowPage() {
           
           // Fall back to geocoding user's saved postal code or city
           if (user?.defaultPostalCode || user?.defaultCity) {
-            const query = user.defaultPostalCode || user.defaultCity || "";
+            const query = user.defaultCity || user.defaultPostalCode || "";
             try {
               const response = await fetch(`/api/geo/geocode?query=${encodeURIComponent(query)}`);
               if (response.ok) {
                 const data = await response.json();
                 if (data.lat && data.lon) {
                   setUserLocation({ lat: data.lat, lon: data.lon });
-                  setUserPostalCode(user.defaultPostalCode || "");
+                  setUserPostalCode(user.defaultCity || user.defaultPostalCode || "");
                   console.log("Using geocoded saved location:", data);
                   return; // Success - no error message needed
                 }
@@ -1035,7 +1038,7 @@ export default function BorrowPage() {
                       className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
                     >
                       <option value={8}>8 kilometers</option>
-                      <option value={24}>24 kilometers</option>
+                      <option value={25}>25 kilometers</option>
                       <option value={40}>40 kilometers</option>
                       <option value={72}>72 kilometers</option>
                       <option value={100}>100 kilometers</option>
@@ -1045,10 +1048,10 @@ export default function BorrowPage() {
                 <Button
                   className="w-full mt-6"
                   onClick={() => {
-                    // Save location to user profile if logged in
                     if (user && userPostalCode) {
-                      savePostalCodeMutation.mutate(userPostalCode);
+                      saveLocationMutation.mutate({ location: userPostalCode, radius });
                     }
+                    setUserLocation(null);
                     setShowLocationModal(false);
                   }}
                 >

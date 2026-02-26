@@ -59,8 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return res.json();
     },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     // Error is handled inline in auth page, no toast needed
   });
@@ -81,8 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return res.json();
     },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onError: (error: Error) => {
       toast({

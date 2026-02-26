@@ -116,6 +116,7 @@ export default function PaymentMethodsPage() {
               description: "Your card has been securely saved to your account.",
             });
             queryClient.invalidateQueries({ queryKey: ["/api/payment-method"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/user"] });
           }
         })
         .catch((err) => {
@@ -172,6 +173,7 @@ export default function PaymentMethodsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payment-method"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setIsRemoveDialogOpen(false);
       toast({
         title: "Card removed",

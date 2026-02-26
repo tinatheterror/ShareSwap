@@ -817,14 +817,10 @@ export function registerRoutes(app: Express): Server {
         .limit(1);
 
       if (existingPending && existingPending.personaInquiryId) {
-        const inquiryId = existingPending.personaInquiryId;
-        const baseUrl = process.env.CUSTOM_DOMAIN
-          ? `https://${process.env.CUSTOM_DOMAIN}`
-          : process.env.REPLIT_DEV_DOMAIN
-          ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-          : 'http://localhost:5000';
-        const inquiryUrl = `https://withpersona.com/verify?inquiry-id=${inquiryId}&redirect-uri=${encodeURIComponent(baseUrl + '/verification')}`;
-        return res.json({ inquiryId, inquiryUrl, status: "existing" });
+        return res.json({
+          inquiryId: existingPending.personaInquiryId,
+          status: "existing",
+        });
       }
 
       const [currentUser] = await db
@@ -885,14 +881,7 @@ export function registerRoutes(app: Express): Server {
           });
       }
 
-      const baseUrl = process.env.CUSTOM_DOMAIN
-        ? `https://${process.env.CUSTOM_DOMAIN}`
-        : process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
-      const inquiryUrl = `https://withpersona.com/verify?inquiry-id=${inquiryId}&redirect-uri=${encodeURIComponent(baseUrl + '/verification')}`;
-
-      res.json({ inquiryId, inquiryUrl });
+      res.json({ inquiryId });
     } catch (error) {
       console.error("Error creating Persona inquiry:", error);
       res.status(500).json({ error: "Failed to start verification" });

@@ -82,7 +82,6 @@ export default function VerificationPage() {
   const queryClient = useQueryClient();
   const [personaLoading, setPersonaLoading] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
-  const [returningFromPersona, setReturningFromPersona] = useState(false);
 
   const { data: verification, isLoading } = useQuery<VerificationData>({
     queryKey: ["/api/verification-status"],
@@ -132,44 +131,66 @@ export default function VerificationPage() {
     },
   });
 
-  // Handle return from Persona hosted flow — URL will contain ?inquiry-id=xxx
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const returnedInquiryId = params.get("inquiry-id");
-    if (returnedInquiryId) {
-      setReturningFromPersona(true);
-      // Clean the URL so a refresh doesn't re-trigger this
-      window.history.replaceState({}, document.title, "/verification");
-      completeInquiryMutation.mutate(
-        { inquiryId: returnedInquiryId, status: "completed" },
-        {
-          onSettled: () => setReturningFromPersona(false),
-        }
-      );
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const startPersonaVerification = useCallback(async () => {
     setPersonaLoading(true);
     setPersonaError(null);
 
     try {
       const result = await createInquiryMutation.mutateAsync();
-      const { inquiryId, inquiryUrl } = result;
+      const inquiryId = result.inquiryId;
 
-      if (!inquiryId || !inquiryUrl) {
+      if (!inquiryId) {
         throw new Error("Could not start verification");
       }
 
-      // Redirect to Persona's hosted flow — no domain allowlisting required
-      window.location.href = inquiryUrl;
+      const { Client } = await import("persona");
+
+      let readyFired = false;
+
+      // Timeout: if onReady doesn't fire in 15s, the SDK may be blocked by domain restrictions
+      const timeoutId = setTimeout(() => {
+        if (!readyFired) {
+          setPersonaError("Verification could not load. Please try again or contact support if this persists.");
+          setPersonaLoading(false);
+        }
+      }, 15000);
+
+      const client = new Client({
+        inquiryId,
+        onReady: () => {
+          readyFired = true;
+          clearTimeout(timeoutId);
+          setPersonaLoading(false);
+          client.open();
+        },
+        onComplete: ({ inquiryId: completedId, status }: { inquiryId: string; status: string }) => {
+          clearTimeout(timeoutId);
+          completeInquiryMutation.mutate({
+            inquiryId: completedId || inquiryId,
+            status: status || "completed",
+          });
+        },
+        onCancel: () => {
+          clearTimeout(timeoutId);
+          toast({
+            title: "Verification Cancelled",
+            description: "You can resume verification anytime.",
+          });
+          setPersonaLoading(false);
+        },
+        onError: (error: any) => {
+          clearTimeout(timeoutId);
+          console.error("Persona error:", error);
+          setPersonaError("Verification encountered an error. Please try again.");
+          setPersonaLoading(false);
+        },
+      });
     } catch (err: any) {
       console.error("Error starting Persona:", err);
       setPersonaError(err.message || "Failed to start verification");
       setPersonaLoading(false);
     }
-  }, [createInquiryMutation]);
+  }, [createInquiryMutation, completeInquiryMutation, toast]);
 
   const isVerified = verification?.status === "verified";
   const isPending = verification?.status === "pending";
@@ -327,41 +348,12 @@ export default function VerificationPage() {
                   <StatusBadge status="pending" />
                 </div>
 
-                {returningFromPersona ? (
-                  <Alert className="bg-teal-50 border-teal-100">
-                    <Loader2 className="h-4 w-4 animate-spin text-teal-600 mr-2 inline" />
-                    <AlertDescription className="text-teal-800 text-sm">
-                      Checking your verification status...
-                    </AlertDescription>
-                  </Alert>
-                ) : verification.legalFullName ? (
-                  <Alert className="bg-amber-50 border-amber-100">
-                    <AlertDescription className="text-amber-800 text-sm">
-                      We're reviewing your documents. This usually takes a few minutes.
-                      We'll notify you once complete.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-3">
-                    <Alert className="bg-amber-50 border-amber-100">
-                      <AlertDescription className="text-amber-800 text-sm">
-                        It looks like your verification wasn't completed. Click below to continue.
-                      </AlertDescription>
-                    </Alert>
-                    <Button
-                      onClick={startPersonaVerification}
-                      disabled={personaLoading}
-                      className="w-full text-white"
-                      style={{ backgroundColor: "#0DCEA1" }}
-                    >
-                      {personaLoading ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Redirecting...</>
-                      ) : (
-                        <><ScanFace className="h-4 w-4 mr-2" /> Continue Verification</>
-                      )}
-                    </Button>
-                  </div>
-                )}
+                <Alert className="bg-amber-50 border-amber-100">
+                  <AlertDescription className="text-amber-800 text-sm">
+                    We're reviewing your documents. This usually takes a few minutes.
+                    We'll notify you once complete.
+                  </AlertDescription>
+                </Alert>
 
                 <Separator className="my-4" />
 

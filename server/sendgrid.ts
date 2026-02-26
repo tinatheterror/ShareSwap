@@ -50,8 +50,10 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
   try {
     const { client, fromEmail } = await getUncachableSendGridClient();
     
-    // Get the base URL for the verification link
-    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+    // Get the base URL for the verification link — prefer custom domain for production links
+    const baseUrl = process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : process.env.REPLIT_DEV_DOMAIN 
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
       : process.env.REPL_SLUG 
       ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`

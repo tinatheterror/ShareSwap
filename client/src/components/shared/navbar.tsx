@@ -210,15 +210,12 @@ function EmailVerificationBanner() {
     setIsResending(true);
     setMessage(null);
     try {
-      const response = await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
+      const response = await apiRequest('POST', '/api/auth/resend-verification');
       if (response.ok) {
-        setMessage('Verification email sent! Please check your inbox.');
+        setMessage('Verification email sent! Check your inbox (and spam folder).');
       } else {
-        setMessage('Failed to send verification email. Please try again.');
+        const data = await response.json().catch(() => ({}));
+        setMessage(data.message || 'Failed to send. Please try again.');
       }
     } catch (error) {
       setMessage('Failed to send verification email. Please try again.');

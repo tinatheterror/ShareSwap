@@ -145,19 +145,33 @@ export default function VerificationPage() {
 
       const { Client } = await import("persona");
 
+      let readyFired = false;
+
+      // Timeout: if onReady doesn't fire in 15s, the SDK may be blocked by domain restrictions
+      const timeoutId = setTimeout(() => {
+        if (!readyFired) {
+          setPersonaError("Verification could not load. Please try again or contact support if this persists.");
+          setPersonaLoading(false);
+        }
+      }, 15000);
+
       const client = new Client({
         inquiryId,
         onReady: () => {
+          readyFired = true;
+          clearTimeout(timeoutId);
           setPersonaLoading(false);
           client.open();
         },
         onComplete: ({ inquiryId: completedId, status }: { inquiryId: string; status: string }) => {
+          clearTimeout(timeoutId);
           completeInquiryMutation.mutate({
             inquiryId: completedId || inquiryId,
             status: status || "completed",
           });
         },
         onCancel: () => {
+          clearTimeout(timeoutId);
           toast({
             title: "Verification Cancelled",
             description: "You can resume verification anytime.",
@@ -165,6 +179,7 @@ export default function VerificationPage() {
           setPersonaLoading(false);
         },
         onError: (error: any) => {
+          clearTimeout(timeoutId);
           console.error("Persona error:", error);
           setPersonaError("Verification encountered an error. Please try again.");
           setPersonaLoading(false);

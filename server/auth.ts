@@ -554,19 +554,29 @@ export function setupAuth(app: Express) {
       }
       
       // Mark email as verified
-      await db
+      const [updatedUser] = await db
         .update(users)
         .set({
           emailVerified: true,
           emailVerificationToken: null,
           emailVerificationExpires: null,
         })
-        .where(eq(users.id, user.id));
+        .where(eq(users.id, user.id))
+        .returning();
       
       console.log(`[Auth] Email verified for user ${user.id} (${user.username})`);
       
-      // Redirect to homepage with success notification
-      return res.redirect("/?verified=true");
+      // Refresh the session so the user object reflects the verified state
+      if (req.isAuthenticated()) {
+        req.login(updatedUser, (loginErr) => {
+          if (loginErr) {
+            console.error("[Auth] Session refresh after verification failed:", loginErr);
+          }
+          return res.redirect("/?verified=true");
+        });
+      } else {
+        return res.redirect("/?verified=true");
+      }
     } catch (error) {
       console.error("[Auth] Email verification error:", error);
       return res.redirect("/auth?error=verification_failed");

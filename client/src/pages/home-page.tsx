@@ -5,10 +5,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle, X } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
   const searchString = useSearch();
+  const queryClient = useQueryClient();
   const [showTutorial, setShowTutorial] = useState(false);
   const [showReferralBanner, setShowReferralBanner] = useState(false);
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
@@ -27,6 +29,8 @@ export default function HomePage() {
     const emailVerified = params.get("verified") === "true";
     if (emailVerified) {
       setShowVerifiedBanner(true);
+      // Refresh user data so the amber banner disappears immediately
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       // Clean up URL
       window.history.replaceState({}, "", "/");
     }

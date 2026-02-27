@@ -77,7 +77,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 7,
     title: "Play Games to Earn",
     description:
-      'ShareSwap partners with brands to offer sponsored games you can play to earn ShareCoins instantly. Just look for the games section inside the "Earn More ShareCoins" dropdown in your wallet — it\'s a fun way to build up your balance.',
+      'Play sponsored games ShareSwap has partnered with to earn ShareCoins instantly. Look inside the "Earn More ShareCoins" dropdown in your wallet for the games section — it\'s a fun way to build up your balance.',
     highlightSelector: '[data-tutorial="wallet"]',
   },
   {
@@ -92,7 +92,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 9,
     title: "Earn Achievements",
     description:
-      "As you participate in the sharing community, you'll unlock badges and achievements with each milestone. This will build your trust score which shows other members that you're an active and reliable neighbour. Reaching higher trust scores will unlock trusted community member benefits such as discounted deposits.",
+      "As you participate in the sharing community, you'll unlock badges and achievements with each milestone. This builds your trust score which shows neighbours that you are active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
   },
   {
     id: 10,

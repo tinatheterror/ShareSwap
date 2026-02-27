@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, CheckCircle, ArrowRight } from "lucide-react";
+import { useLocation } from "wouter";
 
 import { ReactNode } from "react";
 
@@ -14,6 +15,8 @@ interface TutorialStep {
   highlightSelector?: string;
   requiresMenu?: boolean;
   positionAbove?: boolean;
+  ctaLabel?: string;
+  ctaHref?: string;
 }
 
 interface ElementRect {
@@ -48,6 +51,22 @@ const tutorialSteps: TutorialStep[] = [
   },
   {
     id: 3,
+    title: "List an Item",
+    description:
+      "Ready to share something? Tap below to open the listing form. Add photos, set your price or ShareCoin rate, choose how you want to share — and your item will be visible to neighbours nearby.",
+    ctaLabel: "List an Item",
+    ctaHref: "/lend",
+  },
+  {
+    id: 4,
+    title: "Explore Wishlists",
+    description:
+      "See what your neighbours are looking for. Browsing community wishlists is a great way to find a home for items you no longer need — and earn ShareCoins while helping someone out.",
+    ctaLabel: "Explore Wishlists",
+    ctaHref: "/community-wishlists",
+  },
+  {
+    id: 5,
     title: "Take from the ShareChest",
     description:
       "Browse to find items available near you. You can borrow items using your ShareCoins, rent items with cash, request a swap for something you own, or claim free gifts. Use filters and search to find exactly what you need.",
@@ -115,6 +134,7 @@ interface OnboardingTutorialProps {
 }
 
 export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
+  const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   const [highlightedElement, setHighlightedElement] =
     useState<HTMLElement | null>(null);
@@ -414,6 +434,20 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
                     {step.description}
                   </p>
                 </div>
+
+                {step.ctaLabel && step.ctaHref && (
+                  <Button
+                    className="w-full mb-3 font-semibold"
+                    style={{ backgroundColor: "#0DCEA1" }}
+                    onClick={() => {
+                      handleComplete();
+                      navigate(step.ctaHref!);
+                    }}
+                  >
+                    {step.ctaLabel}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                )}
 
                 <div className="text-center mb-3">
                   <Badge

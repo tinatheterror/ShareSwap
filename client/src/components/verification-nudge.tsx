@@ -34,13 +34,24 @@ export function VerificationNudge() {
   });
 
   useEffect(() => {
-    if (nudgeStatus && !nudgeStatus.hasSeenNudge && !nudgeStatus.isVerified) {
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 2000);
+    if (!nudgeStatus || nudgeStatus.hasSeenNudge || nudgeStatus.isVerified || !user) return;
+
+    const tutorialKey = `hasSeenTutorial_${user.id}`;
+    const tutorialDone = localStorage.getItem(tutorialKey);
+
+    if (tutorialDone) {
+      // Tutorial already completed — show after short delay
+      const timer = setTimeout(() => setIsVisible(true), 1500);
       return () => clearTimeout(timer);
+    } else {
+      // Tutorial not yet completed — wait for it to finish
+      const handleTutorialComplete = () => {
+        setTimeout(() => setIsVisible(true), 800);
+      };
+      window.addEventListener("tutorial-complete", handleTutorialComplete);
+      return () => window.removeEventListener("tutorial-complete", handleTutorialComplete);
     }
-  }, [nudgeStatus]);
+  }, [nudgeStatus, user]);
 
   if (
     !isVisible ||

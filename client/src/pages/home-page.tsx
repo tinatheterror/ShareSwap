@@ -59,6 +59,7 @@ export default function HomePage() {
       localStorage.setItem(`hasSeenTutorial_${user.id}`, "true");
     }
     setShowTutorial(false);
+    window.dispatchEvent(new Event("tutorial-complete"));
   };
 
   return (

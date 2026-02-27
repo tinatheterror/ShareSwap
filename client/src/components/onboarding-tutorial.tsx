@@ -3,12 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  X,
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle,
-} from "lucide-react";
+import { X, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 
 interface TutorialStep {
   id: number;
@@ -32,27 +27,27 @@ const tutorialSteps: TutorialStep[] = [
     id: 1,
     title: "Welcome to ShareSwap!",
     description:
-      "ShareSwap is your neighbourhood sharing marketplace where you can borrow, lend, rent, swap, and gift items with people nearby. This quick tour will walk you through each feature so you can get started right away. You can skip at any time.",
+      "ShareSwap is your neighbourhood sharing marketplace where you can <b> borrow, lend, rent, swap, and gift items </b> with people nearby. This quick tour will walk you through each feature. You can skip at any time.",
   },
   {
     id: 2,
     title: "Give to the ShareChest",
     description:
-      "This is where you list items you'd like to share with your community. You can lend, rent, swap, or gift anything you're not using. When someone borrows your item, you earn ShareCoins as a reward — and you'll always stay in control of who gets to use your things.",
+      "This is where you list items you'd like to share with your community. You can lend, rent, swap, or gift anything you're not using. When someone borrows your item, you earn ShareCoins as a reward.",
     highlightSelector: '[data-tutorial="give"]',
   },
   {
     id: 3,
     title: "Take from the ShareChest",
     description:
-      "Browse the ShareChest to find items available near you. You can borrow items using your ShareCoins, rent them with cash, request a swap for something you own, or claim free gifts. Use filters and search to find exactly what you need.",
+      "Browse to find items available near you. You can borrow items using your ShareCoins, rent items with cash, request a swap for something you own, or claim free gifts. Use filters and search to find exactly what you need.",
     highlightSelector: '[data-tutorial="take"]',
   },
   {
     id: 4,
     title: "My ShareChest",
     description:
-      "This is your personal inventory — a place to view, edit, and manage all the items you've listed. You can update availability, adjust pricing, check who's requested your items, and track items that are currently out on loan.",
+      "This is your personal inventory — view, edit, and manage all the items you've listed. You can update availability, adjust pricing, check who's requested your items, and track items that are currently out on loan.",
     highlightSelector: '[data-tutorial="sharechest"]',
     requiresMenu: true,
   },
@@ -67,21 +62,21 @@ const tutorialSteps: TutorialStep[] = [
     id: 6,
     title: "Earn More ShareCoins",
     description:
-      "Need more ShareCoins? Tap on your wallet to discover all the ways you can earn: list new items to share, fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
+      "Need more ShareCoins? Tap on your wallet to discover all the ways you can earn: complete transactions, fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
     highlightSelector: '[data-tutorial="wallet"]',
   },
   {
     id: 7,
     title: "Play Games to Earn",
     description:
-      "ShareSwap partners with brands to offer sponsored games you can play to earn ShareCoins instantly. Just look for the games section inside the \"Earn More ShareCoins\" dropdown in your wallet — it's a fun way to build up your balance.",
+      'ShareSwap partners with brands to offer sponsored games you can play to earn ShareCoins instantly. Just look for the games section inside the "Earn More ShareCoins" dropdown in your wallet — it\'s a fun way to build up your balance.',
     highlightSelector: '[data-tutorial="wallet"]',
   },
   {
     id: 8,
     title: "My Wishlist",
     description:
-      "If you can't find what you're looking for, add it to your wishlist. Your neighbours will be able to see what you need, and you'll get a notification the moment a matching item is listed. It's a great way to let others know how they can help.",
+      "If you can't find what you're looking for, add it to your wishlist. Your neighbours will be able to see what you need, and you'll get notified when a matching item is listed.",
     highlightSelector: '[data-tutorial="wishlist"]',
     requiresMenu: true,
   },
@@ -89,7 +84,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 9,
     title: "Earn Achievements",
     description:
-      "As you participate in the sharing community, you'll unlock badges and achievements. Complete milestones like your first lend, your first borrow, or reaching a certain trust score. These show other members that you're an active and reliable neighbour.",
+      "As you participate in the sharing community, you'll unlock badges and achievements with each milestone. This will build your trust score which shows other members that you're an active and reliable neighbour. Reaching higher trust scores will unlock trusted community member benefits such as discounted deposits.",
   },
   {
     id: 10,
@@ -145,7 +140,10 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
       if (needsMenu) {
         window.dispatchEvent(new CustomEvent("tutorial-open-mobile-menu"));
         menuOpenedForStep.current = currentStep;
-      } else if (menuOpenedForStep.current !== null && menuOpenedForStep.current !== currentStep) {
+      } else if (
+        menuOpenedForStep.current !== null &&
+        menuOpenedForStep.current !== currentStep
+      ) {
         window.dispatchEvent(new CustomEvent("tutorial-close-mobile-menu"));
         menuOpenedForStep.current = null;
       }
@@ -190,7 +188,13 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
       setHighlightedElement(null);
       setElementRect(null);
     }
-  }, [currentStep, step.highlightSelector, step.requiresMenu, isMobile, calculateElementRect]);
+  }, [
+    currentStep,
+    step.highlightSelector,
+    step.requiresMenu,
+    isMobile,
+    calculateElementRect,
+  ]);
 
   useEffect(() => {
     if (!highlightedElement) return;
@@ -283,7 +287,10 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
       top = Math.max(gap, spotlightTop - estimatedCardHeight - gap);
     }
 
-    top = Math.max(gap, Math.min(top, viewportHeight - estimatedCardHeight - gap));
+    top = Math.max(
+      gap,
+      Math.min(top, viewportHeight - estimatedCardHeight - gap),
+    );
 
     let left = elementRect.centerX - cardMaxWidth / 2;
     left = Math.max(16, Math.min(left, viewportWidth - cardMaxWidth - 16));

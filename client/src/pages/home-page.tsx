@@ -4,7 +4,7 @@ import { useLocation, useSearch } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CheckCircle, X } from "lucide-react";
+import { CheckCircle, X, PlusCircle, Heart } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -16,6 +16,7 @@ export default function HomePage() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showReferralBanner, setShowReferralBanner] = useState(false);
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
+  const [showGiveOptions, setShowGiveOptions] = useState(false);
 
   // Check if user has seen tutorial, referral status, and email verification
   useEffect(() => {
@@ -128,15 +129,37 @@ export default function HomePage() {
               className="w-full flex flex-col items-center gap-3"
             >
               <Button
-                onClick={() => navigate("/lend")}
+                onClick={() => setShowGiveOptions((v) => !v)}
                 className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
                 size="lg"
               >
                 Give
               </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                Share your own treasures to the ShareChest
-              </p>
+              {showGiveOptions && (
+                <div className="w-full flex flex-col gap-2 animate-in slide-in-from-top-2 duration-200">
+                  <Button
+                    onClick={() => { setShowGiveOptions(false); navigate("/lend"); }}
+                    variant="outline"
+                    className="w-full border-primary text-primary hover:bg-primary hover:text-white rounded-xl py-5 text-base font-semibold"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    List an Item
+                  </Button>
+                  <Button
+                    onClick={() => { setShowGiveOptions(false); navigate("/community-wishlists"); }}
+                    variant="outline"
+                    className="w-full border-primary text-primary hover:bg-primary hover:text-white rounded-xl py-5 text-base font-semibold"
+                  >
+                    <Heart className="h-4 w-4 mr-2" />
+                    Explore Wishlists
+                  </Button>
+                </div>
+              )}
+              {!showGiveOptions && (
+                <p className="text-center text-sm text-muted-foreground">
+                  Share your own treasures to the ShareChest
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-center w-64 shrink-0 py-4">

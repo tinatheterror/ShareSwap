@@ -13,13 +13,8 @@ class CsrfTokenManager {
   private fetching: Promise<void> | null = null;
 
   async ensureToken(): Promise<void> {
-    // If already have a token, return
     if (this.token) return;
-
-    // If already fetching, wait for that to complete
     if (this.fetching) return this.fetching;
-
-    // Fetch the token
     this.fetching = this.fetchToken();
     await this.fetching;
     this.fetching = null;
@@ -27,11 +22,7 @@ class CsrfTokenManager {
 
   private async fetchToken(): Promise<void> {
     try {
-      // Call the CSRF token endpoint to set the cookie
-      await fetch('/api/csrf-token', {
-        credentials: 'include',
-      });
-      // Read the token from the cookie
+      await fetch('/api/csrf-token', { credentials: 'include' });
       this.token = this.getTokenFromCookie();
     } catch (error) {
       console.error('Failed to fetch CSRF token:', error);
@@ -51,12 +42,14 @@ class CsrfTokenManager {
   }
 
   getToken(): string | null {
-    // Try to get from memory first, then from cookie
     return this.token || this.getTokenFromCookie();
   }
 
-  clearToken(): void {
+  // Force a fresh token fetch (called when server rejects the current token)
+  async refreshToken(): Promise<void> {
     this.token = null;
+    this.fetching = null;
+    await this.ensureToken();
   }
 }
 
@@ -67,35 +60,60 @@ csrfTokenManager.ensureToken().catch(err => {
   console.error('Failed to initialize CSRF token:', err);
 });
 
-export async function apiRequest(
+async function doFetch(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown,
 ): Promise<Response> {
-  // Security: Ensure CSRF token is available for mutating requests
-  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-    await csrfTokenManager.ensureToken();
+  const isMutating = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+  const isFormData = data instanceof FormData;
+
+  const headers: HeadersInit = data && !isFormData
+    ? { "Content-Type": "application/json" }
+    : {};
+
+  if (isMutating) {
+    const token = csrfTokenManager.getToken();
+    if (token) headers['x-csrf-token'] = token;
   }
 
-  // Check if data is FormData - if so, let browser set Content-Type automatically
-  const isFormData = data instanceof FormData;
-  
-  const headers: HeadersInit = data && !isFormData ? { "Content-Type": "application/json" } : {};
-  
-  // Security: Include CSRF token in header for mutating requests
-  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
-    const token = csrfTokenManager.getToken();
-    if (token) {
-      headers['x-csrf-token'] = token;
-    }
-  }
-  
-  const res = await fetch(url, {
+  return fetch(url, {
     method,
     headers,
     body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
     credentials: "include",
   });
+}
+
+export async function apiRequest(
+  method: string,
+  url: string,
+  data?: unknown | undefined,
+): Promise<Response> {
+  const isMutating = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+
+  if (isMutating) {
+    await csrfTokenManager.ensureToken();
+  }
+
+  const res = await doFetch(method, url, data);
+
+  // If the server rejected the CSRF token (403 with csrf in message), refresh
+  // and retry once. This recovers automatically after a server restart where
+  // the in-memory session store is wiped and old tokens become invalid.
+  if (res.status === 403 && isMutating) {
+    const body = await res.clone().text();
+    if (body.toLowerCase().includes('csrf') || body.toLowerCase().includes('token')) {
+      try {
+        await csrfTokenManager.refreshToken();
+        const retryRes = await doFetch(method, url, data);
+        await throwIfResNotOk(retryRes);
+        return retryRes;
+      } catch {
+        // Retry failed — fall through to throw original error
+      }
+    }
+  }
 
   await throwIfResNotOk(res);
   return res;

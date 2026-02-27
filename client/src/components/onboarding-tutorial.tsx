@@ -13,6 +13,7 @@ interface TutorialStep {
   description: ReactNode;
   highlightSelector?: string;
   requiresMenu?: boolean;
+  positionAbove?: boolean;
 }
 
 interface ElementRect {
@@ -43,6 +44,7 @@ const tutorialSteps: TutorialStep[] = [
     description:
       "This is where you list items you'd like to share with your community. You can lend, rent, swap, or gift anything you're not using. When someone borrows your item, you earn ShareCoins as a reward.",
     highlightSelector: '[data-tutorial="give"]',
+    positionAbove: true,
   },
   {
     id: 3,
@@ -50,49 +52,55 @@ const tutorialSteps: TutorialStep[] = [
     description:
       "Browse to find items available near you. You can borrow items using your ShareCoins, rent items with cash, request a swap for something you own, or claim free gifts. Use filters and search to find exactly what you need.",
     highlightSelector: '[data-tutorial="take"]',
+    positionAbove: true,
   },
   {
     id: 4,
+    title: "ShareCoin Wallet",
+    description:
+      "Your ShareCoin balance is shown here. ShareCoins are the currency of ShareSwap — you earn them by lending items and helping neighbours, and spend them to borrow things you need. Tap your wallet to see your full transaction history.",
+    highlightSelector: '[data-tutorial="wallet"]',
+    positionAbove: false,
+  },
+  {
+    id: 5,
+    title: "Earn More ShareCoins",
+    description:
+      "Need more ShareCoins? Tap on your wallet to discover all the ways you can earn: complete transactions, fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
+    highlightSelector: '[data-tutorial="wallet"]',
+    positionAbove: false,
+  },
+  {
+    id: 6,
+    title: "Play Games to Earn",
+    description:
+      'Play sponsored games ShareSwap has partnered with to earn ShareCoins instantly. Look inside the "Earn More ShareCoins" dropdown in your wallet for the games section — it\'s a fun way to build up your balance.',
+    highlightSelector: '[data-tutorial="wallet"]',
+    positionAbove: false,
+  },
+  {
+    id: 7,
+    title: "Earn Achievements",
+    description:
+      "As you participate in the sharing community, you'll unlock badges and achievements with each milestone. This builds your trust score which shows neighbours that you are active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
+  },
+  {
+    id: 8,
     title: "My ShareChest",
     description:
       "This is your personal inventory — view, edit, and manage all the items you've listed. You can update availability, adjust pricing, check who's requested your items, and track items that are currently out on loan.",
     highlightSelector: '[data-tutorial="sharechest"]',
     requiresMenu: true,
+    positionAbove: true,
   },
   {
-    id: 5,
-    title: "ShareCoin Wallet",
-    description:
-      "Your ShareCoin balance is shown here. ShareCoins are the currency of ShareSwap — you earn them by lending items and helping neighbours, and spend them to borrow things you need. Tap your wallet to see your full transaction history.",
-    highlightSelector: '[data-tutorial="wallet"]',
-  },
-  {
-    id: 6,
-    title: "Earn More ShareCoins",
-    description:
-      "Need more ShareCoins? Tap on your wallet to discover all the ways you can earn: complete transactions, fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
-    highlightSelector: '[data-tutorial="wallet"]',
-  },
-  {
-    id: 7,
-    title: "Play Games to Earn",
-    description:
-      'Play sponsored games ShareSwap has partnered with to earn ShareCoins instantly. Look inside the "Earn More ShareCoins" dropdown in your wallet for the games section — it\'s a fun way to build up your balance.',
-    highlightSelector: '[data-tutorial="wallet"]',
-  },
-  {
-    id: 8,
+    id: 9,
     title: "My Wishlist",
     description:
       "If you can't find what you're looking for, add it to your wishlist. Your neighbours will be able to see what you need, and you'll get notified when a matching item is listed.",
     highlightSelector: '[data-tutorial="wishlist"]',
     requiresMenu: true,
-  },
-  {
-    id: 9,
-    title: "Earn Achievements",
-    description:
-      "As you participate in the sharing community, you'll unlock badges and achievements with each milestone. This builds your trust score which shows neighbours that you are active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
+    positionAbove: true,
   },
   {
     id: 10,
@@ -274,25 +282,33 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     const cardMaxWidth = Math.min(400, viewportWidth - 32);
-    const estimatedCardHeight = 280;
+    const estimatedCardHeight = 340;
     const gap = 16;
 
     const spotlightTop = elementRect.top - 28;
     const spotlightBottom = elementRect.top + elementRect.height + 28;
 
-    const spaceBelow = viewportHeight - spotlightBottom;
-    const spaceAbove = spotlightTop;
-
     let top: number;
 
-    if (spaceBelow >= estimatedCardHeight + gap) {
-      top = spotlightBottom + gap;
-    } else if (spaceAbove >= estimatedCardHeight + gap) {
+    if (step.positionAbove === true) {
+      // Explicitly place above the element
       top = spotlightTop - estimatedCardHeight - gap;
-    } else if (spaceBelow > spaceAbove) {
+    } else if (step.positionAbove === false) {
+      // Explicitly place below the element
       top = spotlightBottom + gap;
     } else {
-      top = Math.max(gap, spotlightTop - estimatedCardHeight - gap);
+      // Auto: prefer below, fall back to above
+      const spaceBelow = viewportHeight - spotlightBottom;
+      const spaceAbove = spotlightTop;
+      if (spaceBelow >= estimatedCardHeight + gap) {
+        top = spotlightBottom + gap;
+      } else if (spaceAbove >= estimatedCardHeight + gap) {
+        top = spotlightTop - estimatedCardHeight - gap;
+      } else if (spaceBelow > spaceAbove) {
+        top = spotlightBottom + gap;
+      } else {
+        top = Math.max(gap, spotlightTop - estimatedCardHeight - gap);
+      }
     }
 
     top = Math.max(

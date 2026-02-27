@@ -1095,14 +1095,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   : "Make your neighbourhood richer without spending a cent"}
               </p>
             </div>
-            {isModal && onClose && (
-              <button
-                onClick={onClose}
-                className="flex-shrink-0 text-black/70 hover:text-black transition-colors p-1"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            )}
           </div>
         </div>
 

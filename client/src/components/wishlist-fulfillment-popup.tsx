@@ -101,7 +101,7 @@ export function WishlistFulfillmentPopup({
         <DialogHeader className="relative pb-6">
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-600 rounded-full mb-4 shadow-lg">
-              <HeartIcon className="h-8 w-8 text-white" />
+              <Coins className="h-4 w-4 text-white" />
             </div>
             <DialogTitle className="text-xl font-bold text-slate-800 mb-2">
               Your Neighbours are looking for these items

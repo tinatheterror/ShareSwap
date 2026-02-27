@@ -117,6 +117,7 @@ export default function PaymentMethodsPage() {
             });
             queryClient.invalidateQueries({ queryKey: ["/api/payment-method"] });
             queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
           }
         })
         .catch((err) => {
@@ -174,6 +175,7 @@ export default function PaymentMethodsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payment-method"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
       setIsRemoveDialogOpen(false);
       toast({
         title: "Card removed",

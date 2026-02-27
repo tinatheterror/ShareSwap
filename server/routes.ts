@@ -6278,6 +6278,10 @@ Respond with ONLY the category name, nothing else.`
           phoneVerified: users.phoneVerified,
           googleId: users.googleId,
           authProvider: users.authProvider,
+          emailVerified: users.emailVerified,
+          stripePaymentMethodId: users.stripePaymentMethodId,
+          paymentMethodLast4: users.paymentMethodLast4,
+          paymentMethodBrand: users.paymentMethodBrand,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
@@ -6289,7 +6293,8 @@ Respond with ONLY the category name, nothing else.`
 
       res.json({
         ...user,
-        emailVerified: !!user.googleId || user.authProvider === 'google',
+        emailVerified: user.emailVerified || !!user.googleId || user.authProvider === 'google',
+        paymentVerified: !!user.stripePaymentMethodId,
       });
     } catch (error) {
       console.error("Error fetching user profile:", error);

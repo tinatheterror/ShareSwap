@@ -4,23 +4,42 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <script>
-      // Suppress benign Vite HMR WebSocket errors in environments where the
-      // HMR WebSocket is unavailable (e.g. Replit custom domains / deployed
-      // previews). Without this the @replit/vite-plugin-runtime-error-modal
-      // catches the unhandledrejection and shows a full-screen crash overlay.
+      // Vite's HMR client tries to open a WebSocket to the dev server. In
+      // Replit's proxied environment the URL resolves to
+      // "wss://localhost:undefined/" which throws a SyntaxError. That
+      // unhandled rejection is caught by @replit/vite-plugin-runtime-error-modal
+      // and displayed as a full-screen crash overlay.
+      //
+      // Fix: wrap the global WebSocket constructor so that any call with an
+      // invalid (undefined-port) URL returns a harmless no-op object instead
+      // of throwing. This runs before any module scripts so it intercepts
+      // Vite's fallback reconnection attempt.
       (function () {
-        function suppress(event) {
-          var msg = (event.reason && (event.reason.message || String(event.reason))) || "";
-          if (
-            msg.indexOf("wss://localhost:undefined") !== -1 ||
-            msg.indexOf("WebSocket") !== -1 ||
-            msg.indexOf("vite") !== -1
-          ) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
+        var _WS = window.WebSocket;
+        function FakeSocket() {}
+        FakeSocket.prototype = {
+          close: function () {},
+          send: function () {},
+          addEventListener: function () {},
+          removeEventListener: function () {},
+          dispatchEvent: function () { return false; },
+          readyState: 3,
+          CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3,
+        };
+
+        window.WebSocket = function (url, protocols) {
+          if (typeof url === "string" && url.indexOf(":undefined") !== -1) {
+            return new FakeSocket();
           }
-        }
-        window.addEventListener("unhandledrejection", suppress, true);
+          return protocols
+            ? new _WS(url, protocols)
+            : new _WS(url);
+        };
+        window.WebSocket.prototype = _WS.prototype;
+        window.WebSocket.CONNECTING = 0;
+        window.WebSocket.OPEN = 1;
+        window.WebSocket.CLOSING = 2;
+        window.WebSocket.CLOSED = 3;
       })();
     </script>
   </head>

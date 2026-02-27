@@ -118,25 +118,25 @@ export default function CommunityWishlistsPage() {
             {allWishlists.map((wishlist) => (
               <Card
                 key={wishlist.id}
-                className="group hover:shadow-xl transition-all duration-100 border-0 bg-white backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden"
+                className="group hover:shadow-xl transition-all duration-100 border-0 bg-white backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden flex flex-col"
               >
                 <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-1.5 md:h-2"></div>
-                <CardContent className="p-3 md:p-6">
+                <CardContent className="p-3 md:p-6 flex flex-col flex-1">
                   <div className="flex items-start justify-between mb-2 md:mb-4">
-                    <div className="flex-1">
-                      <h4 className="font-bold text-base md:text-xl text-slate-800 mb-0.5 md:mb-1">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm md:text-xl text-slate-800 mb-1 md:mb-1 truncate">
                         {wishlist.itemName}
                       </h4>
-                      <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 md:gap-2 flex-nowrap overflow-hidden">
                         {isUrgent(wishlist.neededDate) && (
-                          <Badge className="bg-[#EFE4B0] text-amber-900 border-amber-200 font-medium px-2 py-0.5 md:px-3 md:py-1 text-xs">
+                          <Badge className="bg-[#EFE4B0] text-amber-900 border-amber-200 font-medium px-1.5 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs shrink-0">
                             <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
                             URGENT
                           </Badge>
                         )}
                         <Badge
                           variant="secondary"
-                          className="bg-teal-50 text-teal-700 border-teal-200 px-2 py-0.5 md:px-3 md:py-1 font-medium text-xs"
+                          className="bg-teal-50 text-teal-700 border-teal-200 px-1.5 py-0.5 md:px-3 md:py-1 font-medium text-[10px] md:text-xs shrink-0"
                         >
                           {getNeedTypeIcon(wishlist.needType)}
                           <span className="ml-0.5 md:ml-1">
@@ -148,11 +148,13 @@ export default function CommunityWishlistsPage() {
                     </div>
                   </div>
 
-                  {wishlist.description && (
-                    <p className="text-slate-600 mb-2 md:mb-4 leading-relaxed text-xs md:text-base">
-                      {wishlist.description}
-                    </p>
-                  )}
+                  <div className="mb-2 md:mb-4 min-h-[2.5rem] md:min-h-0">
+                    {wishlist.description ? (
+                      <p className="text-slate-600 leading-relaxed text-xs md:text-base line-clamp-2 md:line-clamp-none">
+                        {wishlist.description}
+                      </p>
+                    ) : null}
+                  </div>
 
                   <div className="space-y-1.5 md:space-y-3 mb-3 md:mb-6">
                     {wishlist.isPrivate ? (

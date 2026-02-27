@@ -123,9 +123,31 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5000
   // Use the HTTP server returned by registerRoutes instead of app.listen
   const PORT = 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
+
+  const startServer = () => {
+    server.listen(PORT, "0.0.0.0", () => {
+      log(`serving on port ${PORT}`);
+    });
+  };
+
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      log(`Port ${PORT} in use — clearing stale process and retrying...`);
+      const { execSync } = require("child_process");
+      try {
+        execSync(`fuser -k ${PORT}/tcp`, { stdio: "ignore" });
+      } catch (_) {}
+      setTimeout(() => {
+        server.removeAllListeners("error");
+        server.on("error", (e: Error) => { throw e; });
+        startServer();
+      }, 1500);
+    } else {
+      throw err;
+    }
   });
+
+  startServer();
 
   // Log WebSocket server setup
   log(`WebSocket server configured at /ws/chat`);

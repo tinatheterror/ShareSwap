@@ -46,6 +46,7 @@ import MyBalancePage from "@/pages/my-balance-page";
 import { VerificationNudge } from "@/components/verification-nudge";
 import { BackgroundPolling } from "@/components/background-polling";
 import { LocationSetupWrapper } from "@/components/location-setup-wrapper";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 function Router() {
   return (
@@ -90,16 +91,18 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router />
-        <ChatWidget />
-        <LocationSetupWrapper />
-        <VerificationNudge />
-        <BackgroundPolling />
-        <Toaster />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Router />
+          <ChatWidget />
+          <LocationSetupWrapper />
+          <VerificationNudge />
+          <BackgroundPolling />
+          <Toaster />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

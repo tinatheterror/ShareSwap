@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { ModalErrorBoundary } from "@/components/error-boundary";
 import LendPage from "@/pages/lend-page";
 
 interface ListItemModalProps {
@@ -14,7 +15,9 @@ export function ListItemModal({ isOpen, onClose }: ListItemModalProps) {
         <VisuallyHidden>
           <DialogTitle>List Your Item</DialogTitle>
         </VisuallyHidden>
-        <LendPage isModal onClose={onClose} />
+        <ModalErrorBoundary>
+          <LendPage isModal onClose={onClose} />
+        </ModalErrorBoundary>
       </DialogContent>
     </Dialog>
   );

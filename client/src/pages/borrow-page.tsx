@@ -438,7 +438,7 @@ export default function BorrowPage() {
           backgroundImage: "url('/hero-banner.png')",
         }}
       >
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 pb-4 sm:py-10">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 pb-16 sm:py-10">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1.5 sm:gap-6">
             <div className="flex-1">
               <h1 className="text-lg sm:text-3xl md:text-4xl font-bold mb-0 sm:mb-1 text-black">
@@ -450,23 +450,22 @@ export default function BorrowPage() {
               </p>
             </div>
 
-            {/* Search + Location — desktop only (inside hero) */}
-            <div className="hidden md:flex flex-col gap-3 w-72">
+            <div className="flex flex-col gap-1 sm:gap-3 w-full md:w-72">
               <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-2 top-1.5 sm:top-2.5 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
                 <Input
                   placeholder="Search items..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-white rounded-lg text-sm h-[43px]"
+                  className="pl-7 sm:pl-9 bg-white rounded-lg text-[11px] sm:text-sm h-6 sm:h-[43px]"
                 />
               </div>
               <Button
                 variant="outline"
-                className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 rounded-lg text-sm h-[43px]"
+                className="w-full flex items-center justify-center gap-1 sm:gap-2 bg-white hover:bg-gray-50 rounded-lg text-[11px] sm:text-sm h-6 sm:h-[43px]"
                 onClick={() => setShowLocationModal(true)}
               >
-                <MapPin className="h-4 w-4" />
+                <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
                 {userPostalCode
                   ? `${userPostalCode} (${radius}km radius)`
                   : "Set Location"}
@@ -480,29 +479,6 @@ export default function BorrowPage() {
           className="absolute bottom-0 left-0 w-6 h-6 sm:w-8 sm:h-8"
           style={{ borderTopRightRadius: "100%", backgroundColor: "#f3f4f6" }}
         />
-      </div>
-
-      {/* Search + Location — mobile only (below hero) */}
-      <div className="md:hidden max-w-7xl mx-auto px-4 py-3 flex flex-col gap-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 bg-white rounded-lg text-sm h-10"
-          />
-        </div>
-        <Button
-          variant="outline"
-          className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 rounded-lg text-sm h-10"
-          onClick={() => setShowLocationModal(true)}
-        >
-          <MapPin className="h-4 w-4" />
-          {userPostalCode
-            ? `${userPostalCode} (${radius}km radius)`
-            : "Set Location"}
-        </Button>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">

@@ -12,6 +12,31 @@ import { setupVite, serveStatic, log } from "./vite";
 import { attachCsrfToken } from "./csrf";
 import { setupStorageRoutes } from "./storage";
 
+// ─── Global crash guards ────────────────────────────────────────────────────
+// Neon serverless databases auto-suspend and send a 57P01 termination error
+// over the WebSocket. If it reaches the process level it would crash the
+// server. The pool in db/index.ts handles it, but we add a final backstop here.
+process.on("uncaughtException", (err: any) => {
+  const msg = err?.message ?? String(err);
+  if (
+    err?.code === "57P01" ||
+    msg.includes("terminating connection") ||
+    msg.includes("connection terminated") ||
+    msg.includes("WebSocket")
+  ) {
+    log(`[warn] Caught recoverable error (will not crash): ${msg}`);
+  } else {
+    log(`[fatal] Uncaught exception – exiting: ${msg}`);
+    console.error(err);
+    process.exit(1);
+  }
+});
+
+process.on("unhandledRejection", (reason: any) => {
+  const msg = reason?.message ?? String(reason);
+  log(`[warn] Unhandled promise rejection (ignored): ${msg}`);
+});
+
 const app = express();
 
 // Security: Enable helmet with appropriate CSP for Vite

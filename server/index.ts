@@ -153,22 +153,32 @@ app.use((req, res, next) => {
     });
   };
 
-  server.on("error", (err: NodeJS.ErrnoException) => {
-    if (err.code === "EADDRINUSE") {
-      log(`Port ${PORT} in use — clearing stale process and retrying...`);
-      const { execSync } = require("child_process");
-      try {
-        execSync(`fuser -k ${PORT}/tcp`, { stdio: "ignore" });
-      } catch (_) {}
+  let retryCount = 0;
+  const maxRetries = 5;
+
+  const handleServerError = (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE" && retryCount < maxRetries) {
+      retryCount++;
+      log(`Port ${PORT} in use — retry ${retryCount}/${maxRetries} in 1.5s...`);
+      if (retryCount === 1) {
+        // First attempt: try to kill whatever is holding the port
+        const { execSync } = require("child_process");
+        try {
+          // pkill is available in this environment; target the previous tsx process
+          execSync(`pkill -f "tsx server/index" || true`, { stdio: "ignore" });
+        } catch (_) {}
+      }
       setTimeout(() => {
         server.removeAllListeners("error");
-        server.on("error", (e: Error) => { throw e; });
+        server.on("error", handleServerError);
         startServer();
       }, 1500);
     } else {
-      throw err;
+      log(`[error] Server error (code=${err.code}): ${err.message}`);
     }
-  });
+  };
+
+  server.on("error", handleServerError);
 
   startServer();
 

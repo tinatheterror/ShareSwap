@@ -3,6 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // Suppress benign Vite HMR WebSocket errors in environments where the
+      // HMR WebSocket is unavailable (e.g. Replit custom domains / deployed
+      // previews). Without this the @replit/vite-plugin-runtime-error-modal
+      // catches the unhandledrejection and shows a full-screen crash overlay.
+      (function () {
+        function suppress(event) {
+          var msg = (event.reason && (event.reason.message || String(event.reason))) || "";
+          if (
+            msg.indexOf("wss://localhost:undefined") !== -1 ||
+            msg.indexOf("WebSocket") !== -1 ||
+            msg.indexOf("vite") !== -1
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }
+        window.addEventListener("unhandledrejection", suppress, true);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

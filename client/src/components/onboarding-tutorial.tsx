@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 
+import { ReactNode } from "react";
+
 interface TutorialStep {
   id: number;
   title: string;
-  description: string;
+  description: ReactNode;
   highlightSelector?: string;
   requiresMenu?: boolean;
 }
@@ -26,8 +28,14 @@ const tutorialSteps: TutorialStep[] = [
   {
     id: 1,
     title: "Welcome to ShareSwap!",
-    description:
-      "ShareSwap is your neighbourhood sharing marketplace where you can borrow, lend, rent, swap, and gift items with people nearby. This quick tour will walk you through each feature. You can skip at any time.",
+    description: (
+      <>
+        ShareSwap is your neighbourhood sharing marketplace where you can{" "}
+        <strong>borrow, lend, rent, swap, and gift items</strong> with people
+        nearby. This quick tour will walk you through each feature. You can skip
+        at any time.
+      </>
+    ),
   },
   {
     id: 2,

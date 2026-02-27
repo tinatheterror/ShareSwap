@@ -6,18 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function HomePage() {
   const [, navigate] = useLocation();
   const searchString = useSearch();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [showTutorial, setShowTutorial] = useState(false);
   const [showReferralBanner, setShowReferralBanner] = useState(false);
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
 
   // Check if user has seen tutorial, referral status, and email verification
   useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem("hasSeenTutorial");
+    if (!user) return;
+    const tutorialKey = `hasSeenTutorial_${user.id}`;
+    const hasSeenTutorial = localStorage.getItem(tutorialKey);
     if (!hasSeenTutorial) {
       // Show tutorial immediately for first-time users
       setShowTutorial(true);
@@ -48,10 +52,12 @@ export default function HomePage() {
         window.history.replaceState({}, "", "/");
       }
     }
-  }, [searchString]);
+  }, [searchString, user]);
 
   const handleTutorialComplete = () => {
-    localStorage.setItem("hasSeenTutorial", "true");
+    if (user) {
+      localStorage.setItem(`hasSeenTutorial_${user.id}`, "true");
+    }
     setShowTutorial(false);
   };
 

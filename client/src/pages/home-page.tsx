@@ -1,12 +1,23 @@
 import { Navbar } from "@/components/shared/navbar";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
+import { ListItemModal } from "@/components/list-item-modal";
+import { ImportListingModal } from "@/components/import-listing-modal";
+import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { useLocation, useSearch } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CheckCircle, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CheckCircle, X, Plus, Download, Heart } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+
+type GiveModal = "choice" | "list" | "import" | "wishlist" | null;
 
 export default function HomePage() {
   const [, navigate] = useLocation();
@@ -16,38 +27,31 @@ export default function HomePage() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showReferralBanner, setShowReferralBanner] = useState(false);
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
+  const [giveModal, setGiveModal] = useState<GiveModal>(null);
 
-  // Check if user has seen tutorial, referral status, and email verification
   useEffect(() => {
     if (!user) return;
     const tutorialKey = `hasSeenTutorial_${user.id}`;
     const hasSeenTutorial = localStorage.getItem(tutorialKey);
     if (!hasSeenTutorial) {
-      // Show tutorial immediately for first-time users
       setShowTutorial(true);
     }
 
     const params = new URLSearchParams(searchString);
 
-    // Check for email verification success
     const emailVerified = params.get("verified") === "true";
     if (emailVerified) {
       setShowVerifiedBanner(true);
-      // Refresh user data so the amber banner disappears immediately
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      // Clean up URL
       window.history.replaceState({}, "", "/");
     }
 
-    // Check for referral applied - from sessionStorage (email signup) or URL (Google OAuth)
     const referralFromUrl = params.get("referral") === "applied";
-    const referralFromSession =
-      sessionStorage.getItem("referralApplied") === "true";
+    const referralFromSession = sessionStorage.getItem("referralApplied") === "true";
 
     if (referralFromUrl || referralFromSession) {
       setShowReferralBanner(true);
       sessionStorage.removeItem("referralApplied");
-      // Clean up URL if it has the referral param
       if (referralFromUrl) {
         window.history.replaceState({}, "", "/");
       }
@@ -128,7 +132,7 @@ export default function HomePage() {
               className="w-full flex flex-col items-center gap-3"
             >
               <Button
-                onClick={() => navigate("/lend")}
+                onClick={() => setGiveModal("choice")}
                 className="w-full bg-primary hover:bg-primary/90 text-lg py-6 rounded-xl"
                 size="lg"
               >
@@ -170,6 +174,76 @@ export default function HomePage() {
           <OnboardingTutorial onComplete={handleTutorialComplete} />
         )}
       </main>
+
+      {/* Give Choice Dialog */}
+      <Dialog open={giveModal === "choice"} onOpenChange={(open) => !open && setGiveModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-center">Give to the ShareChest</DialogTitle>
+            <p className="text-sm text-muted-foreground text-center">
+              How would you like to share?
+            </p>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2">
+            <button
+              onClick={() => setGiveModal("list")}
+              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
+            >
+              <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
+                <Plus className="h-5 w-5 text-teal-700" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">List an item</p>
+                <p className="text-xs text-muted-foreground">Fill in the item details yourself</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setGiveModal("import")}
+              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
+            >
+              <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
+                <Download className="h-5 w-5 text-blue-700" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">Import a listing</p>
+                <p className="text-xs text-muted-foreground">From Facebook Marketplace or Craigslist</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setGiveModal("wishlist")}
+              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
+            >
+              <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0 group-hover:bg-rose-200 transition-colors">
+                <Heart className="h-5 w-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">See what people need</p>
+                <p className="text-xs text-muted-foreground">Fulfill a wishlist and earn ShareCoins</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* List Item Modal */}
+      <ListItemModal
+        isOpen={giveModal === "list"}
+        onClose={() => setGiveModal(null)}
+      />
+
+      {/* Import Listing Modal */}
+      <ImportListingModal
+        isOpen={giveModal === "import"}
+        onClose={() => setGiveModal(null)}
+      />
+
+      {/* See What People Need (Wishlist Fulfillment) */}
+      <WishlistFulfillmentPopup
+        isOpen={giveModal === "wishlist"}
+        onClose={() => setGiveModal(null)}
+      />
     </div>
   );
 }

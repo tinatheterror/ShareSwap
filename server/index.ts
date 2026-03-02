@@ -159,20 +159,16 @@ app.use((req, res, next) => {
   const handleServerError = (err: NodeJS.ErrnoException) => {
     if (err.code === "EADDRINUSE" && retryCount < maxRetries) {
       retryCount++;
-      log(`Port ${PORT} in use — retry ${retryCount}/${maxRetries} in 1.5s...`);
-      if (retryCount === 1) {
-        // First attempt: try to kill whatever is holding the port
-        const { execSync } = require("child_process");
-        try {
-          // pkill is available in this environment; target the previous tsx process
-          execSync(`pkill -f "tsx server/index" || true`, { stdio: "ignore" });
-        } catch (_) {}
-      }
+      // The workflow manager already sent SIGTERM to the previous process.
+      // The port just needs a moment to be released — no need to kill anything
+      // (pkill would risk matching and killing the current process too).
+      const delay = retryCount * 1000; // 1s, 2s, 3s, 4s, 5s
+      log(`Port ${PORT} in use — waiting ${delay}ms then retry ${retryCount}/${maxRetries}...`);
       setTimeout(() => {
         server.removeAllListeners("error");
         server.on("error", handleServerError);
         startServer();
-      }, 1500);
+      }, delay);
     } else {
       log(`[error] Server error (code=${err.code}): ${err.message}`);
     }

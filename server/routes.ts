@@ -2724,6 +2724,8 @@ Respond with ONLY the category name, nothing else.`
           isActive: wishlists.isActive,
           createdAt: wishlists.createdAt,
           username: users.username,
+          handle: users.handle,
+          displayName: users.displayName,
           isVerified: users.isVerified,
           reputationLevel: users.reputationLevel,
         })
@@ -3074,6 +3076,8 @@ Respond with ONLY the category name, nothing else.`
         owner: {
           id: users.id,
           username: users.username,
+          handle: users.handle,
+          displayName: users.displayName,
           isVerified: users.isVerified,
           isPremium: users.isPremium,
           reputationLevel: users.reputationLevel,
@@ -3687,6 +3691,8 @@ Respond with ONLY the category name, nothing else.`
         requester: {
           id: users.id,
           username: users.username,
+          handle: users.handle,
+          displayName: users.displayName,
           isVerified: users.isVerified,
           reputationLevel: users.reputationLevel,
         },
@@ -7732,6 +7738,8 @@ Respond with ONLY the category name, nothing else.`
       .select({
         id: users.id,
         username: users.username,
+        handle: users.handle,
+        displayName: users.displayName,
         isVerified: users.isVerified,
         reputationScore: users.reputationScore,
         reputationLevel: users.reputationLevel,

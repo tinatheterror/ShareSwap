@@ -7,20 +7,16 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDisplayName(username: string | null | undefined): string {
   if (!username) return "Anonymous";
-  
-  const name = username
-    .replace(/_/g, ' ')
-    .replace(/\./g, ' ')
+
+  // If it looks like an email, only use the part before @
+  const base = username.includes('@') ? username.split('@')[0] : username;
+
+  const name = base
+    .replace(/[._-]/g, ' ')
     .split(' ')
+    .filter(p => p.length > 0)
     .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
-  
-  const parts = name.split(' ');
-  if (parts.length >= 2) {
-    const firstName = parts[0];
-    const lastInitial = parts[parts.length - 1].charAt(0).toUpperCase();
-    return `${firstName} ${lastInitial}.`;
-  }
-  
-  return name;
+
+  return name || "Anonymous";
 }

@@ -15,6 +15,7 @@ import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { CelebrationAnimation } from "@/components/celebration-animation";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDisplayName } from "@/lib/utils";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
@@ -505,10 +506,10 @@ export default function RequestsPage() {
                               <User className="h-4 w-4" />
                               {request.requestType === "GIFT" ? (
                                 <span className="text-pink-600 font-medium">
-                                  {request.requester.username} would love your {request.item.name}
+                                  {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} would love your {request.item.name}
                                 </span>
                               ) : (
-                                <span>{request.requester.username} wants to {request.requestType.toLowerCase()}</span>
+                                <span>{(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} wants to {request.requestType.toLowerCase()}</span>
                               )}
                             </div>
                           </div>
@@ -885,7 +886,7 @@ export default function RequestsPage() {
                             <div>
                               <h3 className="font-semibold">{request.item.name}</h3>
                               <p className="text-sm text-muted-foreground">
-                                Borrowed by {request.requester.username}
+                                Borrowed by {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)}
                               </p>
                             </div>
                             <Badge 
@@ -976,7 +977,7 @@ export default function RequestsPage() {
                             <div>
                               <h3 className="font-semibold">{request.item.name}</h3>
                               <p className="text-sm text-muted-foreground">
-                                Gifting to {request.requester.username}
+                                Gifting to {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)}
                               </p>
                             </div>
                             <Badge className="bg-pink-100 text-pink-700 border-pink-300">

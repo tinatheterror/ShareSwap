@@ -371,7 +371,7 @@ export function Navbar() {
                       <Link href="/profile">
                         <Avatar className="border-2 border-primary cursor-pointer hover:border-primary/80 transition-colors">
                           <AvatarFallback className="bg-primary/10 text-primary">
-                            {user.username.charAt(0).toUpperCase()}
+                            {((user as any).displayName || (user as any).handle || user.username).charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                       </Link>
@@ -490,11 +490,11 @@ export function Navbar() {
                         <div className="flex items-center gap-3 pb-4 border-b cursor-pointer hover:opacity-80">
                           <Avatar className="h-12 w-12 border-2 border-primary">
                             <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                              {user.username.charAt(0).toUpperCase()}
+                              {((user as any).displayName || (user as any).handle || user.username).charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">{user.username}</p>
+                            <p className="font-medium">{(user as any).displayName || (user as any).handle || user.username}</p>
                             <p className="text-sm text-muted-foreground flex items-center gap-1">
                               <User className="h-4 w-4" />
                               My Profile

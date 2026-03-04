@@ -455,12 +455,12 @@ export default function ProfilePage() {
             <CardHeader className="bg-transparent">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                  {publicProfile.username.charAt(0).toUpperCase()}
+                  {((publicProfile as any).displayName || (publicProfile as any).handle || publicProfile.username).charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <CardTitle className="text-2xl text-slate-800">
-                      @{publicProfile.username}
+                      @{(publicProfile as any).handle || publicProfile.username.split('@')[0]}
                     </CardTitle>
                     <UserBadges
                       isVerified={publicProfile.isVerified}
@@ -668,18 +668,16 @@ export default function ProfilePage() {
                     <Avatar className="h-16 w-16 border-2 border-white shadow-md flex-shrink-0">
                       <AvatarImage
                         src={(user as any)?.profilePhoto}
-                        alt={user.username}
+                        alt={(user as any).displayName || (user as any).handle || user.username}
                       />
                       <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
-                        {profile?.fullName
-                          ? profile.fullName.charAt(0).toUpperCase()
-                          : user.username.charAt(0).toUpperCase()}
+                        {(profile?.fullName || (user as any).displayName || (user as any).handle || user.username).charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">
-                          {profile?.fullName || user.username}
+                          {profile?.fullName || (user as any).displayName || (user as any).handle || user.username}
                         </CardTitle>
                         <UserBadges
                           isVerified={profile?.isVerified || false}
@@ -687,7 +685,7 @@ export default function ProfilePage() {
                           size="sm"
                         />
                       </div>
-                      <p className="text-slate-600 text-sm sm:text-base truncate">@{user.username}</p>
+                      <p className="text-slate-600 text-sm sm:text-base truncate">@{(user as any).handle || user.username.split('@')[0]}</p>
                       {profile?.subscription && (
                         <Badge variant="secondary" className="mt-1">
                           {profile.subscription}
@@ -745,10 +743,10 @@ export default function ProfilePage() {
                           <Avatar className="h-16 w-16 border-2 border-gray-200">
                             <AvatarImage
                               src={(user as any)?.profilePhoto}
-                              alt={user.username}
+                              alt={(user as any).displayName || (user as any).handle || user.username}
                             />
                             <AvatarFallback className="bg-teal-100 text-teal-600 text-xl font-medium">
-                              {user.username?.charAt(0).toUpperCase()}
+                              {((user as any).displayName || (user as any).handle || user.username)?.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <button

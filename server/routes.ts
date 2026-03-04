@@ -8041,6 +8041,11 @@ Respond with ONLY the category name, nothing else.`
     },
   });
 
+  // Catch WebSocket server-level errors so they do not crash the process
+  wss.on("error", (err: Error) => {
+    console.error("[WSS] WebSocket server error (non-fatal):", err.message);
+  });
+
   // Improve WebSocket message handling
   const connectedClients = new Map<number, WebSocket>();
 

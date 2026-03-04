@@ -82,7 +82,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 7,
     title: "Earn Achievements",
     description:
-      "As you participate in the sharing community, you'll unlock badges and achievements with each milestone. This builds your trust score which shows neighbours that you are active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
+      "As you participate in the sharing community, you'll unlock badges. Each achievement builds your trust score which shows neighbours that you are active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
   },
   {
     id: 8,

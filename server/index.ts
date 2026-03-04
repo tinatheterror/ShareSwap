@@ -35,6 +35,17 @@ process.on("unhandledRejection", (reason: any) => {
   }
 });
 
+// Log SIGTERM so we can confirm it's the workflow manager restarting us
+process.on("SIGTERM", () => {
+  log(`[info] SIGTERM received – shutting down gracefully`);
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  log(`[info] SIGINT received – shutting down gracefully`);
+  process.exit(0);
+});
+
 const app = express();
 
 // Security: Enable helmet with appropriate CSP for Vite

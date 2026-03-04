@@ -62,6 +62,13 @@ The platform is a full-stack JavaScript application utilizing modern patterns. T
 - **Email Service**: SendGrid (via Replit integration for transactional emails including verification)
 - **Beta Feedback**: UserJot widget (SDK v2, custom trigger, logged-in users only via VITE_USERJOT_PROJECT_ID env var)
 
+## Server Stability
+- **Neon DB Keepalive**: `db/index.ts` runs a `SELECT 1` keepalive every 55s to prevent Neon from auto-suspending idle connections (which caused silent server crashes)
+- **Per-client DB error handlers**: Individual pool client errors are caught before they can propagate and crash the process
+- **WebSocket server error handler**: `wss.on("error", ...)` prevents unhandled WS server errors from crashing Node.js
+- **SIGTERM/SIGINT handlers**: Graceful shutdown logging in `server/index.ts`
+- **EADDRINUSE recovery**: Retry-with-delay mechanism (no pkill — avoiding self-termination risk)
+
 ## Image Storage Configuration
 The platform uses Replit Object Storage for persistent image storage:
 - **Primary**: Replit Object Storage (images persist across redeploys)

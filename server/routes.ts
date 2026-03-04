@@ -1825,12 +1825,35 @@ Return only the JSON object, no other text.`
         max_tokens: 600,
       });
 
-      const raw = completion.choices[0]?.message?.content || '{}';
-      const jsonMatch = raw.match(/{[sS]*}/);
-      if (!jsonMatch) {
+      const raw = completion.choices[0]?.message?.content || '';
+      console.log('[Screenshot Import] Raw AI response:', raw.substring(0, 500));
+
+      // Robust JSON extraction: try direct parse, strip code fences, then regex
+      let extracted: any = null;
+      const candidates = [
+        raw.trim(),
+        raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim(),
+      ];
+      for (const candidate of candidates) {
+        try {
+          extracted = JSON.parse(candidate);
+          break;
+        } catch {}
+      }
+      if (!extracted) {
+        // Last resort: find first {...} block
+        const start = raw.indexOf('{');
+        const end = raw.lastIndexOf('}');
+        if (start !== -1 && end > start) {
+          try {
+            extracted = JSON.parse(raw.substring(start, end + 1));
+          } catch {}
+        }
+      }
+      if (!extracted) {
+        console.error('[Screenshot Import] Could not parse response:', raw);
         return res.status(500).json({ error: 'Could not parse AI response' });
       }
-      const extracted = JSON.parse(jsonMatch[0]);
 
       const validConditions = ['Like New', 'Good', 'Fair', 'Well Loved'];
       const validTiers = [1, 2, 3, 4];

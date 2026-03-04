@@ -108,9 +108,15 @@ function generateDisplayName(email?: string, googleName?: string): string {
   }
   
   if (email) {
-    // Capitalize first letter of email prefix
-    const prefix = email.split('@')[0].replace(/[^a-zA-Z]/g, '');
-    return prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+    const [rawPrefix, rawDomain] = email.split('@');
+    const prefix = (rawPrefix || '').replace(/[^a-zA-Z]/g, '');
+    const domainName = (rawDomain || '').split('.')[0]; // e.g. "live" from "live.ca"
+    const firstName = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+    if (domainName && domainName.length > 0) {
+      const lastInitial = domainName.charAt(0).toUpperCase();
+      return `${firstName} ${lastInitial}.`;
+    }
+    return firstName;
   }
   
   return 'User';

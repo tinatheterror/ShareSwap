@@ -16,6 +16,7 @@ export function LocationSetupWrapper() {
 
   const handleComplete = () => {
     setShowModal(false);
+    window.dispatchEvent(new Event("location-setup-complete"));
   };
 
   if (isLoading || !user) {

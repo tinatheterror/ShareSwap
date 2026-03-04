@@ -29,14 +29,23 @@ export default function HomePage() {
   const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
   const [giveModal, setGiveModal] = useState<GiveModal>(null);
 
+  // Tutorial: show after location setup is done, or immediately if already done
   useEffect(() => {
     if (!user) return;
     const tutorialKey = `hasSeenTutorial_${user.id}`;
-    const hasSeenTutorial = localStorage.getItem(tutorialKey);
-    if (!hasSeenTutorial) {
-      setShowTutorial(true);
-    }
+    if (localStorage.getItem(tutorialKey)) return;
 
+    if ((user as any).hasCompletedLocationSetup) {
+      setShowTutorial(true);
+    } else {
+      const handleLocationDone = () => setShowTutorial(true);
+      window.addEventListener("location-setup-complete", handleLocationDone, { once: true });
+      return () => window.removeEventListener("location-setup-complete", handleLocationDone);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
     const params = new URLSearchParams(searchString);
 
     const emailVerified = params.get("verified") === "true";

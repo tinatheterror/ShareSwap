@@ -109,15 +109,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       const formData = new FormData();
       formData.append("screenshot", file);
 
-      const csrfRes = await fetch("/api/csrf-token", { credentials: "include" });
-      const { csrfToken } = await csrfRes.json();
-
-      const res = await fetch("/api/import-from-screenshot", {
-        method: "POST",
-        headers: { "X-CSRF-Token": csrfToken },
-        credentials: "include",
-        body: formData,
-      });
+      const res = await apiRequest("POST", "/api/import-from-screenshot", formData);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

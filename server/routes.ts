@@ -1766,7 +1766,7 @@ Return only the JSON object, no other text.`;
 
 
   // Import listing from marketplace screenshot using GPT-4 Vision
-  app.post('/api/import-from-screenshot', upload.single('screenshot'), csrfProtection, async (req, res) => {
+  app.post('/api/import-from-screenshot', upload.single('screenshot'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }

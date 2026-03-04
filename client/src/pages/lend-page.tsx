@@ -150,43 +150,42 @@ const calculateShareCoinsForDays = (
   return { min: minCoins, max: maxCoins };
 };
 
-const formSchema = z
-  .object({
-    name: z.string().min(1, "Name is required"),
-    description: z.string().min(10, "Please provide a detailed description"),
-    itemType: z.string().min(1, "Item type is required"),
-    condition: z.string().min(1, "Condition is required"),
-    originalValue: z.string().min(1, "Original value is required"),
-    isLendable: z.boolean().default(true),
-    isSwappable: z.boolean().default(false),
-    isRentable: z.boolean().default(false),
-    isGift: z.boolean().default(false),
-    swapDesiredItem: z.string().optional(),
-    swapNotifyOnMatch: z.boolean().default(false),
-    availableFromDate: z.string().optional(),
-    availableToDate: z.string().optional(),
-    securityDeposit: z.coerce
-      .number()
-      .min(0, "Security deposit must be positive")
-      .optional(),
-    conditionRating: z.coerce
-      .number()
-      .min(1)
-      .max(10, "Rating must be between 1 and 10"),
-    postalCode: z.string().optional(),
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-  })
-  .refine(
-    (data) => {
-      // Require either postalCode or lat/lng coordinates
-      return data.postalCode || (data.latitude && data.longitude);
-    },
-    {
-      message: "Location is required - please enter a postal code",
-      path: ["postalCode"],
-    },
-  );
+const baseFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().min(10, "Please provide a detailed description"),
+  itemType: z.string().min(1, "Item type is required"),
+  condition: z.string().min(1, "Condition is required"),
+  originalValue: z.string().min(1, "Original value is required"),
+  isLendable: z.boolean().default(true),
+  isSwappable: z.boolean().default(false),
+  isRentable: z.boolean().default(false),
+  isGift: z.boolean().default(false),
+  swapDesiredItem: z.string().optional(),
+  swapNotifyOnMatch: z.boolean().default(false),
+  availableFromDate: z.string().optional(),
+  availableToDate: z.string().optional(),
+  securityDeposit: z.coerce
+    .number()
+    .min(0, "Security deposit must be positive")
+    .optional(),
+  conditionRating: z.coerce
+    .number()
+    .min(1)
+    .max(10, "Rating must be between 1 and 10"),
+  postalCode: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+});
+
+const formSchema = baseFormSchema.refine(
+  (data) => {
+    return data.postalCode || (data.latitude && data.longitude);
+  },
+  {
+    message: "Location is required - please enter a postal code",
+    path: ["postalCode"],
+  },
+);
 
 interface LendPageProps {
   isModal?: boolean;
@@ -356,8 +355,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const lastDetectedName = useRef("");
   const previousTier = useRef<number | null>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof baseFormSchema>>({
+    resolver: zodResolver(isEditMode ? baseFormSchema : formSchema),
     defaultValues: {
       name: "",
       description: "",

@@ -504,6 +504,25 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     }
   }, [prefillItemName, isEditMode]);
 
+  // Pre-fill from marketplace import (URL import or screenshot analysis)
+  useEffect(() => {
+    if (isEditMode) return;
+    const raw = sessionStorage.getItem("shareswap_import_data");
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      sessionStorage.removeItem("shareswap_import_data");
+      if (data.name) form.setValue("name", data.name);
+      if (data.description) form.setValue("description", data.description);
+      if (data.condition) form.setValue("condition", data.condition);
+      if (data.conditionRating) form.setValue("conditionRating", data.conditionRating);
+      if (data.itemType) form.setValue("itemType", data.itemType);
+      if (data.originalValue) form.setValue("originalValue", data.originalValue);
+      if (data.name) detectItemCategory(data.name);
+    } catch {
+    }
+  }, [isEditMode]);
+
   // Convert files to base64 for AI valuation
   const getPhotoDataUrls = async (): Promise<string[]> => {
     // If we have SmartScan photos, use those (they're already URLs)

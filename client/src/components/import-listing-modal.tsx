@@ -1,15 +1,26 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Download, ExternalLink, CheckCircle, Loader2 } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  Image,
+  Pencil,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  ArrowLeft,
+} from "lucide-react";
 import { useLocation } from "wouter";
 
 interface ImportListingModalProps {
@@ -17,89 +28,150 @@ interface ImportListingModalProps {
   onClose: () => void;
 }
 
-const SUPPORTED_PLATFORMS = [
-  {
-    name: "Facebook Marketplace",
-    example: "https://www.facebook.com/marketplace/item/...",
-    color: "bg-blue-100 text-blue-700",
-  },
-  {
-    name: "Craigslist",
-    example: "https://craigslist.org/...",
-    color: "bg-purple-100 text-purple-700",
-  },
-];
+type Step = "url" | "failed" | "scanning" | "done";
+
+interface ExtractedData {
+  name: string;
+  description: string;
+  price: number | null;
+  condition: string;
+  conditionRating: number;
+  brand: string;
+  itemType: string;
+  visibleDamage: string;
+  modelVersion: string;
+  isLuxury: boolean;
+  originalValue: string;
+  suggestedTier: number;
+}
 
 export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const [step, setStep] = useState<Step>("url");
   const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
-  const [importedData, setImportedData] = useState<any>(null);
+  const [extracted, setExtracted] = useState<ExtractedData | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleClose = () => {
+    setStep("url");
+    setImportUrl("");
+    setIsImporting(false);
+    setExtracted(null);
+    onClose();
+  };
 
   const handleImport = async () => {
     if (!importUrl.trim()) {
-      toast({
-        title: "URL Required",
-        description: "Please paste a listing URL to import",
-        variant: "destructive",
-      });
+      toast({ title: "URL Required", description: "Please paste a listing URL", variant: "destructive" });
       return;
     }
     setIsImporting(true);
     try {
       const response = await apiRequest("POST", "/api/import-listing", { url: importUrl });
       const data = await response.json();
-      setImportedData(data);
-      toast({
-        title: "Listing imported!",
-        description: "Details have been extracted. Click below to list this item.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Import Failed",
-        description: error.message || "Unable to import listing. Please try a different URL.",
-        variant: "destructive",
-      });
+      sessionStorage.setItem("shareswap_import_data", JSON.stringify({
+        name: data.name,
+        description: data.description,
+        conditionRating: data.conditionRating,
+      }));
+      handleClose();
+      navigate("/lend");
+    } catch {
+      setStep("failed");
     } finally {
       setIsImporting(false);
     }
   };
 
-  const handleListImported = () => {
-    if (!importedData) return;
-    const params = new URLSearchParams();
-    if (importedData.name) params.set("prefill", importedData.name);
-    onClose();
-    navigate(`/lend?${params.toString()}`);
+  const handleEnterManually = () => {
+    handleClose();
+    navigate("/lend");
   };
 
-  const handleReset = () => {
-    setImportedData(null);
-    setImportUrl("");
+  const handleScreenshotPick = () => {
+    fileRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please upload an image file", variant: "destructive" });
+      return;
+    }
+
+    setStep("scanning");
+
+    try {
+      const formData = new FormData();
+      formData.append("screenshot", file);
+
+      const csrfRes = await fetch("/api/csrf-token", { credentials: "include" });
+      const { csrfToken } = await csrfRes.json();
+
+      const res = await fetch("/api/import-from-screenshot", {
+        method: "POST",
+        headers: { "X-CSRF-Token": csrfToken },
+        credentials: "include",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to analyze screenshot");
+      }
+
+      const data: ExtractedData = await res.json();
+      setExtracted(data);
+      setStep("done");
+    } catch (err: any) {
+      toast({ title: "Analysis failed", description: err.message || "Could not analyze screenshot", variant: "destructive" });
+      setStep("failed");
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleListExtracted = () => {
+    if (!extracted) return;
+    sessionStorage.setItem("shareswap_import_data", JSON.stringify(extracted));
+    handleClose();
+    navigate("/lend");
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center shrink-0">
               <Download className="h-5 w-5 text-teal-600" />
             </div>
             <DialogTitle className="text-xl font-bold">Import a Listing</DialogTitle>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Paste a link from Facebook Marketplace or Craigslist and we'll auto-fill the details for you.
-          </p>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Paste a marketplace link and we'll auto-fill the details.
+          </DialogDescription>
         </DialogHeader>
 
-        {!importedData ? (
+        {/* ── Step: URL Input ─────────────────────────────── */}
+        {step === "url" && (
           <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
-              {SUPPORTED_PLATFORMS.map((p) => (
-                <span key={p.name} className={`text-xs font-medium px-2.5 py-1 rounded-full ${p.color}`}>
-                  {p.name}
+              {["Facebook Marketplace", "Craigslist"].map((p) => (
+                <span key={p} className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
+                  {p}
                 </span>
               ))}
             </div>
@@ -120,11 +192,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                   style={{ backgroundColor: "#0DCEA1" }}
                   className="text-white shrink-0"
                 >
-                  {isImporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Import"
-                  )}
+                  {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -136,71 +204,144 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">How it works</p>
               <ul className="text-sm text-gray-600 space-y-1">
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-600 font-bold mt-0.5">1.</span>
-                  Find your item on Facebook Marketplace or Craigslist
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-600 font-bold mt-0.5">2.</span>
-                  Copy the URL from your browser
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-600 font-bold mt-0.5">3.</span>
-                  Paste it above — we'll extract the title, description, and price
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-teal-600 font-bold mt-0.5">4.</span>
-                  Review the details and publish your ShareSwap listing
-                </li>
+                {[
+                  "Find your item on Facebook Marketplace or Craigslist",
+                  "Copy the URL from your browser",
+                  "Paste it above — we'll extract the title, description, and price",
+                  "Review the details and publish your ShareSwap listing",
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-teal-600 font-bold mt-0.5">{i + 1}.</span>
+                    {step}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-green-800">Import successful!</p>
-                <p className="text-sm text-green-700">Your listing details have been extracted.</p>
+        )}
+
+        {/* ── Step: Import Failed ──────────────────────────── */}
+        {step === "failed" && (
+          <div className="space-y-5">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex gap-4">
+              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold text-amber-900">We couldn't import this listing automatically</p>
+                <p className="text-sm text-amber-700">
+                  Facebook blocks most imports. Upload a screenshot instead and we'll fill it in for you.
+                </p>
               </div>
             </div>
 
-            <div className="bg-white border rounded-lg p-4 space-y-2">
-              {importedData.name && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Title</p>
-                  <p className="font-medium">{importedData.name}</p>
-                </div>
+            <div className="space-y-3">
+              <Button
+                onClick={handleScreenshotPick}
+                className="w-full h-14 text-white font-semibold text-base gap-3 rounded-xl"
+                style={{ backgroundColor: "#0DCEA1" }}
+              >
+                <Image className="h-5 w-5" />
+                Upload screenshot
+                <ChevronRight className="h-4 w-4 ml-auto" />
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={handleEnterManually}
+                className="w-full h-14 font-semibold text-base gap-3 rounded-xl border-2"
+              >
+                <Pencil className="h-5 w-5" />
+                Enter manually
+                <ChevronRight className="h-4 w-4 ml-auto" />
+              </Button>
+            </div>
+
+            <button
+              onClick={() => setStep("url")}
+              className="w-full text-sm text-muted-foreground hover:text-gray-700 flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Try a different URL
+            </button>
+          </div>
+        )}
+
+        {/* ── Step: Scanning ──────────────────────────────── */}
+        {step === "scanning" && (
+          <div className="py-10 flex flex-col items-center gap-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 text-teal-600 animate-spin" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-800 text-lg">Analyzing your screenshot…</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                We're reading the listing details. This takes a few seconds.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step: Done / Preview ────────────────────────── */}
+        {step === "done" && extracted && (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-green-800">Details extracted!</p>
+                <p className="text-sm text-green-700">Review below and we'll pre-fill the listing form.</p>
+              </div>
+            </div>
+
+            <div className="bg-white border rounded-xl p-4 space-y-3 text-sm">
+              {extracted.name && (
+                <Row label="Item" value={extracted.name} />
               )}
-              {importedData.description && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Description</p>
-                  <p className="text-sm text-gray-700 line-clamp-3">{importedData.description}</p>
-                </div>
+              {extracted.brand && (
+                <Row label="Brand" value={`${extracted.brand}${extracted.isLuxury ? " ✦ Luxury" : ""}`} />
               )}
-              {importedData.price && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Price</p>
-                  <p className="text-sm font-medium">${importedData.price}</p>
-                </div>
+              {extracted.itemType && (
+                <Row label="Category" value={extracted.itemType} />
+              )}
+              {extracted.condition && (
+                <Row label="Condition" value={`${extracted.condition} (${extracted.conditionRating}/10)`} />
+              )}
+              {extracted.originalValue && (
+                <Row label="Value range" value={`${extracted.originalValue} · Tier ${extracted.suggestedTier}`} />
+              )}
+              {extracted.price != null && (
+                <Row label="Listed price" value={`$${extracted.price}`} />
+              )}
+              {extracted.modelVersion && (
+                <Row label="Model / version" value={extracted.modelVersion} />
+              )}
+              {extracted.visibleDamage && (
+                <Row label="Visible damage" value={extracted.visibleDamage} className="text-amber-700" />
               )}
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleReset} className="flex-1">
-                Import Another
+              <Button variant="outline" onClick={() => setStep("failed")} className="flex-1">
+                ← Back
               </Button>
               <Button
-                onClick={handleListImported}
-                className="flex-1 text-white"
+                onClick={handleListExtracted}
+                className="flex-2 text-white"
                 style={{ backgroundColor: "#0DCEA1" }}
               >
-                List This Item →
+                List this item →
               </Button>
             </div>
           </div>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Row({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className={`font-medium text-right ${className}`}>{value}</span>
+    </div>
   );
 }

@@ -1764,6 +1764,99 @@ Return only the JSON object, no other text.`;
     }
   });
 
+
+  // Import listing from marketplace screenshot using GPT-4 Vision
+  app.post('/api/import-from-screenshot', upload.single('screenshot'), csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Screenshot image is required' });
+      }
+
+      const base64Image = req.file.buffer.toString('base64');
+      const mimeType = req.file.mimetype || 'image/jpeg';
+
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Image}`,
+                  detail: 'high',
+                },
+              },
+              {
+                type: 'text',
+                text: `Analyze this marketplace listing screenshot and extract every visible detail. Return ONLY valid JSON with EXACTLY these fields:
+{
+  "name": "item name, max 60 chars",
+  "description": "full description from the listing, cleaned up",
+  "price": <number or null>,
+  "condition": "Like New" or "Good" or "Fair" or "Well Loved",
+  "conditionRating": <integer 1-10>,
+  "brand": "brand name or empty string",
+  "itemType": "one of: Electronics, Furniture, Clothing, Sporting Goods, Tools, Books & Media, Toys & Games, Kitchen & Dining, Baby & Kids, Musical Instruments, Art & Collectibles, Automotive, Outdoor & Garden, Health & Beauty, Other",
+  "visibleDamage": "describe any visible damage or wear, or empty string if none",
+  "modelVersion": "model number, version, year, size or empty string",
+  "isLuxury": <true or false>,
+  "originalValue": "Under $50" or "$50–$199" or "$200–$499" or "$500–$2,000",
+  "suggestedTier": <1, 2, 3, or 4>
+}
+
+Condition mapping: new/like new/mint → "Like New" (rating 9-10); good/great/excellent → "Good" (7-8); fair/used/okay → "Fair" (5-6); worn/damaged/poor → "Well Loved" (1-4).
+Tier: under $50 → tier 1; $50-$199 → tier 2; $200-$499 → tier 3; $500+ → tier 4.
+Luxury: true if brand is designer/premium (e.g. Gucci, LV, Apple, Sony, Dyson, Rolex, etc).
+Return only the JSON object, no other text.`
+              }
+            ]
+          }
+        ],
+        max_tokens: 600,
+      });
+
+      const raw = completion.choices[0]?.message?.content || '{}';
+      const jsonMatch = raw.match(/{[sS]*}/);
+      if (!jsonMatch) {
+        return res.status(500).json({ error: 'Could not parse AI response' });
+      }
+      const extracted = JSON.parse(jsonMatch[0]);
+
+      const validConditions = ['Like New', 'Good', 'Fair', 'Well Loved'];
+      const validTiers = [1, 2, 3, 4];
+      const validValues = ['Under $50', '$50–$199', '$200–$499', '$500–$2,000'];
+
+      return res.json({
+        name: (extracted.name || 'Imported Item').substring(0, 60),
+        description: extracted.description || '',
+        price: extracted.price ? parseFloat(String(extracted.price)) : null,
+        condition: validConditions.includes(extracted.condition) ? extracted.condition : 'Good',
+        conditionRating: Math.min(10, Math.max(1, parseInt(String(extracted.conditionRating)) || 7)),
+        brand: extracted.brand || '',
+        itemType: extracted.itemType || '',
+        visibleDamage: extracted.visibleDamage || '',
+        modelVersion: extracted.modelVersion || '',
+        isLuxury: !!extracted.isLuxury,
+        originalValue: validValues.includes(extracted.originalValue) ? extracted.originalValue : '$50–$199',
+        suggestedTier: validTiers.includes(parseInt(String(extracted.suggestedTier))) ? parseInt(String(extracted.suggestedTier)) : 2,
+      });
+    } catch (error) {
+      const err = error as any;
+      console.error('Screenshot import error:', err);
+      return res.status(500).json({ error: err.message || 'Failed to analyze screenshot' });
+    }
+  });
+
   // AI-powered item category detection
   app.post("/api/detect-category", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {

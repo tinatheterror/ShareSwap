@@ -1803,7 +1803,7 @@ Return only the JSON object, no other text.`;
   "name": "item name, max 60 chars",
   "description": "full description from the listing, cleaned up",
   "price": <number or null>,
-  "condition": "Like New" or "Good" or "Fair" or "Well Loved",
+  "condition": "New / Like New" or "Good" or "Fair" or "Well Loved",
   "conditionRating": <integer 1-10>,
   "brand": "brand name or empty string",
   "itemType": "one of: Electronics, Furniture, Clothing, Sporting Goods, Tools, Books & Media, Toys & Games, Kitchen & Dining, Baby & Kids, Musical Instruments, Art & Collectibles, Automotive, Outdoor & Garden, Health & Beauty, Other",
@@ -1814,7 +1814,7 @@ Return only the JSON object, no other text.`;
   "suggestedTier": <1, 2, 3, or 4>
 }
 
-Condition mapping: new/like new/mint → "Like New" (rating 9-10); good/great/excellent → "Good" (7-8); fair/used/okay → "Fair" (5-6); worn/damaged/poor → "Well Loved" (1-4).
+Condition mapping: new/like new/mint → "New / Like New" (rating 9-10); good/great/excellent → "Good" (7-8); fair/used/okay → "Fair" (5-6); worn/damaged/poor → "Well Loved" (1-4).
 Tier: under $50 → tier 1; $50-$199 → tier 2; $200-$499 → tier 3; $500+ → tier 4.
 Luxury: true if brand is designer/premium (e.g. Gucci, LV, Apple, Sony, Dyson, Rolex, etc).
 Return only the JSON object, no other text.`
@@ -1855,7 +1855,7 @@ Return only the JSON object, no other text.`
         return res.status(500).json({ error: 'Could not parse AI response' });
       }
 
-      const validConditions = ['Like New', 'Good', 'Fair', 'Well Loved'];
+      const validConditions = ['New / Like New', 'Good', 'Fair', 'Well Loved'];
       const validTiers = [1, 2, 3, 4];
       const validValues = ['Under $50', '$50–$199', '$200–$499', '$500–$2,000'];
 

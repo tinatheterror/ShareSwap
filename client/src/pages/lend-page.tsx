@@ -514,7 +514,18 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       sessionStorage.removeItem("shareswap_import_data");
       if (data.name) form.setValue("name", data.name);
       if (data.description) form.setValue("description", data.description);
-      if (data.condition) form.setValue("condition", data.condition);
+      if (data.condition) {
+        const conditionMap: Record<string, string> = {
+          "Like New": "New / Like New",
+          "New": "New / Like New",
+          "New / Like New": "New / Like New",
+          "Good": "Good",
+          "Fair": "Fair",
+          "Well Loved": "Well Loved",
+        };
+        const mapped = conditionMap[data.condition] || data.condition;
+        form.setValue("condition", mapped);
+      }
       if (data.conditionRating) form.setValue("conditionRating", data.conditionRating);
       if (data.itemType) form.setValue("itemType", data.itemType);
       if (data.originalValue) form.setValue("originalValue", data.originalValue);

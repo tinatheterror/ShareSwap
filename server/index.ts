@@ -52,7 +52,54 @@ const app = express();
 app.use(
   helmet({
     contentSecurityPolicy:
-      process.env.NODE_ENV === "production" ? undefined : false,
+      process.env.NODE_ENV === "production"
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: [
+                "'self'",
+                "'unsafe-inline'",
+                "'unsafe-eval'",
+                "https://js.stripe.com",
+                "https://cdn.withpersona.com",
+                "https://*.userjot.com",
+                "https://accounts.google.com",
+              ],
+              styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+              fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+              imgSrc: [
+                "'self'",
+                "data:",
+                "blob:",
+                "https:",
+              ],
+              connectSrc: [
+                "'self'",
+                "https://api.stripe.com",
+                "https://api.withpersona.com",
+                "https://*.withpersona.com",
+                "https://api.openai.com",
+                "https://*.userjot.com",
+                "wss:",
+                "ws:",
+              ],
+              frameSrc: [
+                "'self'",
+                "https://js.stripe.com",
+                "https://*.stripe.com",
+                "https://*.stripe.network",
+                "https://withpersona.com",
+                "https://*.withpersona.com",
+                "https://*.userjot.com",
+                "https://accounts.google.com",
+              ],
+              frameAncestors: ["'none'"],
+              objectSrc: ["'none'"],
+              mediaSrc: ["'self'", "blob:"],
+              workerSrc: ["'self'", "blob:"],
+            },
+          }
+        : false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow images to load on iOS
   }),

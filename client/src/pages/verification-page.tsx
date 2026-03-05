@@ -146,18 +146,21 @@ export default function VerificationPage() {
       const { Client } = await import("persona");
 
       let readyFired = false;
+      console.log("[Persona] Creating client with inquiryId:", inquiryId);
 
-      // Timeout: if onReady doesn't fire in 15s, the SDK may be blocked by domain restrictions
+      // Timeout: if onReady doesn't fire in 30s, the SDK may be blocked by domain restrictions
       const timeoutId = setTimeout(() => {
         if (!readyFired) {
+          console.error("[Persona] onReady never fired — possible CSP or domain restriction");
           setPersonaError("Verification could not load. Please try again or contact support if this persists.");
           setPersonaLoading(false);
         }
-      }, 15000);
+      }, 30000);
 
       const client = new Client({
         inquiryId,
         onReady: () => {
+          console.log("[Persona] onReady fired");
           readyFired = true;
           clearTimeout(timeoutId);
           setPersonaLoading(false);

@@ -97,21 +97,15 @@ export function LocationSetupModal({
     const trimmedInput = locationInput.trim();
 
     if (!trimmedInput) {
-      setError("Please enter your city or postal code.");
+      setError("Please enter your city.");
       return;
     }
 
     setError("");
 
-    const isPostalCode =
-      /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(trimmedInput) ||
-      /^\d{5}(-\d{4})?$/.test(trimmedInput);
-
     saveLocationMutation.mutate({
-      city: isPostalCode ? detectedLocation?.city || "" : trimmedInput,
-      postalCode: isPostalCode
-        ? trimmedInput
-        : detectedLocation?.postalCode || "",
+      city: trimmedInput,
+      postalCode: detectedLocation?.postalCode || "",
       radius: parseInt(radiusOption),
     });
   };
@@ -138,12 +132,12 @@ export function LocationSetupModal({
         <div className="space-y-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="location" className="text-sm font-medium">
-              Your city or postal code
+              Your city
             </Label>
             <div className="relative">
               <Input
                 id="location"
-                placeholder="Enter your city or postal code"
+                placeholder="Enter your city (e.g. Toronto)"
                 value={locationInput}
                 onChange={(e) => {
                   setLocationInput(e.target.value);

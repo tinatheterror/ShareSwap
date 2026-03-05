@@ -1019,12 +1019,12 @@ export default function BorrowPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground">
-                      Search by city, neighbourhood or postal code.
+                      Search by city.
                     </label>
                     <Input
                       value={userPostalCode}
                       onChange={(e) => setUserPostalCode(e.target.value)}
-                      placeholder="Enter location"
+                      placeholder="Enter your city (e.g. Toronto)"
                       className="mt-1"
                     />
                   </div>

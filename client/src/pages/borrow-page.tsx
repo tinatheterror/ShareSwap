@@ -128,7 +128,7 @@ export default function BorrowPage() {
   // Save location to user profile mutation
   const saveLocationMutation = useMutation({
     mutationFn: ({ location, radius: r }: { location: string; radius: number }) => {
-      return apiRequest("POST", "/api/user/location", { city: location, radius: r });
+      return apiRequest("POST", "/api/user/location", { city: location, postalCode: location, radius: r });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -169,24 +169,24 @@ export default function BorrowPage() {
             lon: longitude,
           });
 
-          // Get city name from coordinates - try BigDataCloud first, then Nominatim
-          let cityName: string | null = null;
-
-          // Try BigDataCloud first (no API key needed)
+          // Get postal code from coordinates - try BigDataCloud first, then Nominatim
+          let postcode: string | null = null;
+          
+          // Try BigDataCloud first (better postal code coverage, no API key needed)
           try {
             const bdcResponse = await fetch(
               `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
             );
             if (bdcResponse.ok) {
               const bdcData = await bdcResponse.json();
-              cityName = bdcData.city || bdcData.locality || bdcData.principalSubdivision || null;
+              postcode = bdcData.postcode || null;
             }
           } catch (e) {
             console.log("BigDataCloud failed, trying Nominatim...");
           }
-
-          // Fallback to OpenStreetMap Nominatim
-          if (!cityName) {
+          
+          // Fallback to OpenStreetMap Nominatim if BigDataCloud didn't return postal code
+          if (!postcode) {
             try {
               const response = await fetch(
                 `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
@@ -198,17 +198,17 @@ export default function BorrowPage() {
               );
               if (response.ok) {
                 const data = await response.json();
-                cityName = data.address?.city || data.address?.town || data.address?.village || null;
+                postcode = data.address?.postcode || data.address?.postal_code || null;
               }
             } catch (error) {
-              console.error("Error getting city name:", error);
+              console.error("Error getting postal code:", error);
             }
           }
-
-          if (cityName) {
-            setUserPostalCode(cityName);
+          
+          if (postcode) {
+            setUserPostalCode(postcode);
           } else {
-            console.log("Could not determine city from coordinates");
+            console.log("Could not determine postal code from coordinates");
           }
         },
         async (error: GeolocationPositionError) => {
@@ -1019,12 +1019,12 @@ export default function BorrowPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground">
-                      Search by city.
+                      Search by city, neighbourhood or postal code.
                     </label>
                     <Input
                       value={userPostalCode}
                       onChange={(e) => setUserPostalCode(e.target.value)}
-                      placeholder="Enter your city"
+                      placeholder="Enter location"
                       className="mt-1"
                     />
                   </div>

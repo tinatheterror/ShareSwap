@@ -22,6 +22,7 @@ interface LocationSetupModalProps {
 
 interface GeoLocation {
   city: string;
+  postalCode: string;
   lat: number;
   lon: number;
 }
@@ -43,6 +44,7 @@ export function LocationSetupModal({
   const saveLocationMutation = useMutation({
     mutationFn: async (data: {
       city: string;
+      postalCode: string;
       radius: number;
     }) => {
       const response = await apiRequest("POST", "/api/user/location", data);
@@ -79,9 +81,9 @@ export function LocationSetupModal({
       const response = await fetch("/api/geo/detect");
       if (response.ok) {
         const data = await response.json();
-        if (data.city) {
+        if (data.city || data.postalCode) {
           setDetectedLocation(data);
-          setLocationInput(data.city);
+          setLocationInput(data.city || data.postalCode || "");
         }
       }
     } catch (err) {
@@ -95,14 +97,21 @@ export function LocationSetupModal({
     const trimmedInput = locationInput.trim();
 
     if (!trimmedInput) {
-      setError("Please enter your city.");
+      setError("Please enter your city or postal code.");
       return;
     }
 
     setError("");
 
+    const isPostalCode =
+      /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(trimmedInput) ||
+      /^\d{5}(-\d{4})?$/.test(trimmedInput);
+
     saveLocationMutation.mutate({
-      city: trimmedInput,
+      city: isPostalCode ? detectedLocation?.city || "" : trimmedInput,
+      postalCode: isPostalCode
+        ? trimmedInput
+        : detectedLocation?.postalCode || "",
       radius: parseInt(radiusOption),
     });
   };
@@ -129,12 +138,12 @@ export function LocationSetupModal({
         <div className="space-y-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="location" className="text-sm font-medium">
-              Your city
+              Your city or postal code
             </Label>
             <div className="relative">
               <Input
                 id="location"
-                placeholder="Enter your city"
+                placeholder="Enter your city or postal code"
                 value={locationInput}
                 onChange={(e) => {
                   setLocationInput(e.target.value);

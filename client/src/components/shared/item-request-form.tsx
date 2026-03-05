@@ -217,7 +217,7 @@ export function ItemRequestForm({
     <><Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] bg-white max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="truncate pr-6">
+          <DialogTitle className="pr-6 leading-tight break-words">
             {requestType === "GIFT" 
               ? `Request ${item.name} as a gift`
               : `Request to ${requestType.toLowerCase()} ${item.name}`}

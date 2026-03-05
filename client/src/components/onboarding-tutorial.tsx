@@ -168,9 +168,16 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
       const delay = needsMenu ? 400 : 50;
 
       const findAndHighlightElement = () => {
-        const element = document.querySelector(
-          step.highlightSelector!,
-        ) as HTMLElement;
+        // Use all matches and pick the first visible one (non-zero bounding rect)
+        // This handles cases where the same selector exists in both desktop nav (hidden on mobile) and mobile nav
+        const allElements = Array.from(
+          document.querySelectorAll(step.highlightSelector!)
+        ) as HTMLElement[];
+        const element = allElements.find((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.height > 0;
+        }) || allElements[0] || null;
+
         if (element) {
           setHighlightedElement(element);
 

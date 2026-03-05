@@ -60,19 +60,35 @@ export function calculateSecurityDeposit(
   // Calculate base deposit
   const baseDeposit = itemValue * depositPercentage;
   
+  // If base deposit is already at or below the $5 minimum, no discount applies
+  if (Math.round(baseDeposit) <= 5) {
+    return {
+      baseDeposit: 5,
+      trustDiscount: 0,
+      discountPercentage: 0,
+      finalDeposit: 5,
+      trustScore,
+    };
+  }
+
   // Get trust score discount
   const { discount, percentage } = getTrustScoreDiscount(trustScore);
   
   // Calculate trust discount amount
   const trustDiscount = baseDeposit * discount;
   
-  // Calculate final deposit
-  const finalDeposit = Math.max(5, Math.round(baseDeposit - trustDiscount)); // Minimum $5 deposit
+  // Calculate final deposit (minimum $5)
+  const discountedAmount = Math.round(baseDeposit - trustDiscount);
+  const finalDeposit = Math.max(5, discountedAmount);
+
+  // If the minimum floor kicked in, the discount wasn't actually applied — clear it
+  const effectiveDiscountPercentage = finalDeposit === 5 && discountedAmount < 5 ? 0 : percentage;
+  const effectiveTrustDiscount = finalDeposit === 5 && discountedAmount < 5 ? 0 : Math.round(trustDiscount);
   
   return {
     baseDeposit: Math.round(baseDeposit),
-    trustDiscount: Math.round(trustDiscount),
-    discountPercentage: percentage,
+    trustDiscount: effectiveTrustDiscount,
+    discountPercentage: effectiveDiscountPercentage,
     finalDeposit,
     trustScore,
   };

@@ -47,6 +47,7 @@ import { VerificationNudge } from "@/components/verification-nudge";
 import { BackgroundPolling } from "@/components/background-polling";
 import { LocationSetupWrapper } from "@/components/location-setup-wrapper";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ShareCoinAnimation } from "@/components/sharecoin-animation";
 
 function Router() {
   return (
@@ -99,6 +100,7 @@ function App() {
           <LocationSetupWrapper />
           <VerificationNudge />
           <BackgroundPolling />
+          <ShareCoinAnimation />
           <Toaster />
         </AuthProvider>
       </QueryClientProvider>

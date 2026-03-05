@@ -214,7 +214,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const [selectedWishlistMatch, setSelectedWishlistMatch] = useState<any>(null);
   const [listedItemData, setListedItemData] = useState<any>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">("environment");
+  const [cameraFacing, setCameraFacing] = useState<"user" | "environment">(
+    "environment",
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -225,25 +227,39 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const startCamera = useCallback(async () => {
     try {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current.getTracks().forEach((t) => t.stop());
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: cameraFacing, width: { ideal: 1280 }, height: { ideal: 960 } },
+        video: { facingMode: { ideal: cameraFacing } },
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setIsCameraOpen(true);
+      // Delay to ensure video element is mounted after state update
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          // iOS Safari requires explicit play() call after setting srcObject
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().catch(() => {});
+          };
+          // Fallback: some iOS versions don't fire onloadedmetadata reliably
+          videoRef.current.play().catch(() => {});
+        }
+      }, 50);
     } catch (err) {
-      toast({ title: "Camera unavailable", description: "Could not access camera. Please check your browser permissions.", variant: "destructive" });
+      toast({
+        title: "Camera unavailable",
+        description:
+          "Could not access camera. Please check your browser permissions.",
+        variant: "destructive",
+      });
     }
   }, [cameraFacing, toast]);
 
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
     setIsCameraOpen(false);
@@ -258,47 +274,67 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `camera-${Date.now()}.jpg`, { type: "image/jpeg" });
-      setSelectedPhotos(prev => [...prev, file]);
-      const reader = new FileReader();
-      reader.onload = () => setPhotoPreviewUrls(prev => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
-      toast({ title: "Photo captured!", description: "You can take more or proceed." });
-    }, "image/jpeg", 0.85);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `camera-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        setSelectedPhotos((prev) => [...prev, file]);
+        const reader = new FileReader();
+        reader.onload = () =>
+          setPhotoPreviewUrls((prev) => [...prev, reader.result as string]);
+        reader.readAsDataURL(file);
+        toast({
+          title: "Photo captured!",
+          description: "You can take more or proceed.",
+        });
+      },
+      "image/jpeg",
+      0.85,
+    );
   }, [toast]);
 
-  const handleMobileCameraCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setSelectedPhotos(prev => [...prev, file]);
-      const reader = new FileReader();
-      reader.onload = () => setPhotoPreviewUrls(prev => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
-      toast({ title: "Photo captured!", description: "You can take more or proceed." });
-    }
-    if (e.target) e.target.value = "";
-  }, [toast]);
+  const handleMobileCameraCapture = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files.length > 0) {
+        const file = e.target.files[0];
+        setSelectedPhotos((prev) => [...prev, file]);
+        const reader = new FileReader();
+        reader.onload = () =>
+          setPhotoPreviewUrls((prev) => [...prev, reader.result as string]);
+        reader.readAsDataURL(file);
+        toast({
+          title: "Photo captured!",
+          description: "You can take more or proceed.",
+        });
+      }
+      if (e.target) e.target.value = "";
+    },
+    [toast],
+  );
 
   useEffect(() => {
     return () => {
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
   }, []);
 
-  const handleTabChange = useCallback((v: string) => {
-    if (v !== "camera") {
-      stopCamera();
-    }
-    setUploadMethod(v as "smartscan" | "manual" | "camera");
-  }, [stopCamera]);
-
-  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual" | "camera">(
-    "manual",
+  const handleTabChange = useCallback(
+    (v: string) => {
+      if (v !== "camera") {
+        stopCamera();
+      }
+      setUploadMethod(v as "smartscan" | "manual" | "camera");
+    },
+    [stopCamera],
   );
+
+  const [uploadMethod, setUploadMethod] = useState<
+    "smartscan" | "manual" | "camera"
+  >("manual");
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
@@ -329,7 +365,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         // Geocode the postal code to get coordinates
         const geocodePostalCode = async () => {
           try {
-            const response = await fetch(`/api/geo/geocode?query=${encodeURIComponent(user.defaultPostalCode || "")}`);
+            const response = await fetch(
+              `/api/geo/geocode?query=${encodeURIComponent(user.defaultPostalCode || "")}`,
+            );
             if (response.ok) {
               const data = await response.json();
               if (data.lat && data.lon) {
@@ -456,13 +494,22 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       }
       setTimeout(() => {
         if (originalVal) {
-          form.setValue("originalValue", originalVal, { shouldDirty: false, shouldValidate: false });
+          form.setValue("originalValue", originalVal, {
+            shouldDirty: false,
+            shouldValidate: false,
+          });
         }
         if (item.condition) {
-          form.setValue("condition", item.condition, { shouldDirty: false, shouldValidate: false });
+          form.setValue("condition", item.condition, {
+            shouldDirty: false,
+            shouldValidate: false,
+          });
         }
         if (item.itemType) {
-          form.setValue("itemType", item.itemType, { shouldDirty: false, shouldValidate: false });
+          form.setValue("itemType", item.itemType, {
+            shouldDirty: false,
+            shouldValidate: false,
+          });
         }
       }, 100);
       if (item.photos && item.photos.length > 0) {
@@ -473,7 +520,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         (async () => {
           try {
             const response = await fetch(
-              `https://api-bdc.net/data/reverse-geocode?latitude=${lat}&longitude=${lng}&localityLanguage=en&key=bdc_4ab1a85e94d34be09afcd6d3c03f8bd3`
+              `https://api-bdc.net/data/reverse-geocode?latitude=${lat}&longitude=${lng}&localityLanguage=en&key=bdc_4ab1a85e94d34be09afcd6d3c03f8bd3`,
             );
             if (response.ok) {
               const data = await response.json();
@@ -516,20 +563,20 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       if (data.condition) {
         const conditionMap: Record<string, string> = {
           "Like New": "New / Like New",
-          "New": "New / Like New",
+          New: "New / Like New",
           "New / Like New": "New / Like New",
-          "Good": "Good",
-          "Fair": "Fair",
+          Good: "Good",
+          Fair: "Fair",
           "Well Loved": "Well Loved",
         };
         const mapped = conditionMap[data.condition] || data.condition;
         form.setValue("condition", mapped);
       }
-      if (data.conditionRating) form.setValue("conditionRating", data.conditionRating);
+      if (data.conditionRating)
+        form.setValue("conditionRating", data.conditionRating);
       if (data.itemType) form.setValue("itemType", data.itemType);
       if (data.name) detectItemCategory(data.name);
-    } catch {
-    }
+    } catch {}
   }, [isEditMode]);
 
   // Convert files to base64 for AI valuation
@@ -664,17 +711,45 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     suggestedWeeklyRate: number;
     suggestedDeposit: number;
     demandLevel: "low" | "moderate" | "high";
-    demandSignals: { totalRentalRequests: number; rentWishlistCount: number; categoryWishlistCount: number; totalRentableItems: number };
-    marketData: { sameCategoryCount: number; sameTierCount: number; marketAvgRate: number | null; marketAvgDeposit: number | null };
+    demandSignals: {
+      totalRentalRequests: number;
+      rentWishlistCount: number;
+      categoryWishlistCount: number;
+      totalRentableItems: number;
+    };
+    marketData: {
+      sameCategoryCount: number;
+      sameTierCount: number;
+      marketAvgRate: number | null;
+      marketAvgDeposit: number | null;
+    };
     reasoning: string[];
     itemValue: number;
   }>({
-    queryKey: ["/api/rental-pricing-suggestion", watchItemType, watchOriginalValue, calculatedTier, watchCondition],
+    queryKey: [
+      "/api/rental-pricing-suggestion",
+      watchItemType,
+      watchOriginalValue,
+      calculatedTier,
+      watchCondition,
+    ],
     queryFn: async () => {
       const getVal = () => {
-        const rangeMap: Record<string, number> = { "Under $50": 30, "$50–$199": 125, "$200–$499": 350, "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225, "$300–$1,000": 650, "$300+": 500 };
+        const rangeMap: Record<string, number> = {
+          "Under $50": 30,
+          "$50–$199": 125,
+          "$200–$499": 350,
+          "$500–$2,000": 1250,
+          "$50–$150": 100,
+          "$150–$300": 225,
+          "$300–$1,000": 650,
+          "$300+": 500,
+        };
         const rangeMidpoint = rangeMap[watchOriginalValue] || 100;
-        if (valuationResult?.internalItemValue && valuationResult.internalItemValue >= rangeMidpoint * 0.3) {
+        if (
+          valuationResult?.internalItemValue &&
+          valuationResult.internalItemValue >= rangeMidpoint * 0.3
+        ) {
           return valuationResult.internalItemValue;
         }
         if (smartScanAnalysis?.estimatedValue) {
@@ -802,7 +877,12 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         longitude = position.coords.longitude;
         console.log("Browser geolocation success:", latitude, longitude);
       } catch (error: any) {
-        console.log("Browser geolocation failed, code:", error?.code, "message:", error?.message);
+        console.log(
+          "Browser geolocation failed, code:",
+          error?.code,
+          "message:",
+          error?.message,
+        );
         // Continue to try IP-based fallback
       }
     }
@@ -931,27 +1011,44 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
       // Include custom rental rate and rental security deposit if rentable
       if (data.isRentable) {
-        const rentalRate = customRentalRate !== null ? customRentalRate : (() => {
-          const valueMap: Record<string, number> = {
-            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
-            "$300–$1,000": 650, "$300+": 500,
-          };
-          const itemValue = valueMap[data.originalValue] || 100;
-          return calculateRentalRate(itemValue, data.itemType || "").weeklyRate;
-        })();
+        const rentalRate =
+          customRentalRate !== null
+            ? customRentalRate
+            : (() => {
+                const valueMap: Record<string, number> = {
+                  "Under $50": 25,
+                  "$50–$199": 125,
+                  "$200–$499": 350,
+                  "$500–$2,000": 1250,
+                  "$50–$150": 100,
+                  "$150–$300": 225,
+                  "$300–$1,000": 650,
+                  "$300+": 500,
+                };
+                const itemValue = valueMap[data.originalValue] || 100;
+                return calculateRentalRate(itemValue, data.itemType || "")
+                  .weeklyRate;
+              })();
         formData.append("dollarsPrice", String(rentalRate));
 
-        const rentalDeposit = customRentalDeposit !== null ? customRentalDeposit : (() => {
-          const valueMap: Record<string, number> = {
-            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
-            "$300–$1,000": 650, "$300+": 500,
-          };
-          const itemValue = valueMap[data.originalValue] || 100;
-          const tier = calculateTier(data.originalValue, data.condition);
-          return calculateRentalDeposit(itemValue, tier).deposit;
-        })();
+        const rentalDeposit =
+          customRentalDeposit !== null
+            ? customRentalDeposit
+            : (() => {
+                const valueMap: Record<string, number> = {
+                  "Under $50": 25,
+                  "$50–$199": 125,
+                  "$200–$499": 350,
+                  "$500–$2,000": 1250,
+                  "$50–$150": 100,
+                  "$150–$300": 225,
+                  "$300–$1,000": 650,
+                  "$300+": 500,
+                };
+                const itemValue = valueMap[data.originalValue] || 100;
+                const tier = calculateTier(data.originalValue, data.condition);
+                return calculateRentalDeposit(itemValue, tier).deposit;
+              })();
         formData.append("rentalSecurityDeposit", String(rentalDeposit));
       }
 
@@ -1016,27 +1113,44 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
       // Include custom rental rate and rental security deposit if rentable
       if (data.isRentable) {
-        const rentalRate = customRentalRate !== null ? customRentalRate : (() => {
-          const valueMap: Record<string, number> = {
-            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
-            "$300–$1,000": 650, "$300+": 500,
-          };
-          const itemValue = valueMap[data.originalValue] || 100;
-          return calculateRentalRate(itemValue, data.itemType || "").weeklyRate;
-        })();
+        const rentalRate =
+          customRentalRate !== null
+            ? customRentalRate
+            : (() => {
+                const valueMap: Record<string, number> = {
+                  "Under $50": 25,
+                  "$50–$199": 125,
+                  "$200–$499": 350,
+                  "$500–$2,000": 1250,
+                  "$50–$150": 100,
+                  "$150–$300": 225,
+                  "$300–$1,000": 650,
+                  "$300+": 500,
+                };
+                const itemValue = valueMap[data.originalValue] || 100;
+                return calculateRentalRate(itemValue, data.itemType || "")
+                  .weeklyRate;
+              })();
         formData.append("dollarsPrice", String(rentalRate));
 
-        const rentalDeposit = customRentalDeposit !== null ? customRentalDeposit : (() => {
-          const valueMap: Record<string, number> = {
-            "Under $50": 25, "$50–$199": 125, "$200–$499": 350,
-            "$500–$2,000": 1250, "$50–$150": 100, "$150–$300": 225,
-            "$300–$1,000": 650, "$300+": 500,
-          };
-          const itemValue = valueMap[data.originalValue] || 100;
-          const tier = calculateTier(data.originalValue, data.condition);
-          return calculateRentalDeposit(itemValue, tier).deposit;
-        })();
+        const rentalDeposit =
+          customRentalDeposit !== null
+            ? customRentalDeposit
+            : (() => {
+                const valueMap: Record<string, number> = {
+                  "Under $50": 25,
+                  "$50–$199": 125,
+                  "$200–$499": 350,
+                  "$500–$2,000": 1250,
+                  "$50–$150": 100,
+                  "$150–$300": 225,
+                  "$300–$1,000": 650,
+                  "$300+": 500,
+                };
+                const itemValue = valueMap[data.originalValue] || 100;
+                const tier = calculateTier(data.originalValue, data.condition);
+                return calculateRentalDeposit(itemValue, tier).deposit;
+              })();
         formData.append("rentalSecurityDeposit", String(rentalDeposit));
       }
 
@@ -1073,17 +1187,17 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
       setSelectedPhotos((prev) => [...prev, ...newFiles]);
-      
+
       // Use FileReader for better iOS compatibility (data URLs instead of blob URLs)
       const readFileAsDataURL = (file: File): Promise<string> => {
         return new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => resolve('');
+          reader.onerror = () => resolve("");
           reader.readAsDataURL(file);
         });
       };
-      
+
       const newUrls = await Promise.all(newFiles.map(readFileAsDataURL));
       setPhotoPreviewUrls((prev) => [...prev, ...newUrls]);
     }
@@ -1240,7 +1354,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
                     {/* Original Value */}
                     <div className="space-y-4">
-                      <h3 className="font-medium">Original Value</h3>
+                      <h3 className="font-medium">Original Price</h3>
                       <FormField
                         control={form.control}
                         name="originalValue"
@@ -1326,10 +1440,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       Minimum 1 photo required. AI needs it to valuate your item
                       more accurately.
                     </p>
-                    <Tabs
-                      value={uploadMethod}
-                      onValueChange={handleTabChange}
-                    >
+                    <Tabs value={uploadMethod} onValueChange={handleTabChange}>
                       <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="camera">
                           <Camera className="w-3.5 h-3.5 mr-1" />
@@ -1412,14 +1523,21 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         {selectedPhotos.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {selectedPhotos.map((_, idx) => (
-                              <div key={idx} className="relative group w-16 h-16">
+                              <div
+                                key={idx}
+                                className="relative group w-16 h-16"
+                              >
                                 <img
                                   src={photoPreviewUrls[idx]}
                                   alt={`Photo ${idx + 1}`}
                                   className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                                 />
                                 <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                                  <button
+                                    type="button"
+                                    onClick={() => removePhoto(idx)}
+                                    className="p-1 bg-white rounded-full hover:bg-gray-100"
+                                  >
                                     <X className="w-3 h-3 text-gray-700" />
                                   </button>
                                 </div>
@@ -1774,13 +1892,25 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                     "$300–$1,000": 650,
                                     "$300+": 500,
                                   };
-                                  const rangeMidpoint = valueMap[watchOriginalValue] || 100;
-                                  if (valuationResult?.internalItemValue && valuationResult.internalItemValue >= rangeMidpoint * 0.3) {
+                                  const rangeMidpoint =
+                                    valueMap[watchOriginalValue] || 100;
+                                  if (
+                                    valuationResult?.internalItemValue &&
+                                    valuationResult.internalItemValue >=
+                                      rangeMidpoint * 0.3
+                                  ) {
                                     return valuationResult.internalItemValue;
                                   }
                                   if (smartScanAnalysis?.estimatedValue) {
-                                    const aiVal = parseFloat(smartScanAnalysis.estimatedValue);
-                                    if (!isNaN(aiVal) && aiVal > 0 && aiVal >= rangeMidpoint * 0.3) return aiVal;
+                                    const aiVal = parseFloat(
+                                      smartScanAnalysis.estimatedValue,
+                                    );
+                                    if (
+                                      !isNaN(aiVal) &&
+                                      aiVal > 0 &&
+                                      aiVal >= rangeMidpoint * 0.3
+                                    )
+                                      return aiVal;
                                   }
                                   return rangeMidpoint;
                                 };
@@ -1803,8 +1933,18 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                     ? customRentalDeposit
                                     : depositCalc.deposit;
 
-                                const rateInputValue = rentalRateInput !== "" ? rentalRateInput : (customRentalRate !== null ? String(customRentalRate) : String(rentalCalc.weeklyRate));
-                                const depositInputValue = rentalDepositInput !== "" ? rentalDepositInput : (customRentalDeposit !== null ? String(customRentalDeposit) : String(depositCalc.deposit));
+                                const rateInputValue =
+                                  rentalRateInput !== ""
+                                    ? rentalRateInput
+                                    : customRentalRate !== null
+                                      ? String(customRentalRate)
+                                      : String(rentalCalc.weeklyRate);
+                                const depositInputValue =
+                                  rentalDepositInput !== ""
+                                    ? rentalDepositInput
+                                    : customRentalDeposit !== null
+                                      ? String(customRentalDeposit)
+                                      : String(depositCalc.deposit);
 
                                 return (
                                   <>
@@ -1824,13 +1964,17 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                           setRentalRateInput(e.target.value);
                                           const val = parseInt(e.target.value);
                                           if (!isNaN(val)) {
-                                            setCustomRentalRate(Math.max(1, val));
+                                            setCustomRentalRate(
+                                              Math.max(1, val),
+                                            );
                                           }
                                         }}
                                         onBlur={() => {
                                           const val = parseInt(rentalRateInput);
                                           if (isNaN(val) || val < 1) {
-                                            setCustomRentalRate(rentalCalc.weeklyRate);
+                                            setCustomRentalRate(
+                                              rentalCalc.weeklyRate,
+                                            );
                                           }
                                           setRentalRateInput("");
                                         }}
@@ -1844,7 +1988,11 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                       </span>
                                     </div>
                                     <div className="text-[10px] text-emerald-700 mt-0.5">
-                                      AI Suggestion: ${marketPricing ? marketPricing.suggestedWeeklyRate : rentalCalc.weeklyRate}/wk
+                                      AI Suggestion: $
+                                      {marketPricing
+                                        ? marketPricing.suggestedWeeklyRate
+                                        : rentalCalc.weeklyRate}
+                                      /wk
                                     </div>
                                     <div className="mt-2 pt-2 border-t border-emerald-100">
                                       <div className="text-xs font-medium text-gray-700">
@@ -1858,27 +2006,41 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                           step="1"
                                           value={depositInputValue}
                                           onChange={(e) => {
-                                            setRentalDepositInput(e.target.value);
-                                            const val = parseInt(e.target.value);
+                                            setRentalDepositInput(
+                                              e.target.value,
+                                            );
+                                            const val = parseInt(
+                                              e.target.value,
+                                            );
                                             if (!isNaN(val)) {
-                                              setCustomRentalDeposit(Math.max(0, val));
+                                              setCustomRentalDeposit(
+                                                Math.max(0, val),
+                                              );
                                             }
                                           }}
                                           onBlur={() => {
-                                            const val = parseInt(rentalDepositInput);
+                                            const val =
+                                              parseInt(rentalDepositInput);
                                             if (isNaN(val) || val < 0) {
-                                              setCustomRentalDeposit(depositCalc.deposit);
+                                              setCustomRentalDeposit(
+                                                depositCalc.deposit,
+                                              );
                                             }
                                             setRentalDepositInput("");
                                           }}
                                           onFocus={(e) => {
-                                            setRentalDepositInput(e.target.value);
+                                            setRentalDepositInput(
+                                              e.target.value,
+                                            );
                                           }}
                                           className="w-20 text-sm font-semibold text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-emerald-400"
                                         />
                                       </div>
                                       <div className="text-[10px] text-emerald-700 mt-0.5">
-                                        AI Suggestion: ${marketPricing ? marketPricing.suggestedDeposit : depositCalc.deposit}
+                                        AI Suggestion: $
+                                        {marketPricing
+                                          ? marketPricing.suggestedDeposit
+                                          : depositCalc.deposit}
                                       </div>
                                     </div>
                                     <div className="mt-2 pt-2 border-t border-emerald-100">
@@ -2210,10 +2372,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     Minimum 1 photo required. AI needs it to valuate your item
                     more accurately.
                   </p>
-                  <Tabs
-                    value={uploadMethod}
-                    onValueChange={handleTabChange}
-                  >
+                  <Tabs value={uploadMethod} onValueChange={handleTabChange}>
                     <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="camera">
                         <Camera className="w-3.5 h-3.5 mr-1" />
@@ -2270,14 +2429,21 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         {selectedPhotos.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-3">
                             {selectedPhotos.map((_, idx) => (
-                              <div key={idx} className="relative group w-16 h-16">
+                              <div
+                                key={idx}
+                                className="relative group w-16 h-16"
+                              >
                                 <img
                                   src={photoPreviewUrls[idx]}
                                   alt={`Photo ${idx + 1}`}
                                   className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                                 />
                                 <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                                  <button
+                                    type="button"
+                                    onClick={() => removePhoto(idx)}
+                                    className="p-1 bg-white rounded-full hover:bg-gray-100"
+                                  >
                                     <X className="w-3 h-3 text-gray-700" />
                                   </button>
                                 </div>
@@ -2634,15 +2800,28 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           style={{ color: "#0D9488" }}
                           className="font-semibold"
                         >
-                          Earn {(() => {
-                            if (selectedWishlistMatch.neededDate && selectedWishlistMatch.returnDate) {
-                              const startDate = new Date(selectedWishlistMatch.neededDate);
-                              const endDate = new Date(selectedWishlistMatch.returnDate);
-                              const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                          Earn{" "}
+                          {(() => {
+                            if (
+                              selectedWishlistMatch.neededDate &&
+                              selectedWishlistMatch.returnDate
+                            ) {
+                              const startDate = new Date(
+                                selectedWishlistMatch.neededDate,
+                              );
+                              const endDate = new Date(
+                                selectedWishlistMatch.returnDate,
+                              );
+                              const days =
+                                Math.ceil(
+                                  (endDate.getTime() - startDate.getTime()) /
+                                    (1000 * 60 * 60 * 24),
+                                ) + 1;
                               return 10 + Math.min(days, 10);
                             }
                             return 10;
-                          })()} ShareCoins for helping!
+                          })()}{" "}
+                          ShareCoins for helping!
                         </span>
                       </div>
                     </motion.div>
@@ -2691,7 +2870,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                               );
                               // Show confirmation modal
                               setMatchedRequesterName(
-                                formatDisplayName(selectedWishlistMatch.username) ||
+                                formatDisplayName(
+                                  selectedWishlistMatch.username,
+                                ) ||
                                   selectedWishlistMatch.firstName ||
                                   "this neighbour",
                               );
@@ -2709,7 +2890,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         }}
                         className="w-full h-12 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold shadow-lg"
                       >
-                        Match with {formatDisplayName(selectedWishlistMatch?.username)}
+                        Match with{" "}
+                        {formatDisplayName(selectedWishlistMatch?.username)}
                       </Button>
                     </motion.div>
                   </motion.div>

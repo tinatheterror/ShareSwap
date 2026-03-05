@@ -527,7 +527,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       }
       if (data.conditionRating) form.setValue("conditionRating", data.conditionRating);
       if (data.itemType) form.setValue("itemType", data.itemType);
-      if (data.originalValue) form.setValue("originalValue", data.originalValue);
       if (data.name) detectItemCategory(data.name);
     } catch {
     }

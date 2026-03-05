@@ -74,7 +74,7 @@ function generateEmailVerificationToken(): string {
 // Generate unique human-readable handle (e.g., jessica483, alex17)
 async function generateUniqueHandle(baseName: string): Promise<string> {
   // Clean the base name - only lowercase letters
-  const cleaned = baseName.toLowerCase().replace(/[^a-z]/g, '').slice(0, 12) || 'user';
+  const cleaned = baseName.toLowerCase().replace(/[^a-z]/g, '').slice(0, 20) || 'user';
   
   let attempts = 0;
   while (attempts < 50) {

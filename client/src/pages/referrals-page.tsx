@@ -171,7 +171,7 @@ export default function ReferralsPage() {
                 </div>
                 <h3 className="font-semibold mb-2">Build Community</h3>
                 <p className="text-sm text-muted-foreground">
-                  Strengthen the connections in your neighbourhood
+                  Strengthen the connections in your community
                 </p>
               </div>
             </div>

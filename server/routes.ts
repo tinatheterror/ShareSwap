@@ -1127,20 +1127,19 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const { city, postalCode, radius } = req.body;
+      const { city, radius } = req.body;
       const userId = req.user.id;
 
       await db
         .update(users)
         .set({
           defaultCity: city || null,
-          defaultPostalCode: postalCode || null,
           locationRadius: radius || 25,
           hasCompletedLocationSetup: true,
         })
         .where(eq(users.id, userId));
 
-      console.log(`[Location] User ${userId} saved location: ${city || postalCode}, radius: ${radius}km`);
+      console.log(`[Location] User ${userId} saved location: ${city}, radius: ${radius}km`);
 
       res.json({ success: true });
     } catch (error) {

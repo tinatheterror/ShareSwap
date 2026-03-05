@@ -186,7 +186,7 @@ const formSchema = baseFormSchema.refine(
     return data.postalCode || (data.latitude && data.longitude);
   },
   {
-    message: "Location is required - please enter a postal code",
+    message: "Location is required - please enter your city",
     path: ["postalCode"],
   },
 );
@@ -357,16 +357,17 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     const currentPostalCode = form.getValues("postalCode");
     if (!currentPostalCode) {
       // First try user's saved location preferences
-      if (user?.defaultPostalCode) {
-        form.setValue("postalCode", user.defaultPostalCode);
+      const savedLocation = user?.defaultCity || user?.defaultPostalCode;
+      if (savedLocation) {
+        form.setValue("postalCode", savedLocation);
         if (user?.defaultCity) {
           setDetectedLocality(user.defaultCity);
         }
-        // Geocode the postal code to get coordinates
-        const geocodePostalCode = async () => {
+        // Geocode the city to get coordinates
+        const geocodeCity = async () => {
           try {
             const response = await fetch(
-              `/api/geo/geocode?query=${encodeURIComponent(user.defaultPostalCode || "")}`,
+              `/api/geo/geocode?query=${encodeURIComponent(savedLocation)}`,
             );
             if (response.ok) {
               const data = await response.json();
@@ -376,10 +377,10 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
               }
             }
           } catch (e) {
-            console.log("Geocoding saved postal code failed:", e);
+            console.log("Geocoding saved city failed:", e);
           }
         };
-        geocodePostalCode();
+        geocodeCity();
       } else if ("geolocation" in navigator) {
         // Fall back to browser geolocation
         getCurrentLocation();
@@ -857,7 +858,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
     let latitude: number | null = null;
     let longitude: number | null = null;
-    let postcode: string | null = null;
+    let city: string | null = null;
     let locality: string | null = null;
     let region: string | null = null;
 
@@ -902,7 +903,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             latitude = ipData.latitude;
             longitude = ipData.longitude;
           }
-          postcode = ipData.postcode || null;
+          city = ipData.city || ipData.locality || null;
           locality = ipData.locality || ipData.city || null;
           region = ipData.principalSubdivision || null;
         } else {
@@ -913,8 +914,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       }
     }
 
-    // Step 3: If we have coordinates but no postal code, try reverse geocoding
-    if (latitude && longitude && !postcode) {
+    // Step 3: If we have coordinates but no city, try reverse geocoding
+    if (latitude && longitude && !city) {
       try {
         const bdcResponse = await fetch(
           `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
@@ -922,7 +923,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         if (bdcResponse.ok) {
           const bdcData = await bdcResponse.json();
           console.log("Reverse geocode response:", bdcData);
-          postcode = bdcData.postcode || postcode;
+          city = bdcData.city || bdcData.locality || city;
           locality = bdcData.locality || bdcData.city || locality;
           region = bdcData.principalSubdivision || region;
         }
@@ -942,9 +943,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         form.setValue("longitude", longitude!);
       }
 
-      // Save postal code if we have it (enhancement, not required)
-      if (postcode) {
-        form.setValue("postalCode", postcode);
+      // Save city name into the location field
+      if (city) {
+        form.setValue("postalCode", city);
       }
 
       // Save locality for display
@@ -958,7 +959,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       // Only show error if we truly have nothing (low confidence)
       toast({
         title: "Could Not Find Location",
-        description: "Please enter your postal code manually.",
+        description: "Please enter your city manually.",
         variant: "destructive",
       });
     }
@@ -1234,7 +1235,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
               <p className="text-black/90 text-[11px] sm:text-base">
                 {isEditMode
                   ? " "
-                  : "Make your neighbourhood richer without spending a cent"}
+                  : "Make your community richer without spending a cent"}
               </p>
             </div>
           </div>
@@ -2435,14 +2436,14 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm text-muted-foreground">
-                      Search by city, neighbourhood or ZIP code.
+                      Search by city.
                     </label>
                     <Input
                       value={form.getValues("postalCode")}
                       onChange={(e) =>
                         form.setValue("postalCode", e.target.value)
                       }
-                      placeholder="Enter location"
+                      placeholder="Enter your city"
                       className="mt-1"
                     />
                   </div>

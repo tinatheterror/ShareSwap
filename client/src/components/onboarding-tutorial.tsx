@@ -31,7 +31,7 @@ const tutorialSteps: TutorialStep[] = [
     title: "Welcome to ShareSwap!",
     description: (
       <>
-        ShareSwap is your neighbourhood sharing marketplace where you can{" "}
+        ShareSwap is your community sharing marketplace where you can{" "}
         <strong>borrow, lend, rent, swap, and gift items</strong> with people
         nearby. This quick tour will walk you through each feature. You can skip
         at any time.

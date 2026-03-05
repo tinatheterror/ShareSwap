@@ -583,7 +583,7 @@ export default function WishlistsPage() {
                         preferredLocation: e.target.value,
                       })
                     }
-                    placeholder="Neighbourhood, postal code, or 'nearby'"
+                    placeholder="City or 'nearby'"
                     className="pl-10"
                   />
                 </div>
@@ -814,7 +814,7 @@ export default function WishlistsPage() {
                   <Input
                     name="preferredLocation"
                     defaultValue={wishlistToEdit?.preferredLocation || ""}
-                    placeholder="Neighbourhood, postal code, or 'nearby'"
+                    placeholder="City or 'nearby'"
                     className="pl-10"
                   />
                 </div>

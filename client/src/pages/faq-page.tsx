@@ -1521,7 +1521,7 @@ export default function FAQPage() {
                   Is my address shown to other users?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
-                  No. Only approximate neighbourhood is shown.
+                  No. Only your approximate city is shown.
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="privacy-2">

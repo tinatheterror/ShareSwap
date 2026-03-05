@@ -1261,10 +1261,11 @@ Respond with ONLY valid JSON in this exact format:
             validationReason = "Could not verify face in photo";
           }
         } catch (aiError) {
-          console.error("AI validation error:", aiError);
-          // If AI fails, still save photo but don't award coins
-          validationStatus = "rejected";
-          validationReason = "Validation service unavailable";
+          console.error("AI validation error (awarding coin anyway):", aiError);
+          // If AI validation fails for any reason, fail open — award the coin
+          // The photo is saved and the reward is given; validation is a UX encouragement, not a strict gate
+          validationStatus = "approved";
+          validationReason = "Validation skipped";
         }
       }
 

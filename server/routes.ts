@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { randomBytes } from "crypto";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { db, pool } from "@db";
 import {
   verifications,
@@ -8271,6 +8271,28 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Account Deactivation endpoint
+  app.post("/api/account/change-password", csrfProtection, async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    const userId = (req.user as any).id;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current and new password are required" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user.password) {
+      return res.status(400).json({ message: "Password login is not enabled for this account" });
+    }
+    const valid = await comparePasswords(currentPassword, user.password);
+    if (!valid) return res.status(400).json({ message: "Current password is incorrect" });
+    const hashed = await hashPassword(newPassword);
+    await db.update(users).set({ password: hashed }).where(eq(users.id, userId));
+    res.json({ message: "Password updated successfully" });
+  });
+
   app.post("/api/account/deactivate", csrfProtection, async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ message: "Not authenticated" });

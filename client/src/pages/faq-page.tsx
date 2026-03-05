@@ -755,28 +755,28 @@ export default function FAQPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 1</p>
-                  <p className="text-xs text-gray-500">Everyday</p>
+                  <p className="text-xs text-gray-500">Budget Friendly</p>
                   <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
                     5 SC
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 2</p>
-                  <p className="text-xs text-gray-500">Mid-value</p>
+                  <p className="text-xs text-gray-500">Everyday Household</p>
                   <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
                     10 SC
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 3</p>
-                  <p className="text-xs text-gray-500">High-value</p>
+                  <p className="text-xs text-gray-500">Premium</p>
                   <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
                     20 SC
                   </p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-sm font-medium text-gray-700">Tier 4</p>
-                  <p className="text-xs text-gray-500">Premium</p>
+                  <p className="text-xs text-gray-500">High Value</p>
                   <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
                     40 SC
                   </p>
@@ -801,7 +801,7 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Shield className="h-5 w-5 text-gray-600" />
+              <Shield className="h-5 w-5 text-[#0DCEA1]" />
               Trust & Safety
             </CardTitle>
             <p className="text-gray-500 text-sm mt-1">

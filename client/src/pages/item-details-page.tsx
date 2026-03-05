@@ -21,7 +21,10 @@ import {
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
 import { getSwapTierLabel } from "@/lib/swap-calculator";
-import { formatReplacementValue, hasValidReplacementValue } from "@/lib/replacement-value";
+import {
+  formatReplacementValue,
+  hasValidReplacementValue,
+} from "@/lib/replacement-value";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDisplayName } from "@/lib/utils";
@@ -44,7 +47,9 @@ type ItemRequest = {
 export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [showSwapSelector, setShowSwapSelector] = useState(false);
-  const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem | null>(null);
+  const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem | null>(
+    null,
+  );
   const [showGiftClaimModal, setShowGiftClaimModal] = useState(false);
   const [location] = useLocation();
   const { toast } = useToast();
@@ -73,15 +78,18 @@ export default function ItemDetailsPage() {
 
   // Fetch pending requests to check if user already has a pending request for this item
   const { data: requests } = useQuery<ItemRequest[]>({
-    queryKey: ['/api/requests'],
+    queryKey: ["/api/requests"],
   });
 
   // Check if user has pending requests for this item
-  const pendingRequests = requests?.filter(
-    (r) => r.itemId === Number(itemId) && r.status === "PENDING"
-  ) || [];
-  
-  const hasPendingBorrow = pendingRequests.some((r) => r.requestType === "BORROW");
+  const pendingRequests =
+    requests?.filter(
+      (r) => r.itemId === Number(itemId) && r.status === "PENDING",
+    ) || [];
+
+  const hasPendingBorrow = pendingRequests.some(
+    (r) => r.requestType === "BORROW",
+  );
   const hasPendingRent = pendingRequests.some((r) => r.requestType === "RENT");
   const hasPendingSwap = pendingRequests.some((r) => r.requestType === "SWAP");
   const hasPendingGift = pendingRequests.some((r) => r.requestType === "GIFT");
@@ -94,16 +102,22 @@ export default function ItemDetailsPage() {
     const itemReplacementValue = (item as any).replacementValue;
     const itemTier = (item as any).tier || 2;
     const itemOriginalValue = (item as any).originalValue || "$50–$150";
-    
+
     const isOwner = user?.id === (item as any).ownerId;
     const reputationScore = user?.reputationScore || 0;
-    const viewerTrustScore = Math.min(100, Math.round((reputationScore / 500) * 100) + 50);
+    const viewerTrustScore = Math.min(
+      100,
+      Math.round((reputationScore / 500) * 100) + 50,
+    );
     const depositCalc = isOwner
       ? calculateSecurityDeposit(itemTier, itemOriginalValue, 0)
       : calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);
-    
+
     const borrowOption = item.isLendable ? (
-      <div key="borrow" className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <div
+        key="borrow"
+        className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3"
+      >
         <div>
           <p className="font-medium">Borrow</p>
           <div className="flex items-center gap-2 mb-1">
@@ -125,13 +139,19 @@ export default function ItemDetailsPage() {
                         </span>
                         ${depositCalc.baseDeposit}
                       </span>
-                      <span className="font-semibold text-teal-600">${depositCalc.finalDeposit}</span>
+                      <span className="font-semibold text-teal-600">
+                        ${depositCalc.finalDeposit}
+                      </span>
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="p-0 border-0 bg-transparent shadow-none">
+                  <TooltipContent
+                    side="bottom"
+                    className="p-0 border-0 bg-transparent shadow-none"
+                  >
                     <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
                       <Info className="h-3 w-3 inline mr-1" />
-                      Discounted {depositCalc.discountPercentage}% by your trust score
+                      Discounted {depositCalc.discountPercentage}% by your trust
+                      score
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -147,15 +167,20 @@ export default function ItemDetailsPage() {
           )}
         </div>
         {hasPendingBorrow ? (
-          <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+          <Button
+            disabled
+            className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+          >
             <Clock className="h-4 w-4 mr-1" />
             Request Pending
           </Button>
         ) : (
-          <Button 
-            onClick={() => setRequestType("BORROW")} 
+          <Button
+            onClick={() => setRequestType("BORROW")}
             className="w-full sm:w-40"
-            disabled={hasAnyPending || !hasValidReplacementValue(itemReplacementValue)}
+            disabled={
+              hasAnyPending || !hasValidReplacementValue(itemReplacementValue)
+            }
           >
             <HandHeart className="h-4 w-4 mr-1" />
             Request to Borrow
@@ -165,7 +190,10 @@ export default function ItemDetailsPage() {
     ) : null;
 
     const rentOption = item.isRentable ? (
-      <div key="rent" className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <div
+        key="rent"
+        className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3"
+      >
         <div>
           <p className="font-medium">Rent</p>
           <div className="flex items-center gap-2 mb-1">
@@ -178,13 +206,16 @@ export default function ItemDetailsPage() {
           </p>
         </div>
         {hasPendingRent ? (
-          <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+          <Button
+            disabled
+            className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+          >
             <Clock className="h-4 w-4 mr-1" />
             Request Pending
           </Button>
         ) : (
-          <Button 
-            onClick={() => setRequestType("RENT")} 
+          <Button
+            onClick={() => setRequestType("RENT")}
             className="w-full sm:w-40"
             disabled={hasAnyPending}
           >
@@ -218,17 +249,24 @@ export default function ItemDetailsPage() {
                     </Badge>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="p-0 border-0 bg-transparent shadow-none">
+                <TooltipContent
+                  side="bottom"
+                  className="p-0 border-0 bg-transparent shadow-none"
+                >
                   <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
                     <Info className="h-3 w-3 inline mr-1" />
-                    Swaps allow same-tier or ±1 tier items, with ShareCoins balancing the difference.
+                    Swaps allow same-tier or ±1 tier items, with ShareCoins
+                    balancing the difference.
                   </div>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
           {hasPendingSwap ? (
-            <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+            <Button
+              disabled
+              className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+            >
               <Clock className="h-4 w-4 mr-1" />
               Request Pending
             </Button>
@@ -247,7 +285,10 @@ export default function ItemDetailsPage() {
     ) : null;
 
     const giftOption = item.isGift ? (
-      <div key="gift" className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <div
+        key="gift"
+        className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3"
+      >
         <div>
           <p className="font-medium">Gift</p>
           <div className="flex items-center gap-2 mb-1">
@@ -261,13 +302,16 @@ export default function ItemDetailsPage() {
           </p>
         </div>
         {hasPendingGift ? (
-          <Button disabled className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed">
+          <Button
+            disabled
+            className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
+          >
             <Clock className="h-4 w-4 mr-1" />
             Request Pending
           </Button>
         ) : (
-          <Button 
-            onClick={() => setRequestType("GIFT")} 
+          <Button
+            onClick={() => setRequestType("GIFT")}
             className="w-full sm:w-40 bg-pink-500 hover:bg-pink-600"
             disabled={hasAnyPending}
           >
@@ -352,7 +396,7 @@ export default function ItemDetailsPage() {
                       </span>
                       <Link href={`/profile/${(item as any).owner.username}`}>
                         <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
-                          {formatDisplayName((item as any).owner.username)}
+                          {(item as any).owner.displayName || formatDisplayName((item as any).owner.handle || (item as any).owner.username)}
                         </span>
                       </Link>
                       <div className="shadow-sm rounded-full">
@@ -369,9 +413,7 @@ export default function ItemDetailsPage() {
                 <div className="space-y-2">
                   <h3 className="font-medium">Condition</h3>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      {item.conditionRating}/10
-                    </Badge>
+                    <Badge variant="secondary">{item.conditionRating}/10</Badge>
                     {(item as any).owner?.isVerified && (
                       <span className="text-xs px-2 py-1 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20 shadow-sm">
                         Verified Owner
@@ -383,13 +425,16 @@ export default function ItemDetailsPage() {
                 {item.isGift ? (
                   <div className="pt-2">
                     {hasPendingGift ? (
-                      <Button disabled className="w-full bg-gray-400 hover:bg-gray-400 cursor-not-allowed py-6 text-lg">
+                      <Button
+                        disabled
+                        className="w-full bg-gray-400 hover:bg-gray-400 cursor-not-allowed py-6 text-lg"
+                      >
                         <Clock className="h-5 w-5 mr-2" />
                         Request Pending
                       </Button>
                     ) : (
-                      <Button 
-                        onClick={() => setShowGiftClaimModal(true)} 
+                      <Button
+                        onClick={() => setShowGiftClaimModal(true)}
                         className="w-full bg-pink-500 hover:bg-pink-600 py-6 text-lg"
                       >
                         <Gift className="h-5 w-5 mr-2" />

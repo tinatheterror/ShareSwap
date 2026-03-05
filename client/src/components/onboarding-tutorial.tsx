@@ -83,6 +83,7 @@ const tutorialSteps: TutorialStep[] = [
     title: "Earn Achievements",
     description:
       "As you participate in the sharing community, you'll unlock badges. Each achievement builds your trust score which shows neighbours that you are active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
+    highlightSelector: '[data-tutorial="wallet"]',
   },
   {
     id: 8,

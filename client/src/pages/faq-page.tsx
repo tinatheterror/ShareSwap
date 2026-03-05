@@ -839,8 +839,8 @@ export default function FAQPage() {
                   </h3>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed pl-10">
-                  Trust Scores show how reliable you are and rewards higher
-                  trust scores with discounted deposits. Reviews from neighbours
+                  Trust Scores show how reliable you are. Higher trust scores
+                  are rewarded with discounted deposits. Reviews from neighbours
                   help you decide who to borrow from, rent to, or swap with.
                 </p>
               </div>

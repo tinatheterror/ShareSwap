@@ -155,7 +155,7 @@ const baseFormSchema = z.object({
   description: z.string().min(10, "Please provide a detailed description"),
   itemType: z.string().min(1, "Item type is required"),
   condition: z.string().min(1, "Condition is required"),
-  originalValue: z.string().min(1, "Original price is required"),
+  originalValue: z.string().min(1, "Original value is required"),
   isLendable: z.boolean().default(true),
   isSwappable: z.boolean().default(false),
   isRentable: z.boolean().default(false),
@@ -1219,7 +1219,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     </div>
                   </div>
 
-                  {/* Features and Details + Original Price - Side by Side */}
+                  {/* Features and Details + Original Value - Side by Side */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4">
                     {/* Features and Details */}
                     <div className="space-y-4">
@@ -1238,9 +1238,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       />
                     </div>
 
-                    {/* Original Price */}
+                    {/* Original Value */}
                     <div className="space-y-4">
-                      <h3 className="font-medium">Original Price</h3>
+                      <h3 className="font-medium">Original Value</h3>
                       <FormField
                         control={form.control}
                         name="originalValue"

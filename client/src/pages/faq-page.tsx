@@ -638,7 +638,7 @@ export default function FAQPage() {
                         Completing
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        transactions
+                        Transactions
                       </p>
                     </div>
                   </div>
@@ -679,10 +679,10 @@ export default function FAQPage() {
                 </div>
 
                 {/* Sponsored Games */}
-                <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-3 border border-teal-200">
+                <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-3 border border-red-200">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-teal-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Gamepad2 className="h-4 w-4 text-teal-600" />
+                    <div className="w-8 h-8 bg-red-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Gamepad2 className="h-4 w-4 text-red-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">

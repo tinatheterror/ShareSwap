@@ -27,6 +27,7 @@ import {
   Leaf,
   Search,
   Lock,
+  Check,
   CheckCircle,
   RotateCcw,
   Camera,
@@ -630,7 +631,7 @@ export default function FAQPage() {
                 <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 border border-green-200">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <BadgeCheck className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">

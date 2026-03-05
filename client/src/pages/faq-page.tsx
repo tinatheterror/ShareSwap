@@ -617,10 +617,10 @@ export default function FAQPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        Completed Swap
+                        Swap Tier Offset
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Each party earns
+                        Balance value differences
                       </p>
                     </div>
                   </div>
@@ -630,31 +630,31 @@ export default function FAQPage() {
                 <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 border border-green-200">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <DollarSign className="h-4 w-4 text-green-600" />
+                      <BadgeCheck className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        Completed Rental
+                        Completing
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Owner & renter each
+                        transactions
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Gifts */}
+                {/* Initial Setup */}
                 <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-3 border border-pink-200">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-pink-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Gift className="h-4 w-4 text-pink-500" />
+                      <Flag className="h-4 w-4 text-pink-500" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        Completed Gift
+                        Initial Setup
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Giver & receiver earn
+                        First-time actions
                       </p>
                     </div>
                   </div>
@@ -712,17 +712,17 @@ export default function FAQPage() {
                 </div>
 
                 {/* Level Up */}
-                <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-3 border border-teal-200">
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-teal-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <TrendingUp className="h-4 w-4 text-teal-600" />
+                    <div className="w-8 h-8 bg-purple-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <TrendingUp className="h-4 w-4 text-purple-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
                         Level Up
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Community standing
+                        Neighbour ranks
                       </p>
                     </div>
                   </div>

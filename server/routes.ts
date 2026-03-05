@@ -8360,47 +8360,29 @@ Respond with ONLY the category name, nothing else.`
       if (usersWithoutHandles.length > 0) {
         console.log(`[Migration] Generating handles for ${usersWithoutHandles.length} existing users...`);
         
+        const ltrs = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const dgts = '23456789';
+        const rL = () => ltrs[Math.floor(Math.random() * ltrs.length)];
+        const rD = () => dgts[Math.floor(Math.random() * dgts.length)];
+
         for (const user of usersWithoutHandles) {
-          // Generate handle from username (email) or fullName
-          const baseName = user.fullName?.split(' ')[0] || user.username.split('@')[0];
-          const cleaned = baseName.toLowerCase().replace(/[^a-z]/g, '').slice(0, 12) || 'user';
-          
+          const firstLetter = user.username.split('@')[0].replace(/[^a-zA-Z]/g, '').charAt(0)?.toUpperCase();
+          const l1 = firstLetter && /^[A-Z]$/.test(firstLetter) ? firstLetter : rL();
+
           let handle = '';
-          let attempts = 0;
-          while (attempts < 50) {
-            const digits = Math.floor(Math.random() * 9000) + 10;
-            handle = `${cleaned}${digits}`;
-            
-            const [existing] = await db
-              .select()
-              .from(users)
-              .where(eq(users.handle, handle))
-              .limit(1);
-            
-            if (!existing) break;
-            attempts++;
+          for (let attempts = 0; attempts < 100; attempts++) {
+            const code = `${l1}${rD()}${rL()}${rD()}${rL()}${rD()}`;
+            const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.handle, code)).limit(1);
+            if (!existing) { handle = code; break; }
           }
-          
-          if (!handle) {
-            handle = `${cleaned}${Date.now().toString(36).slice(-5)}`;
-          }
-          
-          // Generate display name
-          let displayName = 'User';
-          if (user.fullName) {
-            const parts = user.fullName.trim().split(' ');
-            displayName = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
-          } else {
-            const prefix = user.username.split('@')[0].replace(/[^a-zA-Z]/g, '');
-            displayName = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
-          }
-          
+          if (!handle) handle = `${l1}${rD()}${rL()}${rD()}${rL()}${rD()}`;
+
           await db
             .update(users)
-            .set({ handle, displayName })
+            .set({ handle, referralCode: handle })
             .where(eq(users.id, user.id));
           
-          console.log(`[Migration] User ${user.id} assigned handle: ${handle}, displayName: ${displayName}`);
+          console.log(`[Migration] User ${user.id} assigned userCode: ${handle}`);
         }
         
         console.log(`[Migration] Handle migration complete!`);

@@ -38,62 +38,34 @@ async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
-async function generateUniqueReferralCode(): Promise<string> {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const generateCode = () => {
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
+// Generate a unique 6-char user code: L N L N L N (e.g. T3B7C2)
+// Used as both handle (userCode) and referralCode — they are always the same value.
+async function generateUserCode(firstLetter?: string): Promise<string> {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O (confusing)
+  const digits  = '23456789';                  // no 0/1 (confusing)
+  const rL = () => letters[Math.floor(Math.random() * letters.length)];
+  const rD = () => digits[Math.floor(Math.random() * digits.length)];
+
+  const generate = () => {
+    const l1 = (firstLetter && /^[a-zA-Z]$/.test(firstLetter))
+      ? firstLetter.toUpperCase()
+      : rL();
+    return `${l1}${rD()}${rL()}${rD()}${rL()}${rD()}`;
   };
-  
-  let code = generateCode();
+
   let attempts = 0;
-  
-  while (attempts < 10) {
+  while (attempts < 100) {
+    const code = generate();
     const [existing] = await db
-      .select()
+      .select({ id: users.id })
       .from(users)
-      .where(eq(users.referralCode, code))
+      .where(eq(users.handle, code))
       .limit(1);
-    
     if (!existing) return code;
-    code = generateCode();
     attempts++;
   }
-  
-  return `${generateCode()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
-}
-
-// Generate email verification token
-function generateEmailVerificationToken(): string {
-  return randomBytes(32).toString('hex');
-}
-
-// Generate unique human-readable handle (e.g., jessica483, alex17)
-async function generateUniqueHandle(baseName: string): Promise<string> {
-  // Clean the base name - only lowercase letters
-  const cleaned = baseName.toLowerCase().replace(/[^a-z]/g, '').slice(0, 20) || 'user';
-  
-  let attempts = 0;
-  while (attempts < 50) {
-    // Generate 2-4 digit random number
-    const digits = Math.floor(Math.random() * 9000) + 10; // 10-9999
-    const handle = `${cleaned}${digits}`;
-    
-    const [existing] = await db
-      .select()
-      .from(users)
-      .where(eq(users.handle, handle))
-      .limit(1);
-    
-    if (!existing) return handle;
-    attempts++;
-  }
-  
-  // Fallback with timestamp
-  return `${cleaned}${Date.now().toString(36).slice(-5)}`;
+  // Extremely unlikely fallback
+  return generate();
 }
 
 // Generate display name from Google profile or email
@@ -258,25 +230,24 @@ export function setupAuth(app: Express) {
               suffix++;
             }
             
-            // Generate unique handle and display name
+            // Generate unique userCode (handle = referralCode = same 6-char code)
             const googleName = profile.displayName || profile.name?.givenName;
-            const handleBase = googleName || email?.split('@')[0] || 'user';
-            const handle = await generateUniqueHandle(handleBase);
             const displayName = generateDisplayName(email, googleName);
+            const firstLetter = email?.split('@')[0]?.replace(/[^a-zA-Z]/g, '').charAt(0);
+            const userCode = await generateUserCode(firstLetter);
             
-            const newUserReferralCode = await generateUniqueReferralCode();
             const [newUser] = await db
               .insert(users)
               .values({
                 username,
-                handle,
+                handle: userCode,
                 displayName,
                 googleId: profile.id,
                 authProvider: 'google',
                 isVerified: true, // Google accounts are pre-verified
                 password: null,
                 referredBy: referrerId,
-                referralCode: newUserReferralCode,
+                referralCode: userCode,
               })
               .returning();
 
@@ -444,26 +415,26 @@ export function setupAuth(app: Express) {
         }
       }
 
-      // Generate unique handle and display name from email
+      // Generate unique userCode (handle = referralCode = same 6-char code)
       const emailUsername = result.data.username; // username is email in our system
-      const handle = await generateUniqueHandle(emailUsername.split('@')[0]);
       const displayName = generateDisplayName(emailUsername);
+      const firstLetter = emailUsername.split('@')[0]?.replace(/[^a-zA-Z]/g, '').charAt(0);
+      const userCode = await generateUserCode(firstLetter);
       
       // Generate email verification token
       const emailVerificationToken = generateEmailVerificationToken();
       const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       
-      const newUserReferralCode = await generateUniqueReferralCode();
       const [user] = await db
         .insert(users)
         .values({
           username: result.data.username, // Email is stored as username for login
-          handle,
+          handle: userCode,
           displayName,
           password: result.data.password ? await hashPassword(result.data.password) : null,
           referredBy: referrerId,
           deviceFingerprint: deviceFingerprint || null,
-          referralCode: newUserReferralCode,
+          referralCode: userCode,
           emailVerified: false,
           emailVerificationToken,
           emailVerificationExpires,

@@ -108,6 +108,7 @@ export default function ProfilePage() {
     bio: "",
     location: "",
     phone: "",
+    displayName: "",
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -162,6 +163,7 @@ export default function ProfilePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       setIsEditing(false);
       toast({
         title: "Profile updated",
@@ -357,6 +359,7 @@ export default function ProfilePage() {
         bio: profile.bio || "",
         location: profile.location || user?.defaultCity || user?.defaultPostalCode || "",
         phone: profile.phone || "",
+        displayName: (user as any)?.displayName || "",
       });
       setIsEditing(true);
     }
@@ -373,6 +376,7 @@ export default function ProfilePage() {
       bio: "",
       location: "",
       phone: "",
+      displayName: "",
     });
   };
 
@@ -779,6 +783,20 @@ export default function ProfilePage() {
                           )}
                         </div>
                       </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Display Name
+                      </label>
+                      <p className="text-xs text-muted-foreground mb-2">This is how your name appears to others on ShareSwap</p>
+                      <Input
+                        value={editForm.displayName}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, displayName: e.target.value })
+                        }
+                        placeholder="e.g. Sarah M."
+                        maxLength={40}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">

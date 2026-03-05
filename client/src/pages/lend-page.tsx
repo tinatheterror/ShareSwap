@@ -60,9 +60,6 @@ import {
   Plus,
   Check,
   Bell,
-  Camera,
-  Video,
-  VideoOff,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -324,17 +321,13 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
   const handleTabChange = useCallback(
     (v: string) => {
-      if (v !== "camera") {
-        stopCamera();
-      }
-      setUploadMethod(v as "smartscan" | "manual" | "camera");
+      stopCamera();
+      setUploadMethod(v as "smartscan" | "manual");
     },
     [stopCamera],
   );
 
-  const [uploadMethod, setUploadMethod] = useState<
-    "smartscan" | "manual" | "camera"
-  >("manual");
+  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">("manual");
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
@@ -1441,111 +1434,12 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       more accurately.
                     </p>
                     <Tabs value={uploadMethod} onValueChange={handleTabChange}>
-                      <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="camera">
-                          <Camera className="w-3.5 h-3.5 mr-1" />
-                          Photo
-                        </TabsTrigger>
+                      <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="smartscan">
                           ✨ SmartScan
                         </TabsTrigger>
                         <TabsTrigger value="manual">Upload</TabsTrigger>
                       </TabsList>
-                      <TabsContent value="camera" className="mt-4">
-                        <input
-                          ref={cameraInputRef}
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={handleMobileCameraCapture}
-                        />
-                        {isMobileDevice ? (
-                          <div className="space-y-3">
-                            <Button
-                              type="button"
-                              className="w-full bg-teal-500 hover:bg-teal-600 text-white h-12"
-                              onClick={() => cameraInputRef.current?.click()}
-                            >
-                              <Camera className="w-5 h-5 mr-2" />
-                              Take a Photo
-                            </Button>
-                            <p className="text-xs text-center text-muted-foreground">
-                              Opens your device camera directly
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {!isCameraOpen ? (
-                              <Button
-                                type="button"
-                                className="w-full bg-teal-500 hover:bg-teal-600 text-white h-12"
-                                onClick={startCamera}
-                              >
-                                <Video className="w-5 h-5 mr-2" />
-                                Open Webcam
-                              </Button>
-                            ) : (
-                              <div className="space-y-3">
-                                <div className="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
-                                  <video
-                                    ref={videoRef}
-                                    autoPlay
-                                    playsInline
-                                    muted
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                <canvas ref={canvasRef} className="hidden" />
-                                <div className="flex gap-2">
-                                  <Button
-                                    type="button"
-                                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white h-10"
-                                    onClick={capturePhoto}
-                                  >
-                                    <Camera className="w-4 h-4 mr-2" />
-                                    Capture
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="h-10"
-                                    onClick={stopCamera}
-                                  >
-                                    <VideoOff className="w-4 h-4 mr-1" />
-                                    Close
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        {selectedPhotos.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {selectedPhotos.map((_, idx) => (
-                              <div
-                                key={idx}
-                                className="relative group w-16 h-16"
-                              >
-                                <img
-                                  src={photoPreviewUrls[idx]}
-                                  alt={`Photo ${idx + 1}`}
-                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => removePhoto(idx)}
-                                    className="p-1 bg-white rounded-full hover:bg-gray-100"
-                                  >
-                                    <X className="w-3 h-3 text-gray-700" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </TabsContent>
                       <TabsContent value="smartscan" className="mt-4">
                         <SmartScan
                           onAnalysisComplete={handleSmartScanComplete}
@@ -2373,86 +2267,10 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     more accurately.
                   </p>
                   <Tabs value={uploadMethod} onValueChange={handleTabChange}>
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="camera">
-                        <Camera className="w-3.5 h-3.5 mr-1" />
-                        Photo
-                      </TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="smartscan">✨ SmartScan</TabsTrigger>
                       <TabsTrigger value="manual">Upload</TabsTrigger>
                     </TabsList>
-
-                    <TabsContent value="camera" className="mt-4">
-                      <div className="space-y-3">
-                        {!isCameraOpen ? (
-                          <Button
-                            type="button"
-                            className="w-full bg-teal-500 hover:bg-teal-600 text-white h-12"
-                            onClick={startCamera}
-                          >
-                            <Video className="w-5 h-5 mr-2" />
-                            Open Webcam
-                          </Button>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="relative rounded-lg overflow-hidden bg-black aspect-[4/3]">
-                              <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <canvas ref={canvasRef} className="hidden" />
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white h-10"
-                                onClick={capturePhoto}
-                              >
-                                <Camera className="w-4 h-4 mr-2" />
-                                Capture
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-10"
-                                onClick={stopCamera}
-                              >
-                                <VideoOff className="w-4 h-4 mr-1" />
-                                Close
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                        {selectedPhotos.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {selectedPhotos.map((_, idx) => (
-                              <div
-                                key={idx}
-                                className="relative group w-16 h-16"
-                              >
-                                <img
-                                  src={photoPreviewUrls[idx]}
-                                  alt={`Photo ${idx + 1}`}
-                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => removePhoto(idx)}
-                                    className="p-1 bg-white rounded-full hover:bg-gray-100"
-                                  >
-                                    <X className="w-3 h-3 text-gray-700" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </TabsContent>
 
                     <TabsContent value="smartscan" className="mt-4">
                       <SmartScan onAnalysisComplete={handleSmartScanComplete} />

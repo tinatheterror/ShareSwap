@@ -785,10 +785,9 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">
+                      <label className="block text-sm font-medium mb-2">
                         Display Name
                       </label>
-                      <p className="text-xs text-muted-foreground mb-2">This is how your name appears to others on ShareSwap</p>
                       <Input
                         value={editForm.displayName}
                         onChange={(e) =>
@@ -796,18 +795,6 @@ export default function ProfilePage() {
                         }
                         placeholder="e.g. Sarah M."
                         maxLength={40}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Full Name
-                      </label>
-                      <Input
-                        value={editForm.fullName}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, fullName: e.target.value })
-                        }
-                        placeholder="Enter your full name"
                       />
                     </div>
                     <div>

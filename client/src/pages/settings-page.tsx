@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Settings, Shield, AlertTriangle, UserX, Mail, User, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Settings, Shield, AlertTriangle, UserX, Mail, User, Phone, ChevronRight } from "lucide-react";
 import { Navbar } from "@/components/shared/navbar";
 
 export default function SettingsPage() {
@@ -22,6 +23,21 @@ export default function SettingsPage() {
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [isDeactivated, setIsDeactivated] = useState(false);
+  const [phone, setPhone] = useState((user as any)?.phone || "");
+
+  const updatePhoneMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      const res = await apiRequest("PATCH", "/api/users/profile", { phone: phoneNumber });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({ title: "Phone number saved", description: "Your phone number has been updated." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to save", description: error.message || "Could not update phone number.", variant: "destructive" });
+    },
+  });
 
   const deactivateMutation = useMutation({
     mutationFn: async () => {
@@ -102,6 +118,38 @@ export default function SettingsPage() {
             <p className="text-gray-500">Manage your account preferences</p>
           </div>
         </div>
+
+        <Card className="mb-4">
+          <CardHeader className="py-3 pb-2">
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-[#0BB88C]" />
+              <CardTitle className="text-base">Contact</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="py-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Phone Number</p>
+              <p className="text-xs text-gray-500">Only visible to people you're transacting with.</p>
+              <div className="flex gap-2">
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +1 (416) 555-0123"
+                  className="flex-1"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => updatePhoneMutation.mutate(phone)}
+                  disabled={updatePhoneMutation.isPending}
+                  style={{ backgroundColor: "#0BB88C" }}
+                  className="text-white"
+                >
+                  {updatePhoneMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="mb-4">
           <CardHeader className="py-3 pb-2">

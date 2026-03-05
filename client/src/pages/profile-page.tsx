@@ -28,7 +28,6 @@ import {
   User,
   Mail,
   MapPin,
-  Phone,
   Calendar,
   Star,
   Coins,
@@ -822,18 +821,6 @@ export default function ProfilePage() {
                         placeholder="Your city (e.g. Toronto)"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Phone
-                      </label>
-                      <Input
-                        value={editForm.phone}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, phone: e.target.value })
-                        }
-                        placeholder="Your phone number"
-                      />
-                    </div>
                     <div className="flex gap-3 pt-4">
                       <Button
                         onClick={handleSaveProfile}
@@ -882,14 +869,6 @@ export default function ProfilePage() {
                           <MapPin className="h-4 w-4 text-slate-500 flex-shrink-0" />
                           <span className="text-slate-600 text-sm truncate">
                             {profile.location}
-                          </span>
-                        </div>
-                      )}
-                      {profile?.phone && (
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Phone className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                          <span className="text-slate-600 text-sm truncate">
-                            {profile.phone}
                           </span>
                         </div>
                       )}

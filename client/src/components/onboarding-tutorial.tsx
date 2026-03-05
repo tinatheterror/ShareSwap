@@ -92,7 +92,7 @@ const tutorialSteps: TutorialStep[] = [
       "This is your personal inventory — view, edit, and manage all the items you've listed. You can update availability, adjust pricing, check who's requested your items, and track items that are currently out on loan.",
     highlightSelector: '[data-tutorial="sharechest"]',
     requiresMenu: true,
-    positionAbove: true,
+    positionAbove: false,
   },
   {
     id: 9,
@@ -101,7 +101,7 @@ const tutorialSteps: TutorialStep[] = [
       "If you can't find what you're looking for, add it to your wishlist. Your neighbours will be able to see what you need, and you'll get notified when a matching item is listed.",
     highlightSelector: '[data-tutorial="wishlist"]',
     requiresMenu: true,
-    positionAbove: true,
+    positionAbove: false,
   },
   {
     id: 10,

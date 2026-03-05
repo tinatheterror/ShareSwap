@@ -968,7 +968,7 @@ export default function ProfilePage() {
                   </Link>
                 </div>
                 <div className="flex items-center gap-2">
-                  {profile?.isVerified ? (
+                  {(profile as any)?.idVerified ? (
                     <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                   ) : (
                     <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -1209,7 +1209,7 @@ export default function ProfilePage() {
                   </Link>
                 </div>
                 <div className="flex items-center gap-2">
-                  {profile?.isVerified ? (
+                  {(profile as any)?.idVerified ? (
                     <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
                   ) : (
                     <X className="h-4 w-4 text-gray-400 flex-shrink-0" />

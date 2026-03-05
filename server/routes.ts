@@ -6413,10 +6413,21 @@ Respond with ONLY the category name, nothing else.`
         return res.status(404).json({ error: "User not found" });
       }
 
+      // Check ID verification status from verifications table
+      const [idVerification] = await db
+        .select({ status: verifications.status })
+        .from(verifications)
+        .where(and(
+          eq(verifications.userId, req.user.id),
+          eq(verifications.status, "approved")
+        ))
+        .limit(1);
+
       res.json({
         ...user,
         emailVerified: user.emailVerified || !!user.googleId || user.authProvider === 'google',
         paymentVerified: !!user.stripePaymentMethodId,
+        idVerified: !!idVerification,
       });
     } catch (error) {
       console.error("Error fetching user profile:", error);

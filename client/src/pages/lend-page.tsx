@@ -117,6 +117,13 @@ const TIER_WEEKLY_BANDS: Record<
   4: { min: 40, max: 40, display: "40" },
 };
 
+const snapConditionRating = (raw: number): number => {
+  const valid = [3, 5, 7, 10];
+  return valid.reduce((prev, curr) =>
+    Math.abs(curr - raw) < Math.abs(prev - raw) ? curr : prev
+  );
+};
+
 const calculateTier = (originalValue: string, condition: string): number => {
   let baseTier = 1;
   if (originalValue === "Under $50") baseTier = 1;
@@ -566,7 +573,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         form.setValue("condition", mapped);
       }
       if (data.conditionRating)
-        form.setValue("conditionRating", data.conditionRating);
+        form.setValue("conditionRating", snapConditionRating(Number(data.conditionRating)));
       if (data.itemType) form.setValue("itemType", data.itemType);
       if (data.name) detectItemCategory(data.name);
     } catch {}
@@ -815,7 +822,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     // Auto-fill form with AI-detected values
     form.setValue("name", analysis.name);
     form.setValue("description", analysis.description);
-    form.setValue("conditionRating", analysis.conditionRating);
+    form.setValue("conditionRating", snapConditionRating(analysis.conditionRating ?? 5));
 
     // Auto-fill value range if AI suggested one (especially important for luxury items)
     if (

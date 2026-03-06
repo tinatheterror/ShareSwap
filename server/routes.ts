@@ -817,10 +817,26 @@ export function registerRoutes(app: Express): Server {
         .limit(1);
 
       if (existingPending && existingPending.personaInquiryId) {
-        return res.json({
-          inquiryId: existingPending.personaInquiryId,
-          status: "existing",
+        // Verify the existing inquiry is still in a resumable state
+        const checkRes = await fetch(`https://api.withpersona.com/api/v1/inquiries/${existingPending.personaInquiryId}`, {
+          headers: {
+            "Authorization": `Bearer ${personaApiKey}`,
+            "Persona-Version": "2023-01-05",
+            "Key-Inflection": "camel",
+          },
         });
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          const inquiryStatus = checkData.data?.attributes?.status;
+          // Only reuse if the inquiry is still in a resumable state
+          if (inquiryStatus === "created" || inquiryStatus === "pending") {
+            return res.json({ inquiryId: existingPending.personaInquiryId, status: "existing" });
+          }
+          console.log(`[Persona] Existing inquiry ${existingPending.personaInquiryId} is in state '${inquiryStatus}' — creating a new one`);
+        } else {
+          console.log(`[Persona] Could not verify existing inquiry ${existingPending.personaInquiryId} (${checkRes.status}) — creating a new one`);
+        }
+        // Fall through: create a fresh inquiry and update the DB record
       }
 
       const [currentUser] = await db

@@ -1061,6 +1061,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/nearby-items"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-items"] });
+      // Refresh user so wallet balance updates and coin animation fires
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
 
       // Check if there are wishlist matches - show modal after listing
       setListedItemData(data);

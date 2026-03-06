@@ -276,7 +276,14 @@ export default function BorrowPage() {
           if (!fallbackResponse.ok) throw new Error("Failed to fetch items");
           return fallbackResponse.json();
         }
-        return response.json();
+        const nearbyData = await response.json();
+        // If no nearby items found (e.g. items lack coordinates), fall back to all items
+        if (nearbyData.length === 0) {
+          const fallbackResponse = await fetch("/api/items");
+          if (!fallbackResponse.ok) throw new Error("Failed to fetch items");
+          return fallbackResponse.json();
+        }
+        return nearbyData;
       } else {
         const response = await fetch("/api/items");
         if (!response.ok) throw new Error("Failed to fetch items");

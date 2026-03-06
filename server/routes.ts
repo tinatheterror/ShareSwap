@@ -904,6 +904,38 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Dev-only: bypass Persona and mark ID as verified (NOT available in production)
+  app.post("/api/persona/dev-verify", async (req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({ error: "Not available in production" });
+    }
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    const userId = req.user.id;
+    const [existing] = await db.select().from(verifications).where(eq(verifications.userId, userId)).limit(1);
+    if (existing) {
+      await db.update(verifications).set({
+        status: "verified",
+        personaStatus: "approved",
+        idNumber: "DEV_BYPASS",
+        verifiedAt: new Date(),
+      }).where(eq(verifications.userId, userId));
+    } else {
+      await db.insert(verifications).values({
+        userId,
+        status: "verified",
+        personaStatus: "approved",
+        idNumber: "DEV_BYPASS",
+        verifiedAt: new Date(),
+      });
+    }
+    await db.update(users).set({ isVerified: true }).where(eq(users.id, userId));
+    const [updatedUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    req.login(updatedUser, () => {});
+    return res.json({ status: "verified", message: "Dev bypass: identity marked as verified" });
+  });
+
   app.post("/api/persona/inquiry-complete", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

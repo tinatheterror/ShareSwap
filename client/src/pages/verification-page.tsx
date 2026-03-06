@@ -82,6 +82,7 @@ export default function VerificationPage() {
   const queryClient = useQueryClient();
   const [personaLoading, setPersonaLoading] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
+  const isDev = import.meta.env.DEV;
 
   const { data: verification, isLoading } = useQuery<VerificationData>({
     queryKey: ["/api/verification-status"],
@@ -128,6 +129,21 @@ export default function VerificationPage() {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  const devVerifyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/persona/dev-verify");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/verification-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({ title: "Dev bypass applied", description: "Identity marked as verified for testing." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Dev bypass failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -512,6 +528,21 @@ export default function VerificationPage() {
                   <Shield className="h-3 w-3" />
                   <span>Powered by Persona - bank-level identity verification</span>
                 </div>
+
+                {isDev && (
+                  <div className="border-t pt-4 mt-2">
+                    <p className="text-xs text-amber-600 font-medium text-center mb-2">⚙ Dev mode — Persona only works on shareswap.app</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-amber-400 text-amber-700 hover:bg-amber-50"
+                      onClick={() => devVerifyMutation.mutate()}
+                      disabled={devVerifyMutation.isPending}
+                    >
+                      {devVerifyMutation.isPending ? "Applying..." : "Skip — Mark ID as Verified (Dev Only)"}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

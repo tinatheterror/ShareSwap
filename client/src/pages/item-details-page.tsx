@@ -237,6 +237,12 @@ export default function ItemDetailsPage() {
                 Exchange items
               </span>
             </div>
+            {(item as any).swapDesiredItem && (
+              <p className="text-sm text-muted-foreground mt-1">
+                <span className="font-medium text-slate-700">Looking for:</span>{" "}
+                {(item as any).swapDesiredItem}
+              </p>
+            )}
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>

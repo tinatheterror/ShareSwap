@@ -120,11 +120,12 @@ export default function ProfilePage() {
 
   const [, navigate] = useLocation();
 
-  // Extract username from URL path
+  // Extract username/handle from URL path
   const pathParts = location.split("/");
-  const usernameFromUrl = pathParts[2]; // /profile/:username
+  const usernameFromUrl = pathParts[2]; // /profile/:username or /profile/:handle
   const isOwnProfile =
-    !usernameFromUrl || (user && usernameFromUrl === user.username);
+    !usernameFromUrl ||
+    (user && (usernameFromUrl === user.username || usernameFromUrl === (user as any).handle));
 
   // Fetch user profile by username if viewing another user's profile
   const { data: publicProfile, isLoading: isLoadingPublicProfile } =
@@ -457,8 +458,18 @@ export default function ProfilePage() {
           <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
             <CardHeader className="bg-transparent">
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 bg-teal-600 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                  {((publicProfile as any).displayName || (publicProfile as any).handle || publicProfile.username).charAt(0).toUpperCase()}
+                <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0">
+                  {(publicProfile as any).profilePhoto ? (
+                    <img
+                      src={(publicProfile as any).profilePhoto}
+                      alt={(publicProfile as any).handle || publicProfile.username}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white text-3xl font-bold">
+                      {((publicProfile as any).displayName || (publicProfile as any).handle || publicProfile.username).charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -612,9 +623,9 @@ export default function ProfilePage() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <Link href={`/profile/${review.reviewer.username}`}>
+                          <Link href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}>
                             <span className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
-                              @{review.reviewer.username}
+                              @{(review.reviewer as any).handle || review.reviewer.username.split('@')[0]}
                             </span>
                           </Link>
                           <UserBadges

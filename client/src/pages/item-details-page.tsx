@@ -394,7 +394,7 @@ export default function ItemDetailsPage() {
                       <span className="text-sm text-muted-foreground">
                         Shared by
                       </span>
-                      <Link href={`/profile/${(item as any).owner.username}`}>
+                      <Link href={`/profile/${(item as any).owner.handle || (item as any).owner.username}`}>
                         <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
                           {(item as any).owner.displayName || formatDisplayName((item as any).owner.handle || (item as any).owner.username)}
                         </span>

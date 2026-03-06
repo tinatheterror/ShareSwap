@@ -7749,7 +7749,8 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const username = req.params.username;
-    const [user] = await db
+    // Look up by username (email) first, then fall back to handle
+    let [user] = await db
       .select({
         id: users.id,
         username: users.username,
@@ -7759,11 +7760,32 @@ Respond with ONLY the category name, nothing else.`
         reputationScore: users.reputationScore,
         reputationLevel: users.reputationLevel,
         isPremium: users.isPremium,
+        profilePhoto: users.profilePhoto,
         createdAt: users.createdAt,
       })
       .from(users)
       .where(eq(users.username, username))
       .limit(1);
+
+    // Fall back to handle lookup (for clean URLs like /profile/T3H3R5)
+    if (!user) {
+      [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          handle: users.handle,
+          displayName: users.displayName,
+          isVerified: users.isVerified,
+          reputationScore: users.reputationScore,
+          reputationLevel: users.reputationLevel,
+          isPremium: users.isPremium,
+          profilePhoto: users.profilePhoto,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.handle, username))
+        .limit(1);
+    }
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -7798,12 +7820,19 @@ Respond with ONLY the category name, nothing else.`
 
     const username = req.params.username;
     
-    // First find the user
-    const [user] = await db
+    // Find the user by username or handle
+    let [user] = await db
       .select({ id: users.id })
       .from(users)
       .where(eq(users.username, username))
       .limit(1);
+    if (!user) {
+      [user] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.handle, username))
+        .limit(1);
+    }
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -7836,12 +7865,19 @@ Respond with ONLY the category name, nothing else.`
 
     const username = req.params.username;
     
-    // First find the user
-    const [user] = await db
+    // Find the user by username or handle
+    let [user] = await db
       .select({ id: users.id })
       .from(users)
       .where(eq(users.username, username))
       .limit(1);
+    if (!user) {
+      [user] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.handle, username))
+        .limit(1);
+    }
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -7857,6 +7893,7 @@ Respond with ONLY the category name, nothing else.`
         reviewer: {
           id: users.id,
           username: users.username,
+          handle: users.handle,
           isVerified: users.isVerified,
           reputationLevel: users.reputationLevel,
         },

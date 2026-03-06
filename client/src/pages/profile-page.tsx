@@ -685,13 +685,13 @@ export default function ProfilePage() {
                         alt={(user as any).displayName || (user as any).handle || user.username}
                       />
                       <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
-                        {(profile?.fullName || (user as any).displayName || (user as any).handle || user.username).charAt(0).toUpperCase()}
+                        {((user as any).displayName || (user as any).handle || user.username).charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">
-                          {profile?.fullName || (user as any).displayName || (user as any).handle || user.username}
+                          {(user as any).displayName || (user as any).handle || user.username}
                         </CardTitle>
                         <UserBadges
                           isVerified={profile?.isVerified || false}

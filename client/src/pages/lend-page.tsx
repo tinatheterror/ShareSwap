@@ -1003,6 +1003,11 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         }
       });
 
+      // Auto-enable notifications whenever a desired swap item is entered
+      if (data.swapDesiredItem?.trim()) {
+        formData.set("swapNotifyOnMatch", "true");
+      }
+
       // Calculate and add tier
       if (data.condition && data.originalValue) {
         const tier = calculateTier(data.originalValue, data.condition);
@@ -1106,6 +1111,11 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
           formData.append(key, String(value));
         }
       });
+
+      // Auto-enable notifications whenever a desired swap item is entered
+      if (data.swapDesiredItem?.trim()) {
+        formData.set("swapNotifyOnMatch", "true");
+      }
 
       // Calculate and add tier
       if (data.condition && data.originalValue) {
@@ -2016,25 +2026,12 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                         </p>
                                       </div>
 
-                                      <div className="flex items-start justify-between">
-                                        <div className="flex items-start gap-2">
-                                          <Bell className="h-4 w-4 text-[#0DCEA1] mt-0.5 shrink-0" />
-                                          <span className="text-[13px] text-gray-700">
-                                            Notify me of matching items
-                                          </span>
+                                      {form.watch("swapDesiredItem") && (
+                                        <div className="flex items-center gap-2 text-xs text-[#0BB88C]">
+                                          <Bell className="h-3.5 w-3.5 shrink-0" />
+                                          <span>You'll be notified when a matching item is listed</span>
                                         </div>
-                                        <Switch
-                                          checked={form.watch(
-                                            "swapNotifyOnMatch",
-                                          )}
-                                          onCheckedChange={(checked) =>
-                                            form.setValue(
-                                              "swapNotifyOnMatch",
-                                              checked,
-                                            )
-                                          }
-                                        />
-                                      </div>
+                                      )}
                                     </div>
                                   </>
                                 );

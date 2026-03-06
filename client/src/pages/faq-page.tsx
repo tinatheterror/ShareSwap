@@ -167,7 +167,7 @@ export default function FAQPage() {
                   Built on Local Trust
                 </p>
                 <p className="text-[11px] text-gray-500 leading-tight">
-                  Verified profiles and fair rules.
+                  Verified profiles and fair systems.
                 </p>
               </div>
 

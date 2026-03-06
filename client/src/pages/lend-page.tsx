@@ -120,7 +120,7 @@ const TIER_WEEKLY_BANDS: Record<
 const snapConditionRating = (raw: number): number => {
   const valid = [3, 5, 7, 10];
   return valid.reduce((prev, curr) =>
-    Math.abs(curr - raw) < Math.abs(prev - raw) ? curr : prev
+    Math.abs(curr - raw) < Math.abs(prev - raw) ? curr : prev,
   );
 };
 
@@ -334,7 +334,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     [stopCamera],
   );
 
-  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">("manual");
+  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">(
+    "manual",
+  );
   const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
@@ -573,7 +575,10 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         form.setValue("condition", mapped);
       }
       if (data.conditionRating)
-        form.setValue("conditionRating", snapConditionRating(Number(data.conditionRating)));
+        form.setValue(
+          "conditionRating",
+          snapConditionRating(Number(data.conditionRating)),
+        );
       if (data.itemType) form.setValue("itemType", data.itemType);
       if (data.name) detectItemCategory(data.name);
     } catch {}
@@ -822,7 +827,10 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     // Auto-fill form with AI-detected values
     form.setValue("name", analysis.name);
     form.setValue("description", analysis.description);
-    form.setValue("conditionRating", snapConditionRating(analysis.conditionRating ?? 5));
+    form.setValue(
+      "conditionRating",
+      snapConditionRating(analysis.conditionRating ?? 5),
+    );
 
     // Auto-fill value range if AI suggested one (especially important for luxury items)
     if (
@@ -2020,16 +2028,15 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                           className="text-sm h-9"
                                           {...form.register("swapDesiredItem")}
                                         />
-                                        <p className="hidden md:block text-xs text-gray-500 mt-1">
-                                          Tell neighbours what you're hoping to
-                                          swap for
-                                        </p>
                                       </div>
 
                                       {form.watch("swapDesiredItem") && (
-                                        <div className="flex items-center gap-2 text-xs text-[#0BB88C]">
+                                        <div className="flex items-center gap-2 text-xs text-gray-500">
                                           <Bell className="h-3.5 w-3.5 shrink-0" />
-                                          <span>You'll be notified when a matching item is listed</span>
+                                          <span>
+                                            You'll be notified when a matching
+                                            item is listed
+                                          </span>
                                         </div>
                                       )}
                                     </div>

@@ -50,13 +50,14 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
   try {
     const { client, fromEmail } = await getUncachableSendGridClient();
     
-    // Get the base URL for the verification link — prefer custom domain for production links
-    const baseUrl = process.env.CUSTOM_DOMAIN
+    // In development, always use the dev domain so the token (stored in the dev DB)
+    // can be found. In production, use the custom domain.
+    const baseUrl = process.env.NODE_ENV === 'production' && process.env.CUSTOM_DOMAIN
       ? `https://${process.env.CUSTOM_DOMAIN}`
-      : process.env.REPLIT_DEV_DOMAIN 
+      : process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : process.env.REPL_SLUG 
-      ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+      : process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
       : 'http://localhost:5000';
     
     const verificationLink = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;

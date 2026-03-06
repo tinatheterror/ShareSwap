@@ -1223,13 +1223,9 @@ APPROVE photos that:
 - Natural accessories like glasses, hats, or light makeup are fine
 
 REJECT photos that:
-- Stock images, watermarked photos, or professional marketing images
-- Logos, icons, graphics, or illustrations
-- Only pets, objects, or scenery with no human face
-- Heavy blur making face unrecognizable
-- Face cropped out or mostly hidden
-- AI-generated or obviously fake/edited faces
-- Multiple people where primary subject is unclear
+- Logos, icons, graphics, or illustrations (no person at all)
+- Only pets, objects, or scenery with no human face visible
+- Face completely cropped out or fully hidden (e.g. back of head only)
 - Memes, screenshots, or collages
 
 Respond with ONLY valid JSON in this exact format:
@@ -1246,7 +1242,7 @@ Respond with ONLY valid JSON in this exact format:
                     type: "image_url",
                     image_url: {
                       url: `data:${mimeType};base64,${base64Image}`,
-                      detail: "low"
+                      detail: "auto"
                     }
                   }
                 ]
@@ -1292,8 +1288,9 @@ Respond with ONLY valid JSON in this exact format:
         profilePhotoValidationReason: validationReason,
       };
 
-      // Only award bonus if validated and not already earned
-      if (validationStatus === "approved" && !hasAlreadyEarnedBonus) {
+      // Award bonus on first upload regardless of AI validation result
+      // AI validation is informational only, not a gate
+      if (!hasAlreadyEarnedBonus) {
         updateData.hasUploadedProfilePhoto = true;
         shareCoinsAwarded = 1;
 
@@ -1312,7 +1309,7 @@ Respond with ONLY valid JSON in this exact format:
           })
           .where(eq(users.id, userId));
 
-        console.log(`✅ Awarded 1 ShareCoin to user ${userId} for valid profile photo`);
+        console.log(`✅ Awarded 1 ShareCoin to user ${userId} for uploading profile photo`);
       } else {
         await db
           .update(users)
@@ -1324,10 +1321,8 @@ Respond with ONLY valid JSON in this exact format:
       let message: string;
       if (hasAlreadyEarnedBonus) {
         message = "Profile photo updated!";
-      } else if (validationStatus === "approved") {
-        message = "Profile photo uploaded! You earned 1 ShareCoin.";
       } else {
-        message = "Photo saved, but we couldn't verify a clear face. Try another photo to earn 1 ShareCoin.";
+        message = "Profile photo uploaded! You earned 1 ShareCoin.";
       }
 
       res.json({

@@ -17,7 +17,7 @@ import { Link } from "wouter";
 import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight, Mail, MessageSquareText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { useUserJot } from "@/hooks/use-userjot";
@@ -251,10 +251,17 @@ export function Navbar() {
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileWalletOpen, setMobileWalletOpen] = useState(false);
+  const tutorialWantsMenuOpen = useRef(false);
 
   useEffect(() => {
-    const handleOpenMenu = () => setMobileMenuOpen(true);
-    const handleCloseMenu = () => setMobileMenuOpen(false);
+    const handleOpenMenu = () => {
+      tutorialWantsMenuOpen.current = true;
+      setMobileMenuOpen(true);
+    };
+    const handleCloseMenu = () => {
+      tutorialWantsMenuOpen.current = false;
+      setMobileMenuOpen(false);
+    };
     window.addEventListener("tutorial-open-mobile-menu", handleOpenMenu);
     window.addEventListener("tutorial-close-mobile-menu", handleCloseMenu);
     return () => {
@@ -475,7 +482,10 @@ export function Navbar() {
               </Sheet>
             )}
             {user && <NotificationBell />}
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <Sheet open={mobileMenuOpen} onOpenChange={(open) => {
+              if (!open && tutorialWantsMenuOpen.current) return;
+              setMobileMenuOpen(open);
+            }}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <Menu className="h-6 w-6" />

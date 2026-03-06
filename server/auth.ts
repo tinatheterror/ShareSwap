@@ -38,6 +38,10 @@ export async function hashPassword(password: string) {
   return `${buf.toString("hex")}.${salt}`;
 }
 
+function generateEmailVerificationToken(): string {
+  return randomBytes(32).toString("hex");
+}
+
 // Generate a unique 6-char user code: L N L N L N (e.g. T3B7C2)
 // Used as both handle (userCode) and referralCode — they are always the same value.
 async function generateUserCode(firstLetter?: string): Promise<string> {

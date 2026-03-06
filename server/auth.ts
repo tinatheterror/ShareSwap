@@ -421,8 +421,13 @@ export function setupAuth(app: Express) {
 
       // Generate unique userCode (handle = referralCode = same 6-char code)
       const emailUsername = result.data.username; // username is email in our system
-      const displayName = generateDisplayName(emailUsername);
-      const firstLetter = emailUsername.split('@')[0]?.replace(/[^a-zA-Z]/g, '').charAt(0);
+      const submittedName = (req.body.fullName || "").trim();
+      const displayName = submittedName
+        ? generateDisplayName(undefined, submittedName) // treat submitted name like a Google display name
+        : generateDisplayName(emailUsername);
+      const firstLetter = submittedName
+        ? submittedName.replace(/[^a-zA-Z]/g, '').charAt(0)
+        : emailUsername.split('@')[0]?.replace(/[^a-zA-Z]/g, '').charAt(0);
       const userCode = await generateUserCode(firstLetter);
       
       // Generate email verification token
@@ -435,6 +440,7 @@ export function setupAuth(app: Express) {
           username: result.data.username, // Email is stored as username for login
           handle: userCode,
           displayName,
+          fullName: submittedName || null,
           password: result.data.password ? await hashPassword(result.data.password) : null,
           referredBy: referrerId,
           deviceFingerprint: deviceFingerprint || null,

@@ -48,6 +48,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [showReactivate, setShowReactivate] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -159,7 +160,7 @@ export default function AuthPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string; referralCode?: string; deviceFingerprint?: string }) => {
+    mutationFn: async (credentials: { username: string; password: string; fullName?: string; referralCode?: string; deviceFingerprint?: string }) => {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -199,7 +200,8 @@ export default function AuthPage() {
       const deviceFingerprint = generateDeviceFingerprint();
       registerMutation.mutate({ 
         username: email, 
-        password, 
+        password,
+        fullName: fullName.trim() || undefined,
         referralCode: referralCode.trim() || undefined,
         deviceFingerprint 
       });
@@ -329,6 +331,20 @@ export default function AuthPage() {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEmailAuth} className="space-y-4">
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Tina Le"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                  autoComplete="name"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

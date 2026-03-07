@@ -143,12 +143,33 @@ export default function VerificationPage() {
         throw new Error("Could not start verification");
       }
 
-      const { Client } = await import("persona");
+      await new Promise<void>((resolve, reject) => {
+        if ((window as any).Persona) {
+          console.log("[Persona] SDK already loaded from CDN");
+          resolve();
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://cdn.withpersona.com/dist/persona-v5.1.2.js";
+        script.onload = () => {
+          console.log("[Persona] SDK script loaded from CDN");
+          resolve();
+        };
+        script.onerror = () => {
+          console.error("[Persona] Failed to load SDK script from CDN");
+          reject(new Error("Failed to load Persona SDK"));
+        };
+        document.head.appendChild(script);
+      });
+
+      const PersonaLib = (window as any).Persona;
+      if (!PersonaLib || !PersonaLib.Client) {
+        throw new Error("Persona SDK not available after loading");
+      }
 
       let readyFired = false;
       console.log("[Persona] Creating client with inquiryId:", inquiryId);
 
-      // Timeout: if onReady doesn't fire in 30s, the SDK may be blocked by domain restrictions
       const timeoutId = setTimeout(() => {
         if (!readyFired) {
           console.error("[Persona] onReady never fired — possible CSP or domain restriction");
@@ -157,10 +178,10 @@ export default function VerificationPage() {
         }
       }, 30000);
 
-      const client = new Client({
+      const client = new PersonaLib.Client({
         inquiryId,
         onReady: () => {
-          console.log("[Persona] onReady fired");
+          console.log("[Persona] onReady fired — calling client.open() with inquiryId:", inquiryId);
           readyFired = true;
           clearTimeout(timeoutId);
           setPersonaLoading(false);

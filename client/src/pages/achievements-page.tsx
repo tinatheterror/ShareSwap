@@ -272,57 +272,55 @@ export default function AchievementsPage() {
               <CardContent className="py-4 px-5">
                 <div className="flex items-start gap-5">
                   {/* Trust Ring */}
-                  <div className="flex flex-col items-center flex-shrink-0">
-                  <div className="relative w-28 h-28">
-                    <svg
-                      className="w-full h-full transform -rotate-90"
-                      viewBox="0 0 100 100"
-                    >
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        fill="none"
-                        stroke="#e2e8f0"
-                        strokeWidth="8"
-                      />
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        fill="none"
-                        stroke="url(#trustGradient)"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                        strokeDasharray={`${trustPercentage * 2.64} 264`}
-                        className="transition-all duration-1000 ease-out"
-                      />
-                      <defs>
-                        <linearGradient
-                          id="trustGradient"
-                          x1="0%"
-                          y1="0%"
-                          x2="100%"
-                          y2="0%"
-                        >
-                          <stop offset="0%" stopColor="#0DCEA1" />
-                          <stop offset="100%" stopColor="#10B981" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <Shield className="h-8 w-8 text-teal-500 mb-1" />
-                      <span className="text-sm font-medium text-slate-600">
-                        Trust
-                      </span>
-                      <span className="text-sm font-medium text-slate-600">
-                        Score
-                      </span>
+                  <div className="flex flex-col items-center flex-shrink-0 gap-1">
+                    <div className="relative w-28 h-28">
+                      <svg
+                        className="w-full h-full transform -rotate-90"
+                        viewBox="0 0 100 100"
+                      >
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          fill="none"
+                          stroke="#e2e8f0"
+                          strokeWidth="8"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="42"
+                          fill="none"
+                          stroke="url(#trustGradient)"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${trustPercentage * 2.64} 264`}
+                          className="transition-all duration-1000 ease-out"
+                        />
+                        <defs>
+                          <linearGradient
+                            id="trustGradient"
+                            x1="0%"
+                            y1="0%"
+                            x2="100%"
+                            y2="0%"
+                          >
+                            <stop offset="0%" stopColor="#0DCEA1" />
+                            <stop offset="100%" stopColor="#10B981" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <Shield className="h-8 w-8 text-teal-500 mb-1" />
+                        <span className="text-sm font-medium text-slate-600">
+                          Trust
+                        </span>
+                        <span className="text-sm font-medium text-slate-600">
+                          Score
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-xs text-teal-600 mt-2 text-center max-w-[8rem]">
-                    Higher trust scores unlock lower trust deposits when borrowing
-                  </p>
+                    <span className="text-lg font-bold text-slate-800">{reputationScore}</span>
                   </div>
 
                   {/* Trust Message */}

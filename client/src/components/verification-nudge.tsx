@@ -34,7 +34,13 @@ export function VerificationNudge() {
   });
 
   useEffect(() => {
-    if (!nudgeStatus || nudgeStatus.hasSeenNudge || nudgeStatus.isVerified || !user) return;
+    if (
+      !nudgeStatus ||
+      nudgeStatus.hasSeenNudge ||
+      nudgeStatus.isVerified ||
+      !user
+    )
+      return;
 
     const tutorialKey = `hasSeenTutorial_${user.id}`;
     const tutorialDone = localStorage.getItem(tutorialKey);
@@ -49,7 +55,8 @@ export function VerificationNudge() {
         setTimeout(() => setIsVisible(true), 800);
       };
       window.addEventListener("tutorial-complete", handleTutorialComplete);
-      return () => window.removeEventListener("tutorial-complete", handleTutorialComplete);
+      return () =>
+        window.removeEventListener("tutorial-complete", handleTutorialComplete);
     }
   }, [nudgeStatus, user]);
 
@@ -82,10 +89,11 @@ export function VerificationNudge() {
           />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900 text-sm">
-              Get verified for better deals
+              Verify your account
             </p>
             <p className="text-xs text-gray-600 mt-1">
-              Verified members get lower trust deposits and faster approvals.
+              Verified members get lower trust deposits and smoother
+              transactions.
             </p>
           </div>
           <button

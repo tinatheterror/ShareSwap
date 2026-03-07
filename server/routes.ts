@@ -636,8 +636,10 @@ export function registerRoutes(app: Express): Server {
     }
 
     // Map database status to frontend status
+    // personaStatus "created" means the inquiry was started but the user never submitted it —
+    // treat it as unverified so they can retry rather than being stuck on "Under Review".
     let status: 'unverified' | 'pending' | 'verified' | 'failed' = 'unverified';
-    if (verification.status === 'pending') status = 'pending';
+    if (verification.status === 'pending' && verification.personaStatus !== 'created') status = 'pending';
     else if (verification.status === 'approved') status = 'verified';
     else if (verification.status === 'rejected') status = 'failed';
 

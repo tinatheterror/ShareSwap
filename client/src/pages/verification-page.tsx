@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Loader2,
   ArrowLeft,
@@ -82,6 +82,7 @@ export default function VerificationPage() {
   const queryClient = useQueryClient();
   const [personaLoading, setPersonaLoading] = useState(false);
   const [personaError, setPersonaError] = useState<string | null>(null);
+  const returnCheckDone = useRef(false);
 
   const { data: verification, isLoading } = useQuery<VerificationData>({
     queryKey: ["/api/verification-status"],
@@ -99,10 +100,10 @@ export default function VerificationPage() {
   });
 
   const completeInquiryMutation = useMutation({
-    mutationFn: async ({ inquiryId, status }: { inquiryId: string; status: string }) => {
+    mutationFn: async ({ inquiryId }: { inquiryId: string }) => {
       const res = await apiRequest("POST", "/api/persona/inquiry-complete", {
         inquiryId,
-        status,
+        status: "completed",
       });
       return res.json();
     },
@@ -120,6 +121,11 @@ export default function VerificationPage() {
           description: data.message || "Please try again.",
           variant: "destructive",
         });
+      } else {
+        toast({
+          title: "Verification Submitted",
+          description: "We're reviewing your submission and will notify you shortly.",
+        });
       }
     },
     onError: (error: Error) => {
@@ -130,6 +136,22 @@ export default function VerificationPage() {
       });
     },
   });
+
+  // Handle return from Persona's hosted flow — they redirect back with ?inquiry-id=<id>
+  useEffect(() => {
+    if (returnCheckDone.current) return;
+    returnCheckDone.current = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const returnedInquiryId = params.get("inquiry-id");
+
+    if (returnedInquiryId) {
+      console.log("[Persona] Returned from Persona redirect. Checking inquiry:", returnedInquiryId);
+      // Clean the URL without a page reload
+      window.history.replaceState({}, "", "/verification");
+      completeInquiryMutation.mutate({ inquiryId: returnedInquiryId });
+    }
+  }, []);
 
   const startPersonaVerification = useCallback(async () => {
     setPersonaLoading(true);
@@ -143,65 +165,19 @@ export default function VerificationPage() {
         throw new Error("Could not start verification");
       }
 
-      await new Promise<void>((resolve, reject) => {
-        if ((window as any).Persona) {
-          console.log("[Persona] SDK already loaded from CDN");
-          resolve();
-          return;
-        }
-        const script = document.createElement("script");
-        script.src = "https://cdn.withpersona.com/dist/persona-v5.1.2.js";
-        script.onload = () => {
-          console.log("[Persona] SDK script loaded from CDN");
-          resolve();
-        };
-        script.onerror = () => {
-          console.error("[Persona] Failed to load SDK script from CDN");
-          reject(new Error("Failed to load Persona SDK"));
-        };
-        document.head.appendChild(script);
-      });
+      const returnUrl = `${window.location.origin}/verification`;
+      const personaUrl = `https://inquiry.withpersona.com/verify?inquiry-id=${inquiryId}&redirect-uri=${encodeURIComponent(returnUrl)}`;
 
-      if (!(window as any).Persona || !(window as any).Persona.Client) {
-        throw new Error("Persona SDK not available after loading");
-      }
+      console.log("[Persona] Redirecting to hosted flow. inquiryId:", inquiryId);
+      console.log("[Persona] URL:", personaUrl);
 
-      console.log("[Persona] Initializing client with inquiryId:", inquiryId);
-
-      const client = new (window as any).Persona.Client({
-        inquiryId: inquiryId,
-        onReady: () => {
-          console.log("[Persona] onReady fired — calling client.open() for inquiryId:", inquiryId);
-          setPersonaLoading(false);
-          client.open();
-        },
-        onComplete: ({ inquiryId: completedId, status }: { inquiryId: string; status: string }) => {
-          console.log("[Persona] onComplete — inquiryId:", completedId || inquiryId, "status:", status);
-          completeInquiryMutation.mutate({
-            inquiryId: completedId || inquiryId,
-            status: status || "completed",
-          });
-        },
-        onCancel: () => {
-          console.log("[Persona] onCancel fired");
-          toast({
-            title: "Verification Cancelled",
-            description: "You can resume verification anytime.",
-          });
-          setPersonaLoading(false);
-        },
-        onError: (error: any) => {
-          console.error("[Persona] onError fired:", error);
-          setPersonaError("Verification encountered an error. Please try again.");
-          setPersonaLoading(false);
-        },
-      });
+      window.location.href = personaUrl;
     } catch (err: any) {
-      console.error("Error starting Persona:", err);
+      console.error("[Persona] Error starting verification:", err);
       setPersonaError(err.message || "Failed to start verification");
       setPersonaLoading(false);
     }
-  }, [createInquiryMutation, completeInquiryMutation, toast]);
+  }, [createInquiryMutation]);
 
   const isVerified = verification?.status === "verified";
   const isPending = verification?.status === "pending";

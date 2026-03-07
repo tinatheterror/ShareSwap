@@ -158,9 +158,9 @@ export default function BorrowPage() {
     },
   });
 
-  // Get user's location when the component mounts
+  // GPS disabled
   useEffect(() => {
-    if ("geolocation" in navigator) {
+    if (false && "geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;

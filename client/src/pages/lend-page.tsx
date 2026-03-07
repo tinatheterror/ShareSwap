@@ -382,9 +382,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
           }
         };
         geocodePostalCode();
-      } else if ("geolocation" in navigator) {
-        // Fall back to browser geolocation
-        getCurrentLocation();
+      // GPS disabled — no fallback to browser geolocation
       }
     }
   }, [user?.defaultPostalCode, user?.defaultCity]);
@@ -869,31 +867,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     let locality: string | null = null;
     let region: string | null = null;
 
-    // Step 1: Try browser geolocation first (more accurate)
-    if ("geolocation" in navigator) {
-      try {
-        const position = await new Promise<GeolocationPosition>(
-          (resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 15000,
-              maximumAge: 300000,
-            });
-          },
-        );
-        latitude = position.coords.latitude;
-        longitude = position.coords.longitude;
-        console.log("Browser geolocation success:", latitude, longitude);
-      } catch (error: any) {
-        console.log(
-          "Browser geolocation failed, code:",
-          error?.code,
-          "message:",
-          error?.message,
-        );
-        // Continue to try IP-based fallback
-      }
-    }
+    // Step 1: GPS disabled — skip browser geolocation
 
     // Step 2: Fallback to IP-based geolocation if browser geolocation failed
     if (!latitude && !longitude) {

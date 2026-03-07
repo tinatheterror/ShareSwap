@@ -56,25 +56,8 @@ export function LocationAlerts() {
     const keywords = newKeywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
     if (keywords.length === 0) return;
 
-    // Get user's current location
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          createAlertMutation.mutate({
-            keywords,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            radius: 10,
-          });
-        },
-        () => {
-          // Create without location if permission denied
-          createAlertMutation.mutate({ keywords, radius: 10 });
-        }
-      );
-    } else {
-      createAlertMutation.mutate({ keywords, radius: 10 });
-    }
+    // GPS disabled — create alert without location
+    createAlertMutation.mutate({ keywords, radius: 10 });
   };
 
   if (isLoading) {

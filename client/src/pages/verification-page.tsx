@@ -162,40 +162,28 @@ export default function VerificationPage() {
         document.head.appendChild(script);
       });
 
-      const PersonaLib = (window as any).Persona;
-      if (!PersonaLib || !PersonaLib.Client) {
+      if (!(window as any).Persona || !(window as any).Persona.Client) {
         throw new Error("Persona SDK not available after loading");
       }
 
-      let readyFired = false;
-      console.log("[Persona] Creating client with inquiryId:", inquiryId);
+      console.log("[Persona] Initializing client with inquiryId:", inquiryId);
 
-      const timeoutId = setTimeout(() => {
-        if (!readyFired) {
-          console.error("[Persona] onReady never fired — possible CSP or domain restriction");
-          setPersonaError("Verification could not load. Please try again or contact support if this persists.");
-          setPersonaLoading(false);
-        }
-      }, 30000);
-
-      const client = new PersonaLib.Client({
-        inquiryId,
+      const client = new (window as any).Persona.Client({
+        inquiryId: inquiryId,
         onReady: () => {
-          console.log("[Persona] onReady fired — calling client.open() with inquiryId:", inquiryId);
-          readyFired = true;
-          clearTimeout(timeoutId);
+          console.log("[Persona] onReady fired — calling client.open() for inquiryId:", inquiryId);
           setPersonaLoading(false);
           client.open();
         },
         onComplete: ({ inquiryId: completedId, status }: { inquiryId: string; status: string }) => {
-          clearTimeout(timeoutId);
+          console.log("[Persona] onComplete — inquiryId:", completedId || inquiryId, "status:", status);
           completeInquiryMutation.mutate({
             inquiryId: completedId || inquiryId,
             status: status || "completed",
           });
         },
         onCancel: () => {
-          clearTimeout(timeoutId);
+          console.log("[Persona] onCancel fired");
           toast({
             title: "Verification Cancelled",
             description: "You can resume verification anytime.",
@@ -203,8 +191,7 @@ export default function VerificationPage() {
           setPersonaLoading(false);
         },
         onError: (error: any) => {
-          clearTimeout(timeoutId);
-          console.error("Persona error:", error);
+          console.error("[Persona] onError fired:", error);
           setPersonaError("Verification encountered an error. Please try again.");
           setPersonaLoading(false);
         },

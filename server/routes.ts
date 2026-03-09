@@ -6440,11 +6440,16 @@ Respond with ONLY the category name, nothing else.`
         ))
         .limit(1);
 
+      const idVerified = !!idVerification;
+      const paymentVerified = !!user.stripePaymentMethodId;
+      const isVerified = idVerified && paymentVerified;
+
       res.json({
         ...user,
+        isVerified,
         emailVerified: user.emailVerified || !!user.googleId || user.authProvider === 'google',
-        paymentVerified: !!user.stripePaymentMethodId,
-        idVerified: !!idVerification,
+        paymentVerified,
+        idVerified,
       });
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -6541,7 +6546,7 @@ Respond with ONLY the category name, nothing else.`
       const [user] = await db
         .select({
           hasSeenNudge: users.hasSeenVerificationNudge,
-          isVerified: users.isVerified,
+          stripePaymentMethodId: users.stripePaymentMethodId,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
@@ -6551,9 +6556,20 @@ Respond with ONLY the category name, nothing else.`
         return res.status(404).json({ error: "User not found" });
       }
 
+      const [approvedId] = await db
+        .select({ id: verifications.id })
+        .from(verifications)
+        .where(and(
+          eq(verifications.userId, req.user.id),
+          eq(verifications.status, "approved")
+        ))
+        .limit(1);
+
+      const isVerified = !!approvedId && !!user.stripePaymentMethodId;
+
       res.json({
         hasSeenNudge: user.hasSeenNudge || false,
-        isVerified: user.isVerified || false,
+        isVerified,
       });
     } catch (error) {
       console.error("Error fetching verification nudge status:", error);

@@ -248,7 +248,7 @@ export function setupAuth(app: Express) {
                 displayName,
                 googleId: profile.id,
                 authProvider: 'google',
-                isVerified: true, // Google accounts are pre-verified
+                isVerified: false,
                 password: null,
                 referredBy: referrerId,
                 referralCode: userCode,

@@ -32,6 +32,7 @@ import {
   Shield,
   Loader2,
   ExternalLink,
+  Info,
 } from "lucide-react";
 
 interface PaymentMethodData {
@@ -96,6 +97,7 @@ export default function PaymentMethodsPage() {
   const queryClient = useQueryClient();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [removeBlockReason, setRemoveBlockReason] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useQuery<PaymentMethodData>({
     queryKey: ["/api/payment-method"],
@@ -170,24 +172,23 @@ export default function PaymentMethodsPage() {
   const removeMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("DELETE", "/api/payment-method");
-      return res.json();
+      const body = await res.json();
+      if (!res.ok) throw Object.assign(new Error(body.error || "Failed to remove payment method"), { code: body.code });
+      return body;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payment-method"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
       setIsRemoveDialogOpen(false);
+      setRemoveBlockReason(null);
       toast({
         title: "Card removed",
         description: "Your payment method has been removed.",
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Cannot remove card",
-        description: error.message || "Failed to remove payment method.",
-        variant: "destructive",
-      });
+      setRemoveBlockReason(error.message);
     },
   });
 
@@ -344,19 +345,53 @@ export default function PaymentMethodsPage() {
           required.
         </p>
 
-        <Dialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <Dialog
+          open={isRemoveDialogOpen}
+          onOpenChange={(open) => {
+            setIsRemoveDialogOpen(open);
+            if (!open) setRemoveBlockReason(null);
+          }}
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Remove payment method?</DialogTitle>
-              <DialogDescription>
-                This will remove your card from your account. You may need to
-                add a new payment method to use certain features.
-              </DialogDescription>
             </DialogHeader>
+
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800 text-sm">
+                Removing your payment method will disable borrowing and renting until another card is added.
+              </AlertDescription>
+            </Alert>
+
+            {removeBlockReason ? (
+              <Alert className="bg-red-50 border-red-200">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800 text-sm">
+                  {removeBlockReason}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  Your card can only be removed if you have no active borrows or rentals, pending returns, damage claims, or unpaid balances.
+                </p>
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800 text-sm">
+                    To switch to a different card, use <strong>Update payment method</strong> above — your old card will be replaced automatically without leaving your account unprotected.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setIsRemoveDialogOpen(false)}
+                onClick={() => {
+                  setIsRemoveDialogOpen(false);
+                  setRemoveBlockReason(null);
+                }}
                 disabled={removeMutation.isPending}
               >
                 Cancel
@@ -364,7 +399,7 @@ export default function PaymentMethodsPage() {
               <Button
                 variant="destructive"
                 onClick={() => removeMutation.mutate()}
-                disabled={removeMutation.isPending}
+                disabled={removeMutation.isPending || !!removeBlockReason}
               >
                 {removeMutation.isPending ? (
                   <>

@@ -6977,25 +6977,96 @@ Respond with ONLY the category name, nothing else.`
     }
 
     try {
-      // Check for active transactions before allowing removal
-      const activeTransactions = await db
+      const userId = req.user.id;
+
+      // Check 1: Active borrow or rent (any in-flight transaction)
+      const [activeBorrowRow] = await db
         .select({ count: sql<number>`count(*)` })
         .from(itemRequests)
         .innerJoin(items, eq(items.id, itemRequests.itemId))
         .where(
           and(
             or(
-              eq(itemRequests.requesterId, req.user.id),
-              eq(items.ownerId, req.user.id)
+              eq(itemRequests.requesterId, userId),
+              eq(items.ownerId, userId)
             ),
-            sql`${itemRequests.status} IN ('ACCEPTED', 'DEPOSIT_CONFIRMED', 'IN_PROGRESS')`
+            sql`${itemRequests.status} IN (
+              'ACCEPTED','DEPOSIT_PENDING','DEPOSIT_CONFIRMED',
+              'COURIER_PENDING','HANDOFF_CONFIRMED','IN_PROGRESS'
+            )`
           )
         );
 
-      if (activeTransactions[0]?.count > 0) {
-        return res.status(400).json({ 
-          error: "Cannot remove payment method while you have active transactions. Complete or cancel them first.",
-          hasActiveTransactions: true,
+      if (Number(activeBorrowRow?.count) > 0) {
+        return res.status(400).json({
+          error: "You have an active borrow or rental. Complete or cancel it before removing your payment method.",
+          code: "ACTIVE_BORROW",
+        });
+      }
+
+      // Check 2: Pending return
+      const [pendingReturnRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            or(
+              eq(itemRequests.requesterId, userId),
+              eq(items.ownerId, userId)
+            ),
+            sql`${itemRequests.status} IN ('RETURN_REQUESTED','RETURN_CONFIRMED')`
+          )
+        );
+
+      if (Number(pendingReturnRow?.count) > 0) {
+        return res.status(400).json({
+          error: "You have a pending return in progress. Complete the return before removing your payment method.",
+          code: "PENDING_RETURN",
+        });
+      }
+
+      // Check 3: Damage claim (rental return marked as DAMAGED or LOST)
+      const [damageRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(rentalReturns)
+        .innerJoin(itemRequests, eq(itemRequests.id, rentalReturns.requestId))
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            or(
+              eq(itemRequests.requesterId, userId),
+              eq(items.ownerId, userId)
+            ),
+            sql`${rentalReturns.status} IN ('DAMAGED','LOST')`
+          )
+        );
+
+      if (Number(damageRow?.count) > 0) {
+        return res.status(400).json({
+          error: "You have an outstanding damage or loss claim. Resolve it before removing your payment method.",
+          code: "DAMAGE_CLAIM",
+        });
+      }
+
+      // Check 4: Unpaid platform commissions
+      const [unpaidRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(platformCommissions)
+        .where(
+          and(
+            or(
+              eq(platformCommissions.payerId, userId),
+              eq(platformCommissions.receiverId, userId)
+            ),
+            sql`${platformCommissions.status} = 'PENDING'`
+          )
+        );
+
+      if (Number(unpaidRow?.count) > 0) {
+        return res.status(400).json({
+          error: "You have an unpaid balance outstanding. Clear it before removing your payment method.",
+          code: "UNPAID_BALANCE",
         });
       }
 

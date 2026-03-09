@@ -550,7 +550,7 @@ export function ItemRequestForm({
                 const reputationScore = (user as any)?.reputationScore || 0;
                 const viewerTrustScore = Math.min(
                   100,
-                  Math.round((reputationScore / 500) * 100) + 50,
+                  Math.round((reputationScore / 500) * 100),
                 );
                 const depositCalc = calculateSecurityDeposit(
                   itemTier,
@@ -661,7 +661,7 @@ export function ItemRequestForm({
                     (user as any)?.reputationScore || 0;
                   const viewerTrustScoreForDeposit = Math.min(
                     100,
-                    Math.round((reputationScoreForDeposit / 500) * 100) + 50,
+                    Math.round((reputationScoreForDeposit / 500) * 100),
                   );
                   const depositCalcForFee = calculateSecurityDeposit(
                     itemTierForDeposit,

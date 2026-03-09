@@ -1151,7 +1151,7 @@ export function ChatWidget() {
             shareCoinPrice: selectedRequest.item.shareCoinPrice || "5",
             photos: selectedRequest.item.photos,
           }}
-          trustScore={50}
+          trustScore={Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100))}
           courierFee={selectedRequest.deliveryMethod === "courier" ? 8.99 : 0}
           onSuccess={(nextStep) => {
             setShowTrustDepositModal(false);

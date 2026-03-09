@@ -107,7 +107,7 @@ export default function ItemDetailsPage() {
     const reputationScore = user?.reputationScore || 0;
     const viewerTrustScore = Math.min(
       100,
-      Math.round((reputationScore / 500) * 100) + 50,
+      Math.round((reputationScore / 500) * 100),
     );
     const depositCalc = isOwner
       ? calculateSecurityDeposit(itemTier, itemOriginalValue, 0)

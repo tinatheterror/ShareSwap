@@ -48,7 +48,7 @@ export function getTrustScoreDiscount(trustScore: number): { discount: number; p
 export function calculateSecurityDeposit(
   tier: number,
   originalValue: string,
-  trustScore: number = 50, // Default trust score for new users
+  trustScore: number = 0,
   customItemValue?: number // Optional: for luxury items with known higher value
 ): DepositCalculation {
   // Get the estimated item value

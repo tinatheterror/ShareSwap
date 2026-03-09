@@ -6,11 +6,21 @@ import { X, Shield, ArrowRight, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
+const EXCLUDED_PATHS = [
+  "/payment-methods",
+  "/verification",
+  "/auth",
+  "/settings",
+  "/profile",
+];
+
 export function VerificationNudge() {
   const { user } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const queryClient = useQueryClient();
   const [isVisible, setIsVisible] = useState(false);
+
+  const isExcludedPage = EXCLUDED_PATHS.some((p) => location.startsWith(p));
 
   const { data: nudgeStatus } = useQuery<{
     hasSeenNudge: boolean;
@@ -62,6 +72,7 @@ export function VerificationNudge() {
 
   if (
     !isVisible ||
+    isExcludedPage ||
     !nudgeStatus ||
     nudgeStatus.hasSeenNudge ||
     nudgeStatus.isVerified

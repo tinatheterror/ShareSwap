@@ -65,26 +65,50 @@ const ITEM_CATEGORIES = [
 
 const inferCategory = (itemName: string): string => {
   const name = itemName.toLowerCase();
-  
-  if (/baby|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier/i.test(name)) {
+
+  if (
+    /baby|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier/i.test(
+      name,
+    )
+  ) {
     return "Baby & Kids";
   }
-  if (/clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|accessory|jewelry|watch/i.test(name)) {
+  if (
+    /clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|accessory|jewelry|watch/i.test(
+      name,
+    )
+  ) {
     return "Clothing & Accessories";
   }
-  if (/phone|tablet|laptop|computer|camera|tv|television|speaker|headphone|charger|electronic|gaming|console|monitor/i.test(name)) {
+  if (
+    /phone|tablet|laptop|computer|camera|tv|television|speaker|headphone|charger|electronic|gaming|console|monitor/i.test(
+      name,
+    )
+  ) {
     return "Electronics";
   }
-  if (/camping|tent|bike|bicycle|golf|sports|game|book|guitar|instrument|hobby|collect|fishing|kayak|ski|snowboard/i.test(name)) {
+  if (
+    /camping|tent|bike|bicycle|golf|sports|game|book|guitar|instrument|hobby|collect|fishing|kayak|ski|snowboard/i.test(
+      name,
+    )
+  ) {
     return "Hobbies & Collectibles";
   }
-  if (/kitchen|blender|mixer|pot|pan|plate|utensil|furniture|chair|table|lamp|decor|vacuum|appliance|oven|microwave|fridge|toaster|coffee/i.test(name)) {
+  if (
+    /kitchen|blender|mixer|pot|pan|plate|utensil|furniture|chair|table|lamp|decor|vacuum|appliance|oven|microwave|fridge|toaster|coffee/i.test(
+      name,
+    )
+  ) {
     return "Home & Kitchen";
   }
-  if (/drill|saw|hammer|tool|wrench|screwdriver|mower|lawn|garden|ladder|equipment|pressure washer|generator|chainsaw/i.test(name)) {
+  if (
+    /drill|saw|hammer|tool|wrench|screwdriver|mower|lawn|garden|ladder|equipment|pressure washer|generator|chainsaw/i.test(
+      name,
+    )
+  ) {
     return "Tools & Equipment";
   }
-  
+
   return "Other";
 };
 
@@ -101,8 +125,20 @@ export default function BorrowPage() {
   const [showWishlistTutorial, setShowWishlistTutorial] = useState(false);
   const [showWishlistForm, setShowWishlistForm] = useState(false);
   const [giftCarouselIndex, setGiftCarouselIndex] = useState(0);
-  const [categoryCarouselIndices, setCategoryCarouselIndices] = useState<Record<string, number>>({});
-  const categoryTouchRefs = useRef<Record<string, { startX: number; endX: number; startY: number; isHorizontal: boolean | null }>>({});
+  const [categoryCarouselIndices, setCategoryCarouselIndices] = useState<
+    Record<string, number>
+  >({});
+  const categoryTouchRefs = useRef<
+    Record<
+      string,
+      {
+        startX: number;
+        endX: number;
+        startY: number;
+        isHorizontal: boolean | null;
+      }
+    >
+  >({});
   const giftTouchStartX = useRef(0);
   const giftTouchEndX = useRef(0);
   const giftTouchStartY = useRef(0);
@@ -127,8 +163,18 @@ export default function BorrowPage() {
 
   // Save location to user profile mutation
   const saveLocationMutation = useMutation({
-    mutationFn: ({ location, radius: r }: { location: string; radius: number }) => {
-      return apiRequest("POST", "/api/user/location", { city: location, postalCode: location, radius: r });
+    mutationFn: ({
+      location,
+      radius: r,
+    }: {
+      location: string;
+      radius: number;
+    }) => {
+      return apiRequest("POST", "/api/user/location", {
+        city: location,
+        postalCode: location,
+        radius: r,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
@@ -171,7 +217,7 @@ export default function BorrowPage() {
 
           // Get postal code from coordinates - try BigDataCloud first, then Nominatim
           let postcode: string | null = null;
-          
+
           // Try BigDataCloud first (better postal code coverage, no API key needed)
           try {
             const bdcResponse = await fetch(
@@ -184,7 +230,7 @@ export default function BorrowPage() {
           } catch (e) {
             console.log("BigDataCloud failed, trying Nominatim...");
           }
-          
+
           // Fallback to OpenStreetMap Nominatim if BigDataCloud didn't return postal code
           if (!postcode) {
             try {
@@ -198,13 +244,14 @@ export default function BorrowPage() {
               );
               if (response.ok) {
                 const data = await response.json();
-                postcode = data.address?.postcode || data.address?.postal_code || null;
+                postcode =
+                  data.address?.postcode || data.address?.postal_code || null;
               }
             } catch (error) {
               console.error("Error getting postal code:", error);
             }
           }
-          
+
           if (postcode) {
             setUserPostalCode(postcode);
           } else {
@@ -212,18 +259,25 @@ export default function BorrowPage() {
           }
         },
         async (error: GeolocationPositionError) => {
-          console.log("Geolocation error, falling back to saved location:", error.message);
-          
+          console.log(
+            "Geolocation error, falling back to saved location:",
+            error.message,
+          );
+
           // Fall back to geocoding user's saved postal code or city
           if (user?.defaultPostalCode || user?.defaultCity) {
             const query = user.defaultCity || user.defaultPostalCode || "";
             try {
-              const response = await fetch(`/api/geo/geocode?query=${encodeURIComponent(query)}`);
+              const response = await fetch(
+                `/api/geo/geocode?query=${encodeURIComponent(query)}`,
+              );
               if (response.ok) {
                 const data = await response.json();
                 if (data.lat && data.lon) {
                   setUserLocation({ lat: data.lat, lon: data.lon });
-                  setUserPostalCode(user.defaultCity || user.defaultPostalCode || "");
+                  setUserPostalCode(
+                    user.defaultCity || user.defaultPostalCode || "",
+                  );
                   console.log("Using geocoded saved location:", data);
                   return; // Success - no error message needed
                 }
@@ -232,12 +286,17 @@ export default function BorrowPage() {
               console.log("Geocoding failed:", e);
             }
           }
-          
+
           // Only show error if we couldn't fall back to saved location
-          if (error.code === 1 && !user?.defaultPostalCode && !user?.defaultCity) {
+          if (
+            error.code === 1 &&
+            !user?.defaultPostalCode &&
+            !user?.defaultCity
+          ) {
             toast({
               title: "Location Needed",
-              description: "Enable location or set your city in settings for nearby items.",
+              description:
+                "Enable location or set your city in settings for nearby items.",
               variant: "default",
             });
           }
@@ -246,7 +305,7 @@ export default function BorrowPage() {
           enableHighAccuracy: false,
           timeout: 30000,
           maximumAge: 600000,
-        }
+        },
       );
     }
   }, []);
@@ -258,12 +317,7 @@ export default function BorrowPage() {
     isLoading: nearbyLoading,
   } = useQuery<ItemWithDistance[]>({
     queryKey: userLocation
-      ? [
-          "/api/items/nearby",
-          userLocation.lat,
-          userLocation.lon,
-          radius,
-        ]
+      ? ["/api/items/nearby", userLocation.lat, userLocation.lon, radius]
       : ["/api/items", "all"],
     queryFn: async () => {
       if (userLocation) {
@@ -366,60 +420,85 @@ export default function BorrowPage() {
     const threshold = 50;
 
     if (diff > threshold && giftCarouselIndex < filteredGiftItems.length - 1) {
-      setGiftCarouselIndex(prev => prev + 1);
+      setGiftCarouselIndex((prev) => prev + 1);
     } else if (diff < -threshold && giftCarouselIndex > 0) {
-      setGiftCarouselIndex(prev => prev - 1);
+      setGiftCarouselIndex((prev) => prev - 1);
     }
   }, [giftCarouselIndex, filteredGiftItems.length]);
 
   // Group items by category (infer from name if no category set)
   // Sort items with photos first within each category
-  const itemsByCategory = ITEM_CATEGORIES.reduce((acc, category) => {
-    const categoryItems = filteredItems.filter(item => {
-      const itemCategory = (item as any).category || inferCategory(item.name);
-      return itemCategory === category;
-    });
-    // Sort: items with photos first
-    acc[category] = categoryItems.sort((a, b) => {
-      const aHasPhoto = a.photos && a.photos.length > 0 && a.photos[0] ? 1 : 0;
-      const bHasPhoto = b.photos && b.photos.length > 0 && b.photos[0] ? 1 : 0;
-      return bHasPhoto - aHasPhoto;
-    });
-    return acc;
-  }, {} as Record<string, ItemWithDistance[]>);
+  const itemsByCategory = ITEM_CATEGORIES.reduce(
+    (acc, category) => {
+      const categoryItems = filteredItems.filter((item) => {
+        const itemCategory = (item as any).category || inferCategory(item.name);
+        return itemCategory === category;
+      });
+      // Sort: items with photos first
+      acc[category] = categoryItems.sort((a, b) => {
+        const aHasPhoto =
+          a.photos && a.photos.length > 0 && a.photos[0] ? 1 : 0;
+        const bHasPhoto =
+          b.photos && b.photos.length > 0 && b.photos[0] ? 1 : 0;
+        return bHasPhoto - aHasPhoto;
+      });
+      return acc;
+    },
+    {} as Record<string, ItemWithDistance[]>,
+  );
 
   // Category carousel handlers
-  const handleCategoryTouchStart = useCallback((category: string, e: React.TouchEvent) => {
-    categoryTouchRefs.current[category] = { startX: e.touches[0].clientX, endX: e.touches[0].clientX, startY: e.touches[0].clientY, isHorizontal: null };
-  }, []);
+  const handleCategoryTouchStart = useCallback(
+    (category: string, e: React.TouchEvent) => {
+      categoryTouchRefs.current[category] = {
+        startX: e.touches[0].clientX,
+        endX: e.touches[0].clientX,
+        startY: e.touches[0].clientY,
+        isHorizontal: null,
+      };
+    },
+    [],
+  );
 
-  const handleCategoryTouchMove = useCallback((category: string, e: React.TouchEvent) => {
-    const ref = categoryTouchRefs.current[category];
-    if (!ref) return;
-    const dx = Math.abs(e.touches[0].clientX - ref.startX);
-    const dy = Math.abs(e.touches[0].clientY - ref.startY);
-    if (ref.isHorizontal === null && (dx > 5 || dy > 5)) {
-      ref.isHorizontal = dx > dy;
-    }
-    if (ref.isHorizontal) {
-      ref.endX = e.touches[0].clientX;
-    }
-  }, []);
+  const handleCategoryTouchMove = useCallback(
+    (category: string, e: React.TouchEvent) => {
+      const ref = categoryTouchRefs.current[category];
+      if (!ref) return;
+      const dx = Math.abs(e.touches[0].clientX - ref.startX);
+      const dy = Math.abs(e.touches[0].clientY - ref.startY);
+      if (ref.isHorizontal === null && (dx > 5 || dy > 5)) {
+        ref.isHorizontal = dx > dy;
+      }
+      if (ref.isHorizontal) {
+        ref.endX = e.touches[0].clientX;
+      }
+    },
+    [],
+  );
 
-  const handleCategoryTouchEnd = useCallback((category: string, maxIndex: number) => {
-    const refs = categoryTouchRefs.current[category];
-    if (!refs) return;
-    
-    const diff = refs.startX - refs.endX;
-    const threshold = 50;
-    const currentIndex = categoryCarouselIndices[category] || 0;
+  const handleCategoryTouchEnd = useCallback(
+    (category: string, maxIndex: number) => {
+      const refs = categoryTouchRefs.current[category];
+      if (!refs) return;
 
-    if (diff > threshold && currentIndex < maxIndex) {
-      setCategoryCarouselIndices(prev => ({ ...prev, [category]: currentIndex + 1 }));
-    } else if (diff < -threshold && currentIndex > 0) {
-      setCategoryCarouselIndices(prev => ({ ...prev, [category]: currentIndex - 1 }));
-    }
-  }, [categoryCarouselIndices]);
+      const diff = refs.startX - refs.endX;
+      const threshold = 50;
+      const currentIndex = categoryCarouselIndices[category] || 0;
+
+      if (diff > threshold && currentIndex < maxIndex) {
+        setCategoryCarouselIndices((prev) => ({
+          ...prev,
+          [category]: currentIndex + 1,
+        }));
+      } else if (diff < -threshold && currentIndex > 0) {
+        setCategoryCarouselIndices((prev) => ({
+          ...prev,
+          [category]: currentIndex - 1,
+        }));
+      }
+    },
+    [categoryCarouselIndices],
+  );
 
   // Show wishlist tutorial on first visit
   useEffect(() => {
@@ -518,7 +597,7 @@ export default function BorrowPage() {
               </Badge>
               <div className="flex-1 h-px bg-gradient-to-r from-pink-200 to-transparent"></div>
             </div>
-            
+
             {/* Mobile: Swipeable carousel */}
             <div className="md:hidden">
               <div
@@ -530,23 +609,28 @@ export default function BorrowPage() {
                 {filteredGiftItems[giftCarouselIndex] && (
                   <Card className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white border-pink-100">
                     <div className="p-4">
-                      <div
-                        className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative aspect-square"
-                      >
+                      <div className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative aspect-square">
                         <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-xs">
                           FREE
                         </Badge>
-                        {filteredGiftItems[giftCarouselIndex].photos && filteredGiftItems[giftCarouselIndex].photos[0] ? (
+                        {filteredGiftItems[giftCarouselIndex].photos &&
+                        filteredGiftItems[giftCarouselIndex].photos[0] ? (
                           <img
                             src={filteredGiftItems[giftCarouselIndex].photos[0]}
                             alt={filteredGiftItems[giftCarouselIndex].name}
                             className="w-full h-full object-cover rounded-lg"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              target.parentElement?.classList.add('bg-pink-100', 'flex', 'items-center', 'justify-center');
-                              const icon = document.createElement('div');
-                              icon.innerHTML = '<svg class="h-16 w-16 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>';
+                              target.style.display = "none";
+                              target.parentElement?.classList.add(
+                                "bg-pink-100",
+                                "flex",
+                                "items-center",
+                                "justify-center",
+                              );
+                              const icon = document.createElement("div");
+                              icon.innerHTML =
+                                '<svg class="h-16 w-16 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>';
                               target.parentElement?.appendChild(icon);
                             }}
                           />
@@ -564,13 +648,19 @@ export default function BorrowPage() {
                       <div className="flex items-center gap-2 text-slate-600 mb-3">
                         <MapPin className="h-4 w-4" />
                         <span className="text-sm">
-                          {filteredGiftItems[giftCarouselIndex].city || userPostalCode || "Nearby"}
+                          {filteredGiftItems[giftCarouselIndex].city ||
+                            userPostalCode ||
+                            "Nearby"}
                         </span>
                       </div>
                       <Button
                         size="sm"
                         className="w-full bg-pink-500 hover:bg-pink-600 text-white text-sm h-10"
-                        onClick={() => navigate(`/items/${filteredGiftItems[giftCarouselIndex].id}`)}
+                        onClick={() =>
+                          navigate(
+                            `/items/${filteredGiftItems[giftCarouselIndex].id}`,
+                          )
+                        }
                       >
                         <Gift className="h-4 w-4 mr-1" />
                         Claim Gift
@@ -579,7 +669,7 @@ export default function BorrowPage() {
                   </Card>
                 )}
               </div>
-              
+
               {/* Dot indicators */}
               {filteredGiftItems.length > 1 && (
                 <div className="flex justify-center gap-1.5 mt-3">
@@ -588,16 +678,16 @@ export default function BorrowPage() {
                       key={index}
                       onClick={() => setGiftCarouselIndex(index)}
                       className={`w-2 h-2 rounded-full transition-all ${
-                        index === giftCarouselIndex 
-                          ? 'bg-pink-500 w-4' 
-                          : 'bg-gray-300'
+                        index === giftCarouselIndex
+                          ? "bg-pink-500 w-4"
+                          : "bg-gray-300"
                       }`}
                     />
                   ))}
                 </div>
               )}
             </div>
-            
+
             {/* Desktop: Grid layout */}
             <div className="hidden md:grid md:grid-cols-4 gap-4">
               {filteredGiftItems.slice(0, 4).map((item) => (
@@ -620,10 +710,16 @@ export default function BorrowPage() {
                           className="w-full h-full object-cover rounded-lg"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.parentElement?.classList.add('bg-pink-100', 'flex', 'items-center', 'justify-center');
-                            const icon = document.createElement('div');
-                            icon.innerHTML = '<svg class="h-16 w-16 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>';
+                            target.style.display = "none";
+                            target.parentElement?.classList.add(
+                              "bg-pink-100",
+                              "flex",
+                              "items-center",
+                              "justify-center",
+                            );
+                            const icon = document.createElement("div");
+                            icon.innerHTML =
+                              '<svg class="h-16 w-16 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>';
                             target.parentElement?.appendChild(icon);
                           }}
                         />
@@ -670,9 +766,7 @@ export default function BorrowPage() {
               <div className="p-2 bg-gradient-to-br from-teal-100 to-teal-200 rounded-lg">
                 <LayoutGrid className="h-4 w-4 text-teal-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-800">
-                All Items
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-800">All Items</h3>
               <Badge className="bg-teal-100 text-teal-800 border-teal-200">
                 {filteredItems.length} available
               </Badge>
@@ -731,19 +825,30 @@ export default function BorrowPage() {
                 {ITEM_CATEGORIES.map((category) => {
                   const categoryItems = itemsByCategory[category] || [];
                   if (categoryItems.length === 0) return null;
-                  
+
                   const currentIndex = categoryCarouselIndices[category] || 0;
                   const currentItem = categoryItems[currentIndex];
-                  
+
                   return (
                     <div key={category} className="mb-6">
-                      <h3 className="text-lg font-bold mb-3 text-slate-800">{category}</h3>
-                      
+                      <h3 className="text-lg font-bold mb-3 text-slate-800">
+                        {category}
+                      </h3>
+
                       <div
                         className="touch-pan-y"
-                        onTouchStart={(e) => handleCategoryTouchStart(category, e)}
-                        onTouchMove={(e) => handleCategoryTouchMove(category, e)}
-                        onTouchEnd={() => handleCategoryTouchEnd(category, categoryItems.length - 1)}
+                        onTouchStart={(e) =>
+                          handleCategoryTouchStart(category, e)
+                        }
+                        onTouchMove={(e) =>
+                          handleCategoryTouchMove(category, e)
+                        }
+                        onTouchEnd={() =>
+                          handleCategoryTouchEnd(
+                            category,
+                            categoryItems.length - 1,
+                          )
+                        }
                       >
                         {currentItem && (
                           <Card className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
@@ -758,11 +863,19 @@ export default function BorrowPage() {
                                     alt={currentItem.name}
                                     className="w-full h-full object-cover rounded-lg"
                                     onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      target.parentElement?.classList.add('bg-gray-200', 'flex', 'items-center', 'justify-center');
-                                      const icon = document.createElement('div');
-                                      icon.innerHTML = '<svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                                      const target =
+                                        e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                      target.parentElement?.classList.add(
+                                        "bg-gray-200",
+                                        "flex",
+                                        "items-center",
+                                        "justify-center",
+                                      );
+                                      const icon =
+                                        document.createElement("div");
+                                      icon.innerHTML =
+                                        '<svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
                                       target.parentElement?.appendChild(icon);
                                     }}
                                   />
@@ -781,12 +894,17 @@ export default function BorrowPage() {
                                 <div className="flex items-center gap-2 text-slate-700">
                                   <MapPin className="h-4 w-4" />
                                   <span className="text-sm">
-                                    {currentItem.city || userPostalCode || "Nearby"}
+                                    {currentItem.city ||
+                                      userPostalCode ||
+                                      "Nearby"}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-slate-700">
                                   <span>
-                                    <span className="font-medium">Condition:</span> {currentItem.conditionRating || 8}/10
+                                    <span className="font-medium">
+                                      Condition:
+                                    </span>{" "}
+                                    {currentItem.conditionRating || 8}/10
                                   </span>
                                   {currentItem.owner?.isVerified && (
                                     <span className="text-xs px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
@@ -794,18 +912,32 @@ export default function BorrowPage() {
                                     </span>
                                   )}
                                 </div>
-                                {(currentItem.isLendable || currentItem.isRentable) && (
+                                {(currentItem.isLendable ||
+                                  currentItem.isRentable) && (
                                   <div className="flex items-center gap-2 text-sm text-slate-700">
                                     <div className="flex items-center gap-1">
                                       <Coins className="h-4 w-4 text-teal-600" />
-                                      <span>{currentItem.shareCoinPrice || currentItem.shareCoinsReward || "5"} ShareCoins</span>
+                                      <span>
+                                        {currentItem.shareCoinPrice ||
+                                          currentItem.shareCoinsReward ||
+                                          "5"}{" "}
+                                        ShareCoins
+                                      </span>
                                     </div>
                                     {currentItem.isRentable && (
                                       <>
-                                        <span className="text-slate-400">|</span>
+                                        <span className="text-slate-400">
+                                          |
+                                        </span>
                                         <div className="flex items-center">
                                           <DollarSign className="h-4 w-4 text-teal-600" />
-                                          <span>${Number(currentItem.dollarsPrice || 10).toFixed(0)}/wk</span>
+                                          <span>
+                                            $
+                                            {Number(
+                                              currentItem.dollarsPrice || 10,
+                                            ).toFixed(0)}
+                                            /wk
+                                          </span>
                                         </div>
                                       </>
                                     )}
@@ -818,7 +950,9 @@ export default function BorrowPage() {
                                     size="sm"
                                     className="flex-1 text-white rounded-lg text-xs"
                                     style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() => navigate(`/items/${currentItem.id}`)}
+                                    onClick={() =>
+                                      navigate(`/items/${currentItem.id}`)
+                                    }
                                   >
                                     <HandHeart className="h-3 w-3 mr-1" />
                                     Borrow
@@ -829,7 +963,9 @@ export default function BorrowPage() {
                                     size="sm"
                                     className="flex-1 text-white rounded-lg text-xs"
                                     style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() => navigate(`/items/${currentItem.id}`)}
+                                    onClick={() =>
+                                      navigate(`/items/${currentItem.id}`)
+                                    }
                                   >
                                     <DollarSign className="h-3 w-3 mr-1" />
                                     Rent
@@ -840,7 +976,9 @@ export default function BorrowPage() {
                                     size="sm"
                                     className="flex-1 text-white rounded-lg text-xs"
                                     style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() => navigate(`/items/${currentItem.id}`)}
+                                    onClick={() =>
+                                      navigate(`/items/${currentItem.id}`)
+                                    }
                                   >
                                     <ArrowLeftRight className="h-3 w-3 mr-1" />
                                     Swap
@@ -851,23 +989,30 @@ export default function BorrowPage() {
                           </Card>
                         )}
                       </div>
-                      
+
                       {/* Dot indicators */}
                       {categoryItems.length > 1 && (
                         <div className="flex justify-center gap-1.5 mt-3">
                           {categoryItems.slice(0, 8).map((_, index) => (
                             <button
                               key={index}
-                              onClick={() => setCategoryCarouselIndices(prev => ({ ...prev, [category]: index }))}
+                              onClick={() =>
+                                setCategoryCarouselIndices((prev) => ({
+                                  ...prev,
+                                  [category]: index,
+                                }))
+                              }
                               className={`w-2 h-2 rounded-full transition-all ${
-                                index === currentIndex 
-                                  ? 'bg-teal-500 w-4' 
-                                  : 'bg-gray-300'
+                                index === currentIndex
+                                  ? "bg-teal-500 w-4"
+                                  : "bg-gray-300"
                               }`}
                             />
                           ))}
                           {categoryItems.length > 8 && (
-                            <span className="text-xs text-gray-400 ml-1">+{categoryItems.length - 8}</span>
+                            <span className="text-xs text-gray-400 ml-1">
+                              +{categoryItems.length - 8}
+                            </span>
                           )}
                         </div>
                       )}
@@ -875,135 +1020,150 @@ export default function BorrowPage() {
                   );
                 })}
               </div>
-              
+
               {/* Desktop: Grid Layout */}
               <div className="hidden md:grid md:grid-cols-4 gap-6">
-              {filteredItems.map((item) => (
-                <Card
-                  key={item.id}
-                  className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
-                >
-                  <div className="p-2 md:p-4">
-                    <div
-                      className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
-                      style={{ aspectRatio: "1 / 0.9" }}
-                    >
-                      {item.photos && item.photos[0] ? (
-                        <img
-                          src={item.photos[0]}
-                          alt={item.name}
-                          className="w-full h-full object-cover rounded-lg"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.parentElement?.classList.add('bg-gray-200', 'flex', 'items-center', 'justify-center');
-                            const icon = document.createElement('div');
-                            icon.innerHTML = '<svg class="h-10 w-10 md:h-16 md:w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
-                            target.parentElement?.appendChild(icon);
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                          <Camera className="h-10 w-10 md:h-16 md:w-16 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <CardContent className="px-3 md:px-6 pt-0 pb-2 md:pb-4">
-                    <h3 className="font-bold text-sm md:text-xl text-slate-800 truncate mb-0.5 md:mb-1">
-                      {item.name}
-                    </h3>
-
-                    <div className="space-y-0 md:space-y-0.5 mb-1.5 md:mb-3">
-                      <div className="flex items-center gap-1 md:gap-2 text-slate-700">
-                        <MapPin className="h-3 w-3 md:h-4 md:w-4" />
-                        <span className="text-xs md:text-sm">
-                          {item.city || userPostalCode || "Nearby"}
-                        </span>
+                {filteredItems.map((item) => (
+                  <Card
+                    key={item.id}
+                    className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
+                  >
+                    <div className="p-2 md:p-4">
+                      <div
+                        className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
+                        style={{ aspectRatio: "1 / 0.9" }}
+                      >
+                        {item.photos && item.photos[0] ? (
+                          <img
+                            src={item.photos[0]}
+                            alt={item.name}
+                            className="w-full h-full object-cover rounded-lg"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = "none";
+                              target.parentElement?.classList.add(
+                                "bg-gray-200",
+                                "flex",
+                                "items-center",
+                                "justify-center",
+                              );
+                              const icon = document.createElement("div");
+                              icon.innerHTML =
+                                '<svg class="h-10 w-10 md:h-16 md:w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                              target.parentElement?.appendChild(icon);
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                            <Camera className="h-10 w-10 md:h-16 md:w-16 text-gray-400" />
+                          </div>
+                        )}
                       </div>
+                    </div>
 
-                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
-                        <span>
-                          <span className="font-medium">Condition:</span>{" "}
-                          {item.conditionRating || 8}/10
-                        </span>
-                        {item.owner?.isVerified && (
-                          <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
-                            Verified Owner
+                    <CardContent className="px-3 md:px-6 pt-0 pb-2 md:pb-4">
+                      <h3 className="font-bold text-sm md:text-xl text-slate-800 truncate mb-0.5 md:mb-1">
+                        {item.name}
+                      </h3>
+
+                      <div className="space-y-0 md:space-y-0.5 mb-1.5 md:mb-3">
+                        <div className="flex items-center gap-1 md:gap-2 text-slate-700">
+                          <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                          <span className="text-xs md:text-sm">
+                            {item.city || userPostalCode || "Nearby"}
                           </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
+                          <span>
+                            <span className="font-medium">Condition:</span>{" "}
+                            {item.conditionRating || 8}/10
+                          </span>
+                          {item.owner?.isVerified && (
+                            <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                              Verified Owner
+                            </span>
+                          )}
+                        </div>
+
+                        {(item.isLendable || item.isRentable) && (
+                          <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
+                            <div className="flex items-center gap-0.5 md:gap-1">
+                              <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
+                              <span>
+                                {item.shareCoinPrice ||
+                                  item.shareCoinsReward ||
+                                  "5"}{" "}
+                                ShareCoins
+                              </span>
+                            </div>
+                            {item.isRentable && (
+                              <>
+                                <span className="text-slate-400">|</span>
+                                <div className="flex items-center">
+                                  <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
+                                  <span>
+                                    $
+                                    {Number(item.dollarsPrice || 10).toFixed(0)}
+                                    /wk
+                                  </span>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
 
-                      {(item.isLendable || item.isRentable) && (
-                        <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
-                          <div className="flex items-center gap-0.5 md:gap-1">
-                            <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
-                            <span>{item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins</span>
-                          </div>
-                          {item.isRentable && (
-                            <>
-                              <span className="text-slate-400">|</span>
-                              <div className="flex items-center">
-                                <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
-                                <span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-1">
-                      {item.isLendable && (
-                        <Button
-                          size="sm"
-                          className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
-                          style={{ backgroundColor: "#0DCEA1" }}
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <HandHeart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
-                          Borrow It
-                        </Button>
-                      )}
-                      {item.isRentable && (
-                        <Button
-                          size="sm"
-                          className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
-                          style={{ backgroundColor: "#0DCEA1" }}
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <DollarSign className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
-                          Rent It
-                        </Button>
-                      )}
-                      {item.isSwappable && (
-                        <Button
-                          size="sm"
-                          className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
-                          style={{ backgroundColor: "#0DCEA1" }}
-                          onClick={() => navigate(`/items/${item.id}`)}
-                        >
-                          <ArrowLeftRight className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
-                          Swap It
-                        </Button>
-                      )}
-                      {!item.isLendable &&
-                        !item.isRentable &&
-                        !item.isSwappable && (
+                      <div className="flex gap-1">
+                        {item.isLendable && (
                           <Button
                             size="sm"
                             className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                             style={{ backgroundColor: "#0DCEA1" }}
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
-                            View
+                            <HandHeart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
+                            Borrow It
                           </Button>
                         )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        {item.isRentable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <DollarSign className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
+                            Rent It
+                          </Button>
+                        )}
+                        {item.isSwappable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <ArrowLeftRight className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
+                            Swap It
+                          </Button>
+                        )}
+                        {!item.isLendable &&
+                          !item.isRentable &&
+                          !item.isSwappable && (
+                            <Button
+                              size="sm"
+                              className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+                              style={{ backgroundColor: "#0DCEA1" }}
+                              onClick={() => navigate(`/items/${item.id}`)}
+                            >
+                              View
+                            </Button>
+                          )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </>
           )}
@@ -1056,7 +1216,10 @@ export default function BorrowPage() {
                   className="w-full mt-6"
                   onClick={() => {
                     if (user && userPostalCode) {
-                      saveLocationMutation.mutate({ location: userPostalCode, radius });
+                      saveLocationMutation.mutate({
+                        location: userPostalCode,
+                        radius,
+                      });
                     }
                     setUserLocation(null);
                     setShowLocationModal(false);
@@ -1083,7 +1246,7 @@ export default function BorrowPage() {
           }}
           targetSelector="[data-tutorial='wishlist']"
           title="Can't Find What You Need?"
-          description="No worries — you can add any item to your wishlist so neighbours in your community know what you're looking for. When someone lists a matching item, you'll get a notification right away. It's a great way to find exactly what you need without having to keep checking back."
+          description="Add any item to your wishlist so neighbours know what you're looking for. When someone lists a matching item, you'll get notified right away. Find exactly what you need without having to keep checking back."
           actionLabel="View Wishlist"
           onAction={() => navigate("/wishlists")}
         />

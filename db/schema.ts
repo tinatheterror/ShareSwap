@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   displayName: text("display_name"), // User-editable display name shown on cards, chats, reviews
   password: text("password"), // Made nullable for OAuth/phone auth
   authProvider: text("auth_provider").default("local"), // 'local', 'google', 'phone'
+  email: text("email"),
   googleId: text("google_id").unique(),
   phoneNumber: text("phone_number").unique(),
   phoneVerified: boolean("phone_verified").default(false),

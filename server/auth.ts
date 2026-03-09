@@ -193,6 +193,16 @@ export function setupAuth(app: Express) {
               if (req.session) {
                 delete req.session.pendingReferralCode;
               }
+              // Update email if not stored yet
+              const googleEmail = profile.emails?.[0]?.value;
+              if (googleEmail && !existingUser.email) {
+                const [updated] = await db
+                  .update(users)
+                  .set({ email: googleEmail })
+                  .where(eq(users.id, existingUser.id))
+                  .returning();
+                return done(null, updated || existingUser);
+              }
               return done(null, existingUser);
             }
 
@@ -246,6 +256,7 @@ export function setupAuth(app: Express) {
                 username,
                 handle: userCode,
                 displayName,
+                email: email || null,
                 googleId: profile.id,
                 authProvider: 'google',
                 isVerified: false,

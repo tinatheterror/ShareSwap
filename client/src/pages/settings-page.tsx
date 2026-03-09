@@ -55,7 +55,7 @@ export default function SettingsPage() {
 
   const updatePhoneMutation = useMutation({
     mutationFn: async (phoneNumber: string) => {
-      const res = await apiRequest("PATCH", "/api/users/profile", {
+      const res = await apiRequest("PATCH", "/api/user-profile", {
         phone: phoneNumber,
       });
       return res.json();
@@ -223,7 +223,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between py-1">
               <div>
                 <p className="text-sm font-medium">Email Address</p>
-                <p className="text-xs text-gray-500">{user?.username}</p>
+                <p className="text-xs text-gray-500">{(user as any)?.email || user?.username}</p>
               </div>
             </div>
             <div className="pl-0 pb-1">

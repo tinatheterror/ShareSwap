@@ -467,8 +467,8 @@ export default function AchievementsPage() {
               )}
             </div>
 
-            {/* Milestones */}
-            <div>
+            {/* Milestones — desktop only (mobile has its own 50/50 row below) */}
+            <div className="hidden lg:block">
               <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-teal-500" />
                 Milestones
@@ -507,8 +507,8 @@ export default function AchievementsPage() {
             </div>
           </div>
 
-          {/* Right Column - Badges */}
-          <div>
+          {/* Right Column - Badges (desktop only) */}
+          <div className="hidden lg:block">
             <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
               <Star className="h-4 w-4 text-teal-500" />
               Your Badges
@@ -525,6 +525,71 @@ export default function AchievementsPage() {
                 >
                   <div className="flex justify-center mb-1">{badge.icon}</div>
                   <div className="text-xs font-medium leading-tight">
+                    {badge.name}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile-only: Milestones + Badges side by side 50/50 */}
+        <div className="lg:hidden grid grid-cols-2 gap-3 mt-4">
+          {/* Milestones */}
+          <div>
+            <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-teal-500" />
+              Milestones
+            </h2>
+            <div className="space-y-2">
+              {milestones.map((milestone) => (
+                <div key={milestone.id} className="flex items-start gap-2">
+                  <div
+                    className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                      milestone.achieved
+                        ? "bg-teal-500 border-teal-500"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {milestone.achieved && (
+                      <Check className="h-2.5 w-2.5 text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3
+                      className={`text-xs font-medium leading-tight ${
+                        milestone.achieved ? "text-slate-800" : "text-slate-500"
+                      }`}
+                    >
+                      {milestone.title}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 leading-tight mt-0.5">
+                      {milestone.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Badges */}
+          <div>
+            <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <Star className="h-4 w-4 text-teal-500" />
+              Your Badges
+            </h2>
+            <div className="space-y-2">
+              {badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className={`p-2 rounded-lg border-2 text-center transition-all ${
+                    badge.earned
+                      ? badge.color
+                      : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"
+                  }`}
+                >
+                  <div className="flex justify-center mb-1">{badge.icon}</div>
+                  <div className="text-[10px] font-medium leading-tight">
                     {badge.name}
                   </div>
                 </div>

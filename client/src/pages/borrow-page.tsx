@@ -908,7 +908,7 @@ export default function BorrowPage() {
                                   </span>
                                   {currentItem.owner?.isVerified && (
                                     <span className="text-xs px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
-                                      Verified
+                                      Verified Owner
                                     </span>
                                   )}
                                 </div>

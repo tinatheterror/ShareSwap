@@ -400,9 +400,15 @@ export default function ItemDetailsPage() {
                       <span className="text-sm text-muted-foreground">
                         Shared by
                       </span>
-                      <Link href={`/profile/${(item as any).owner.handle || (item as any).owner.username}`}>
+                      <Link
+                        href={`/profile/${(item as any).owner.handle || (item as any).owner.username}`}
+                      >
                         <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
-                          {(item as any).owner.displayName || formatDisplayName((item as any).owner.handle || (item as any).owner.username)}
+                          {(item as any).owner.displayName ||
+                            formatDisplayName(
+                              (item as any).owner.handle ||
+                                (item as any).owner.username,
+                            )}
                         </span>
                       </Link>
                       <div className="shadow-sm rounded-full">
@@ -420,11 +426,6 @@ export default function ItemDetailsPage() {
                   <h3 className="font-medium">Condition</h3>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{item.conditionRating}/10</Badge>
-                    {(item as any).owner?.isVerified && (
-                      <span className="text-xs px-2 py-1 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20 shadow-sm">
-                        Verified Owner
-                      </span>
-                    )}
                   </div>
                 </div>
 

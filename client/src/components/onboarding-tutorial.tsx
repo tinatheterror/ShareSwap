@@ -66,7 +66,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 5,
     title: "Earn More ShareCoins",
     description:
-      "Need more ShareCoins? Tap on your wallet to discover all the ways you can earn: complete transactions, fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
+      "Need more ShareCoins? Tap on your wallet to discover more ways you can earn: fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
     highlightSelector: '[data-tutorial="wallet"]',
     positionAbove: false,
   },
@@ -82,12 +82,12 @@ const tutorialSteps: TutorialStep[] = [
     id: 7,
     title: "Earn Achievements",
     description:
-      "As you participate in the sharing community, you'll unlock badges. Each achievement builds your trust score which shows neighbours that you are active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
+      "As you participate in the sharing, you'll earn badges and build your trust score — view your trust score here. Trust scores show neighbours who is active and reliable. Reaching higher trust scores will unlock community benefits like discounted deposits.",
     highlightSelector: '[data-tutorial="wallet"]',
   },
   {
     id: 8,
-    title: "My ShareChest",
+    title: "My Shared Items",
     description:
       "This is your personal inventory — view, edit, and manage all the items you've listed. You can update availability, adjust pricing, check who's requested your items, and track items that are currently out on loan.",
     highlightSelector: '[data-tutorial="sharechest"]',
@@ -107,7 +107,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 10,
     title: "You're All Set!",
     description:
-      "You now know the basics of ShareSwap. Start by listing an item you'd like to share, or browse the ShareChest to see what's available near you. The more you share, the more you earn — and the stronger your community becomes.",
+      "Now you know the basics of ShareSwap. Start by listing an item you'd like to share, or browse the ShareChest to see what's available near you. The more you share, the more you earn — and the stronger your community becomes.",
   },
 ];
 
@@ -171,12 +171,15 @@ export function OnboardingTutorial({ onComplete }: OnboardingTutorialProps) {
         // Use all matches and pick the first visible one (non-zero bounding rect)
         // This handles cases where the same selector exists in both desktop nav (hidden on mobile) and mobile nav
         const allElements = Array.from(
-          document.querySelectorAll(step.highlightSelector!)
+          document.querySelectorAll(step.highlightSelector!),
         ) as HTMLElement[];
-        const element = allElements.find((el) => {
-          const r = el.getBoundingClientRect();
-          return r.width > 0 && r.height > 0;
-        }) || allElements[0] || null;
+        const element =
+          allElements.find((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0;
+          }) ||
+          allElements[0] ||
+          null;
 
         if (element) {
           setHighlightedElement(element);

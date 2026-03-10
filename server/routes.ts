@@ -3650,18 +3650,21 @@ Respond with ONLY the category name, nothing else.`
 
     // Get requester info for notification
     const [requester] = await db
-      .select({ username: users.username })
+      .select({ username: users.username, displayName: users.displayName })
       .from(users)
       .where(eq(users.id, req.user.id))
       .limit(1);
+
+    const requesterName = requester?.displayName || requester?.username || "Someone";
+    const requestTypeLabel = requestType.charAt(0).toUpperCase() + requestType.slice(1).toLowerCase();
 
     // Create notification for item owner
     if (item.ownerId) {
       await db.insert(notifications).values({
         userId: item.ownerId,
         type: "item_request",
-        title: "New Item Request",
-        message: `${requester?.username || "Someone"} wants to ${requestType.toLowerCase()} your ${item.name}`,
+        title: `New ${requestTypeLabel} Request`,
+        message: `${requesterName} wants to ${requestType.toLowerCase()} your ${item.name}`,
         itemId: item.id,
         requestId: request.id,
         isRead: false,

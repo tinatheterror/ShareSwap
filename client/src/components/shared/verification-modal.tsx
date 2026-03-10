@@ -26,15 +26,15 @@ export function VerificationModal({ isOpen, onClose }: VerificationModalProps) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-[#0DCEA1] rounded-lg">
-              <BadgeCheck className="h-6 w-6 text-white" />
+          <DialogTitle className="text-base sm:text-xl text-center">
+            To continue, please verify your profile.
+          </DialogTitle>
+          <div className="flex justify-center mt-3">
+            <div className="p-3 bg-[#0DCEA1] rounded-xl">
+              <BadgeCheck className="h-7 w-7 text-white" />
             </div>
-            <DialogTitle className="text-base sm:text-xl whitespace-nowrap">
-              To continue, please verify your profile.
-            </DialogTitle>
           </div>
-          <DialogDescription className="text-gray-600 pt-2">
+          <DialogDescription className="text-gray-600 pt-3 text-center">
             Verification helps keep the community safe and builds trust with neighbours.
           </DialogDescription>
         </DialogHeader>

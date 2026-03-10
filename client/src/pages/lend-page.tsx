@@ -1373,6 +1373,15 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                 ))}
                               </div>
                             </FormControl>
+                            {field.value && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Max non-return charge for borrowers:{" "}
+                                <span className="font-semibold text-gray-700">
+                                  ${({ "Under $50": 25, "$50–$199": 125, "$200–$499": 350, "$500–$2,000": 1250 } as Record<string, number>)[field.value] ?? 25}
+                                </span>
+                                {" "}— make sure this reflects the actual value of your item.
+                              </p>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}

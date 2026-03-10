@@ -57,7 +57,6 @@ import {
   UserCheck,
   Wallet,
 } from "lucide-react";
-import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
 import type { SelectItem } from "@db/schema";
@@ -101,7 +100,6 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [location] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: "",
     bio: "",
@@ -388,18 +386,6 @@ export default function ProfilePage() {
   });
   const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
 
-  // Check if the tutorial has been seen before
-  const hasSeenTutorial =
-    typeof window !== "undefined"
-      ? localStorage.getItem("hasSeenTutorial") === "true"
-      : false;
-
-  // Automatically show tutorial if not seen and user is logged in
-  useState(() => {
-    if (user && !hasSeenTutorial) {
-      setShowTutorial(true);
-    }
-  });
 
   if (!user) {
     return (
@@ -1322,15 +1308,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Onboarding Tutorial */}
-        {showTutorial && (
-          <OnboardingTutorial
-            onComplete={() => {
-              setShowTutorial(false);
-              localStorage.setItem("hasSeenTutorial", "true");
-            }}
-          />
-        )}
 
         {/* Photo Crop Dialog */}
         <Dialog

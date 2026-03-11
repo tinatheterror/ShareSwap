@@ -648,8 +648,8 @@ export function ChatWidget() {
           className="w-full text-left"
           onClick={() => setSelectedConversation(partnerId)}
         >
-          {/* Top row: status badge left, delivery/deposit right */}
-          <div className="flex items-center justify-between mb-2">
+          {/* Status badge — top right only */}
+          <div className="flex justify-end mb-1.5">
             {iSentCounter ? (
               <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800">
                 COUNTER SENT
@@ -663,20 +663,6 @@ export function ChatWidget() {
                 {request.status.replace(/_/g, " ")}
               </Badge>
             )}
-            <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
-              <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
-                {displayDelivery === "courier"
-                  ? <Truck className="h-3 w-3 text-blue-600" />
-                  : <MapPin className="h-3 w-3 text-gray-500" />}
-                {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
-              </span>
-              <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
-                {displayDeposit === "in_app"
-                  ? <Shield className="h-3 w-3 text-gray-500" />
-                  : <MapPin className="h-3 w-3 text-gray-500" />}
-                {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-              </span>
-            </div>
           </div>
 
           {/* Content: photo + info */}
@@ -705,11 +691,26 @@ export function ChatWidget() {
                 )}
               </div>
               {displayStart && displayEnd && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
                   <Clock className="h-3 w-3 shrink-0" />
                   <span>{format(new Date(displayStart), "MMM d")} – {format(new Date(displayEnd), "MMM d")}</span>
                 </div>
               )}
+              {/* Delivery & deposit — below the date */}
+              <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground mt-0.5">
+                <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
+                  {displayDelivery === "courier"
+                    ? <Truck className="h-3 w-3 text-blue-600" />
+                    : <MapPin className="h-3 w-3 text-gray-500" />}
+                  {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
+                </span>
+                <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
+                  {displayDeposit === "in_app"
+                    ? <Shield className="h-3 w-3 text-gray-500" />
+                    : <MapPin className="h-3 w-3 text-gray-500" />}
+                  {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                </span>
+              </div>
               {iSentCounter && (
                 <p className="text-[10px] text-amber-700 mt-0.5 italic">Waiting for their response…</p>
               )}

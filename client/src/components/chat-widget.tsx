@@ -615,10 +615,25 @@ export function ChatWidget() {
     const partnerId = isOwner ? request.requesterId : request.item.ownerId;
     const requesterName = formatDisplayName(request.requester.displayName || request.requester.username);
 
+    // Counter-proposal state
+    const iCounterPending = request.negotiationStatus === "counter_proposed";
+    const iSentCounter = iCounterPending && request.counterProposedBy === user?.id;
+    const iReceivedCounter = iCounterPending && request.counterProposedBy !== user?.id;
+
+    // Effective terms to display (counter terms if pending, else original)
+    const displayDelivery = iCounterPending
+      ? (request.counterDeliveryMethod || request.deliveryMethod)
+      : request.deliveryMethod;
+    const displayDeposit = iCounterPending
+      ? (request.counterDepositMethod || request.depositMethod)
+      : request.depositMethod;
+    const displayStart = iCounterPending ? request.counterStartDate : request.startDate;
+    const displayEnd = iCounterPending ? request.counterEndDate : request.endDate;
+
     return (
       <div
         key={request.id}
-        className="p-3 border-b hover:bg-gray-50 transition-colors"
+        className={`p-3 border-b transition-colors ${iReceivedCounter ? "bg-amber-50 hover:bg-amber-100/70" : "hover:bg-gray-50"}`}
       >
         <button
           className="w-full text-left"
@@ -626,17 +641,27 @@ export function ChatWidget() {
         >
           {/* Top row: status badge left, delivery/deposit right */}
           <div className="flex items-center justify-between mb-2">
-            <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(request.status)}`}>
-              {request.status.replace(/_/g, " ")}
-            </Badge>
+            {iSentCounter ? (
+              <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800">
+                COUNTER SENT
+              </Badge>
+            ) : iReceivedCounter ? (
+              <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 text-white">
+                COUNTER RECEIVED
+              </Badge>
+            ) : (
+              <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(request.status)}`}>
+                {request.status.replace(/_/g, " ")}
+              </Badge>
+            )}
             <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-0.5">
+              <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
                 <Truck className="h-3 w-3" />
-                {request.deliveryMethod === "courier" ? "Delivery" : "In-person"}
+                {displayDelivery === "courier" ? "Delivery" : "In-person"}
               </span>
-              <span className="flex items-center gap-0.5">
+              <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
                 <CreditCard className="h-3 w-3" />
-                {request.depositMethod === "in_app" ? "In-app" : "Cash"}
+                {displayDeposit === "in_app" ? "In-app" : "Cash"}
               </span>
             </div>
           </div>
@@ -666,11 +691,14 @@ export function ChatWidget() {
                   <span>You requested to {request.requestType.toLowerCase()}</span>
                 )}
               </div>
-              {request.startDate && request.endDate && (
+              {displayStart && displayEnd && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3 shrink-0" />
-                  <span>{format(new Date(request.startDate), "MMM d")} – {format(new Date(request.endDate), "MMM d")}</span>
+                  <span>{format(new Date(displayStart), "MMM d")} – {format(new Date(displayEnd), "MMM d")}</span>
                 </div>
+              )}
+              {iSentCounter && (
+                <p className="text-[10px] text-amber-700 mt-0.5 italic">Waiting for their response…</p>
               )}
             </div>
           </div>
@@ -678,8 +706,42 @@ export function ChatWidget() {
 
         {/* Action buttons */}
         <div className="flex gap-1.5 flex-wrap mt-2 pl-[58px]">
-              {/* Owner actions for pending requests */}
-              {isOwner && request.status === "PENDING" && (
+          {/* Counter received: inline Accept / Counter / Decline */}
+          {iReceivedCounter && (
+            <>
+              <Button
+                size="sm"
+                className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
+                disabled={respondToCounterMutation.isPending}
+              >
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Accept
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-amber-400 text-amber-700 hover:bg-amber-50"
+                onClick={() => openChatCounter(request, isOwner ? "owner" : "requester")}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Counter
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: false })}
+                disabled={respondToCounterMutation.isPending}
+              >
+                <XCircle className="h-3 w-3 mr-1" />
+                Decline
+              </Button>
+            </>
+          )}
+
+              {/* Owner actions for pending requests (no active counter) */}
+              {isOwner && request.status === "PENDING" && !iCounterPending && (
                 <>
                   <Button
                     size="sm"

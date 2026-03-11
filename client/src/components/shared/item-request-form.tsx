@@ -755,9 +755,6 @@ export function ItemRequestForm({
                                   <MapPin className="h-4 w-4 text-gray-500" />
                                   Exchange Deposit In Person
                                 </label>
-                                <p className="text-xs text-gray-500 font-medium mt-0.5">
-                                  Direct exchange
-                                </p>
                               </div>
                             </div>
                           </RadioGroup>
@@ -798,9 +795,6 @@ export function ItemRequestForm({
                               <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
                               Exchange Item In Person
                             </label>
-                            <p className="text-xs text-gray-500 font-medium mt-0.5">
-                              Direct exchange
-                            </p>
                           </div>
                         </div>
                         <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">

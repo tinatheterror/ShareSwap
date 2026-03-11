@@ -26,7 +26,6 @@ interface TrustDepositModalProps {
     name: string;
     tier: number;
     originalValue: string;
-    replacementValue?: number;
     shareCoinPrice: string;
     photos: string[];
   };
@@ -51,8 +50,7 @@ export function TrustDepositModal({
   const depositCalc = calculateSecurityDeposit(
     item.tier || 2,
     item.originalValue || "$50–$150",
-    trustScore,
-    item.replacementValue
+    trustScore
   );
 
   // Tier-based weekly ShareCoin borrow rates (not the item's full valuation)

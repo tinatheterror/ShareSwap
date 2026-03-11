@@ -1,11 +1,11 @@
 // Trust-Based Security Deposit Calculator
 
-// Deposit = full replacement value, trust score then discounts it for reliable users
+// Tier-based deposit percentages
 const TIER_DEPOSIT_PERCENTAGES: Record<number, number> = {
-  1: 1.00, // 100% for Tier 1 (Under $50)
-  2: 1.00, // 100% for Tier 2 ($50-$199)
-  3: 1.00, // 100% for Tier 3 ($200-$499)
-  4: 1.00, // 100% for Tier 4 ($500-$2,000)
+  1: 0.10, // 10% for Tier 1 (Under $50)
+  2: 0.20, // 20% for Tier 2 ($50-$199)
+  3: 0.30, // 30% for Tier 3 ($200-$499)
+  4: 0.40, // 40% for Tier 4 ($500-$2,000)
 };
 
 // Trust score discount tiers

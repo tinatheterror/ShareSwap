@@ -122,6 +122,7 @@ interface ItemRequest {
   requester: {
     id: number;
     username: string;
+    displayName: string | null;
   };
 }
 
@@ -612,6 +613,7 @@ export function ChatWidget() {
     const isOwner = request.item.ownerId === user?.id;
     const isBorrower = request.requesterId === user?.id;
     const partnerId = isOwner ? request.requesterId : request.item.ownerId;
+    const requesterName = formatDisplayName(request.requester.displayName || request.requester.username);
 
     return (
       <div
@@ -619,63 +621,63 @@ export function ChatWidget() {
         className="p-3 border-b hover:bg-gray-50 transition-colors"
       >
         <button
-          className="w-full flex gap-3 text-left"
+          className="w-full text-left"
           onClick={() => setSelectedConversation(partnerId)}
         >
-          <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-            {request.item.photos?.[0] ? (
-              <img
-                src={request.item.photos[0]}
-                alt={request.item.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package className="h-5 w-5 text-gray-400" />
-              </div>
-            )}
+          {/* Top row: status badge left, delivery/deposit right */}
+          <div className="flex items-center justify-between mb-2">
+            <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(request.status)}`}>
+              {request.status.replace(/_/g, " ")}
+            </Badge>
+            <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-0.5">
+                <Truck className="h-3 w-3" />
+                {request.deliveryMethod === "courier" ? "Delivery" : "In-person"}
+              </span>
+              <span className="flex items-center gap-0.5">
+                <CreditCard className="h-3 w-3" />
+                {request.depositMethod === "in_app" ? "In-app" : "Cash"}
+              </span>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h4 className="font-medium text-sm truncate">
-                {request.item.name}
-              </h4>
-              <Badge
-                className={`text-[10px] px-1.5 py-0 shrink-0 ${getStatusColor(request.status)}`}
-              >
-                {request.status.replace(/_/g, " ")}
-              </Badge>
-            </div>
-
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-              <User className="h-3 w-3" />
-              {isOwner ? (
-                <span>
-                  {formatDisplayName(request.requester.username)} wants to{" "}
-                  {request.requestType.toLowerCase()}
-                </span>
+          {/* Content: photo + info */}
+          <div className="flex gap-2.5">
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+              {request.item.photos?.[0] ? (
+                <img
+                  src={request.item.photos[0]}
+                  alt={request.item.name}
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <span>
-                  You requested to {request.requestType.toLowerCase()}
-                </span>
+                <div className="w-full h-full flex items-center justify-center">
+                  <Package className="h-4 w-4 text-gray-400" />
+                </div>
               )}
             </div>
-
-            {request.startDate && request.endDate && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                <Clock className="h-3 w-3" />
-                <span>
-                  {format(new Date(request.startDate), "MMM d")} -{" "}
-                  {format(new Date(request.endDate), "MMM d")}
-                </span>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-sm truncate mb-0.5">{request.item.name}</h4>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+                <User className="h-3 w-3 shrink-0" />
+                {isOwner ? (
+                  <span className="truncate">{requesterName} wants to {request.requestType.toLowerCase()}</span>
+                ) : (
+                  <span>You requested to {request.requestType.toLowerCase()}</span>
+                )}
               </div>
-            )}
+              {request.startDate && request.endDate && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3 shrink-0" />
+                  <span>{format(new Date(request.startDate), "MMM d")} – {format(new Date(request.endDate), "MMM d")}</span>
+                </div>
+              )}
+            </div>
           </div>
         </button>
 
         {/* Action buttons */}
-        <div className="flex gap-1.5 flex-wrap mt-2 pl-[68px]">
+        <div className="flex gap-1.5 flex-wrap mt-2 pl-[58px]">
               {/* Owner actions for pending requests */}
               {isOwner && request.status === "PENDING" && (
                 <>
@@ -686,6 +688,15 @@ export function ChatWidget() {
                   >
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-amber-400 text-amber-700 hover:bg-amber-50"
+                    onClick={() => openChatCounter(request, "owner")}
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Counter
                   </Button>
                   <Button
                     size="sm"
@@ -920,19 +931,19 @@ export function ChatWidget() {
           {!selectedConversation ? (
             <>
               {/* Filter pills */}
-              <div className="flex gap-1 p-2 border-b overflow-x-auto">
+              <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b">
                 {[
                   { key: "all", label: "All" },
                   { key: "lending", label: "Lend" },
                   { key: "renting", label: "Rent" },
                   { key: "swapping", label: "Swap" },
                   { key: "gifting", label: "Gift" },
-                  { key: "unread", label: "Needs Action" },
+                  { key: "unread", label: "Action" },
                 ].map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => setMessageFilter(tab.key as MessageFilter)}
-                    className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap flex items-center gap-1 ${
+                    className={`px-2.5 py-1 rounded-full text-xs flex items-center gap-1 ${
                       messageFilter === tab.key
                         ? "bg-gray-800 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"

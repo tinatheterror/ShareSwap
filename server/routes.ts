@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import * as uberDirect from "./uber-direct";
 import { randomBytes } from "crypto";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { db, pool } from "@db";
@@ -5981,6 +5982,103 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // ── Uber Direct routes ──────────────────────────────────────────────────────
+
+  // Check if Uber Direct is configured
+  app.get("/api/uber/status", (req, res) => {
+    res.json({ configured: uberDirect.isConfigured() });
+  });
+
+  // Get a real-time delivery quote
+  app.post("/api/uber/quote", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    if (!uberDirect.isConfigured()) {
+      return res.status(503).json({ error: "Uber Direct is not configured" });
+    }
+
+    const { pickupAddress, dropoffAddress, pickupPhone, dropoffPhone, manifestValueCents } = req.body;
+
+    if (!pickupAddress || !dropoffAddress) {
+      return res.status(400).json({ error: "pickupAddress and dropoffAddress are required" });
+    }
+
+    try {
+      const quote = await uberDirect.getDeliveryQuote({
+        pickupAddress,
+        dropoffAddress,
+        pickupPhone,
+        dropoffPhone,
+        manifestValueCents,
+      });
+      res.json(quote);
+    } catch (err: any) {
+      console.error("[Uber Direct] Quote error:", err.message);
+      res.status(502).json({ error: err.message });
+    }
+  });
+
+  // Create a delivery (called after acceptance + deposit payment)
+  app.post("/api/uber/create-delivery", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    if (!uberDirect.isConfigured()) {
+      return res.status(503).json({ error: "Uber Direct is not configured" });
+    }
+
+    const {
+      quoteId,
+      pickupName, pickupAddress, pickupPhone,
+      dropoffName, dropoffAddress, dropoffPhone,
+      itemDescription, itemReference,
+      requestId,
+    } = req.body;
+
+    try {
+      const delivery = await uberDirect.createDelivery({
+        quoteId, pickupName, pickupAddress, pickupPhone,
+        dropoffName, dropoffAddress, dropoffPhone,
+        itemDescription, itemReference,
+      });
+
+      // Persist the delivery ID + tracking URL on the arrangement
+      if (requestId) {
+        await db
+          .update(deliveryArrangements)
+          .set({
+            uberDeliveryId: delivery.id,
+            uberTrackingUrl: delivery.trackingUrl,
+            status: "CONFIRMED",
+          })
+          .where(eq(deliveryArrangements.requestId, requestId));
+      }
+
+      res.json(delivery);
+    } catch (err: any) {
+      console.error("[Uber Direct] Create delivery error:", err.message);
+      res.status(502).json({ error: err.message });
+    }
+  });
+
+  // Get live delivery status
+  app.get("/api/uber/delivery/:deliveryId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    if (!uberDirect.isConfigured()) {
+      return res.status(503).json({ error: "Uber Direct is not configured" });
+    }
+
+    try {
+      const status = await uberDirect.getDeliveryStatus(req.params.deliveryId);
+      res.json(status);
+    } catch (err: any) {
+      console.error("[Uber Direct] Status error:", err.message);
+      res.status(502).json({ error: err.message });
+    }
+  });
+
+  // ── Delivery arrangements ────────────────────────────────────────────────────
+
   // Create or update delivery arrangement with delivery/deposit method choices
   app.post("/api/delivery-arrangements", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -5993,6 +6091,9 @@ Respond with ONLY the category name, nothing else.`
         deliveryMethod,
         depositMethod,
         uberQuoteFee,
+        uberQuoteId,
+        pickupAddress,
+        dropoffAddress,
         depositAmount,
         depositProcessingFee,
         stripePaymentIntentId,
@@ -6040,6 +6141,9 @@ Respond with ONLY the category name, nothing else.`
             deliveryMargin: deliveryMargin?.toString(),
             totalDeliveryFee: totalDeliveryFee?.toString(),
             uberDeliveryFee: uberQuoteFee?.toString(),
+            uberQuoteId: uberQuoteId || null,
+            pickupAddress: pickupAddress || null,
+            deliveryAddress: dropoffAddress || null,
             depositProcessingFee: finalDepositProcessingFee?.toString(),
             securityDeposit: depositAmount?.toString(),
             stripePaymentIntentId,
@@ -6061,6 +6165,9 @@ Respond with ONLY the category name, nothing else.`
             deliveryMargin: deliveryMargin?.toString(),
             totalDeliveryFee: totalDeliveryFee?.toString(),
             uberDeliveryFee: uberQuoteFee?.toString(),
+            uberQuoteId: uberQuoteId || null,
+            pickupAddress: pickupAddress || null,
+            deliveryAddress: dropoffAddress || null,
             depositProcessingFee: finalDepositProcessingFee?.toString(),
             securityDeposit: depositAmount?.toString(),
             stripePaymentIntentId,

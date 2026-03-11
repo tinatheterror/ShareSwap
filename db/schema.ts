@@ -408,6 +408,7 @@ export const deliveryArrangements = pgTable("delivery_arrangements", {
   depositProcessingFee: decimal("deposit_processing_fee", { precision: 10, scale: 2 }), // 5% fee for ShareSwap Deposit
   uberDeliveryFee: decimal("uber_delivery_fee", { precision: 10, scale: 2 }), // Actual Uber charge
   totalDeliveryFee: decimal("total_delivery_fee", { precision: 10, scale: 2 }), // Uber fee + margin
+  pickupAddress: text("pickup_address"), // Uber Direct pickup address
   createdAt: timestamp("created_at").defaultNow(),
 });
 

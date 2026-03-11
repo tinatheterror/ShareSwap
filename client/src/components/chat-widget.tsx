@@ -459,14 +459,23 @@ export function ChatWidget() {
     }
   };
 
-  const handleAcceptClick = (request: ItemRequest) => {
+  const handleAcceptClick = async (request: ItemRequest) => {
     setSelectedRequestId(request.id);
-    // Swaps and gifts don't require delivery/deposit setup - accept directly
-    if (request.requestType === "SWAP" || request.requestType === "GIFT") {
-      acceptMutation.mutate(request.id);
-    } else {
-      setShowDeliveryModal(true);
+    // Delivery & deposit were already chosen by the requester — accept directly without re-asking.
+    // For BORROW/RENT, create the delivery arrangement from the request's existing terms first.
+    if (request.requestType === "BORROW" || request.requestType === "RENT") {
+      try {
+        await apiRequest("POST", "/api/delivery-arrangements", {
+          requestId: request.id,
+          deliveryMethod: request.deliveryMethod || "in_person",
+          depositMethod: request.depositMethod || "in_app",
+          depositAmount: request.item.replacementValue || 50,
+        });
+      } catch (_) {
+        // Arrangement may already exist — continue to accept
+      }
     }
+    acceptMutation.mutate(request.id);
   };
 
   const handleDeliveryDepositComplete = async (selections: any) => {

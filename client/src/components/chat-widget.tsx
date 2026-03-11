@@ -958,6 +958,22 @@ export function ChatWidget() {
                   Confirm Return
                 </Button>
               )}
+
+              {/* Message button — always visible on active (post-PENDING) requests */}
+              {!["PENDING", "DECLINED", "CANCELLED", "COMPLETED"].includes(request.status) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-muted-foreground hover:text-foreground ml-auto"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedConversation(partnerId);
+                  }}
+                >
+                  <MessageCircle className="h-3 w-3 mr-1" />
+                  Message
+                </Button>
+              )}
         </div>
       </div>
     );
@@ -1248,6 +1264,17 @@ export function ChatWidget() {
                                 </Button>
                               </div>
                             )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // System notice (e.g. post-acceptance coordination prompt)
+                    if (msg.messageType === "system") {
+                      return (
+                        <div key={msg.id} className="mb-3 flex justify-center">
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs text-blue-800 text-center max-w-[90%] leading-snug">
+                            {msg.content}
                           </div>
                         </div>
                       );

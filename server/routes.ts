@@ -4248,34 +4248,63 @@ Respond with ONLY the category name, nothing else.`
     }
 
     if (accept) {
+      const finalDeliveryMethod = request.item_requests.counterDeliveryMethod || request.item_requests.deliveryMethod;
+      const finalDepositMethod = request.item_requests.counterDepositMethod || request.item_requests.depositMethod;
+      const finalStartDate = request.item_requests.counterStartDate || request.item_requests.startDate;
+      const finalEndDate = request.item_requests.counterEndDate || request.item_requests.endDate;
+
+      // When the OWNER accepts a counter, fully accept the request (they have final approval authority).
+      // When the REQUESTER accepts, the owner still needs to formally approve.
+      const ownerIsAccepting = isOwner;
+
       const [updated] = await db
         .update(itemRequests)
         .set({
           negotiationStatus: "terms_accepted",
-          deliveryMethod: request.item_requests.counterDeliveryMethod || request.item_requests.deliveryMethod,
-          depositMethod: request.item_requests.counterDepositMethod || request.item_requests.depositMethod,
-          startDate: request.item_requests.counterStartDate || request.item_requests.startDate,
-          endDate: request.item_requests.counterEndDate || request.item_requests.endDate,
+          status: ownerIsAccepting ? "ACCEPTED" : request.item_requests.status,
+          deliveryMethod: finalDeliveryMethod,
+          depositMethod: finalDepositMethod,
+          startDate: finalStartDate,
+          endDate: finalEndDate,
           termsAcceptedAt: new Date(),
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
 
-      await logRequestEvent(req.user.id, otherUserId, requestId, "terms_accepted", {
-        deliveryMethod: updated.deliveryMethod,
-        depositMethod: updated.depositMethod,
-        startDate: updated.startDate,
-        endDate: updated.endDate,
-        acceptedByRole: isOwner ? "owner" : "requester",
-      });
+      // If owner accepted, create delivery arrangement so requester can proceed to deposit
+      if (ownerIsAccepting && finalDeliveryMethod && finalDepositMethod) {
+        try {
+          await db.insert(deliveryArrangements).values({
+            requestId,
+            deliveryType: finalDeliveryMethod === "courier" ? "UBER_DIRECT" : "SELF_ARRANGE",
+            deliveryMethod: finalDeliveryMethod,
+            depositMethod: finalDepositMethod,
+            securityDeposit: request.items.replacementValue?.toString() || "50",
+            status: "PENDING",
+          });
+        } catch (_) {
+          // Arrangement may already exist — ignore duplicate
+        }
+      }
+
+      await logRequestEvent(req.user.id, otherUserId, requestId,
+        ownerIsAccepting ? "request_accepted" : "terms_accepted",
+        {
+          deliveryMethod: updated.deliveryMethod,
+          depositMethod: updated.depositMethod,
+          startDate: updated.startDate,
+          endDate: updated.endDate,
+          acceptedByRole: isOwner ? "owner" : "requester",
+        }
+      );
 
       await db.insert(notifications).values({
         userId: otherUserId,
-        type: "terms_accepted",
-        title: "Terms Accepted",
-        message: isRequester
-          ? "Requester accepted your terms. You can now accept or decline the request."
-          : "Owner accepted the updated terms.",
+        type: ownerIsAccepting ? "request_accepted" : "terms_accepted",
+        title: ownerIsAccepting ? "Request Accepted!" : "Terms Accepted",
+        message: ownerIsAccepting
+          ? `Your request for "${request.items.name}" has been accepted! Pay your deposit to confirm.`
+          : "Requester accepted your terms. You can now accept or decline the request.",
         itemId: request.items.id,
         requestId,
       });
@@ -4283,9 +4312,10 @@ Respond with ONLY the category name, nothing else.`
       return res.json({
         success: true,
         request: updated,
-        message: isRequester
-          ? "You've accepted the new terms. Waiting for owner to accept."
-          : "Terms accepted.",
+        ownerAccepted: ownerIsAccepting,
+        message: ownerIsAccepting
+          ? "Request accepted! The requester can now pay their deposit."
+          : "You've accepted the new terms. Waiting for owner to accept.",
       });
     } else {
       const [updated] = await db

@@ -361,7 +361,15 @@ export function ChatWidget() {
     onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation] });
-      toast({ title: vars.accept ? "Terms Accepted" : "Request Cancelled", description: data.message });
+      if (vars.accept && data.ownerAccepted) {
+        // Owner fully accepted via counter path — show celebration
+        setShowCelebration(true);
+      } else {
+        toast({
+          title: vars.accept ? "Terms Accepted" : "Request Cancelled",
+          description: data.message,
+        });
+      }
     },
   });
 

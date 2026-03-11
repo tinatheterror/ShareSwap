@@ -728,7 +728,7 @@ export function ItemRequestForm({
                                   className="flex items-center gap-1.5 cursor-pointer font-medium text-sm"
                                 >
                                   <Shield className="h-4 w-4 text-gray-500" />
-                                  In-app
+                                  Handle Deposit In-app
                                 </label>
                                 <p className="text-xs text-teal-600 font-medium mt-0.5">
                                   Recommended
@@ -753,7 +753,7 @@ export function ItemRequestForm({
                                   className={`flex items-center gap-1.5 font-medium text-sm ${isCourier ? "cursor-not-allowed" : "cursor-pointer"}`}
                                 >
                                   <MapPin className="h-4 w-4 text-gray-500" />
-                                  In person
+                                  Exchange Deposit In Person
                                 </label>
                                 <p className="text-xs text-gray-500 font-medium mt-0.5">
                                   Direct exchange
@@ -796,7 +796,7 @@ export function ItemRequestForm({
                               className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
                             >
                               <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
-                              Pick Up Yourself
+                              Exchange Item In Person
                             </label>
                             <p className="text-xs text-gray-500 font-medium mt-0.5">
                               Direct exchange

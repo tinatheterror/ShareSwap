@@ -140,7 +140,7 @@ export function DeliveryScheduling({ itemId, itemName, itemValue, ownerName, onC
                 <Label htmlFor="pickup" className="flex-1 cursor-pointer">
                   <div className="flex items-center gap-2 font-medium">
                     <MapPin className="h-4 w-4 text-primary" />
-                    Pick Up Yourself
+                    Exchange Item In Person
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     Meet the owner at an agreed location to pick up the item. Free!

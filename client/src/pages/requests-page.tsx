@@ -549,7 +549,7 @@ export default function RequestsPage() {
                             {request.requestType === "BORROW" && (
                               <Badge variant="secondary" className="text-xs">
                                 <CreditCard className="h-3 w-3 mr-1" />
-                                Deposit: {request.depositMethod === "in_app" ? "In-app" : "In-person"}
+                                Deposit: {request.depositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                               </Badge>
                             )}
                             <Badge variant="secondary" className="text-xs">
@@ -569,7 +569,7 @@ export default function RequestsPage() {
                             <div className="flex gap-2 mt-2">
                               {request.requestType === "BORROW" && (
                                 <Badge variant="outline" className="text-xs">
-                                  Proposed: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"} deposit
+                                  Proposed: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                 </Badge>
                               )}
                               <Badge variant="outline" className="text-xs">
@@ -713,7 +713,7 @@ export default function RequestsPage() {
                               {request.requestType === "BORROW" && (
                                 <Badge variant="secondary" className="text-xs">
                                   <CreditCard className="h-3 w-3 mr-1" />
-                                  Deposit: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"}
+                                  Deposit: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                 </Badge>
                               )}
                               <Badge variant="secondary" className="text-xs">
@@ -1201,7 +1201,7 @@ export default function RequestsPage() {
                   <Badge variant="outline" className="text-xs">
                     Deposit: {(counterProposalRole === "requester"
                       ? counterProposalRequest?.counterDepositMethod
-                      : counterProposalRequest?.depositMethod) === "in_app" ? "In-app" : "In-person"}
+                      : counterProposalRequest?.depositMethod) === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                   </Badge>
                 )}
                 <Badge variant="outline" className="text-xs">

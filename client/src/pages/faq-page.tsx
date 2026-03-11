@@ -1612,7 +1612,7 @@ export default function FAQPage() {
                     <div className="bg-white rounded-lg p-3">
                       <p className="font-medium text-[#0BB88C] mb-2 flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
-                        Pick Up Yourself
+                        Exchange Item In Person
                       </p>
                       <ul className="text-sm space-y-1">
                         <li>• Responsibility transfers at handoff</li>

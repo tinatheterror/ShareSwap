@@ -192,7 +192,7 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
                             className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
                           >
                             <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
-                            Pick Up Yourself
+                            Exchange Item In Person
                           </label>
                           <p className="text-xs text-gray-500 font-medium mt-0.5">
                             Direct exchange

@@ -668,13 +668,13 @@ export function ChatWidget() {
                 {displayDelivery === "courier"
                   ? <Truck className="h-3 w-3 text-blue-600" />
                   : <MapPin className="h-3 w-3 text-gray-500" />}
-                {displayDelivery === "courier" ? "Uber Direct" : "Pick Up Yourself"}
+                {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
               </span>
               <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
                 {displayDeposit === "in_app"
                   ? <Shield className="h-3 w-3 text-gray-500" />
                   : <MapPin className="h-3 w-3 text-gray-500" />}
-                {displayDeposit === "in_app" ? "In-app" : "In person"}
+                {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
               </span>
             </div>
           </div>
@@ -1225,7 +1225,7 @@ export function ChatWidget() {
                                 {msg.metadata?.depositMethod && (
                                   <Badge variant="outline" className="text-xs border-amber-300">
                                     <CreditCard className="h-3 w-3 mr-1" />
-                                    {msg.metadata.depositMethod === "in_app" ? "In-app deposit" : "In-person deposit"}
+                                    {msg.metadata.depositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                   </Badge>
                                 )}
                                 {msg.metadata?.startDate && msg.metadata?.endDate && (

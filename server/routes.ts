@@ -3588,7 +3588,7 @@ Respond with ONLY the category name, nothing else.`
   // Create item request
   app.post("/api/items/:itemId/request", requireEmailVerified, async (req: any, res) => {
     const itemId = parseInt(req.params.itemId);
-    const { requestType, message, startDate, endDate, deliveryMethod, depositMethod } = req.body;
+    const { requestType, message, startDate, endDate, deliveryMethod } = req.body;
 
     // BORROW and RENT require full verification (email + ID + payment)
     if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
@@ -3607,12 +3607,6 @@ Respond with ONLY the category name, nothing else.`
     const validatedDeliveryMethod = validDeliveryMethods.includes(deliveryMethod) 
       ? deliveryMethod 
       : "in_person";
-
-    // Validate depositMethod
-    const validDepositMethods = ["in_app", "in_person"];
-    const validatedDepositMethod = validDepositMethods.includes(depositMethod)
-      ? depositMethod
-      : "in_app";
 
     // Check if item exists and is available
     const [item] = await db
@@ -3665,7 +3659,6 @@ Respond with ONLY the category name, nothing else.`
         endDate: endDate ? new Date(endDate) : null,
         status: "PENDING",
         deliveryMethod: validatedDeliveryMethod,
-        depositMethod: validatedDepositMethod,
         deliveryConfirmed: false,
       })
       .returning();
@@ -6404,16 +6397,6 @@ Respond with ONLY the category name, nothing else.`
             status: "PENDING",
           })
           .returning();
-
-        // Write agreed terms back to itemRequests so all views read from a single source of truth.
-        // Normalise the modal's value set ('shareswap_delivery'/'self_arrange') into the request's
-        // canonical value set ('courier'/'in_person', 'in_app'/'in_person').
-        const normalisedDelivery = deliveryMethod === 'shareswap_delivery' ? 'courier' : 'in_person';
-        const normalisedDeposit  = depositMethod  === 'shareswap_deposit'  ? 'in_app'  : 'in_person';
-        await db
-          .update(itemRequests)
-          .set({ deliveryMethod: normalisedDelivery, depositMethod: normalisedDeposit })
-          .where(eq(itemRequests.id, requestId));
 
         res.json(newArrangement);
       }

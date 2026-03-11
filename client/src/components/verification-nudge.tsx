@@ -103,8 +103,8 @@ export function VerificationNudge() {
               Verify your account
             </p>
             <p className="text-xs text-gray-600 mt-1">
-              Verified members get lower trust deposits and smoother
-              transactions.
+              Verified members are more trusted and get to borrow and rent items from neighbours. It only takes a minute and helps build
+              more trust.
             </p>
           </div>
           <button

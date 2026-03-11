@@ -11,7 +11,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { useState } from "react";
-import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { CelebrationAnimation } from "@/components/celebration-animation";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -155,7 +154,6 @@ export default function RequestsPage() {
   const [, navigate] = useLocation();
   const { requireVerification, VerificationModal } = useVerification();
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [depositClientSecret, setDepositClientSecret] = useState<string | null>(null);
   const [pendingDeliveryData, setPendingDeliveryData] = useState<any>(null);
@@ -329,55 +327,29 @@ export default function RequestsPage() {
   const [acceptingGiftRequest, setAcceptingGiftRequest] = useState<ItemRequest | null>(null);
 
   const handleAcceptClick = (request: ItemRequest) => {
-    requireVerification(() => {
+    requireVerification(async () => {
       if (request.requestType === "GIFT") {
         setAcceptingGiftRequest(request);
         acceptMutation.mutate(request.id);
       } else {
-        setSelectedRequestId(request.id);
-        setShowDeliveryModal(true);
+        // Map the requester's chosen delivery/deposit method to arrangement values
+        const deliveryMethod = request.deliveryMethod === "courier"
+          ? "shareswap_delivery"
+          : "self_arrange";
+        const depositMethod = request.depositMethod === "in_app"
+          ? "shareswap_deposit"
+          : "self_arrange";
+
+        const itemValue = request.item.replacementValue || 50;
+
+        await finalizeAcceptance(request.id, {
+          deliveryMethod,
+          depositMethod,
+          depositAmount: depositMethod === "shareswap_deposit" ? itemValue : undefined,
+          depositProcessingFee: depositMethod === "shareswap_deposit" ? itemValue * 0.05 : undefined,
+        }, null);
       }
     });
-  };
-
-  const handleDeliveryDepositComplete = async (selections: any) => {
-    setShowDeliveryModal(false);
-
-    if (!selectedRequestId) return;
-
-    const request = requests.find(r => r.id === selectedRequestId);
-    if (!request) return;
-
-    const itemValue = request.item.replacementValue || 50;
-
-    // If ShareSwap Deposit is selected, create Stripe payment hold first
-    if (selections.depositMethod === 'shareswap_deposit') {
-      try {
-        const response = await apiRequest("POST", "/api/stripe/create-deposit-hold", {
-          depositAmount: itemValue,
-          requestId: selectedRequestId,
-        });
-        const data = await response.json();
-
-        if (data.clientSecret) {
-          // Store pending delivery data and show payment form
-          setPendingDeliveryData({
-            ...selections,
-            requestId: selectedRequestId,
-          });
-          setDepositClientSecret(data.clientSecret);
-        }
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to create deposit hold",
-          variant: "destructive",
-        });
-      }
-    } else {
-      // No deposit or self-arranged deposit - proceed directly
-      await finalizeAcceptance(selectedRequestId, selections, null);
-    }
   };
 
   const handleDepositPaymentSuccess = async (paymentIntentId: string) => {
@@ -1015,19 +987,6 @@ export default function RequestsPage() {
           </div>
         )}
       </div>
-
-      {/* Delivery & Deposit Modal */}
-      {selectedRequestId && (
-        <DeliveryDepositModal
-          isOpen={showDeliveryModal}
-          onClose={() => {
-            setShowDeliveryModal(false);
-            setSelectedRequestId(null);
-          }}
-          onComplete={handleDeliveryDepositComplete}
-          itemValue={requests.find(r => r.id === selectedRequestId)?.item.replacementValue || 50}
-        />
-      )}
 
       {/* Stripe Payment Form Modal */}
       {depositClientSecret && (

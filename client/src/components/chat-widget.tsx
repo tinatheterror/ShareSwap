@@ -29,6 +29,7 @@ import {
   Inbox,
   RefreshCw,
   CreditCard,
+  MapPin,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -664,12 +665,16 @@ export function ChatWidget() {
             )}
             <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
               <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
-                <Truck className="h-3 w-3" />
-                {displayDelivery === "courier" ? "Delivery" : "In-person"}
+                {displayDelivery === "courier"
+                  ? <Truck className="h-3 w-3 text-blue-600" />
+                  : <MapPin className="h-3 w-3 text-gray-500" />}
+                {displayDelivery === "courier" ? "Uber Direct" : "Pick Up Yourself"}
               </span>
               <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
-                <CreditCard className="h-3 w-3" />
-                {displayDeposit === "in_app" ? "In-app" : "Cash"}
+                {displayDeposit === "in_app"
+                  ? <Shield className="h-3 w-3 text-gray-500" />
+                  : <MapPin className="h-3 w-3 text-gray-500" />}
+                {displayDeposit === "in_app" ? "In-app" : "In person"}
               </span>
             </div>
           </div>

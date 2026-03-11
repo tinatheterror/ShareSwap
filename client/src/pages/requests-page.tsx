@@ -332,11 +332,20 @@ export default function RequestsPage() {
         setAcceptingGiftRequest(request);
         acceptMutation.mutate(request.id);
       } else {
-        // Map the requester's chosen delivery/deposit method to arrangement values
-        const deliveryMethod = request.deliveryMethod === "courier"
+        // If a counter-proposal was accepted, use the owner's counter-proposed terms
+        // otherwise fall back to the requester's original choices
+        const effectiveDelivery = request.negotiationStatus === "terms_accepted" && request.counterDeliveryMethod
+          ? request.counterDeliveryMethod
+          : request.deliveryMethod;
+        const effectiveDeposit = request.negotiationStatus === "terms_accepted" && request.counterDepositMethod
+          ? request.counterDepositMethod
+          : request.depositMethod;
+
+        // Map to arrangement values
+        const deliveryMethod = effectiveDelivery === "courier"
           ? "shareswap_delivery"
           : "self_arrange";
-        const depositMethod = request.depositMethod === "in_app"
+        const depositMethod = effectiveDeposit === "in_app"
           ? "shareswap_deposit"
           : "self_arrange";
 

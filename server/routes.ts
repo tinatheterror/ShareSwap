@@ -3699,6 +3699,32 @@ Respond with ONLY the category name, nothing else.`
         courierBookedBy: itemRequests.courierBookedBy,
         courierIssue: itemRequests.courierIssue,
         courierIssueNote: itemRequests.courierIssueNote,
+        // Trust deposit fields
+        trustDepositAmount: itemRequests.trustDepositAmount,
+        trustDepositBaseAmount: itemRequests.trustDepositBaseAmount,
+        trustDiscountPercentage: itemRequests.trustDiscountPercentage,
+        shareCoinAmount: itemRequests.shareCoinAmount,
+        depositStatus: itemRequests.depositStatus,
+        courierAddress: itemRequests.courierAddress,
+        courierPickupWindow: itemRequests.courierPickupWindow,
+        // Negotiation / counter-proposal
+        negotiationStatus: itemRequests.negotiationStatus,
+        counterDeliveryMethod: itemRequests.counterDeliveryMethod,
+        counterDepositMethod: itemRequests.counterDepositMethod,
+        counterStartDate: itemRequests.counterStartDate,
+        counterEndDate: itemRequests.counterEndDate,
+        counterProposedBy: itemRequests.counterProposedBy,
+        counterProposedAt: itemRequests.counterProposedAt,
+        termsAcceptedAt: itemRequests.termsAcceptedAt,
+        termsDeclinedAt: itemRequests.termsDeclinedAt,
+        // Handoff / return confirmations
+        ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
+        borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
+        handoffConfirmDeadline: itemRequests.handoffConfirmDeadline,
+        ownerConfirmedReturn: itemRequests.ownerConfirmedReturn,
+        borrowerConfirmedReturn: itemRequests.borrowerConfirmedReturn,
+        returnConditionOk: itemRequests.returnConditionOk,
+        returnDisputeTriggered: itemRequests.returnDisputeTriggered,
         itemDbId: items.id,
         itemName: items.name,
         itemDescription: items.description,
@@ -3708,12 +3734,15 @@ Respond with ONLY the category name, nothing else.`
         itemOriginalValue: items.originalValue,
         itemShareCoinPrice: items.shareCoinPrice,
         itemOwnerId: items.ownerId,
+        itemDollarsPrice: items.dollarsPrice,
+        itemCategory: items.category,
         reqId: users.id,
         reqUsername: users.username,
         reqHandle: users.handle,
         reqDisplayName: users.displayName,
         reqIsVerified: users.isVerified,
         reqReputationLevel: users.reputationLevel,
+        reqDepositMethod: users.depositMethod,
       })
       .from(itemRequests)
       .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -3743,6 +3772,29 @@ Respond with ONLY the category name, nothing else.`
       courierBookedBy: r.courierBookedBy,
       courierIssue: r.courierIssue,
       courierIssueNote: r.courierIssueNote,
+      trustDepositAmount: r.trustDepositAmount,
+      trustDepositBaseAmount: r.trustDepositBaseAmount,
+      trustDiscountPercentage: r.trustDiscountPercentage,
+      shareCoinAmount: r.shareCoinAmount,
+      depositStatus: r.depositStatus,
+      courierAddress: r.courierAddress,
+      courierPickupWindow: r.courierPickupWindow,
+      negotiationStatus: r.negotiationStatus,
+      counterDeliveryMethod: r.counterDeliveryMethod,
+      counterDepositMethod: r.counterDepositMethod,
+      counterStartDate: r.counterStartDate,
+      counterEndDate: r.counterEndDate,
+      counterProposedBy: r.counterProposedBy,
+      counterProposedAt: r.counterProposedAt,
+      termsAcceptedAt: r.termsAcceptedAt,
+      termsDeclinedAt: r.termsDeclinedAt,
+      ownerConfirmedHandoff: r.ownerConfirmedHandoff,
+      borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
+      handoffConfirmDeadline: r.handoffConfirmDeadline,
+      ownerConfirmedReturn: r.ownerConfirmedReturn,
+      borrowerConfirmedReturn: r.borrowerConfirmedReturn,
+      returnConditionOk: r.returnConditionOk,
+      returnDisputeTriggered: r.returnDisputeTriggered,
       item: {
         id: r.itemDbId,
         name: r.itemName,
@@ -3753,6 +3805,8 @@ Respond with ONLY the category name, nothing else.`
         originalValue: r.itemOriginalValue,
         shareCoinPrice: r.itemShareCoinPrice,
         ownerId: r.itemOwnerId,
+        dollarsPrice: r.itemDollarsPrice,
+        category: r.itemCategory,
       },
       requester: {
         id: r.reqId,
@@ -3761,6 +3815,7 @@ Respond with ONLY the category name, nothing else.`
         displayName: r.reqDisplayName,
         isVerified: r.reqIsVerified,
         reputationLevel: r.reqReputationLevel,
+        depositMethod: r.reqDepositMethod,
       },
     }));
 
@@ -3917,6 +3972,16 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // Log accept/decline as an event in the chat thread
+    try {
+      if (status === "ACCEPTED" || status === "DECLINED") {
+        await logRequestEvent(req.user.id, request.item_requests.requesterId, requestId,
+          status === "ACCEPTED" ? "request_accepted" : "request_declined",
+          { requestType: request.item_requests.requestType, itemName: request.items.name }
+        );
+      }
+    } catch (_) {}
+
     // Handle gift acceptance - send system message (rewards given when both confirm handoff)
     if (status === "ACCEPTED" && request.item_requests.requestType === "GIFT") {
       try {
@@ -3988,16 +4053,42 @@ Respond with ONLY the category name, nothing else.`
   // TERMS NEGOTIATION ENDPOINTS
   // =====================================
 
-  // Lender proposes new terms (counter-proposal)
+  // Helper: log a request lifecycle event as a system message in the chat thread
+  async function logRequestEvent(
+    senderId: number,
+    receiverId: number,
+    requestId: number,
+    eventType: string,
+    metadata: Record<string, unknown>
+  ) {
+    const labelMap: Record<string, string> = {
+      counter_proposed: "New terms proposed",
+      terms_accepted: "Terms accepted",
+      terms_declined: "Terms declined",
+      request_accepted: "Request accepted",
+      request_declined: "Request declined",
+    };
+    const label = labelMap[eventType] || eventType;
+    await db.insert(messages).values({
+      senderId,
+      receiverId,
+      content: label,
+      messageType: "event",
+      metadata: { eventType, ...metadata },
+      requestId,
+    });
+  }
+
+  // Either owner OR requester may propose counter terms
   app.post("/api/requests/:requestId/counter-proposal", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
 
     const requestId = parseInt(req.params.requestId);
-    const { deliveryMethod, depositMethod } = req.body;
+    const { deliveryMethod, depositMethod, startDate, endDate } = req.body;
 
-    // Validate the request belongs to an item owned by this user
+    // Load the request with item — user must be owner or requester
     const [request] = await db
       .select()
       .from(itemRequests)
@@ -4005,7 +4096,10 @@ Respond with ONLY the category name, nothing else.`
       .where(
         and(
           eq(itemRequests.id, requestId),
-          eq(items.ownerId, req.user.id)
+          or(
+            eq(items.ownerId, req.user.id),
+            eq(itemRequests.requesterId, req.user.id)
+          )
         )
       )
       .limit(1);
@@ -4018,46 +4112,61 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "Can only propose changes to pending requests" });
     }
 
-    // Update the request with counter-proposal
+    // If the user is the requester responding to an owner counter, they must have a counter to respond to
+    const isRequester = req.user.id === request.item_requests.requesterId;
+    const isOwner = req.user.id === request.items.ownerId;
+
+    if (isRequester && request.item_requests.negotiationStatus !== "counter_proposed") {
+      return res.status(400).json({ error: "No counter-proposal to respond to with your own counter" });
+    }
+
     const [updated] = await db
       .update(itemRequests)
       .set({
         negotiationStatus: "counter_proposed",
         counterDeliveryMethod: deliveryMethod || request.item_requests.deliveryMethod,
         counterDepositMethod: depositMethod || request.item_requests.depositMethod,
+        counterStartDate: startDate ? new Date(startDate) : (request.item_requests.startDate ?? null),
+        counterEndDate: endDate ? new Date(endDate) : (request.item_requests.endDate ?? null),
         counterProposedAt: new Date(),
         counterProposedBy: req.user.id,
       })
       .where(eq(itemRequests.id, requestId))
       .returning();
 
-    // Create notification for the requester
-    await db.insert(notifications).values({
-      userId: request.item_requests.requesterId,
-      type: "terms_counter_proposed",
-      title: "Lender Proposed New Terms",
-      message: `The owner has proposed different terms for your ${request.item_requests.requestType?.toLowerCase()} request. Please review and respond.`,
-      itemId: request.items.id,
-      requestId: requestId,
+    const otherUserId = isOwner ? request.item_requests.requesterId : request.items.ownerId!;
+
+    // Log event in chat
+    await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
+      deliveryMethod: updated.counterDeliveryMethod,
+      depositMethod: updated.counterDepositMethod,
+      startDate: updated.counterStartDate,
+      endDate: updated.counterEndDate,
+      proposedByRole: isOwner ? "owner" : "requester",
     });
 
-    res.json({
-      success: true,
-      request: updated,
-      message: "Counter-proposal sent to requester",
+    // Notify other party
+    await db.insert(notifications).values({
+      userId: otherUserId,
+      type: "terms_counter_proposed",
+      title: isOwner ? "Owner Proposed New Terms" : "Requester Proposed New Terms",
+      message: `New terms proposed for your ${request.item_requests.requestType?.toLowerCase()} request. Review and respond.`,
+      itemId: request.items.id,
+      requestId,
     });
+
+    res.json({ success: true, request: updated, message: "Counter-proposal sent" });
   });
 
-  // Requester accepts or declines counter-proposal
+  // Respond to a counter-proposal: accept, decline, or counter back
   app.post("/api/requests/:requestId/respond-to-counter", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
 
     const requestId = parseInt(req.params.requestId);
-    const { accept } = req.body;
+    const { accept, counter } = req.body; // accept: bool | counter: { deliveryMethod, depositMethod, startDate, endDate }
 
-    // Validate the request belongs to this requester
     const [request] = await db
       .select()
       .from(itemRequests)
@@ -4065,7 +4174,10 @@ Respond with ONLY the category name, nothing else.`
       .where(
         and(
           eq(itemRequests.id, requestId),
-          eq(itemRequests.requesterId, req.user.id)
+          or(
+            eq(itemRequests.requesterId, req.user.id),
+            eq(items.ownerId, req.user.id)
+          )
         )
       )
       .limit(1);
@@ -4078,61 +4190,112 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "No counter-proposal to respond to" });
     }
 
+    const isRequester = req.user.id === request.item_requests.requesterId;
+    const isOwner = req.user.id === request.items.ownerId;
+    const otherUserId = isRequester ? request.items.ownerId! : request.item_requests.requesterId;
+
+    // The responder must be the other party from whoever proposed
+    if (request.item_requests.counterProposedBy === req.user.id) {
+      return res.status(400).json({ error: "You already proposed the current counter. Wait for the other party." });
+    }
+
+    // Counter-back
+    if (counter) {
+      const [updated] = await db
+        .update(itemRequests)
+        .set({
+          negotiationStatus: "counter_proposed",
+          counterDeliveryMethod: counter.deliveryMethod || request.item_requests.counterDeliveryMethod,
+          counterDepositMethod: counter.depositMethod || request.item_requests.counterDepositMethod,
+          counterStartDate: counter.startDate ? new Date(counter.startDate) : (request.item_requests.counterStartDate ?? null),
+          counterEndDate: counter.endDate ? new Date(counter.endDate) : (request.item_requests.counterEndDate ?? null),
+          counterProposedAt: new Date(),
+          counterProposedBy: req.user.id,
+        })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
+        deliveryMethod: updated.counterDeliveryMethod,
+        depositMethod: updated.counterDepositMethod,
+        startDate: updated.counterStartDate,
+        endDate: updated.counterEndDate,
+        proposedByRole: isOwner ? "owner" : "requester",
+      });
+
+      await db.insert(notifications).values({
+        userId: otherUserId,
+        type: "terms_counter_proposed",
+        title: "New Counter-Proposal",
+        message: `New terms proposed for your ${request.item_requests.requestType?.toLowerCase()} request.`,
+        itemId: request.items.id,
+        requestId,
+      });
+
+      return res.json({ success: true, request: updated, message: "Counter-proposal sent" });
+    }
+
     if (accept) {
-      // Accept the counter-proposal - update terms and set status
       const [updated] = await db
         .update(itemRequests)
         .set({
           negotiationStatus: "terms_accepted",
           deliveryMethod: request.item_requests.counterDeliveryMethod || request.item_requests.deliveryMethod,
           depositMethod: request.item_requests.counterDepositMethod || request.item_requests.depositMethod,
+          startDate: request.item_requests.counterStartDate || request.item_requests.startDate,
+          endDate: request.item_requests.counterEndDate || request.item_requests.endDate,
           termsAcceptedAt: new Date(),
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
 
-      // Notify the owner
-      await db.insert(notifications).values({
-        userId: request.items.ownerId!,
-        type: "terms_accepted",
-        title: "Terms Accepted",
-        message: `The requester has accepted your proposed terms. You can now accept or decline the request.`,
-        itemId: request.items.id,
-        requestId: requestId,
+      await logRequestEvent(req.user.id, otherUserId, requestId, "terms_accepted", {
+        deliveryMethod: updated.deliveryMethod,
+        depositMethod: updated.depositMethod,
+        startDate: updated.startDate,
+        endDate: updated.endDate,
+        acceptedByRole: isOwner ? "owner" : "requester",
       });
 
-      res.json({
+      await db.insert(notifications).values({
+        userId: otherUserId,
+        type: "terms_accepted",
+        title: "Terms Accepted",
+        message: isRequester
+          ? "Requester accepted your terms. You can now accept or decline the request."
+          : "Owner accepted the updated terms.",
+        itemId: request.items.id,
+        requestId,
+      });
+
+      return res.json({
         success: true,
         request: updated,
-        message: "You've accepted the new terms. Waiting for owner to accept the request.",
+        message: isRequester
+          ? "You've accepted the new terms. Waiting for owner to accept."
+          : "Terms accepted.",
       });
     } else {
-      // Decline the counter-proposal - cancel the request
       const [updated] = await db
         .update(itemRequests)
-        .set({
-          negotiationStatus: "terms_declined",
-          status: "CANCELLED",
-          termsDeclinedAt: new Date(),
-        })
+        .set({ negotiationStatus: "terms_declined", status: "CANCELLED", termsDeclinedAt: new Date() })
         .where(eq(itemRequests.id, requestId))
         .returning();
 
-      // Notify the owner
-      await db.insert(notifications).values({
-        userId: request.items.ownerId!,
-        type: "terms_declined",
-        title: "Terms Declined",
-        message: `The requester declined your proposed terms and cancelled the request.`,
-        itemId: request.items.id,
-        requestId: requestId,
+      await logRequestEvent(req.user.id, otherUserId, requestId, "terms_declined", {
+        declinedByRole: isOwner ? "owner" : "requester",
       });
 
-      res.json({
-        success: true,
-        request: updated,
-        message: "Request cancelled",
+      await db.insert(notifications).values({
+        userId: otherUserId,
+        type: "terms_declined",
+        title: "Terms Declined",
+        message: "The other party declined the proposed terms.",
+        itemId: request.items.id,
+        requestId,
       });
+
+      return res.json({ success: true, request: updated, message: "Request cancelled" });
     }
   });
 

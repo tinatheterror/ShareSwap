@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -157,6 +157,9 @@ export const messages = pgTable("messages", {
   senderId: serial("sender_id").references(() => users.id),
   receiverId: serial("receiver_id").references(() => users.id),
   isRead: boolean("is_read").default(false).notNull(),
+  messageType: text("message_type").default("text").notNull(), // 'text' | 'event'
+  metadata: jsonb("metadata"), // for event messages: { eventType, deliveryMethod, depositMethod, startDate, endDate, ... }
+  requestId: integer("request_id").references(() => itemRequests.id),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   senderCreatedIdx: index("messages_sender_created_idx").on(table.senderId, table.createdAt),
@@ -284,6 +287,8 @@ export const itemRequests = pgTable("item_requests", {
   negotiationStatus: text("negotiation_status").default("pending_owner"), // 'pending_owner' | 'counter_proposed' | 'terms_accepted' | 'terms_declined'
   counterDeliveryMethod: text("counter_delivery_method"), // lender's proposed delivery method
   counterDepositMethod: text("counter_deposit_method"), // lender's proposed deposit method
+  counterStartDate: timestamp("counter_start_date"), // proposed start date
+  counterEndDate: timestamp("counter_end_date"), // proposed end date
   counterProposedAt: timestamp("counter_proposed_at"),
   counterProposedBy: integer("counter_proposed_by"), // user ID who proposed the counter
   termsAcceptedAt: timestamp("terms_accepted_at"),

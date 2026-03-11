@@ -27,7 +27,12 @@ import {
   RotateCcw,
   ArrowLeft,
   Inbox,
+  RefreshCw,
+  CreditCard,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
@@ -62,6 +67,20 @@ type Message = {
   senderId: number;
   receiverId: number;
   createdAt: string;
+  messageType?: string; // 'text' | 'event'
+  metadata?: {
+    eventType?: string;
+    deliveryMethod?: string;
+    depositMethod?: string;
+    startDate?: string;
+    endDate?: string;
+    proposedByRole?: string;
+    acceptedByRole?: string;
+    declinedByRole?: string;
+    requestType?: string;
+    itemName?: string;
+  };
+  requestId?: number;
 };
 
 interface ItemRequest {
@@ -83,6 +102,12 @@ interface ItemRequest {
   depositStatus: string | null;
   courierAddress: string | null;
   courierPickupWindow: string | null;
+  negotiationStatus: string | null;
+  counterDeliveryMethod: string | null;
+  counterDepositMethod: string | null;
+  counterStartDate: string | null;
+  counterEndDate: string | null;
+  counterProposedBy: number | null;
   item: {
     id: number;
     name: string;
@@ -214,6 +239,15 @@ export function ChatWidget() {
     null,
   );
 
+  // Counter-proposal state (for inline chat actions)
+  const [showChatCounterModal, setShowChatCounterModal] = useState(false);
+  const [chatCounterRequest, setChatCounterRequest] = useState<ItemRequest | null>(null);
+  const [chatCounterRole, setChatCounterRole] = useState<"owner" | "requester">("requester");
+  const [chatProposedDelivery, setChatProposedDelivery] = useState("in_person");
+  const [chatProposedDeposit, setChatProposedDeposit] = useState("in_app");
+  const [chatProposedStart, setChatProposedStart] = useState("");
+  const [chatProposedEnd, setChatProposedEnd] = useState("");
+
   // WebSocket setup
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.host;
@@ -321,6 +355,55 @@ export function ChatWidget() {
       });
     },
   });
+
+  const respondToCounterMutation = useMutation({
+    mutationFn: async ({ requestId, accept }: { requestId: number; accept: boolean }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/respond-to-counter`, { accept });
+      return res.json();
+    },
+    onSuccess: (data, vars) => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation] });
+      toast({ title: vars.accept ? "Terms Accepted" : "Request Cancelled", description: data.message });
+    },
+  });
+
+  const chatCounterMutation = useMutation({
+    mutationFn: async ({ requestId, deliveryMethod, depositMethod, startDate, endDate, isResponse }: {
+      requestId: number; deliveryMethod: string; depositMethod: string;
+      startDate?: string; endDate?: string; isResponse?: boolean;
+    }) => {
+      const endpoint = isResponse
+        ? `/api/requests/${requestId}/respond-to-counter`
+        : `/api/requests/${requestId}/counter-proposal`;
+      const body = isResponse
+        ? { counter: { deliveryMethod, depositMethod, startDate, endDate } }
+        : { deliveryMethod, depositMethod, startDate, endDate };
+      const res = await apiRequest("POST", endpoint, body);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation] });
+      setShowChatCounterModal(false);
+      setChatCounterRequest(null);
+      toast({ title: "Counter Sent", description: "The other party will be notified." });
+    },
+  });
+
+  const openChatCounter = (request: ItemRequest, role: "owner" | "requester") => {
+    setChatCounterRequest(request);
+    setChatCounterRole(role);
+    const d = request.counterDeliveryMethod || request.deliveryMethod || "in_person";
+    const dep = request.counterDepositMethod || request.depositMethod || "in_app";
+    const sd = request.counterStartDate || request.startDate;
+    const ed = request.counterEndDate || request.endDate;
+    setChatProposedDelivery(d);
+    setChatProposedDeposit(dep);
+    setChatProposedStart(sd ? sd.split("T")[0] : "");
+    setChatProposedEnd(ed ? ed.split("T")[0] : "");
+    setShowChatCounterModal(true);
+  };
 
   useEffect(() => {
     const handleOpenRequests = () => {
@@ -1036,29 +1119,136 @@ export function ChatWidget() {
                 </div>
               ) : (
                 <ScrollArea className="flex-1 p-3" ref={scrollRef}>
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`mb-2 flex ${
-                        msg.senderId === user.id
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
+                  {messages.map((msg) => {
+                    // System event messages render as centered cards
+                    if (msg.messageType === "event") {
+                      const et = msg.metadata?.eventType;
+                      const isCounterPending = et === "counter_proposed";
+                      // Find the related request so we can show inline actions
+                      const relatedRequest = msg.requestId
+                        ? requests.find((r) => r.id === msg.requestId)
+                        : null;
+                      // Who needs to respond? The counterProposedBy will be the sender;
+                      // the receiver is the responder. If current user is the receiver, show buttons.
+                      const iAmResponder = relatedRequest &&
+                        isCounterPending &&
+                        relatedRequest.counterProposedBy !== null &&
+                        relatedRequest.counterProposedBy !== user.id &&
+                        relatedRequest.negotiationStatus === "counter_proposed";
+                      const iAmOwner = relatedRequest && relatedRequest.item.ownerId === user.id;
+
+                      return (
+                        <div key={msg.id} className="mb-3 flex justify-center">
+                          <div className={`w-full max-w-[90%] rounded-xl border px-4 py-3 text-sm ${
+                            et === "counter_proposed" ? "bg-amber-50 border-amber-200" :
+                            et === "terms_accepted" ? "bg-green-50 border-green-200" :
+                            et === "request_accepted" ? "bg-green-50 border-green-200" :
+                            et === "terms_declined" || et === "request_declined" ? "bg-red-50 border-red-200" :
+                            "bg-gray-50 border-gray-200"
+                          }`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              {et === "counter_proposed" && <RefreshCw className="h-3.5 w-3.5 text-amber-600" />}
+                              {(et === "terms_accepted" || et === "request_accepted") && <CheckCircle className="h-3.5 w-3.5 text-green-600" />}
+                              {(et === "terms_declined" || et === "request_declined") && <XCircle className="h-3.5 w-3.5 text-red-600" />}
+                              <span className={`font-medium text-xs ${
+                                et === "counter_proposed" ? "text-amber-800" :
+                                et === "terms_accepted" || et === "request_accepted" ? "text-green-800" :
+                                "text-red-800"
+                              }`}>
+                                {et === "counter_proposed" && (msg.senderId === user.id ? "You proposed new terms" : "New terms proposed")}
+                                {et === "terms_accepted" && (msg.senderId === user.id ? "You accepted the terms" : "Terms accepted")}
+                                {et === "terms_declined" && (msg.senderId === user.id ? "You declined the terms" : "Terms declined")}
+                                {et === "request_accepted" && (msg.senderId === user.id ? "You accepted the request" : "Request accepted")}
+                                {et === "request_declined" && (msg.senderId === user.id ? "You declined the request" : "Request declined")}
+                              </span>
+                              <span className="ml-auto text-[10px] text-muted-foreground">
+                                {new Date(msg.createdAt).toLocaleTimeString()}
+                              </span>
+                            </div>
+
+                            {et === "counter_proposed" && (
+                              <div className="flex flex-wrap gap-1.5 mt-1.5 mb-2">
+                                {msg.metadata?.deliveryMethod && (
+                                  <Badge variant="outline" className="text-xs border-amber-300">
+                                    <Truck className="h-3 w-3 mr-1" />
+                                    {msg.metadata.deliveryMethod === "courier" ? "Uber delivery" : "In-person pickup"}
+                                  </Badge>
+                                )}
+                                {msg.metadata?.depositMethod && (
+                                  <Badge variant="outline" className="text-xs border-amber-300">
+                                    <CreditCard className="h-3 w-3 mr-1" />
+                                    {msg.metadata.depositMethod === "in_app" ? "In-app deposit" : "In-person deposit"}
+                                  </Badge>
+                                )}
+                                {msg.metadata?.startDate && msg.metadata?.endDate && (
+                                  <Badge variant="outline" className="text-xs border-amber-300">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    {format(new Date(msg.metadata.startDate), "MMM d")} – {format(new Date(msg.metadata.endDate), "MMM d")}
+                                  </Badge>
+                                )}
+                              </div>
+                            )}
+
+                            {iAmResponder && relatedRequest && (
+                              <div className="flex gap-2 mt-2 flex-wrap">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                                  onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: true })}
+                                  disabled={respondToCounterMutation.isPending}
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                  Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs border-amber-400 text-amber-700"
+                                  onClick={() => openChatCounter(relatedRequest, iAmOwner ? "owner" : "requester")}
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                                  Counter
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: false })}
+                                  disabled={respondToCounterMutation.isPending}
+                                >
+                                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                                  Decline
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Regular text message
+                    return (
                       <div
-                        className={`rounded-lg px-3 py-2 max-w-[75%] ${
-                          msg.senderId === user.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
+                        key={msg.id}
+                        className={`mb-2 flex ${
+                          msg.senderId === user.id ? "justify-end" : "justify-start"
                         }`}
                       >
-                        <p className="text-sm">{msg.content}</p>
-                        <span className="text-[10px] opacity-70">
-                          {new Date(msg.createdAt).toLocaleTimeString()}
-                        </span>
+                        <div
+                          className={`rounded-lg px-3 py-2 max-w-[75%] ${
+                            msg.senderId === user.id
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          }`}
+                        >
+                          <p className="text-sm">{msg.content}</p>
+                          <span className="text-[10px] opacity-70">
+                            {new Date(msg.createdAt).toLocaleTimeString()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </ScrollArea>
               )}
 
@@ -1286,6 +1476,83 @@ export function ChatWidget() {
           }}
         />
       )}
+
+      {/* Chat Counter-Proposal Modal */}
+      <Dialog open={showChatCounterModal} onOpenChange={setShowChatCounterModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-amber-500" />
+              Propose New Terms
+            </DialogTitle>
+            <DialogDescription>
+              Suggest changes to delivery, deposit, or dates. The other party can accept, decline, or counter again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 py-4">
+            {chatCounterRequest?.requestType === "BORROW" && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Deposit Preference</Label>
+                <RadioGroup value={chatProposedDeposit} onValueChange={setChatProposedDeposit}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="in_app" id="cc-deposit-inapp" />
+                    <Label htmlFor="cc-deposit-inapp" className="font-normal cursor-pointer">In-app (secure hold)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="in_person" id="cc-deposit-inperson" />
+                    <Label htmlFor="cc-deposit-inperson" className="font-normal cursor-pointer">In-person (cash at handoff)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Delivery Preference</Label>
+              <RadioGroup value={chatProposedDelivery} onValueChange={setChatProposedDelivery}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="in_person" id="cc-delivery-pickup" />
+                  <Label htmlFor="cc-delivery-pickup" className="font-normal cursor-pointer">Pick up in person</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="courier" id="cc-delivery-courier" />
+                  <Label htmlFor="cc-delivery-courier" className="font-normal cursor-pointer">Uber delivery</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            {(chatCounterRequest?.requestType === "BORROW" || chatCounterRequest?.requestType === "RENT") && (
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Date Range</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Start</Label>
+                    <Input type="date" value={chatProposedStart} onChange={(e) => setChatProposedStart(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">End</Label>
+                    <Input type="date" value={chatProposedEnd} onChange={(e) => setChatProposedEnd(e.target.value)} min={chatProposedStart || new Date().toISOString().split("T")[0]} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowChatCounterModal(false)}>Cancel</Button>
+            <Button
+              onClick={() => chatCounterRequest && chatCounterMutation.mutate({
+                requestId: chatCounterRequest.id,
+                deliveryMethod: chatProposedDelivery,
+                depositMethod: chatProposedDeposit,
+                startDate: chatProposedStart || undefined,
+                endDate: chatProposedEnd || undefined,
+                isResponse: chatCounterRole === "requester",
+              })}
+              disabled={chatCounterMutation.isPending}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              {chatCounterMutation.isPending ? "Sending..." : "Send Counter"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

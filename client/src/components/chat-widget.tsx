@@ -665,11 +665,11 @@ export function ChatWidget() {
             <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground">
               <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
                 <Truck className="h-3 w-3" />
-                {displayDelivery === "courier" ? "Delivery" : "In-person"}
+                {displayDelivery === "courier" ? "Uber" : "Pick up"}
               </span>
               <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
                 <CreditCard className="h-3 w-3" />
-                {displayDeposit === "in_app" ? "In-app" : "Cash"}
+                {displayDeposit === "in_app" ? "In-app" : "In-person"}
               </span>
             </div>
           </div>

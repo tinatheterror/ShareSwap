@@ -6398,6 +6398,16 @@ Respond with ONLY the category name, nothing else.`
           })
           .returning();
 
+        // Write agreed terms back to itemRequests so all views read from a single source of truth.
+        // Normalise the modal's value set ('shareswap_delivery'/'self_arrange') into the request's
+        // canonical value set ('courier'/'in_person', 'in_app'/'in_person').
+        const normalisedDelivery = deliveryMethod === 'shareswap_delivery' ? 'courier' : 'in_person';
+        const normalisedDeposit  = depositMethod  === 'shareswap_deposit'  ? 'in_app'  : 'in_person';
+        await db
+          .update(itemRequests)
+          .set({ deliveryMethod: normalisedDelivery, depositMethod: normalisedDeposit })
+          .where(eq(itemRequests.id, requestId));
+
         res.json(newArrangement);
       }
     } catch (error: any) {

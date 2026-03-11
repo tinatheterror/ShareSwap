@@ -3680,7 +3680,7 @@ Respond with ONLY the category name, nothing else.`
       return res.sendStatus(401);
     }
 
-    const requests = await db
+    const rawRows = await db
       .select({
         id: itemRequests.id,
         itemId: itemRequests.itemId,
@@ -3697,25 +3697,21 @@ Respond with ONLY the category name, nothing else.`
         courierBookedBy: itemRequests.courierBookedBy,
         courierIssue: itemRequests.courierIssue,
         courierIssueNote: itemRequests.courierIssueNote,
-        item: {
-          id: items.id,
-          name: items.name,
-          description: items.description,
-          photos: items.photos,
-          replacementValue: items.replacementValue,
-          tier: items.tier,
-          originalValue: items.originalValue,
-          shareCoinPrice: items.shareCoinPrice,
-          ownerId: items.ownerId,
-        },
-        requester: {
-          id: users.id,
-          username: users.username,
-          handle: users.handle,
-          displayName: users.displayName,
-          isVerified: users.isVerified,
-          reputationLevel: users.reputationLevel,
-        },
+        itemDbId: items.id,
+        itemName: items.name,
+        itemDescription: items.description,
+        itemPhotos: items.photos,
+        itemReplacementValue: items.replacementValue,
+        itemTier: items.tier,
+        itemOriginalValue: items.originalValue,
+        itemShareCoinPrice: items.shareCoinPrice,
+        itemOwnerId: items.ownerId,
+        reqId: users.id,
+        reqUsername: users.username,
+        reqHandle: users.handle,
+        reqDisplayName: users.displayName,
+        reqIsVerified: users.isVerified,
+        reqReputationLevel: users.reputationLevel,
       })
       .from(itemRequests)
       .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -3727,6 +3723,43 @@ Respond with ONLY the category name, nothing else.`
         ),
       )
       .orderBy(desc(itemRequests.createdAt));
+
+    const requests = rawRows.map((r) => ({
+      id: r.id,
+      itemId: r.itemId,
+      requesterId: r.requesterId,
+      requestType: r.requestType,
+      status: r.status,
+      message: r.message,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      createdAt: r.createdAt,
+      deliveryMethod: r.deliveryMethod,
+      deliveryConfirmed: r.deliveryConfirmed,
+      deliveryConfirmedAt: r.deliveryConfirmedAt,
+      courierBookedBy: r.courierBookedBy,
+      courierIssue: r.courierIssue,
+      courierIssueNote: r.courierIssueNote,
+      item: {
+        id: r.itemDbId,
+        name: r.itemName,
+        description: r.itemDescription,
+        photos: r.itemPhotos,
+        replacementValue: r.itemReplacementValue,
+        tier: r.itemTier,
+        originalValue: r.itemOriginalValue,
+        shareCoinPrice: r.itemShareCoinPrice,
+        ownerId: r.itemOwnerId,
+      },
+      requester: {
+        id: r.reqId,
+        username: r.reqUsername,
+        handle: r.reqHandle,
+        displayName: r.reqDisplayName,
+        isVerified: r.reqIsVerified,
+        reputationLevel: r.reqReputationLevel,
+      },
+    }));
 
     // Sort to prioritize verified requesters for pending requests (owner sees verified first)
     const sortedRequests = requests.sort((a, b) => {

@@ -2012,8 +2012,13 @@ Respond with ONLY the category name, nothing else.`
 
       const result = await calculateAIValuation(valuationInput);
       
-      // Use AI's internalItemValue if available, otherwise fall back to calculatedRV
-      const finalReplacementValue = result.internalItemValue > 0 ? result.internalItemValue : calculatedRV;
+      // Replacement value = max(AI market estimate, original value range midpoint).
+      // This ensures the owner is protected at least at the original purchase price level
+      // even if AI estimates a lower current resale value.
+      const finalReplacementValue = Math.max(
+        result.internalItemValue > 0 ? result.internalItemValue : calculatedRV,
+        calculatedRV
+      );
       
       res.json({
         tier,
@@ -2167,13 +2172,13 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Set replacement value for all items (locked at listing time)
-    // Priority order:
-    // 1. AI valuation's internalItemValue (analyzes description/features + photos + brand)
-    // 2. SmartScan estimated value or range midpoint (calculatedRV)
+    // Always take the MAX of AI market estimate and original value range midpoint.
+    // The owner paid the original price — replacement value must protect them at that level
+    // even if the AI's current resale estimate is lower.
     let replacementValue: number | null = null;
     if (aiValuationResult && aiValuationResult.internalItemValue > 0) {
-      replacementValue = aiValuationResult.internalItemValue;
-      console.log(`Replacement value from AI analysis: $${replacementValue}`);
+      replacementValue = Math.max(aiValuationResult.internalItemValue, calculatedRV);
+      console.log(`Replacement value: $${replacementValue} (AI: $${aiValuationResult.internalItemValue}, range midpoint: $${calculatedRV})`);
     } else {
       replacementValue = calculatedRV;
       console.log(`Replacement value from ${rvSource === 'ai' ? 'SmartScan' : 'range midpoint'}: $${replacementValue}`);

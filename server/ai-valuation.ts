@@ -88,15 +88,20 @@ export async function calculateAIValuation(
   // Estimate internal item value based on original value range
   const getBaseItemValue = (originalValue: string | null | undefined): number => {
     const valueMap: Record<string, number> = {
+      // Current range strings
       "Under $50": 30,
+      "$50–$199": 125,
+      "$200–$499": 350,
+      "$500–$2,000": 1250,
+      // Legacy range strings (kept for backward compatibility)
       "$50–$150": 100,
       "$150–$300": 225,
       "$300–$1,000": 650,
       "$1,000–$5,000": 3000,
       "$5,000+": 10000,
-      "$300+": 500, // Legacy support
+      "$300+": 500,
     };
-    return valueMap[originalValue || ""] || 100;
+    return valueMap[originalValue || ""] || 125;
   };
 
   if (band.min === band.max) {

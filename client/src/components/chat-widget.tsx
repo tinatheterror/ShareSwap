@@ -1556,11 +1556,11 @@ export function ChatWidget() {
                 <RadioGroup value={chatProposedDeposit} onValueChange={setChatProposedDeposit}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="in_app" id="cc-deposit-inapp" />
-                    <Label htmlFor="cc-deposit-inapp" className="font-normal cursor-pointer">In-app (secure hold)</Label>
+                    <Label htmlFor="cc-deposit-inapp" className="font-normal cursor-pointer">Handle Deposit In-app</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="in_person" id="cc-deposit-inperson" />
-                    <Label htmlFor="cc-deposit-inperson" className="font-normal cursor-pointer">In-person (cash at handoff)</Label>
+                    <Label htmlFor="cc-deposit-inperson" className="font-normal cursor-pointer">Exchange Deposit In Person</Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -1570,11 +1570,11 @@ export function ChatWidget() {
               <RadioGroup value={chatProposedDelivery} onValueChange={setChatProposedDelivery}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="in_person" id="cc-delivery-pickup" />
-                  <Label htmlFor="cc-delivery-pickup" className="font-normal cursor-pointer">Pick up in person</Label>
+                  <Label htmlFor="cc-delivery-pickup" className="font-normal cursor-pointer">Exchange Item In Person</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="courier" id="cc-delivery-courier" />
-                  <Label htmlFor="cc-delivery-courier" className="font-normal cursor-pointer">Uber delivery</Label>
+                  <Label htmlFor="cc-delivery-courier" className="font-normal cursor-pointer">Uber Direct</Label>
                 </div>
               </RadioGroup>
             </div>

@@ -753,10 +753,10 @@ export function ItemRequestForm({
                                   className={`flex items-center gap-1.5 font-medium text-sm ${isCourier ? "cursor-not-allowed" : "cursor-pointer"}`}
                                 >
                                   <MapPin className="h-4 w-4 text-gray-500" />
-                                  In person
+                                  Exchange It Yourself
                                 </label>
                                 <p className="text-xs text-gray-500 font-medium mt-0.5">
-                                  Direct exchange
+                                  Free
                                 </p>
                               </div>
                             </div>
@@ -799,7 +799,7 @@ export function ItemRequestForm({
                               Pick Up Yourself
                             </label>
                             <p className="text-xs text-gray-500 font-medium mt-0.5">
-                              Direct exchange
+                              Free
                             </p>
                           </div>
                         </div>

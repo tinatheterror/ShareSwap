@@ -125,7 +125,6 @@ interface ItemRequest {
   };
 }
 
-type MainTab = "messages" | "requests";
 type MessageFilter =
   | "all"
   | "lending"
@@ -133,7 +132,6 @@ type MessageFilter =
   | "swapping"
   | "gifting"
   | "unread";
-type RequestFilter = "incoming" | "outgoing" | "active";
 
 function DepositPaymentForm({
   clientSecret,
@@ -211,9 +209,7 @@ export function ChatWidget() {
   const qc = useQueryClient();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [mainTab, setMainTab] = useState<MainTab>("messages");
   const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
-  const [requestFilter, setRequestFilter] = useState<RequestFilter>("incoming");
   const [selectedConversation, setSelectedConversation] = useState<
     number | null
   >(null);
@@ -408,7 +404,6 @@ export function ChatWidget() {
   useEffect(() => {
     const handleOpenRequests = () => {
       setIsOpen(true);
-      setMainTab("requests");
       setSelectedConversation(null);
     };
     window.addEventListener("open-chat-requests", handleOpenRequests);
@@ -557,12 +552,33 @@ export function ChatWidget() {
       ].includes(r.status),
   );
 
-  const getFilteredRequests = () => {
-    if (requestFilter === "incoming") return incomingRequests;
-    if (requestFilter === "outgoing") return myRequests;
-    if (requestFilter === "active") return activeTransactions;
-    return [];
-  };
+  // Requests that need the current user's action (highlighted at top)
+  const needsActionRequests = requests.filter((r) => {
+    const isOwner = r.item.ownerId === user?.id;
+    const isRequester = r.requesterId === user?.id;
+    if (isOwner && r.status === "PENDING") return true;
+    if (r.negotiationStatus === "counter_proposed" && r.counterProposedBy !== user?.id) return true;
+    if (isRequester && r.status === "ACCEPTED") return true;
+    if (r.status === "RETURN_REQUESTED") return true;
+    return false;
+  });
+
+  // All requests sorted: needs-action first, then others by recency
+  const allRequestsSorted = [
+    ...needsActionRequests,
+    ...requests.filter((r) => !needsActionRequests.includes(r)),
+  ];
+
+  // Filter requests for the unified inbox list
+  const filteredRequestItems = allRequestsSorted.filter((r) => {
+    if (messageFilter === "all") return true;
+    if (messageFilter === "unread") return needsActionRequests.includes(r);
+    if (messageFilter === "lending") return r.requestType === "BORROW";
+    if (messageFilter === "renting") return r.requestType === "RENT";
+    if (messageFilter === "swapping") return r.requestType === "SWAP";
+    if (messageFilter === "gifting") return r.requestType === "GIFT";
+    return true;
+  });
 
   const totalUnread = allConversations.reduce(
     (sum, conv) => sum + conv.unreadCount,
@@ -595,13 +611,17 @@ export function ChatWidget() {
   const renderRequestCard = (request: ItemRequest) => {
     const isOwner = request.item.ownerId === user?.id;
     const isBorrower = request.requesterId === user?.id;
+    const partnerId = isOwner ? request.requesterId : request.item.ownerId;
 
     return (
       <div
         key={request.id}
         className="p-3 border-b hover:bg-gray-50 transition-colors"
       >
-        <div className="flex gap-3">
+        <button
+          className="w-full flex gap-3 text-left"
+          onClick={() => setSelectedConversation(partnerId)}
+        >
           <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
             {request.item.photos?.[0] ? (
               <img
@@ -651,9 +671,11 @@ export function ChatWidget() {
                 </span>
               </div>
             )}
+          </div>
+        </button>
 
-            {/* Action buttons */}
-            <div className="flex gap-1.5 flex-wrap">
+        {/* Action buttons */}
+        <div className="flex gap-1.5 flex-wrap mt-2 pl-[68px]">
               {/* Owner actions for pending requests */}
               {isOwner && request.status === "PENDING" && (
                 <>
@@ -855,8 +877,6 @@ export function ChatWidget() {
                   Confirm Return
                 </Button>
               )}
-            </div>
-          </div>
         </div>
       </div>
     );
@@ -895,204 +915,125 @@ export function ChatWidget() {
               </Button>
             </div>
 
-            {/* Main tabs: Messages | Requests */}
-            {!selectedConversation && (
-              <div className="flex border-t">
-                <button
-                  onClick={() => setMainTab("messages")}
-                  className={`flex-1 py-2.5 text-sm font-medium transition-colors relative ${
-                    mainTab === "messages"
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Messages
-                  {totalUnread > 0 && (
-                    <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white rounded-full">
-                      {totalUnread}
-                    </span>
-                  )}
-                  {mainTab === "messages" && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setMainTab("requests")}
-                  className={`flex-1 py-2.5 text-sm font-medium transition-colors relative ${
-                    mainTab === "requests"
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Requests
-                  {pendingRequestCount > 0 && (
-                    <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] bg-amber-500 text-white rounded-full">
-                      {pendingRequestCount}
-                    </span>
-                  )}
-                  {mainTab === "requests" && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-                  )}
-                </button>
-              </div>
-            )}
           </div>
 
           {!selectedConversation ? (
-            mainTab === "messages" ? (
-              <>
-                {/* Message filter tabs */}
-                <div className="flex gap-1 p-2 border-b overflow-x-auto">
-                  {[
-                    { key: "all", label: "All" },
-                    { key: "lending", label: "Lend" },
-                    { key: "renting", label: "Rent" },
-                    { key: "swapping", label: "Swap" },
-                    { key: "gifting", label: "Gift" },
-                    { key: "unread", label: "Unread" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.key}
-                      onClick={() => setMessageFilter(tab.key as MessageFilter)}
-                      className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${
-                        messageFilter === tab.key
-                          ? "bg-gray-800 text-white"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Conversation List */}
-                <ScrollArea className="flex-1">
-                  {filteredConversations.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">
-                      <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No conversations yet</p>
-                    </div>
-                  ) : (
-                    <div className="divide-y">
-                      {filteredConversations.map((conv) => (
-                        <button
-                          key={conv.userId}
-                          onClick={() => {
-                            setSelectedConversation(conv.userId);
-                            if (conv.unreadCount > 0) {
-                              apiRequest("POST", `/api/messages/mark-read/${conv.userId}`)
-                                .then(() => {
-                                  qc.invalidateQueries({ queryKey: ["/api/conversations"] });
-                                })
-                                .catch(() => {});
-                            }
-                          }}
-                          className="w-full p-3 hover:bg-gray-50 text-left transition-colors"
-                        >
-                          <div className="flex items-start justify-between mb-1">
-                            <span className="font-medium text-sm">
-                              {formatDisplayName(conv.username)}
-                            </span>
-                            {conv.unreadCount > 0 && (
-                              <Badge className="bg-red-500 text-xs h-5 min-w-5 flex items-center justify-center">
-                                {conv.unreadCount}
-                              </Badge>
-                            )}
-                          </div>
-                          {conv.itemName && (
-                            <div className="text-xs text-muted-foreground mb-1">
-                              {conv.transactionType?.toUpperCase() ===
-                                "BORROW" && "Lending"}
-                              {conv.transactionType?.toUpperCase() === "RENT" &&
-                                "Renting"}
-                              {conv.transactionType?.toUpperCase() === "SWAP" &&
-                                "Swapping"}
-                              {conv.transactionType?.toUpperCase() === "GIFT" &&
-                                "Gifting"}
-                              : {conv.itemName}
-                            </div>
-                          )}
-                          <p className="text-xs text-muted-foreground truncate">
-                            {conv.lastMessage}
-                          </p>
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(conv.lastMessageTime).toLocaleString()}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </>
-            ) : (
-              <>
-                {/* Request filter tabs */}
-                <div className="flex gap-1 p-2 border-b overflow-x-auto">
+            <>
+              {/* Filter pills */}
+              <div className="flex gap-1 p-2 border-b overflow-x-auto">
+                {[
+                  { key: "all", label: "All" },
+                  { key: "lending", label: "Lend" },
+                  { key: "renting", label: "Rent" },
+                  { key: "swapping", label: "Swap" },
+                  { key: "gifting", label: "Gift" },
+                  { key: "unread", label: "Needs Action" },
+                ].map((tab) => (
                   <button
-                    onClick={() => setRequestFilter("incoming")}
+                    key={tab.key}
+                    onClick={() => setMessageFilter(tab.key as MessageFilter)}
                     className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap flex items-center gap-1 ${
-                      requestFilter === "incoming"
+                      messageFilter === tab.key
                         ? "bg-gray-800 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    Incoming
-                    {incomingRequests.length > 0 && (
-                      <span
-                        className={`inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] rounded-full ${
-                          requestFilter === "incoming"
-                            ? "bg-white/20"
-                            : "bg-amber-500 text-white"
-                        }`}
-                      >
-                        {incomingRequests.length}
+                    {tab.label}
+                    {tab.key === "unread" && pendingRequestCount + totalUnread > 0 && (
+                      <span className={`inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] rounded-full ${messageFilter === "unread" ? "bg-white/20" : "bg-amber-500 text-white"}`}>
+                        {pendingRequestCount + totalUnread}
                       </span>
                     )}
                   </button>
-                  <button
-                    onClick={() => setRequestFilter("outgoing")}
-                    className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${
-                      requestFilter === "outgoing"
-                        ? "bg-gray-800 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    My Requests
-                  </button>
-                  <button
-                    onClick={() => setRequestFilter("active")}
-                    className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${
-                      requestFilter === "active"
-                        ? "bg-gray-800 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    Active
-                  </button>
-                </div>
+                ))}
+              </div>
 
-                {/* Request List */}
-                <ScrollArea className="flex-1">
-                  {isLoadingRequests ? (
-                    <div className="flex-1 flex items-center justify-center p-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : getFilteredRequests().length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">
-                      <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">
-                        {requestFilter === "incoming" && "No pending requests"}
-                        {requestFilter === "outgoing" &&
-                          "You haven't made any requests"}
-                        {requestFilter === "active" && "No active transactions"}
-                      </p>
-                    </div>
-                  ) : (
-                    <div>{getFilteredRequests().map(renderRequestCard)}</div>
-                  )}
-                </ScrollArea>
-              </>
-            )
+              {/* Unified inbox list */}
+              <ScrollArea className="flex-1">
+                {isLoadingRequests && filteredRequestItems.length === 0 && filteredConversations.length === 0 ? (
+                  <div className="flex items-center justify-center p-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : filteredRequestItems.length === 0 && filteredConversations.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Nothing here yet</p>
+                  </div>
+                ) : (
+                  <div>
+                    {/* Requests section */}
+                    {filteredRequestItems.length > 0 && (
+                      <div>
+                        <div className="px-3 py-1.5 bg-gray-50 border-b flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Requests</span>
+                          {pendingRequestCount > 0 && (
+                            <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] bg-amber-500 text-white rounded-full">
+                              {pendingRequestCount} pending
+                            </span>
+                          )}
+                        </div>
+                        {filteredRequestItems.map(renderRequestCard)}
+                      </div>
+                    )}
+
+                    {/* Conversations section */}
+                    {filteredConversations.length > 0 && (
+                      <div>
+                        {filteredRequestItems.length > 0 && (
+                          <div className="px-3 py-1.5 bg-gray-50 border-b">
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Messages</span>
+                          </div>
+                        )}
+                        <div className="divide-y">
+                          {filteredConversations.map((conv) => (
+                            <button
+                              key={conv.userId}
+                              onClick={() => {
+                                setSelectedConversation(conv.userId);
+                                if (conv.unreadCount > 0) {
+                                  apiRequest("POST", `/api/messages/mark-read/${conv.userId}`)
+                                    .then(() => {
+                                      qc.invalidateQueries({ queryKey: ["/api/conversations"] });
+                                    })
+                                    .catch(() => {});
+                                }
+                              }}
+                              className="w-full p-3 hover:bg-gray-50 text-left transition-colors"
+                            >
+                              <div className="flex items-start justify-between mb-1">
+                                <span className="font-medium text-sm">
+                                  {formatDisplayName(conv.username)}
+                                </span>
+                                {conv.unreadCount > 0 && (
+                                  <Badge className="bg-red-500 text-xs h-5 min-w-5 flex items-center justify-center">
+                                    {conv.unreadCount}
+                                  </Badge>
+                                )}
+                              </div>
+                              {conv.itemName && (
+                                <div className="text-xs text-muted-foreground mb-1">
+                                  {conv.transactionType?.toUpperCase() === "BORROW" && "Lending"}
+                                  {conv.transactionType?.toUpperCase() === "RENT" && "Renting"}
+                                  {conv.transactionType?.toUpperCase() === "SWAP" && "Swapping"}
+                                  {conv.transactionType?.toUpperCase() === "GIFT" && "Gifting"}
+                                  : {conv.itemName}
+                                </div>
+                              )}
+                              <p className="text-xs text-muted-foreground truncate">
+                                {conv.lastMessage}
+                              </p>
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(conv.lastMessageTime).toLocaleString()}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </ScrollArea>
+            </>
           ) : (
             <>
               {/* Chat View */}
@@ -1108,7 +1049,12 @@ export function ChatWidget() {
                   {formatDisplayName(
                     allConversations.find(
                       (c) => c.userId === selectedConversation,
-                    )?.username,
+                    )?.username ??
+                    requests.find(
+                      (r) =>
+                        r.item.ownerId === user?.id &&
+                        r.requesterId === selectedConversation,
+                    )?.requester?.username
                   )}
                 </span>
               </div>

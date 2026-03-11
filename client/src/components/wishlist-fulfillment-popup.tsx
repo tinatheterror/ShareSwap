@@ -104,7 +104,7 @@ export function WishlistFulfillmentPopup({
               <Coins className="h-4 w-4 text-white" />
             </div>
             <DialogTitle className="text-xl font-bold text-slate-800 mb-2">
-              Your Neighbours are looking for these items
+              Neighbours are looking for these items
             </DialogTitle>
             <p className="text-slate-500 text-lg">
               Fulfill urgent wishlists and earn extra ShareCoins!

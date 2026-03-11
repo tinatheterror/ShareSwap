@@ -3260,8 +3260,17 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Get all messages involving the current user
+    // Use explicit column selection to avoid issues with jsonb columns in wildcard select
     const allMessages = await db
-      .select()
+      .select({
+        id: messages.id,
+        senderId: messages.senderId,
+        receiverId: messages.receiverId,
+        content: messages.content,
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+        messageType: messages.messageType,
+      })
       .from(messages)
       .where(
         or(
@@ -3747,7 +3756,6 @@ Respond with ONLY the category name, nothing else.`
         reqDisplayName: users.displayName,
         reqIsVerified: users.isVerified,
         reqReputationLevel: users.reputationLevel,
-        reqDepositMethod: users.depositMethod,
       })
       .from(itemRequests)
       .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -3820,7 +3828,6 @@ Respond with ONLY the category name, nothing else.`
         displayName: r.reqDisplayName,
         isVerified: r.reqIsVerified,
         reputationLevel: r.reqReputationLevel,
-        depositMethod: r.reqDepositMethod,
       },
     }));
 

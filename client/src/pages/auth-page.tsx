@@ -4,7 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { Lock, Mail, RotateCcw, AlertCircle, Eye, EyeOff, Users, CheckCircle2 } from "lucide-react";
+import {
+  Lock,
+  Mail,
+  RotateCcw,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Users,
+  CheckCircle2,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -35,7 +44,7 @@ function generateDeviceFingerprint(): string {
   let hash = 0;
   for (let i = 0; i < fingerprint.length; i++) {
     const char = fingerprint.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash;
   }
   return Math.abs(hash).toString(36);
@@ -63,26 +72,30 @@ export default function AuthPage() {
       setReferralCode(ref);
       setIsLogin(false); // Switch to signup mode when coming from referral
     }
-    
+
     // Handle email verification status
     const verified = params.get("verified");
     const error = params.get("error");
-    
+
     if (verified === "true") {
       toast({
         title: "Email verified!",
-        description: "Your email has been successfully verified. You can now log in.",
+        description:
+          "Your email has been successfully verified. You can now log in.",
       });
     } else if (error) {
       const errorMessages: Record<string, string> = {
         missing_token: "Verification link is invalid.",
-        invalid_token: "This verification link is invalid or has already been used.",
-        token_expired: "This verification link has expired. Please request a new one.",
+        invalid_token:
+          "This verification link is invalid or has already been used.",
+        token_expired:
+          "This verification link has expired. Please request a new one.",
         verification_failed: "Email verification failed. Please try again.",
       };
       toast({
         title: "Verification failed",
-        description: errorMessages[error] || "Something went wrong. Please try again.",
+        description:
+          errorMessages[error] || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     }
@@ -128,7 +141,11 @@ export default function AuthPage() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string; deviceFingerprint?: string }) => {
+    mutationFn: async (credentials: {
+      username: string;
+      password: string;
+      deviceFingerprint?: string;
+    }) => {
       const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -160,7 +177,13 @@ export default function AuthPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: { username: string; password: string; fullName?: string; referralCode?: string; deviceFingerprint?: string }) => {
+    mutationFn: async (credentials: {
+      username: string;
+      password: string;
+      fullName?: string;
+      referralCode?: string;
+      deviceFingerprint?: string;
+    }) => {
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -198,12 +221,12 @@ export default function AuthPage() {
       loginMutation.mutate({ username: email, password, deviceFingerprint });
     } else {
       const deviceFingerprint = generateDeviceFingerprint();
-      registerMutation.mutate({ 
-        username: email, 
+      registerMutation.mutate({
+        username: email,
         password,
         fullName: fullName.trim() || undefined,
         referralCode: referralCode.trim() || undefined,
-        deviceFingerprint 
+        deviceFingerprint,
       });
     }
   };
@@ -231,7 +254,7 @@ export default function AuthPage() {
 
               <Button
                 onClick={() => {
-                  const url = referralCode.trim() 
+                  const url = referralCode.trim()
                     ? `/api/auth/google?ref=${encodeURIComponent(referralCode.trim())}`
                     : "/api/auth/google";
                   window.location.href = url;
@@ -269,14 +292,21 @@ export default function AuthPage() {
                 <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-center gap-2">
                     <Users className="h-3 w-3 text-muted-foreground" />
-                    <Label htmlFor="main-referral" className="text-xs text-muted-foreground">Referral code</Label>
+                    <Label
+                      htmlFor="main-referral"
+                      className="text-xs text-muted-foreground"
+                    >
+                      Referral code
+                    </Label>
                   </div>
                   <Input
                     id="main-referral"
                     type="text"
                     placeholder="Enter referral code"
                     value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      setReferralCode(e.target.value.toUpperCase())
+                    }
                     className="h-9 text-sm"
                     autoFocus
                   />
@@ -337,7 +367,7 @@ export default function AuthPage() {
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="Tina Le"
+                  placeholder="Avery Smith"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
@@ -387,7 +417,8 @@ export default function AuthPage() {
               <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200">
                 <Users className="h-4 w-4 text-green-600" />
                 <p className="text-xs text-green-700">
-                  Referral code <span className="font-medium">{referralCode}</span> applied
+                  Referral code{" "}
+                  <span className="font-medium">{referralCode}</span> applied
                 </p>
               </div>
             )}

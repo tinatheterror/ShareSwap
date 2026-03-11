@@ -1084,6 +1084,7 @@ export default function RequestsPage() {
             name: selectedRequest.item.name,
             tier: selectedRequest.item.tier || 2,
             originalValue: selectedRequest.item.originalValue || "$50–$150",
+            replacementValue: selectedRequest.item.replacementValue,
             shareCoinPrice: selectedRequest.item.shareCoinPrice || "5",
             photos: selectedRequest.item.photos,
           }}

@@ -30,6 +30,9 @@ import {
   RefreshCw,
   CreditCard,
   MapPin,
+  Star,
+  ShieldCheck,
+  Circle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -60,6 +63,40 @@ type Conversation = {
   unreadCount: number;
   transactionType: string | null;
   itemName: string | null;
+};
+
+type InboxItem = {
+  partnerId: number;
+  partnerUsername: string;
+  partnerDisplayName: string | null;
+  partnerPhoto: string | null;
+  partnerIsVerified: boolean;
+  partnerLastActiveAt: string | null;
+  lastActivityTime: string;
+  preview: string;
+  previewType: "message" | "request";
+  unreadCount: number;
+  requestId: number | null;
+  requestType: string | null;
+  requestStatus: string | null;
+  requestNegotiationStatus: string | null;
+  itemName: string | null;
+  itemId: number | null;
+  iAmRequester: boolean;
+};
+
+type PublicProfile = {
+  id: number;
+  username: string;
+  displayName: string | null;
+  profilePhoto: string | null;
+  isVerified: boolean;
+  reputationScore: number;
+  lastActiveAt: string | null;
+  bio: string | null;
+  location: string | null;
+  reviewCount: number;
+  averageRating: number | null;
 };
 
 type Message = {
@@ -257,6 +294,7 @@ export function ChatWidget() {
       const message = JSON.parse(data);
       if (message.receiverId === user?.id || message.senderId === user?.id) {
         queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
         if (selectedConversation) {
           queryClient.invalidateQueries({
             queryKey: ["/api/messages", selectedConversation],
@@ -275,33 +313,34 @@ export function ChatWidget() {
     autoConnect: !!user,
   });
 
-  // Fetch conversations
+  // Fetch conversations (still needed for chat view context)
   const { data: allConversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
     enabled: !!user,
   });
 
-  // Fetch requests
-  const { data: requests = [], isLoading: isLoadingRequests } = useQuery<
-    ItemRequest[]
-  >({
-    queryKey: ["/api/requests"],
+  // Unified inbox — sorted by most recent activity across messages and requests
+  const { data: inboxItems = [], isLoading: isLoadingInbox } = useQuery<InboxItem[]>({
+    queryKey: ["/api/inbox"],
     enabled: !!user,
+    refetchInterval: 30_000,
   });
 
-  // Filter conversations based on active tab
-  const filteredConversations = allConversations.filter((conv) => {
-    if (messageFilter === "all") return true;
-    if (messageFilter === "unread") return conv.unreadCount > 0;
-    if (messageFilter === "lending")
-      return conv.transactionType?.toUpperCase() === "BORROW";
-    if (messageFilter === "renting")
-      return conv.transactionType?.toUpperCase() === "RENT";
-    if (messageFilter === "swapping")
-      return conv.transactionType?.toUpperCase() === "SWAP";
-    if (messageFilter === "gifting")
-      return conv.transactionType?.toUpperCase() === "GIFT";
-    return true;
+  // Partner public profile for chat header
+  const { data: partnerProfile } = useQuery<PublicProfile>({
+    queryKey: ["/api/users", selectedConversation, "public-profile"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${selectedConversation}/public-profile`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      return res.json();
+    },
+    enabled: !!selectedConversation,
+  });
+
+  // Fetch requests
+  const { data: requests = [] } = useQuery<ItemRequest[]>({
+    queryKey: ["/api/requests"],
+    enabled: !!user,
   });
 
   // Fetch messages for selected conversation
@@ -327,6 +366,7 @@ export function ChatWidget() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       setShowCelebration(true);
     },
     onError: (error: any) => {
@@ -347,6 +387,7 @@ export function ChatWidget() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       toast({
         title: "Request Declined",
         description: "You've declined this request",
@@ -361,6 +402,7 @@ export function ChatWidget() {
     },
     onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation] });
       if (vars.accept && data.ownerAccepted) {
         // Owner fully accepted via counter path — show celebration
@@ -390,6 +432,7 @@ export function ChatWidget() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation] });
       setShowChatCounterModal(false);
       setChatCounterRequest(null);
@@ -430,6 +473,83 @@ export function ChatWidget() {
   // Early return AFTER all hooks to avoid Rules of Hooks violation
   if (!user) return null;
 
+  // --- Helpers ---
+
+  const getActiveStatus = (lastActiveAt: string | null): { label: string; color: string } | null => {
+    if (!lastActiveAt) return null;
+    const diff = Date.now() - new Date(lastActiveAt).getTime();
+    const min = diff / 60_000;
+    const hrs = diff / 3_600_000;
+    const days = diff / 86_400_000;
+    if (min < 5) return { label: "Active now", color: "text-green-600" };
+    if (hrs < 1) return { label: `Active ${Math.floor(min)}m ago`, color: "text-green-500" };
+    if (hrs < 24) return { label: `Active ${Math.floor(hrs)}h ago`, color: "text-amber-600" };
+    if (days < 7) return { label: `Active ${Math.floor(days)}d ago`, color: "text-gray-500" };
+    return null;
+  };
+
+  const getPartnerInitials = (displayName: string | null, username: string): string => {
+    const name = displayName || username;
+    return name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  };
+
+  const getRequestTypeLabel = (type: string | null): string => {
+    switch (type?.toUpperCase()) {
+      case "BORROW": return "Lending";
+      case "RENT": return "Renting";
+      case "SWAP": return "Swapping";
+      case "GIFT": return "Gifting";
+      default: return type || "";
+    }
+  };
+
+  const getRequestStatusLabel = (status: string | null, negotiationStatus: string | null, iAmRequester: boolean, inboxItem: InboxItem): string => {
+    if (negotiationStatus === "counter_proposed") {
+      const iSent = inboxItem.requestType != null; // we check counterProposedBy server-side already
+      return "Counter offer pending";
+    }
+    switch (status) {
+      case "PENDING": return iAmRequester ? "Waiting for response" : "Needs your response";
+      case "ACCEPTED": return "Accepted";
+      case "DEPOSIT_CONFIRMED": return "Deposit confirmed";
+      case "IN_PROGRESS": return "In progress";
+      case "RETURN_REQUESTED": return "Return requested";
+      case "COMPLETED": return "Completed";
+      case "DECLINED": return "Declined";
+      default: return status || "";
+    }
+  };
+
+  // Filter inbox items based on active pill
+  const filteredInboxItems = inboxItems.filter((item) => {
+    if (messageFilter === "all") return true;
+    if (messageFilter === "unread") {
+      // Show items with unread messages or requests needing action
+      const needsAction =
+        item.unreadCount > 0 ||
+        (item.requestStatus === "PENDING" && !item.iAmRequester) ||
+        (item.requestNegotiationStatus === "counter_proposed");
+      return needsAction;
+    }
+    if (messageFilter === "lending") return item.requestType === "BORROW";
+    if (messageFilter === "renting") return item.requestType === "RENT";
+    if (messageFilter === "swapping") return item.requestType === "SWAP";
+    if (messageFilter === "gifting") return item.requestType === "GIFT";
+    return true;
+  });
+
+  const openConversationWithPartner = (partnerId: number, unreadCount: number) => {
+    setSelectedConversation(partnerId);
+    if (unreadCount > 0) {
+      apiRequest("POST", `/api/messages/mark-read/${partnerId}`)
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["/api/conversations"] });
+          qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+        })
+        .catch(() => {});
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!message.trim() || !selectedConversation) return;
 
@@ -454,6 +574,7 @@ export function ChatWidget() {
         queryKey: ["/api/messages", selectedConversation],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -554,56 +675,18 @@ export function ChatWidget() {
     }
   };
 
-  // Filter requests
-  const incomingRequests = requests.filter(
-    (r) => r.item.ownerId === user?.id && r.status === "PENDING",
-  );
-  const myRequests = requests.filter((r) => r.requesterId === user?.id);
-  const activeTransactions = requests.filter(
-    (r) =>
-      (r.item.ownerId === user?.id || r.requesterId === user?.id) &&
-      [
-        "ACCEPTED",
-        "DEPOSIT_CONFIRMED",
-        "COURIER_PENDING",
-        "IN_PROGRESS",
-        "RETURN_REQUESTED",
-      ].includes(r.status),
-  );
 
-  // Requests that need the current user's action (highlighted at top)
-  const needsActionRequests = requests.filter((r) => {
-    const isOwner = r.item.ownerId === user?.id;
-    const isRequester = r.requesterId === user?.id;
-    if (isOwner && r.status === "PENDING") return true;
-    if (r.negotiationStatus === "counter_proposed" && r.counterProposedBy !== user?.id) return true;
-    if (isRequester && r.status === "ACCEPTED") return true;
-    if (r.status === "RETURN_REQUESTED") return true;
-    return false;
-  });
-
-  // All requests sorted: needs-action first, then others by recency
-  const allRequestsSorted = [
-    ...needsActionRequests,
-    ...requests.filter((r) => !needsActionRequests.includes(r)),
-  ];
-
-  // Filter requests for the unified inbox list
-  const filteredRequestItems = allRequestsSorted.filter((r) => {
-    if (messageFilter === "all") return true;
-    if (messageFilter === "unread") return needsActionRequests.includes(r);
-    if (messageFilter === "lending") return r.requestType === "BORROW";
-    if (messageFilter === "renting") return r.requestType === "RENT";
-    if (messageFilter === "swapping") return r.requestType === "SWAP";
-    if (messageFilter === "gifting") return r.requestType === "GIFT";
-    return true;
-  });
-
-  const totalUnread = allConversations.reduce(
-    (sum, conv) => sum + conv.unreadCount,
-    0,
-  );
-  const pendingRequestCount = incomingRequests.length;
+  const totalUnread = inboxItems.reduce((sum, item) => sum + item.unreadCount, 0);
+  const pendingRequestCount = inboxItems.filter(
+    (item) => item.requestStatus === "PENDING" && !item.iAmRequester
+  ).length;
+  const actionCount = inboxItems.filter((item) => {
+    return (
+      item.unreadCount > 0 ||
+      (item.requestStatus === "PENDING" && !item.iAmRequester) ||
+      item.requestNegotiationStatus === "counter_proposed"
+    );
+  }).length;
   const totalBadge = totalUnread + pendingRequestCount;
 
   const getStatusColor = (status: string) => {
@@ -1051,124 +1134,189 @@ export function ChatWidget() {
                     }`}
                   >
                     {tab.label}
-                    {tab.key === "unread" && pendingRequestCount + totalUnread > 0 && (
+                    {tab.key === "unread" && actionCount > 0 && (
                       <span className={`inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] rounded-full ${messageFilter === "unread" ? "bg-white/20" : "bg-amber-500 text-white"}`}>
-                        {pendingRequestCount + totalUnread}
+                        {actionCount}
                       </span>
                     )}
                   </button>
                 ))}
               </div>
 
-              {/* Unified inbox list */}
+              {/* Unified inbox list — single sorted timeline */}
               <ScrollArea className="flex-1">
-                {isLoadingRequests && filteredRequestItems.length === 0 && filteredConversations.length === 0 ? (
+                {isLoadingInbox ? (
                   <div className="flex items-center justify-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
-                ) : filteredRequestItems.length === 0 && filteredConversations.length === 0 ? (
+                ) : filteredInboxItems.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">Nothing here yet</p>
                   </div>
                 ) : (
-                  <div>
-                    {/* Requests section */}
-                    {filteredRequestItems.length > 0 && (
-                      <div>
-                        <div className="px-3 py-1.5 bg-gray-50 border-b flex items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Requests</span>
-                          {pendingRequestCount > 0 && (
-                            <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] bg-amber-500 text-white rounded-full">
-                              {pendingRequestCount} pending
-                            </span>
-                          )}
-                        </div>
-                        {filteredRequestItems.map(renderRequestCard)}
-                      </div>
-                    )}
+                  <div className="divide-y">
+                    {filteredInboxItems.map((item) => {
+                      const partnerName = formatDisplayName(item.partnerDisplayName || item.partnerUsername);
+                      const initials = getPartnerInitials(item.partnerDisplayName, item.partnerUsername);
+                      const activeStatus = getActiveStatus(item.partnerLastActiveAt);
+                      const needsAction =
+                        (item.requestStatus === "PENDING" && !item.iAmRequester) ||
+                        item.requestNegotiationStatus === "counter_proposed";
+                      const isActive = activeStatus?.label === "Active now";
+                      const activityTime = new Date(item.lastActivityTime);
+                      const now = new Date();
+                      const isToday = activityTime.toDateString() === now.toDateString();
+                      const timeLabel = isToday
+                        ? activityTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        : activityTime.toLocaleDateString([], { month: "short", day: "numeric" });
 
-                    {/* Conversations section */}
-                    {filteredConversations.length > 0 && (
-                      <div>
-                        {filteredRequestItems.length > 0 && (
-                          <div className="px-3 py-1.5 bg-gray-50 border-b">
-                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Messages</span>
-                          </div>
-                        )}
-                        <div className="divide-y">
-                          {filteredConversations.map((conv) => (
-                            <button
-                              key={conv.userId}
-                              onClick={() => {
-                                setSelectedConversation(conv.userId);
-                                if (conv.unreadCount > 0) {
-                                  apiRequest("POST", `/api/messages/mark-read/${conv.userId}`)
-                                    .then(() => {
-                                      qc.invalidateQueries({ queryKey: ["/api/conversations"] });
-                                    })
-                                    .catch(() => {});
-                                }
-                              }}
-                              className="w-full p-3 hover:bg-gray-50 text-left transition-colors"
-                            >
-                              <div className="flex items-start justify-between mb-1">
-                                <span className="font-medium text-sm">
-                                  {formatDisplayName(conv.username)}
-                                </span>
-                                {conv.unreadCount > 0 && (
-                                  <Badge className="bg-red-500 text-xs h-5 min-w-5 flex items-center justify-center">
-                                    {conv.unreadCount}
-                                  </Badge>
+                      return (
+                        <button
+                          key={item.partnerId}
+                          onClick={() => openConversationWithPartner(item.partnerId, item.unreadCount)}
+                          className={`w-full px-3 py-2.5 text-left transition-colors hover:bg-gray-50 ${needsAction ? "bg-amber-50/60 hover:bg-amber-50" : ""}`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            {/* Avatar */}
+                            <div className="relative flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                                {item.partnerPhoto ? (
+                                  <img src={item.partnerPhoto} alt={partnerName} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span>{initials}</span>
                                 )}
                               </div>
-                              {conv.itemName && (
-                                <div className="text-xs text-muted-foreground mb-1">
-                                  {conv.transactionType?.toUpperCase() === "BORROW" && "Lending"}
-                                  {conv.transactionType?.toUpperCase() === "RENT" && "Renting"}
-                                  {conv.transactionType?.toUpperCase() === "SWAP" && "Swapping"}
-                                  {conv.transactionType?.toUpperCase() === "GIFT" && "Gifting"}
-                                  : {conv.itemName}
+                              {isActive && (
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+                              )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              {/* Row 1: name + time */}
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <span className={`text-sm font-semibold truncate ${item.unreadCount > 0 || needsAction ? "text-gray-900" : "text-gray-700"}`}>
+                                    {partnerName}
+                                  </span>
+                                  {item.partnerIsVerified && (
+                                    <ShieldCheck className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {(item.unreadCount > 0) && (
+                                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 text-[10px] bg-red-500 text-white rounded-full font-medium">
+                                      {item.unreadCount}
+                                    </span>
+                                  )}
+                                  {needsAction && item.unreadCount === 0 && (
+                                    <span className="inline-flex items-center justify-center h-4 min-w-4 px-1.5 text-[10px] bg-amber-500 text-white rounded-full font-medium">
+                                      !
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-muted-foreground">{timeLabel}</span>
+                                </div>
+                              </div>
+
+                              {/* Row 2: item context */}
+                              {item.itemName && (
+                                <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-0.5">
+                                  <span className="font-medium text-gray-500">{getRequestTypeLabel(item.requestType)}</span>
+                                  <span>·</span>
+                                  <span className="truncate">{item.itemName}</span>
                                 </div>
                               )}
-                              <p className="text-xs text-muted-foreground truncate">
-                                {conv.lastMessage}
+
+                              {/* Row 3: preview */}
+                              <p className={`text-xs truncate ${item.unreadCount > 0 ? "text-gray-800 font-medium" : "text-muted-foreground"}`}>
+                                {item.previewType === "request" && item.requestStatus ? (
+                                  <span className={`${needsAction ? "text-amber-700" : ""}`}>
+                                    {getRequestStatusLabel(item.requestStatus, item.requestNegotiationStatus, item.iAmRequester, item)}
+                                  </span>
+                                ) : (
+                                  item.preview
+                                )}
                               </p>
-                              <span className="text-[10px] text-muted-foreground">
-                                {new Date(conv.lastMessageTime).toLocaleString()}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
             </>
           ) : (
             <>
-              {/* Chat View */}
-              <div className="p-3 border-b flex items-center gap-2">
+              {/* Chat View Header — partner profile */}
+              <div className="px-3 py-2.5 border-b flex items-center gap-2">
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
                   onClick={() => setSelectedConversation(null)}
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <span className="font-medium text-sm">
-                  {formatDisplayName(
-                    allConversations.find(
-                      (c) => c.userId === selectedConversation,
-                    )?.username ??
-                    requests.find(
-                      (r) =>
-                        r.item.ownerId === user?.id &&
-                        r.requesterId === selectedConversation,
-                    )?.requester?.username
-                  )}
-                </span>
+
+                {/* Avatar */}
+                <div className="relative flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+                    {partnerProfile?.profilePhoto ? (
+                      <img src={partnerProfile.profilePhoto} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>
+                        {getPartnerInitials(
+                          partnerProfile?.displayName ?? null,
+                          partnerProfile?.username ??
+                            (allConversations.find(c => c.userId === selectedConversation)?.username || "?")
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  {(() => {
+                    const s = getActiveStatus(partnerProfile?.lastActiveAt ?? null);
+                    return s?.label === "Active now" ? (
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+                    ) : null;
+                  })()}
+                </div>
+
+                {/* Name + meta */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold text-sm truncate">
+                      {formatDisplayName(
+                        partnerProfile?.displayName || partnerProfile?.username ||
+                        allConversations.find(c => c.userId === selectedConversation)?.username ||
+                        requests.find(r => r.item.ownerId === user?.id && r.requesterId === selectedConversation)?.requester?.username
+                      )}
+                    </span>
+                    {partnerProfile?.isVerified && (
+                      <ShieldCheck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    {partnerProfile && partnerProfile.reviewCount > 0 && (
+                      <span className="flex items-center gap-0.5">
+                        <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+                        <span className="font-medium text-gray-700">{partnerProfile.averageRating}</span>
+                        <span>({partnerProfile.reviewCount})</span>
+                      </span>
+                    )}
+                    {(() => {
+                      const s = getActiveStatus(partnerProfile?.lastActiveAt ?? null);
+                      if (!s) return null;
+                      return (
+                        <span className={`flex items-center gap-0.5 ${s.color}`}>
+                          <Circle className="h-1.5 w-1.5 fill-current" />
+                          {s.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
 
               {isLoadingMessages ? (

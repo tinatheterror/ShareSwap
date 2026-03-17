@@ -39,6 +39,7 @@ export const users = pgTable("users", {
   hasCompletedFirstBorrow: boolean("has_completed_first_borrow").default(false),
   hasSeenVerificationNudge: boolean("has_seen_verification_nudge").default(false),
   accountStatus: text("account_status").default("active"), // 'active', 'deactivated', 'pending_deletion'
+  lastActiveAt: timestamp("last_active_at"),
   deactivatedAt: timestamp("deactivated_at"),
   deletionRequestedAt: timestamp("deletion_requested_at"),
   fullName: text("full_name"),

@@ -550,6 +550,21 @@ export function registerRoutes(app: Express): Server {
     csrfProtection(req, res, next);
   });
 
+  // Track last active timestamp for authenticated users (rate-limited to once per minute)
+  const lastActiveUpdateCache = new Map<number, number>();
+  app.use((req, res, next) => {
+    if (req.isAuthenticated() && req.user) {
+      const userId = req.user.id;
+      const now = Date.now();
+      const lastUpdate = lastActiveUpdateCache.get(userId) || 0;
+      if (now - lastUpdate > 60_000) {
+        lastActiveUpdateCache.set(userId, now);
+        db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, userId)).catch(() => {});
+      }
+    }
+    next();
+  });
+
   app.post("/api/verify", upload.single("idDocument"), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -3251,6 +3266,195 @@ Respond with ONLY the category name, nothing else.`
       console.error("Error marking messages as read:", error);
       res.status(500).json({ error: "Failed to mark messages as read" });
     }
+  });
+
+  // Public profile for any user (for chat headers, trust info)
+  app.get("/api/users/:id/public-profile", async (req, res) => {
+    const targetId = parseInt(req.params.id, 10);
+    if (isNaN(targetId)) return res.status(400).json({ error: "Invalid user id" });
+
+    const [user] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        profilePhoto: users.profilePhoto,
+        isVerified: users.isVerified,
+        reputationScore: users.reputationScore,
+        lastActiveAt: users.lastActiveAt,
+        bio: users.bio,
+        location: users.location,
+      })
+      .from(users)
+      .where(eq(users.id, targetId));
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Compute review stats
+    const reviews = await db
+      .select({ rating: userReviews.rating })
+      .from(userReviews)
+      .where(eq(userReviews.reviewedUserId, targetId));
+
+    const reviewCount = reviews.length;
+    const averageRating = reviewCount > 0
+      ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
+      : null;
+
+    res.json({ ...user, reviewCount, averageRating });
+  });
+
+  // Unified inbox: combines item requests + direct messages sorted by most recent activity
+  app.get("/api/inbox", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const userId = req.user.id;
+
+    // --- Gather all messages involving this user ---
+    const allMessages = await db
+      .select({
+        id: messages.id,
+        senderId: messages.senderId,
+        receiverId: messages.receiverId,
+        content: messages.content,
+        isRead: messages.isRead,
+        createdAt: messages.createdAt,
+        messageType: messages.messageType,
+      })
+      .from(messages)
+      .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
+      .orderBy(desc(messages.createdAt));
+
+    // Build per-partner message map
+    const partnerMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number }>();
+    for (const msg of allMessages) {
+      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
+      if (!partnerMsgMap.has(partnerId)) {
+        const unread = allMessages.filter(
+          m => m.senderId === partnerId && m.receiverId === userId && !m.isRead
+        ).length;
+        partnerMsgMap.set(partnerId, {
+          lastMsg: msg.content,
+          lastTime: msg.createdAt!,
+          unread,
+        });
+      }
+    }
+
+    // --- Gather all item requests involving this user ---
+    const allRequests = await db
+      .select({
+        id: itemRequests.id,
+        requesterId: itemRequests.requesterId,
+        ownerId: items.ownerId,
+        itemName: items.name,
+        itemId: itemRequests.itemId,
+        requestType: itemRequests.requestType,
+        status: itemRequests.status,
+        negotiationStatus: itemRequests.negotiationStatus,
+        createdAt: itemRequests.createdAt,
+      })
+      .from(itemRequests)
+      .innerJoin(items, eq(itemRequests.itemId, items.id))
+      .where(
+        or(
+          eq(itemRequests.requesterId, userId),
+          sql`${items.ownerId} = ${userId}`
+        )
+      )
+      .orderBy(desc(itemRequests.createdAt));
+
+    // Build per-partner request map (most recent request per partner)
+    const partnerReqMap = new Map<number, typeof allRequests[0]>();
+    for (const req of allRequests) {
+      const partnerId: number | null = req.requesterId === userId ? req.ownerId : req.requesterId;
+      if (partnerId !== null && !partnerReqMap.has(partnerId)) {
+        partnerReqMap.set(partnerId, req);
+      }
+    }
+
+    // Collect all partner IDs
+    const partnerIdsSet = new Set<number>([...Array.from(partnerMsgMap.keys()), ...Array.from(partnerReqMap.keys())]);
+    const partnerIds = Array.from(partnerIdsSet);
+
+    // Fetch partner user details
+    const partnerDetails = await Promise.all(
+      Array.from(partnerIds).map(async (pid) => {
+        const [u] = await db
+          .select({
+            id: users.id,
+            username: users.username,
+            displayName: users.displayName,
+            profilePhoto: users.profilePhoto,
+            isVerified: users.isVerified,
+            lastActiveAt: users.lastActiveAt,
+          })
+          .from(users)
+          .where(eq(users.id, pid));
+        return u;
+      })
+    );
+    const partnerMap = new Map(partnerDetails.filter(Boolean).map(u => [u.id, u]));
+
+    // Build unified inbox entries
+    const inboxItems = Array.from(partnerIds).map((pid) => {
+      const partner = partnerMap.get(pid);
+      const msgData = partnerMsgMap.get(pid);
+      const reqData = partnerReqMap.get(pid);
+
+      const msgTime = msgData?.lastTime ? new Date(msgData.lastTime) : null;
+      const reqTime = reqData?.createdAt ? new Date(reqData.createdAt) : null;
+
+      // Most recent activity time
+      let lastActivityTime: Date;
+      let preview: string;
+      let previewType: "message" | "request";
+
+      if (msgTime && reqTime) {
+        if (msgTime >= reqTime) {
+          lastActivityTime = msgTime;
+          previewType = "message";
+          preview = msgData!.lastMsg;
+        } else {
+          lastActivityTime = reqTime;
+          previewType = "request";
+          preview = `${reqData!.requestType} · ${reqData!.status}`;
+        }
+      } else if (msgTime) {
+        lastActivityTime = msgTime;
+        previewType = "message";
+        preview = msgData!.lastMsg;
+      } else {
+        lastActivityTime = reqTime!;
+        previewType = "request";
+        preview = `${reqData!.requestType} · ${reqData!.status}`;
+      }
+
+      return {
+        partnerId: pid,
+        partnerUsername: partner?.username || "Unknown",
+        partnerDisplayName: partner?.displayName || null,
+        partnerPhoto: partner?.profilePhoto || null,
+        partnerIsVerified: partner?.isVerified || false,
+        partnerLastActiveAt: partner?.lastActiveAt || null,
+        lastActivityTime,
+        preview,
+        previewType,
+        unreadCount: msgData?.unread || 0,
+        // Request info (if any)
+        requestId: reqData?.id || null,
+        requestType: reqData?.requestType || null,
+        requestStatus: reqData?.status || null,
+        requestNegotiationStatus: reqData?.negotiationStatus || null,
+        itemName: reqData?.itemName || null,
+        itemId: reqData?.itemId || null,
+        iAmRequester: reqData ? reqData.requesterId === userId : false,
+      };
+    });
+
+    // Sort by most recent activity
+    inboxItems.sort((a, b) => b.lastActivityTime.getTime() - a.lastActivityTime.getTime());
+
+    res.json(inboxItems);
   });
 
   // Get all conversations for the current user

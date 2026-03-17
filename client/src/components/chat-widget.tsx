@@ -1325,6 +1325,19 @@ export function ChatWidget() {
                 </div>
               ) : (
                 <ScrollArea className="flex-1 p-3" ref={scrollRef}>
+                  {/* Request card pinned at top of thread */}
+                  {(() => {
+                    const partnerRequest = requests.find((r) =>
+                      (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
+                      (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
+                    );
+                    if (!partnerRequest) return null;
+                    return (
+                      <div className="mb-3">
+                        {renderRequestCard(partnerRequest)}
+                      </div>
+                    );
+                  })()}
                   {messages.map((msg) => {
                     // System event messages render as centered cards
                     if (msg.messageType === "event") {

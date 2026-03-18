@@ -8418,66 +8418,69 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const username = req.params.username;
-    // Look up by username (email) first, then fall back to handle
-    let [user] = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        handle: users.handle,
-        displayName: users.displayName,
-        isVerified: users.isVerified,
-        reputationScore: users.reputationScore,
-        reputationLevel: users.reputationLevel,
-        isPremium: users.isPremium,
-        profilePhoto: users.profilePhoto,
-        createdAt: users.createdAt,
-      })
-      .from(users)
-      .where(eq(users.username, username))
-      .limit(1);
+    const userCols = {
+      id: users.id,
+      username: users.username,
+      handle: users.handle,
+      displayName: users.displayName,
+      isVerified: users.isVerified,
+      reputationScore: users.reputationScore,
+      reputationLevel: users.reputationLevel,
+      isPremium: users.isPremium,
+      profilePhoto: users.profilePhoto,
+      createdAt: users.createdAt,
+      lastActiveAt: users.lastActiveAt,
+      bio: users.bio,
+      location: users.location,
+    };
 
-    // Fall back to handle lookup (for clean URLs like /profile/T3H3R5)
-    if (!user) {
-      [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          handle: users.handle,
-          displayName: users.displayName,
-          isVerified: users.isVerified,
-          reputationScore: users.reputationScore,
-          reputationLevel: users.reputationLevel,
-          isPremium: users.isPremium,
-          profilePhoto: users.profilePhoto,
-          createdAt: users.createdAt,
-        })
-        .from(users)
-        .where(eq(users.handle, username))
-        .limit(1);
+    let [foundUser] = await db.select(userCols).from(users).where(eq(users.username, username)).limit(1);
+    if (!foundUser) {
+      [foundUser] = await db.select(userCols).from(users).where(eq(users.handle, username)).limit(1);
     }
+    if (!foundUser) return res.status(404).json({ error: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // Get review statistics
-    const reviews = await db
-      .select({
-        rating: userReviews.rating,
-      })
-      .from(userReviews)
-      .where(eq(userReviews.reviewedUserId, user.id));
-
-    const averageRating = reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
-      : 0;
-
+    // Review stats
+    const reviews = await db.select({ rating: userReviews.rating }).from(userReviews).where(eq(userReviews.reviewedUserId, foundUser.id));
     const reviewCount = reviews.length;
+    const averageRating = reviewCount > 0 ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10 : 0;
+
+    // Completed transactions count (as owner or requester)
+    const completedReqs = await db
+      .select({ id: itemRequests.id, courierIssue: itemRequests.courierIssue })
+      .from(itemRequests)
+      .innerJoin(items, eq(itemRequests.itemId, items.id))
+      .where(
+        and(
+          eq(itemRequests.status, "COMPLETED"),
+          or(
+            eq(itemRequests.requesterId, foundUser.id),
+            sql`${items.ownerId} = ${foundUser.id}`
+          )
+        )
+      );
+
+    const completedShares = completedReqs.length;
+    const issueCount = completedReqs.filter(r => r.courierIssue).length;
+    const onTimeRate = completedShares > 0 ? Math.round(((completedShares - issueCount) / completedShares) * 100) : 100;
+    const trustScore = Math.min(100, Math.round((foundUser.reputationScore / 500) * 100));
+
+    // Reply rate: % of received messages that user replied to (within any timeframe)
+    const receivedMsgs = await db.select({ senderId: messages.senderId }).from(messages).where(eq(messages.receiverId, foundUser.id));
+    const uniqueSenders = new Set(receivedMsgs.map(m => m.senderId)).size;
+    const repliedToCount = await db.select({ receiverId: messages.receiverId }).from(messages).where(eq(messages.senderId, foundUser.id));
+    const uniqueReplied = new Set(repliedToCount.map(m => m.receiverId)).size;
+    const replyRate = uniqueSenders > 0 ? Math.min(100, Math.round((uniqueReplied / uniqueSenders) * 100)) : 100;
 
     res.json({
-      ...user,
-      averageRating: Math.round(averageRating * 10) / 10,
+      ...foundUser,
+      averageRating,
       reviewCount,
+      completedShares,
+      issueCount,
+      onTimeRate,
+      trustScore,
+      replyRate,
     });
   });
 

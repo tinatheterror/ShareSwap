@@ -1302,11 +1302,6 @@ export function ChatWidget() {
                       <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
                     )}
                   </div>
-                  {(partnerProfile?.handle || partnerProfile?.username) && (
-                    <div className="text-[11px] text-muted-foreground leading-none">
-                      @{partnerProfile?.handle || partnerProfile?.username}
-                    </div>
-                  )}
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                     {partnerProfile && partnerProfile.reviewCount > 0 && (
                       <span className="flex items-center gap-0.5">

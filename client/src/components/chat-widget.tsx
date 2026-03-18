@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -752,7 +751,7 @@ export function ChatWidget() {
                 COUNTER RECEIVED
               </Badge>
             ) : (
-              <Badge className={`text-[10px] px-1.5 py-0 pointer-events-none ${getStatusColor(request.status)}`}>
+              <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(request.status)}`}>
                 {request.status.replace(/_/g, " ")}
               </Badge>
             )}
@@ -1287,21 +1286,13 @@ export function ChatWidget() {
                 {/* Name + meta */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
-                    {(() => {
-                      const handle = partnerProfile?.handle || partnerProfile?.username ||
+                    <span className="font-semibold text-sm truncate">
+                      {formatDisplayName(
+                        partnerProfile?.displayName || partnerProfile?.username ||
                         allConversations.find(c => c.userId === selectedConversation)?.username ||
-                        requests.find(r => r.item.ownerId === user?.id && r.requesterId === selectedConversation)?.requester?.username;
-                      const displayName = formatDisplayName(partnerProfile?.displayName || handle);
-                      return handle ? (
-                        <Link href={`/profile/${handle}`}>
-                          <span className="font-semibold text-sm truncate hover:underline cursor-pointer">
-                            {displayName}
-                          </span>
-                        </Link>
-                      ) : (
-                        <span className="font-semibold text-sm truncate">{displayName}</span>
-                      );
-                    })()}
+                        requests.find(r => r.item.ownerId === user?.id && r.requesterId === selectedConversation)?.requester?.username
+                      )}
+                    </span>
                     {partnerProfile?.isVerified && (
                       <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
                     )}

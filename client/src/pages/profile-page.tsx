@@ -56,7 +56,6 @@ import {
   Percent,
   UserCheck,
   Wallet,
-  MessageCircle,
 } from "lucide-react";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
@@ -438,262 +437,216 @@ export default function ProfilePage() {
       );
     }
 
-    // ── helper: active status label for profile page ──
-    const getProfileActiveStatus = (lastActiveAt: string | null | undefined) => {
-      if (!lastActiveAt) return null;
-      const diff = Date.now() - new Date(lastActiveAt).getTime();
-      const mins = diff / 60000;
-      const hours = diff / 3600000;
-      const days = diff / 86400000;
-      if (mins < 5) return { label: "Active now", color: "text-green-600" };
-      if (hours < 24) return { label: "Active today", color: "text-green-600" };
-      if (days < 7) return { label: "Active this week", color: "text-amber-600" };
-      return null;
-    };
-
-    // ── helper: response time label ──
-    const getResponseTime = (lastActiveAt: string | null | undefined) => {
-      if (!lastActiveAt) return null;
-      const hours = (Date.now() - new Date(lastActiveAt).getTime()) / 3600000;
-      if (hours < 3) return "Responds within a few hours";
-      if (hours < 24) return "Usually responds within 1 day";
-      if (hours < 72) return "May take a few days to respond";
-      return null;
-    };
-
-    const pp = publicProfile as any;
-    const displayName = pp.displayName || pp.handle || pp.username;
-    const firstNameInitial = displayName.charAt(0).toUpperCase();
-    const handle = pp.handle || pp.username.split('@')[0];
-    const activeStatus = getProfileActiveStatus(pp.lastActiveAt);
-    const responseTime = getResponseTime(pp.lastActiveAt);
-    const memberSince = pp.createdAt
-      ? new Date(pp.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
-      : null;
-
-    // Short display name: "First L." style if space present, else full displayName
-    const shortName = (() => {
-      const parts = displayName.trim().split(/\s+/);
-      if (parts.length >= 2) return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
-      return displayName;
-    })();
-
     return (
       <div className="min-h-screen bg-[#F3F4F6]">
         <Navbar />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-          {/* ── Profile Header Card ── */}
           <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
-            <CardHeader className="bg-transparent pb-4">
-              <div className="flex items-start gap-5">
-                {/* Avatar */}
-                <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0 border-2 border-white shadow-md">
-                  {pp.profilePhoto ? (
-                    <img src={pp.profilePhoto} alt={displayName} className="w-full h-full object-cover" />
+            <CardHeader className="bg-transparent">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0">
+                  {(publicProfile as any).profilePhoto ? (
+                    <img
+                      src={(publicProfile as any).profilePhoto}
+                      alt={(publicProfile as any).handle || publicProfile.username}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white text-3xl font-bold">
-                      {firstNameInitial}
+                      {((publicProfile as any).displayName || (publicProfile as any).handle || publicProfile.username).charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
-
-                {/* Name + meta */}
-                <div className="flex-1 min-w-0">
-                  {/* Row 1: "Tina L. ✓" */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl font-bold text-slate-800 leading-tight">{shortName}</h1>
-                    {pp.isVerified && (
-                      <BadgeCheck className="h-6 w-6 fill-[#0DCEA1] stroke-white flex-shrink-0" />
-                    )}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <CardTitle className="text-2xl text-slate-800">
+                      @{(publicProfile as any).handle || publicProfile.username.split('@')[0]}
+                    </CardTitle>
+                    <UserBadges
+                      isVerified={publicProfile.isVerified}
+                      reputationLevel={publicProfile.reputationLevel}
+                      size="md"
+                      showLabels
+                    />
                   </div>
-                  {/* Row 2: @handle */}
-                  <p className="text-sm text-muted-foreground mt-0.5">@{handle}</p>
-                  {/* Row 3: active + responds */}
-                  {(activeStatus || responseTime) && (
-                    <p className="text-sm mt-1 flex items-center gap-1 flex-wrap">
-                      {activeStatus && (
-                        <span className={`font-medium ${activeStatus.color}`}>{activeStatus.label}</span>
-                      )}
-                      {activeStatus && responseTime && <span className="text-muted-foreground">·</span>}
-                      {responseTime && (
-                        <span className="text-muted-foreground">{responseTime}</span>
-                      )}
-                    </p>
-                  )}
-                  {/* Row 4: stars + completed shares */}
-                  <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
-                    {pp.reviewCount > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-400" />
-                        <span className="font-medium text-slate-700">{(pp.averageRating || 0).toFixed(1)}</span>
-                        <span>({pp.reviewCount} reviews)</span>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span>
+                        {publicProfile.averageRating.toFixed(1)} (
+                        {publicProfile.reviewCount} reviews)
                       </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <HandHeart className="h-4 w-4 text-teal-600" />
-                      <span className="font-medium text-slate-700">{pp.completedShares ?? 0}</span>
-                      <span>completed shares</span>
-                    </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Package className="h-4 w-4" />
+                      <span>{userItems.length} items shared</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </CardHeader>
           </Card>
 
-          {/* ── Shared Items ── */}
-          <div className="mb-6">
-            <h2 className="text-xl font-bold mb-3">Shared Items</h2>
+          {/* Shared Items */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
             {userItems.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {userItems.map((item) => (
-                  <div key={item.id}>
-                    <Card className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full">
-                      <div className="p-4">
-                        <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                          {item.photos && item.photos[0] ? (
-                            <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                              <Camera className="h-16 w-16 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
+                  <Card
+                    key={item.id}
+                    className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden"
+                  >
+                    <div className="p-4">
+                      <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                        {item.photos && item.photos[0] ? (
+                          <img
+                            src={item.photos[0]}
+                            alt={item.name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                            <Camera className="h-16 w-16 text-gray-400" />
+                          </div>
+                        )}
                       </div>
-                      <CardContent className="px-4 pt-0 pb-4">
-                        <h3 className="font-bold text-base mb-2 truncate">{item.name}</h3>
-                        <div className="space-y-1 text-sm mb-3">
-                          <p className="text-muted-foreground">Condition: {item.conditionRating}/10</p>
-                          {(item.isLendable || item.isRentable) && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Coins className="h-4 w-4 text-teal-600" />
-                              <span>{item.shareCoinPrice || item.shareCoinsReward || "5"} SC</span>
-                              {item.isRentable && (
-                                <>
-                                  <span className="text-slate-400">·</span>
-                                  <DollarSign className="h-4 w-4 text-teal-600" />
-                                  <span>${Number(item.dollarsPrice || 10).toFixed(2)}/day</span>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-1 flex-wrap">
-                          {item.isLendable && (
-                            <Button size="sm" className="text-white rounded-lg text-xs px-2 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>
-                              <HandHeart className="h-3 w-3 mr-0.5" />Borrow It
-                            </Button>
-                          )}
-                          {item.isRentable && (
-                            <Button size="sm" className="text-white rounded-lg text-xs px-2 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>
-                              <DollarSign className="h-3 w-3 mr-0.5" />Rent It
-                            </Button>
-                          )}
-                          {item.isSwappable && (
-                            <Button size="sm" className="text-white rounded-lg text-xs px-2 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>
-                              <ArrowLeftRight className="h-3 w-3 mr-0.5" />Swap It
-                            </Button>
-                          )}
-                          {!item.isLendable && !item.isRentable && !item.isSwappable && (
-                            <Button size="sm" className="text-white rounded-lg text-xs px-2 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>
+                    </div>
+                    <CardContent className="px-6 pt-0 pb-4">
+                      <h3 className="font-bold text-lg mb-2 truncate">
+                        {item.name}
+                      </h3>
+                      <div className="space-y-1 text-sm mb-3">
+                        <p className="text-muted-foreground">
+                          Condition: {item.conditionRating}/10
+                        </p>
+                        {(item.isLendable || item.isRentable) && (
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-4 w-4 text-teal-600" />
+                            <span>{item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins</span>
+                            {item.isRentable && (
+                              <>
+                                <span className="text-slate-400">|</span>
+                                <DollarSign className="h-4 w-4 text-teal-600" />
+                                <span>${Number(item.dollarsPrice || 10).toFixed(2)}/day</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        {item.isLendable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <HandHeart className="h-3 w-3 mr-0.5" />
+                            Borrow It
+                          </Button>
+                        )}
+                        {item.isRentable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <DollarSign className="h-3 w-3 mr-0.5" />
+                            Rent It
+                          </Button>
+                        )}
+                        {item.isSwappable && (
+                          <Button
+                            size="sm"
+                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                            style={{ backgroundColor: "#0DCEA1" }}
+                            onClick={() => navigate(`/items/${item.id}`)}
+                          >
+                            <ArrowLeftRight className="h-3 w-3 mr-0.5" />
+                            Swap It
+                          </Button>
+                        )}
+                        {!item.isLendable &&
+                          !item.isRentable &&
+                          !item.isSwappable && (
+                            <Button
+                              size="sm"
+                              className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                              style={{ backgroundColor: "#0DCEA1" }}
+                              onClick={() => navigate(`/items/${item.id}`)}
+                            >
                               View
                             </Button>
                           )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-6 text-center text-muted-foreground">No items shared yet</Card>
-            )}
-          </div>
-
-          {/* ── Trust & Stats Banner ── */}
-          <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
-            <CardContent className="pt-5 pb-4">
-              {/* Three stat pills */}
-              <div className="flex flex-wrap gap-3 mb-4">
-                <div className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1 text-sm font-medium shadow-sm">
-                  <Check className="h-4 w-4 text-teal-600" />
-                  <span>{pp.onTimeRate ?? 100}% on-time returns</span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1 text-sm font-medium shadow-sm">
-                  <MessageCircle className="h-4 w-4 text-teal-600" />
-                  <span>{pp.replyRate ?? 100}% replies reliably</span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1 text-sm font-medium shadow-sm">
-                  {(pp.issueCount ?? 0) === 0 ? (
-                    <Shield className="h-4 w-4 text-teal-600" />
-                  ) : (
-                    <Shield className="h-4 w-4 text-amber-500" />
-                  )}
-                  <span>{(pp.issueCount ?? 0) === 0 ? "No issues reported" : `${pp.issueCount} issue${pp.issueCount === 1 ? "" : "s"} reported`}</span>
-                </div>
-              </div>
-              {/* Trust score + member since */}
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-700">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                  <span>
-                    <span className="font-semibold">Trust Score:</span>{" "}
-                    <span className="font-bold text-teal-700">{pp.trustScore ?? 0}/100</span>
-                  </span>
-                </div>
-                {memberSince && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-teal-600 flex-shrink-0" />
-                    <span><span className="font-semibold">Member since</span> {memberSince}</span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── Reviews ── */}
-          <div>
-            <h2 className="text-xl font-bold mb-3">Reviews</h2>
-            {userReviews.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:overflow-visible md:pb-0 snap-x snap-mandatory">
-                {userReviews.map((review: any) => (
-                  <div key={review.id} className="flex-shrink-0 w-72 md:w-auto snap-start">
-                    <Card className="p-4 h-full" style={{ backgroundColor: "#D4F7F1" }}>
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-teal-600 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold">
-                          {review.reviewer.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <Link href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}>
-                              <span className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
-                                @{(review.reviewer as any).handle || review.reviewer.username.split('@')[0]}
-                              </span>
-                            </Link>
-                            <UserBadges isVerified={review.reviewer.isVerified} reputationLevel={review.reviewer.reputationLevel} size="sm" />
-                            <span className="text-muted-foreground text-sm ml-auto">
-                              {new Date(review.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-0.5 mb-2">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
-                            ))}
-                          </div>
-                          {review.comment && (
-                            <p className="text-sm text-muted-foreground">{review.comment}</p>
-                          )}
-                        </div>
                       </div>
-                    </Card>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             ) : (
-              <Card className="p-6 text-center text-muted-foreground">No reviews yet</Card>
+              <Card className="p-6 text-center text-muted-foreground">
+                No items shared yet
+              </Card>
             )}
           </div>
 
+          {/* Reviews */}
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Reviews</h2>
+            {userReviews.length > 0 ? (
+              <div className="space-y-4">
+                {userReviews.map((review: any) => (
+                  <Card
+                    key={review.id}
+                    className="p-4"
+                    style={{ backgroundColor: "#D4F7F1" }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold">
+                        {review.reviewer.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}>
+                            <span className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
+                              @{(review.reviewer as any).handle || review.reviewer.username.split('@')[0]}
+                            </span>
+                          </Link>
+                          <UserBadges
+                            isVerified={review.reviewer.isVerified}
+                            reputationLevel={review.reviewer.reputationLevel}
+                            size="sm"
+                          />
+                          <span className="text-muted-foreground text-sm">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mb-2">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                            />
+                          ))}
+                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-muted-foreground">
+                            {review.comment}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="p-6 text-center text-muted-foreground">
+                No reviews yet
+              </Card>
+            )}
+          </div>
         </main>
       </div>
     );

@@ -31,7 +31,7 @@ import {
   CreditCard,
   MapPin,
   Star,
-  ShieldCheck,
+  BadgeCheck,
   Circle,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -1201,7 +1201,7 @@ export function ChatWidget() {
                                     {partnerName}
                                   </span>
                                   {item.partnerIsVerified && (
-                                    <ShieldCheck className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                    <BadgeCheck className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1294,7 +1294,7 @@ export function ChatWidget() {
                       )}
                     </span>
                     {partnerProfile?.isVerified && (
-                      <ShieldCheck className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                      <BadgeCheck className="h-4 w-4 text-teal-500 flex-shrink-0" />
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">

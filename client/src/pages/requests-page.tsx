@@ -491,7 +491,7 @@ export default function RequestsPage() {
           ) : (
             <div className="space-y-4">
               {incomingRequests.map((request) => (
-                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:shadow-lg transition-all">
+                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 transition-all">
                   <CardContent className="p-6">
                     <div className="flex gap-4">
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
@@ -669,7 +669,7 @@ export default function RequestsPage() {
           ) : (
             <div className="space-y-4">
               {myRequests.map((request) => (
-                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 hover:bg-teal-100 hover:shadow-md transition-all">
+                <Card key={request.id} className="bg-teal-50 border-2 border-teal-200 transition-all">
                   <CardContent className="p-6">
                     <div className="flex gap-4">
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">

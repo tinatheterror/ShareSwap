@@ -3277,6 +3277,7 @@ Respond with ONLY the category name, nothing else.`
       .select({
         id: users.id,
         username: users.username,
+        handle: users.handle,
         displayName: users.displayName,
         profilePhoto: users.profilePhoto,
         isVerified: users.isVerified,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -88,6 +89,7 @@ type InboxItem = {
 type PublicProfile = {
   id: number;
   username: string;
+  handle: string | null;
   displayName: string | null;
   profilePhoto: string | null;
   isVerified: boolean;
@@ -1286,13 +1288,16 @@ export function ChatWidget() {
                 {/* Name + meta */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
-                    <span className="font-semibold text-sm truncate">
+                    <Link
+                      href={`/profile/${partnerProfile?.handle || partnerProfile?.username || allConversations.find(c => c.userId === selectedConversation)?.username}`}
+                      className="font-semibold text-sm truncate hover:underline"
+                    >
                       {formatDisplayName(
                         partnerProfile?.displayName || partnerProfile?.username ||
                         allConversations.find(c => c.userId === selectedConversation)?.username ||
                         requests.find(r => r.item.ownerId === user?.id && r.requesterId === selectedConversation)?.requester?.username
                       )}
-                    </span>
+                    </Link>
                     {partnerProfile?.isVerified && (
                       <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
                     )}

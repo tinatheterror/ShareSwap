@@ -752,7 +752,7 @@ export function ChatWidget() {
                 COUNTER RECEIVED
               </Badge>
             ) : (
-              <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(request.status)}`}>
+              <Badge className={`text-[10px] px-1.5 py-0 pointer-events-none ${getStatusColor(request.status)}`}>
                 {request.status.replace(/_/g, " ")}
               </Badge>
             )}

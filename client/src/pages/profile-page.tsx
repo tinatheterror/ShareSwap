@@ -694,9 +694,9 @@ export default function ProfilePage() {
                         />
                       </div>
                       <p className="text-slate-600 text-sm sm:text-base truncate">@{(user as any).handle || user.username.split('@')[0]}</p>
-                      {(profile?.activeStatus || profile?.responseTime) && (
+                      {((user as any).activeStatus || (user as any).responseTime) && (
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {[profile?.activeStatus, profile?.responseTime].filter(Boolean).join(' · ')}
+                          {[(user as any).activeStatus, (user as any).responseTime].filter(Boolean).join(' · ')}
                         </p>
                       )}
                       {profile?.subscription && (

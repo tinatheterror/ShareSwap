@@ -12,6 +12,7 @@ import { db, pool } from "@db";
 import { eq, or, and } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 import { sendVerificationEmail } from "./sendgrid";
+import { computeActiveStatus, computeResponseTime } from "./user-stats";
 
 // Security: Rate limiter for authentication endpoints
 const authLimiter = rateLimit({
@@ -666,12 +667,19 @@ export function setupAuth(app: Express) {
       verificationLevel = 'email_only';
     }
 
+    const [activeStatus, responseTime] = await Promise.all([
+      Promise.resolve(computeActiveStatus((req.user as any).lastActiveAt ?? null)),
+      computeResponseTime(req.user.id),
+    ]);
+
     res.json({
       ...req.user,
       emailVerified,
       idVerified,
       paymentVerified,
       verificationLevel,
+      activeStatus,
+      responseTime,
     });
   });
 }

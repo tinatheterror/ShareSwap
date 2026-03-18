@@ -12,7 +12,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, sql, gte, lt, ne, isNull } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -508,6 +508,62 @@ async function requireFullVerification(req: any, res: any, next: any) {
   req.verificationLevel = verification;
   next();
 }
+
+// ── Active status + response time helpers ─────────────────────────────────────
+
+function computeActiveStatus(lastActiveAt: Date | string | null): string | null {
+  if (!lastActiveAt) return null;
+  const diffMs = Date.now() - new Date(lastActiveAt).getTime();
+  const mins = diffMs / 60000;
+  const hours = diffMs / 3600000;
+  const days = diffMs / 86400000;
+  if (mins < 5) return "Active now";
+  if (hours < 24) return "Active today";
+  if (days < 7) return "Active this week";
+  return null;
+}
+
+async function computeResponseTime(userId: number): Promise<string | null> {
+  try {
+    const since = new Date(Date.now() - 28 * 24 * 3600 * 1000);
+
+    const received = await db
+      .select({ id: messages.id, senderId: messages.senderId, createdAt: messages.createdAt })
+      .from(messages)
+      .where(and(eq(messages.receiverId, userId), gte(messages.createdAt, since)))
+      .orderBy(asc(messages.createdAt));
+
+    const sent = await db
+      .select({ id: messages.id, receiverId: messages.receiverId, createdAt: messages.createdAt })
+      .from(messages)
+      .where(and(eq(messages.senderId, userId), gte(messages.createdAt, since)))
+      .orderBy(asc(messages.createdAt));
+
+    const gaps: number[] = [];
+    for (const msg of received) {
+      if (!msg.createdAt) continue;
+      const reply = sent.find(
+        (s) =>
+          s.receiverId === msg.senderId &&
+          s.createdAt &&
+          s.createdAt > msg.createdAt!
+      );
+      if (!reply?.createdAt) continue;
+      const diffMs = reply.createdAt.getTime() - msg.createdAt.getTime();
+      if (diffMs < 7 * 86400000) gaps.push(diffMs);
+    }
+
+    if (gaps.length < 2) return null;
+    const avgHours = gaps.reduce((a, b) => a + b, 0) / gaps.length / 3600000;
+    if (avgHours < 3) return "Responds within a few hours";
+    if (avgHours < 24) return "Usually responds within 1 day";
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -3302,7 +3358,12 @@ Respond with ONLY the category name, nothing else.`
       ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
       : null;
 
-    res.json({ ...user, reviewCount, averageRating });
+    const [activeStatus, responseTime] = await Promise.all([
+      Promise.resolve(computeActiveStatus(user.lastActiveAt ?? null)),
+      computeResponseTime(targetId),
+    ]);
+
+    res.json({ ...user, reviewCount, averageRating, activeStatus, responseTime });
   });
 
   // Unified inbox: combines item requests + direct messages sorted by most recent activity
@@ -6991,6 +7052,7 @@ Respond with ONLY the category name, nothing else.`
           stripePaymentMethodId: users.stripePaymentMethodId,
           paymentMethodLast4: users.paymentMethodLast4,
           paymentMethodBrand: users.paymentMethodBrand,
+          lastActiveAt: users.lastActiveAt,
         })
         .from(users)
         .where(eq(users.id, req.user.id))
@@ -7014,12 +7076,19 @@ Respond with ONLY the category name, nothing else.`
       const paymentVerified = !!user.stripePaymentMethodId;
       const isVerified = idVerified && paymentVerified;
 
+      const [activeStatus, responseTime] = await Promise.all([
+        Promise.resolve(computeActiveStatus(user.lastActiveAt ?? null)),
+        computeResponseTime(req.user.id),
+      ]);
+
       res.json({
         ...user,
         isVerified,
         emailVerified: user.emailVerified || !!user.googleId || user.authProvider === 'google',
         paymentVerified,
         idVerified,
+        activeStatus,
+        responseTime,
       });
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -8461,6 +8530,15 @@ Respond with ONLY the category name, nothing else.`
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Add lastActiveAt to username lookup
+    let userWithActive: typeof user & { lastActiveAt?: Date | null } = user as any;
+    const [activeRow] = await db
+      .select({ lastActiveAt: users.lastActiveAt })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+    userWithActive = { ...user, lastActiveAt: activeRow?.lastActiveAt ?? null };
+
     // Get review statistics
     const reviews = await db
       .select({
@@ -8475,10 +8553,17 @@ Respond with ONLY the category name, nothing else.`
 
     const reviewCount = reviews.length;
 
+    const [activeStatus, responseTime] = await Promise.all([
+      Promise.resolve(computeActiveStatus(userWithActive.lastActiveAt ?? null)),
+      computeResponseTime(user.id),
+    ]);
+
     res.json({
-      ...user,
+      ...userWithActive,
       averageRating: Math.round(averageRating * 10) / 10,
       reviewCount,
+      activeStatus,
+      responseTime,
     });
   });
 

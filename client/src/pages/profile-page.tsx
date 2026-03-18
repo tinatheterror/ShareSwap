@@ -77,6 +77,8 @@ interface UserProfile {
   totalTransactions: number;
   isVerified: boolean;
   subscription?: string;
+  activeStatus?: string | null;
+  responseTime?: string | null;
 }
 
 interface LocationAlert {
@@ -458,9 +460,9 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-0.5">
                     <CardTitle className="text-2xl text-slate-800">
-                      @{(publicProfile as any).handle || publicProfile.username.split('@')[0]}
+                      {(publicProfile as any).displayName || (publicProfile as any).handle || publicProfile.username.split('@')[0]}
                     </CardTitle>
                     <UserBadges
                       isVerified={publicProfile.isVerified}
@@ -469,7 +471,13 @@ export default function ProfilePage() {
                       showLabels
                     />
                   </div>
-                  <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                  <p className="text-slate-500 text-sm mb-0.5">@{(publicProfile as any).handle || publicProfile.username.split('@')[0]}</p>
+                  {((publicProfile as any).activeStatus || (publicProfile as any).responseTime) && (
+                    <p className="text-xs text-slate-500 mb-2">
+                      {[(publicProfile as any).activeStatus, (publicProfile as any).responseTime].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 text-yellow-500" />
                       <span>
@@ -686,6 +694,11 @@ export default function ProfilePage() {
                         />
                       </div>
                       <p className="text-slate-600 text-sm sm:text-base truncate">@{(user as any).handle || user.username.split('@')[0]}</p>
+                      {(profile?.activeStatus || profile?.responseTime) && (
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {[profile?.activeStatus, profile?.responseTime].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
                       {profile?.subscription && (
                         <Badge variant="secondary" className="mt-1">
                           {profile.subscription}

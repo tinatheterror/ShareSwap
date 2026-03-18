@@ -545,9 +545,9 @@ export default function ProfilePage() {
           <div className="mb-6">
             <h2 className="text-xl font-bold mb-3">Shared Items</h2>
             {userItems.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 snap-x snap-mandatory">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {userItems.map((item) => (
-                  <div key={item.id} className="flex-shrink-0 w-60 md:w-auto snap-start">
+                  <div key={item.id}>
                     <Card className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full">
                       <div className="p-4">
                         <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">

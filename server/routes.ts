@@ -27,7 +27,7 @@ import { reputationActivities, userReviews } from "@db/schema";
 import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
-import { computeActiveStatus, computeResponseTime } from "./user-stats";
+import { computeActiveStatus, computeActiveStatusFromDb, computeResponseTime } from "./user-stats";
 import type { InsertItem } from "@db/schema";
 import connectPgSimple from "connect-pg-simple";
 import { recommendationEngine } from "./recommendation-engine";
@@ -3306,7 +3306,7 @@ Respond with ONLY the category name, nothing else.`
       : null;
 
     const [activeStatus, responseTime] = await Promise.all([
-      Promise.resolve(computeActiveStatus(user.lastActiveAt ?? null)),
+      computeActiveStatusFromDb(targetId, user.lastActiveAt ?? null),
       computeResponseTime(targetId),
     ]);
 
@@ -8501,7 +8501,7 @@ Respond with ONLY the category name, nothing else.`
     const reviewCount = reviews.length;
 
     const [activeStatus, responseTime] = await Promise.all([
-      Promise.resolve(computeActiveStatus(userWithActive.lastActiveAt ?? null)),
+      computeActiveStatusFromDb(user.id, userWithActive.lastActiveAt ?? null),
       computeResponseTime(user.id),
     ]);
 

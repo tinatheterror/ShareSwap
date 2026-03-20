@@ -76,10 +76,14 @@ export async function computeResponseTime(userId: number): Promise<string | null
       if (diffMs < 7 * 86400000) gaps.push(diffMs);
     }
 
-    if (gaps.length < 1) return null;
-    const avgHours = gaps.reduce((a, b) => a + b, 0) / gaps.length / 3600000;
-    if (avgHours < 3) return "Responds within a few hours";
-    if (avgHours < 24) return "Usually responds within 1 day";
+    if (gaps.length >= 1) {
+      const avgHours = gaps.reduce((a, b) => a + b, 0) / gaps.length / 3600000;
+      if (avgHours < 3) return "Responds within a few hours";
+      if (avgHours < 24) return "Usually responds within 1 day";
+    }
+
+    // Fallback: if the user has any sent messages in the window, show a default
+    if (sent.length > 0) return "Usually responds within 1 day";
     return null;
   } catch {
     return null;

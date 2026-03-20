@@ -73,6 +73,8 @@ type InboxItem = {
   partnerPhoto: string | null;
   partnerIsVerified: boolean;
   partnerLastActiveAt: string | null;
+  partnerActiveStatus: string | null;
+  partnerResponseTime: string | null;
   lastActivityTime: string;
   preview: string;
   previewType: "message" | "request";
@@ -1165,7 +1167,7 @@ export function ChatWidget() {
                       const needsAction =
                         (item.requestStatus === "PENDING" && !item.iAmRequester) ||
                         item.requestNegotiationStatus === "counter_proposed";
-                      const isActive = activeStatus?.label === "Active now";
+                      const isActive = item.partnerActiveStatus === "Active now" || activeStatus?.label === "Active now";
                       const activityTime = new Date(item.lastActivityTime);
                       const now = new Date();
                       const isToday = activityTime.toDateString() === now.toDateString();
@@ -1221,7 +1223,19 @@ export function ChatWidget() {
                                 </div>
                               </div>
 
-                              {/* Row 2: item context */}
+                              {/* Row 2: active status + response time */}
+                              {(item.partnerActiveStatus || item.partnerResponseTime) && (
+                                <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-0.5">
+                                  {item.partnerActiveStatus === "Active now" && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                                  )}
+                                  <span>
+                                    {[item.partnerActiveStatus, item.partnerResponseTime].filter(Boolean).join(" · ")}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Row 3: item context */}
                               {item.itemName && (
                                 <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-0.5">
                                   <span className="font-medium text-gray-500">{getRequestTypeLabel(item.requestType)}</span>

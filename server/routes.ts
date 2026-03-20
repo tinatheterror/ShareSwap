@@ -3404,6 +3404,20 @@ Respond with ONLY the category name, nothing else.`
     );
     const partnerMap = new Map(partnerDetails.filter(Boolean).map(u => [u.id, u]));
 
+    // Compute active status + response times for all partners (parallel)
+    const partnerStatResults = await Promise.all(
+      partnerIds.map(async (pid) => {
+        const partner = partnerMap.get(pid);
+        const [activeStatus, responseTime] = await Promise.all([
+          computeActiveStatusFromDb(pid, partner?.lastActiveAt ?? null),
+          computeResponseTime(pid),
+        ]);
+        return { pid, activeStatus, responseTime };
+      })
+    );
+    const partnerActiveStatusMap = new Map(partnerStatResults.map(r => [r.pid, r.activeStatus]));
+    const partnerResponseTimeMap = new Map(partnerStatResults.map(r => [r.pid, r.responseTime]));
+
     // Build unified inbox entries
     const inboxItems = Array.from(partnerIds).map((pid) => {
       const partner = partnerMap.get(pid);
@@ -3445,6 +3459,8 @@ Respond with ONLY the category name, nothing else.`
         partnerPhoto: partner?.profilePhoto || null,
         partnerIsVerified: partner?.isVerified || false,
         partnerLastActiveAt: partner?.lastActiveAt || null,
+        partnerActiveStatus: partnerActiveStatusMap.get(pid) || null,
+        partnerResponseTime: partnerResponseTimeMap.get(pid) || null,
         lastActivityTime,
         preview,
         previewType,

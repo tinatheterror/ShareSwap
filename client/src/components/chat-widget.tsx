@@ -1223,19 +1223,7 @@ export function ChatWidget() {
                                 </div>
                               </div>
 
-                              {/* Row 2: active status + response time */}
-                              {(item.partnerActiveStatus || item.partnerResponseTime) && (
-                                <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-0.5">
-                                  {item.partnerActiveStatus === "Active now" && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
-                                  )}
-                                  <span>
-                                    {[item.partnerActiveStatus, item.partnerResponseTime].filter(Boolean).join(" · ")}
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Row 3: item context */}
+                              {/* Row 2: item context */}
                               {item.itemName && (
                                 <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-0.5">
                                   <span className="font-medium text-gray-500">{getRequestTypeLabel(item.requestType)}</span>
@@ -1325,12 +1313,21 @@ export function ChatWidget() {
                       </span>
                     )}
                     {(() => {
-                      const s = getActiveStatus(partnerProfile?.lastActiveAt ?? null);
-                      if (!s) return null;
+                      const selectedInboxItem = inboxItems.find(item => item.partnerId === selectedConversation);
+                      const activeLabel = selectedInboxItem?.partnerActiveStatus || getActiveStatus(partnerProfile?.lastActiveAt ?? null)?.label || null;
+                      const responseTime = selectedInboxItem?.partnerResponseTime || null;
+                      if (!activeLabel && !responseTime) return null;
+                      const isActiveNow = activeLabel === "Active now";
                       return (
-                        <span className={`flex items-center gap-0.5 ${s.color}`}>
-                          <Circle className="h-1.5 w-1.5 fill-current" />
-                          {s.label}
+                        <span className="flex items-center gap-1">
+                          {activeLabel && (
+                            <span className={`flex items-center gap-0.5 ${isActiveNow ? "text-green-600" : "text-muted-foreground"}`}>
+                              <Circle className="h-1.5 w-1.5 fill-current" />
+                              {activeLabel}
+                            </span>
+                          )}
+                          {activeLabel && responseTime && <span className="text-muted-foreground">·</span>}
+                          {responseTime && <span className="text-muted-foreground">{responseTime}</span>}
                         </span>
                       );
                     })()}

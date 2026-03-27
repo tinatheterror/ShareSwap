@@ -1322,7 +1322,7 @@ export function ChatWidget() {
                         <span className="flex items-center gap-1">
                           {activeLabel && (
                             <span className={`flex items-center gap-0.5 ${isActiveNow ? "text-green-600" : "text-muted-foreground"}`}>
-                              <Circle className="h-1.5 w-1.5 fill-current" />
+                              {isActiveNow && <Circle className="h-1.5 w-1.5 fill-current" />}
                               {activeLabel}
                             </span>
                           )}

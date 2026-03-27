@@ -472,10 +472,11 @@ export default function ProfilePage() {
                     />
                   </div>
                   <p className="text-slate-500 text-sm mb-0.5">@{(publicProfile as any).handle || publicProfile.username.split('@')[0]}</p>
-                  {((publicProfile as any).activeStatus || (publicProfile as any).responseTime) && (
-                    <p className="text-xs text-slate-500 mb-2">
-                      {[(publicProfile as any).activeStatus, (publicProfile as any).responseTime].filter(Boolean).join(' · ')}
-                    </p>
+                  {(publicProfile as any).activeStatus && (
+                    <p className="text-xs text-slate-500 mb-0.5">{(publicProfile as any).activeStatus}</p>
+                  )}
+                  {(publicProfile as any).responseTime && (
+                    <p className="text-xs text-slate-500 mb-2">{(publicProfile as any).responseTime}</p>
                   )}
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">

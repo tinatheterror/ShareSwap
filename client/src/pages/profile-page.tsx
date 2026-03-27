@@ -695,10 +695,11 @@ export default function ProfilePage() {
                         />
                       </div>
                       <p className="text-slate-600 text-sm sm:text-base truncate">@{(user as any).handle || user.username.split('@')[0]}</p>
-                      {((user as any).activeStatus || (user as any).responseTime) && (
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {[(user as any).activeStatus, (user as any).responseTime].filter(Boolean).join(' · ')}
-                        </p>
+                      {(user as any).activeStatus && (
+                        <p className="text-xs text-slate-500 mt-0.5">{(user as any).activeStatus}</p>
+                      )}
+                      {(user as any).responseTime && (
+                        <p className="text-xs text-slate-500 mt-0.5">{(user as any).responseTime}</p>
                       )}
                       {profile?.subscription && (
                         <Badge variant="secondary" className="mt-1">

@@ -3305,12 +3305,30 @@ Respond with ONLY the category name, nothing else.`
       ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
       : null;
 
+    const [completedSharesResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(itemRequests)
+      .innerJoin(items, eq(itemRequests.itemId, items.id))
+      .where(
+        and(
+          or(
+            eq(itemRequests.requesterId, targetId),
+            sql`${items.ownerId} = ${targetId}`
+          ),
+          or(
+            eq(itemRequests.status, 'COMPLETED'),
+            eq(itemRequests.status, 'COMPLETED_EARLY')
+          )
+        )
+      );
+    const completedShares = Number(completedSharesResult?.count ?? 0);
+
     const [activeStatus, responseTime] = await Promise.all([
       computeActiveStatusFromDb(targetId, user.lastActiveAt ?? null),
       computeResponseTime(targetId),
     ]);
 
-    res.json({ ...user, reviewCount, averageRating, activeStatus, responseTime });
+    res.json({ ...user, reviewCount, averageRating, completedShares, activeStatus, responseTime });
   });
 
   // Unified inbox: combines item requests + direct messages sorted by most recent activity
@@ -7039,6 +7057,24 @@ Respond with ONLY the category name, nothing else.`
       const paymentVerified = !!user.stripePaymentMethodId;
       const isVerified = idVerified && paymentVerified;
 
+      const [completedSharesResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(itemRequests.itemId, items.id))
+        .where(
+          and(
+            or(
+              eq(itemRequests.requesterId, req.user.id),
+              sql`${items.ownerId} = ${req.user.id}`
+            ),
+            or(
+              eq(itemRequests.status, 'COMPLETED'),
+              eq(itemRequests.status, 'COMPLETED_EARLY')
+            )
+          )
+        );
+      const completedShares = Number(completedSharesResult?.count ?? 0);
+
       const [activeStatus, responseTime] = await Promise.all([
         Promise.resolve(computeActiveStatus(user.lastActiveAt ?? null)),
         computeResponseTime(req.user.id),
@@ -7050,6 +7086,7 @@ Respond with ONLY the category name, nothing else.`
         emailVerified: user.emailVerified || !!user.googleId || user.authProvider === 'google',
         paymentVerified,
         idVerified,
+        completedShares,
         activeStatus,
         responseTime,
       });

@@ -71,7 +71,7 @@ interface UserProfile {
   phone?: string;
   joinedDate: string;
   shareCoins: number;
-  itemsShared: number;
+  completedShares: number;
   itemsBorrowed: number;
   rating: number;
   totalTransactions: number;
@@ -488,7 +488,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Package className="h-4 w-4" />
-                      <span>{userItems.length} items shared</span>
+                      <span>{(publicProfile as any).completedShares ?? 0} completed shares</span>
                     </div>
                   </div>
                 </div>
@@ -1254,11 +1254,11 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-teal-500" />
                       <span className="text-sm text-slate-600">
-                        Items Shared
+                        Completed Shares
                       </span>
                     </div>
                     <span className="font-semibold text-teal-700">
-                      {profile?.itemsShared || 0}
+                      {profile?.completedShares || 0}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

@@ -500,10 +500,10 @@ export default function ProfilePage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
             {userItems.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
                 {userItems.map((item) => (
+                  <div key={item.id} className="w-72 flex-shrink-0 md:w-auto">
                   <Card
-                    key={item.id}
                     className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden"
                   >
                     <div className="p-4">
@@ -592,6 +592,7 @@ export default function ProfilePage() {
                       </div>
                     </CardContent>
                   </Card>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -605,10 +606,10 @@ export default function ProfilePage() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
             {userReviews.length > 0 ? (
-              <div className="space-y-4">
+              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
                 {userReviews.map((review: any) => (
+                  <div key={review.id} className="w-80 flex-shrink-0 md:w-auto">
                   <Card
-                    key={review.id}
                     className="p-4"
                     style={{ backgroundColor: "#D4F7F1" }}
                   >
@@ -648,6 +649,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </Card>
+                  </div>
                 ))}
               </div>
             ) : (

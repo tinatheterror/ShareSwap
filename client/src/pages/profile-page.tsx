@@ -478,15 +478,18 @@ export default function ProfilePage() {
                   {(publicProfile as any).responseTime && (
                     <p className="text-xs text-slate-500 mb-2">{(publicProfile as any).responseTime}</p>
                   )}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                      <Star className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                      <span>{publicProfile.averageRating.toFixed(1)} ({publicProfile.reviewCount} reviews)</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                      <Package className="h-4 w-4 flex-shrink-0" />
+                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span>
+                        {publicProfile.averageRating.toFixed(1)} (
+                        {publicProfile.reviewCount} reviews)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Package className="h-4 w-4" />
                       <span>{(publicProfile as any).completedShares ?? 0} completed shares</span>
-                    </span>
+                    </div>
                   </div>
                 </div>
               </div>

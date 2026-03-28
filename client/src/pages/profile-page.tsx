@@ -504,7 +504,7 @@ export default function ProfilePage() {
                 {userItems.map((item) => (
                   <Card
                     key={item.id}
-                    className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden flex-shrink-0 w-64 snap-start md:w-auto md:flex-shrink"
+                    className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden flex-shrink-0 w-[calc(100vw-2rem)] snap-start md:w-auto md:flex-shrink"
                   >
                     <div className="p-4">
                       <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">

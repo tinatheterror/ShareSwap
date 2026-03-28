@@ -500,11 +500,11 @@ export default function ProfilePage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
             {userItems.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-x-visible md:pb-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {userItems.map((item) => (
                   <Card
                     key={item.id}
-                    className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden flex-shrink-0 w-64 snap-start md:w-auto md:flex-shrink"
+                    className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden"
                   >
                     <div className="p-4">
                       <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
@@ -605,11 +605,11 @@ export default function ProfilePage() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
             {userReviews.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory md:flex-col md:gap-0 md:space-y-4 md:overflow-x-visible md:pb-0">
+              <div className="space-y-4">
                 {userReviews.map((review: any) => (
                   <Card
                     key={review.id}
-                    className="p-4 flex-shrink-0 min-w-[280px] snap-start md:min-w-0 md:w-full"
+                    className="p-4"
                     style={{ backgroundColor: "#D4F7F1" }}
                   >
                     <div className="flex items-start gap-3">

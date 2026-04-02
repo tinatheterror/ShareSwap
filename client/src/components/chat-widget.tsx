@@ -78,6 +78,7 @@ type InboxItem = {
   lastActivityTime: string;
   preview: string;
   previewType: "message" | "request";
+  previewSentByMe: boolean | null;
   unreadCount: number;
   requestId: number | null;
   requestType: string | null;
@@ -1239,7 +1240,16 @@ export function ChatWidget() {
                                     {getRequestStatusLabel(item.requestStatus, item.requestNegotiationStatus, item.iAmRequester, item)}
                                   </span>
                                 ) : (
-                                  item.preview
+                                  <>
+                                    {item.previewSentByMe != null && (
+                                      <span className="text-gray-500 font-normal">
+                                        {item.previewSentByMe
+                                          ? "You: "
+                                          : `${(item.partnerDisplayName || item.partnerUsername).split(" ")[0]}: `}
+                                      </span>
+                                    )}
+                                    {item.preview}
+                                  </>
                                 )}
                               </p>
                             </div>

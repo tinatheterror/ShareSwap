@@ -3352,7 +3352,7 @@ Respond with ONLY the category name, nothing else.`
       .orderBy(desc(messages.createdAt));
 
     // Build per-partner message map
-    const partnerMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number }>();
+    const partnerMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number; lastSenderId: number }>();
     for (const msg of allMessages) {
       const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
       if (!partnerMsgMap.has(partnerId)) {
@@ -3363,6 +3363,7 @@ Respond with ONLY the category name, nothing else.`
           lastMsg: msg.content,
           lastTime: msg.createdAt!,
           unread,
+          lastSenderId: msg.senderId,
         });
       }
     }
@@ -3482,6 +3483,7 @@ Respond with ONLY the category name, nothing else.`
         lastActivityTime,
         preview,
         previewType,
+        previewSentByMe: previewType === "message" ? (msgData?.lastSenderId === userId) : null,
         unreadCount: msgData?.unread || 0,
         // Request info (if any)
         requestId: reqData?.id || null,

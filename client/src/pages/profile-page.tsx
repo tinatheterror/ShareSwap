@@ -504,39 +504,38 @@ export default function ProfilePage() {
                       {(publicProfile as any).responseTime}
                     </p>
                   )}
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-8 w-8 text-yellow-500" />
+                  <div className="flex items-center gap-6 mt-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Star className="h-5 w-5 text-yellow-400" />
                       <span>
-                        {publicProfile.averageRating.toFixed(1)} (
-                        {publicProfile.reviewCount} reviews)
+                        {publicProfile.averageRating.toFixed(1)} ({publicProfile.reviewCount}{" "}
+                        reviews)
                       </span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Package className="h-8 w-8" />
+                    <div className="flex items-center gap-1.5">
+                      <Package className="h-5 w-5 text-slate-500" />
                       <span>
-                        {(publicProfile as any).completedShares ?? 0} completed
-                        shares
+                        {(publicProfile as any).completedShares ?? 0} completed shares
                       </span>
                     </div>
                   </div>
 
                   {/* Trust stats */}
-                  <div className="mt-3 space-y-1.5 text-sm text-slate-600">
+                  <div className="mt-2 space-y-1 text-xs text-slate-600">
                     {(publicProfile as any).onTimeReturnRate != null && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
                         <span>{(publicProfile as any).onTimeReturnRate}% on-time returns</span>
                       </div>
                     )}
                     {(publicProfile as any).replyRate != null && (
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                      <div className="flex items-center gap-1.5">
+                        <MessageSquare className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
                         <span>{(publicProfile as any).replyRate}% of the time replies</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className={`h-3.5 w-3.5 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? 'text-green-500' : 'text-amber-500'}`} />
                       <span>
                         {(() => {
                           const n = (publicProfile as any).issuesCount ?? 0;
@@ -544,13 +543,13 @@ export default function ProfilePage() {
                         })()}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                    <div className="flex items-center gap-1.5">
+                      <Shield className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
                       <span>Trust Score: {(publicProfile as any).trustScore ?? 0}/100</span>
                     </div>
                     {(publicProfile as any).createdAt && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                         <span>Member since {new Date((publicProfile as any).createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                       </div>
                     )}

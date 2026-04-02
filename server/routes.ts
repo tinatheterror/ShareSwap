@@ -12,7 +12,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -3288,47 +3288,86 @@ Respond with ONLY the category name, nothing else.`
         lastActiveAt: users.lastActiveAt,
         bio: users.bio,
         location: users.location,
+        createdAt: users.createdAt,
       })
       .from(users)
       .where(eq(users.id, targetId));
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Compute review stats
-    const reviews = await db
-      .select({ rating: userReviews.rating })
-      .from(userReviews)
-      .where(eq(userReviews.reviewedUserId, targetId));
+    // Run all stats queries in parallel
+    const [
+      reviews,
+      completedSharesResult,
+      completedBorrows,
+      uniqueSenders,
+      uniqueRecipients,
+      issuesResult,
+      activeStatus,
+      responseTime,
+    ] = await Promise.all([
+      db.select({ rating: userReviews.rating }).from(userReviews).where(eq(userReviews.reviewedUserId, targetId)),
+      db.select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(itemRequests.itemId, items.id))
+        .where(and(
+          or(eq(itemRequests.requesterId, targetId), sql`${items.ownerId} = ${targetId}`),
+          or(eq(itemRequests.status, 'COMPLETED'), eq(itemRequests.status, 'COMPLETED_EARLY'))
+        )),
+      db.select({ returnConfirmedAt: itemRequests.returnConfirmedAt, endDate: itemRequests.endDate })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.requesterId, targetId),
+          or(eq(itemRequests.status, 'COMPLETED'), eq(itemRequests.status, 'COMPLETED_EARLY')),
+          isNotNull(itemRequests.endDate),
+          isNotNull(itemRequests.returnConfirmedAt),
+        )),
+      db.selectDistinct({ senderId: messages.senderId }).from(messages).where(eq(messages.receiverId, targetId)),
+      db.selectDistinct({ receiverId: messages.receiverId }).from(messages).where(eq(messages.senderId, targetId)),
+      db.select({ count: sql<number>`count(*)` })
+        .from(rentalReturns)
+        .where(and(
+          or(eq(rentalReturns.renterId, targetId), eq(rentalReturns.ownerId, targetId)),
+          or(eq(rentalReturns.status, 'DAMAGED'), eq(rentalReturns.status, 'LOST'))
+        )),
+      computeActiveStatusFromDb(targetId, user.lastActiveAt ?? null),
+      computeResponseTime(targetId),
+    ]);
 
     const reviewCount = reviews.length;
     const averageRating = reviewCount > 0
       ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
       : null;
+    const completedShares = Number(completedSharesResult[0]?.count ?? 0);
 
-    const [completedSharesResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(itemRequests)
-      .innerJoin(items, eq(itemRequests.itemId, items.id))
-      .where(
-        and(
-          or(
-            eq(itemRequests.requesterId, targetId),
-            sql`${items.ownerId} = ${targetId}`
-          ),
-          or(
-            eq(itemRequests.status, 'COMPLETED'),
-            eq(itemRequests.status, 'COMPLETED_EARLY')
-          )
-        )
-      );
-    const completedShares = Number(completedSharesResult?.count ?? 0);
+    // On-time return rate (as borrower)
+    let onTimeReturnRate: number | null = null;
+    if (completedBorrows.length > 0) {
+      const onTime = completedBorrows.filter(r => r.returnConfirmedAt! <= r.endDate!).length;
+      onTimeReturnRate = Math.round((onTime / completedBorrows.length) * 100);
+    }
 
-    const [activeStatus, responseTime] = await Promise.all([
-      computeActiveStatusFromDb(targetId, user.lastActiveAt ?? null),
-      computeResponseTime(targetId),
-    ]);
+    // Reply rate
+    const senderSet = new Set(uniqueSenders.map(s => s.senderId));
+    const recipientSet = new Set(uniqueRecipients.map(r => r.receiverId));
+    const repliedCount = [...senderSet].filter(id => recipientSet.has(id)).length;
+    const replyRate = senderSet.size > 0 ? Math.round((repliedCount / senderSet.size) * 100) : null;
 
-    res.json({ ...user, reviewCount, averageRating, completedShares, activeStatus, responseTime });
+    const issuesCount = Number(issuesResult[0]?.count ?? 0);
+    const trustScore = Math.min(100, user.reputationScore ?? 0);
+
+    res.json({
+      ...user,
+      reviewCount,
+      averageRating,
+      completedShares,
+      onTimeReturnRate,
+      replyRate,
+      issuesCount,
+      trustScore,
+      activeStatus,
+      responseTime,
+    });
   });
 
   // Unified inbox: combines item requests + direct messages sorted by most recent activity
@@ -7059,28 +7098,54 @@ Respond with ONLY the category name, nothing else.`
       const paymentVerified = !!user.stripePaymentMethodId;
       const isVerified = idVerified && paymentVerified;
 
-      const [completedSharesResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(itemRequests)
-        .innerJoin(items, eq(itemRequests.itemId, items.id))
-        .where(
-          and(
-            or(
-              eq(itemRequests.requesterId, req.user.id),
-              sql`${items.ownerId} = ${req.user.id}`
-            ),
-            or(
-              eq(itemRequests.status, 'COMPLETED'),
-              eq(itemRequests.status, 'COMPLETED_EARLY')
-            )
-          )
-        );
-      const completedShares = Number(completedSharesResult?.count ?? 0);
-
-      const [activeStatus, responseTime] = await Promise.all([
+      const uid = req.user.id;
+      const [
+        completedSharesResult,
+        completedBorrows,
+        uniqueSenders,
+        uniqueRecipients,
+        issuesResult,
+        activeStatus,
+        responseTime,
+      ] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` })
+          .from(itemRequests).innerJoin(items, eq(itemRequests.itemId, items.id))
+          .where(and(
+            or(eq(itemRequests.requesterId, uid), sql`${items.ownerId} = ${uid}`),
+            or(eq(itemRequests.status, 'COMPLETED'), eq(itemRequests.status, 'COMPLETED_EARLY'))
+          )),
+        db.select({ returnConfirmedAt: itemRequests.returnConfirmedAt, endDate: itemRequests.endDate })
+          .from(itemRequests)
+          .where(and(
+            eq(itemRequests.requesterId, uid),
+            or(eq(itemRequests.status, 'COMPLETED'), eq(itemRequests.status, 'COMPLETED_EARLY')),
+            isNotNull(itemRequests.endDate),
+            isNotNull(itemRequests.returnConfirmedAt),
+          )),
+        db.selectDistinct({ senderId: messages.senderId }).from(messages).where(eq(messages.receiverId, uid)),
+        db.selectDistinct({ receiverId: messages.receiverId }).from(messages).where(eq(messages.senderId, uid)),
+        db.select({ count: sql<number>`count(*)` })
+          .from(rentalReturns)
+          .where(and(
+            or(eq(rentalReturns.renterId, uid), eq(rentalReturns.ownerId, uid)),
+            or(eq(rentalReturns.status, 'DAMAGED'), eq(rentalReturns.status, 'LOST'))
+          )),
         Promise.resolve(computeActiveStatus(user.lastActiveAt ?? null)),
-        computeResponseTime(req.user.id),
+        computeResponseTime(uid),
       ]);
+
+      const completedShares = Number(completedSharesResult[0]?.count ?? 0);
+      let onTimeReturnRate: number | null = null;
+      if (completedBorrows.length > 0) {
+        const onTime = completedBorrows.filter(r => r.returnConfirmedAt! <= r.endDate!).length;
+        onTimeReturnRate = Math.round((onTime / completedBorrows.length) * 100);
+      }
+      const senderSet = new Set(uniqueSenders.map(s => s.senderId));
+      const recipientSet = new Set(uniqueRecipients.map(r => r.receiverId));
+      const repliedCount = [...senderSet].filter(id => recipientSet.has(id)).length;
+      const replyRate = senderSet.size > 0 ? Math.round((repliedCount / senderSet.size) * 100) : null;
+      const issuesCount = Number(issuesResult[0]?.count ?? 0);
+      const trustScore = Math.min(100, user.reputationScore ?? 0);
 
       res.json({
         ...user,
@@ -7089,6 +7154,10 @@ Respond with ONLY the category name, nothing else.`
         paymentVerified,
         idVerified,
         completedShares,
+        onTimeReturnRate,
+        replyRate,
+        issuesCount,
+        trustScore,
         activeStatus,
         responseTime,
       });

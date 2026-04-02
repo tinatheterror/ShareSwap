@@ -56,6 +56,9 @@ import {
   Percent,
   UserCheck,
   Wallet,
+  Clock,
+  MessageSquare,
+  AlertTriangle,
 } from "lucide-react";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
@@ -125,7 +128,9 @@ export default function ProfilePage() {
   const usernameFromUrl = pathParts[2]; // /profile/:username or /profile/:handle
   const isOwnProfile =
     !usernameFromUrl ||
-    (user && (usernameFromUrl === user.username || usernameFromUrl === (user as any).handle));
+    (user &&
+      (usernameFromUrl === user.username ||
+        usernameFromUrl === (user as any).handle));
 
   // Fetch user profile by username if viewing another user's profile
   const { data: publicProfile, isLoading: isLoadingPublicProfile } =
@@ -236,11 +241,11 @@ export default function ProfilePage() {
 
   // Scroll to verification-status section if hash is present
   useEffect(() => {
-    if (window.location.hash === '#verification-status') {
+    if (window.location.hash === "#verification-status") {
       setTimeout(() => {
-        const element = document.getElementById('verification-status');
+        const element = document.getElementById("verification-status");
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }, 300);
     }
@@ -357,7 +362,11 @@ export default function ProfilePage() {
       setEditForm({
         fullName: profile.fullName || "",
         bio: profile.bio || "",
-        location: profile.location || user?.defaultCity || user?.defaultPostalCode || "",
+        location:
+          profile.location ||
+          user?.defaultCity ||
+          user?.defaultPostalCode ||
+          "",
         phone: profile.phone || "",
         displayName: (user as any)?.displayName || "",
       });
@@ -387,7 +396,6 @@ export default function ProfilePage() {
     return !nextLevel || reputationScore < nextLevel.minScore;
   });
   const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
-
 
   if (!user) {
     return (
@@ -450,19 +458,29 @@ export default function ProfilePage() {
                   {(publicProfile as any).profilePhoto ? (
                     <img
                       src={(publicProfile as any).profilePhoto}
-                      alt={(publicProfile as any).handle || publicProfile.username}
+                      alt={
+                        (publicProfile as any).handle || publicProfile.username
+                      }
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white text-3xl font-bold">
-                      {((publicProfile as any).displayName || (publicProfile as any).handle || publicProfile.username).charAt(0).toUpperCase()}
+                      {(
+                        (publicProfile as any).displayName ||
+                        (publicProfile as any).handle ||
+                        publicProfile.username
+                      )
+                        .charAt(0)
+                        .toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
                     <CardTitle className="text-2xl text-slate-800">
-                      {(publicProfile as any).displayName || (publicProfile as any).handle || publicProfile.username.split('@')[0]}
+                      {(publicProfile as any).displayName ||
+                        (publicProfile as any).handle ||
+                        publicProfile.username.split("@")[0]}
                     </CardTitle>
                     <UserBadges
                       isVerified={publicProfile.isVerified}
@@ -471,25 +489,70 @@ export default function ProfilePage() {
                       showLabels
                     />
                   </div>
-                  <p className="text-slate-500 text-sm mb-0.5">@{(publicProfile as any).handle || publicProfile.username.split('@')[0]}</p>
+                  <p className="text-slate-500 text-sm mb-0.5">
+                    @
+                    {(publicProfile as any).handle ||
+                      publicProfile.username.split("@")[0]}
+                  </p>
                   {(publicProfile as any).activeStatus && (
-                    <p className="text-xs text-slate-500 mb-0.5">{(publicProfile as any).activeStatus}</p>
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      {(publicProfile as any).activeStatus}
+                    </p>
                   )}
                   {(publicProfile as any).responseTime && (
-                    <p className="text-xs text-slate-500 mb-4">{(publicProfile as any).responseTime}</p>
+                    <p className="text-xs text-slate-500 mb-4">
+                      {(publicProfile as any).responseTime}
+                    </p>
                   )}
                   <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
-                      <Star className="h-12 w-12 text-yellow-500" />
+                      <Star className="h-8 w-8 text-yellow-500" />
                       <span>
                         {publicProfile.averageRating.toFixed(1)} (
                         {publicProfile.reviewCount} reviews)
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Package className="h-12 w-12" />
-                      <span>{(publicProfile as any).completedShares ?? 0} completed shares</span>
+                      <Package className="h-8 w-8" />
+                      <span>
+                        {(publicProfile as any).completedShares ?? 0} completed
+                        shares
+                      </span>
                     </div>
+                  </div>
+
+                  {/* Trust stats */}
+                  <div className="mt-3 space-y-1.5 text-sm text-slate-600">
+                    {(publicProfile as any).onTimeReturnRate != null && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                        <span>{(publicProfile as any).onTimeReturnRate}% on-time returns</span>
+                      </div>
+                    )}
+                    {(publicProfile as any).replyRate != null && (
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                        <span>{(publicProfile as any).replyRate}% of the time replies</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${(publicProfile as any).issuesCount === 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                      <span>
+                        {(publicProfile as any).issuesCount === 0
+                          ? 'No issues reported'
+                          : `${(publicProfile as any).issuesCount} issue${(publicProfile as any).issuesCount !== 1 ? 's' : ''} reported`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-teal-500 flex-shrink-0" />
+                      <span>Trust Score: {(publicProfile as any).trustScore ?? 0}/100</span>
+                    </div>
+                    {(publicProfile as any).createdAt && (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                        <span>Member since {new Date((publicProfile as any).createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -503,95 +566,102 @@ export default function ProfilePage() {
               <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
                 {userItems.map((item) => (
                   <div key={item.id} className="w-72 flex-shrink-0 md:w-auto">
-                  <Card
-                    className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden"
-                  >
-                    <div className="p-4">
-                      <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                        {item.photos && item.photos[0] ? (
-                          <img
-                            src={item.photos[0]}
-                            alt={item.name}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                            <Camera className="h-16 w-16 text-gray-400" />
-                          </div>
-                        )}
+                    <Card className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden">
+                      <div className="p-4">
+                        <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                          {item.photos && item.photos[0] ? (
+                            <img
+                              src={item.photos[0]}
+                              alt={item.name}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
+                              <Camera className="h-16 w-16 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <CardContent className="px-6 pt-0 pb-4">
-                      <h3 className="font-bold text-lg mb-2 truncate">
-                        {item.name}
-                      </h3>
-                      <div className="space-y-1 text-sm mb-3">
-                        <p className="text-muted-foreground">
-                          Condition: {item.conditionRating}/10
-                        </p>
-                        {(item.isLendable || item.isRentable) && (
-                          <div className="flex items-center gap-2">
-                            <Coins className="h-4 w-4 text-teal-600" />
-                            <span>{item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins</span>
-                            {item.isRentable && (
-                              <>
-                                <span className="text-slate-400">|</span>
-                                <DollarSign className="h-4 w-4 text-teal-600" />
-                                <span>${Number(item.dollarsPrice || 10).toFixed(2)}/day</span>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1">
-                        {item.isLendable && (
-                          <Button
-                            size="sm"
-                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                            style={{ backgroundColor: "#0DCEA1" }}
-                            onClick={() => navigate(`/items/${item.id}`)}
-                          >
-                            <HandHeart className="h-3 w-3 mr-0.5" />
-                            Borrow It
-                          </Button>
-                        )}
-                        {item.isRentable && (
-                          <Button
-                            size="sm"
-                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                            style={{ backgroundColor: "#0DCEA1" }}
-                            onClick={() => navigate(`/items/${item.id}`)}
-                          >
-                            <DollarSign className="h-3 w-3 mr-0.5" />
-                            Rent It
-                          </Button>
-                        )}
-                        {item.isSwappable && (
-                          <Button
-                            size="sm"
-                            className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                            style={{ backgroundColor: "#0DCEA1" }}
-                            onClick={() => navigate(`/items/${item.id}`)}
-                          >
-                            <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                            Swap It
-                          </Button>
-                        )}
-                        {!item.isLendable &&
-                          !item.isRentable &&
-                          !item.isSwappable && (
+                      <CardContent className="px-6 pt-0 pb-4">
+                        <h3 className="font-bold text-lg mb-2 truncate">
+                          {item.name}
+                        </h3>
+                        <div className="space-y-1 text-sm mb-3">
+                          <p className="text-muted-foreground">
+                            Condition: {item.conditionRating}/10
+                          </p>
+                          {(item.isLendable || item.isRentable) && (
+                            <div className="flex items-center gap-2">
+                              <Coins className="h-4 w-4 text-teal-600" />
+                              <span>
+                                {item.shareCoinPrice ||
+                                  item.shareCoinsReward ||
+                                  "5"}{" "}
+                                ShareCoins
+                              </span>
+                              {item.isRentable && (
+                                <>
+                                  <span className="text-slate-400">|</span>
+                                  <DollarSign className="h-4 w-4 text-teal-600" />
+                                  <span>
+                                    $
+                                    {Number(item.dollarsPrice || 10).toFixed(2)}
+                                    /day
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          {item.isLendable && (
                             <Button
                               size="sm"
                               className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
                               style={{ backgroundColor: "#0DCEA1" }}
                               onClick={() => navigate(`/items/${item.id}`)}
                             >
-                              View
+                              <HandHeart className="h-3 w-3 mr-0.5" />
+                              Borrow It
                             </Button>
                           )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                          {item.isRentable && (
+                            <Button
+                              size="sm"
+                              className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                              style={{ backgroundColor: "#0DCEA1" }}
+                              onClick={() => navigate(`/items/${item.id}`)}
+                            >
+                              <DollarSign className="h-3 w-3 mr-0.5" />
+                              Rent It
+                            </Button>
+                          )}
+                          {item.isSwappable && (
+                            <Button
+                              size="sm"
+                              className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                              style={{ backgroundColor: "#0DCEA1" }}
+                              onClick={() => navigate(`/items/${item.id}`)}
+                            >
+                              <ArrowLeftRight className="h-3 w-3 mr-0.5" />
+                              Swap It
+                            </Button>
+                          )}
+                          {!item.isLendable &&
+                            !item.isRentable &&
+                            !item.isSwappable && (
+                              <Button
+                                size="sm"
+                                className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                                style={{ backgroundColor: "#0DCEA1" }}
+                                onClick={() => navigate(`/items/${item.id}`)}
+                              >
+                                View
+                              </Button>
+                            )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 ))}
               </div>
@@ -609,46 +679,50 @@ export default function ProfilePage() {
               <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
                 {userReviews.map((review: any) => (
                   <div key={review.id} className="w-80 flex-shrink-0 md:w-auto">
-                  <Card
-                    className="p-4"
-                    style={{ backgroundColor: "#D4F7F1" }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold">
-                        {review.reviewer.username.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Link href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}>
-                            <span className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
-                              @{(review.reviewer as any).handle || review.reviewer.username.split('@')[0]}
-                            </span>
-                          </Link>
-                          <UserBadges
-                            isVerified={review.reviewer.isVerified}
-                            reputationLevel={review.reviewer.reputationLevel}
-                            size="sm"
-                          />
-                          <span className="text-muted-foreground text-sm">
-                            {new Date(review.createdAt).toLocaleDateString()}
-                          </span>
+                    <Card
+                      className="p-4"
+                      style={{ backgroundColor: "#D4F7F1" }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold">
+                          {review.reviewer.username.charAt(0).toUpperCase()}
                         </div>
-                        <div className="flex items-center gap-1 mb-2">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Link
+                              href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}
+                            >
+                              <span className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
+                                @
+                                {(review.reviewer as any).handle ||
+                                  review.reviewer.username.split("@")[0]}
+                              </span>
+                            </Link>
+                            <UserBadges
+                              isVerified={review.reviewer.isVerified}
+                              reputationLevel={review.reviewer.reputationLevel}
+                              size="sm"
                             />
-                          ))}
+                            <span className="text-muted-foreground text-sm">
+                              {new Date(review.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 mb-2">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
+                              />
+                            ))}
+                          </div>
+                          {review.comment && (
+                            <p className="text-sm text-muted-foreground">
+                              {review.comment}
+                            </p>
+                          )}
                         </div>
-                        {review.comment && (
-                          <p className="text-sm text-muted-foreground">
-                            {review.comment}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  </Card>
+                    </Card>
                   </div>
                 ))}
               </div>
@@ -679,16 +753,28 @@ export default function ProfilePage() {
                     <Avatar className="h-16 w-16 border-2 border-white shadow-md flex-shrink-0">
                       <AvatarImage
                         src={(user as any)?.profilePhoto}
-                        alt={(user as any).displayName || (user as any).handle || user.username}
+                        alt={
+                          (user as any).displayName ||
+                          (user as any).handle ||
+                          user.username
+                        }
                       />
                       <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
-                        {((user as any).displayName || (user as any).handle || user.username).charAt(0).toUpperCase()}
+                        {(
+                          (user as any).displayName ||
+                          (user as any).handle ||
+                          user.username
+                        )
+                          .charAt(0)
+                          .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">
-                          {(user as any).displayName || (user as any).handle || user.username}
+                          {(user as any).displayName ||
+                            (user as any).handle ||
+                            user.username}
                         </CardTitle>
                         <UserBadges
                           isVerified={profile?.isVerified || false}
@@ -696,12 +782,18 @@ export default function ProfilePage() {
                           size="sm"
                         />
                       </div>
-                      <p className="text-slate-600 text-sm sm:text-base truncate">@{(user as any).handle || user.username.split('@')[0]}</p>
+                      <p className="text-slate-600 text-sm sm:text-base truncate">
+                        @{(user as any).handle || user.username.split("@")[0]}
+                      </p>
                       {(user as any).activeStatus && (
-                        <p className="text-xs text-slate-500 mt-0.5">{(user as any).activeStatus}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {(user as any).activeStatus}
+                        </p>
                       )}
                       {(user as any).responseTime && (
-                        <p className="text-xs text-slate-500 mt-0.5">{(user as any).responseTime}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {(user as any).responseTime}
+                        </p>
                       )}
                       {profile?.subscription && (
                         <Badge variant="secondary" className="mt-1">
@@ -732,16 +824,26 @@ export default function ProfilePage() {
                       )}
                     </Button>
                     <Link href="/my-balance" className="flex-1 sm:w-full">
-                      <Button variant="outline" size="sm" className="w-full justify-center sm:justify-start">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-center sm:justify-start"
+                      >
                         <Wallet className="h-4 w-4 mr-1 sm:mr-2" />
                         <span className="hidden sm:inline">My Balance</span>
                         <span className="sm:hidden">Balance</span>
                       </Button>
                     </Link>
                     <Link href="/settings" className="flex-1 sm:w-full">
-                      <Button variant="outline" size="sm" className="w-full justify-center sm:justify-start">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-center sm:justify-start"
+                      >
                         <Settings className="h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">Account Settings</span>
+                        <span className="hidden sm:inline">
+                          Account Settings
+                        </span>
                         <span className="sm:hidden">Account</span>
                       </Button>
                     </Link>
@@ -760,10 +862,20 @@ export default function ProfilePage() {
                           <Avatar className="h-16 w-16 border-2 border-gray-200">
                             <AvatarImage
                               src={(user as any)?.profilePhoto}
-                              alt={(user as any).displayName || (user as any).handle || user.username}
+                              alt={
+                                (user as any).displayName ||
+                                (user as any).handle ||
+                                user.username
+                              }
                             />
                             <AvatarFallback className="bg-teal-100 text-teal-600 text-xl font-medium">
-                              {((user as any).displayName || (user as any).handle || user.username)?.charAt(0).toUpperCase()}
+                              {(
+                                (user as any).displayName ||
+                                (user as any).handle ||
+                                user.username
+                              )
+                                ?.charAt(0)
+                                .toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <button
@@ -804,7 +916,10 @@ export default function ProfilePage() {
                       <Input
                         value={editForm.displayName}
                         onChange={(e) =>
-                          setEditForm({ ...editForm, displayName: e.target.value })
+                          setEditForm({
+                            ...editForm,
+                            displayName: e.target.value,
+                          })
                         }
                         placeholder="e.g. Sarah M."
                         maxLength={40}
@@ -941,7 +1056,10 @@ export default function ProfilePage() {
                     <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   )}
                   <Link href="/payment-methods" className="flex-1">
-                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
                       <CreditCard className="h-4 w-4 mr-2" />
                       Payment Methods
                     </Button>
@@ -954,7 +1072,10 @@ export default function ProfilePage() {
                     <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   )}
                   <Link href="/verification" className="flex-1">
-                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
                       <BadgeCheck className="h-4 w-4 mr-2" />
                       Identity Verification
                     </Button>
@@ -1182,7 +1303,10 @@ export default function ProfilePage() {
                     <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   )}
                   <Link href="/payment-methods" className="flex-1">
-                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
                       <CreditCard className="h-4 w-4 mr-2" />
                       Payment Methods
                     </Button>
@@ -1195,7 +1319,10 @@ export default function ProfilePage() {
                     <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   )}
                   <Link href="/verification" className="flex-1">
-                    <Button variant="outline" className="w-full justify-start bg-white/80 hover:bg-white">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
                       <BadgeCheck className="h-4 w-4 mr-2" />
                       Identity Verification
                     </Button>
@@ -1324,7 +1451,6 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
-
 
         {/* Photo Crop Dialog */}
         <Dialog

@@ -500,7 +500,7 @@ export default function ProfilePage() {
                     </p>
                   )}
                   {(publicProfile as any).responseTime && (
-                    <p className="text-xs text-slate-500 mb-0">
+                    <p className="text-xs text-slate-500 mb-2">
                       {(publicProfile as any).responseTime}
                     </p>
                   )}
@@ -525,7 +525,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Trust stats — full-width row below avatar+info, left-aligned */}
-              <div className="mt-2 space-y-1 text-xs text-slate-500">
+              <div className="mt-3 space-y-1 text-xs text-slate-500">
                 {(publicProfile as any).onTimeReturnRate != null && (
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />

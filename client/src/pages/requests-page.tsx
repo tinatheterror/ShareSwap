@@ -179,6 +179,8 @@ export default function RequestsPage() {
 
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
   });
 
   const acceptMutation = useMutation({
@@ -792,6 +794,22 @@ export default function RequestsPage() {
                                 </Button>
                               )}
                             </div>
+                          </div>
+                        )}
+
+                        {request.requestType === "SWAP" && request.status === "ACCEPTED" && (
+                          <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                            <p className="text-sm text-teal-800 font-medium mb-2">
+                              <CheckCircle className="h-4 w-4 inline mr-1" />
+                              Swap accepted! Arrange the exchange with the owner.
+                            </p>
+                            <Button
+                              size="sm"
+                              className="bg-teal-600 hover:bg-teal-700"
+                              onClick={() => navigate(`/chat/${request.item.ownerId}`)}
+                            >
+                              Open Chat
+                            </Button>
                           </div>
                         )}
 

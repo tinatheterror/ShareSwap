@@ -504,7 +504,7 @@ export default function ProfilePage() {
                       {(publicProfile as any).responseTime}
                     </p>
                   )}
-                  <div className="flex items-center justify-center gap-6 mt-2 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center gap-6 mt-3 mb-3 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <Star className="h-5 w-5 text-yellow-400" />
                       <span>

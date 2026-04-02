@@ -50,15 +50,15 @@ export function TrustDepositModal({
   const depositCalc = calculateSecurityDeposit(
     item.tier || 2,
     item.originalValue || "$50–$150",
-    trustScore
+    trustScore,
   );
 
   // Tier-based weekly ShareCoin borrow rates (not the item's full valuation)
   const TIER_WEEKLY_RATES: Record<number, number> = {
-    1: 2,   // Tier 1: Under $50 - 2 SC/week
-    2: 5,   // Tier 2: $50-$199 - 5 SC/week
-    3: 10,  // Tier 3: $200-$499 - 10 SC/week
-    4: 20,  // Tier 4: $500-$2,000 - 20 SC/week
+    1: 2, // Tier 1: Under $50 - 2 SC/week
+    2: 5, // Tier 2: $50-$199 - 5 SC/week
+    3: 10, // Tier 3: $200-$499 - 10 SC/week
+    4: 20, // Tier 4: $500-$2,000 - 20 SC/week
   };
   const shareCoinAmount = TIER_WEEKLY_RATES[item.tier || 2] || 5;
   const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;
@@ -66,7 +66,7 @@ export function TrustDepositModal({
   const payDepositMutation = useMutation({
     mutationFn: async () => {
       setIsProcessing(true);
-      
+
       const response = await apiRequest(
         "POST",
         `/api/requests/${request.id}/pay-deposit`,
@@ -77,7 +77,7 @@ export function TrustDepositModal({
           trustScore: trustScore,
           paymentIntentId: `simulated-${Date.now()}`,
           shareCoinAmount: shareCoinAmount,
-        }
+        },
       );
       return response.json();
     },
@@ -104,14 +104,10 @@ export function TrustDepositModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-teal-600" />
-            Secure Your Borrow
-          </DialogTitle>
-          <DialogDescription>
-            Complete payment to confirm your borrow request for{" "}
+          <DialogTitle>
+            Complete your deposit to reserve{" "}
             <span className="font-medium text-gray-900">{item.name}</span>
-          </DialogDescription>
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -132,14 +128,14 @@ export function TrustDepositModal({
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 flex items-center gap-2">
                   <Coins className="h-4 w-4 text-teal-600" />
-                  ShareCoins to be charged
+                  ShareCoins (charged at pickup)
                 </span>
                 <span className="font-medium">{shareCoinAmount} SC</span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-gray-600 flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-blue-600" />
+                  <Shield className="h-4 w-4 text-teal-600" />
                   Trust deposit (refundable)
                 </span>
                 {depositCalc.discountPercentage > 0 ? (
@@ -150,10 +146,14 @@ export function TrustDepositModal({
                       </span>
                       ${depositCalc.baseDeposit}
                     </span>
-                    <span className="text-teal-600">${depositCalc.finalDeposit}</span>
+                    <span className="text-teal-600">
+                      ${depositCalc.finalDeposit}
+                    </span>
                   </span>
                 ) : (
-                  <span className="font-medium">${depositCalc.finalDeposit}</span>
+                  <span className="font-medium">
+                    ${depositCalc.finalDeposit}
+                  </span>
                 )}
               </div>
 
@@ -186,9 +186,7 @@ export function TrustDepositModal({
             <div className="bg-green-50 border border-green-200 rounded-md p-2 text-xs text-green-700">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>
-                  Deposit auto-refunded when item is returned safely
-                </span>
+                <span>Deposit auto-refunded when item is returned safely</span>
               </div>
             </div>
           </div>
@@ -220,7 +218,7 @@ export function TrustDepositModal({
             ) : (
               <>
                 <Shield className="h-4 w-4 mr-2" />
-                Confirm & Secure Borrow
+                Pay Deposit
               </>
             )}
           </Button>

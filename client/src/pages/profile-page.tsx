@@ -508,7 +508,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Reviews + shares — full-width, centered in the banner */}
-              <div className="flex items-center justify-center gap-6 mt-4 mb-4 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Star className="h-5 w-5 text-yellow-400" />
                   <span>
@@ -525,7 +525,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Trust stats — full-width row below avatar+info, left-aligned */}
-              <div className="mt-3 space-y-1 text-xs text-slate-500">
+              <div className="mt-5 space-y-1 text-xs text-slate-500">
                 {(publicProfile as any).onTimeReturnRate != null && (
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />

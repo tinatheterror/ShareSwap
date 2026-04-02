@@ -536,11 +536,12 @@ export default function ProfilePage() {
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${(publicProfile as any).issuesCount === 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                      <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? 'text-green-500' : 'text-amber-500'}`} />
                       <span>
-                        {(publicProfile as any).issuesCount === 0
-                          ? 'No issues reported'
-                          : `${(publicProfile as any).issuesCount} issue${(publicProfile as any).issuesCount !== 1 ? 's' : ''} reported`}
+                        {(() => {
+                          const n = (publicProfile as any).issuesCount ?? 0;
+                          return n === 0 ? 'No issues reported' : `${n} issue${n !== 1 ? 's' : ''} reported`;
+                        })()}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">

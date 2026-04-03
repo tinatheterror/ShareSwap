@@ -1736,10 +1736,6 @@ export function ChatWidget() {
           onSuccess={() => {
             setShowHandoffModal(false);
             setSelectedRequest(null);
-            toast({
-              title: "Handoff confirmed!",
-              description: "The borrow period has officially started.",
-            });
           }}
         />
       )}

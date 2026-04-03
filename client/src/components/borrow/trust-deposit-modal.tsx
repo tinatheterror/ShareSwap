@@ -123,12 +123,6 @@ export function TrustDepositModal({
             {shareCoinAmount} ShareCoins charged at pickup
           </p>
 
-          {/* Trust line */}
-          <p className="text-center text-xs text-gray-300 flex items-center justify-center gap-1 mb-8">
-            <Lock className="h-3 w-3 flex-shrink-0" />
-            Deposit is securely held and refunded after return
-          </p>
-
           {/* Actions */}
           <Button
             onClick={() => payDepositMutation.mutate()}
@@ -144,6 +138,13 @@ export function TrustDepositModal({
               `Pay $${totalDue.toFixed(2)} deposit`
             )}
           </Button>
+
+          {/* Trust line */}
+          <p className="text-center text-xs text-gray-300 flex items-center justify-center gap-1 mb-2">
+            <Lock className="h-3 w-3 flex-shrink-0" />
+            Deposit is securely held and refunded after return
+          </p>
+
           <Button
             variant="ghost"
             onClick={onClose}

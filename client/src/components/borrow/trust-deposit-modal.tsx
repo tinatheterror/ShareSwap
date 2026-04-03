@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -96,6 +97,9 @@ export function TrustDepositModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-xs p-0 rounded-2xl overflow-hidden">
+        <VisuallyHidden>
+          <DialogTitle>Confirm your borrow</DialogTitle>
+        </VisuallyHidden>
         <div className="flex flex-col px-7 pt-8 pb-7">
 
           {/* Title + item name */}

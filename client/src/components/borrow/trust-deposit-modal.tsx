@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock, Loader2, MessageCircle, FileText } from "lucide-react";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 
 interface TrustDepositModalProps {
@@ -24,6 +25,7 @@ interface TrustDepositModalProps {
     shareCoinPrice: string;
     photos: string[];
   };
+  ownerId: number;
   trustScore: number;
   courierFee?: number;
   onSuccess: (nextStep: string) => void;
@@ -34,13 +36,17 @@ export function TrustDepositModal({
   onClose,
   request,
   item,
+  ownerId,
   trustScore,
   courierFee = 0,
   onSuccess,
 }: TrustDepositModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [succeeded, setSucceeded] = useState(false);
+  const [successData, setSuccessData] = useState<{ nextStep: string } | null>(null);
 
   const depositCalc = calculateSecurityDeposit(
     item.tier || 2,
@@ -77,12 +83,9 @@ export function TrustDepositModal({
     },
     onSuccess: (data) => {
       setIsProcessing(false);
-      toast({
-        title: "Deposit secured",
-        description: "Your borrow request is confirmed.",
-      });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      onSuccess(data.nextStep);
+      setSuccessData({ nextStep: data.nextStep });
+      setSucceeded(true);
     },
     onError: (error: any) => {
       setIsProcessing(false);
@@ -94,66 +97,115 @@ export function TrustDepositModal({
     },
   });
 
+  const handleMessageLender = () => {
+    onClose();
+    navigate(`/chat/${ownerId}`);
+  };
+
+  const handleViewRequest = () => {
+    if (successData) onSuccess(successData.nextStep);
+    else onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !succeeded && onClose()}>
       <DialogContent className="sm:max-w-xs p-0 rounded-2xl overflow-hidden">
         <VisuallyHidden>
-          <DialogTitle>Confirm your borrow</DialogTitle>
+          <DialogTitle>{succeeded ? "Deposit secured" : "Confirm your borrow"}</DialogTitle>
         </VisuallyHidden>
-        <div className="flex flex-col px-7 pt-8 pb-7">
 
-          {/* Title + item name */}
-          <div className="text-center mb-8">
-            <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">
-              Confirm your borrow
-            </p>
-            <p className="text-lg font-bold text-gray-900">{item.name}</p>
+        {succeeded ? (
+          /* ── Success screen ── */
+          <div className="flex flex-col px-7 pt-8 pb-7 text-center">
+            <p className="text-3xl mb-2">✅</p>
+            <p className="text-lg font-bold text-gray-900 mb-1">Deposit secured</p>
+            <p className="text-sm text-gray-400 mb-6">Your borrow is confirmed for</p>
+
+            <p className="text-base font-semibold text-gray-900 mb-6">{item.name}</p>
+
+            <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1">
+              <p className="text-sm text-gray-700">
+                <span className="font-medium">${totalDue.toFixed(2)}</span> deposit charged to your card{" "}
+                <span className="text-gray-400">•••• 4242</span>
+              </p>
+              <p className="text-xs text-gray-400">Held securely and refunded after safe return</p>
+            </div>
+
+            <div className="text-left mb-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-2">
+                Next step
+              </p>
+              <p className="text-sm text-gray-700 mb-1">Coordinate pickup with the lender</p>
+              <p className="text-xs text-gray-400">
+                {shareCoinAmount} ShareCoins will be charged at handoff
+              </p>
+            </div>
+
+            <Button
+              onClick={handleMessageLender}
+              className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl mb-3"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Message lender
+            </Button>
+            <button
+              onClick={handleViewRequest}
+              className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              View request
+            </button>
           </div>
+        ) : (
+          /* ── Payment screen ── */
+          <div className="flex flex-col px-7 pt-8 pb-7">
+            <div className="text-center mb-8">
+              <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">
+                Confirm your borrow
+              </p>
+              <p className="text-lg font-bold text-gray-900">{item.name}</p>
+            </div>
 
-          {/* Amount — focal point */}
-          <div className="text-center mb-8">
-            <p className="text-6xl font-bold tracking-tight text-gray-900 mb-2">
-              ${totalDue.toFixed(2)}
+            <div className="text-center mb-8">
+              <p className="text-6xl font-bold tracking-tight text-gray-900 mb-2">
+                ${totalDue.toFixed(2)}
+              </p>
+              <p className="text-sm text-gray-500">Fully refundable deposit</p>
+            </div>
+
+            <p className="text-center text-sm text-gray-400 mb-6">
+              {shareCoinAmount} ShareCoins charged at pickup
             </p>
-            <p className="text-sm text-gray-500">Fully refundable deposit</p>
+
+            <Button
+              onClick={() => payDepositMutation.mutate()}
+              disabled={isProcessing}
+              className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl mb-2"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing
+                </>
+              ) : (
+                `Pay $${totalDue.toFixed(2)} deposit`
+              )}
+            </Button>
+
+            <p className="text-center text-xs text-gray-300 flex items-center justify-center gap-1 mb-2">
+              <Lock className="h-3 w-3 flex-shrink-0" />
+              Deposit is securely held and refunded after return
+            </p>
+
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              disabled={isProcessing}
+              className="w-full text-sm text-gray-400 hover:text-gray-600"
+            >
+              Cancel
+            </Button>
           </div>
-
-          {/* Secondary info */}
-          <p className="text-center text-sm text-gray-400 mb-6">
-            {shareCoinAmount} ShareCoins charged at pickup
-          </p>
-
-          {/* Actions */}
-          <Button
-            onClick={() => payDepositMutation.mutate()}
-            disabled={isProcessing}
-            className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl mb-2"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing
-              </>
-            ) : (
-              `Pay $${totalDue.toFixed(2)} deposit`
-            )}
-          </Button>
-
-          {/* Trust line */}
-          <p className="text-center text-xs text-gray-300 flex items-center justify-center gap-1 mb-2">
-            <Lock className="h-3 w-3 flex-shrink-0" />
-            Deposit is securely held and refunded after return
-          </p>
-
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            disabled={isProcessing}
-            className="w-full text-sm text-gray-400 hover:text-gray-600"
-          >
-            Cancel
-          </Button>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -1596,6 +1596,7 @@ export function ChatWidget() {
             shareCoinPrice: selectedRequest.item.shareCoinPrice || "5",
             photos: selectedRequest.item.photos,
           }}
+          ownerId={selectedRequest.item.ownerId}
           trustScore={Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100))}
           courierFee={selectedRequest.deliveryMethod === "courier" ? 8.99 : 0}
           onSuccess={(nextStep) => {

@@ -741,7 +741,7 @@ export function ChatWidget() {
     return (
       <div
         key={request.id}
-        className={`p-3 border-b transition-colors ${iReceivedCounter ? "bg-amber-50 hover:bg-amber-100/70" : "hover:bg-gray-50"}`}
+        className={`p-3 border-b transition-colors ${iReceivedCounter ? "bg-amber-50 hover:bg-amber-100/70" : request.status === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-gray-50"}`}
       >
         <button
           className="w-full text-left"

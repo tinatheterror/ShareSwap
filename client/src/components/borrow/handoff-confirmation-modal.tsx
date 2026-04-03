@@ -58,8 +58,6 @@ export function HandoffConfirmationModal({
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       if (data.bothConfirmed) {
         toast({ title: "Handoff complete", description: "Borrow period has started." });
-      } else {
-        toast({ title: "Confirmed", description: data.waitingMessage || "Waiting for the other party to confirm." });
       }
       onSuccess();
     },

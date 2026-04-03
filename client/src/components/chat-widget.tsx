@@ -1562,6 +1562,84 @@ export function ChatWidget() {
                     );
                   })}
 
+                  {/* Fallback action cards — shown at bottom when no event message triggered them inline */}
+                  {(() => {
+                    const pr = requests.find((r) =>
+                      (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
+                      (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
+                    );
+                    if (!pr || pr.requesterId !== user?.id) return null;
+                    const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
+
+                    // Pay deposit — if no request_accepted event message exists for this request
+                    if (pr.status === "ACCEPTED") {
+                      const alreadyInjected = messages.some(
+                        (m) => m.messageType === "event" && m.metadata?.eventType === "request_accepted" && m.requestId === pr.id
+                      );
+                      if (!alreadyInjected) {
+                        const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
+                        return (
+                          <div className="mb-3 flex justify-center">
+                            <div className="w-full max-w-[92%] rounded-xl border border-teal-200 bg-teal-50 px-4 py-3">
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <Shield className="h-3.5 w-3.5 text-teal-600" />
+                                <span className="text-xs font-semibold text-teal-800">Pay deposit to confirm your borrow</span>
+                              </div>
+                              <Button size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-4"
+                                onClick={() => { setSelectedRequest(pr); setShowTrustDepositModal(true); }}>
+                                Pay ${dc.finalDeposit} deposit
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+
+                    // Confirm received — at DEPOSIT_CONFIRMED or COURIER_PENDING if no handoff event message
+                    if (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") {
+                      const alreadyInjected = messages.some(
+                        (m) => m.messageType === "event" && m.metadata?.eventType === "handoff_confirmed" && m.requestId === pr.id
+                      );
+                      if (!alreadyInjected) {
+                        return (
+                          <div className="mb-3 flex justify-center">
+                            <div className="w-full max-w-[92%] rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <Package className="h-3.5 w-3.5 text-indigo-600" />
+                                <span className="text-xs font-semibold text-indigo-800">Confirm you received the item</span>
+                              </div>
+                              <p className="text-xs text-indigo-600 mb-2">Tap when the owner hands it to you</p>
+                              <Button size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4"
+                                onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
+                                Confirm received
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+
+                    // Return item — at IN_PROGRESS
+                    if (pr.status === "IN_PROGRESS") {
+                      return (
+                        <div className="mb-3 flex justify-center">
+                          <div className="w-full max-w-[92%] rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <RotateCcw className="h-3.5 w-3.5 text-blue-600" />
+                              <span className="text-xs font-semibold text-blue-800">Ready to return the item?</span>
+                            </div>
+                            <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4"
+                              onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
+                              Return item
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()}
+
                   <div ref={messagesEndRef} />
                 </ScrollArea>
               )}
@@ -1572,26 +1650,47 @@ export function ChatWidget() {
                   (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
                   (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
                 );
-                if (!pr || pr.requesterId !== user?.id || pr.status !== "ACCEPTED") return null;
-                const dc = calculateSecurityDeposit(
-                  pr.item.tier || 2,
-                  pr.item.originalValue || "$50–$150",
-                  Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100)),
-                );
-                return (
-                  <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
-                    <Button
-                      className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
-                      onClick={() => {
-                        setSelectedRequest(pr);
-                        setShowTrustDepositModal(true);
-                      }}
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Pay ${dc.finalDeposit} deposit
-                    </Button>
-                  </div>
-                );
+                if (!pr || pr.requesterId !== user?.id) return null;
+                const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
+
+                if (pr.status === "ACCEPTED") {
+                  const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
+                  return (
+                    <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
+                      <Button className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
+                        onClick={() => { setSelectedRequest(pr); setShowTrustDepositModal(true); }}>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Pay ${dc.finalDeposit} deposit
+                      </Button>
+                    </div>
+                  );
+                }
+
+                if (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") {
+                  return (
+                    <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                      <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
+                        onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
+                        <Package className="h-4 w-4 mr-2" />
+                        Confirm received
+                      </Button>
+                    </div>
+                  );
+                }
+
+                if (pr.status === "IN_PROGRESS") {
+                  return (
+                    <div className="px-3 py-2 border-t border-blue-100 bg-blue-50">
+                      <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
+                        onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Return item
+                      </Button>
+                    </div>
+                  );
+                }
+
+                return null;
               })()}
 
               <div className="p-3 border-t flex gap-2">

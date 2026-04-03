@@ -1,0 +1,107 @@
+Refactor the chat UI to reduce clutter, remove duplicate actions, and create a clear hierarchy between messages and system actions.
+
+Goals:
+- Make chat feel clean and conversation-first
+- Eliminate duplicate CTAs
+- Standardize system messages vs user messages
+- Improve clarity of next action without overwhelming the UI
+
+---
+
+CHANGES TO IMPLEMENT:
+
+1. REMOVE DUPLICATE ACTIONS
+- Remove the inline "Confirm received" card inside the chat
+- Keep ONLY the sticky bottom action bar:
+  "Confirm received"
+- There should never be more than ONE primary action visible at a time
+
+---
+
+2. SIMPLIFY SYSTEM MESSAGES
+
+Replace current system message styles with:
+
+A. Status message (subtle, not a bubble)
+Example:
+"✓ Request accepted"
+- Small text
+- Muted color (gray or soft green)
+- No background box
+- Center aligned or lightly spaced
+
+B. Instruction message (only when needed)
+Example:
+"Coordinate pickup time and location here"
+- Small, muted text
+- No large blue bubble
+- Should NOT look like a user message
+
+---
+
+3. CLEAN UP VISUAL HIERARCHY
+
+- User messages = primary (keep current chat bubbles)
+- System messages = secondary (no heavy backgrounds)
+- Actions = separate (bottom sticky bar only)
+
+---
+
+4. STICKY ACTION BAR (PRIMARY ACTION)
+
+Keep one persistent bottom action bar:
+
+Example:
+[ Confirm received ]
+
+Rules:
+- Full width
+- High contrast
+- Updates dynamically based on state
+- Sits above message input
+- Only visible when action is required
+
+---
+
+5. REMOVE VISUAL NOISE
+
+- Remove colored background boxes (blue/green containers)
+- Reduce icon usage (only keep icons where necessary)
+- Use spacing instead of containers to separate content
+
+---
+
+6. MESSAGE FLOW (FINAL STRUCTURE)
+
+Chat should look like:
+
+[System - subtle]
+✓ Request accepted
+
+[System - subtle]
+Coordinate pickup in chat
+
+[User message]
+"can you meet at 12 noon..."
+
+[Sticky bottom CTA]
+Confirm received
+
+---
+
+7. DESIGN RULES
+
+- Max 1 primary action visible at any time
+- System messages should never visually compete with user messages
+- Avoid using multiple colors for different system states
+- Use typography + spacing instead of boxes
+
+---
+
+OUTCOME:
+
+The chat should feel:
+- Calm and uncluttered
+- Easy to scan
+- Actionable without confusion
+- Focused on conversation first, actions second

@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
+import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { RentalDepositModal } from "@/components/rental/rental-deposit-modal";
@@ -259,6 +260,7 @@ export function ChatWidget() {
   >(null);
   const [message, setMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Request handling state
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
@@ -468,12 +470,12 @@ export function ChatWidget() {
     return () => window.removeEventListener("open-chat-requests", handleOpenRequests);
   }, []);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages load or conversation switches
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ block: "end" });
     }
-  }, [messages]);
+  }, [messages, selectedConversation]);
 
   // Early return AFTER all hooks to avoid Rules of Hooks violation
   if (!user) return null;
@@ -1504,8 +1506,72 @@ export function ChatWidget() {
                       </div>
                     );
                   })}
+
+                  {/* Inline action card — pay deposit */}
+                  {(() => {
+                    const pr = requests.find((r) =>
+                      (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
+                      (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
+                    );
+                    if (!pr || pr.requesterId !== user?.id || pr.status !== "ACCEPTED") return null;
+                    const dc = calculateSecurityDeposit(
+                      pr.item.tier || 2,
+                      pr.item.originalValue || "$50–$150",
+                      Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100)),
+                    );
+                    return (
+                      <div className="mb-3 flex justify-center">
+                        <div className="w-full max-w-[92%] rounded-xl border border-teal-200 bg-teal-50 px-4 py-3">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Shield className="h-3.5 w-3.5 text-teal-600" />
+                            <span className="text-xs font-semibold text-teal-800">Pay deposit to confirm your borrow</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-4"
+                            onClick={() => {
+                              setSelectedRequest(pr);
+                              setShowTrustDepositModal(true);
+                            }}
+                          >
+                            Pay ${dc.finalDeposit} deposit
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div ref={messagesEndRef} />
                 </ScrollArea>
               )}
+
+              {/* Sticky CTA — pay deposit */}
+              {(() => {
+                const pr = requests.find((r) =>
+                  (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
+                  (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
+                );
+                if (!pr || pr.requesterId !== user?.id || pr.status !== "ACCEPTED") return null;
+                const dc = calculateSecurityDeposit(
+                  pr.item.tier || 2,
+                  pr.item.originalValue || "$50–$150",
+                  Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100)),
+                );
+                return (
+                  <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
+                    <Button
+                      className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
+                      onClick={() => {
+                        setSelectedRequest(pr);
+                        setShowTrustDepositModal(true);
+                      }}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Pay ${dc.finalDeposit} deposit
+                    </Button>
+                  </div>
+                );
+              })()}
 
               <div className="p-3 border-t flex gap-2">
                 <Input

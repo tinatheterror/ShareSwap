@@ -4296,21 +4296,6 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    // For BORROW and RENT: send a system prompt so both parties know to coordinate here
-    if (status === "ACCEPTED" && (request.item_requests.requestType === "BORROW" || request.item_requests.requestType === "RENT")) {
-      try {
-        const deliveryMethod = request.item_requests.deliveryMethod;
-        const coordinationHint = deliveryMethod === "courier"
-          ? `A courier will handle delivery — use this chat to confirm your pickup and drop-off addresses.`
-          : `Use this chat to agree on a pickup location, address, and time that works for both of you.`;
-        await db.insert(messages).values({
-          content: `✅ Request accepted for "${request.items.name}"! ${coordinationHint}`,
-          senderId: req.user.id,
-          receiverId: request.item_requests.requesterId,
-          messageType: "system",
-        });
-      } catch (_) {}
-    }
 
     // Handle commission for rental transactions
     if (status === "ACCEPTED" && request.item_requests.requestType === "RENT") {

@@ -1383,7 +1383,7 @@ export function ChatWidget() {
                       const iAmOwner = relatedRequest && relatedRequest.item.ownerId === user.id;
 
                       const eventLabel =
-                        et === "request_accepted" ? (msg.senderId === user.id ? "✓ You accepted the request" : "✓ Request accepted") :
+                        et === "request_accepted" ? "✓ Request accepted! Arrange a pickup time and location." :
                         et === "request_declined" ? (msg.senderId === user.id ? "Request declined" : "Request declined") :
                         et === "terms_accepted" ? (msg.senderId === user.id ? "✓ You accepted the terms" : "✓ Terms accepted") :
                         et === "terms_declined" ? (msg.senderId === user.id ? "Terms declined" : "Terms declined") :

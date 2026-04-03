@@ -104,10 +104,10 @@ export function TrustDepositModal({
 
           {/* Title + item name */}
           <div className="text-center mb-8">
-            <p className="text-base font-semibold text-gray-900 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">
               Confirm your borrow
             </p>
-            <p className="text-sm text-gray-400">{item.name}</p>
+            <p className="text-lg font-bold text-gray-900">Reserve {item.name}</p>
           </div>
 
           {/* Amount — focal point */}

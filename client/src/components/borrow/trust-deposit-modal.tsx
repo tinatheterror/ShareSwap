@@ -107,7 +107,7 @@ export function TrustDepositModal({
             <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">
               Confirm your borrow
             </p>
-            <p className="text-lg font-bold text-gray-900">Reserve {item.name}</p>
+            <p className="text-lg font-bold text-gray-900">{item.name}</p>
           </div>
 
           {/* Amount — focal point */}

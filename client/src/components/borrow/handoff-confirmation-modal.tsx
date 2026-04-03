@@ -70,8 +70,8 @@ export function HandoffConfirmationModal({
   });
 
   const title = isUberDelivery
-    ? userRole === "borrower" ? "Confirm item received" : "Confirm item sent"
-    : "Confirm item handoff";
+    ? userRole === "borrower" ? "Confirm Item Received" : "Confirm Item Sent"
+    : "Confirm Item Handoff";
 
   const description = isUberDelivery
     ? userRole === "borrower"
@@ -109,9 +109,9 @@ export function HandoffConfirmationModal({
             </div>
           )}
 
-          <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
-            <span className="text-amber-500 text-base leading-snug">⚠</span>
-            <p className="text-sm text-amber-800">{warning}</p>
+          <div className="flex items-start gap-2 rounded-lg bg-teal-50 border border-teal-200 px-3 py-2.5">
+            <span className="text-teal-500 text-base leading-snug">⚠</span>
+            <p className="text-sm text-teal-800">{warning}</p>
           </div>
         </div>
 

@@ -12,7 +12,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, like } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull } from "drizzle-orm";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -5972,14 +5972,7 @@ Respond with ONLY the category name, nothing else.`
           messageType: "system",
         });
       } else {
-        // Both confirmed — remove the "waiting" message and send completion summary
-        await db.delete(messages).where(
-          and(
-            eq(messages.messageType, "system"),
-            like(messages.content, "Waiting for the other party to confirm the handoff%")
-          )
-        );
-
+        // Both confirmed — send post-handoff summary messages
         const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
         const isBorrow = request.item_requests.requestType === "BORROW";
         const systemMsgs = [

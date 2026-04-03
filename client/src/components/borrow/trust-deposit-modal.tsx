@@ -95,58 +95,59 @@ export function TrustDepositModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-xs p-8 rounded-2xl">
-        <div className="flex flex-col items-center text-center space-y-6">
-          {/* Title & subtitle */}
-          <div className="space-y-1">
-            <p className="text-base font-medium text-gray-900">Confirm your borrow</p>
+      <DialogContent className="sm:max-w-xs p-0 rounded-2xl overflow-hidden">
+        <div className="flex flex-col px-7 pt-8 pb-7">
+
+          {/* Title + item name */}
+          <div className="text-center mb-8">
+            <p className="text-base font-semibold text-gray-900 mb-1">
+              Confirm your borrow
+            </p>
             <p className="text-sm text-gray-400">{item.name}</p>
           </div>
 
-          {/* Main amount */}
-          <div className="space-y-1">
-            <p className="text-5xl font-bold tracking-tight text-gray-900">
+          {/* Amount — focal point */}
+          <div className="text-center mb-8">
+            <p className="text-6xl font-bold tracking-tight text-gray-900 mb-2">
               ${totalDue.toFixed(2)}
             </p>
-            <p className="text-sm text-gray-400">Refundable deposit</p>
+            <p className="text-sm text-gray-500">Fully refundable deposit</p>
           </div>
 
-          {/* Secondary charge */}
-          <p className="text-sm text-gray-400">
+          {/* Secondary info */}
+          <p className="text-center text-sm text-gray-400 mb-6">
             {shareCoinAmount} ShareCoins charged at pickup
           </p>
 
           {/* Trust line */}
-          <p className="text-xs text-gray-300 flex items-center gap-1">
-            <Lock className="h-3 w-3" />
-            Deposit is held securely and refunded after return
+          <p className="text-center text-xs text-gray-300 flex items-center justify-center gap-1 mb-8">
+            <Lock className="h-3 w-3 flex-shrink-0" />
+            Deposit is securely held and refunded after return
           </p>
 
-          {/* CTA */}
-          <div className="w-full space-y-2 pt-2">
-            <Button
-              onClick={() => payDepositMutation.mutate()}
-              disabled={isProcessing}
-              className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing
-                </>
-              ) : (
-                `Pay $${totalDue.toFixed(2)} deposit`
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              disabled={isProcessing}
-              className="w-full text-gray-400 hover:text-gray-600 text-sm"
-            >
-              Cancel
-            </Button>
-          </div>
+          {/* Actions */}
+          <Button
+            onClick={() => payDepositMutation.mutate()}
+            disabled={isProcessing}
+            className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl mb-2"
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing
+              </>
+            ) : (
+              `Pay $${totalDue.toFixed(2)} deposit`
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            disabled={isProcessing}
+            className="w-full text-sm text-gray-400 hover:text-gray-600"
+          >
+            Cancel
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

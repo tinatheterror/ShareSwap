@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1366,16 +1366,65 @@ export function ChatWidget() {
                     );
                   })()}
                   {messages.map((msg) => {
+                    const borrowerTrust = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
+
+                    // Compute inline action card to inject after this message
+                    let actionCard: React.ReactNode = null;
+                    if (msg.messageType === "event") {
+                      const evType = msg.metadata?.eventType;
+                      const pr = msg.requestId ? requests.find((r) => r.id === msg.requestId) : null;
+
+                      // Pay deposit → appears right after request_accepted event
+                      if (evType === "request_accepted" && pr?.status === "ACCEPTED" && pr?.requesterId === user?.id) {
+                        const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", borrowerTrust);
+                        actionCard = (
+                          <div className="mb-3 flex justify-center">
+                            <div className="w-full max-w-[92%] rounded-xl border border-teal-200 bg-teal-50 px-4 py-3">
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <Shield className="h-3.5 w-3.5 text-teal-600" />
+                                <span className="text-xs font-semibold text-teal-800">Pay deposit to confirm your borrow</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-4"
+                                onClick={() => { setSelectedRequest(pr); setShowTrustDepositModal(true); }}
+                              >
+                                Pay ${dc.finalDeposit} deposit
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Confirm received → appears right after handoff_confirmed event
+                      if (evType === "handoff_confirmed" && pr?.status === "IN_PROGRESS" && pr?.requesterId === user?.id) {
+                        actionCard = (
+                          <div className="mb-3 flex justify-center">
+                            <div className="w-full max-w-[92%] rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <Package className="h-3.5 w-3.5 text-indigo-600" />
+                                <span className="text-xs font-semibold text-indigo-800">Confirm you received the item</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4"
+                                onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}
+                              >
+                                Confirm received
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      }
+                    }
+
                     // System event messages render as centered cards
                     if (msg.messageType === "event") {
                       const et = msg.metadata?.eventType;
                       const isCounterPending = et === "counter_proposed";
-                      // Find the related request so we can show inline actions
                       const relatedRequest = msg.requestId
                         ? requests.find((r) => r.id === msg.requestId)
                         : null;
-                      // Who needs to respond? The counterProposedBy will be the sender;
-                      // the receiver is the responder. If current user is the receiver, show buttons.
                       const iAmResponder = relatedRequest &&
                         isCounterPending &&
                         relatedRequest.counterProposedBy !== null &&
@@ -1384,162 +1433,134 @@ export function ChatWidget() {
                       const iAmOwner = relatedRequest && relatedRequest.item.ownerId === user.id;
 
                       return (
-                        <div key={msg.id} className="mb-3 flex justify-center">
-                          <div className={`w-full max-w-[90%] rounded-xl border px-4 py-3 text-sm ${
-                            et === "counter_proposed" ? "bg-amber-50 border-amber-200" :
-                            et === "terms_accepted" ? "bg-green-50 border-green-200" :
-                            et === "request_accepted" ? "bg-green-50 border-green-200" :
-                            et === "terms_declined" || et === "request_declined" ? "bg-red-50 border-red-200" :
-                            "bg-gray-50 border-gray-200"
-                          }`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              {et === "counter_proposed" && <RefreshCw className="h-3.5 w-3.5 text-amber-600" />}
-                              {(et === "terms_accepted" || et === "request_accepted") && <CheckCircle className="h-3.5 w-3.5 text-green-600" />}
-                              {(et === "terms_declined" || et === "request_declined") && <XCircle className="h-3.5 w-3.5 text-red-600" />}
-                              <span className={`font-medium text-xs ${
-                                et === "counter_proposed" ? "text-amber-800" :
-                                et === "terms_accepted" || et === "request_accepted" ? "text-green-800" :
-                                "text-red-800"
-                              }`}>
-                                {et === "counter_proposed" && (msg.senderId === user.id ? "You proposed new terms" : "New terms proposed")}
-                                {et === "terms_accepted" && (msg.senderId === user.id ? "You accepted the terms" : "Terms accepted")}
-                                {et === "terms_declined" && (msg.senderId === user.id ? "You declined the terms" : "Terms declined")}
-                                {et === "request_accepted" && (msg.senderId === user.id ? "You accepted the request" : "Request accepted")}
-                                {et === "request_declined" && (msg.senderId === user.id ? "You declined the request" : "Request declined")}
-                              </span>
-                              <span className="ml-auto text-[10px] text-muted-foreground">
-                                {new Date(msg.createdAt).toLocaleTimeString()}
-                              </span>
+                        <React.Fragment key={msg.id}>
+                          <div className="mb-3 flex justify-center">
+                            <div className={`w-full max-w-[90%] rounded-xl border px-4 py-3 text-sm ${
+                              et === "counter_proposed" ? "bg-amber-50 border-amber-200" :
+                              et === "terms_accepted" ? "bg-green-50 border-green-200" :
+                              et === "request_accepted" ? "bg-green-50 border-green-200" :
+                              et === "terms_declined" || et === "request_declined" ? "bg-red-50 border-red-200" :
+                              "bg-gray-50 border-gray-200"
+                            }`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                {et === "counter_proposed" && <RefreshCw className="h-3.5 w-3.5 text-amber-600" />}
+                                {(et === "terms_accepted" || et === "request_accepted") && <CheckCircle className="h-3.5 w-3.5 text-green-600" />}
+                                {(et === "terms_declined" || et === "request_declined") && <XCircle className="h-3.5 w-3.5 text-red-600" />}
+                                <span className={`font-medium text-xs ${
+                                  et === "counter_proposed" ? "text-amber-800" :
+                                  et === "terms_accepted" || et === "request_accepted" ? "text-green-800" :
+                                  "text-red-800"
+                                }`}>
+                                  {et === "counter_proposed" && (msg.senderId === user.id ? "You proposed new terms" : "New terms proposed")}
+                                  {et === "terms_accepted" && (msg.senderId === user.id ? "You accepted the terms" : "Terms accepted")}
+                                  {et === "terms_declined" && (msg.senderId === user.id ? "You declined the terms" : "Terms declined")}
+                                  {et === "request_accepted" && (msg.senderId === user.id ? "You accepted the request" : "Request accepted")}
+                                  {et === "request_declined" && (msg.senderId === user.id ? "You declined the request" : "Request declined")}
+                                </span>
+                                <span className="ml-auto text-[10px] text-muted-foreground">
+                                  {new Date(msg.createdAt).toLocaleTimeString()}
+                                </span>
+                              </div>
+
+                              {et === "counter_proposed" && (
+                                <div className="flex flex-wrap gap-1.5 mt-1.5 mb-2">
+                                  {msg.metadata?.deliveryMethod && (
+                                    <Badge variant="outline" className="text-xs border-amber-300">
+                                      <Truck className="h-3 w-3 mr-1" />
+                                      {msg.metadata.deliveryMethod === "courier" ? "Uber delivery" : "In-person pickup"}
+                                    </Badge>
+                                  )}
+                                  {msg.metadata?.depositMethod && (
+                                    <Badge variant="outline" className="text-xs border-amber-300">
+                                      <CreditCard className="h-3 w-3 mr-1" />
+                                      {msg.metadata.depositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                                    </Badge>
+                                  )}
+                                  {msg.metadata?.startDate && msg.metadata?.endDate && (
+                                    <Badge variant="outline" className="text-xs border-amber-300">
+                                      <Clock className="h-3 w-3 mr-1" />
+                                      {format(new Date(msg.metadata.startDate), "MMM d")} – {format(new Date(msg.metadata.endDate), "MMM d")}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+
+                              {iAmResponder && relatedRequest && (
+                                <div className="flex gap-2 mt-2 flex-wrap">
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                                    onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: true })}
+                                    disabled={respondToCounterMutation.isPending}
+                                  >
+                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs border-amber-400 text-amber-700"
+                                    onClick={() => openChatCounter(relatedRequest, iAmOwner ? "owner" : "requester")}
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                                    Counter
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: false })}
+                                    disabled={respondToCounterMutation.isPending}
+                                  >
+                                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                                    Decline
+                                  </Button>
+                                </div>
+                              )}
                             </div>
-
-                            {et === "counter_proposed" && (
-                              <div className="flex flex-wrap gap-1.5 mt-1.5 mb-2">
-                                {msg.metadata?.deliveryMethod && (
-                                  <Badge variant="outline" className="text-xs border-amber-300">
-                                    <Truck className="h-3 w-3 mr-1" />
-                                    {msg.metadata.deliveryMethod === "courier" ? "Uber delivery" : "In-person pickup"}
-                                  </Badge>
-                                )}
-                                {msg.metadata?.depositMethod && (
-                                  <Badge variant="outline" className="text-xs border-amber-300">
-                                    <CreditCard className="h-3 w-3 mr-1" />
-                                    {msg.metadata.depositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                                  </Badge>
-                                )}
-                                {msg.metadata?.startDate && msg.metadata?.endDate && (
-                                  <Badge variant="outline" className="text-xs border-amber-300">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    {format(new Date(msg.metadata.startDate), "MMM d")} – {format(new Date(msg.metadata.endDate), "MMM d")}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
-
-                            {iAmResponder && relatedRequest && (
-                              <div className="flex gap-2 mt-2 flex-wrap">
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs bg-green-600 hover:bg-green-700"
-                                  onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: true })}
-                                  disabled={respondToCounterMutation.isPending}
-                                >
-                                  <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                                  Accept
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs border-amber-400 text-amber-700"
-                                  onClick={() => openChatCounter(relatedRequest, iAmOwner ? "owner" : "requester")}
-                                >
-                                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                                  Counter
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs"
-                                  onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: false })}
-                                  disabled={respondToCounterMutation.isPending}
-                                >
-                                  <XCircle className="h-3.5 w-3.5 mr-1" />
-                                  Decline
-                                </Button>
-                              </div>
-                            )}
                           </div>
-                        </div>
+                          {actionCard}
+                        </React.Fragment>
                       );
                     }
 
-                    // System notice (e.g. post-acceptance coordination prompt)
+                    // System notice
                     if (msg.messageType === "system") {
                       return (
-                        <div key={msg.id} className="mb-3 flex justify-center">
-                          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs text-blue-800 text-center max-w-[90%] leading-snug">
-                            {msg.content}
+                        <React.Fragment key={msg.id}>
+                          <div className="mb-3 flex justify-center">
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-xs text-blue-800 text-center max-w-[90%] leading-snug">
+                              {msg.content}
+                            </div>
                           </div>
-                        </div>
+                        </React.Fragment>
                       );
                     }
 
                     // Regular text message
                     return (
-                      <div
-                        key={msg.id}
-                        className={`mb-2 flex ${
-                          msg.senderId === user.id ? "justify-end" : "justify-start"
-                        }`}
-                      >
+                      <React.Fragment key={msg.id}>
                         <div
-                          className={`rounded-lg px-3 py-2 max-w-[75%] ${
-                            msg.senderId === user.id
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
+                          className={`mb-2 flex ${
+                            msg.senderId === user.id ? "justify-end" : "justify-start"
                           }`}
                         >
-                          <p className="text-sm">{msg.content}</p>
-                          <span className="text-[10px] opacity-70">
-                            {new Date(msg.createdAt).toLocaleTimeString()}
-                          </span>
+                          <div
+                            className={`rounded-lg px-3 py-2 max-w-[75%] ${
+                              msg.senderId === user.id
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted"
+                            }`}
+                          >
+                            <p className="text-sm">{msg.content}</p>
+                            <span className="text-[10px] opacity-70">
+                              {new Date(msg.createdAt).toLocaleTimeString()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      </React.Fragment>
                     );
                   })}
-
-                  {/* Inline action card — pay deposit */}
-                  {(() => {
-                    const pr = requests.find((r) =>
-                      (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
-                      (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
-                    );
-                    if (!pr || pr.requesterId !== user?.id || pr.status !== "ACCEPTED") return null;
-                    const dc = calculateSecurityDeposit(
-                      pr.item.tier || 2,
-                      pr.item.originalValue || "$50–$150",
-                      Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100)),
-                    );
-                    return (
-                      <div className="mb-3 flex justify-center">
-                        <div className="w-full max-w-[92%] rounded-xl border border-teal-200 bg-teal-50 px-4 py-3">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Shield className="h-3.5 w-3.5 text-teal-600" />
-                            <span className="text-xs font-semibold text-teal-800">Pay deposit to confirm your borrow</span>
-                          </div>
-                          <Button
-                            size="sm"
-                            className="h-8 text-xs bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-4"
-                            onClick={() => {
-                              setSelectedRequest(pr);
-                              setShowTrustDepositModal(true);
-                            }}
-                          >
-                            Pay ${dc.finalDeposit} deposit
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })()}
 
                   <div ref={messagesEndRef} />
                 </ScrollArea>

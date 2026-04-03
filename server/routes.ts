@@ -5959,6 +5959,40 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
+      // Send chat system messages after handoff events
+      const ownerId = request.items.ownerId!;
+      const borrowerId = request.item_requests.requesterId;
+
+      if (!bothConfirmed) {
+        // One party confirmed — notify chat that we're waiting on the other
+        await db.insert(messages).values({
+          content: "Waiting for the other party to confirm the handoff — they have 24 hours.",
+          senderId: req.user.id,
+          receiverId: otherPartyId!,
+          messageType: "system",
+        });
+      } else {
+        // Both confirmed — send post-handoff summary messages
+        const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+        const isBorrow = request.item_requests.requestType === "BORROW";
+        const systemMsgs = [
+          isBorrow && shareCoinAmount > 0
+            ? `✓ ${shareCoinAmount} ShareCoins ${isBorrow ? "charged to borrower" : "processed"}`
+            : null,
+          `✓ The ${isBorrow ? "borrow" : "rental"} period has officially started`,
+          "✓ Security deposit is now held until the item is returned",
+        ].filter(Boolean) as string[];
+
+        for (const content of systemMsgs) {
+          await db.insert(messages).values({
+            content,
+            senderId: ownerId,
+            receiverId: borrowerId,
+            messageType: "system",
+          });
+        }
+      }
+
       res.json({
         success: true,
         request: updated,

@@ -1,13 +1,10 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Coins, Shield, Loader2, CheckCircle, Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 
 interface TrustDepositModalProps {
@@ -70,9 +67,9 @@ export function TrustDepositModal({
           depositAmount: depositCalc.finalDeposit,
           baseDepositAmount: depositCalc.baseDeposit,
           discountPercentage: depositCalc.discountPercentage,
-          trustScore: trustScore,
+          trustScore,
           paymentIntentId: `simulated-${Date.now()}`,
-          shareCoinAmount: shareCoinAmount,
+          shareCoinAmount,
         },
       );
       return response.json();
@@ -80,8 +77,8 @@ export function TrustDepositModal({
     onSuccess: (data) => {
       setIsProcessing(false);
       toast({
-        title: "Deposit secured!",
-        description: "Your trust deposit has been authorized.",
+        title: "Deposit secured",
+        description: "Your borrow request is confirmed.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       onSuccess(data.nextStep);
@@ -98,98 +95,58 @@ export function TrustDepositModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-sm p-0 overflow-hidden rounded-2xl">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <p className="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-0.5">
-            Confirm your borrow
-          </p>
-          <h2 className="text-lg font-semibold text-gray-900 leading-snug">
-            Reserve {item.name}
-          </h2>
-        </div>
+      <DialogContent className="sm:max-w-xs p-8 rounded-2xl">
+        <div className="flex flex-col items-center text-center space-y-6">
+          {/* Title & subtitle */}
+          <div className="space-y-1">
+            <p className="text-base font-medium text-gray-900">Confirm your borrow</p>
+            <p className="text-sm text-gray-400">{item.name}</p>
+          </div>
 
-        <div className="px-6 py-5 space-y-4">
-          {/* Due now */}
-          <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
-            <p className="text-xs text-teal-700 font-medium uppercase tracking-wide mb-1">
-              Due now
-            </p>
-            <p className="text-3xl font-bold text-gray-900">
+          {/* Main amount */}
+          <div className="space-y-1">
+            <p className="text-5xl font-bold tracking-tight text-gray-900">
               ${totalDue.toFixed(2)}
             </p>
-            <p className="text-sm text-teal-700 mt-0.5 flex items-center gap-1">
-              <Shield className="h-3.5 w-3.5" />
-              Refundable deposit
-              {depositCalc.discountPercentage > 0 && (
-                <span className="ml-1 text-xs text-teal-600">
-                  ({depositCalc.discountPercentage}% trust discount applied)
-                </span>
-              )}
-            </p>
+            <p className="text-sm text-gray-400">Refundable deposit</p>
           </div>
 
-          {/* Later at pickup */}
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-1">
-              Later at pickup
-            </p>
-            <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-              <Coins className="h-4 w-4 text-teal-600" />
-              {shareCoinAmount} ShareCoins will be charged
-            </p>
-          </div>
-
-          {/* What happens next */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              What happens next
-            </p>
-            <ul className="space-y-2">
-              {[
-                "Your deposit is held securely",
-                `You'll pay ${shareCoinAmount} ShareCoins when you receive the item`,
-                "Your deposit is automatically refunded after safe return",
-              ].map((step) => (
-                <li key={step} className="flex items-start gap-2 text-sm text-gray-700">
-                  <CheckCircle className="h-4 w-4 text-teal-500 flex-shrink-0 mt-0.5" />
-                  {step}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Protection footer */}
-          <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1">
-            <Lock className="h-3 w-3" />
-            Protected by ShareSwap — your deposit is secure
+          {/* Secondary charge */}
+          <p className="text-sm text-gray-400">
+            {shareCoinAmount} ShareCoins charged at pickup
           </p>
-        </div>
 
-        {/* Actions */}
-        <div className="px-6 pb-6 flex gap-3">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isProcessing}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => payDepositMutation.mutate()}
-            disabled={isProcessing}
-            className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Processing…
-              </>
-            ) : (
-              `Pay $${totalDue.toFixed(2)} deposit`
-            )}
-          </Button>
+          {/* Trust line */}
+          <p className="text-xs text-gray-300 flex items-center gap-1">
+            <Lock className="h-3 w-3" />
+            Deposit is held securely and refunded after return
+          </p>
+
+          {/* CTA */}
+          <div className="w-full space-y-2 pt-2">
+            <Button
+              onClick={() => payDepositMutation.mutate()}
+              disabled={isProcessing}
+              className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing
+                </>
+              ) : (
+                `Pay $${totalDue.toFixed(2)} deposit`
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              disabled={isProcessing}
+              className="w-full text-gray-400 hover:text-gray-600 text-sm"
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

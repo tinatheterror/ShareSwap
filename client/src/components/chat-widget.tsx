@@ -1405,15 +1405,22 @@ export function ChatWidget() {
                         et === "request_declined" ? `${actor} declined the request` :
                         et === "terms_accepted" ? `✓ ${actor} accepted the new terms` :
                         et === "terms_declined" ? `${actor} declined the new terms` :
-                        et === "counter_proposed" ? `${actor} proposed new terms` :
                         et === "handoff_confirmed" ? "✓ Handoff confirmed" :
                         et === "deposit_confirmed" ? "✓ Deposit secured" :
+                        et === "counter_proposed" ? null :
                         msg.content;
 
                       return (
                         <React.Fragment key={msg.id}>
                           <div className="mb-3 flex flex-col items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>
+                            {et === "counter_proposed" ? (
+                              <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
+                                <RefreshCw className="h-3 w-3 text-gray-400" />
+                                {actor} proposed new terms
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>
+                            )}
 
                             {et === "counter_proposed" && msg.metadata && (() => {
                               const mDelivery = msg.metadata.deliveryMethod as string | undefined;

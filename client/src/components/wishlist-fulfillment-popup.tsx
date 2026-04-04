@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,7 +17,8 @@ import {
   ArrowLeftRight,
   ShoppingCart,
   DollarSign,
-  X,
+  Calendar,
+  EyeOff,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -34,8 +34,10 @@ interface Wishlist {
   neededDate?: string;
   returnDate?: string;
   isActive: boolean;
+  isPrivate?: boolean;
   createdAt: string;
   username?: string;
+  displayName?: string;
   distance?: string;
 }
 
@@ -53,21 +55,6 @@ export function WishlistFulfillmentPopup({
     enabled: isOpen,
   });
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case "urgent":
-        return "bg-teal-200 text-teal-900";
-      case "high":
-        return "bg-teal-100 text-teal-800";
-      case "normal":
-        return "bg-teal-50 text-teal-700";
-      case "low":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-teal-50 text-teal-700";
-    }
-  };
-
   const getNeedTypeIcon = (needType: string) => {
     switch (needType) {
       case "borrow":
@@ -81,7 +68,6 @@ export function WishlistFulfillmentPopup({
     }
   };
 
-  // Check if item is urgently needed (within 7 days)
   const isUrgent = (neededDate?: string) => {
     if (!neededDate) return false;
     const today = new Date();
@@ -92,7 +78,6 @@ export function WishlistFulfillmentPopup({
     return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
   };
 
-  // Show ALL wishlists, not just urgent ones
   const displayedWishlists = allWishlists?.slice(0, 6) || [];
 
   return (
@@ -113,34 +98,34 @@ export function WishlistFulfillmentPopup({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Two Column Layout */}
           {displayedWishlists.length > 0 ? (
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
               {displayedWishlists.map((wishlist) => (
                 <Card
                   key={wishlist.id}
-                  className="group hover:shadow-xl transition-all duration-300 border-0 bg-white/90 backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden"
+                  className="group hover:shadow-xl transition-all duration-100 border-0 bg-white backdrop-blur-sm hover:bg-white hover:scale-[1.02] overflow-hidden flex flex-col"
                 >
-                  <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-2"></div>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h4 className="font-bold text-xl text-slate-800 mb-1">
+                  <div className="bg-gradient-to-r from-teal-500 to-teal-600 h-1.5 md:h-2" />
+                  <CardContent className="p-3 md:p-6 flex flex-col flex-1">
+                    {/* Title + badges */}
+                    <div className="flex items-start justify-between mb-2 md:mb-4">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm md:text-xl text-slate-800 mb-1 truncate">
                           {wishlist.itemName}
                         </h4>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1 md:gap-2 flex-nowrap overflow-hidden">
                           {isUrgent(wishlist.neededDate) && (
-                            <Badge className="bg-[#EBC135] text-amber-900 border-amber-200 font-medium px-3 py-1">
-                              <Clock className="h-3 w-3 mr-1" />
+                            <Badge className="bg-[#EFE4B0] text-amber-900 border-amber-200 font-medium px-1.5 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs shrink-0">
+                              <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
                               URGENT
                             </Badge>
                           )}
                           <Badge
                             variant="secondary"
-                            className="bg-teal-50 text-teal-700 border-teal-200 px-3 py-1 font-medium"
+                            className="bg-teal-50 text-teal-700 border-teal-200 px-1.5 py-0.5 md:px-3 md:py-1 font-medium text-[10px] md:text-xs shrink-0"
                           >
                             {getNeedTypeIcon(wishlist.needType)}
-                            <span className="ml-1">
+                            <span className="ml-0.5 md:ml-1">
                               {wishlist.needType.charAt(0).toUpperCase() +
                                 wishlist.needType.slice(1)}
                             </span>
@@ -149,50 +134,61 @@ export function WishlistFulfillmentPopup({
                       </div>
                     </div>
 
-                    {wishlist.description && (
-                      <p className="text-slate-600 mb-4 leading-relaxed">
-                        {wishlist.description}
-                      </p>
-                    )}
+                    {/* Description */}
+                    <div className="mb-2 md:mb-4 min-h-[2.5rem] md:min-h-0">
+                      {wishlist.description ? (
+                        <p className="text-slate-600 leading-relaxed text-xs md:text-base line-clamp-2 md:line-clamp-none">
+                          {wishlist.description}
+                        </p>
+                      ) : null}
+                    </div>
 
-                    <div className="space-y-3 mb-6">
-                      {wishlist.preferredLocation && (
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
-                            <MapPin className="h-4 w-4 text-slate-600" />
+                    {/* Metadata rows */}
+                    <div className="space-y-1.5 md:space-y-3 mb-3 md:mb-4 flex-1">
+                      {wishlist.isPrivate ? (
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-6 h-6 md:w-8 md:h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                            <EyeOff className="h-3 w-3 md:h-4 md:w-4 text-slate-500" />
                           </div>
-                          <span className="text-slate-600 font-medium">
+                          <span className="text-slate-500 font-medium text-xs md:text-base italic">
+                            Private request
+                          </span>
+                        </div>
+                      ) : wishlist.displayName || wishlist.username ? (
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                            <span className="text-teal-700 font-bold text-xs md:text-sm">
+                              {(wishlist.displayName || wishlist.username || "?")
+                                .charAt(0)
+                                .toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="text-slate-600 font-medium text-xs md:text-base">
+                            {wishlist.displayName || wishlist.username}
+                          </span>
+                        </div>
+                      ) : null}
+
+                      {wishlist.preferredLocation && (
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-6 h-6 md:w-8 md:h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                            <MapPin className="h-3 w-3 md:h-4 md:w-4 text-slate-600" />
+                          </div>
+                          <span className="text-slate-600 font-medium text-xs md:text-base">
                             {wishlist.preferredLocation}
                           </span>
                         </div>
                       )}
 
-                      {wishlist.username && (
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                            <span className="text-teal-700 font-bold text-sm">
-                              {wishlist.username.charAt(0)}
-                            </span>
-                          </div>
-                          <span className="text-slate-600 font-medium">
-                            {wishlist.username}
-                          </span>
-                        </div>
-                      )}
-
                       {wishlist.neededDate && (
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                            <span className="text-teal-700 font-bold text-xs">
-                              📅
-                            </span>
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                            <Calendar className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                           </div>
                           <div>
-                            <span className="text-slate-600 font-medium">
+                            <span className="text-slate-600 font-medium text-xs md:text-base">
                               Needed:{" "}
-                              {new Date(
-                                wishlist.neededDate,
-                              ).toLocaleDateString()}
+                              {new Date(wishlist.neededDate).toLocaleDateString()}
                             </span>
                             {wishlist.returnDate &&
                               wishlist.needType === "borrow" && (
@@ -208,11 +204,12 @@ export function WishlistFulfillmentPopup({
                       )}
                     </div>
 
-                    <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-2 md:p-4 rounded-lg border border-teal-200/50 mb-2 md:mb-4">
+                    {/* Earn ShareCoins */}
+                    <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-2 md:p-4 rounded-lg border border-teal-200/50 mb-2 md:mb-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 md:gap-2">
                           <Coins className="h-4 w-4 md:h-5 md:w-5 text-teal-600" />
-                          <span className="font-bold text-teal-800 text-sm md:text-base">
+                          <span className="font-bold text-teal-800 text-xs md:text-base">
                             Earn 10 ShareCoins
                           </span>
                         </div>
@@ -222,12 +219,13 @@ export function WishlistFulfillmentPopup({
                       </div>
                     </div>
 
+                    {/* CTA */}
                     <Link
                       href={`/lend?prefill=${encodeURIComponent(wishlist.itemName)}`}
                     >
                       <Button
-                        size="lg"
-                        className="w-full text-black font-semibold py-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                        size="sm"
+                        className="w-full text-black font-semibold shadow-lg hover:shadow-xl transition-all duration-200 text-xs md:text-sm md:py-3"
                         style={{ backgroundColor: "#0DCEA1" }}
                         onClick={(e) => e.stopPropagation()}
                       >

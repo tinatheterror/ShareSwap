@@ -1,6 +1,5 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Coins, ChevronRight, X } from "lucide-react";
+import { Coins, X, Gamepad2, Users, Heart } from "lucide-react";
 import { useLocation } from "wouter";
 
 type Props = {
@@ -21,6 +20,27 @@ export function InsufficientShareCoinsModal({
   const [, navigate] = useLocation();
   const shortfall = Math.max(0, required - currentBalance);
 
+  const earnRoutes = [
+    {
+      icon: Gamepad2,
+      label: "Play Games",
+      sub: "Earn coins by playing",
+      action: () => { onClose(); navigate("/games"); },
+    },
+    {
+      icon: Users,
+      label: "Invite Friends",
+      sub: "Get coins for referrals",
+      action: () => { onClose(); navigate("/referrals"); },
+    },
+    {
+      icon: Heart,
+      label: "Help Neighbours",
+      sub: "Lend items, earn coins",
+      action: () => { onClose(); navigate("/community-wishlists"); },
+    },
+  ];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-sm p-0 overflow-hidden gap-0">
@@ -39,11 +59,13 @@ export function InsufficientShareCoinsModal({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-5 bg-white">
+        <div className="p-6 space-y-4 bg-white">
           {/* Shortfall message */}
           <p className="text-center text-gray-700 font-medium">
             You need{" "}
-            <span className="text-orange-500 font-bold">{shortfall} more ShareCoin{shortfall !== 1 ? "s" : ""}</span>{" "}
+            <span className="text-orange-500 font-bold">
+              {shortfall} more ShareCoin{shortfall !== 1 ? "s" : ""}
+            </span>{" "}
             to {context === "borrow" ? "borrow this" : "complete this swap"}.
           </p>
 
@@ -72,21 +94,33 @@ export function InsufficientShareCoinsModal({
             </div>
           </div>
 
-          {/* CTA */}
-          <Button
-            className="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold"
-            onClick={() => {
-              onClose();
-              navigate("/sharecoins-info");
-            }}
-          >
-            Earn ShareCoins
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
+          {/* Earn routes */}
+          <div>
+            <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide mb-2">
+              Earn More ShareCoins
+            </p>
+            <div className="space-y-2">
+              {earnRoutes.map(({ icon: Icon, label, sub, action }) => (
+                <button
+                  key={label}
+                  onClick={action}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/50 transition-colors text-left"
+                >
+                  <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-4 w-4 text-teal-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">{label}</p>
+                    <p className="text-xs text-muted-foreground">{sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           <button
             onClick={onClose}
-            className="w-full text-sm text-muted-foreground hover:text-gray-700 transition-colors"
+            className="w-full text-sm text-muted-foreground hover:text-gray-700 transition-colors pt-1"
           >
             Maybe later
           </button>

@@ -538,7 +538,7 @@ export default function ProfilePage() {
                     <span>{(publicProfile as any).replyRate}% of the time replies</span>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 mt-2">
                   <AlertTriangle className={`h-3.5 w-3.5 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? 'text-green-500' : 'text-amber-500'}`} />
                   <span>
                     {(() => {

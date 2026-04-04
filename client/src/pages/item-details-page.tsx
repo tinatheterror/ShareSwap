@@ -3,6 +3,7 @@ import { Navbar } from "@/components/shared/navbar";
 import { ItemRequestForm } from "@/components/shared/item-request-form";
 import { SwapInventorySelector } from "@/components/swap-inventory-selector";
 import { GiftClaimModal } from "@/components/gift-claim-modal";
+import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,10 @@ export default function ItemDetailsPage() {
     null,
   );
   const [showGiftClaimModal, setShowGiftClaimModal] = useState(false);
+  const [insufficientCoinsModal, setInsufficientCoinsModal] = useState<{
+    required: number;
+    context: "borrow" | "swap";
+  } | null>(null);
   const [location] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -176,7 +181,15 @@ export default function ItemDetailsPage() {
           </Button>
         ) : (
           <Button
-            onClick={() => setRequestType("BORROW")}
+            onClick={() => {
+              const cost = Number(item.shareCoinPrice || item.shareCoinsReward || 5);
+              const balance = Number(user?.shareCoins || 0);
+              if (balance < cost) {
+                setInsufficientCoinsModal({ required: cost, context: "borrow" });
+              } else {
+                setRequestType("BORROW");
+              }
+            }}
             className="w-full sm:w-40"
             disabled={
               hasAnyPending || !hasValidReplacementValue(itemReplacementValue)
@@ -491,6 +504,16 @@ export default function ItemDetailsPage() {
           isOpen={showGiftClaimModal}
           onClose={() => setShowGiftClaimModal(false)}
         />
+
+        {insufficientCoinsModal && (
+          <InsufficientShareCoinsModal
+            isOpen={!!insufficientCoinsModal}
+            onClose={() => setInsufficientCoinsModal(null)}
+            currentBalance={Number(user?.shareCoins || 0)}
+            required={insufficientCoinsModal.required}
+            context={insufficientCoinsModal.context}
+          />
+        )}
       </main>
     </div>
   );

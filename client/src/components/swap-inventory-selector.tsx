@@ -19,6 +19,8 @@ import {
   getSwapTierLabel,
   getTierShareCoins,
 } from "@/lib/swap-calculator";
+import { useAuth } from "@/hooks/use-auth";
+import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 
 type Props = {
   targetItem: SelectItem;
@@ -34,7 +36,10 @@ export function SwapInventorySelector({
   onSelectItem,
 }: Props) {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
+  const [insufficientRequired, setInsufficientRequired] = useState(0);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: myItems = [], isLoading } = useQuery<SelectItem[]>({
     queryKey: ["/api/my-items"],
@@ -92,9 +97,22 @@ export function SwapInventorySelector({
 
   const handleConfirmSelection = () => {
     const selectedItem = swappableItems.find((i) => i.id === selectedItemId);
-    if (selectedItem) {
-      onSelectItem(selectedItem);
+    if (!selectedItem) return;
+
+    const itemTier = (selectedItem as any).tier || 2;
+    const swap = calculateSwap(itemTier, targetTier);
+
+    // Check if user needs to pay an offset and has enough ShareCoins
+    if (swap.offsetDirection === "you_pay" && swap.offsetRequired > 0) {
+      const balance = Number(user?.shareCoins || 0);
+      if (balance < swap.offsetRequired) {
+        setInsufficientRequired(swap.offsetRequired);
+        setShowInsufficientCoins(true);
+        return;
+      }
     }
+
+    onSelectItem(selectedItem);
   };
 
   const formatTierDisplay = (tier: number) => {
@@ -276,5 +294,13 @@ export function SwapInventorySelector({
         </div>
       </DialogContent>
     </Dialog>
+
+    <InsufficientShareCoinsModal
+      isOpen={showInsufficientCoins}
+      onClose={() => setShowInsufficientCoins(false)}
+      currentBalance={Number(user?.shareCoins || 0)}
+      required={insufficientRequired}
+      context="swap"
+    />
   );
 }

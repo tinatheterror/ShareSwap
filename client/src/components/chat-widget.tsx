@@ -493,6 +493,7 @@ export function ChatWidget() {
     if (min < 10) return { label: "Active now", color: "text-green-600" };
     if (hrs < 24) return { label: "Active today", color: "text-green-500" };
     if (days < 7) return { label: "Active this week", color: "text-amber-600" };
+    if (days < 30) return { label: "Active this month", color: "text-gray-500" };
     return { label: "Inactive", color: "text-gray-400" };
   };
 

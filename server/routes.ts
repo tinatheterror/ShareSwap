@@ -3204,13 +3204,14 @@ Respond with ONLY the category name, nothing else.`
 
   // Chat API endpoints
   app.post("/api/messages", requireEmailVerified, async (req: any, res) => {
-    const { receiverId, content } = req.body;
+    const { receiverId, content, requestId } = req.body;
     const [message] = await db
       .insert(messages)
       .values({
         senderId: req.user.id,
         receiverId,
         content,
+        requestId: requestId ? parseInt(requestId) : null,
       })
       .returning();
 
@@ -3222,21 +3223,33 @@ Respond with ONLY the category name, nothing else.`
       return res.sendStatus(401);
     }
 
+    const partnerId = parseInt(req.params.userId);
+    const requestId = req.query.requestId ? parseInt(req.query.requestId as string) : null;
+
+    const pairCondition = or(
+      and(
+        eq(messages.senderId, req.user.id),
+        eq(messages.receiverId, partnerId),
+      ),
+      and(
+        eq(messages.senderId, partnerId),
+        eq(messages.receiverId, req.user.id),
+      ),
+    );
+
+    let whereClause;
+    if (requestId) {
+      // Show only messages for this specific request
+      whereClause = and(pairCondition, eq(messages.requestId, requestId));
+    } else {
+      // No request context — show messages with no requestId (pure chat)
+      whereClause = and(pairCondition, sql`${messages.requestId} IS NULL`);
+    }
+
     const chatMessages = await db
       .select()
       .from(messages)
-      .where(
-        or(
-          and(
-            eq(messages.senderId, req.user.id),
-            eq(messages.receiverId, parseInt(req.params.userId)),
-          ),
-          and(
-            eq(messages.senderId, parseInt(req.params.userId)),
-            eq(messages.receiverId, req.user.id),
-          ),
-        ),
-      )
+      .where(whereClause)
       .orderBy(messages.createdAt);
 
     res.json(chatMessages);

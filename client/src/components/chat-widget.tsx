@@ -260,6 +260,7 @@ export function ChatWidget() {
   const [selectedConversation, setSelectedConversation] = useState<
     number | null
   >(null);
+  const [activeConversationRequestId, setActiveConversationRequestId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -306,7 +307,7 @@ export function ChatWidget() {
         queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
         if (selectedConversation) {
           queryClient.invalidateQueries({
-            queryKey: ["/api/messages", selectedConversation],
+            queryKey: ["/api/messages", selectedConversation, activeConversationRequestId],
           });
         }
       }
@@ -352,13 +353,16 @@ export function ChatWidget() {
     enabled: !!user,
   });
 
-  // Fetch messages for selected conversation
+  // Fetch messages for selected conversation, scoped to the active request
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery<
     Message[]
   >({
-    queryKey: ["/api/messages", selectedConversation],
+    queryKey: ["/api/messages", selectedConversation, activeConversationRequestId],
     queryFn: async () => {
-      const res = await fetch(`/api/messages/${selectedConversation}`, { credentials: "include" });
+      const url = activeConversationRequestId
+        ? `/api/messages/${selectedConversation}?requestId=${activeConversationRequestId}`
+        : `/api/messages/${selectedConversation}`;
+      const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch messages");
       return res.json();
     },
@@ -412,7 +416,7 @@ export function ChatWidget() {
     onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
-      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
       if (vars.accept && data.ownerAccepted) {
         // Owner fully accepted via counter path — show celebration
         setShowCelebration(true);
@@ -442,7 +446,7 @@ export function ChatWidget() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
-      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
       setShowChatCounterModal(false);
       setChatCounterRequest(null);
       toast({ title: "Counter Sent", description: "The other party will be notified." });
@@ -547,8 +551,9 @@ export function ChatWidget() {
     return true;
   });
 
-  const openConversationWithPartner = (partnerId: number, unreadCount: number) => {
+  const openConversationWithPartner = (partnerId: number, requestId: number | null, unreadCount: number) => {
     setSelectedConversation(partnerId);
+    setActiveConversationRequestId(requestId);
     if (unreadCount > 0) {
       apiRequest("POST", `/api/messages/mark-read/${partnerId}`)
         .then(() => {
@@ -566,6 +571,7 @@ export function ChatWidget() {
       const response = await apiRequest("POST", "/api/messages", {
         receiverId: selectedConversation,
         content: message,
+        requestId: activeConversationRequestId,
       });
 
       setMessage("");
@@ -580,7 +586,7 @@ export function ChatWidget() {
         });
       }
       queryClient.invalidateQueries({
-        queryKey: ["/api/messages", selectedConversation],
+        queryKey: ["/api/messages", selectedConversation, activeConversationRequestId],
       });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
@@ -749,7 +755,7 @@ export function ChatWidget() {
       >
         <button
           className="w-full text-left"
-          onClick={() => setSelectedConversation(partnerId)}
+          onClick={() => { setSelectedConversation(partnerId); setActiveConversationRequestId(request.id); }}
         >
           {/* Status badge — top right only */}
           <div className="flex justify-end mb-1.5">
@@ -1077,6 +1083,7 @@ export function ChatWidget() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedConversation(partnerId);
+                    setActiveConversationRequestId(request.id);
                   }}
                 >
                   <MessageCircle className="h-3 w-3 mr-1" />
@@ -1185,7 +1192,7 @@ export function ChatWidget() {
                       return (
                         <button
                           key={item.partnerId}
-                          onClick={() => openConversationWithPartner(item.partnerId, item.unreadCount)}
+                          onClick={() => openConversationWithPartner(item.partnerId, item.requestId, item.unreadCount)}
                           className={`w-full px-3 py-2.5 text-left transition-colors ${item.requestStatus === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-purple-50"} ${needsAction ? "bg-amber-50/60 hover:bg-amber-50" : ""}`}
                         >
                           <div className="flex items-start gap-2.5">

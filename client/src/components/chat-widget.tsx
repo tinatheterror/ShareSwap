@@ -1411,25 +1411,49 @@ export function ChatWidget() {
                           <div className="mb-3 flex flex-col items-center gap-1.5">
                             <span className="text-xs text-muted-foreground">{eventLabel}</span>
 
-                            {et === "counter_proposed" && (
-                              <div className="flex flex-wrap justify-center gap-1.5">
-                                {msg.metadata?.deliveryMethod && (
-                                  <Badge variant="outline" className="text-xs text-muted-foreground border-border">
-                                    {msg.metadata.deliveryMethod === "courier" ? "Uber delivery" : "In-person pickup"}
-                                  </Badge>
-                                )}
-                                {msg.metadata?.depositMethod && (
-                                  <Badge variant="outline" className="text-xs text-muted-foreground border-border">
-                                    {msg.metadata.depositMethod === "in_app" ? "In-app deposit" : "In-person deposit"}
-                                  </Badge>
-                                )}
-                                {msg.metadata?.startDate && msg.metadata?.endDate && (
-                                  <Badge variant="outline" className="text-xs text-muted-foreground border-border">
-                                    {format(new Date(msg.metadata.startDate), "MMM d")} – {format(new Date(msg.metadata.endDate), "MMM d")}
-                                  </Badge>
-                                )}
-                              </div>
-                            )}
+                            {et === "counter_proposed" && msg.metadata && (() => {
+                              const mDelivery = msg.metadata.deliveryMethod as string | undefined;
+                              const mDeposit = msg.metadata.depositMethod as string | undefined;
+                              const mStart = msg.metadata.startDate as string | undefined;
+                              const mEnd = msg.metadata.endDate as string | undefined;
+                              const origDelivery = relatedRequest?.deliveryMethod;
+                              const origDeposit = relatedRequest?.depositMethod;
+                              const origStart = relatedRequest?.startDate ? format(new Date(relatedRequest.startDate), "MMM d") : null;
+                              const origEnd = relatedRequest?.endDate ? format(new Date(relatedRequest.endDate), "MMM d") : null;
+                              const newStart = mStart ? format(new Date(mStart), "MMM d") : null;
+                              const newEnd = mEnd ? format(new Date(mEnd), "MMM d") : null;
+                              const dateChanged = newStart !== origStart || newEnd !== origEnd;
+                              const deliveryChanged = mDelivery !== origDelivery;
+                              const depositChanged = mDeposit !== origDeposit;
+                              return (
+                                <div className="flex flex-col items-center gap-0.5 text-[11px] text-muted-foreground">
+                                  {newStart && newEnd && (
+                                    <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-medium" : ""}`}>
+                                      <Clock className="h-3 w-3 shrink-0" />
+                                      {newStart} – {newEnd}
+                                    </span>
+                                  )}
+                                  <span className="flex items-center gap-2.5">
+                                    {mDelivery && (
+                                      <span className={`flex items-center gap-0.5 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
+                                        {mDelivery === "courier"
+                                          ? <Truck className="h-3 w-3 text-blue-500" />
+                                          : <MapPin className="h-3 w-3" />}
+                                        {mDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
+                                      </span>
+                                    )}
+                                    {mDeposit && (
+                                      <span className={`flex items-center gap-0.5 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
+                                        {mDeposit === "in_app"
+                                          ? <Shield className="h-3 w-3" />
+                                          : <MapPin className="h-3 w-3" />}
+                                        {mDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              );
+                            })()}
 
                             {iAmResponder && relatedRequest && (
                               <div className="flex gap-2 mt-0.5">

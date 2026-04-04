@@ -3398,13 +3398,14 @@ Respond with ONLY the category name, nothing else.`
         isRead: messages.isRead,
         createdAt: messages.createdAt,
         messageType: messages.messageType,
+        requestId: messages.requestId,
       })
       .from(messages)
       .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
       .orderBy(desc(messages.createdAt));
 
     // Build per-partner message map
-    const partnerMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number; lastSenderId: number }>();
+    const partnerMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number; lastSenderId: number; lastMsgRequestId: number | null }>();
     for (const msg of allMessages) {
       const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
       if (!partnerMsgMap.has(partnerId)) {
@@ -3416,6 +3417,7 @@ Respond with ONLY the category name, nothing else.`
           lastTime: msg.createdAt!,
           unread,
           lastSenderId: msg.senderId,
+          lastMsgRequestId: msg.requestId ?? null,
         });
       }
     }
@@ -3523,6 +3525,17 @@ Respond with ONLY the category name, nothing else.`
         preview = `${reqData!.requestType} · ${reqData!.status}`;
       }
 
+      // Prefer the requestId from the most recent message (so inbox click opens the right context),
+      // falling back to the most recently created request for this partner.
+      const anchorRequestId = (previewType === "message" && msgData?.lastMsgRequestId)
+        ? msgData.lastMsgRequestId
+        : (reqData?.id || null);
+
+      // Look up the anchored request details (may differ from reqData when message requestId wins)
+      const anchorReq = anchorRequestId && anchorRequestId !== reqData?.id
+        ? allRequests.find(r => r.id === anchorRequestId) ?? reqData
+        : reqData;
+
       return {
         partnerId: pid,
         partnerUsername: partner?.username || "Unknown",
@@ -3537,14 +3550,14 @@ Respond with ONLY the category name, nothing else.`
         previewType,
         previewSentByMe: previewType === "message" ? (msgData?.lastSenderId === userId) : null,
         unreadCount: msgData?.unread || 0,
-        // Request info (if any)
-        requestId: reqData?.id || null,
-        requestType: reqData?.requestType || null,
-        requestStatus: reqData?.status || null,
-        requestNegotiationStatus: reqData?.negotiationStatus || null,
-        itemName: reqData?.itemName || null,
-        itemId: reqData?.itemId || null,
-        iAmRequester: reqData ? reqData.requesterId === userId : false,
+        // Request info anchored to the most recently active request
+        requestId: anchorRequestId,
+        requestType: anchorReq?.requestType || null,
+        requestStatus: anchorReq?.status || null,
+        requestNegotiationStatus: anchorReq?.negotiationStatus || null,
+        itemName: anchorReq?.itemName || null,
+        itemId: anchorReq?.itemId || null,
+        iAmRequester: anchorReq ? anchorReq.requesterId === userId : false,
       };
     });
 

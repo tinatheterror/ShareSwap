@@ -1426,18 +1426,18 @@ export function ChatWidget() {
                               const deliveryChanged = mDelivery !== origDelivery;
                               const depositChanged = mDeposit !== origDeposit;
                               return (
-                                <div className="w-full pl-[58px] flex flex-col gap-0.5 text-[11px] text-muted-foreground">
+                                <div className="w-full pl-[70px] flex flex-col">
                                   {newStart && newEnd && (
-                                    <div className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-medium" : ""}`}>
+                                    <div className={`flex items-center gap-1 text-xs mb-0.5 ${dateChanged ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
                                       <Clock className="h-3 w-3 shrink-0" />
                                       <span>{newStart} – {newEnd}</span>
                                     </div>
                                   )}
-                                  <div className="flex items-center gap-2.5">
+                                  <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground mt-0.5">
                                     {mDelivery && (
                                       <span className={`flex items-center gap-0.5 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
                                         {mDelivery === "courier"
-                                          ? <Truck className="h-3 w-3 text-blue-500" />
+                                          ? <Truck className="h-3 w-3 text-blue-600" />
                                           : <MapPin className="h-3 w-3 text-gray-500" />}
                                         {mDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                                       </span>

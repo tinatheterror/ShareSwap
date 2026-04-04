@@ -24,14 +24,12 @@ export function HeartPeopleIcon({ className }: HeartPeopleIconProps) {
         fill="none"
         stroke="white"
         strokeWidth="0.9"
-        strokeOpacity="0.7"
       />
       <path
         d="M11.6 16.8 C11.6 14.3 13.0 13.0 14.8 13.0 C16.6 13.0 18.0 14.3 18.0 16.8"
         fill="none"
         stroke="white"
         strokeWidth="0.9"
-        strokeOpacity="0.7"
         strokeLinecap="round"
       />
 

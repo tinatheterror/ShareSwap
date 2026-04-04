@@ -1226,12 +1226,10 @@ export function ChatWidget() {
                                 </div>
                               </div>
 
-                              {/* Row 2: item context */}
+                              {/* Row 2: item name */}
                               {item.itemName && (
-                                <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-0.5">
-                                  <span className="font-medium text-gray-500">{getRequestTypeLabel(item.requestType)}</span>
-                                  <span>·</span>
-                                  <span className="truncate">{item.itemName}</span>
+                                <div className="mb-0.5">
+                                  <span className="text-[11px] font-semibold text-gray-700 truncate">{item.itemName}</span>
                                 </div>
                               )}
 

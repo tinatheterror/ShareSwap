@@ -1202,7 +1202,7 @@ export function ChatWidget() {
                             {/* Content */}
                             <div className="flex-1 min-w-0">
                               {/* Row 1: name + time */}
-                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <div className="flex items-center justify-between gap-1">
                                 <div className="flex items-center gap-1 min-w-0">
                                   <span className={`text-sm font-semibold truncate ${item.unreadCount > 0 || needsAction ? "text-gray-900" : "text-gray-700"}`}>
                                     {partnerName}

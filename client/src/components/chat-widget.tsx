@@ -1409,7 +1409,7 @@ export function ChatWidget() {
                       return (
                         <React.Fragment key={msg.id}>
                           <div className="mb-3 flex flex-col items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground">{eventLabel}</span>
+                            <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>
 
                             {et === "counter_proposed" && msg.metadata && (() => {
                               const mDelivery = msg.metadata.deliveryMethod as string | undefined;

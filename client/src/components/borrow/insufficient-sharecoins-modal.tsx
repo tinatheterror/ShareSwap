@@ -1,5 +1,6 @@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Coins, X, Gamepad2, Users, Heart } from "lucide-react";
+import { Coins, X, Gamepad2, Users } from "lucide-react";
+import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
 import { useLocation } from "wouter";
 
 type Props = {
@@ -34,7 +35,7 @@ export function InsufficientShareCoinsModal({
       action: () => { onClose(); navigate("/referrals"); },
     },
     {
-      icon: Heart,
+      icon: HeartPeopleIcon,
       label: "Help Neighbours",
       sub: "Lend items, earn coins",
       action: () => { onClose(); navigate("/community-wishlists"); },

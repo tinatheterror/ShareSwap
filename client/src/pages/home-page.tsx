@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CheckCircle, X, Plus, Download, Heart } from "lucide-react";
+import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -225,7 +226,7 @@ export default function HomePage() {
               className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
             >
               <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0 group-hover:bg-rose-200 transition-colors">
-                <Heart className="h-5 w-5 text-rose-600" />
+                <HeartPeopleIcon className="h-5 w-5 text-rose-600" />
               </div>
               <div>
                 <p className="font-semibold text-gray-900">See what people need</p>

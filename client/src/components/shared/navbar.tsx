@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight, Mail, MessageSquareText } from "lucide-react";
+import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
@@ -333,7 +334,7 @@ export function Navbar() {
                           className="cursor-pointer hover:text-primary"
                           onClick={() => setShowWishlistPopup(true)}
                         >
-                          <Heart className="mr-2 h-4 w-4" />
+                          <HeartPeopleIcon className="mr-2 h-4 w-4" />
                           <span>Help Neighbours</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -472,7 +473,7 @@ export function Navbar() {
                             setShowWishlistPopup(true);
                           }}
                         >
-                          <HandHeart className="h-5 w-5" />
+                          <HeartPeopleIcon className="h-5 w-5" />
                           Help Neighbours
                         </Button>
                       </div>

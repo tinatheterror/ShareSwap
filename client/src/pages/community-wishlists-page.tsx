@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/shared/navbar";
+import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
 import {
   Heart,
   MapPin,
@@ -86,7 +87,7 @@ export default function CommunityWishlistsPage() {
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
-            <Heart className="h-8 w-8 text-teal-600" />
+            <HeartPeopleIcon className="h-8 w-8 text-teal-600" />
             Community Wishlists
           </h1>
           <p className="text-muted-foreground">
@@ -98,7 +99,7 @@ export default function CommunityWishlistsPage() {
         {allWishlists.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Heart className="h-12 w-12 text-slate-400" />
+              <HeartPeopleIcon className="h-12 w-12 text-slate-400" />
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-3">
               No Wishlists Yet

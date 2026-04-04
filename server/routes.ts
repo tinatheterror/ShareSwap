@@ -5850,6 +5850,7 @@ Respond with ONLY the category name, nothing else.`
         } else {
           updateData.status = "AWAITING_HANDOFF_CONFIRM";
           updateData.handoffConfirmDeadline = deadline;
+          updateData.handoffRemindersLevel = 0;
           waitingMessage = `You've confirmed handoff. Waiting for borrower to confirm (${CONFIRMATION_DEADLINE_HOURS}h deadline).`;
         }
       } else if (isRequester && !borrowerAlreadyConfirmed) {
@@ -5861,6 +5862,7 @@ Respond with ONLY the category name, nothing else.`
         } else {
           updateData.status = "AWAITING_HANDOFF_CONFIRM";
           updateData.handoffConfirmDeadline = deadline;
+          updateData.handoffRemindersLevel = 0;
           waitingMessage = `You've confirmed received. Waiting for owner to confirm (${CONFIRMATION_DEADLINE_HOURS}h deadline).`;
         }
       } else {
@@ -5964,13 +5966,38 @@ Respond with ONLY the category name, nothing else.`
       const borrowerId = request.item_requests.requesterId;
 
       if (!bothConfirmed) {
-        // One party confirmed — notify chat that we're waiting on the other
-        await db.insert(messages).values({
-          content: "Waiting for the other party to confirm the handoff — they have 24 hours.",
-          senderId: req.user.id,
-          receiverId: otherPartyId!,
-          messageType: "system",
-        });
+        // Look up display names for both parties
+        const [confirmerUser] = await db
+          .select({ displayName: users.displayName, username: users.username })
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
+        let otherName = "the other party";
+        if (otherPartyId) {
+          const [otherUser] = await db
+            .select({ displayName: users.displayName, username: users.username })
+            .from(users)
+            .where(eq(users.id, otherPartyId))
+            .limit(1);
+          otherName = otherUser?.displayName || otherUser?.username || "the other party";
+        }
+        const confirmerName = confirmerUser?.displayName || confirmerUser?.username || "One party";
+
+        // One party confirmed — send named confirmation + waiting messages
+        await db.insert(messages).values([
+          {
+            content: `${confirmerName} confirmed the handoff ✅`,
+            senderId: ownerId,
+            receiverId: borrowerId,
+            messageType: "system",
+          },
+          {
+            content: `Waiting for ${otherName} to confirm their side.`,
+            senderId: ownerId,
+            receiverId: borrowerId,
+            messageType: "system",
+          },
+        ]);
       } else {
         // Both confirmed — send post-handoff summary messages
         const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
@@ -6012,7 +6039,75 @@ Respond with ONLY the category name, nothing else.`
   app.post("/api/requests/check-handoff-deadlines", csrfProtection, async (req, res) => {
     try {
       const now = new Date();
-      
+
+      // ── Smart reminders: find AWAITING requests that need a nudge ──
+      const pendingHandoffs = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM"),
+            gte(itemRequests.handoffConfirmDeadline, now),
+            lt(itemRequests.handoffRemindersLevel, 3)
+          )
+        );
+
+      for (const req2 of pendingHandoffs) {
+        const level = req2.item_requests.handoffRemindersLevel ?? 0;
+        const ownerId2 = req2.items.ownerId!;
+        const borrowerId2 = req2.item_requests.requesterId;
+
+        // Determine who confirmed first and when
+        const ownerConfirmed = req2.item_requests.ownerConfirmedHandoff;
+        const firstConfirmedAt = ownerConfirmed
+          ? req2.item_requests.ownerConfirmedHandoffAt
+          : req2.item_requests.borrowerConfirmedHandoffAt;
+
+        if (!firstConfirmedAt) continue;
+
+        const elapsedMs = now.getTime() - new Date(firstConfirmedAt).getTime();
+        const elapsedMin = elapsedMs / 60_000;
+        const elapsedHrs = elapsedMs / 3_600_000;
+
+        // Look up waiting party name
+        const waitingPartyId = ownerConfirmed ? borrowerId2 : ownerId2;
+        const [waitingUser] = await db
+          .select({ displayName: users.displayName, username: users.username })
+          .from(users)
+          .where(eq(users.id, waitingPartyId))
+          .limit(1);
+        const waitingName = waitingUser?.displayName || waitingUser?.username || "the other party";
+
+        let reminderContent: string | null = null;
+        let newLevel = level;
+
+        if (level === 0 && elapsedMin >= 10) {
+          reminderContent = `⏰ Reminder — waiting for ${waitingName} to confirm the handoff.`;
+          newLevel = 1;
+        } else if (level === 1 && elapsedHrs >= 1) {
+          reminderContent = `⚠️ It's been over an hour. ${waitingName} still needs to confirm the handoff — please check in with them.`;
+          newLevel = 2;
+        } else if (level === 2 && elapsedHrs >= 24) {
+          reminderContent = `🚨 24 hours have passed with no response from ${waitingName}. The handoff will be auto-confirmed shortly.`;
+          newLevel = 3;
+        }
+
+        if (reminderContent !== null && newLevel !== level) {
+          await db.insert(messages).values({
+            content: reminderContent,
+            senderId: ownerId2,
+            receiverId: borrowerId2,
+            messageType: "system",
+          });
+          await db
+            .update(itemRequests)
+            .set({ handoffRemindersLevel: newLevel })
+            .where(eq(itemRequests.id, req2.item_requests.id));
+        }
+      }
+
+      // ── Auto-advance: find requests past their deadline ──
       // Find requests awaiting handoff confirmation with passed deadlines
       const expiredHandoffs = await db
         .select()

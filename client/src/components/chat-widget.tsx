@@ -1174,7 +1174,7 @@ export function ChatWidget() {
                       const needsAction =
                         (item.requestStatus === "PENDING" && !item.iAmRequester) ||
                         item.requestNegotiationStatus === "counter_proposed";
-                      const isActive = item.partnerActiveStatus === "Active now" || activeStatus?.label === "Active now";
+                      const isActive = activeStatus?.label === "Active now";
                       const activityTime = new Date(item.lastActivityTime);
                       const now = new Date();
                       const isToday = activityTime.toDateString() === now.toDateString();
@@ -1328,7 +1328,7 @@ export function ChatWidget() {
                     )}
                     {(() => {
                       const selectedInboxItem = inboxItems.find(item => item.partnerId === selectedConversation);
-                      const activeLabel = selectedInboxItem?.partnerActiveStatus || getActiveStatus(partnerProfile?.lastActiveAt ?? null)?.label || null;
+                      const activeLabel = getActiveStatus(partnerProfile?.lastActiveAt ?? null)?.label || null;
                       const responseTime = selectedInboxItem?.partnerResponseTime || null;
                       if (!activeLabel && !responseTime) return null;
                       const isActiveNow = activeLabel === "Active now";

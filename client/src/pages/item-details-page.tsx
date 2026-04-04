@@ -402,14 +402,13 @@ export default function ItemDetailsPage() {
                       </span>
                       <Link
                         href={`/profile/${(item as any).owner.handle || (item as any).owner.username}`}
+                        className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium"
                       >
-                        <span className="text-sm text-teal-600 hover:text-teal-700 cursor-pointer font-medium">
-                          {(item as any).owner.displayName ||
-                            formatDisplayName(
-                              (item as any).owner.handle ||
-                                (item as any).owner.username,
-                            )}
-                        </span>
+                        {(item as any).owner.displayName ||
+                          formatDisplayName(
+                            (item as any).owner.handle ||
+                              (item as any).owner.username,
+                          )}
                       </Link>
                       <div className="shadow-sm rounded-full">
                         <UserBadges

@@ -1304,7 +1304,7 @@ export function ChatWidget() {
                   <div className="flex items-center gap-1">
                     <Link
                       href={`/profile/${partnerProfile?.handle || partnerProfile?.username || allConversations.find(c => c.userId === selectedConversation)?.username}`}
-                      className="font-semibold text-sm truncate hover:underline"
+                      className="font-semibold text-sm truncate hover:underline cursor-pointer"
                     >
                       {formatDisplayName(
                         partnerProfile?.displayName || partnerProfile?.username ||

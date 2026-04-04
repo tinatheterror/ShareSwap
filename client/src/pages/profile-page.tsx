@@ -693,12 +693,11 @@ export default function ProfilePage() {
                           <div className="flex items-center gap-2 mb-1">
                             <Link
                               href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}
+                              className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer"
                             >
-                              <span className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
-                                @
-                                {(review.reviewer as any).handle ||
-                                  review.reviewer.username.split("@")[0]}
-                              </span>
+                              @
+                              {(review.reviewer as any).handle ||
+                                review.reviewer.username.split("@")[0]}
                             </Link>
                             <UserBadges
                               isVerified={review.reviewer.isVerified}

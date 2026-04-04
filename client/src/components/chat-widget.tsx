@@ -761,15 +761,15 @@ export function ChatWidget() {
           {/* Status badge — top right only */}
           <div className="flex justify-end mb-1.5">
             {iSentCounter ? (
-              <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800">
+              <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 pointer-events-none">
                 COUNTER SENT
               </Badge>
             ) : iReceivedCounter ? (
-              <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 text-white">
+              <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 text-white pointer-events-none">
                 COUNTER RECEIVED
               </Badge>
             ) : (
-              <Badge className={`text-[10px] px-1.5 py-0 ${getStatusColor(request.status)}`}>
+              <Badge className={`text-[10px] px-1.5 py-0 pointer-events-none ${getStatusColor(request.status)}`}>
                 {request.status.replace(/_/g, " ")}
               </Badge>
             )}

@@ -1229,7 +1229,7 @@ export function ChatWidget() {
                               {/* Row 2: item name */}
                               {item.itemName && (
                                 <div className="-mt-1 mb-0.5">
-                                  <span className="text-[11px] font-semibold text-gray-700 truncate leading-none">{item.itemName}</span>
+                                  <span className="text-[11px] font-semibold italic text-gray-700 truncate leading-none">{item.itemName}</span>
                                 </div>
                               )}
 

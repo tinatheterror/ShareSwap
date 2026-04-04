@@ -264,6 +264,7 @@ export function ChatWidget() {
   const [message, setMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
   // Request handling state
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
@@ -1082,8 +1083,11 @@ export function ChatWidget() {
                   className="h-7 text-xs text-muted-foreground hover:text-foreground ml-auto"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedConversation(partnerId);
                     setActiveConversationRequestId(request.id);
+                    setTimeout(() => {
+                      messageInputRef.current?.focus();
+                      messageInputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }, 50);
                   }}
                 >
                   <MessageCircle className="h-3 w-3 mr-1" />
@@ -1609,6 +1613,7 @@ export function ChatWidget() {
 
               <div className="p-3 border-t flex gap-2">
                 <Input
+                  ref={messageInputRef}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Type a message..."

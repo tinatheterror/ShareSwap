@@ -146,6 +146,8 @@ interface ItemRequest {
   depositStatus: string | null;
   courierAddress: string | null;
   courierPickupWindow: string | null;
+  ownerConfirmedHandoff: boolean | null;
+  borrowerConfirmedHandoff: boolean | null;
   negotiationStatus: string | null;
   counterDeliveryMethod: string | null;
   counterDepositMethod: string | null;
@@ -1489,50 +1491,79 @@ export function ChatWidget() {
                 </ScrollArea>
               )}
 
-              {/* Sticky CTA — pay deposit */}
+              {/* Sticky CTA — context-aware for both borrower and owner */}
               {(() => {
                 const pr = requests.find((r) =>
                   (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
                   (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
                 );
-                if (!pr || pr.requesterId !== user?.id) return null;
-                const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
+                if (!pr) return null;
 
-                if (pr.status === "ACCEPTED") {
-                  const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
-                  return (
-                    <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
-                      <Button className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
-                        onClick={() => { setSelectedRequest(pr); setShowTrustDepositModal(true); }}>
-                        <Shield className="h-4 w-4 mr-2" />
-                        Pay ${dc.finalDeposit} deposit
-                      </Button>
-                    </div>
-                  );
+                const isBorrower = pr.requesterId === user?.id;
+                const isOwner = pr.item.ownerId === user?.id;
+
+                // --- BORROWER CTAs ---
+                if (isBorrower) {
+                  const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
+
+                  if (pr.status === "ACCEPTED") {
+                    const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
+                    return (
+                      <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
+                        <Button className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowTrustDepositModal(true); }}>
+                          <Shield className="h-4 w-4 mr-2" />
+                          Pay ${dc.finalDeposit} deposit
+                        </Button>
+                      </div>
+                    );
+                  }
+
+                  if (
+                    (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
+                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff)
+                  ) {
+                    return (
+                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                        <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
+                          <Package className="h-4 w-4 mr-2" />
+                          Confirm received
+                        </Button>
+                      </div>
+                    );
+                  }
+
+                  if (pr.status === "IN_PROGRESS") {
+                    return (
+                      <div className="px-3 py-2 border-t border-blue-100 bg-blue-50">
+                        <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Return item
+                        </Button>
+                      </div>
+                    );
+                  }
                 }
 
-                if (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") {
-                  return (
-                    <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
-                      <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
-                        onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
-                        <Package className="h-4 w-4 mr-2" />
-                        Confirm received
-                      </Button>
-                    </div>
-                  );
-                }
-
-                if (pr.status === "IN_PROGRESS") {
-                  return (
-                    <div className="px-3 py-2 border-t border-blue-100 bg-blue-50">
-                      <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
-                        onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Return item
-                      </Button>
-                    </div>
-                  );
+                // --- OWNER CTAs ---
+                if (isOwner) {
+                  if (
+                    pr.status === "DEPOSIT_CONFIRMED" ||
+                    pr.status === "COURIER_PENDING" ||
+                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff)
+                  ) {
+                    return (
+                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                        <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
+                          <Package className="h-4 w-4 mr-2" />
+                          Confirm handoff
+                        </Button>
+                      </div>
+                    );
+                  }
                 }
 
                 return null;

@@ -1426,31 +1426,31 @@ export function ChatWidget() {
                               const deliveryChanged = mDelivery !== origDelivery;
                               const depositChanged = mDeposit !== origDeposit;
                               return (
-                                <div className="flex flex-col items-start gap-0.5 text-[11px] text-muted-foreground">
+                                <div className="w-full pl-[58px] flex flex-col gap-0.5 text-[11px] text-muted-foreground">
                                   {newStart && newEnd && (
-                                    <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-medium" : ""}`}>
+                                    <div className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-medium" : ""}`}>
                                       <Clock className="h-3 w-3 shrink-0" />
-                                      {newStart} – {newEnd}
-                                    </span>
+                                      <span>{newStart} – {newEnd}</span>
+                                    </div>
                                   )}
-                                  <span className="flex items-center gap-2.5">
+                                  <div className="flex items-center gap-2.5">
                                     {mDelivery && (
                                       <span className={`flex items-center gap-0.5 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
                                         {mDelivery === "courier"
                                           ? <Truck className="h-3 w-3 text-blue-500" />
-                                          : <MapPin className="h-3 w-3" />}
+                                          : <MapPin className="h-3 w-3 text-gray-500" />}
                                         {mDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                                       </span>
                                     )}
                                     {mDeposit && (
                                       <span className={`flex items-center gap-0.5 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
                                         {mDeposit === "in_app"
-                                          ? <Shield className="h-3 w-3" />
-                                          : <MapPin className="h-3 w-3" />}
+                                          ? <Shield className="h-3 w-3 text-gray-500" />
+                                          : <MapPin className="h-3 w-3 text-gray-500" />}
                                         {mDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                       </span>
                                     )}
-                                  </span>
+                                  </div>
                                 </div>
                               );
                             })()}

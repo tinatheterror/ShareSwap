@@ -490,11 +490,10 @@ export function ChatWidget() {
     const min = diff / 60_000;
     const hrs = diff / 3_600_000;
     const days = diff / 86_400_000;
-    if (min < 5) return { label: "Active now", color: "text-green-600" };
-    if (hrs < 1) return { label: `Active ${Math.floor(min)}m ago`, color: "text-green-500" };
-    if (hrs < 24) return { label: `Active ${Math.floor(hrs)}h ago`, color: "text-amber-600" };
-    if (days < 7) return { label: `Active ${Math.floor(days)}d ago`, color: "text-gray-500" };
-    return null;
+    if (min < 10) return { label: "Active now", color: "text-green-600" };
+    if (hrs < 24) return { label: "Active today", color: "text-green-500" };
+    if (days < 7) return { label: "Active this week", color: "text-amber-600" };
+    return { label: "Inactive", color: "text-gray-400" };
   };
 
   const getPartnerInitials = (displayName: string | null, username: string): string => {

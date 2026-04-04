@@ -1426,7 +1426,7 @@ export function ChatWidget() {
                               const deliveryChanged = mDelivery !== origDelivery;
                               const depositChanged = mDeposit !== origDeposit;
                               return (
-                                <div className="flex flex-col items-center gap-0.5 text-[11px] text-muted-foreground">
+                                <div className="flex flex-col items-start gap-0.5 text-[11px] text-muted-foreground">
                                   {newStart && newEnd && (
                                     <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-medium" : ""}`}>
                                       <Clock className="h-3 w-3 shrink-0" />

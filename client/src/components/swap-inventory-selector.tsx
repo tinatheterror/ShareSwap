@@ -121,6 +121,7 @@ export function SwapInventorySelector({
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
         {/* Hero Section - Target Item */}
@@ -302,5 +303,6 @@ export function SwapInventorySelector({
       required={insufficientRequired}
       context="swap"
     />
+    </>
   );
 }

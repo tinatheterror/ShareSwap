@@ -4302,6 +4302,7 @@ Respond with ONLY the category name, nothing else.`
           content: `🎁 Gift accepted! Arrange pickup or delivery for "${request.items.name}".`,
           senderId: req.user.id,
           receiverId: request.item_requests.requesterId,
+          requestId,
         });
         console.log(`✅ Gift accepted - chat message sent for pickup coordination`);
       } catch (error) {
@@ -6003,12 +6004,14 @@ Respond with ONLY the category name, nothing else.`
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
+            requestId,
           },
           {
             content: `Waiting for ${otherName} to confirm their side.`,
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
+            requestId,
           },
         ]);
       } else {
@@ -6029,6 +6032,7 @@ Respond with ONLY the category name, nothing else.`
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
+            requestId,
           });
         }
       }
@@ -6112,6 +6116,7 @@ Respond with ONLY the category name, nothing else.`
             senderId: ownerId2,
             receiverId: borrowerId2,
             messageType: "system",
+            requestId: req2.item_requests.id,
           });
           await db
             .update(itemRequests)

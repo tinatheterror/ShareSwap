@@ -1391,12 +1391,17 @@ export function ChatWidget() {
                         relatedRequest.negotiationStatus === "counter_proposed";
                       const iAmOwner = relatedRequest && relatedRequest.item.ownerId === user.id;
 
+                      // Resolve actor name: "You" for current user, partner's display name otherwise
+                      const iActor = msg.senderId === user.id;
+                      const partnerName = formatDisplayName(partnerProfile?.displayName || partnerProfile?.username || "");
+                      const actor = iActor ? "You" : partnerName;
+
                       const eventLabel =
-                        et === "request_accepted" ? "✓ Request accepted! Arrange a pickup time and location." :
-                        et === "request_declined" ? (msg.senderId === user.id ? "Request declined" : "Request declined") :
-                        et === "terms_accepted" ? (msg.senderId === user.id ? "✓ You accepted the terms" : "✓ Terms accepted") :
-                        et === "terms_declined" ? (msg.senderId === user.id ? "Terms declined" : "Terms declined") :
-                        et === "counter_proposed" ? (msg.senderId === user.id ? "You proposed new terms" : "New terms proposed") :
+                        et === "request_accepted" ? `✓ ${actor} accepted the request` :
+                        et === "request_declined" ? `${actor} declined the request` :
+                        et === "terms_accepted" ? `✓ ${actor} accepted the new terms` :
+                        et === "terms_declined" ? `${actor} declined the new terms` :
+                        et === "counter_proposed" ? `${actor} proposed new terms` :
                         et === "handoff_confirmed" ? "✓ Handoff confirmed" :
                         et === "deposit_confirmed" ? "✓ Deposit secured" :
                         msg.content;

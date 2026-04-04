@@ -712,6 +712,8 @@ export function ChatWidget() {
         return "bg-purple-100 text-purple-800";
       case "DECLINED":
         return "bg-red-100 text-red-800";
+      case "AWAITING_HANDOFF_CONFIRM":
+        return "bg-purple-100 text-purple-800";
       case "COMPLETED":
         return "bg-gray-100 text-gray-800";
       default:
@@ -1184,7 +1186,7 @@ export function ChatWidget() {
                         <button
                           key={item.partnerId}
                           onClick={() => openConversationWithPartner(item.partnerId, item.unreadCount)}
-                          className={`w-full px-3 py-2.5 text-left transition-colors hover:bg-gray-50 ${needsAction ? "bg-amber-50/60 hover:bg-amber-50" : ""}`}
+                          className={`w-full px-3 py-2.5 text-left transition-colors ${item.requestStatus === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-purple-50"} ${needsAction ? "bg-amber-50/60 hover:bg-amber-50" : ""}`}
                         >
                           <div className="flex items-start gap-2.5">
                             {/* Avatar */}

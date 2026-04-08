@@ -20,9 +20,12 @@ export function BackgroundPolling() {
       const result = await response.json();
       if (result.autoAdvancedCount > 0) {
         queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+        const count = result.autoAdvancedCount;
         toast({
-          title: "Handoff completed",
-          description: `${result.autoAdvancedCount} handoff(s) auto-completed after deadline.`,
+          title: count === 1 ? "Exchange auto-confirmed" : `${count} exchanges auto-confirmed`,
+          description: count === 1
+            ? "The other party didn't confirm receipt in time, so your exchange was automatically confirmed. Check your inbox."
+            : `${count} exchanges were automatically confirmed after the confirmation window passed. Check your inbox.`,
         });
       }
     } catch (error) {

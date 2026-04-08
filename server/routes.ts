@@ -4049,6 +4049,9 @@ Respond with ONLY the category name, nothing else.`
         ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
         borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
         handoffConfirmDeadline: itemRequests.handoffConfirmDeadline,
+        handoffFlaggedForReview: itemRequests.handoffFlaggedForReview,
+        handoffDisputedBy: itemRequests.handoffDisputedBy,
+        handoffDeadlineExtended: itemRequests.handoffDeadlineExtended,
         ownerConfirmedReturn: itemRequests.ownerConfirmedReturn,
         borrowerConfirmedReturn: itemRequests.borrowerConfirmedReturn,
         returnConditionOk: itemRequests.returnConditionOk,
@@ -4118,6 +4121,9 @@ Respond with ONLY the category name, nothing else.`
       ownerConfirmedHandoff: r.ownerConfirmedHandoff,
       borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
       handoffConfirmDeadline: r.handoffConfirmDeadline,
+      handoffFlaggedForReview: r.handoffFlaggedForReview,
+      handoffDisputedBy: r.handoffDisputedBy,
+      handoffDeadlineExtended: r.handoffDeadlineExtended,
       ownerConfirmedReturn: r.ownerConfirmedReturn,
       borrowerConfirmedReturn: r.borrowerConfirmedReturn,
       returnConditionOk: r.returnConditionOk,
@@ -5979,10 +5985,10 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(notifications).values({
           userId: otherPartyId,
           type: "handoff_pending",
-          title: "Handoff Confirmation Needed",
-          message: isOwner 
-            ? `Owner has confirmed handoff for "${request.items.name}". Please confirm you received the item.`
-            : `Borrower has confirmed receiving "${request.items.name}". Please confirm the handoff.`,
+          title: "Item Exchange Confirmation Needed",
+          message: isOwner
+            ? `Owner confirmed the item exchange for "${request.items.name}". Please confirm receipt within 24 hours or it will be completed automatically.`
+            : `Borrower confirmed the item exchange for "${request.items.name}". Please confirm within 24 hours or it will be completed automatically.`,
           itemId: request.items.id,
           requestId: requestId,
         });
@@ -6013,14 +6019,14 @@ Respond with ONLY the category name, nothing else.`
         // One party confirmed — send named confirmation + waiting messages
         await db.insert(messages).values([
           {
-            content: `${confirmerName} confirmed the handoff ✅`,
+            content: `${confirmerName} confirmed the item exchange ✅`,
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
             requestId,
           },
           {
-            content: `Waiting for ${otherName} to confirm their side.`,
+            content: `${otherName}, please confirm within 24 hours or it will be completed automatically.`,
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
@@ -6138,8 +6144,7 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
-      // ── Auto-advance: find requests past their deadline ──
-      // Find requests awaiting handoff confirmation with passed deadlines
+      // ── Expired handoffs: dispute → flag; silent → extend then flag ──
       const expiredHandoffs = await db
         .select()
         .from(itemRequests)
@@ -6154,99 +6159,116 @@ Respond with ONLY the category name, nothing else.`
       let autoAdvancedCount = 0;
 
       for (const request of expiredHandoffs) {
-        // Auto-advance: complete the handoff
-        const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-        
-        // Process ShareCoins for BORROW type
-        if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-          const [borrower] = await db
-            .select({ shareCoins: users.shareCoins })
-            .from(users)
-            .where(eq(users.id, request.item_requests.requesterId))
-            .limit(1);
+        const ownerId2 = request.items.ownerId!;
+        const borrowerId2 = request.item_requests.requesterId;
+        const itemName = request.items.name;
+        const reqId = request.item_requests.id;
+        const alreadyExtended = request.item_requests.handoffDeadlineExtended;
+        const isDisputed = !!request.item_requests.handoffDisputedBy;
+        const alreadyFlagged = request.item_requests.handoffFlaggedForReview;
 
-          const currentBalance = parseFloat(borrower?.shareCoins || "0");
-          
-          if (currentBalance >= shareCoinAmount) {
-            // Deduct from borrower
-            await db
-              .update(users)
-              .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
-              .where(eq(users.id, request.item_requests.requesterId));
+        if (alreadyFlagged) continue; // already handled
 
-            await db.insert(shareCoinsTransactions).values({
-              userId: request.item_requests.requesterId,
-              amount: (-shareCoinAmount).toString(),
-              description: `Borrowed: ${request.items.name} (auto-advanced)`,
-              transactionType: "BORROW_CHARGE",
-            });
+        if (isDisputed) {
+          // Dispute case: one party reported an issue — flag for review immediately
+          await db
+            .update(itemRequests)
+            .set({ handoffFlaggedForReview: true })
+            .where(eq(itemRequests.id, reqId));
 
-            // Award to lender
-            if (request.items.ownerId) {
-              const [lender] = await db
-                .select({ shareCoins: users.shareCoins })
-                .from(users)
-                .where(eq(users.id, request.items.ownerId))
-                .limit(1);
+          await db.insert(notifications).values([
+            {
+              userId: borrowerId2,
+              type: "handoff_flagged",
+              title: "Item Exchange Under Review",
+              message: `The item exchange for "${itemName}" has been flagged for review because one party reported an issue. Our team will follow up.`,
+              itemId: request.items.id,
+              requestId: reqId,
+            },
+            ...(ownerId2 ? [{
+              userId: ownerId2,
+              type: "handoff_flagged",
+              title: "Item Exchange Under Review",
+              message: `The item exchange for "${itemName}" has been flagged for review because one party reported an issue. Our team will follow up.`,
+              itemId: request.items.id,
+              requestId: reqId,
+            }] : []),
+          ]);
 
-              const lenderBalance = parseFloat(lender?.shareCoins || "0");
-              await db
-                .update(users)
-                .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
-                .where(eq(users.id, request.items.ownerId));
+          await db.insert(messages).values({
+            content: `⚠️ This item exchange has been flagged for review. Our support team will follow up with both parties.`,
+            senderId: ownerId2,
+            receiverId: borrowerId2,
+            messageType: "system",
+            requestId: reqId,
+          });
 
-              await db.insert(shareCoinsTransactions).values({
-                userId: request.items.ownerId,
-                amount: shareCoinAmount.toString(),
-                description: `Lent: ${request.items.name} (auto-advanced)`,
-                transactionType: "LEND_REWARD",
-              });
-            }
-          }
+        } else if (!alreadyExtended) {
+          // Silent case (first expiry): extend deadline by 24h and remind
+          const extended = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          await db
+            .update(itemRequests)
+            .set({
+              handoffConfirmDeadline: extended,
+              handoffDeadlineExtended: true,
+              handoffRemindersLevel: 3,
+            })
+            .where(eq(itemRequests.id, reqId));
+
+          const confirmerName = request.item_requests.ownerConfirmedHandoff ? "Owner" : "Borrower";
+          const waitingPartyId = request.item_requests.ownerConfirmedHandoff ? borrowerId2 : ownerId2;
+
+          await db.insert(messages).values({
+            content: `⏳ Reminder: ${confirmerName} confirmed the item exchange but the other party hasn't responded. You have 24 more hours to confirm, or this exchange will be flagged for review.`,
+            senderId: ownerId2,
+            receiverId: borrowerId2,
+            messageType: "system",
+            requestId: reqId,
+          });
+
+          await db.insert(notifications).values({
+            userId: waitingPartyId,
+            type: "handoff_pending",
+            title: "Final Reminder — Item Exchange",
+            message: `${confirmerName} confirmed the item exchange for "${itemName}". Please confirm within the next 24 hours or it will be flagged for review.`,
+            itemId: request.items.id,
+            requestId: reqId,
+          });
+
+        } else {
+          // Silent case (already extended, still no response): flag for review
+          await db
+            .update(itemRequests)
+            .set({ handoffFlaggedForReview: true })
+            .where(eq(itemRequests.id, reqId));
+
+          await db.insert(notifications).values([
+            {
+              userId: borrowerId2,
+              type: "handoff_flagged",
+              title: "Item Exchange Flagged for Review",
+              message: `The item exchange for "${itemName}" has been flagged for review — neither party confirmed within the extended window. Our team will follow up.`,
+              itemId: request.items.id,
+              requestId: reqId,
+            },
+            ...(ownerId2 ? [{
+              userId: ownerId2,
+              type: "handoff_flagged",
+              title: "Item Exchange Flagged for Review",
+              message: `The item exchange for "${itemName}" has been flagged for review — neither party confirmed within the extended window. Our team will follow up.`,
+              itemId: request.items.id,
+              requestId: reqId,
+            }] : []),
+          ]);
+
+          await db.insert(messages).values({
+            content: `⚠️ This item exchange has been flagged for review after the confirmation window passed without a response. Our support team will follow up.`,
+            senderId: ownerId2,
+            receiverId: borrowerId2,
+            messageType: "system",
+            requestId: reqId,
+          });
         }
-
-        // Update request to IN_PROGRESS
-        await db
-          .update(itemRequests)
-          .set({
-            status: "IN_PROGRESS",
-            handoffConfirmedAt: now,
-            borrowPeriodStartedAt: now,
-            shareCoinsCharged: true,
-            shareCoinsChargedAt: now,
-            depositStatus: "held",
-            handoffAutoAdvanced: true,
-          })
-          .where(eq(itemRequests.id, request.item_requests.id));
-
-        // Mark item as unavailable
-        await db
-          .update(items)
-          .set({ isAvailable: false })
-          .where(eq(items.id, request.items.id));
-
-        // Notify both parties
-        const confirmingParty = request.item_requests.ownerConfirmedHandoff ? "Owner" : "Borrower";
-        const notificationMessage = `Handoff for "${request.items.name}" was auto-confirmed after ${confirmingParty.toLowerCase()} confirmation timed out.`;
-        
-        await db.insert(notifications).values([
-          {
-            userId: request.item_requests.requesterId,
-            type: "handoff_auto_advanced",
-            title: "Handoff Auto-Confirmed",
-            message: notificationMessage,
-            itemId: request.items.id,
-            requestId: request.item_requests.id,
-          },
-          ...(request.items.ownerId ? [{
-            userId: request.items.ownerId,
-            type: "handoff_auto_advanced",
-            title: "Handoff Auto-Confirmed",
-            message: notificationMessage,
-            itemId: request.items.id,
-            requestId: request.item_requests.id,
-          }] : []),
-        ]);
 
         autoAdvancedCount++;
       }
@@ -6255,6 +6277,75 @@ Respond with ONLY the category name, nothing else.`
     } catch (error: any) {
       console.error("Error checking handoff deadlines:", error);
       res.status(500).json({ error: "Failed to check handoff deadlines" });
+    }
+  });
+
+  // Dispute handoff — either party reports the item was not received/exchanged
+  app.post("/api/requests/:requestId/dispute-handoff", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
+
+      if (request.item_requests.status !== "AWAITING_HANDOFF_CONFIRM") {
+        return res.status(400).json({ error: "This exchange is not awaiting confirmation" });
+      }
+
+      if (request.item_requests.handoffDisputedBy) {
+        return res.status(400).json({ error: "A dispute has already been filed for this exchange" });
+      }
+
+      const disputerRole = isOwner ? "owner" : "borrower";
+      const ownerId3 = request.items.ownerId!;
+      const borrowerId3 = request.item_requests.requesterId;
+      const itemName = request.items.name;
+
+      // Look up disputer name
+      const [disputerUser] = await db
+        .select({ displayName: users.displayName, username: users.username })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      const disputerName = disputerUser?.displayName || disputerUser?.username || (isOwner ? "Owner" : "Borrower");
+
+      await db
+        .update(itemRequests)
+        .set({ handoffDisputedBy: disputerRole })
+        .where(eq(itemRequests.id, requestId));
+
+      const otherPartyId = isOwner ? borrowerId3 : ownerId3;
+      await db.insert(notifications).values({
+        userId: otherPartyId,
+        type: "handoff_disputed",
+        title: "Item Exchange Issue Reported",
+        message: `${disputerName} reported an issue with the item exchange for "${itemName}". Please respond so this can be resolved.`,
+        itemId: request.items.id,
+        requestId,
+      });
+
+      await db.insert(messages).values({
+        content: `⚠️ ${disputerName} reported that the item was not received. The other party can respond, or this will be reviewed after 24 hours.`,
+        senderId: ownerId3,
+        receiverId: borrowerId3,
+        messageType: "system",
+        requestId,
+      });
+
+      res.json({ success: true, message: "Dispute filed. We'll review this exchange shortly." });
+    } catch (error: any) {
+      console.error("Error filing handoff dispute:", error);
+      res.status(500).json({ error: "Failed to file dispute" });
     }
   });
 

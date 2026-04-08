@@ -22,10 +22,10 @@ export function BackgroundPolling() {
         queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
         const count = result.autoAdvancedCount;
         toast({
-          title: count === 1 ? "Exchange auto-confirmed" : `${count} exchanges auto-confirmed`,
+          title: count === 1 ? "Item exchange auto-confirmed" : `${count} item exchanges auto-confirmed`,
           description: count === 1
-            ? "The other party didn't confirm receipt in time, so your exchange was automatically confirmed. Check your inbox."
-            : `${count} exchanges were automatically confirmed after the confirmation window passed. Check your inbox.`,
+            ? "The other party didn't confirm receipt in time, so your item exchange was automatically confirmed. Check your inbox."
+            : `${count} item exchanges were automatically confirmed after the confirmation window passed. Check your inbox.`,
         });
       }
     } catch (error) {

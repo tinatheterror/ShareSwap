@@ -148,6 +148,9 @@ interface ItemRequest {
   courierPickupWindow: string | null;
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
+  handoffFlaggedForReview: boolean | null;
+  handoffDisputedBy: string | null;
+  handoffDeadlineExtended: boolean | null;
   negotiationStatus: string | null;
   counterDeliveryMethod: string | null;
   counterDepositMethod: string | null;
@@ -451,6 +454,21 @@ export function ChatWidget() {
       setShowChatCounterModal(false);
       setChatCounterRequest(null);
       toast({ title: "Counter Sent", description: "The other party will be notified." });
+    },
+  });
+
+  const disputeHandoffMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/dispute-handoff`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
+      toast({ title: "Issue reported", description: "We'll review this item exchange. The other party has been notified." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not report issue", description: err.message, variant: "destructive" });
     },
   });
 
@@ -1568,17 +1586,42 @@ export function ChatWidget() {
                     );
                   }
 
+                  if (pr.status === "AWAITING_HANDOFF_CONFIRM" && pr.handoffFlaggedForReview) {
+                    return (
+                      <div className="px-3 py-2 border-t border-orange-100 bg-orange-50">
+                        <p className="text-xs text-orange-700 text-center font-medium">⚠️ This item exchange is under review. Our team will follow up.</p>
+                      </div>
+                    );
+                  }
+
                   if (
                     (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff)
                   ) {
+                    const isAwaitingBorrower = pr.status === "AWAITING_HANDOFF_CONFIRM";
                     return (
-                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 flex flex-col gap-1.5">
                         <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
                           <Package className="h-4 w-4 mr-2" />
                           Confirm received
                         </Button>
+                        {isAwaitingBorrower && !pr.handoffDisputedBy && (
+                          <button
+                            className="text-xs text-red-600 hover:text-red-700 text-center underline underline-offset-2 py-0.5"
+                            onClick={() => {
+                              if (confirm("Report that you did not receive the item? The other party will be notified and this exchange will be reviewed.")) {
+                                disputeHandoffMutation.mutate(pr.id);
+                              }
+                            }}
+                            disabled={disputeHandoffMutation.isPending}
+                          >
+                            I didn't receive the item
+                          </button>
+                        )}
+                        {isAwaitingBorrower && pr.handoffDisputedBy && (
+                          <p className="text-xs text-orange-600 text-center">Issue reported — awaiting review</p>
+                        )}
                       </div>
                     );
                   }
@@ -1598,18 +1641,43 @@ export function ChatWidget() {
 
                 // --- OWNER CTAs ---
                 if (isOwner) {
+                  if (pr.status === "AWAITING_HANDOFF_CONFIRM" && pr.handoffFlaggedForReview) {
+                    return (
+                      <div className="px-3 py-2 border-t border-orange-100 bg-orange-50">
+                        <p className="text-xs text-orange-700 text-center font-medium">⚠️ This item exchange is under review. Our team will follow up.</p>
+                      </div>
+                    );
+                  }
+
                   if (
                     pr.status === "DEPOSIT_CONFIRMED" ||
                     pr.status === "COURIER_PENDING" ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff)
                   ) {
+                    const isAwaitingOwner = pr.status === "AWAITING_HANDOFF_CONFIRM";
                     return (
-                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                      <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 flex flex-col gap-1.5">
                         <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
                           <Package className="h-4 w-4 mr-2" />
                           Confirm handoff
                         </Button>
+                        {isAwaitingOwner && !pr.handoffDisputedBy && (
+                          <button
+                            className="text-xs text-red-600 hover:text-red-700 text-center underline underline-offset-2 py-0.5"
+                            onClick={() => {
+                              if (confirm("Report that the item exchange did not happen? The other party will be notified and this exchange will be reviewed.")) {
+                                disputeHandoffMutation.mutate(pr.id);
+                              }
+                            }}
+                            disabled={disputeHandoffMutation.isPending}
+                          >
+                            Item was not exchanged
+                          </button>
+                        )}
+                        {isAwaitingOwner && pr.handoffDisputedBy && (
+                          <p className="text-xs text-orange-600 text-center">Issue reported — awaiting review</p>
+                        )}
                       </div>
                     );
                   }

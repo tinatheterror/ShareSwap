@@ -330,7 +330,11 @@ export const itemRequests = pgTable("item_requests", {
   borrowerConfirmedHandoffAt: timestamp("borrower_confirmed_handoff_at"),
   handoffConfirmDeadline: timestamp("handoff_confirm_deadline"), // deadline for second party to confirm
   handoffAutoAdvanced: boolean("handoff_auto_advanced").default(false), // true if auto-advanced after timeout
+  handoffAutoConfirmedBy: varchar("handoff_auto_confirmed_by", { length: 20 }), // 'owner' or 'borrower'
   handoffRemindersLevel: integer("handoff_reminders_level").default(0), // 0=none, 1=10min sent, 2=1hr sent, 3=24hr sent
+  handoffDeadlineExtended: boolean("handoff_deadline_extended").default(false), // true if deadline was extended once
+  handoffFlaggedForReview: boolean("handoff_flagged_for_review").default(false), // true if flagged for admin review
+  handoffDisputedBy: varchar("handoff_disputed_by", { length: 20 }), // 'owner' or 'borrower' if explicitly disputed
   handoffConfirmedAt: timestamp("handoff_confirmed_at"),
   borrowPeriodStartedAt: timestamp("borrow_period_started_at"),
   

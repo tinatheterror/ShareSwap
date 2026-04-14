@@ -18,14 +18,26 @@ export function BackgroundPolling() {
     try {
       const response = await apiRequest("POST", "/api/requests/check-handoff-deadlines", {});
       const result = await response.json();
-      if (result.autoAdvancedCount > 0) {
+      if (result.autoAdvancedCount > 0 || result.flaggedCount > 0) {
         queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      }
+      if (result.autoAdvancedCount > 0) {
         const count = result.autoAdvancedCount;
         toast({
           title: count === 1 ? "Exchange auto-confirmed" : `${count} exchanges auto-confirmed`,
           description: count === 1
             ? "The other party didn't confirm receipt in time, so your exchange was automatically confirmed. Check your inbox."
             : `${count} exchanges were automatically confirmed after the confirmation window passed. Check your inbox.`,
+        });
+      }
+      if (result.flaggedCount > 0) {
+        const count = result.flaggedCount;
+        toast({
+          title: count === 1 ? "Exchange flagged for review" : `${count} exchanges flagged for review`,
+          description: "One party reported the item was not handed off and no response was received. An admin will review shortly.",
+          variant: "destructive",
         });
       }
     } catch (error) {

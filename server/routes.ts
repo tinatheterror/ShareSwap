@@ -5863,16 +5863,26 @@ Respond with ONLY the category name, nothing else.`
       // Determine which party is confirming
       const ownerAlreadyConfirmed = request.item_requests.ownerConfirmedHandoff;
       const borrowerAlreadyConfirmed = request.item_requests.borrowerConfirmedHandoff;
+      const ownerAlreadyDenied = (request.item_requests as any).ownerDeniedHandoff;
+      const borrowerAlreadyDenied = (request.item_requests as any).borrowerDeniedHandoff;
       
       let updateData: any = {};
       let waitingMessage = "";
       let bothConfirmed = false;
+      let disputeTriggered = false;
 
       if (isOwner && !ownerAlreadyConfirmed) {
         updateData.ownerConfirmedHandoff = true;
         updateData.ownerConfirmedHandoffAt = now;
         
-        if (borrowerAlreadyConfirmed) {
+        if (borrowerAlreadyDenied) {
+          // Case 5: Owner confirms, borrower already denied → immediate dispute
+          disputeTriggered = true;
+          updateData.handoffDisputeTriggered = true;
+          updateData.handoffDisputeAt = now;
+          updateData.handoffProofDeadline = deadline;
+          updateData.status = "HANDOFF_DISPUTED";
+        } else if (borrowerAlreadyConfirmed) {
           bothConfirmed = true;
         } else {
           updateData.status = "AWAITING_HANDOFF_CONFIRM";
@@ -5884,7 +5894,14 @@ Respond with ONLY the category name, nothing else.`
         updateData.borrowerConfirmedHandoff = true;
         updateData.borrowerConfirmedHandoffAt = now;
         
-        if (ownerAlreadyConfirmed) {
+        if (ownerAlreadyDenied) {
+          // Case 5: Borrower confirms, owner already denied → immediate dispute
+          disputeTriggered = true;
+          updateData.handoffDisputeTriggered = true;
+          updateData.handoffDisputeAt = now;
+          updateData.handoffProofDeadline = deadline;
+          updateData.status = "HANDOFF_DISPUTED";
+        } else if (ownerAlreadyConfirmed) {
           bothConfirmed = true;
         } else {
           updateData.status = "AWAITING_HANDOFF_CONFIRM";
@@ -5992,7 +6009,35 @@ Respond with ONLY the category name, nothing else.`
       const ownerId = request.items.ownerId!;
       const borrowerId = request.item_requests.requesterId;
 
-      if (!bothConfirmed) {
+      if (disputeTriggered) {
+        // Case 5: One confirmed, other denied — lock it down, ask for proof
+        await db.insert(messages).values({
+          content: `⚠️ There's a disagreement about the handoff. We've paused this transaction while we review. Both parties have 24 hours to submit proof.`,
+          senderId: ownerId,
+          receiverId: borrowerId,
+          messageType: "system",
+          requestId,
+        });
+        // Notify both parties
+        await db.insert(notifications).values([
+          {
+            userId: ownerId,
+            type: "handoff_dispute",
+            title: "Handoff Dispute Opened",
+            message: `There's a disagreement about the handoff for "${request.items.name}". Please submit proof within 24 hours.`,
+            itemId: request.items.id,
+            requestId,
+          },
+          {
+            userId: borrowerId,
+            type: "handoff_dispute",
+            title: "Handoff Dispute Opened",
+            message: `There's a disagreement about the handoff for "${request.items.name}". Please submit proof within 24 hours.`,
+            itemId: request.items.id,
+            requestId,
+          },
+        ]);
+      } else if (!bothConfirmed) {
         // Look up display names for both parties
         const [confirmerUser] = await db
           .select({ displayName: users.displayName, username: users.username })
@@ -6020,7 +6065,7 @@ Respond with ONLY the category name, nothing else.`
             requestId,
           },
           {
-            content: `Waiting for ${otherName} to confirm their side.`,
+            content: `If only one person confirms, we'll complete this automatically in 24 hours.`,
             senderId: ownerId,
             receiverId: borrowerId,
             messageType: "system",
@@ -6054,14 +6099,177 @@ Respond with ONLY the category name, nothing else.`
         success: true,
         request: updated,
         bothConfirmed,
-        waitingMessage: bothConfirmed ? undefined : waitingMessage,
+        disputeTriggered,
+        waitingMessage: bothConfirmed || disputeTriggered ? undefined : waitingMessage,
         message: bothConfirmed 
-          ? "Handoff confirmed by both parties! Borrow period has started." 
+          ? "Handoff confirmed by both parties! Borrow period has started."
+          : disputeTriggered
+          ? "Dispute opened. Transaction is paused pending proof submission."
           : waitingMessage,
       });
     } catch (error: any) {
       console.error("Error confirming handoff:", error);
       res.status(500).json({ error: "Failed to confirm handoff" });
+    }
+  });
+
+  // Deny a handoff (Cases 2 and 5)
+  app.post("/api/requests/:requestId/deny-handoff", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
+
+      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
+      if (!validStatuses.includes(request.item_requests.status)) {
+        return res.status(400).json({ error: "Request is not in a handoff state" });
+      }
+
+      const ownerAlreadyConfirmed = request.item_requests.ownerConfirmedHandoff;
+      const borrowerAlreadyConfirmed = request.item_requests.borrowerConfirmedHandoff;
+      const now = new Date();
+      const deadline24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+      let updateData: any = {};
+      let disputeTriggered = false;
+
+      if (isOwner) {
+        updateData.ownerDeniedHandoff = true;
+        if (borrowerAlreadyConfirmed) {
+          // Case 5: Borrower confirmed, owner denies → dispute
+          disputeTriggered = true;
+          updateData.handoffDisputeTriggered = true;
+          updateData.handoffDisputeAt = now;
+          updateData.handoffProofDeadline = deadline24h;
+          updateData.status = "HANDOFF_DISPUTED";
+        } else {
+          // Case 2: nobody confirmed yet — give other party 24h to respond, then flag
+          updateData.status = "AWAITING_HANDOFF_CONFIRM";
+          updateData.handoffConfirmDeadline = deadline24h;
+          updateData.handoffRemindersLevel = 0;
+        }
+      } else {
+        updateData.borrowerDeniedHandoff = true;
+        if (ownerAlreadyConfirmed) {
+          // Case 5: Owner confirmed, borrower denies → dispute
+          disputeTriggered = true;
+          updateData.handoffDisputeTriggered = true;
+          updateData.handoffDisputeAt = now;
+          updateData.handoffProofDeadline = deadline24h;
+          updateData.status = "HANDOFF_DISPUTED";
+        } else {
+          // Case 2: nobody confirmed yet — give other party 24h to respond, then flag
+          updateData.status = "AWAITING_HANDOFF_CONFIRM";
+          updateData.handoffConfirmDeadline = deadline24h;
+          updateData.handoffRemindersLevel = 0;
+        }
+      }
+
+      await db.update(itemRequests).set(updateData).where(eq(itemRequests.id, requestId));
+
+      const ownerId = request.items.ownerId!;
+      const borrowerId = request.item_requests.requesterId;
+
+      if (disputeTriggered) {
+        await db.insert(messages).values({
+          content: `⚠️ There's a disagreement about the handoff. We've paused this transaction while we review. Both parties have 24 hours to submit proof.`,
+          senderId: ownerId,
+          receiverId: borrowerId,
+          messageType: "system",
+          requestId,
+        });
+        await db.insert(notifications).values([
+          { userId: ownerId, type: "handoff_dispute", title: "Handoff Dispute Opened", message: `There's a disagreement about the handoff for "${request.items.name}". Submit proof within 24 hours.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "handoff_dispute", title: "Handoff Dispute Opened", message: `There's a disagreement about the handoff for "${request.items.name}". Submit proof within 24 hours.`, itemId: request.items.id, requestId },
+        ]);
+      } else {
+        // One denied, other hasn't acted yet — log it
+        await db.insert(messages).values({
+          content: `${isOwner ? "Owner" : "Borrower"} reported the item was not received/handed off. If no response from the other party within 24 hours, this will be flagged for review.`,
+          senderId: ownerId,
+          receiverId: borrowerId,
+          messageType: "system",
+          requestId,
+        });
+      }
+
+      res.json({ success: true, disputeTriggered });
+    } catch (error: any) {
+      console.error("Error denying handoff:", error);
+      res.status(500).json({ error: "Failed to deny handoff" });
+    }
+  });
+
+  // Submit proof for a handoff dispute
+  app.post("/api/requests/:requestId/handoff-dispute-proof", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { note } = req.body;
+      if (!note?.trim()) return res.status(400).json({ error: "Proof note is required" });
+
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.item_requests.status !== "HANDOFF_DISPUTED") {
+        return res.status(400).json({ error: "This request is not in a dispute state" });
+      }
+
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRequester = request.item_requests.requesterId === req.user.id;
+      if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
+
+      const updateData: any = isOwner
+        ? { handoffProofOwner: note.trim() }
+        : { handoffProofBorrower: note.trim() };
+
+      await db.update(itemRequests).set(updateData).where(eq(itemRequests.id, requestId));
+
+      const ownerId = request.items.ownerId!;
+      const borrowerId = request.item_requests.requesterId;
+
+      await db.insert(messages).values({
+        content: `${isOwner ? "Owner" : "Borrower"} submitted proof for the handoff dispute.`,
+        senderId: ownerId,
+        receiverId: borrowerId,
+        messageType: "system",
+        requestId,
+      });
+
+      // Re-fetch to check if both have submitted
+      const [updated] = await db.select().from(itemRequests).where(eq(itemRequests.id, requestId)).limit(1);
+      const bothSubmitted = !!(updated as any).handoffProofOwner && !!(updated as any).handoffProofBorrower;
+
+      if (bothSubmitted) {
+        await db.insert(messages).values({
+          content: `Both parties have submitted proof. An admin will review and resolve this dispute.`,
+          senderId: ownerId,
+          receiverId: borrowerId,
+          messageType: "system",
+          requestId,
+        });
+      }
+
+      res.json({ success: true, bothSubmitted });
+    } catch (error: any) {
+      console.error("Error submitting dispute proof:", error);
+      res.status(500).json({ error: "Failed to submit proof" });
     }
   });
 
@@ -6152,106 +6360,77 @@ Respond with ONLY the category name, nothing else.`
         );
 
       let autoAdvancedCount = 0;
+      let flaggedCount = 0;
 
       for (const request of expiredHandoffs) {
-        // Auto-advance: complete the handoff
-        const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-        
-        // Process ShareCoins for BORROW type
-        if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-          const [borrower] = await db
-            .select({ shareCoins: users.shareCoins })
-            .from(users)
-            .where(eq(users.id, request.item_requests.requesterId))
-            .limit(1);
+        const ownerConfirmed = request.item_requests.ownerConfirmedHandoff;
+        const borrowerConfirmed = request.item_requests.borrowerConfirmedHandoff;
+        const ownerDenied = (request.item_requests as any).ownerDeniedHandoff;
+        const borrowerDenied = (request.item_requests as any).borrowerDeniedHandoff;
+        const ownerId2 = request.items.ownerId!;
+        const borrowerId2 = request.item_requests.requesterId;
+        const reqId = request.item_requests.id;
 
-          const currentBalance = parseFloat(borrower?.shareCoins || "0");
-          
-          if (currentBalance >= shareCoinAmount) {
-            // Deduct from borrower
-            await db
-              .update(users)
-              .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
-              .where(eq(users.id, request.item_requests.requesterId));
+        // ── Case 2: One denied, other is silent → flag for review (DO NOT auto-confirm) ──
+        if ((ownerDenied || borrowerDenied) && !ownerConfirmed && !borrowerConfirmed) {
+          await db.update(itemRequests)
+            .set({ status: "HANDOFF_FLAGGED" })
+            .where(eq(itemRequests.id, reqId));
 
-            await db.insert(shareCoinsTransactions).values({
-              userId: request.item_requests.requesterId,
-              amount: (-shareCoinAmount).toString(),
-              description: `Borrowed: ${request.items.name} (auto-advanced)`,
-              transactionType: "BORROW_CHARGE",
-            });
+          await db.insert(messages).values({
+            content: `🚩 This exchange has been flagged for review. One party reported the item was not handed off and no response was received in time.`,
+            senderId: ownerId2,
+            receiverId: borrowerId2,
+            messageType: "system",
+            requestId: reqId,
+          });
 
-            // Award to lender
-            if (request.items.ownerId) {
-              const [lender] = await db
-                .select({ shareCoins: users.shareCoins })
-                .from(users)
-                .where(eq(users.id, request.items.ownerId))
-                .limit(1);
+          await db.insert(notifications).values([
+            { userId: ownerId2, type: "handoff_flagged", title: "Exchange Flagged for Review", message: `The handoff for "${request.items.name}" has been flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange Flagged for Review", message: `The handoff for "${request.items.name}" has been flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+          ]);
 
-              const lenderBalance = parseFloat(lender?.shareCoins || "0");
-              await db
-                .update(users)
-                .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
-                .where(eq(users.id, request.items.ownerId));
-
-              await db.insert(shareCoinsTransactions).values({
-                userId: request.items.ownerId,
-                amount: shareCoinAmount.toString(),
-                description: `Lent: ${request.items.name} (auto-advanced)`,
-                transactionType: "LEND_REWARD",
-              });
-            }
-          }
+          flaggedCount++;
+          continue;
         }
 
-        // Update request to IN_PROGRESS
-        await db
-          .update(itemRequests)
-          .set({
-            status: "IN_PROGRESS",
-            handoffConfirmedAt: now,
-            borrowPeriodStartedAt: now,
-            shareCoinsCharged: true,
-            shareCoinsChargedAt: now,
-            depositStatus: "held",
-            handoffAutoAdvanced: true,
-          })
-          .where(eq(itemRequests.id, request.item_requests.id));
+        // ── Case 1: One confirmed, other is silent (no denial) → auto-confirm ──
+        if ((ownerConfirmed || borrowerConfirmed) && !ownerDenied && !borrowerDenied) {
+          const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
 
-        // Mark item as unavailable
-        await db
-          .update(items)
-          .set({ isAvailable: false })
-          .where(eq(items.id, request.items.id));
+          if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
+            const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);
+            const currentBalance = parseFloat(borrower?.shareCoins || "0");
+            if (currentBalance >= shareCoinAmount) {
+              await db.update(users).set({ shareCoins: (currentBalance - shareCoinAmount).toString() }).where(eq(users.id, borrowerId2));
+              await db.insert(shareCoinsTransactions).values({ userId: borrowerId2, amount: (-shareCoinAmount).toString(), description: `Borrowed: ${request.items.name} (auto-confirmed)`, transactionType: "BORROW_CHARGE" });
+              if (ownerId2) {
+                const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId2)).limit(1);
+                const lenderBalance = parseFloat(lender?.shareCoins || "0");
+                await db.update(users).set({ shareCoins: (lenderBalance + shareCoinAmount).toString() }).where(eq(users.id, ownerId2));
+                await db.insert(shareCoinsTransactions).values({ userId: ownerId2, amount: shareCoinAmount.toString(), description: `Lent: ${request.items.name} (auto-confirmed)`, transactionType: "LEND_REWARD" });
+              }
+            }
+          }
 
-        // Notify both parties
-        const confirmingParty = request.item_requests.ownerConfirmedHandoff ? "Owner" : "Borrower";
-        const notificationMessage = `Handoff for "${request.items.name}" was auto-confirmed after ${confirmingParty.toLowerCase()} confirmation timed out.`;
-        
-        await db.insert(notifications).values([
-          {
-            userId: request.item_requests.requesterId,
-            type: "handoff_auto_advanced",
-            title: "Handoff Auto-Confirmed",
-            message: notificationMessage,
-            itemId: request.items.id,
-            requestId: request.item_requests.id,
-          },
-          ...(request.items.ownerId ? [{
-            userId: request.items.ownerId,
-            type: "handoff_auto_advanced",
-            title: "Handoff Auto-Confirmed",
-            message: notificationMessage,
-            itemId: request.items.id,
-            requestId: request.item_requests.id,
-          }] : []),
-        ]);
+          await db.update(itemRequests)
+            .set({ status: "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
+            .where(eq(itemRequests.id, reqId));
 
-        autoAdvancedCount++;
+          await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
+
+          const confirmingParty = ownerConfirmed ? "owner" : "borrower";
+          await db.insert(notifications).values([
+            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `The handoff for "${request.items.name}" was automatically confirmed. The ${confirmingParty} had already confirmed and we received no response from the other party.`, itemId: request.items.id, requestId: reqId },
+            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `The handoff for "${request.items.name}" was automatically confirmed. The ${confirmingParty} had already confirmed and we received no response from the other party.`, itemId: request.items.id, requestId: reqId }] : []),
+          ]);
+
+          autoAdvancedCount++;
+        }
+        // ── Case 3 / Other edge cases: both silent past deadline — skip (no deadline was set without first confirm) ──
       }
 
-      res.json({ success: true, autoAdvancedCount });
+      res.json({ success: true, autoAdvancedCount, flaggedCount });
     } catch (error: any) {
       console.error("Error checking handoff deadlines:", error);
       res.status(500).json({ error: "Failed to check handoff deadlines" });

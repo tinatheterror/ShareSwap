@@ -7,10 +7,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface HandoffConfirmationModalProps {
   isOpen: boolean;
@@ -40,8 +41,16 @@ export function HandoffConfirmationModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showDenyView, setShowDenyView] = useState(false);
 
   const isUberDelivery = deliveryMethod === "courier";
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
+  };
 
   const confirmHandoffMutation = useMutation({
     mutationFn: async () => {
@@ -53,10 +62,10 @@ export function HandoffConfirmationModal({
     },
     onSuccess: (data) => {
       setIsProcessing(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-      if (data.bothConfirmed) {
+      invalidate();
+      if (data.disputeTriggered) {
+        toast({ title: "Dispute opened", description: "We've paused this transaction while we review.", variant: "destructive" });
+      } else if (data.bothConfirmed) {
         toast({ title: "Handoff complete", description: "Borrow period has started." });
       }
       onSuccess();
@@ -64,6 +73,28 @@ export function HandoffConfirmationModal({
     onError: (error: any) => {
       setIsProcessing(false);
       toast({ title: "Handoff failed", description: error.message || "Failed to confirm handoff", variant: "destructive" });
+    },
+  });
+
+  const denyHandoffMutation = useMutation({
+    mutationFn: async () => {
+      setIsProcessing(true);
+      const response = await apiRequest("POST", `/api/requests/${requestId}/deny-handoff`, {});
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsProcessing(false);
+      invalidate();
+      if (data.disputeTriggered) {
+        toast({ title: "Dispute opened", description: "We've paused this transaction while both sides are reviewed.", variant: "destructive" });
+      } else {
+        toast({ title: "Reported", description: "The other party has 24 hours to respond, then this will be flagged for review." });
+      }
+      onSuccess();
+    },
+    onError: (error: any) => {
+      setIsProcessing(false);
+      toast({ title: "Error", description: error.message || "Failed to report issue", variant: "destructive" });
     },
   });
 
@@ -86,6 +117,53 @@ export function HandoffConfirmationModal({
   const buttonLabel = isUberDelivery
     ? userRole === "borrower" ? "Confirm received" : "Confirm sent"
     : "Confirm handoff";
+
+  if (showDenyView) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              Item not received?
+            </DialogTitle>
+            <DialogDescription>
+              {otherPartyConfirmed
+                ? "The other party already confirmed. Reporting this will open a dispute and pause the transaction."
+                : "The other party will have 24 hours to respond. If they don't, this will be flagged for review."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-800">
+            {otherPartyConfirmed
+              ? "⚠️ This will immediately open a dispute. Both parties will be asked to submit proof within 24 hours."
+              : "We'll notify the other party and wait for their response before taking any action."}
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <Button variant="outline" onClick={() => setShowDenyView(false)} disabled={isProcessing} className="flex-1">
+              Go back
+            </Button>
+            <Button
+              onClick={() => denyHandoffMutation.mutate()}
+              disabled={isProcessing}
+              variant="destructive"
+              className="flex-1"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Reporting...
+                </>
+              ) : (
+                "Report issue"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -133,8 +211,15 @@ export function HandoffConfirmationModal({
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground text-center">
-          Both of you need to confirm to complete the handoff
+        <button
+          onClick={() => setShowDenyView(true)}
+          className="text-xs text-red-500 hover:text-red-600 text-center w-full mt-1 underline-offset-2 hover:underline"
+        >
+          Item was not {userRole === "borrower" ? "received" : "handed off"}?
+        </button>
+
+        <p className="text-xs text-muted-foreground text-center -mt-1">
+          If only one person confirms, we'll complete this automatically in 24 hours.
         </p>
       </DialogContent>
     </Dialog>

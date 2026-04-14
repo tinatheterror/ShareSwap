@@ -281,6 +281,8 @@ export function ChatWidget() {
   const [showCourierModal, setShowCourierModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showProofInput, setShowProofInput] = useState(false);
+  const [proofText, setProofText] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<ItemRequest | null>(
     null,
   );
@@ -430,6 +432,23 @@ export function ChatWidget() {
     },
   });
 
+  const submitProofMutation = useMutation({
+    mutationFn: async ({ requestId, proofText }: { requestId: number; proofText: string }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/handoff-dispute-proof`, { proofText });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
+      setShowProofInput(false);
+      setProofText("");
+      toast({ title: "Proof submitted", description: "We'll review both sides and get back to you shortly." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to submit proof", variant: "destructive" });
+    },
+  });
+
   const chatCounterMutation = useMutation({
     mutationFn: async ({ requestId, deliveryMethod, depositMethod, startDate, endDate, isResponse }: {
       requestId: number; deliveryMethod: string; depositMethod: string;
@@ -530,6 +549,9 @@ export function ChatWidget() {
       case "RETURN_REQUESTED": return "Return requested";
       case "COMPLETED": return "Completed";
       case "DECLINED": return "Declined";
+      case "AWAITING_HANDOFF_CONFIRM": return "Awaiting handoff";
+      case "HANDOFF_DISPUTED": return "Disputed";
+      case "HANDOFF_FLAGGED": return "Flagged for review";
       default: return status || "";
     }
   };
@@ -720,7 +742,11 @@ export function ChatWidget() {
       case "DECLINED":
         return "bg-red-100 text-red-800";
       case "AWAITING_HANDOFF_CONFIRM":
-        return "bg-purple-100 text-purple-800";
+        return "bg-indigo-100 text-indigo-800";
+      case "HANDOFF_DISPUTED":
+        return "bg-red-100 text-red-800";
+      case "HANDOFF_FLAGGED":
+        return "bg-orange-100 text-orange-800";
       case "COMPLETED":
         return "bg-gray-100 text-gray-800";
       default:
@@ -1613,6 +1639,71 @@ export function ChatWidget() {
                       </div>
                     );
                   }
+                }
+
+                // --- DISPUTED CTA (both parties) ---
+                if (pr.status === "HANDOFF_DISPUTED") {
+                  const hasSubmittedProof = isOwner
+                    ? (pr as any).handoffProofOwner
+                    : (pr as any).handoffProofBorrower;
+                  if (hasSubmittedProof) {
+                    return (
+                      <div className="px-3 py-2 border-t border-red-100 bg-red-50">
+                        <p className="text-xs text-red-700 text-center font-medium py-1.5">
+                          ✓ Proof submitted — we're reviewing both sides.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="px-3 py-2 border-t border-red-100 bg-red-50 space-y-2">
+                      <p className="text-xs text-red-700 font-medium">
+                        There's a disagreement about this handoff. Please describe what happened.
+                      </p>
+                      {showProofInput ? (
+                        <>
+                          <textarea
+                            className="w-full text-sm border border-red-200 rounded-lg p-2 resize-none bg-white focus:outline-none focus:ring-1 focus:ring-red-400"
+                            rows={3}
+                            placeholder="Describe the situation, any evidence, or provide a link to photos/screenshots…"
+                            value={proofText}
+                            onChange={(e) => setProofText(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => { setShowProofInput(false); setProofText(""); }}>
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 text-xs bg-red-600 hover:bg-red-700 text-white"
+                              disabled={!proofText.trim() || submitProofMutation.isPending}
+                              onClick={() => submitProofMutation.mutate({ requestId: pr.id, proofText })}
+                            >
+                              {submitProofMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Submit"}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <Button
+                          className="w-full h-9 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => setShowProofInput(true)}
+                        >
+                          Submit your side
+                        </Button>
+                      )}
+                    </div>
+                  );
+                }
+
+                // --- FLAGGED CTA (informational) ---
+                if (pr.status === "HANDOFF_FLAGGED") {
+                  return (
+                    <div className="px-3 py-2 border-t border-orange-100 bg-orange-50">
+                      <p className="text-xs text-orange-800 text-center font-medium py-1.5">
+                        🚩 This exchange has been flagged for admin review. We'll be in touch shortly.
+                      </p>
+                    </div>
+                  );
                 }
 
                 return null;

@@ -328,11 +328,19 @@ export const itemRequests = pgTable("item_requests", {
   ownerConfirmedHandoffAt: timestamp("owner_confirmed_handoff_at"),
   borrowerConfirmedHandoff: boolean("borrower_confirmed_handoff").default(false),
   borrowerConfirmedHandoffAt: timestamp("borrower_confirmed_handoff_at"),
+  ownerDeniedHandoff: boolean("owner_denied_handoff").default(false),
+  borrowerDeniedHandoff: boolean("borrower_denied_handoff").default(false),
   handoffConfirmDeadline: timestamp("handoff_confirm_deadline"), // deadline for second party to confirm
   handoffAutoAdvanced: boolean("handoff_auto_advanced").default(false), // true if auto-advanced after timeout
   handoffRemindersLevel: integer("handoff_reminders_level").default(0), // 0=none, 1=10min sent, 2=1hr sent, 3=24hr sent
   handoffConfirmedAt: timestamp("handoff_confirmed_at"),
   borrowPeriodStartedAt: timestamp("borrow_period_started_at"),
+  // Dispute tracking (Case 5: one confirms + one denies)
+  handoffDisputeTriggered: boolean("handoff_dispute_triggered").default(false),
+  handoffDisputeAt: timestamp("handoff_dispute_at"),
+  handoffProofDeadline: timestamp("handoff_proof_deadline"),
+  handoffProofOwner: text("handoff_proof_owner"),   // proof note submitted by owner
+  handoffProofBorrower: text("handoff_proof_borrower"), // proof note submitted by borrower
   
   // Return tracking - dual confirmation
   ownerConfirmedReturn: boolean("owner_confirmed_return").default(false),

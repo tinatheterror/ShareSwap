@@ -1733,7 +1733,7 @@ export function ChatWidget() {
                             </Button>
                           )}
                           {ownerPinRevealed && !isPinExpired && !ownerPinUsed && (
-                            <p className="text-xs text-muted-foreground">Give this code to the borrower when you meet</p>
+                            <p className="text-xs text-muted-foreground">Only share this code after both of you have checked the item and agree on the handoff.</p>
                           )}
                         </div>
                         {/* Manual confirm fallback */}

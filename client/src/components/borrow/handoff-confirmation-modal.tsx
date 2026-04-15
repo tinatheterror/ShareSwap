@@ -355,6 +355,12 @@ export function HandoffConfirmationModal({
             </div>
           )}
 
+          {view === "pin" && !verifyPinMutation.isPending && (
+            <p className="text-xs text-center text-muted-foreground">
+              Enter the code after you've checked the item and received it.
+            </p>
+          )}
+
           {verifyPinMutation.isPending && (
             <div className="flex items-center justify-center gap-2 text-sm text-indigo-600">
               <Loader2 className="h-4 w-4 animate-spin" />

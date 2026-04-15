@@ -24,7 +24,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts } from "@db/schema";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import { computeActiveStatus, computeActiveStatusFromDb, computeResponseTime } from "./user-stats";
@@ -267,12 +267,104 @@ async function checkAndAwardReferralBonus(
 
     console.log(`🎉 Referral bonus: Awarded ${rewardAmount} ShareCoins to user ${referral.referrerId} for referring user ${userId} (${transactionType})`);
 
+    // Notify the referrer that their friend completed their first transaction
+    await db.insert(notifications).values({
+      userId: referral.referrerId,
+      type: "referral_joined",
+      title: "Your referral paid off!",
+      message: `A friend you referred just completed their first ${transactionType?.toLowerCase() || 'transaction'} on ShareSwap. You've been rewarded ${rewardAmount} ShareCoins!`,
+      isRead: false,
+    });
+
     return { awarded: true, referrerId: referral.referrerId };
   } catch (error) {
     console.error("Error checking/awarding referral bonus:", error);
     return { awarded: false, reason: "Internal error" };
   }
 }
+
+// ── Achievement / Badge System ─────────────────────────────────────────────────
+const ACHIEVEMENT_DEFS = [
+  { name: 'first_transaction', title: 'First Share', description: 'You completed your first transaction on ShareSwap!', icon: '🌱', color: '#22c55e', category: 'milestone' },
+  { name: 'five_transactions', title: 'Community Sharer', description: 'Completed 5 transactions — you\'re an active member!', icon: '⭐', color: '#f59e0b', category: 'milestone' },
+  { name: 'ten_transactions', title: 'Power Sharer', description: 'Completed 10 transactions — you\'re a ShareSwap regular!', icon: '🏆', color: '#ef4444', category: 'milestone' },
+  { name: 'first_lend', title: 'First Lend', description: 'Lent an item to a neighbour for the first time.', icon: '🤝', color: '#3b82f6', category: 'lending' },
+  { name: 'five_lends', title: 'Generous Lender', description: 'Lent items 5 times — your neighbours appreciate you!', icon: '💫', color: '#3b82f6', category: 'lending' },
+  { name: 'first_gift', title: 'Gift Giver', description: 'Gave your first gift on ShareSwap.', icon: '🎁', color: '#ec4899', category: 'social' },
+  { name: 'first_swap', title: 'Swap Starter', description: 'Completed your first item swap.', icon: '🔄', color: '#8b5cf6', category: 'social' },
+  { name: 'verified_member', title: 'Verified Member', description: 'Completed identity verification on ShareSwap.', icon: '✅', color: '#06b6d4', category: 'milestone' },
+];
+
+async function checkAndAwardAchievements(userId: number) {
+  try {
+    const completedWhere = or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY"));
+    const ownerItemsSub = sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`;
+
+    const [[user], [totalRow], [lentRow], [giftRow], [swapRow]] = await Promise.all([
+      db.select({ isVerified: users.isVerified }).from(users).where(eq(users.id, userId)).limit(1),
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
+        or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere
+      )),
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(
+        eq(items.ownerId, userId), completedWhere
+      )),
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(
+        eq(items.ownerId, userId), eq(itemRequests.requestType, "GIFT"), completedWhere
+      )),
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
+        or(eq(itemRequests.requesterId, userId), ownerItemsSub), eq(itemRequests.requestType, "SWAP"), completedWhere
+      )),
+    ]);
+
+    const total = Number(totalRow?.cnt ?? 0);
+    const lent = Number(lentRow?.cnt ?? 0);
+    const gifts = Number(giftRow?.cnt ?? 0);
+    const swaps = Number(swapRow?.cnt ?? 0);
+
+    const metKeys: string[] = [];
+    if (total >= 1) metKeys.push('first_transaction');
+    if (total >= 5) metKeys.push('five_transactions');
+    if (total >= 10) metKeys.push('ten_transactions');
+    if (lent >= 1) metKeys.push('first_lend');
+    if (lent >= 5) metKeys.push('five_lends');
+    if (gifts >= 1) metKeys.push('first_gift');
+    if (swaps >= 1) metKeys.push('first_swap');
+    if (user?.isVerified) metKeys.push('verified_member');
+
+    for (const key of metKeys) {
+      const def = ACHIEVEMENT_DEFS.find(d => d.name === key);
+      if (!def) continue;
+
+      let [achievement] = await db.select({ id: achievements.id }).from(achievements).where(eq(achievements.name, key)).limit(1);
+      if (!achievement) {
+        [achievement] = await db.insert(achievements).values({
+          name: key,
+          description: def.description,
+          badgeIcon: def.icon,
+          badgeColor: def.color,
+          category: def.category,
+        }).returning({ id: achievements.id });
+      }
+
+      const [existing] = await db.select({ id: userAchievements.id }).from(userAchievements).where(
+        and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievement.id))
+      ).limit(1);
+      if (existing) continue;
+
+      await db.insert(userAchievements).values({ userId, achievementId: achievement.id, isCompleted: true, progress: 100 });
+      await db.insert(notifications).values({
+        userId,
+        type: "badge_earned",
+        title: `Badge unlocked: ${def.title}`,
+        message: def.description,
+        isRead: false,
+      });
+    }
+  } catch (err) {
+    console.error('Error checking/awarding achievements:', err);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Initialize Stripe - will be loaded from connector
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripe.server";
@@ -852,6 +944,7 @@ export function registerRoutes(app: Express): Server {
           isRead: false,
         },
       ]);
+      await checkAndAwardAchievements(userId);
 
       res.json({ 
         success: true, 
@@ -1109,6 +1202,7 @@ export function registerRoutes(app: Express): Server {
             isRead: false,
           },
         ]);
+        await checkAndAwardAchievements(userId);
 
         res.json({
           success: true,
@@ -1134,6 +1228,14 @@ export function registerRoutes(app: Express): Server {
             personaStatus,
           })
           .where(eq(verifications.id, verification.id));
+
+        await db.insert(notifications).values({
+          userId,
+          type: "verification_failed",
+          title: "Verification could not be completed",
+          message: "Your identity verification was unsuccessful. Please check your documents and try again — you won't lose any progress.",
+          isRead: false,
+        });
 
         res.json({
           success: true,
@@ -4368,6 +4470,9 @@ Respond with ONLY the category name, nothing else.`
           // Check and award referral bonus for both users (first transaction completion)
           await checkAndAwardReferralBonus(req.user.id, requestId, 'SWAP');
           await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, 'SWAP');
+          // Check and award any newly unlocked badges for both parties
+          await checkAndAwardAchievements(req.user.id);
+          await checkAndAwardAchievements(request.item_requests.requesterId);
         } else {
           console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
         }
@@ -4871,6 +4976,9 @@ Respond with ONLY the category name, nothing else.`
       // Check and award referral bonus for both users (first transaction completion)
       await checkAndAwardReferralBonus(giverId, requestId, 'GIFT');
       await checkAndAwardReferralBonus(receiverId, requestId, 'GIFT');
+      // Check and award any newly unlocked badges
+      await checkAndAwardAchievements(giverId);
+      await checkAndAwardAchievements(receiverId);
 
       // Send completion notification to both parties
       await db.insert(notifications).values([
@@ -6903,6 +7011,16 @@ Respond with ONLY the category name, nothing else.`
       if (request.item_requests.depositPaymentIntentId) {
         try {
           await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
+          // Notify borrower their deposit has been released
+          await db.insert(notifications).values({
+            userId: request.item_requests.requesterId,
+            type: "security_deposit_released",
+            title: "Security deposit released",
+            message: `Your security deposit for "${request.items.name}" has been released back to your payment method. It may take 5–10 business days to appear.`,
+            itemId: request.items.id,
+            requestId,
+            isRead: false,
+          });
         } catch (stripeError: any) {
           console.error("Error releasing deposit:", stripeError);
           // Continue even if Stripe fails - we don't want to block the return
@@ -6975,6 +7093,9 @@ Respond with ONLY the category name, nothing else.`
       const transactionType = request.item_requests.requestType === 'RENT' ? 'RENT' : 'BORROW';
       await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, transactionType);
       await checkAndAwardReferralBonus(request.items.ownerId!, requestId, transactionType === 'RENT' ? 'RENT' : 'LEND');
+      // Check and award any newly unlocked badges for both parties
+      await checkAndAwardAchievements(request.item_requests.requesterId);
+      if (request.items.ownerId) await checkAndAwardAchievements(request.items.ownerId);
 
       // For RENT transactions, release rental earnings from pending to available balance
       let rentalEarnings = null;
@@ -7021,6 +7142,19 @@ Respond with ONLY the category name, nothing else.`
               processingFee,
               netAmount: existingNetAmount,
             };
+
+            // Notify owner their rental payment is available
+            if (request.items.ownerId) {
+              await db.insert(notifications).values({
+                userId: request.items.ownerId,
+                type: "payment_received",
+                title: "Rental payment available",
+                message: `$${existingNetAmount.toFixed(2)} from the rental of "${request.items.name}" is now in your balance and ready to withdraw.`,
+                itemId: request.items.id,
+                requestId,
+                isRead: false,
+              });
+            }
             
             console.log(`Released rental earnings of $${existingNetAmount.toFixed(2)} from pending to available for owner ${request.items.ownerId}`);
           } else {
@@ -7052,6 +7186,18 @@ Respond with ONLY the category name, nothing else.`
               netAmount,
             };
             
+            // Notify owner their rental payment is available (fallback path)
+            if (request.items.ownerId) {
+              await db.insert(notifications).values({
+                userId: request.items.ownerId,
+                type: "payment_received",
+                title: "Rental payment available",
+                message: `$${netAmount.toFixed(2)} from the rental of "${request.items.name}" is now in your balance and ready to withdraw.`,
+                itemId: request.items.id,
+                requestId,
+                isRead: false,
+              });
+            }
             console.log(`Released rental earnings of $${netAmount.toFixed(2)} to owner ${request.items.ownerId} (fallback)`);
           }
         } catch (payoutError) {
@@ -9099,6 +9245,16 @@ Respond with ONLY the category name, nothing else.`
         transactionId,
       })
       .returning();
+
+    // Notify the reviewed user immediately
+    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    await db.insert(notifications).values({
+      userId: reviewedUserId,
+      type: "new_review_received",
+      title: `New ${rating}-star review`,
+      message: `${req.user.username} left you a ${rating}-star review ${stars}${comment ? `: "${comment.slice(0, 80)}${comment.length > 80 ? '…' : ''}"` : '.'}`,
+      isRead: false,
+    });
 
     // Calculate reputation points based on rating
     const reputationPoints = Math.max(rating - 3, 0) * 10; // 0 points for 3 stars or less, 10 for 4 stars, 20 for 5 stars

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { Bell, Check, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield, Trophy, TrendingUp, Coins, Clock, Flag, Zap, Truck, Gift, FileText, Star, RotateCcw } from "lucide-react";
+import { Bell, Check, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield, Trophy, TrendingUp, Coins, Clock, Flag, Zap, Truck, Gift, FileText, Star, RotateCcw, Users, Unlock, DollarSign, ShieldAlert } from "lucide-react";
 import type { SelectNotification } from "@db/schema";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -168,10 +168,26 @@ export default function NotificationsPage() {
         return <Coins className="h-5 w-5 text-yellow-500" />;
       case 'milestone_achieved':
         return <Trophy className="h-5 w-5 text-amber-500" />;
+      case 'badge_earned':
+        return <Star className="h-5 w-5 text-purple-600" />;
       case 'level_up':
         return <TrendingUp className="h-5 w-5 text-purple-600" />;
       case 'trust_score_changed':
         return <Shield className="h-5 w-5 text-blue-600" />;
+      // Reviews
+      case 'new_review_received':
+        return <Star className="h-5 w-5 text-yellow-500" />;
+      // Social / referrals
+      case 'referral_joined':
+        return <Users className="h-5 w-5 text-teal-500" />;
+      // Payments & deposits
+      case 'security_deposit_released':
+        return <Unlock className="h-5 w-5 text-green-600" />;
+      case 'payment_received':
+        return <DollarSign className="h-5 w-5 text-green-600" />;
+      // Verification
+      case 'verification_failed':
+        return <ShieldAlert className="h-5 w-5 text-red-600" />;
       default:
         return <Bell className="h-5 w-5 text-gray-600" />;
     }

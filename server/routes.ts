@@ -113,7 +113,34 @@ async function awardShareCoinsWithFirstTimeBonus(
       shareCoins: sql`share_coins + ${totalAwarded}`,
     })
     .where(eq(users.id, userId));
-  
+
+  // Notify user of ShareCoins earned
+  await db.insert(notifications).values({
+    userId,
+    type: "sharecoin_earned",
+    title: `+${totalAwarded} ShareCoin${totalAwarded !== 1 ? 's' : ''} earned`,
+    message: `You earned ${totalAwarded} ShareCoin${totalAwarded !== 1 ? 's' : ''} for ${isFirstTime ? 'completing your first' : 'a successful'} ${actionType.charAt(0) + actionType.slice(1).toLowerCase()} of "${itemName}"${isFirstTime ? ' — plus a first-time bonus!' : '.'}`,
+    isRead: false,
+  });
+
+  // Notify user of first-time milestones
+  if (isFirstTime) {
+    const actionLabels: Record<string, string> = {
+      'RENT': 'first rental',
+      'LEND': 'first lend',
+      'SWAP': 'first swap',
+      'GIFT': 'first gift given',
+      'BORROW': 'first borrow',
+    };
+    await db.insert(notifications).values({
+      userId,
+      type: "milestone_achieved",
+      title: "Milestone unlocked!",
+      message: `You've completed your ${actionLabels[actionType] || 'first action'} on ShareSwap. Keep sharing to unlock more!`,
+      isRead: false,
+    });
+  }
+
   return { totalAwarded, isFirstTime };
 }
 
@@ -802,6 +829,30 @@ export function registerRoutes(app: Express): Server {
 
       console.log(`✅ Awarded ${VERIFICATION_SHARECOIN_REWARD} ShareCoins to user ${userId} for profile verification`);
 
+      await db.insert(notifications).values([
+        {
+          userId,
+          type: "sharecoin_earned",
+          title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins earned`,
+          message: `You earned ${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing your identity verification.`,
+          isRead: false,
+        },
+        {
+          userId,
+          type: "trust_score_changed",
+          title: "Trust score increased",
+          message: `Your trust score went up by ${VERIFICATION_TRUST_BOOST} points after account verification.`,
+          isRead: false,
+        },
+        {
+          userId,
+          type: "milestone_achieved",
+          title: "Milestone unlocked — Verified!",
+          message: "Your identity is now verified on ShareSwap. You've unlocked higher trust and can access more features.",
+          isRead: false,
+        },
+      ]);
+
       res.json({ 
         success: true, 
         message: "Verification approved! You received a trust score boost and 5 ShareCoins.",
@@ -1034,6 +1085,30 @@ export function registerRoutes(app: Express): Server {
           .where(eq(users.id, userId));
 
         console.log(`✅ Persona verification approved for user ${userId}`);
+
+        await db.insert(notifications).values([
+          {
+            userId,
+            type: "sharecoin_earned",
+            title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins earned`,
+            message: `You earned ${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing your identity verification.`,
+            isRead: false,
+          },
+          {
+            userId,
+            type: "trust_score_changed",
+            title: "Trust score increased",
+            message: `Your trust score went up by ${VERIFICATION_TRUST_BOOST} points after identity verification via Persona.`,
+            isRead: false,
+          },
+          {
+            userId,
+            type: "milestone_achieved",
+            title: "Milestone unlocked — Verified!",
+            message: "Your identity is now verified on ShareSwap. You've unlocked higher trust and can access more features.",
+            isRead: false,
+          },
+        ]);
 
         res.json({
           success: true,
@@ -9028,6 +9103,13 @@ Respond with ONLY the category name, nothing else.`
     // Calculate reputation points based on rating
     const reputationPoints = Math.max(rating - 3, 0) * 10; // 0 points for 3 stars or less, 10 for 4 stars, 20 for 5 stars
 
+    // Read current level before update so we can detect a level-up
+    const [reviewedUserBefore] = await db
+      .select({ reputationScore: users.reputationScore, reputationLevel: users.reputationLevel })
+      .from(users)
+      .where(eq(users.id, reviewedUserId))
+      .limit(1);
+
     // Record reputation activity if positive points
     if (reputationPoints > 0) {
       await db.insert(reputationActivities).values({
@@ -9051,6 +9133,31 @@ Respond with ONLY the category name, nothing else.`
           END`,
         })
         .where(eq(users.id, reviewedUserId));
+
+      // Trust score changed notification
+      await db.insert(notifications).values({
+        userId: reviewedUserId,
+        type: "trust_score_changed",
+        title: "Trust score increased",
+        message: `Your trust score went up by ${reputationPoints} point${reputationPoints !== 1 ? 's' : ''} after receiving a ${rating}-star review.`,
+        isRead: false,
+      });
+
+      // Level-up notification if the level crossed a threshold
+      const getLevelForScore = (s: number) =>
+        s >= 500 ? 'Expert' : s >= 200 ? 'Trusted' : s >= 50 ? 'Regular' : 'Newcomer';
+      const oldScore = reviewedUserBefore?.reputationScore ?? 0;
+      const oldLevel = getLevelForScore(oldScore);
+      const newLevel = getLevelForScore(oldScore + reputationPoints);
+      if (newLevel !== oldLevel) {
+        await db.insert(notifications).values({
+          userId: reviewedUserId,
+          type: "level_up",
+          title: `Level up — you're now ${newLevel}!`,
+          message: `Congratulations! You've levelled up from ${oldLevel} to ${newLevel} on ShareSwap. Keep sharing to climb even higher!`,
+          isRead: false,
+        });
+      }
     }
 
     // Award trust points for positive feedback tags (+12 each for reliable/on_time/as_described)

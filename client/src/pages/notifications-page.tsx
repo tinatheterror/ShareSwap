@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { Bell, Check, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield } from "lucide-react";
+import { Bell, Check, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield, Trophy, TrendingUp, Coins, Clock, Flag, Zap, Truck, Gift, FileText, Star, RotateCcw } from "lucide-react";
 import type { SelectNotification } from "@db/schema";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -117,16 +117,61 @@ export default function NotificationsPage() {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      // Requests
       case 'item_request':
         return <Package className="h-5 w-5 text-primary" />;
       case 'request_accepted':
+      case 'terms_accepted':
         return <CheckCircle2 className="h-5 w-5 text-green-600" />;
       case 'request_declined':
+      case 'terms_declined':
         return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'terms_counter_proposed':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      // Discovery
       case 'wishlist_match':
         return <Heart className="h-5 w-5 text-pink-500" />;
       case 'swap_match':
         return <ArrowLeftRight className="h-5 w-5 text-teal-500" />;
+      // Handoff — positive
+      case 'handoff_confirmed':
+      case 'handoff_auto_advanced':
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case 'handoff_pending':
+        return <Clock className="h-5 w-5 text-amber-500" />;
+      // Handoff — disputes
+      case 'handoff_dispute':
+      case 'handoff_disputed':
+      case 'dispute_opened':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'handoff_flagged':
+        return <Flag className="h-5 w-5 text-orange-500" />;
+      // Gifts
+      case 'gift_handoff_pending':
+        return <Gift className="h-5 w-5 text-amber-500" />;
+      case 'gift_completed':
+        return <Gift className="h-5 w-5 text-green-600" />;
+      // Delivery
+      case 'delivery_confirmed':
+        return <Truck className="h-5 w-5 text-green-600" />;
+      case 'courier_issue':
+        return <Truck className="h-5 w-5 text-red-600" />;
+      // Return reminders
+      case 'return_reminder_tomorrow':
+        return <Clock className="h-5 w-5 text-amber-500" />;
+      case 'return_reminder_today':
+        return <Clock className="h-5 w-5 text-orange-500" />;
+      case 'return_reminder_overdue':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      // Gamification
+      case 'sharecoin_earned':
+        return <Coins className="h-5 w-5 text-yellow-500" />;
+      case 'milestone_achieved':
+        return <Trophy className="h-5 w-5 text-amber-500" />;
+      case 'level_up':
+        return <TrendingUp className="h-5 w-5 text-purple-600" />;
+      case 'trust_score_changed':
+        return <Shield className="h-5 w-5 text-blue-600" />;
       default:
         return <Bell className="h-5 w-5 text-gray-600" />;
     }

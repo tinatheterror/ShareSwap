@@ -927,21 +927,21 @@ export function registerRoutes(app: Express): Server {
           userId,
           type: "sharecoin_earned",
           title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins earned`,
-          message: `You earned ${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing your identity verification.`,
+          message: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing identity verification.`,
           isRead: false,
         },
         {
           userId,
           type: "trust_score_changed",
           title: "Trust score increased",
-          message: `Your trust score went up by ${VERIFICATION_TRUST_BOOST} points after account verification.`,
+          message: `+${VERIFICATION_TRUST_BOOST} points for completing identity verification.`,
           isRead: false,
         },
         {
           userId,
           type: "milestone_achieved",
-          title: "Milestone unlocked — Verified!",
-          message: "Your identity is now verified on ShareSwap. You've unlocked higher trust and can access more features.",
+          title: "Identity verified",
+          message: "Your ID is now verified. You've unlocked higher trust and more features.",
           isRead: false,
         },
       ]);
@@ -1185,21 +1185,21 @@ export function registerRoutes(app: Express): Server {
             userId,
             type: "sharecoin_earned",
             title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins earned`,
-            message: `You earned ${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing your identity verification.`,
+            message: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing identity verification.`,
             isRead: false,
           },
           {
             userId,
             type: "trust_score_changed",
             title: "Trust score increased",
-            message: `Your trust score went up by ${VERIFICATION_TRUST_BOOST} points after identity verification via Persona.`,
+            message: `+${VERIFICATION_TRUST_BOOST} points for completing identity verification.`,
             isRead: false,
           },
           {
             userId,
             type: "milestone_achieved",
-            title: "Milestone unlocked — Verified!",
-            message: "Your identity is now verified on ShareSwap. You've unlocked higher trust and can access more features.",
+            title: "Identity verified",
+            message: "Your ID is now verified. You've unlocked higher trust and more features.",
             isRead: false,
           },
         ]);
@@ -1233,8 +1233,8 @@ export function registerRoutes(app: Express): Server {
         await db.insert(notifications).values({
           userId,
           type: "verification_failed",
-          title: "Verification could not be completed",
-          message: "Your identity verification was unsuccessful. Please check your documents and try again — you won't lose any progress.",
+          title: "Verification failed",
+          message: "Verification unsuccessful. Check your documents and try again.",
           isRead: false,
         });
 
@@ -2524,8 +2524,8 @@ Respond with ONLY the category name, nothing else.`
             await db.insert(notifications).values({
               userId: existingItem.ownerId!,
               type: "swap_match",
-              title: "Swap Match Found!",
-              message: `A new item matches what you're looking to trade for: ${item.name}`,
+              title: "New swap match",
+              message: `"${item.name}" matches what you're looking to trade for`,
               itemId: item.id,
               isRead: false,
             });
@@ -3152,8 +3152,8 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: wishlistOwnerId,
         type: "wishlist_match",
-        title: "Good news! A neighbour has an item that matches your wishlist",
-        message: `${listerName} has listed "${item.name}" which matches what you're looking for.`,
+        title: "New match for your wishlist",
+        message: `"${item.name}" listed by ${listerName}`,
         itemId: itemId,
         isRead: false,
       });
@@ -4170,8 +4170,8 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: item.ownerId,
         type: "item_request",
-        title: `New ${requestTypeLabel} Request`,
-        message: `${requesterName} wants to ${requestType.toLowerCase()} your ${item.name}`,
+        title: `New ${requestTypeLabel} request`,
+        message: `${requesterName} wants to ${requestType.toLowerCase()} "${item.name}"`,
         itemId: item.id,
         requestId: request.id,
         isRead: false,
@@ -4822,10 +4822,10 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: otherUserId,
         type: ownerIsAccepting ? "request_accepted" : "terms_accepted",
-        title: ownerIsAccepting ? "Request Accepted!" : "Terms Accepted",
+        title: ownerIsAccepting ? "Request accepted" : "Terms accepted",
         message: ownerIsAccepting
-          ? `Your request for "${request.items.name}" has been accepted! Pay your deposit to confirm.`
-          : "Requester accepted your terms. You can now accept or decline the request.",
+          ? `"${request.items.name}" — pay your deposit to confirm.`
+          : "Your terms were accepted. Accept or decline to proceed.",
         itemId: request.items.id,
         requestId,
       });
@@ -4852,8 +4852,8 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: otherUserId,
         type: "terms_declined",
-        title: "Terms Declined",
-        message: "The other party declined the proposed terms.",
+        title: "Terms declined",
+        message: "The other party declined. The request has been cancelled.",
         itemId: request.items.id,
         requestId,
       });
@@ -4986,16 +4986,16 @@ Respond with ONLY the category name, nothing else.`
         {
           userId: giverId,
           type: "gift_completed",
-          title: "Gift Complete!",
-          message: `Your gift "${request.items.name}" has been received. Thank you for sharing! +1 ShareCoins`,
+          title: "Gift completed",
+          message: `"${request.items.name}" received. +1 ShareCoin`,
           itemId: request.items.id,
           requestId: requestId,
         },
         {
           userId: receiverId,
           type: "gift_completed",
-          title: "Gift Received!",
-          message: `You've received "${request.items.name}". Enjoy! +1 ShareCoins`,
+          title: "Gift received",
+          message: `"${request.items.name}" is yours. +1 ShareCoin`,
           itemId: request.items.id,
           requestId: requestId,
         },
@@ -6452,8 +6452,8 @@ Respond with ONLY the category name, nothing else.`
       }
 
       await db.insert(notifications).values([
-        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `Borrower confirmed receipt of "${request.items.name}" via PIN. Borrow period started.`, itemId: request.items.id, requestId },
-        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `You confirmed receipt of "${request.items.name}" via PIN. Borrow period has started.`, itemId: request.items.id, requestId },
+        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `"${request.items.name}" is with the borrower. Borrow period started.`, itemId: request.items.id, requestId },
+        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `"${request.items.name}" picked up via PIN. Borrow period started.`, itemId: request.items.id, requestId },
       ]);
 
       res.json({ success: true, confirmed: true, message: "Handoff confirmed via PIN!" });
@@ -6508,8 +6508,8 @@ Respond with ONLY the category name, nothing else.`
         const borrowerId3 = request.item_requests.requesterId;
         await db.insert(messages).values({ content: `🔴 A dispute has been opened on this exchange. Both parties have 24 hours to submit evidence.`, senderId: ownerId3, receiverId: borrowerId3, messageType: "system", requestId });
         await db.insert(notifications).values([
-          { userId: ownerId3, type: "handoff_disputed", title: "Exchange disputed", message: `A dispute was opened on "${request.items.name}" after auto-confirmation.`, itemId: request.items.id, requestId },
-          { userId: borrowerId3, type: "handoff_disputed", title: "Exchange disputed", message: `A dispute was opened on "${request.items.name}" after auto-confirmation.`, itemId: request.items.id, requestId },
+          { userId: ownerId3, type: "handoff_disputed", title: "Exchange disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
+          { userId: borrowerId3, type: "handoff_disputed", title: "Exchange disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
         ]);
         return res.json({ success: true, disputeTriggered: true });
       }
@@ -6568,8 +6568,8 @@ Respond with ONLY the category name, nothing else.`
           requestId,
         });
         await db.insert(notifications).values([
-          { userId: ownerId, type: "handoff_dispute", title: "Handoff Dispute Opened", message: `There's a disagreement about the handoff for "${request.items.name}". Submit proof within 24 hours.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "handoff_dispute", title: "Handoff Dispute Opened", message: `There's a disagreement about the handoff for "${request.items.name}". Submit proof within 24 hours.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "handoff_dispute", title: "Handoff dispute", message: `Disagreement on "${request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "handoff_dispute", title: "Handoff dispute", message: `Disagreement on "${request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // One denied, other hasn't acted yet — log it
@@ -6764,8 +6764,8 @@ Respond with ONLY the category name, nothing else.`
           });
 
           await db.insert(notifications).values([
-            { userId: ownerId2, type: "handoff_flagged", title: "Exchange Flagged for Review", message: `The handoff for "${request.items.name}" has been flagged for admin review.`, itemId: request.items.id, requestId: reqId },
-            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange Flagged for Review", message: `The handoff for "${request.items.name}" has been flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: ownerId2, type: "handoff_flagged", title: "Exchange flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
           ]);
 
           flaggedCount++;
@@ -6799,8 +6799,8 @@ Respond with ONLY the category name, nothing else.`
 
           const confirmingParty = ownerConfirmed ? "owner" : "borrower";
           await db.insert(notifications).values([
-            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `The handoff for "${request.items.name}" was automatically confirmed. The ${confirmingParty} had already confirmed and we received no response from the other party.`, itemId: request.items.id, requestId: reqId },
-            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `The handoff for "${request.items.name}" was automatically confirmed. The ${confirmingParty} had already confirmed and we received no response from the other party.`, itemId: request.items.id, requestId: reqId }] : []),
+            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
+            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
           ]);
 
           autoAdvancedCount++;
@@ -6995,8 +6995,8 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(notifications).values({
           userId: request.item_requests.requesterId,
           type: "dispute_opened",
-          title: "Dispute Opened",
-          message: `${req.user.username} has opened a dispute for "${request.items.name}". The deposit is on hold pending review.`,
+          title: "Dispute opened",
+          message: `"${request.items.name}" — deposit on hold pending review.`,
           link: `/requests`,
         });
 
@@ -7016,8 +7016,8 @@ Respond with ONLY the category name, nothing else.`
           await db.insert(notifications).values({
             userId: request.item_requests.requesterId,
             type: "security_deposit_released",
-            title: "Security deposit released",
-            message: `Your security deposit for "${request.items.name}" has been released back to your payment method. It may take 5–10 business days to appear.`,
+            title: "Deposit released",
+            message: `Your deposit for "${request.items.name}" is on its way back (5–10 business days).`,
             itemId: request.items.id,
             requestId,
             isRead: false,
@@ -7149,8 +7149,8 @@ Respond with ONLY the category name, nothing else.`
               await db.insert(notifications).values({
                 userId: request.items.ownerId,
                 type: "payment_received",
-                title: "Rental payment available",
-                message: `$${existingNetAmount.toFixed(2)} from the rental of "${request.items.name}" is now in your balance and ready to withdraw.`,
+                title: "Rental payment ready",
+                message: `$${existingNetAmount.toFixed(2)} from "${request.items.name}" is ready to withdraw.`,
                 itemId: request.items.id,
                 requestId,
                 isRead: false,
@@ -7192,8 +7192,8 @@ Respond with ONLY the category name, nothing else.`
               await db.insert(notifications).values({
                 userId: request.items.ownerId,
                 type: "payment_received",
-                title: "Rental payment available",
-                message: `$${netAmount.toFixed(2)} from the rental of "${request.items.name}" is now in your balance and ready to withdraw.`,
+                title: "Rental payment ready",
+                message: `$${netAmount.toFixed(2)} from "${request.items.name}" is ready to withdraw.`,
                 itemId: request.items.id,
                 requestId,
                 isRead: false,
@@ -7699,19 +7699,19 @@ Respond with ONLY the category name, nothing else.`
         if (daysUntilReturn === 1) {
           // Tomorrow
           notificationType = "return_reminder_tomorrow";
-          title = "Return Reminder: Tomorrow";
-          message = `"${item.name}" is due to be returned tomorrow. Please prepare to return it to ${owner.username}.`;
+          title = "Return due tomorrow";
+          message = `"${item.name}" is due back to ${owner.username} tomorrow.`;
         } else if (daysUntilReturn === 0) {
           // Today
           notificationType = "return_reminder_today";
-          title = "Return Reminder: Today";
-          message = `"${item.name}" is due to be returned today! Please return it to ${owner.username} as soon as possible.`;
+          title = "Return due today";
+          message = `"${item.name}" must be returned to ${owner.username} today.`;
         } else if (daysUntilReturn < 0) {
           // Overdue
           const daysOverdue = Math.abs(daysUntilReturn);
           notificationType = "return_reminder_overdue";
-          title = "Overdue Return";
-          message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue! Please return it to ${owner.username} immediately.`;
+          title = `Return overdue by ${daysOverdue}d`;
+          message = `"${item.name}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue. Return to ${owner.username} now.`;
         }
 
         if (notificationType) {
@@ -9054,8 +9054,8 @@ Respond with ONLY the category name, nothing else.`
     await db.insert(notifications).values({
       userId: request.items.ownerId!,
       type: "delivery_confirmed",
-      title: "Delivery Confirmed",
-      message: `Your item "${request.items.name}" has been received successfully.`,
+      title: "Delivery confirmed",
+      message: `"${request.items.name}" received successfully.`,
       itemId: request.items.id,
       requestId: requestId,
       isRead: false,
@@ -9144,8 +9144,8 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: notifyUserId,
         type: "courier_issue",
-        title: "Courier Issue Reported",
-        message: `A courier issue has been reported for "${request.items.name}". The ${bookerLabel} who booked the courier will handle this with the delivery service. Trust-deposit will NOT be charged.`,
+        title: "Courier issue reported",
+        message: `"${request.items.name}" — delivery issue reported. No trust-deposit will be charged.`,
         itemId: request.items.id,
         requestId: requestId,
         isRead: false,
@@ -9417,8 +9417,8 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(notifications).values({
           userId: reviewedUserId,
           type: "level_up",
-          title: `Level up — you're now ${newLevel}!`,
-          message: `Congratulations! You've levelled up from ${oldLevel} to ${newLevel} on ShareSwap. Keep sharing to climb even higher!`,
+          title: `Level up — now ${newLevel}`,
+          message: `You moved from ${oldLevel} to ${newLevel}. Keep sharing to climb higher!`,
           isRead: false,
         });
       }

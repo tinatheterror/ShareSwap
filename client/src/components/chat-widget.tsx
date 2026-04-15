@@ -283,6 +283,8 @@ export function ChatWidget() {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showProofInput, setShowProofInput] = useState(false);
   const [proofText, setProofText] = useState("");
+  const [showAutoReport, setShowAutoReport] = useState(false);
+  const [autoReportText, setAutoReportText] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<ItemRequest | null>(
     null,
   );
@@ -429,6 +431,24 @@ export function ChatWidget() {
           description: data.message,
         });
       }
+    },
+  });
+
+  const reportAutoHandoffMutation = useMutation({
+    mutationFn: async ({ requestId, description }: { requestId: number; description: string }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/deny-handoff`, { description });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
+      setShowAutoReport(false);
+      setAutoReportText("");
+      toast({ title: "Issue reported", description: "We've opened a dispute. Both parties have 24 hours to submit evidence.", variant: "destructive" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to report issue", variant: "destructive" });
     },
   });
 
@@ -1610,13 +1630,46 @@ export function ChatWidget() {
                   }
 
                   if (pr.status === "IN_PROGRESS") {
+                    const wasAutoAdvanced = (pr as any).handoffAutoAdvanced;
                     return (
-                      <div className="px-3 py-2 border-t border-blue-100 bg-blue-50">
+                      <div className="px-3 py-2 border-t border-blue-100 bg-blue-50 space-y-1">
                         <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
                           <RotateCcw className="h-4 w-4 mr-2" />
                           Return item
                         </Button>
+                        {wasAutoAdvanced && !showAutoReport && (
+                          <button
+                            onClick={() => setShowAutoReport(true)}
+                            className="text-xs text-muted-foreground hover:text-red-500 w-full text-center py-0.5 transition-colors"
+                          >
+                            Didn't receive this item?
+                          </button>
+                        )}
+                        {wasAutoAdvanced && showAutoReport && (
+                          <div className="pt-1 space-y-1.5">
+                            <textarea
+                              className="w-full text-sm border border-red-200 rounded-lg p-2 resize-none bg-white focus:outline-none focus:ring-1 focus:ring-red-400"
+                              rows={2}
+                              placeholder="Briefly describe what happened…"
+                              value={autoReportText}
+                              onChange={(e) => setAutoReportText(e.target.value)}
+                            />
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" className="flex-1 text-xs h-8" onClick={() => { setShowAutoReport(false); setAutoReportText(""); }}>
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="flex-1 text-xs h-8 bg-red-600 hover:bg-red-700 text-white"
+                                disabled={!autoReportText.trim() || reportAutoHandoffMutation.isPending}
+                                onClick={() => reportAutoHandoffMutation.mutate({ requestId: pr.id, description: autoReportText })}
+                              >
+                                {reportAutoHandoffMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Report issue"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   }
@@ -1636,6 +1689,45 @@ export function ChatWidget() {
                           <Package className="h-4 w-4 mr-2" />
                           Confirm handoff
                         </Button>
+                      </div>
+                    );
+                  }
+
+                  if (pr.status === "IN_PROGRESS" && (pr as any).handoffAutoAdvanced) {
+                    return (
+                      <div className="px-3 py-2 border-t border-gray-100 bg-gray-50 space-y-1">
+                        {!showAutoReport && (
+                          <button
+                            onClick={() => setShowAutoReport(true)}
+                            className="text-xs text-muted-foreground hover:text-red-500 w-full text-center py-0.5 transition-colors"
+                          >
+                            Item was not collected?
+                          </button>
+                        )}
+                        {showAutoReport && (
+                          <div className="space-y-1.5">
+                            <textarea
+                              className="w-full text-sm border border-red-200 rounded-lg p-2 resize-none bg-white focus:outline-none focus:ring-1 focus:ring-red-400"
+                              rows={2}
+                              placeholder="Briefly describe what happened…"
+                              value={autoReportText}
+                              onChange={(e) => setAutoReportText(e.target.value)}
+                            />
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" className="flex-1 text-xs h-8" onClick={() => { setShowAutoReport(false); setAutoReportText(""); }}>
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="flex-1 text-xs h-8 bg-red-600 hover:bg-red-700 text-white"
+                                disabled={!autoReportText.trim() || reportAutoHandoffMutation.isPending}
+                                onClick={() => reportAutoHandoffMutation.mutate({ requestId: pr.id, description: autoReportText })}
+                              >
+                                {reportAutoHandoffMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Report issue"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   }

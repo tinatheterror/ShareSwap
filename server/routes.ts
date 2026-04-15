@@ -6131,9 +6131,37 @@ Respond with ONLY the category name, nothing else.`
       const isRequester = request.item_requests.requesterId === req.user.id;
       if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
 
-      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
+      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS"];
       if (!validStatuses.includes(request.item_requests.status)) {
         return res.status(400).json({ error: "Request is not in a handoff state" });
+      }
+
+      // Special path: post-auto-confirm dispute (status=IN_PROGRESS + handoffAutoAdvanced)
+      if (request.item_requests.status === "IN_PROGRESS") {
+        if (!(request.item_requests as any).handoffAutoAdvanced) {
+          return res.status(400).json({ error: "This exchange was manually confirmed and cannot be disputed this way" });
+        }
+        const { description } = req.body;
+        const now2 = new Date();
+        const deadline24h2 = new Date(now2.getTime() + 24 * 60 * 60 * 1000);
+        const proofField = isOwner ? { handoffProofOwner: description || "Disputed by owner after auto-confirm" } : { handoffProofBorrower: description || "Disputed by borrower after auto-confirm" };
+        await db.update(itemRequests).set({
+          status: "HANDOFF_DISPUTED",
+          handoffDisputeTriggered: true,
+          handoffDisputeAt: now2,
+          handoffProofDeadline: deadline24h2,
+          ...(isOwner ? { ownerDeniedHandoff: true } : { borrowerDeniedHandoff: true }),
+          ...proofField,
+        }).where(eq(itemRequests.id, requestId));
+
+        const ownerId3 = request.items.ownerId!;
+        const borrowerId3 = request.item_requests.requesterId;
+        await db.insert(messages).values({ content: `🔴 A dispute has been opened on this exchange. Both parties have 24 hours to submit evidence.`, senderId: ownerId3, receiverId: borrowerId3, messageType: "system", requestId });
+        await db.insert(notifications).values([
+          { userId: ownerId3, type: "handoff_disputed", title: "Exchange disputed", message: `A dispute was opened on "${request.items.name}" after auto-confirmation.`, itemId: request.items.id, requestId },
+          { userId: borrowerId3, type: "handoff_disputed", title: "Exchange disputed", message: `A dispute was opened on "${request.items.name}" after auto-confirmation.`, itemId: request.items.id, requestId },
+        ]);
+        return res.json({ success: true, disputeTriggered: true });
       }
 
       const ownerAlreadyConfirmed = request.item_requests.ownerConfirmedHandoff;

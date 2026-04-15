@@ -13,8 +13,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Link } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight, Mail, MessageSquareText } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, X, Home, User, LogOut, ArrowLeftRight, Mail, MessageSquareText, Star, TrendingUp, ShieldAlert, DollarSign, Unlock, UserCheck, Flag, Truck, Gift, HandshakeIcon, AlertTriangle, Clock, AlertCircle, ShieldCheck } from "lucide-react";
 import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,7 +22,6 @@ import { useState, useEffect, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
 import { useUserJot } from "@/hooks/use-userjot";
-import { Clock, AlertCircle } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { formatDistanceToNow } from "date-fns";
 
@@ -38,29 +37,86 @@ interface Notification {
   createdAt: string;
 }
 
+function getNotificationIcon(type: string) {
+  if (type === "return_reminder_overdue") return <AlertCircle className="h-4 w-4 text-red-500" />;
+  if (type === "return_reminder_today") return <Clock className="h-4 w-4 text-orange-500" />;
+  if (type === "return_reminder_tomorrow") return <Clock className="h-4 w-4 text-amber-400" />;
+  if (type === "wishlist_match") return <Heart className="h-4 w-4 text-pink-500" />;
+  if (type === "swap_match") return <ArrowLeftRight className="h-4 w-4 text-teal-500" />;
+  if (type === "item_request" || type === "request_accepted") return <Package className="h-4 w-4 text-blue-500" />;
+  if (type === "terms_counter_proposed") return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+  if (type === "terms_declined") return <AlertTriangle className="h-4 w-4 text-red-500" />;
+  if (type === "gift_completed" || type === "gift_handoff_pending") return <Gift className="h-4 w-4 text-pink-500" />;
+  if (type === "handoff_pending" || type === "handoff_confirmed") return <Clock className="h-4 w-4 text-amber-500" />;
+  if (type === "handoff_dispute" || type === "handoff_disputed") return <AlertTriangle className="h-4 w-4 text-red-500" />;
+  if (type === "handoff_flagged") return <Flag className="h-4 w-4 text-orange-500" />;
+  if (type === "dispute_opened") return <ShieldAlert className="h-4 w-4 text-red-500" />;
+  if (type === "delivery_confirmed") return <Truck className="h-4 w-4 text-teal-500" />;
+  if (type === "courier_issue") return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+  if (type === "sharecoin_earned") return <Coins className="h-4 w-4 text-yellow-500" />;
+  if (type === "milestone_achieved") return <Trophy className="h-4 w-4 text-amber-500" />;
+  if (type === "badge_earned") return <Star className="h-4 w-4 text-purple-500" />;
+  if (type === "level_up") return <TrendingUp className="h-4 w-4 text-green-500" />;
+  if (type === "trust_score_changed") return <TrendingUp className="h-4 w-4 text-blue-500" />;
+  if (type === "new_review_received") return <Star className="h-4 w-4 text-yellow-500" />;
+  if (type === "referral_joined") return <Users className="h-4 w-4 text-teal-500" />;
+  if (type === "security_deposit_released") return <Unlock className="h-4 w-4 text-green-500" />;
+  if (type === "payment_received") return <DollarSign className="h-4 w-4 text-green-500" />;
+  if (type === "verification_failed") return <ShieldAlert className="h-4 w-4 text-red-500" />;
+  return <Bell className="h-4 w-4 text-primary" />;
+}
+
+function getNotificationUrl(n: Notification): string | null {
+  if (n.requestId) return `/transactions/${n.requestId}`;
+  if (n.itemId) return `/items/${n.itemId}`;
+  return null;
+}
+
+function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Notification) => void }) {
+  return (
+    <button
+      className={`w-full text-left flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer ${n.isRead ? "hover:bg-muted/50" : "bg-primary/5 hover:bg-primary/10"}`}
+      onClick={() => onAction(n)}
+    >
+      <div className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-muted flex items-center justify-center">
+        {getNotificationIcon(n.type)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm leading-snug ${n.isRead ? "font-normal text-foreground" : "font-medium text-foreground"}`}>
+          {n.title}
+        </p>
+        {n.message && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.message}</p>
+        )}
+        <p className="text-xs text-muted-foreground/70 mt-1">
+          {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+        </p>
+      </div>
+      {!n.isRead && <div className="flex-shrink-0 mt-1.5 h-2 w-2 rounded-full bg-primary" />}
+    </button>
+  );
+}
+
 function NotificationBell() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
 
-  // Fetch unread count (check every 2 minutes instead of 30s to reduce load)
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["/api/notifications/unread-count"],
     enabled: !!user?.id,
-    refetchInterval: 120000, // Refetch every 2 minutes
+    refetchInterval: 120000,
   });
 
-  // Fetch notifications
-  const { data: notifications = [] } = useQuery<Notification[]>({
+  const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     enabled: !!user?.id,
-    refetchInterval: 120000, // Refetch every 2 minutes
+    refetchInterval: 120000,
   });
 
   useEffect(() => {
     if (!user?.id) return;
-
     let isCancelled = false;
-
     const checkReminders = async () => {
       if (isCancelled || !document.hasFocus()) return;
       try {
@@ -69,49 +125,32 @@ function NotificationBell() {
           queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
           queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
         }
-      } catch (error) {
-        // Silently ignore reminder check failures
-      }
+      } catch {}
     };
-
     const timer = setTimeout(checkReminders, 5000);
     const interval = setInterval(checkReminders, 15 * 60 * 1000);
-
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
+    return () => { isCancelled = true; clearTimeout(timer); clearInterval(interval); };
   }, [user?.id]);
 
   const markAsReadMutation = useMutation({
-    mutationFn: (notificationId: number) => {
-      return apiRequest("PATCH", `/api/notifications/${notificationId}/read`);
-    },
+    mutationFn: (notificationId: number) =>
+      apiRequest("PATCH", `/api/notifications/${notificationId}/read`),
     onMutate: async (notificationId: number) => {
       await queryClient.cancelQueries({ queryKey: ["/api/notifications"] });
       await queryClient.cancelQueries({ queryKey: ["/api/notifications/unread-count"] });
-      
-      const previousNotifications = queryClient.getQueryData<Notification[]>(["/api/notifications"]);
-      const previousCount = queryClient.getQueryData<{ count: number }>(["/api/notifications/unread-count"]);
-      
+      const prev = queryClient.getQueryData<Notification[]>(["/api/notifications"]);
+      const prevCount = queryClient.getQueryData<{ count: number }>(["/api/notifications/unread-count"]);
       queryClient.setQueryData<Notification[]>(["/api/notifications"], (old) =>
         old?.map((n) => n.id === notificationId ? { ...n, isRead: true } : n)
       );
-      
       queryClient.setQueryData<{ count: number }>(["/api/notifications/unread-count"], (old) => ({
-        count: Math.max(0, (old?.count ?? 1) - 1)
+        count: Math.max(0, (old?.count ?? 1) - 1),
       }));
-      
-      return { previousNotifications, previousCount };
+      return { prev, prevCount };
     },
-    onError: (err, notificationId, context) => {
-      if (context?.previousNotifications) {
-        queryClient.setQueryData(["/api/notifications"], context.previousNotifications);
-      }
-      if (context?.previousCount) {
-        queryClient.setQueryData(["/api/notifications/unread-count"], context.previousCount);
-      }
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(["/api/notifications"], context.prev);
+      if (context?.prevCount) queryClient.setQueryData(["/api/notifications/unread-count"], context.prevCount);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -119,21 +158,16 @@ function NotificationBell() {
     },
   });
 
-  const unreadNotifications = notifications.filter(n => !n.isRead).slice(0, 5);
-  const unreadCount = unreadData?.count ?? 0;
-
-  const getNotificationIcon = (type: string) => {
-    if (type.includes('return_reminder_overdue')) {
-      return <AlertCircle className="h-4 w-4 text-red-500" />;
-    } else if (type.includes('return_reminder')) {
-      return <Clock className="h-4 w-4 text-orange-500" />;
-    } else if (type === 'wishlist_match') {
-      return <Heart className="h-4 w-4 text-pink-500" />;
-    } else if (type === 'swap_match') {
-      return <ArrowLeftRight className="h-4 w-4 text-teal-500" />;
-    }
-    return <Bell className="h-4 w-4 text-primary" />;
+  const handleNotificationClick = (n: Notification) => {
+    if (!n.isRead) markAsReadMutation.mutate(n.id);
+    const url = getNotificationUrl(n);
+    if (url) navigate(url);
   };
+
+  const unreadNotifications = allNotifications.filter((n) => !n.isRead);
+  const recentNotifications = allNotifications.slice(0, 20);
+  const unreadCount = unreadData?.count ?? 0;
+  const hasNotifications = allNotifications.length > 0;
 
   return (
     <DropdownMenu>
@@ -141,52 +175,55 @@ function NotificationBell() {
         <Button variant="ghost" className="relative p-2 hover:text-primary">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 p-1 text-xs font-bold flex items-center justify-center">
-              {unreadCount}
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 p-0 text-xs font-bold flex items-center justify-center min-w-0">
+              {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 max-h-[500px] overflow-y-auto">
-        <div className="p-2">
-          <div className="flex items-center justify-between mb-2">
-            <h6 className="text-sm font-semibold text-primary">Notifications</h6>
-            {unreadCount > 0 && (
-              <span className="text-xs text-muted-foreground">{unreadCount} unread</span>
-            )}
-          </div>
-          {unreadNotifications.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No new notifications</p>
+      <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <h6 className="text-sm font-semibold">Notifications</h6>
+          <Link href="/notifications" className="cursor-pointer text-xs text-primary hover:underline">
+            See all
+          </Link>
+        </div>
+
+        <div className="max-h-[440px] overflow-y-auto">
+          {!hasNotifications ? (
+            <p className="text-sm text-muted-foreground text-center py-8 px-4">
+              Your recent activity will appear here
+            </p>
           ) : (
             <>
-              {unreadNotifications.map((notification) => (
-                <div key={notification.id}>
-                  <DropdownMenuItem 
-                    className="cursor-pointer hover:bg-gray-100 flex flex-col items-start p-3 gap-1"
-                    onClick={() => {
-                      markAsReadMutation.mutate(notification.id);
-                      if (notification.requestId) {
-                        window.dispatchEvent(new CustomEvent("open-chat-requests"));
-                      }
-                    }}
-                  >
-                    <div className="flex items-start gap-2 w-full">
-                      {getNotificationIcon(notification.type)}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                        </p>
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+              {/* Section 1: Unread */}
+              {unreadNotifications.length > 0 && (
+                <div>
+                  <p className="px-3 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Unread · {unreadNotifications.length}
+                  </p>
+                  <div className="px-1.5 pb-1 space-y-0.5">
+                    {unreadNotifications.map((n) => (
+                      <NotificationItem key={n.id} n={n} onAction={handleNotificationClick} />
+                    ))}
+                  </div>
                 </div>
-              ))}
-              {unreadCount > 5 && (
-                <div className="text-center text-xs text-muted-foreground py-2">
-                  +{unreadCount - 5} more notifications
+              )}
+
+              {/* Section 2: Recent */}
+              {recentNotifications.filter((n) => n.isRead).length > 0 && (
+                <div className={unreadNotifications.length > 0 ? "border-t mt-1" : ""}>
+                  <p className="px-3 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Recent activity
+                  </p>
+                  <div className="px-1.5 pb-2 space-y-0.5">
+                    {recentNotifications
+                      .filter((n) => n.isRead)
+                      .map((n) => (
+                        <NotificationItem key={n.id} n={n} onAction={handleNotificationClick} />
+                      ))}
+                  </div>
                 </div>
               )}
             </>

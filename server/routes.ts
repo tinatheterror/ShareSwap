@@ -13,6 +13,7 @@ import {
   notifications,
 } from "@db/schema";
 import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
 import multer from "multer";
@@ -7445,12 +7446,119 @@ Respond with ONLY the category name, nothing else.`
         .from(notifications)
         .where(eq(notifications.userId, req.user.id))
         .orderBy(desc(notifications.createdAt))
-        .limit(50);
+        .limit(20);
 
       res.json(userNotifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
       res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Transaction detail page — full request with joined item and users
+  app.get("/api/item-requests/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = parseInt(req.params.id);
+    if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
+
+    try {
+      const ownerAlias = alias(users, "owner");
+      const requesterAlias = alias(users, "requester");
+
+      const [row] = await db
+        .select({
+          // Core request fields
+          id: itemRequests.id,
+          requestType: itemRequests.requestType,
+          status: itemRequests.status,
+          message: itemRequests.message,
+          startDate: itemRequests.startDate,
+          endDate: itemRequests.endDate,
+          createdAt: itemRequests.createdAt,
+          deliveryMethod: itemRequests.deliveryMethod,
+          depositMethod: itemRequests.depositMethod,
+          negotiationStatus: itemRequests.negotiationStatus,
+          termsAcceptedAt: itemRequests.termsAcceptedAt,
+          termsDeclinedAt: itemRequests.termsDeclinedAt,
+          counterProposedAt: itemRequests.counterProposedAt,
+          // Deposit
+          trustDepositAmount: itemRequests.trustDepositAmount,
+          trustDepositBaseAmount: itemRequests.trustDepositBaseAmount,
+          trustDiscountPercentage: itemRequests.trustDiscountPercentage,
+          depositStatus: itemRequests.depositStatus,
+          depositAuthorizedAt: itemRequests.depositAuthorizedAt,
+          depositReleasedAt: itemRequests.depositReleasedAt,
+          // Rental
+          rentalAmount: itemRequests.rentalAmount,
+          rentalProcessingFee: itemRequests.rentalProcessingFee,
+          // Courier
+          courierBookedAt: itemRequests.courierBookedAt,
+          deliveryConfirmedAt: itemRequests.deliveryConfirmedAt,
+          courierIssue: itemRequests.courierIssue,
+          courierIssueNote: itemRequests.courierIssueNote,
+          // Handoff
+          confirmationMethod: itemRequests.confirmationMethod,
+          handoffConfirmedAt: itemRequests.handoffConfirmedAt,
+          borrowPeriodStartedAt: itemRequests.borrowPeriodStartedAt,
+          handoffDisputeTriggered: itemRequests.handoffDisputeTriggered,
+          handoffDisputeAt: itemRequests.handoffDisputeAt,
+          handoffProofOwner: itemRequests.handoffProofOwner,
+          handoffProofBorrower: itemRequests.handoffProofBorrower,
+          // Return
+          returnRequestedAt: itemRequests.returnRequestedAt,
+          returnConfirmedAt: itemRequests.returnConfirmedAt,
+          returnConditionOk: itemRequests.returnConditionOk,
+          returnConditionNotes: itemRequests.returnConditionNotes,
+          returnConditionRating: itemRequests.returnConditionRating,
+          returnDisputeTriggered: itemRequests.returnDisputeTriggered,
+          returnDisputeReason: itemRequests.returnDisputeReason,
+          // Item
+          itemId: items.id,
+          itemName: items.name,
+          itemDescription: items.description,
+          itemPhotos: items.photos,
+          itemCategory: items.category,
+          itemReplacementValue: items.replacementValue,
+          itemTier: items.tier,
+          // Owner user
+          ownerId: ownerAlias.id,
+          ownerUsername: ownerAlias.username,
+          ownerHandle: ownerAlias.handle,
+          ownerDisplayName: ownerAlias.displayName,
+          ownerIsVerified: ownerAlias.isVerified,
+          ownerReputationLevel: ownerAlias.reputationLevel,
+          ownerTrustScore: ownerAlias.trustScore,
+          ownerAvatar: ownerAlias.avatarUrl,
+          // Requester user
+          requesterId: requesterAlias.id,
+          requesterUsername: requesterAlias.username,
+          requesterHandle: requesterAlias.handle,
+          requesterDisplayName: requesterAlias.displayName,
+          requesterIsVerified: requesterAlias.isVerified,
+          requesterReputationLevel: requesterAlias.reputationLevel,
+          requesterTrustScore: requesterAlias.trustScore,
+          requesterAvatar: requesterAlias.avatarUrl,
+        })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .innerJoin(ownerAlias, eq(ownerAlias.id, items.ownerId))
+        .innerJoin(requesterAlias, eq(requesterAlias.id, itemRequests.requesterId))
+        .where(
+          and(
+            eq(itemRequests.id, requestId),
+            or(
+              eq(items.ownerId, req.user.id),
+              eq(itemRequests.requesterId, req.user.id)
+            )
+          )
+        )
+        .limit(1);
+
+      if (!row) return res.status(404).json({ error: "Transaction not found" });
+      res.json(row);
+    } catch (error) {
+      console.error("Error fetching item request detail:", error);
+      res.status(500).json({ error: "Failed to fetch transaction" });
     }
   });
 

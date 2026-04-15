@@ -1,32 +1,32 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/shared/navbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
   Package,
-  User,
   CheckCircle2,
   Clock,
   AlertTriangle,
   Truck,
   Lock,
   Unlock,
-  HandshakeIcon,
   RotateCcw,
   ShieldAlert,
   DollarSign,
-  Coins,
-  Star,
   CalendarDays,
   MapPin,
   FileText,
   BadgeCheck,
+  Loader2,
+  HandshakeIcon,
+  TrendingDown,
+  Flag,
+  Star,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -99,7 +99,7 @@ interface TimelineEvent {
   label: string;
   timestamp: string;
   icon: React.ReactNode;
-  color: string;
+  iconBg: string;
   metadata?: string;
 }
 
@@ -126,19 +126,25 @@ function statusLabel(status: string): string {
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
   if (["COMPLETED", "RETURN_CONFIRMED"].includes(status)) return "default";
-  if (["REJECTED", "CANCELLED", "DEPOSIT_FAILED", "DISPUTED", "HANDOFF_DISPUTED"].includes(status)) return "destructive";
-  if (["PENDING"].includes(status)) return "secondary";
+  if (["REJECTED", "CANCELLED", "DEPOSIT_FAILED", "DISPUTED", "HANDOFF_DISPUTED"].includes(status))
+    return "destructive";
+  if (status === "PENDING") return "secondary";
   return "outline";
 }
 
 function requestTypeLabel(type: string): string {
-  const map: Record<string, string> = {
-    borrow: "Borrow",
-    rent: "Rental",
-    swap: "Swap",
-    gift: "Gift",
-  };
+  const map: Record<string, string> = { borrow: "Borrow", rent: "Rental", swap: "Swap", gift: "Gift" };
   return map[type] ?? type;
+}
+
+function requestTypeBadgeClass(type: string): string {
+  const map: Record<string, string> = {
+    borrow: "bg-blue-100 text-blue-700 border-blue-200",
+    rent: "bg-purple-100 text-purple-700 border-purple-200",
+    swap: "bg-teal-100 text-teal-700 border-teal-200",
+    gift: "bg-pink-100 text-pink-700 border-pink-200",
+  };
+  return map[type] ?? "bg-gray-100 text-gray-700";
 }
 
 function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
@@ -148,8 +154,8 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
     events.push({
       label: "Request sent",
       timestamp: tx.createdAt,
-      icon: <FileText className="h-4 w-4" />,
-      color: "text-blue-500",
+      icon: <FileText className="h-4 w-4 text-white" />,
+      iconBg: "bg-blue-400",
       metadata: tx.message ?? undefined,
     });
   }
@@ -157,379 +163,521 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
     events.push({
       label: "Counter-proposal made",
       timestamp: tx.counterProposedAt,
-      icon: <ArrowLeft className="h-4 w-4 rotate-180" />,
-      color: "text-amber-500",
+      icon: <AlertTriangle className="h-4 w-4 text-white" />,
+      iconBg: "bg-amber-400",
     });
   }
   if (tx.termsAcceptedAt) {
     events.push({
       label: "Terms accepted",
       timestamp: tx.termsAcceptedAt,
-      icon: <CheckCircle2 className="h-4 w-4" />,
-      color: "text-green-500",
+      icon: <CheckCircle2 className="h-4 w-4 text-white" />,
+      iconBg: "bg-green-500",
     });
   }
   if (tx.termsDeclinedAt) {
     events.push({
       label: "Terms declined",
       timestamp: tx.termsDeclinedAt,
-      icon: <AlertTriangle className="h-4 w-4" />,
-      color: "text-red-500",
+      icon: <AlertTriangle className="h-4 w-4 text-white" />,
+      iconBg: "bg-red-500",
     });
   }
   if (tx.depositAuthorizedAt) {
     events.push({
       label: "Security deposit held",
       timestamp: tx.depositAuthorizedAt,
-      icon: <Lock className="h-4 w-4" />,
-      color: "text-purple-500",
-      metadata: tx.trustDepositAmount ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} held` : undefined,
+      icon: <Lock className="h-4 w-4 text-white" />,
+      iconBg: "bg-purple-500",
+      metadata: tx.trustDepositAmount
+        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} held`
+        : undefined,
     });
   }
   if (tx.courierBookedAt) {
     events.push({
       label: "Courier booked",
       timestamp: tx.courierBookedAt,
-      icon: <Truck className="h-4 w-4" />,
-      color: "text-teal-500",
+      icon: <Truck className="h-4 w-4 text-white" />,
+      iconBg: "bg-teal-400",
     });
   }
   if (tx.deliveryConfirmedAt) {
     events.push({
       label: "Delivery confirmed",
       timestamp: tx.deliveryConfirmedAt,
-      icon: <CheckCircle2 className="h-4 w-4" />,
-      color: "text-teal-600",
+      icon: <CheckCircle2 className="h-4 w-4 text-white" />,
+      iconBg: "bg-teal-500",
     });
   }
   if (tx.handoffDisputeAt) {
     events.push({
       label: "Handoff dispute opened",
       timestamp: tx.handoffDisputeAt,
-      icon: <ShieldAlert className="h-4 w-4" />,
-      color: "text-red-600",
+      icon: <ShieldAlert className="h-4 w-4 text-white" />,
+      iconBg: "bg-red-600",
     });
   }
   if (tx.handoffConfirmedAt) {
     events.push({
-      label: `Handoff confirmed${tx.confirmationMethod ? ` (via ${tx.confirmationMethod === "pin" ? "PIN" : "manual"})` : ""}`,
+      label: `Handoff confirmed${tx.confirmationMethod ? ` via ${tx.confirmationMethod === "pin" ? "PIN" : "manual confirmation"}` : ""}`,
       timestamp: tx.handoffConfirmedAt,
-      icon: <HandshakeIcon className="h-4 w-4" />,
-      color: "text-green-600",
+      icon: <HandshakeIcon className="h-4 w-4 text-white" />,
+      iconBg: "bg-primary",
     });
   }
   if (tx.borrowPeriodStartedAt) {
     events.push({
       label: "Borrow period started",
       timestamp: tx.borrowPeriodStartedAt,
-      icon: <Clock className="h-4 w-4" />,
-      color: "text-blue-600",
+      icon: <Clock className="h-4 w-4 text-white" />,
+      iconBg: "bg-blue-500",
     });
   }
   if (tx.returnRequestedAt) {
     events.push({
       label: "Return requested",
       timestamp: tx.returnRequestedAt,
-      icon: <RotateCcw className="h-4 w-4" />,
-      color: "text-amber-500",
-    });
-  }
-  if (tx.returnConfirmedAt) {
-    events.push({
-      label: "Return confirmed",
-      timestamp: tx.returnConfirmedAt,
-      icon: <CheckCircle2 className="h-4 w-4" />,
-      color: "text-green-600",
-      metadata: tx.returnConditionRating ? `Condition rated ${tx.returnConditionRating}/5` : undefined,
+      icon: <RotateCcw className="h-4 w-4 text-white" />,
+      iconBg: "bg-amber-500",
     });
   }
   if (tx.returnDisputeTriggered && tx.returnRequestedAt) {
     events.push({
       label: "Return dispute opened",
       timestamp: tx.returnRequestedAt,
-      icon: <ShieldAlert className="h-4 w-4" />,
-      color: "text-red-600",
+      icon: <Flag className="h-4 w-4 text-white" />,
+      iconBg: "bg-red-600",
       metadata: tx.returnDisputeReason ?? undefined,
+    });
+  }
+  if (tx.returnConfirmedAt) {
+    events.push({
+      label: "Return confirmed",
+      timestamp: tx.returnConfirmedAt,
+      icon: <CheckCircle2 className="h-4 w-4 text-white" />,
+      iconBg: "bg-green-500",
+      metadata: tx.returnConditionRating
+        ? `Condition rated ${tx.returnConditionRating}/5`
+        : undefined,
     });
   }
   if (tx.depositReleasedAt) {
     events.push({
       label: "Security deposit released",
       timestamp: tx.depositReleasedAt,
-      icon: <Unlock className="h-4 w-4" />,
-      color: "text-green-500",
-      metadata: tx.trustDepositAmount ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} returned` : undefined,
+      icon: <Unlock className="h-4 w-4 text-white" />,
+      iconBg: "bg-green-600",
+      metadata: tx.trustDepositAmount
+        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} returned`
+        : undefined,
     });
   }
 
   return events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 }
 
-function UserCard({ user, role }: { user: { id: number; username: string; handle: string | null; displayName: string | null; isVerified: boolean; reputationLevel: string | null; trustScore: number | null; avatar: string | null }; role: string }) {
+function PartyCard({
+  user,
+  role,
+}: {
+  user: {
+    id: number;
+    username: string;
+    displayName: string | null;
+    isVerified: boolean;
+    reputationLevel: string | null;
+    trustScore: number | null;
+    avatar: string | null;
+  };
+  role: string;
+}) {
   const displayName = user.displayName || user.username;
   const initials = displayName.substring(0, 2).toUpperCase();
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-      <Avatar className="h-10 w-10 flex-shrink-0">
-        {user.avatar ? <img src={user.avatar} alt={displayName} className="h-10 w-10 rounded-full object-cover" /> : null}
-        <AvatarFallback className="text-sm font-semibold">{initials}</AvatarFallback>
+    <div className="flex items-center gap-3 p-3 rounded-lg border bg-white">
+      <Avatar className="h-11 w-11 flex-shrink-0">
+        {user.avatar ? (
+          <img src={user.avatar} alt={displayName} className="h-11 w-11 rounded-full object-cover" />
+        ) : null}
+        <AvatarFallback className="bg-teal-100 text-teal-700 font-semibold text-sm">
+          {initials}
+        </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1">
-          <Link href={`/profile/${user.username}`} className="cursor-pointer font-medium text-sm hover:underline truncate">{displayName}</Link>
-          {user.isVerified && <BadgeCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Link
+            href={`/profile/${user.username}`}
+            className="cursor-pointer font-semibold text-sm hover:text-primary transition-colors truncate"
+          >
+            {displayName}
+          </Link>
+          {user.isVerified && <BadgeCheck className="h-4 w-4 text-primary flex-shrink-0" />}
         </div>
         <p className="text-xs text-muted-foreground">{role}</p>
         {user.trustScore !== null && (
-          <p className="text-xs text-muted-foreground">Trust: {user.trustScore} · {user.reputationLevel ?? "Newcomer"}</p>
+          <p className="text-xs text-muted-foreground">
+            Trust score: {user.trustScore} · {user.reputationLevel ?? "Newcomer"}
+          </p>
         )}
       </div>
     </div>
   );
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+      {children}
+    </h2>
+  );
+}
+
 export default function TransactionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const [, navigate] = useLocation();
 
   const { data: tx, isLoading, error } = useQuery<TransactionDetail>({
     queryKey: ["/api/item-requests", id],
     queryFn: async () => {
       const res = await fetch(`/api/item-requests/${id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load transaction");
+      if (!res.ok) throw new Error("Not found");
       return res.json();
     },
     enabled: !!id && !!user,
   });
 
-  const isOwner = user?.id === tx?.ownerId;
   const isDisputed = tx?.handoffDisputeTriggered || tx?.returnDisputeTriggered;
-
   const timeline = tx ? buildTimeline(tx) : [];
-
   const itemPhoto = tx?.itemPhotos?.[0];
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-24">
-        <div className="flex items-center gap-2 mb-5">
-          <Button variant="ghost" size="sm" onClick={() => window.history.back()} className="p-0 h-auto hover:bg-transparent text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F3F4F6]">
+        <Navbar />
+        <main className="container mx-auto px-4 py-6 max-w-2xl">
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !tx) {
+    return (
+      <div className="min-h-screen bg-[#F3F4F6]">
+        <Navbar />
+        <main className="container mx-auto px-4 py-6 max-w-2xl">
+          <Button variant="ghost" onClick={() => navigate("/notifications")} className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Notifications
           </Button>
-        </div>
+          <Card>
+            <CardContent className="py-16 text-center">
+              <ShieldAlert className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <p className="font-semibold text-gray-600">Transaction not found</p>
+              <p className="text-sm text-gray-500 mt-1">
+                You may not have access to this record.
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
-        {isLoading && (
-          <div className="space-y-4">
-            <Skeleton className="h-32 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-48 w-full rounded-xl" />
-          </div>
-        )}
+  return (
+    <div className="min-h-screen bg-[#F3F4F6]">
+      <Navbar />
+      <main className="container mx-auto px-4 py-6 max-w-2xl pb-24">
+        <Button variant="ghost" onClick={() => navigate("/notifications")} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
 
-        {error && (
-          <div className="text-center py-16 text-muted-foreground">
-            <ShieldAlert className="h-10 w-10 mx-auto mb-3 text-red-400" />
-            <p className="font-medium">Transaction not found</p>
-            <p className="text-sm mt-1">You may not have access to this record.</p>
-          </div>
-        )}
-
-        {tx && (
-          <div className="space-y-5">
-            {/* Header card */}
-            <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="space-y-4">
+          {/* Header card */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
               <div className="flex gap-4 p-4">
                 {itemPhoto ? (
-                  <img src={itemPhoto} alt={tx.itemName} className="h-20 w-20 rounded-lg object-cover flex-shrink-0" />
+                  <img
+                    src={itemPhoto}
+                    alt={tx.itemName}
+                    className="h-20 w-20 rounded-lg object-cover flex-shrink-0 border"
+                  />
                 ) : (
-                  <div className="h-20 w-20 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                    <Package className="h-8 w-8 text-muted-foreground" />
+                  <div className="h-20 w-20 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 border">
+                    <Package className="h-8 w-8 text-gray-400" />
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-start gap-2 mb-1">
-                    <h1 className="font-semibold text-base leading-tight">{tx.itemName}</h1>
+                <div className="flex-1 min-w-0 py-1">
+                  <h1 className="font-bold text-lg leading-tight mb-2">{tx.itemName}</h1>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span
+                      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${requestTypeBadgeClass(tx.requestType)}`}
+                    >
+                      {requestTypeLabel(tx.requestType)}
+                    </span>
+                    <Badge variant={statusVariant(tx.status)} className="text-xs">
+                      {statusLabel(tx.status)}
+                    </Badge>
+                    {isDisputed && (
+                      <Badge variant="destructive" className="text-xs">
+                        Disputed
+                      </Badge>
+                    )}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    <Badge variant="secondary" className="text-xs">{requestTypeLabel(tx.requestType)}</Badge>
-                    <Badge variant={statusVariant(tx.status)} className="text-xs">{statusLabel(tx.status)}</Badge>
-                    {isDisputed && <Badge variant="destructive" className="text-xs">Disputed</Badge>}
-                  </div>
-                  {tx.itemCategory && <p className="text-xs text-muted-foreground capitalize">{tx.itemCategory}</p>}
-                  <p className="text-xs text-muted-foreground mt-0.5">#{tx.id}</p>
                 </div>
               </div>
 
-              {(tx.startDate || tx.endDate) && (
-                <div className="border-t px-4 py-3 flex gap-6 text-xs text-muted-foreground">
-                  {tx.startDate && (
-                    <div className="flex items-center gap-1.5">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      <span>Start: {format(new Date(tx.startDate), "MMM d, yyyy")}</span>
-                    </div>
-                  )}
-                  {tx.endDate && (
-                    <div className="flex items-center gap-1.5">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      <span>End: {format(new Date(tx.endDate), "MMM d, yyyy")}</span>
-                    </div>
-                  )}
-                  {tx.deliveryMethod && (
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5" />
-                      <span className="capitalize">{tx.deliveryMethod.replace("_", " ")}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Parties */}
-            <div>
-              <h2 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Parties</h2>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <UserCard
-                  user={{ id: tx.ownerId, username: tx.ownerUsername, handle: tx.ownerHandle, displayName: tx.ownerDisplayName, isVerified: tx.ownerIsVerified, reputationLevel: tx.ownerReputationLevel, trustScore: tx.ownerTrustScore, avatar: tx.ownerAvatar }}
-                  role={tx.requestType === "borrow" || tx.requestType === "rent" ? "Owner / Lender" : "Owner"}
-                />
-                <UserCard
-                  user={{ id: tx.requesterId, username: tx.requesterUsername, handle: tx.requesterHandle, displayName: tx.requesterDisplayName, isVerified: tx.requesterIsVerified, reputationLevel: tx.requesterReputationLevel, trustScore: tx.requesterTrustScore, avatar: tx.requesterAvatar }}
-                  role={tx.requestType === "borrow" || tx.requestType === "rent" ? "Borrower / Renter" : "Requester"}
-                />
+              {/* Meta row */}
+              <div className="border-t px-4 py-3 bg-gray-50 flex flex-wrap gap-x-5 gap-y-1">
+                <span className="text-xs text-muted-foreground">Ref #{tx.id}</span>
+                {tx.itemCategory && (
+                  <span className="text-xs text-muted-foreground capitalize">{tx.itemCategory}</span>
+                )}
+                {tx.deliveryMethod && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 capitalize">
+                    <MapPin className="h-3 w-3" />
+                    {tx.deliveryMethod.replace("_", " ")}
+                  </span>
+                )}
+                {tx.startDate && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <CalendarDays className="h-3 w-3" />
+                    {format(new Date(tx.startDate), "MMM d")}
+                    {tx.endDate ? ` – ${format(new Date(tx.endDate), "MMM d, yyyy")}` : ""}
+                  </span>
+                )}
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Security Deposit / Payment section */}
-            {(tx.trustDepositAmount || tx.rentalAmount) && (
-              <div id="payment" className="rounded-xl border bg-card p-4 space-y-3">
-                <h2 className="font-semibold text-sm flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-green-500" />
-                  Payment & Deposit
-                </h2>
-                <div className="space-y-2 text-sm">
+          {/* Parties */}
+          <div>
+            <SectionLabel>People involved</SectionLabel>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <PartyCard
+                user={{
+                  id: tx.ownerId,
+                  username: tx.ownerUsername,
+                  displayName: tx.ownerDisplayName,
+                  isVerified: tx.ownerIsVerified,
+                  reputationLevel: tx.ownerReputationLevel,
+                  trustScore: tx.ownerTrustScore,
+                  avatar: tx.ownerAvatar,
+                }}
+                role={
+                  tx.requestType === "borrow" || tx.requestType === "rent"
+                    ? "Owner / Lender"
+                    : "Owner"
+                }
+              />
+              <PartyCard
+                user={{
+                  id: tx.requesterId,
+                  username: tx.requesterUsername,
+                  displayName: tx.requesterDisplayName,
+                  isVerified: tx.requesterIsVerified,
+                  reputationLevel: tx.requesterReputationLevel,
+                  trustScore: tx.requesterTrustScore,
+                  avatar: tx.requesterAvatar,
+                }}
+                role={
+                  tx.requestType === "borrow" || tx.requestType === "rent"
+                    ? "Borrower / Renter"
+                    : "Requester"
+                }
+              />
+            </div>
+          </div>
+
+          {/* Payment & Deposit */}
+          {(tx.trustDepositAmount || tx.rentalAmount) && (
+            <div id="payment">
+              <SectionLabel>Payment & deposit</SectionLabel>
+              <Card>
+                <CardContent className="p-4 space-y-0">
                   {tx.rentalAmount && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Rental fee</span>
-                      <span className="font-medium">${parseFloat(tx.rentalAmount).toFixed(2)}</span>
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="text-sm text-muted-foreground">Rental fee</span>
+                      <span className="text-sm font-medium">
+                        ${parseFloat(tx.rentalAmount).toFixed(2)}
+                      </span>
                     </div>
                   )}
                   {tx.rentalProcessingFee && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Processing fee (3%)</span>
-                      <span>${parseFloat(tx.rentalProcessingFee).toFixed(2)}</span>
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="text-sm text-muted-foreground">Processing fee (3%)</span>
+                      <span className="text-sm">
+                        ${parseFloat(tx.rentalProcessingFee).toFixed(2)}
+                      </span>
                     </div>
                   )}
                   {tx.trustDepositBaseAmount && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Base deposit</span>
-                      <span>${parseFloat(tx.trustDepositBaseAmount).toFixed(2)}</span>
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="text-sm text-muted-foreground">Base deposit</span>
+                      <span className="text-sm">
+                        ${parseFloat(tx.trustDepositBaseAmount).toFixed(2)}
+                      </span>
                     </div>
                   )}
                   {tx.trustDiscountPercentage ? (
-                    <div className="flex justify-between text-green-600">
-                      <span>Trust discount</span>
-                      <span>−{tx.trustDiscountPercentage}%</span>
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="text-sm text-green-600">Trust discount</span>
+                      <span className="text-sm text-green-600">−{tx.trustDiscountPercentage}%</span>
                     </div>
                   ) : null}
                   {tx.trustDepositAmount && (
-                    <div className="flex justify-between font-medium border-t pt-2">
-                      <span>Security deposit</span>
-                      <div className="flex items-center gap-1.5">
-                        <span>${parseFloat(tx.trustDepositAmount).toFixed(2)}</span>
-                        <Badge variant={tx.depositStatus === "released" ? "default" : tx.depositStatus === "held" || tx.depositStatus === "authorized" ? "secondary" : "outline"} className="text-xs">
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm font-semibold">Security deposit</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">
+                          ${parseFloat(tx.trustDepositAmount).toFixed(2)}
+                        </span>
+                        <Badge
+                          variant={
+                            tx.depositStatus === "released"
+                              ? "default"
+                              : tx.depositStatus === "held" || tx.depositStatus === "authorized"
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-xs capitalize"
+                        >
                           {tx.depositStatus ?? "pending"}
                         </Badge>
                       </div>
                     </div>
                   )}
-                </div>
-                {tx.depositAuthorizedAt && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Lock className="h-3 w-3" />
-                    Held on {format(new Date(tx.depositAuthorizedAt), "MMM d, yyyy 'at' h:mm a")}
-                  </p>
-                )}
-                {tx.depositReleasedAt && (
-                  <p className="text-xs text-green-600 flex items-center gap-1">
-                    <Unlock className="h-3 w-3" />
-                    Released on {format(new Date(tx.depositReleasedAt), "MMM d, yyyy 'at' h:mm a")}
-                  </p>
-                )}
-              </div>
-            )}
 
-            {/* Dispute section */}
-            {isDisputed && (
-              <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 p-4 space-y-3">
-                <h2 className="font-semibold text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4" />
-                  {tx.handoffDisputeTriggered ? "Handoff Dispute" : "Return Dispute"}
-                </h2>
-                {tx.returnDisputeReason && (
-                  <p className="text-sm text-red-800 dark:text-red-300">{tx.returnDisputeReason}</p>
-                )}
-                {tx.handoffProofOwner && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Owner statement</p>
-                    <p className="text-sm bg-background rounded-md p-2 border">{tx.handoffProofOwner}</p>
-                  </div>
-                )}
-                {tx.handoffProofBorrower && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Borrower statement</p>
-                    <p className="text-sm bg-background rounded-md p-2 border">{tx.handoffProofBorrower}</p>
-                  </div>
-                )}
-                {tx.returnConditionNotes && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Return notes</p>
-                    <p className="text-sm bg-background rounded-md p-2 border">{tx.returnConditionNotes}</p>
-                  </div>
-                )}
-              </div>
-            )}
+                  {(tx.depositAuthorizedAt || tx.depositReleasedAt) && (
+                    <div className="border-t pt-3 mt-1 space-y-1.5">
+                      {tx.depositAuthorizedAt && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Lock className="h-3.5 w-3.5" />
+                          Held on{" "}
+                          {format(new Date(tx.depositAuthorizedAt), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                      )}
+                      {tx.depositReleasedAt && (
+                        <p className="text-xs text-green-600 flex items-center gap-1.5">
+                          <Unlock className="h-3.5 w-3.5" />
+                          Released on{" "}
+                          {format(new Date(tx.depositReleasedAt), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-            {/* Activity Timeline */}
+          {/* Dispute section */}
+          {isDisputed && (
             <div>
-              <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Activity Timeline</h2>
-              {timeline.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
-              ) : (
-                <div className="relative">
-                  <div className="absolute left-4 top-3 bottom-3 w-px bg-border" />
-                  <div className="space-y-0">
-                    {timeline.map((event, idx) => (
-                      <div key={idx} className="flex gap-4 relative">
-                        <div className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full border-2 border-background bg-muted flex items-center justify-center ${event.color}`}>
-                          {event.icon}
-                        </div>
-                        <div className="flex-1 pb-5 pt-1 min-w-0">
-                          <p className="text-sm font-medium leading-tight">{event.label}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {format(new Date(event.timestamp), "MMM d, yyyy 'at' h:mm a")}
-                            <span className="ml-1 text-muted-foreground/60">({formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })})</span>
-                          </p>
-                          {event.metadata && (
-                            <p className="text-xs text-muted-foreground mt-1 italic">{event.metadata}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+              <SectionLabel>Dispute details</SectionLabel>
+              <Card className="border-l-4 border-l-red-400 bg-red-50">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-red-500" />
+                    <h3 className="font-semibold text-red-700">
+                      {tx.handoffDisputeTriggered ? "Handoff Dispute" : "Return Dispute"}
+                    </h3>
                   </div>
-                </div>
-              )}
+                  {tx.returnDisputeReason && (
+                    <p className="text-sm text-red-800">{tx.returnDisputeReason}</p>
+                  )}
+                  {tx.handoffProofOwner && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Owner's statement</p>
+                      <p className="text-sm bg-white rounded-md p-2.5 border text-gray-800">
+                        {tx.handoffProofOwner}
+                      </p>
+                    </div>
+                  )}
+                  {tx.handoffProofBorrower && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Borrower's statement
+                      </p>
+                      <p className="text-sm bg-white rounded-md p-2.5 border text-gray-800">
+                        {tx.handoffProofBorrower}
+                      </p>
+                    </div>
+                  )}
+                  {tx.returnConditionNotes && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Return notes</p>
+                      <p className="text-sm bg-white rounded-md p-2.5 border text-gray-800">
+                        {tx.returnConditionNotes}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
+          )}
 
-            {/* Quick action */}
-            <div className="flex justify-center pt-2">
-              <Link href="/requests" className="cursor-pointer">
-                <Button variant="outline" size="sm">View all requests</Button>
-              </Link>
-            </div>
+          {/* Activity Timeline */}
+          <div>
+            <SectionLabel>Activity timeline</SectionLabel>
+            <Card>
+              <CardContent className="p-4">
+                {timeline.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No activity recorded yet.
+                  </p>
+                ) : (
+                  <div className="relative">
+                    {/* Vertical line */}
+                    <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gray-200" />
+                    <div className="space-y-0">
+                      {timeline.map((event, idx) => (
+                        <div key={idx} className="flex gap-4 relative">
+                          <div
+                            className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm ${event.iconBg}`}
+                          >
+                            {event.icon}
+                          </div>
+                          <div className="flex-1 pb-5 pt-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 leading-snug">
+                              {event.label}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {format(new Date(event.timestamp), "MMM d, yyyy 'at' h:mm a")}
+                              <span className="ml-1.5 text-gray-400">
+                                ({formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })})
+                              </span>
+                            </p>
+                            {event.metadata && (
+                              <p className="text-xs text-muted-foreground mt-1 bg-gray-50 rounded px-2 py-1 inline-block">
+                                {event.metadata}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        )}
+
+          {/* Footer action */}
+          <div className="flex justify-center pt-2 pb-6">
+            <Link href="/requests" className="cursor-pointer">
+              <Button variant="outline" size="sm">
+                View all requests
+              </Button>
+            </Link>
+          </div>
+        </div>
       </main>
     </div>
   );

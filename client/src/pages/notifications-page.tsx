@@ -109,7 +109,7 @@ export default function NotificationsPage() {
     }
     
     if (notification.requestId) {
-      window.dispatchEvent(new CustomEvent("open-chat-requests"));
+      navigate(`/transactions/${notification.requestId}`);
     } else if (notification.itemId) {
       navigate(`/items/${notification.itemId}`);
     }

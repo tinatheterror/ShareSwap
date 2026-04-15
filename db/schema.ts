@@ -335,6 +335,13 @@ export const itemRequests = pgTable("item_requests", {
   handoffRemindersLevel: integer("handoff_reminders_level").default(0), // 0=none, 1=10min sent, 2=1hr sent, 3=24hr sent
   handoffConfirmedAt: timestamp("handoff_confirmed_at"),
   borrowPeriodStartedAt: timestamp("borrow_period_started_at"),
+  // PIN-based handoff confirmation
+  handoffPin: text("handoff_pin"),                            // 4-digit PIN generated on accept
+  pinExpiresAt: timestamp("pin_expires_at"),                  // 24h from acceptance
+  pinUsed: boolean("pin_used").default(false),                // true once borrower uses PIN
+  pinAttempts: integer("pin_attempts").default(0),            // rate-limit tracker
+  noPinUsed: boolean("no_pin_used").default(false),           // true if fallback to manual
+  confirmationMethod: text("confirmation_method"),            // "pin" | "manual"
   // Dispute tracking (Case 5: one confirms + one denies)
   handoffDisputeTriggered: boolean("handoff_dispute_triggered").default(false),
   handoffDisputeAt: timestamp("handoff_dispute_at"),

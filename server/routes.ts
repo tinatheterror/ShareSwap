@@ -4205,6 +4205,11 @@ Respond with ONLY the category name, nothing else.`
       .where(eq(itemRequests.id, requestId))
       .returning();
 
+    // Generate handoff PIN on acceptance (owner gets a unique 4-digit code to verify the exchange)
+    if (status === "ACCEPTED") {
+      try { await issueHandoffPin(requestId); } catch (_) {}
+    }
+
     // Award ShareCoins for successful swaps (with anti-farming protection)
     if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
       try {
@@ -4379,6 +4384,21 @@ Respond with ONLY the category name, nothing else.`
   // =====================================
   // TERMS NEGOTIATION ENDPOINTS
   // =====================================
+
+  // Helper: generate a random 4-digit handoff PIN
+  function generateHandoffPin(): string {
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  }
+
+  // Helper: generate and store a handoff PIN for a newly-accepted request
+  async function issueHandoffPin(requestId: number) {
+    const pin = generateHandoffPin();
+    const pinExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await db.update(itemRequests)
+      .set({ handoffPin: pin, pinExpiresAt, pinUsed: false, pinAttempts: 0 } as any)
+      .where(eq(itemRequests.id, requestId));
+    return pin;
+  }
 
   // Helper: log a request lifecycle event as a system message in the chat thread
   async function logRequestEvent(
@@ -4585,6 +4605,11 @@ Respond with ONLY the category name, nothing else.`
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
+
+      // Generate handoff PIN when owner formally accepts
+      if (ownerIsAccepting) {
+        try { await issueHandoffPin(requestId); } catch (_) {}
+      }
 
       // If owner accepted, create delivery arrangement so requester can proceed to deposit
       if (ownerIsAccepting && finalDeliveryMethod && finalDepositMethod) {
@@ -5968,13 +5993,14 @@ Respond with ONLY the category name, nothing else.`
           }
         }
 
-        // Complete the handoff
+        // Complete the handoff (manual confirmation path)
         updateData.status = "IN_PROGRESS";
         updateData.handoffConfirmedAt = now;
         updateData.borrowPeriodStartedAt = now;
         updateData.shareCoinsCharged = true;
         updateData.shareCoinsChargedAt = now;
         updateData.depositStatus = "held";
+        updateData.confirmationMethod = "manual";
 
         // Mark item as unavailable
         await db
@@ -6110,6 +6136,146 @@ Respond with ONLY the category name, nothing else.`
     } catch (error: any) {
       console.error("Error confirming handoff:", error);
       res.status(500).json({ error: "Failed to confirm handoff" });
+    }
+  });
+
+  // Owner fetches their handoff PIN (owner-only, never returned to borrower in regular request payload)
+  app.get("/api/requests/:requestId/handoff-pin", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.items.ownerId !== req.user.id) return res.status(403).json({ error: "Only the owner can view the handoff PIN" });
+
+      const pin = (request.item_requests as any).handoffPin;
+      const pinExpiresAt = (request.item_requests as any).pinExpiresAt;
+      const pinUsed = (request.item_requests as any).pinUsed;
+
+      if (!pin) return res.status(404).json({ error: "No PIN generated for this request" });
+
+      const expired = pinExpiresAt && new Date(pinExpiresAt) < new Date();
+      return res.json({ pin: expired ? null : pin, pinExpiresAt, pinUsed, expired: !!expired });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch PIN" });
+    }
+  });
+
+  // Borrower verifies handoff PIN — on success, completes the handoff immediately
+  app.post("/api/requests/:requestId/verify-pin", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { pin } = req.body;
+
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+
+      const isBorrower = request.item_requests.requesterId === req.user.id;
+      if (!isBorrower) return res.status(403).json({ error: "Only the borrower can submit the PIN" });
+
+      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
+      if (!validStatuses.includes(request.item_requests.status)) {
+        return res.status(400).json({ error: "Handoff already completed or not ready" });
+      }
+
+      const storedPin = (request.item_requests as any).handoffPin;
+      const pinExpiresAt = (request.item_requests as any).pinExpiresAt;
+      const pinUsed = (request.item_requests as any).pinUsed;
+      const pinAttempts = (request.item_requests as any).pinAttempts ?? 0;
+
+      // Rate limit: max 5 attempts
+      if (pinAttempts >= 5) {
+        return res.status(429).json({ error: "Too many incorrect attempts. Please use the manual confirmation flow.", rateLimited: true });
+      }
+
+      // Check expiry
+      if (!storedPin || (pinExpiresAt && new Date(pinExpiresAt) < new Date())) {
+        return res.status(400).json({ error: "This code has expired", expired: true });
+      }
+
+      if (pinUsed) {
+        return res.status(400).json({ error: "This code has already been used", alreadyUsed: true });
+      }
+
+      // Validate PIN
+      if (pin !== storedPin) {
+        await db.update(itemRequests).set({ pinAttempts: pinAttempts + 1 } as any).where(eq(itemRequests.id, requestId));
+        const remaining = 5 - (pinAttempts + 1);
+        return res.status(400).json({ error: "That code didn't match", incorrect: true, attemptsRemaining: remaining });
+      }
+
+      // ✅ Correct PIN — complete the handoff immediately
+      const now = new Date();
+      const ownerId = request.items.ownerId!;
+      const borrowerId = request.item_requests.requesterId;
+      const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+
+      if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
+        const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
+        const currentBalance = parseFloat(borrower?.shareCoins || "0");
+        if (currentBalance < shareCoinAmount) return res.status(400).json({ error: "Insufficient ShareCoins balance" });
+
+        await db.update(users).set({ shareCoins: (currentBalance - shareCoinAmount).toString() }).where(eq(users.id, borrowerId));
+        await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-shareCoinAmount).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
+
+        if (ownerId) {
+          const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
+          const lenderBalance = parseFloat(lender?.shareCoins || "0");
+          await db.update(users).set({ shareCoins: (lenderBalance + shareCoinAmount).toString() }).where(eq(users.id, ownerId));
+          await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: shareCoinAmount.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
+        }
+      }
+
+      await db.update(itemRequests).set({
+        status: "IN_PROGRESS",
+        handoffConfirmedAt: now,
+        borrowPeriodStartedAt: now,
+        shareCoinsCharged: true,
+        shareCoinsChargedAt: now,
+        depositStatus: "held",
+        ownerConfirmedHandoff: true,
+        ownerConfirmedHandoffAt: now,
+        borrowerConfirmedHandoff: true,
+        borrowerConfirmedHandoffAt: now,
+        pinUsed: true,
+        confirmationMethod: "pin",
+      } as any).where(eq(itemRequests.id, requestId));
+
+      await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
+
+      const shareCoinAmountStr = shareCoinAmount > 0 && request.item_requests.requestType === "BORROW" ? `✓ ${shareCoinAmount} ShareCoins charged` : null;
+      const systemMsgs = [
+        "✅ Handoff confirmed via PIN — borrow period has started",
+        shareCoinAmountStr,
+        "✓ Security deposit is now held until the item is returned",
+      ].filter(Boolean) as string[];
+
+      for (const content of systemMsgs) {
+        await db.insert(messages).values({ content, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
+      }
+
+      await db.insert(notifications).values([
+        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `Borrower confirmed receipt of "${request.items.name}" via PIN. Borrow period started.`, itemId: request.items.id, requestId },
+        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `You confirmed receipt of "${request.items.name}" via PIN. Borrow period has started.`, itemId: request.items.id, requestId },
+      ]);
+
+      res.json({ success: true, confirmed: true, message: "Handoff confirmed via PIN!" });
+    } catch (error: any) {
+      console.error("Error verifying handoff PIN:", error);
+      res.status(500).json({ error: "Failed to verify PIN" });
     }
   });
 

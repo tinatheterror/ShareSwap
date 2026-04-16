@@ -64,6 +64,7 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   swapOfferItem?: SelectItem | null;
+  onInsufficientCoins?: (required: number) => void;
 };
 
 export function ItemRequestForm({
@@ -72,6 +73,7 @@ export function ItemRequestForm({
   isOpen,
   onClose,
   swapOfferItem,
+  onInsufficientCoins,
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -392,6 +394,23 @@ export function ItemRequestForm({
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit((data) => {
+                if (requestType === "BORROW" && onInsufficientCoins) {
+                  const TIER_WEEKLY_RATES: Record<number, number> = { 1: 2, 2: 5, 3: 10, 4: 20 };
+                  const weeklyRate = TIER_WEEKLY_RATES[(item as any).tier || 2] || 5;
+                  let borrowDays = 0;
+                  if (data.startDate && data.endDate) {
+                    const start = new Date(data.startDate);
+                    const end = new Date(data.endDate);
+                    borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                  }
+                  const proratedCost = borrowDays > 0 ? Math.max(1, Math.floor((weeklyRate / 7) * borrowDays)) : weeklyRate;
+                  const balance = Number((user as any)?.shareCoins || 0);
+                  if (balance < proratedCost) {
+                    onClose();
+                    onInsufficientCoins(proratedCost);
+                    return;
+                  }
+                }
                 if (requestType === "SWAP" || requestType === "GIFT") {
                   createRequestMutation.mutate(data);
                 } else {

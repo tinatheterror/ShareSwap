@@ -181,15 +181,7 @@ export default function ItemDetailsPage() {
           </Button>
         ) : (
           <Button
-            onClick={() => {
-              const cost = Number(item.shareCoinPrice || item.shareCoinsReward || 5);
-              const balance = Number(user?.shareCoins || 0);
-              if (balance < cost) {
-                setInsufficientCoinsModal({ required: cost, context: "borrow" });
-              } else {
-                setRequestType("BORROW");
-              }
-            }}
+            onClick={() => setRequestType("BORROW")}
             className="w-full sm:w-40"
             disabled={
               hasAnyPending || !hasValidReplacementValue(itemReplacementValue)
@@ -477,6 +469,7 @@ export default function ItemDetailsPage() {
 
         {requestType && (
           <ItemRequestForm
+            onInsufficientCoins={(required) => setInsufficientCoinsModal({ required, context: "borrow" })}
             item={item}
             requestType={requestType}
             isOpen={!!requestType}

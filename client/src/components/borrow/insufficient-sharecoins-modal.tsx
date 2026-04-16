@@ -23,21 +23,21 @@ export function InsufficientShareCoinsModal({
 
   const earnRoutes = [
     {
-      icon: Gamepad2,
-      label: "Play Games",
-      sub: "Earn coins by playing",
-      action: () => { onClose(); navigate("/games"); },
-    },
-    {
       icon: Users,
-      label: "Invite Friends",
-      sub: "Get coins for referrals",
+      label: "Invite friends",
+      sub: "Get coins instantly when they join",
       action: () => { onClose(); navigate("/referrals"); },
     },
     {
+      icon: Gamepad2,
+      label: "Play games",
+      sub: "Earn coins in minutes",
+      action: () => { onClose(); navigate("/games"); },
+    },
+    {
       icon: HeartPeopleIcon,
-      label: "Help Neighbours",
-      sub: "Lend items, earn coins",
+      label: "Help neighbours",
+      sub: "Lend items to earn coins",
       action: () => { onClose(); navigate("/community-wishlists"); },
     },
   ];
@@ -61,44 +61,25 @@ export function InsufficientShareCoinsModal({
 
         {/* Body */}
         <div className="p-6 space-y-4 bg-white">
-          {/* Shortfall message */}
-          <p className="text-center text-gray-700 font-medium">
-            You need{" "}
-            <span className="text-orange-500 font-bold">
-              {shortfall} more ShareCoin{shortfall !== 1 ? "s" : ""}
-            </span>{" "}
-            to {context === "borrow" ? "borrow this" : "complete this swap"}.
-          </p>
-
-          {/* Balance breakdown */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-            <div className="flex justify-between text-gray-500">
-              <span>Your balance</span>
-              <span className="font-semibold text-gray-800 flex items-center gap-1">
-                <Coins className="h-3.5 w-3.5 text-teal-500" />
-                {currentBalance} SC
-              </span>
-            </div>
-            <div className="flex justify-between text-gray-500">
-              <span>Required</span>
-              <span className="font-semibold text-gray-800 flex items-center gap-1">
-                <Coins className="h-3.5 w-3.5 text-orange-400" />
-                {required} SC
-              </span>
-            </div>
-            <div className="border-t pt-2 flex justify-between">
-              <span className="font-medium text-gray-700">Shortfall</span>
-              <span className="font-bold text-orange-500 flex items-center gap-1">
-                <Coins className="h-3.5 w-3.5" />
-                {shortfall} SC
-              </span>
-            </div>
+          {/* Shortfall + balance */}
+          <div className="text-center space-y-1">
+            <p className="text-gray-800 font-medium">
+              You need{" "}
+              <span className="text-orange-500 font-bold">
+                {shortfall} more
+              </span>{" "}
+              to {context === "borrow" ? "borrow this item" : "complete this swap"}.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Your balance:{" "}
+              <span className="font-semibold text-gray-700">{currentBalance} SC</span>
+            </p>
           </div>
 
           {/* Earn routes */}
           <div>
             <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide mb-2">
-              Earn More ShareCoins
+              Get more ShareCoins
             </p>
             <div className="space-y-2">
               {earnRoutes.map(({ icon: Icon, label, sub, action }) => (

@@ -744,9 +744,9 @@ export function ItemRequestForm({
                               <div className="flex-1">
                                 <label
                                   htmlFor="deposit_in_app"
-                                  className="flex items-center gap-1.5 cursor-pointer font-medium text-sm"
+                                  className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
                                 >
-                                  <Shield className="h-4 w-4 text-gray-500" />
+                                  <Shield className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
                                   Handle Deposit In-app
                                 </label>
                                 <p className="text-xs text-teal-600 font-medium mt-0.5">
@@ -769,9 +769,9 @@ export function ItemRequestForm({
                               <div className="flex-1">
                                 <label
                                   htmlFor="deposit_in_person"
-                                  className={`flex items-center gap-1.5 font-medium text-sm ${isCourier ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                  className={`flex items-start gap-1.5 font-medium text-sm ${isCourier ? "cursor-not-allowed" : "cursor-pointer"}`}
                                 >
-                                  <MapPin className="h-4 w-4 text-gray-500" />
+                                  <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
                                   Exchange Deposit In Person
                                 </label>
                               </div>
@@ -811,7 +811,7 @@ export function ItemRequestForm({
                               htmlFor="in_person"
                               className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
                             >
-                              <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+                              <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
                               Exchange Item In Person
                             </label>
                           </div>
@@ -825,9 +825,9 @@ export function ItemRequestForm({
                           <div className="flex-1">
                             <label
                               htmlFor="courier"
-                              className="flex items-center gap-1.5 cursor-pointer font-medium text-sm"
+                              className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
                             >
-                              <Truck className="h-4 w-4 text-blue-600" />
+                              <Truck className="h-4 w-4 flex-shrink-0 mt-px text-blue-600" />
                               Uber Direct
                             </label>
                             <p className="text-xs text-gray-500 font-medium mt-0.5">

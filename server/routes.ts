@@ -4165,6 +4165,17 @@ Respond with ONLY the category name, nothing else.`
     const requesterName = requester?.displayName || requester?.username || "Someone";
     const requestTypeLabel = requestType.charAt(0).toUpperCase() + requestType.slice(1).toLowerCase();
 
+    // Send the requester's note into the inbox chat thread
+    if (message && message.trim() && item.ownerId) {
+      await db.insert(messages).values({
+        content: message.trim(),
+        senderId: req.user.id,
+        receiverId: item.ownerId,
+        requestId: request.id,
+        messageType: "text",
+      });
+    }
+
     // Create notification for item owner
     if (item.ownerId) {
       await db.insert(notifications).values({

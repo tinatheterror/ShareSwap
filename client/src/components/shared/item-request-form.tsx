@@ -23,7 +23,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Sparkles,
   Calendar,
   ArrowLeftRight,
   Camera,
@@ -49,7 +48,7 @@ import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { useVerification } from "@/hooks/use-verification";
 
 const formSchema = z.object({
-  message: z.string().min(1, "Please include a message to the owner"),
+  message: z.string().max(140).optional().default(""),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   conditionConfirmed: z.boolean().optional(),
@@ -77,7 +76,6 @@ export function ItemRequestForm({
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [showTemplates, setShowTemplates] = useState(false);
   const { requireVerification, showVerificationModal, VerificationModal } =
     useVerification();
 
@@ -105,60 +103,6 @@ export function ItemRequestForm({
       depositMethod: "in_app",
     },
   });
-
-  // Generate automated message templates
-  const generateAutomatedMessage = (
-    templateType: "quick" | "polite" | "detailed",
-  ) => {
-    const ownerName = "there"; // Will be populated with actual owner name from API
-    const itemName = item.name;
-    const action = requestType.toLowerCase();
-    const userName = (user as any)?.username || "I";
-
-    // Get dates for the message
-    const startDate = form.getValues("startDate");
-    const endDate = form.getValues("endDate");
-    const dateRange =
-      startDate && endDate
-        ? ` from ${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`
-        : ` for a few days`;
-
-    let message = "";
-    const myItemName = swapOfferItem?.name || "my item";
-
-    switch (templateType) {
-      case "quick":
-        if (requestType === "SWAP") {
-          message = `Hi ${ownerName}! I would like to swap my ${myItemName} for your ${itemName} 😊😊`;
-        } else if (requestType === "GIFT") {
-          message = `Hi ${ownerName}! I would love to receive your ${itemName}. Thank you for sharing! 😊😊`;
-        } else {
-          message = `Hi ${ownerName}! I would like to ${action} your ${itemName}${dateRange}. 😊😊`;
-        }
-        break;
-      case "polite":
-        if (requestType === "SWAP") {
-          message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to swap my ${myItemName} for your ${itemName}. Would this work for you?\n\nThank you so much! 😊😊`;
-        } else if (requestType === "GIFT") {
-          message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to receive your ${itemName}. Thank you so much for your generosity!\n\nBest wishes! 😊😊`;
-        } else {
-          message = `Hello ${ownerName},\n\nI hope you're doing well! I would love to ${action} your ${itemName}${dateRange}. Would this work for you?\n\nThank you so much! 😊😊`;
-        }
-        break;
-      case "detailed":
-        if (requestType === "SWAP") {
-          message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in swapping items with you. I would like to trade my ${myItemName} for your ${itemName}. I'll make sure my item is in the condition stated.\n\nPlease let me know if this works for you!\n\nBest regards! 😊😊`;
-        } else if (requestType === "GIFT") {
-          message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in receiving your ${itemName}. I would really appreciate it and will put it to good use.\n\nThank you so much for your generosity!\n\nBest regards! 😊😊`;
-        } else {
-          message = `Hi ${ownerName},\n\nI'm ${userName} and I'm interested in your ${itemName}. I would like to ${action} it${dateRange}. I'll take great care of it and return it in perfect condition.\n\nPlease let me know if these dates work for you!\n\nBest regards! 😊😊`;
-        }
-        break;
-    }
-
-    form.setValue("message", message);
-    setShowTemplates(false);
-  };
 
   // Auto-populate dates with common ranges
   const setQuickDateRange = (days: number) => {
@@ -995,66 +939,25 @@ export function ItemRequestForm({
                 />
               )}
 
-              {/* Automated Message Templates */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <FormLabel>Message to Owner</FormLabel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    className="text-xs"
-                  >
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    Quick Messages
-                  </Button>
-                </div>
-
-                {showTemplates && (
-                  <div className="flex gap-2 flex-wrap mb-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => generateAutomatedMessage("quick")}
-                    >
-                      Quick & Friendly
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => generateAutomatedMessage("polite")}
-                    >
-                      Polite & Formal
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => generateAutomatedMessage("detailed")}
-                    >
-                      Detailed & Personal
-                    </Button>
-                  </div>
-                )}
-              </div>
-
+              {/* Short note to owner */}
               <FormField
                 control={form.control}
                 name="message"
                 render={({ field }) => (
                   <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Note to owner <span className="font-normal text-muted-foreground">(optional)</span></FormLabel>
+                      <span className={`text-[11px] tabular-nums ${(field.value?.length ?? 0) > 120 ? "text-orange-500" : "text-muted-foreground"}`}>
+                        {field.value?.length ?? 0}/140
+                      </span>
+                    </div>
                     <FormControl>
                       <Textarea
                         {...field}
-                        rows={6}
-                        placeholder={
-                          requestType === "SWAP"
-                            ? "Send a message to the owner explaining why you'd like to swap items..."
-                            : "Send a message to the owner explaining why you'd like to borrow this item..."
-                        }
+                        rows={2}
+                        maxLength={140}
+                        placeholder="Anything the owner should know?"
+                        className="resize-none"
                       />
                     </FormControl>
                     <FormMessage />

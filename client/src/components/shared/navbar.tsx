@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link, useLocation } from "wouter";
-import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, Home, User, LogOut, Mail, MessageSquareText, ChevronRight } from "lucide-react";
+import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, Home, User, LogOut, Mail, MessageSquareText, ChevronRight, Star, TrendingUp, ShieldAlert, DollarSign, Unlock, Flag, Truck, Gift, AlertTriangle, Clock, AlertCircle, ShieldCheck, ArrowLeftRight, UserCheck } from "lucide-react";
 import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,6 +37,37 @@ interface Notification {
   createdAt: string;
 }
 
+function getNotificationIcon(type: string) {
+  if (type === "return_reminder_overdue") return <AlertCircle className="h-4 w-4 text-red-500" />;
+  if (type === "return_reminder_today") return <Clock className="h-4 w-4 text-orange-500" />;
+  if (type === "return_reminder_tomorrow") return <Clock className="h-4 w-4 text-amber-400" />;
+  if (type === "wishlist_match") return <Heart className="h-4 w-4 text-pink-500" />;
+  if (type === "swap_match") return <ArrowLeftRight className="h-4 w-4 text-teal-500" />;
+  if (type === "item_request" || type === "request_accepted") return <Package className="h-4 w-4 text-blue-500" />;
+  if (type === "terms_counter_proposed") return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+  if (type === "terms_declined") return <AlertTriangle className="h-4 w-4 text-red-500" />;
+  if (type === "gift_completed" || type === "gift_received" || type === "gift_handoff_pending") return <Gift className="h-4 w-4 text-pink-500" />;
+  if (type === "handoff_pending" || type === "handoff_confirmed") return <Clock className="h-4 w-4 text-amber-500" />;
+  if (type === "handoff_dispute" || type === "handoff_disputed") return <AlertTriangle className="h-4 w-4 text-red-500" />;
+  if (type === "handoff_flagged") return <Flag className="h-4 w-4 text-orange-500" />;
+  if (type === "handoff_auto_advanced") return <Truck className="h-4 w-4 text-teal-500" />;
+  if (type === "dispute_opened") return <ShieldAlert className="h-4 w-4 text-red-500" />;
+  if (type === "delivery_confirmed") return <Truck className="h-4 w-4 text-teal-500" />;
+  if (type === "courier_issue") return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+  if (type === "sharecoin_earned") return <Coins className="h-4 w-4 text-yellow-500" />;
+  if (type === "milestone_achieved") return <ShieldCheck className="h-4 w-4 text-teal-500" />;
+  if (type === "badge_earned") return <Star className="h-4 w-4 text-purple-500" />;
+  if (type === "level_up") return <TrendingUp className="h-4 w-4 text-green-500" />;
+  if (type === "trust_score_changed") return <TrendingUp className="h-4 w-4 text-blue-500" />;
+  if (type === "new_review_received") return <Star className="h-4 w-4 text-yellow-500" />;
+  if (type === "referral_joined") return <Users className="h-4 w-4 text-teal-500" />;
+  if (type === "security_deposit_released") return <Unlock className="h-4 w-4 text-green-500" />;
+  if (type === "payment_received") return <DollarSign className="h-4 w-4 text-green-500" />;
+  if (type === "verification_failed") return <ShieldAlert className="h-4 w-4 text-red-500" />;
+  if (type === "terms_accepted") return <UserCheck className="h-4 w-4 text-teal-500" />;
+  return <Bell className="h-4 w-4 text-primary" />;
+}
+
 function getNotificationUrl(n: Notification): string | null {
   if (n.requestId) return `/transactions/${n.requestId}`;
   if (n.itemId) return `/items/${n.itemId}`;
@@ -47,11 +78,14 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
   const hasUrl = !!(n.requestId || n.itemId);
   return (
     <button
-      className={`group w-full text-left flex items-start gap-2 px-3 py-2.5 rounded-md transition-colors cursor-pointer hover:bg-muted/40 ${
+      className={`group w-full text-left flex items-start gap-2.5 px-3 py-2.5 rounded-md transition-colors cursor-pointer hover:bg-muted/40 ${
         !n.isRead ? "bg-primary/[0.06]" : ""
       }`}
       onClick={() => onAction(n)}
     >
+      <div className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-muted flex items-center justify-center">
+        {getNotificationIcon(n.type)}
+      </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           {!n.isRead && (
@@ -64,7 +98,7 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
           </p>
         </div>
         {n.message && (
-          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5 pl-0">
+          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
             {n.message}
           </p>
         )}

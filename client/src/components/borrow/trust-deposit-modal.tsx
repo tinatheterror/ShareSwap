@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Lock, Loader2, MessageCircle, FileText } from "lucide-react";
+import { Lock, Loader2, MessageCircle, FileText, Coins } from "lucide-react";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 
 interface TrustDepositModalProps {
@@ -172,7 +172,8 @@ export function TrustDepositModal({
               <p className="text-sm text-gray-500">Fully refundable deposit</p>
             </div>
 
-            <p className="text-center text-sm text-gray-400 mb-6">
+            <p className="text-center text-xs text-gray-400 mb-6 flex items-center justify-center gap-1">
+              <Coins className="h-3 w-3 flex-shrink-0 text-yellow-500" />
               {shareCoinAmount} ShareCoins charged at pickup
             </p>
 

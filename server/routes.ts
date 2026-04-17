@@ -5897,7 +5897,58 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // Cancel request after acceptance (applies penalty with grace pass for first offense)
+  // Requester withdraws their own PENDING offer (e.g. wrong terms) so they can resend
+  app.post("/api/requests/:requestId/withdraw", csrfProtection, async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const [row] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!row) return res.status(404).json({ error: "Request not found" });
+      if (row.item_requests.requesterId !== req.user.id)
+        return res.status(403).json({ error: "Only the requester can withdraw an offer" });
+      if (row.item_requests.status !== "PENDING")
+        return res.status(400).json({ error: "Can only withdraw pending offers" });
+
+      const [updated] = await db
+        .update(itemRequests)
+        .set({ status: "CANCELLED" })
+        .where(eq(itemRequests.id, requestId))
+        .returning();
+
+      // Notify the owner
+      await db.insert(notifications).values({
+        userId: row.items.ownerId,
+        type: "request_withdrawn" as any,
+        title: "Offer withdrawn",
+        message: `${req.user.username} withdrew their offer for "${row.items.name}".`,
+        itemId: row.items.id,
+        requestId,
+      });
+
+      return res.json({
+        success: true,
+        request: updated,
+        prefill: {
+          itemId: row.items.id,
+          requestType: row.item_requests.requestType,
+          startDate: row.item_requests.startDate,
+          endDate: row.item_requests.endDate,
+          deliveryMethod: row.item_requests.deliveryMethod,
+          depositMethod: row.item_requests.depositMethod,
+        },
+      });
+    } catch (err: any) {
+      console.error("Error withdrawing request:", err);
+      return res.status(500).json({ error: "Failed to withdraw offer" });
+    }
+  });
+
   app.post("/api/requests/:requestId/cancel", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

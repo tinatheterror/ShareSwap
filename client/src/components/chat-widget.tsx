@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -255,8 +255,17 @@ export function ChatWidget() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const [, navigate] = useLocation();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [pendingResend, setPendingResend] = useState<{
+    itemId: number;
+    requestType: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    deliveryMethod?: string | null;
+    depositMethod?: string | null;
+  } | null>(null);
   const [messageFilter, setMessageFilter] = useState<MessageFilter>("all");
   const [selectedConversation, setSelectedConversation] = useState<
     number | null
@@ -425,6 +434,22 @@ export function ChatWidget() {
           description: data.message,
         });
       }
+    },
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/withdraw`, {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      if (data.prefill) setPendingResend(data.prefill);
+      toast({ title: "Offer withdrawn", description: "Fix the terms and resend whenever you're ready." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Could not withdraw offer", variant: "destructive" });
     },
   });
 
@@ -955,6 +980,20 @@ export function ChatWidget() {
                 </>
               )}
 
+              {/* Requester can withdraw their own PENDING offer to resend with corrected terms */}
+              {isBorrower && request.status === "PENDING" && !iCounterPending && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50"
+                  onClick={() => withdrawMutation.mutate(request.id)}
+                  disabled={withdrawMutation.isPending}
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Withdraw offer
+                </Button>
+              )}
+
               {/* Borrower actions (ShareCoins) */}
               {isBorrower && request.requestType === "BORROW" && (
                 <>
@@ -1416,6 +1455,33 @@ export function ChatWidget() {
                   </div>
                 </div>
               </div>
+
+              {/* Resend banner — shown after the requester withdraws a pending offer */}
+              {pendingResend && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-teal-50 border-b border-teal-200">
+                  <RotateCcw className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
+                  <span className="text-xs text-teal-800 flex-1">Offer withdrawn — fix the terms and resend</span>
+                  <Button
+                    size="sm"
+                    className="h-6 text-xs px-2 bg-teal-600 hover:bg-teal-700"
+                    onClick={() => {
+                      sessionStorage.setItem("shareswap_resend_prefill", JSON.stringify(pendingResend));
+                      setPendingResend(null);
+                      setIsOpen(false);
+                      navigate(`/items/${pendingResend.itemId}`);
+                    }}
+                  >
+                    Resend offer
+                  </Button>
+                  <button
+                    className="text-teal-500 hover:text-teal-700 ml-0.5"
+                    onClick={() => setPendingResend(null)}
+                    aria-label="Dismiss"
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
 
               {isLoadingMessages ? (
                 <div className="flex-1 flex items-center justify-center">

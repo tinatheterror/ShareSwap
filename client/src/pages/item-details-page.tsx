@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/shared/navbar";
 import { ItemRequestForm } from "@/components/shared/item-request-form";
 import { SwapInventorySelector } from "@/components/swap-inventory-selector";
@@ -56,12 +56,39 @@ export default function ItemDetailsPage() {
     required: number;
     context: "borrow" | "swap";
   } | null>(null);
+  const [prefill, setPrefill] = useState<{
+    startDate?: string | null;
+    endDate?: string | null;
+    deliveryMethod?: string | null;
+    depositMethod?: string | null;
+  } | null>(null);
   const [location] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
 
   // Extract item ID from URL
   const itemId = location.split("/").pop();
+
+  // Auto-open form with pre-filled terms when navigating back after a withdraw
+  useEffect(() => {
+    const raw = sessionStorage.getItem("shareswap_resend_prefill");
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      if (data.itemId && String(data.itemId) === String(itemId)) {
+        sessionStorage.removeItem("shareswap_resend_prefill");
+        setPrefill({
+          startDate: data.startDate,
+          endDate: data.endDate,
+          deliveryMethod: data.deliveryMethod,
+          depositMethod: data.depositMethod,
+        });
+        setRequestType(data.requestType as RequestType);
+      }
+    } catch {
+      sessionStorage.removeItem("shareswap_resend_prefill");
+    }
+  }, [itemId]);
 
   // Determine which sharing option to prioritize based on referrer
   const getReferrerContext = () => {
@@ -476,8 +503,10 @@ export default function ItemDetailsPage() {
             onClose={() => {
               setRequestType(null);
               setSelectedSwapItem(null);
+              setPrefill(null);
             }}
             swapOfferItem={selectedSwapItem}
+            prefill={prefill}
           />
         )}
 

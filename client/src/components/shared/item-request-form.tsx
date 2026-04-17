@@ -39,7 +39,7 @@ import {
   formatReplacementValue,
   hasValidReplacementValue,
 } from "@/lib/replacement-value";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as z from "zod";
 import { Link } from "wouter";
 import type { SelectItem } from "@db/schema";
@@ -57,6 +57,13 @@ const formSchema = z.object({
   depositMethod: z.enum(["in_app", "in_person"]).default("in_app"),
 });
 
+type Prefill = {
+  startDate?: string | null;
+  endDate?: string | null;
+  deliveryMethod?: string | null;
+  depositMethod?: string | null;
+};
+
 type Props = {
   item: SelectItem;
   requestType: "BORROW" | "RENT" | "SWAP" | "GIFT";
@@ -64,6 +71,7 @@ type Props = {
   onClose: () => void;
   swapOfferItem?: SelectItem | null;
   onInsufficientCoins?: (required: number) => void;
+  prefill?: Prefill | null;
 };
 
 export function ItemRequestForm({
@@ -73,6 +81,7 @@ export function ItemRequestForm({
   onClose,
   swapOfferItem,
   onInsufficientCoins,
+  prefill,
 }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -103,6 +112,18 @@ export function ItemRequestForm({
       depositMethod: "in_app",
     },
   });
+
+  // When the form opens with prefill data (e.g. after a withdrawn offer), apply it
+  useEffect(() => {
+    if (isOpen && prefill) {
+      if (prefill.startDate) form.setValue("startDate", prefill.startDate);
+      if (prefill.endDate) form.setValue("endDate", prefill.endDate);
+      if (prefill.deliveryMethod === "in_person" || prefill.deliveryMethod === "courier")
+        form.setValue("deliveryMethod", prefill.deliveryMethod);
+      if (prefill.depositMethod === "in_app" || prefill.depositMethod === "in_person")
+        form.setValue("depositMethod", prefill.depositMethod);
+    }
+  }, [isOpen, prefill]);
 
   // Auto-populate dates with common ranges
   const setQuickDateRange = (days: number) => {

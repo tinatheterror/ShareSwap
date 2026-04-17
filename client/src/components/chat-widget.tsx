@@ -832,6 +832,18 @@ export function ChatWidget() {
     const displayStart = iCounterPending ? request.counterStartDate : request.startDate;
     const displayEnd = iCounterPending ? request.counterEndDate : request.endDate;
 
+    // Only highlight the fields that actually changed in the counter-proposal
+    const dateChanged = iCounterPending && (
+      request.counterStartDate !== request.startDate ||
+      request.counterEndDate !== request.endDate
+    );
+    const deliveryChanged = iCounterPending &&
+      request.counterDeliveryMethod !== null &&
+      request.counterDeliveryMethod !== request.deliveryMethod;
+    const depositChanged = iCounterPending &&
+      request.counterDepositMethod !== null &&
+      request.counterDepositMethod !== request.depositMethod;
+
     return (
       <div
         key={request.id}
@@ -884,20 +896,20 @@ export function ChatWidget() {
                 )}
               </div>
               {displayStart && displayEnd && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
+                <div className={`flex items-center gap-1 text-xs mb-0.5 ${dateChanged ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
                   <Clock className="h-3 w-3 shrink-0" />
                   <span>{format(new Date(displayStart), "MMM d")} – {format(new Date(displayEnd), "MMM d")}</span>
                 </div>
               )}
               {/* Delivery & deposit — below the date */}
               <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground mt-0.5">
-                <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
+                <span className={`flex items-center gap-0.5 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
                   {displayDelivery === "courier"
                     ? <Truck className="h-3 w-3 text-blue-600" />
                     : <MapPin className="h-3 w-3 text-gray-500" />}
                   {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                 </span>
-                <span className={`flex items-center gap-0.5 ${iCounterPending ? "text-amber-700 font-medium" : ""}`}>
+                <span className={`flex items-center gap-0.5 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
                   {displayDeposit === "in_app"
                     ? <Shield className="h-3 w-3 text-gray-500" />
                     : <MapPin className="h-3 w-3 text-gray-500" />}

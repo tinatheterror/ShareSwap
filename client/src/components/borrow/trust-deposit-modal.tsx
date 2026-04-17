@@ -191,8 +191,8 @@ export function TrustDepositModal({
               )}
             </Button>
 
-            <p className="text-center text-xs text-gray-300 flex items-center justify-center gap-1 mb-2">
-              <Lock className="h-3 w-3 flex-shrink-0" />
+            <p className="text-center text-xs text-gray-300 flex items-start justify-center gap-1 mb-2">
+              <Lock className="h-3 w-3 flex-shrink-0 mt-px" />
               Deposit is securely held and refunded after return
             </p>
 

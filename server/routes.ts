@@ -6367,7 +6367,10 @@ Respond with ONLY the category name, nothing else.`
         const isBorrow = request.item_requests.requestType === "BORROW";
         const systemMsgs = [
           isBorrow && shareCoinAmount > 0
-            ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged`
+            ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged to borrower`
+            : null,
+          isBorrow && shareCoinAmount > 0
+            ? `➕ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} earned by lender`
             : null,
           `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
           "🔒 Security deposit is now held until the item is returned",
@@ -6519,10 +6522,13 @@ Respond with ONLY the category name, nothing else.`
 
       await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 
-      const shareCoinAmountStr = shareCoinAmount > 0 && request.item_requests.requestType === "BORROW" ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged` : null;
+      const isBorrowPin = request.item_requests.requestType === "BORROW";
+      const shareCoinChargedMsg = shareCoinAmount > 0 && isBorrowPin ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged to borrower` : null;
+      const shareCoinEarnedMsg = shareCoinAmount > 0 && isBorrowPin ? `➕ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} earned by lender` : null;
       const systemMsgs = [
         "🤝 Handoff confirmed via PIN — borrow period has started",
-        shareCoinAmountStr,
+        shareCoinChargedMsg,
+        shareCoinEarnedMsg,
         "🔒 Security deposit is now held until the item is returned",
       ].filter(Boolean) as string[];
 

@@ -178,7 +178,12 @@ function NotificationBell() {
     if (!n.isRead) markAsReadMutation.mutate(n.id);
     if (n.requestId) {
       window.dispatchEvent(
-        new CustomEvent("open-chat-request", { detail: { requestId: n.requestId } })
+        new CustomEvent("open-chat-request", {
+          detail: {
+            requestId: n.requestId,
+            scrollToCounter: n.type === "terms_counter_proposed",
+          },
+        })
       );
     } else if (n.itemId) {
       navigate(`/items/${n.itemId}`);

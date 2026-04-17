@@ -281,6 +281,7 @@ export function ChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const scrollToCounterRef = useRef(false);
 
   // Request handling state
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
@@ -544,7 +545,8 @@ export function ChatWidget() {
   // Open directly to a specific request conversation from a notification click
   useEffect(() => {
     const handleOpenChatRequest = (e: Event) => {
-      const { requestId } = (e as CustomEvent<{ requestId: number }>).detail;
+      const { requestId, scrollToCounter } = (e as CustomEvent<{ requestId: number; scrollToCounter?: boolean }>).detail;
+      scrollToCounterRef.current = scrollToCounter ?? false;
       setIsOpen(true);
       const found = inboxItems.find((item) => item.requestId === requestId);
       if (found) {
@@ -559,8 +561,17 @@ export function ChatWidget() {
     return () => window.removeEventListener("open-chat-request", handleOpenChatRequest);
   }, [inboxItems]);
 
-  // Scroll to bottom when messages load or conversation switches
+  // Scroll to bottom when messages load or conversation switches.
+  // If a counter-proposal notification was clicked, scroll to the last counter event instead.
   useEffect(() => {
+    if (scrollToCounterRef.current && messages.length > 0) {
+      scrollToCounterRef.current = false;
+      const counterEls = document.querySelectorAll('[data-event-type="counter_proposed"]');
+      if (counterEls.length > 0) {
+        counterEls[counterEls.length - 1].scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+    }
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ block: "end" });
     }
@@ -1554,7 +1565,7 @@ export function ChatWidget() {
 
                       return (
                         <React.Fragment key={msg.id}>
-                          <div className="mb-3 flex flex-col items-center gap-1.5">
+                          <div className="mb-3 flex flex-col items-center gap-1.5" data-event-type={et}>
                             {et === "counter_proposed" ? (
                               <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
                                 <RefreshCw className="h-3 w-3 text-gray-400" />

@@ -110,7 +110,12 @@ export default function NotificationsPage() {
     
     if (notification.requestId) {
       window.dispatchEvent(
-        new CustomEvent("open-chat-request", { detail: { requestId: notification.requestId } })
+        new CustomEvent("open-chat-request", {
+          detail: {
+            requestId: notification.requestId,
+            scrollToCounter: notification.type === "terms_counter_proposed",
+          },
+        })
       );
     } else if (notification.itemId) {
       navigate(`/items/${notification.itemId}`);

@@ -692,6 +692,27 @@ export function ChatWidget() {
     }
   };
 
+  const handleScheduleClick = async () => {
+    setShowCelebration(false);
+    if (!selectedConversation) return;
+    const dateText = format(new Date(), "MMMM do");
+    const scheduleMsg = `When and where can you meet on ${dateText}?`;
+    try {
+      await apiRequest("POST", "/api/messages", {
+        receiverId: selectedConversation,
+        content: scheduleMsg,
+        requestId: activeConversationRequestId,
+      });
+      if (isConnected) {
+        send({ type: "new_message", payload: { senderId: user!.id, receiverId: selectedConversation, content: scheduleMsg } });
+      }
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+    } catch (error) {
+      console.error("Failed to send schedule message:", error);
+    }
+  };
+
   const handleAcceptClick = async (request: ItemRequest) => {
     setSelectedRequestId(request.id);
     // Delivery & deposit were already chosen by the requester — accept directly without re-asking.
@@ -2023,6 +2044,7 @@ export function ChatWidget() {
       <CelebrationAnimation
         isVisible={showCelebration}
         onComplete={() => setShowCelebration(false)}
+        onSchedule={handleScheduleClick}
         message="Request accepted! Setting up exchange..."
       />
 

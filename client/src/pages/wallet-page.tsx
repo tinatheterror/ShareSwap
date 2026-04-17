@@ -51,7 +51,7 @@ export default function WalletPage() {
                       : "text-teal-700"
                   }`}>
                     {transaction.transactionType === "EARNED" ? "+" : "-"}
-                    {Number(transaction.amount).toFixed(2)}
+                    {Math.abs(Number(transaction.amount)).toFixed(2)}
                   </p>
                 </div>
               ))}

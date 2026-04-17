@@ -635,6 +635,9 @@ async function requireFullVerification(req: any, res: any, next: any) {
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Map of userId → WebSocket connection — shared by REST routes and the WS handler
+  const connectedClients = new Map<number, WebSocket>();
+
   // Serve uploaded files
   app.use("/uploads", express.static("uploads"));
 
@@ -3392,6 +3395,12 @@ Respond with ONLY the category name, nothing else.`
         requestId: requestId ? parseInt(requestId) : null,
       })
       .returning();
+
+    // Push to recipient in real-time if they are connected
+    const receiverWs = connectedClients.get(receiverId);
+    if (receiverWs?.readyState === WebSocket.OPEN) {
+      receiverWs.send(JSON.stringify({ type: "new_message", message }));
+    }
 
     res.status(201).json(message);
   });
@@ -9947,9 +9956,6 @@ Respond with ONLY the category name, nothing else.`
   wss.on("error", (err: Error) => {
     console.error("[WSS] WebSocket server error (non-fatal):", err.message);
   });
-
-  // Improve WebSocket message handling
-  const connectedClients = new Map<number, WebSocket>();
 
   wss.on("connection", async (ws: WebSocket, req: any) => {
     console.log("New WebSocket connection established");

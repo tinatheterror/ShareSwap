@@ -312,23 +312,11 @@ export function ChatWidget() {
   const { isConnected, send } = useWebSocket({
     url: wsUrl,
     onMessage: (data) => {
-      const message = JSON.parse(data);
-      if (message.receiverId === user?.id || message.senderId === user?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      // data is already a parsed object from WebSocketService
+      if (data.type === "new_message") {
+        // Refresh the inbox preview and all open message threads
         queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
-        if (selectedConversation) {
-          queryClient.invalidateQueries({
-            queryKey: ["/api/messages", selectedConversation, activeConversationRequestId],
-          });
-        }
-      }
-    },
-    onConnect: () => {
-      if (user) {
-        send({
-          type: "authenticate",
-          payload: { userId: user.id },
-        });
+        queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       }
     },
     autoConnect: !!user,

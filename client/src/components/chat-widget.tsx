@@ -522,6 +522,24 @@ export function ChatWidget() {
     return () => window.removeEventListener("open-chat-requests", handleOpenRequests);
   }, []);
 
+  // Open directly to a specific request conversation from a notification click
+  useEffect(() => {
+    const handleOpenChatRequest = (e: Event) => {
+      const { requestId } = (e as CustomEvent<{ requestId: number }>).detail;
+      setIsOpen(true);
+      const found = inboxItems.find((item) => item.requestId === requestId);
+      if (found) {
+        setSelectedConversation(found.partnerId);
+        setActiveConversationRequestId(requestId);
+      } else {
+        // Inbox may not have loaded yet — show the list so the user can find it
+        setSelectedConversation(null);
+      }
+    };
+    window.addEventListener("open-chat-request", handleOpenChatRequest);
+    return () => window.removeEventListener("open-chat-request", handleOpenChatRequest);
+  }, [inboxItems]);
+
   // Scroll to bottom when messages load or conversation switches
   useEffect(() => {
     if (messagesEndRef.current) {

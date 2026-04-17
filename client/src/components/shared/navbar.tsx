@@ -176,8 +176,13 @@ function NotificationBell() {
 
   const handleNotificationClick = (n: Notification) => {
     if (!n.isRead) markAsReadMutation.mutate(n.id);
-    const url = getNotificationUrl(n);
-    if (url) navigate(url);
+    if (n.requestId) {
+      window.dispatchEvent(
+        new CustomEvent("open-chat-request", { detail: { requestId: n.requestId } })
+      );
+    } else if (n.itemId) {
+      navigate(`/items/${n.itemId}`);
+    }
   };
 
   const unreadNotifications = allNotifications.filter((n) => !n.isRead);

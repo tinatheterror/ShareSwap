@@ -109,7 +109,9 @@ export default function NotificationsPage() {
     }
     
     if (notification.requestId) {
-      navigate(`/transactions/${notification.requestId}`);
+      window.dispatchEvent(
+        new CustomEvent("open-chat-request", { detail: { requestId: notification.requestId } })
+      );
     } else if (notification.itemId) {
       navigate(`/items/${notification.itemId}`);
     }

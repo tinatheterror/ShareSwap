@@ -27,34 +27,35 @@ export default function WalletPage() {
           <CardContent className="pt-6">
             <h2 className="text-xl font-semibold mb-4">Transaction History</h2>
             <div className="space-y-4">
-              {transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-4 rounded-lg border"
-                >
-                  <div className="flex items-center gap-3">
-                    {transaction.transactionType === "EARNED" ? (
-                      <ArrowUpCircle className="h-8 w-8 text-teal-500" />
-                    ) : (
-                      <ArrowDownCircle className="h-8 w-8 text-teal-700" />
-                    )}
-                    <div>
-                      <p className="font-medium">{transaction.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(transaction.createdAt).toLocaleDateString()}
-                      </p>
+              {transactions.map((transaction) => {
+                const isPositive = Number(transaction.amount) >= 0;
+                return (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-4 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3">
+                      {isPositive ? (
+                        <ArrowUpCircle className="h-8 w-8 text-teal-500" />
+                      ) : (
+                        <ArrowDownCircle className="h-8 w-8 text-teal-700" />
+                      )}
+                      <div>
+                        <p className="font-medium">{transaction.description}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(transaction.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
+                    <p className={`text-lg font-semibold ${
+                      isPositive ? "text-teal-600" : "text-teal-700"
+                    }`}>
+                      {isPositive ? "+" : "-"}
+                      {Math.abs(Number(transaction.amount)).toFixed(2)}
+                    </p>
                   </div>
-                  <p className={`text-lg font-semibold ${
-                    transaction.transactionType === "EARNED" 
-                      ? "text-teal-600" 
-                      : "text-teal-700"
-                  }`}>
-                    {transaction.transactionType === "EARNED" ? "+" : "-"}
-                    {Math.abs(Number(transaction.amount)).toFixed(2)}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

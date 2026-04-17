@@ -543,39 +543,37 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 mt-2">
-                  <AlertTriangle
-                    className={`h-3.5 w-3.5 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? "text-green-500" : "text-amber-500"}`}
-                  />
-                  <span>
-                    {(() => {
-                      const n = (publicProfile as any).issuesCount ?? 0;
-                      return n === 0
-                        ? "No issues reported"
-                        : `${n} issue${n !== 1 ? "s" : ""} reported`;
-                    })()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Shield className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
-                  <span>
-                    Trust Score: {(publicProfile as any).trustScore ?? 0}/100
-                  </span>
-                </div>
-                {(publicProfile as any).createdAt && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                <div className="mt-2 space-y-0.5 text-[10px] text-slate-400">
+                  <div className="flex items-center gap-1">
+                    <AlertTriangle
+                      className={`h-3 w-3 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? "text-green-400" : "text-amber-400"}`}
+                    />
                     <span>
-                      Member since{" "}
-                      {new Date(
-                        (publicProfile as any).createdAt,
-                      ).toLocaleDateString("en-US", {
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {(() => {
+                        const n = (publicProfile as any).issuesCount ?? 0;
+                        return n === 0
+                          ? "No issues reported"
+                          : `${n} issue${n !== 1 ? "s" : ""} reported`;
+                      })()}
                     </span>
                   </div>
-                )}
+                  <div className="flex items-center gap-1">
+                    <Shield className="h-3 w-3 text-teal-400 flex-shrink-0" />
+                    <span>Trust Score: {(publicProfile as any).trustScore ?? 0}/100</span>
+                  </div>
+                  {(publicProfile as any).createdAt && (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3 flex-shrink-0" />
+                      <span>
+                        Member since{" "}
+                        {new Date((publicProfile as any).createdAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardHeader>
           </Card>

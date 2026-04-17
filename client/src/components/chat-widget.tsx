@@ -1226,25 +1226,6 @@ export function ChatWidget() {
                 </Button>
               )}
 
-              {/* Message button — always visible on active (post-PENDING) requests */}
-              {!["PENDING", "DECLINED", "CANCELLED", "COMPLETED"].includes(request.status) && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs text-muted-foreground hover:text-foreground ml-auto"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveConversationRequestId(request.id);
-                    setTimeout(() => {
-                      messageInputRef.current?.focus();
-                      messageInputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                    }, 50);
-                  }}
-                >
-                  <MessageCircle className="h-3 w-3 mr-1" />
-                  Message
-                </Button>
-              )}
         </div>
       </div>
     );

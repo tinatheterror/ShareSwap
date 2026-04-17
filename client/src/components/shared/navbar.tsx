@@ -176,6 +176,17 @@ function NotificationBell() {
 
   const handleNotificationClick = (n: Notification) => {
     if (!n.isRead) markAsReadMutation.mutate(n.id);
+
+    if (["trust_score_changed", "milestone_achieved", "badge_earned"].includes(n.type)) {
+      navigate("/achievements");
+      return;
+    }
+
+    if (n.type === "sharecoin_earned") {
+      navigate("/wallet");
+      return;
+    }
+
     if (n.requestId) {
       window.dispatchEvent(
         new CustomEvent("open-chat-request", {

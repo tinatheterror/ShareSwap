@@ -108,6 +108,16 @@ export default function NotificationsPage() {
       return;
     }
     
+    if (["trust_score_changed", "milestone_achieved", "badge_earned"].includes(notification.type)) {
+      navigate("/achievements");
+      return;
+    }
+
+    if (notification.type === "sharecoin_earned") {
+      navigate("/wallet");
+      return;
+    }
+
     if (notification.requestId) {
       window.dispatchEvent(
         new CustomEvent("open-chat-request", {

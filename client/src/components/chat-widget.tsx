@@ -2045,6 +2045,8 @@ export function ChatWidget() {
             itemId: selectedRequest.itemId,
             deliveryMethod: selectedRequest.deliveryMethod || "in_person",
             depositMethod: selectedRequest.depositMethod || "in_app",
+            startDate: selectedRequest.startDate,
+            endDate: selectedRequest.endDate,
           }}
           item={{
             name: selectedRequest.item.name,

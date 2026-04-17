@@ -8,6 +8,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Lock, Loader2, MessageCircle, FileText, Coins } from "lucide-react";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
+import { format } from "date-fns";
+
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 
 interface TrustDepositModalProps {
   isOpen: boolean;
@@ -17,6 +23,8 @@ interface TrustDepositModalProps {
     itemId: number;
     deliveryMethod: string;
     depositMethod: string;
+    startDate?: string | null;
+    endDate?: string | null;
   };
   item: {
     name: string;
@@ -121,7 +129,12 @@ export function TrustDepositModal({
             <p className="text-lg font-bold text-gray-900 mb-1">Deposit secured</p>
             <p className="text-sm text-gray-400 mb-6">Your borrow is confirmed for</p>
 
-            <p className="text-base font-semibold text-gray-900 mb-6">{item.name}</p>
+            <p className={`text-base font-semibold text-gray-900 ${request.startDate && request.endDate ? "mb-1" : "mb-6"}`}>{item.name}</p>
+            {request.startDate && request.endDate && (
+              <p className="text-xs italic text-teal-500 mb-6">
+                {format(parseLocalDate(request.startDate), "MMM d")} – {format(parseLocalDate(request.endDate), "MMM d")}
+              </p>
+            )}
 
             <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1">
               <p className="text-sm text-gray-700">

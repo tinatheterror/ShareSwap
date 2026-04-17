@@ -1821,7 +1821,7 @@ export function ChatWidget() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 text-xs h-8"
+                              className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 text-xs h-8"
                               disabled={ownerPinLoading}
                               onClick={async () => {
                                 setOwnerPinLoading(true);

@@ -337,7 +337,7 @@ export default function AuthPage() {
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="Tina Le"
+                  placeholder="Avery Smith"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required

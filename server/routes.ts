@@ -120,7 +120,7 @@ async function awardShareCoinsWithFirstTimeBonus(
     userId,
     type: "sharecoin_earned",
     title: `+${totalAwarded} ShareCoin${totalAwarded !== 1 ? 's' : ''} earned`,
-    message: `You earned ${totalAwarded} ShareCoin${totalAwarded !== 1 ? 's' : ''} for ${isFirstTime ? 'completing your first' : 'a successful'} ${actionType.charAt(0) + actionType.slice(1).toLowerCase()} of "${itemName}"${isFirstTime ? ' — plus a first-time bonus!' : '.'}`,
+    message: `+${totalAwarded} ShareCoin${totalAwarded !== 1 ? 's' : ''} from your ${isFirstTime ? 'first ' : ''}${actionType.toLowerCase()}${isFirstTime ? ' — bonus included!' : '.'}`,
     isRead: false,
   });
 
@@ -944,7 +944,7 @@ export function registerRoutes(app: Express): Server {
           userId,
           type: "milestone_achieved",
           title: "Identity verified",
-          message: "Your ID is now verified. You've unlocked higher trust and more features.",
+          message: "ID verified. Higher trust and features unlocked.",
           isRead: false,
         },
       ]);
@@ -1202,7 +1202,7 @@ export function registerRoutes(app: Express): Server {
             userId,
             type: "milestone_achieved",
             title: "Identity verified",
-            message: "Your ID is now verified. You've unlocked higher trust and more features.",
+            message: "ID verified. Higher trust and features unlocked.",
             isRead: false,
           },
         ]);
@@ -1211,7 +1211,7 @@ export function registerRoutes(app: Express): Server {
         res.json({
           success: true,
           status: "approved",
-          message: "Identity verified! You received a trust score boost and 5 ShareCoins.",
+          message: "ID verified. +5 ShareCoins and trust boost.",
         });
       } else if (personaStatus === "completed") {
         await db
@@ -2528,7 +2528,7 @@ Respond with ONLY the category name, nothing else.`
               userId: existingItem.ownerId!,
               type: "swap_match",
               title: "New swap match",
-              message: `"${item.name}" matches what you're looking to trade for`,
+              message: `Matches what you're looking to trade for.`,
               itemId: item.id,
               isRead: false,
             });
@@ -3156,7 +3156,7 @@ Respond with ONLY the category name, nothing else.`
         userId: wishlistOwnerId,
         type: "wishlist_match",
         title: "New match for your wishlist",
-        message: `"${item.name}" listed by ${listerName}`,
+        message: `Listed by ${listerName}.`,
         itemId: itemId,
         isRead: false,
       });
@@ -4191,7 +4191,7 @@ Respond with ONLY the category name, nothing else.`
         userId: item.ownerId,
         type: "item_request",
         title: `New ${requestTypeLabel} request`,
-        message: `${requesterName} wants to ${requestType.toLowerCase()} "${item.name}"`,
+        message: `${requesterName} wants to ${requestType.toLowerCase()} your item.`,
         itemId: item.id,
         requestId: request.id,
         isRead: false,
@@ -4702,7 +4702,7 @@ Respond with ONLY the category name, nothing else.`
       userId: otherUserId,
       type: "terms_counter_proposed",
       title: _cpTitle1,
-      message: `${_cpRole1} proposed new terms for your ${_cpType1} request. Review and respond.`,
+      message: `New terms proposed. Review and respond.`,
       itemId: request.items.id,
       requestId,
     });
@@ -4783,7 +4783,7 @@ Respond with ONLY the category name, nothing else.`
         userId: otherUserId,
         type: "terms_counter_proposed",
         title: _cpTitle2,
-        message: `${_cpRole2} proposed new terms for your ${_cpType2} request. Review and respond.`,
+        message: `New terms proposed. Review and respond.`,
         itemId: request.items.id,
         requestId,
       });
@@ -5934,7 +5934,7 @@ Respond with ONLY the category name, nothing else.`
         userId: row.items.ownerId,
         type: "request_withdrawn" as any,
         title: "Offer withdrawn",
-        message: `${req.user.username} withdrew their offer for "${row.items.name}".`,
+        message: `${req.user.username} withdrew their offer.`,
         itemId: row.items.id,
         requestId,
       });
@@ -6313,7 +6313,7 @@ Respond with ONLY the category name, nothing else.`
             userId: ownerId,
             type: "handoff_dispute",
             title: "Handoff Dispute Opened",
-            message: `There's a disagreement about the handoff for "${request.items.name}". Please submit proof within 24 hours.`,
+            message: `Dispute opened. Submit proof within 24 hours.`,
             itemId: request.items.id,
             requestId,
           },
@@ -6321,7 +6321,7 @@ Respond with ONLY the category name, nothing else.`
             userId: borrowerId,
             type: "handoff_dispute",
             title: "Handoff Dispute Opened",
-            message: `There's a disagreement about the handoff for "${request.items.name}". Please submit proof within 24 hours.`,
+            message: `Dispute opened. Submit proof within 24 hours.`,
             itemId: request.items.id,
             requestId,
           },
@@ -6531,8 +6531,8 @@ Respond with ONLY the category name, nothing else.`
       }
 
       await db.insert(notifications).values([
-        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `"${request.items.name}" is with the borrower. Borrow period started.`, itemId: request.items.id, requestId },
-        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `"${request.items.name}" picked up via PIN. Borrow period started.`, itemId: request.items.id, requestId },
+        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `Item handed off. Borrow period has started.`, itemId: request.items.id, requestId },
+        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `Picked up via PIN. Borrow period has started.`, itemId: request.items.id, requestId },
       ]);
 
       res.json({ success: true, confirmed: true, message: "Handoff confirmed via PIN!" });
@@ -6647,8 +6647,8 @@ Respond with ONLY the category name, nothing else.`
           requestId,
         });
         await db.insert(notifications).values([
-          { userId: ownerId, type: "handoff_dispute", title: "Handoff dispute", message: `Disagreement on "${request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "handoff_dispute", title: "Handoff dispute", message: `Disagreement on "${request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "handoff_dispute", title: "Handoff dispute", message: `Dispute opened. Submit proof within 24 hours.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "handoff_dispute", title: "Handoff dispute", message: `Dispute opened. Submit proof within 24 hours.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // One denied, other hasn't acted yet — log it
@@ -6843,8 +6843,8 @@ Respond with ONLY the category name, nothing else.`
           });
 
           await db.insert(notifications).values([
-            { userId: ownerId2, type: "handoff_flagged", title: "Exchange flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
-            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: ownerId2, type: "handoff_flagged", title: "Exchange flagged", message: `Flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange flagged", message: `Flagged for admin review.`, itemId: request.items.id, requestId: reqId },
           ]);
 
           flaggedCount++;
@@ -6878,8 +6878,8 @@ Respond with ONLY the category name, nothing else.`
 
           const confirmingParty = ownerConfirmed ? "owner" : "borrower";
           await db.insert(notifications).values([
-            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
-            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
+            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `Auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
+            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `Auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
           ]);
 
           autoAdvancedCount++;
@@ -6951,7 +6951,7 @@ Respond with ONLY the category name, nothing else.`
       res.json({
         success: true,
         request: updated,
-        message: "Delay notification recorded. Thank you for communicating - this will help avoid trust score penalties.",
+        message: "Delay noted. This helps avoid trust score penalties.",
       });
     } catch (error: any) {
       console.error("Error recording delay notification:", error);
@@ -7083,7 +7083,7 @@ Respond with ONLY the category name, nothing else.`
           success: true,
           request: disputed,
           disputeOpened: true,
-          message: "Dispute opened. The deposit is held pending review. We'll contact both parties to resolve this.",
+          message: "Dispute opened. Deposit held pending review.",
         });
       }
 
@@ -7096,7 +7096,7 @@ Respond with ONLY the category name, nothing else.`
             userId: request.item_requests.requesterId,
             type: "security_deposit_released",
             title: "Deposit released",
-            message: `Your deposit for "${request.items.name}" is on its way back (5–10 business days).`,
+            message: `Deposit refunded. Allow 5–10 business days.`,
             itemId: request.items.id,
             requestId,
             isRead: false,
@@ -7229,7 +7229,7 @@ Respond with ONLY the category name, nothing else.`
                 userId: request.items.ownerId,
                 type: "payment_received",
                 title: "Rental payment ready",
-                message: `$${existingNetAmount.toFixed(2)} from "${request.items.name}" is ready to withdraw.`,
+                message: `$${existingNetAmount.toFixed(2)} is ready to withdraw.`,
                 itemId: request.items.id,
                 requestId,
                 isRead: false,
@@ -7272,7 +7272,7 @@ Respond with ONLY the category name, nothing else.`
                 userId: request.items.ownerId,
                 type: "payment_received",
                 title: "Rental payment ready",
-                message: `$${netAmount.toFixed(2)} from "${request.items.name}" is ready to withdraw.`,
+                message: `$${netAmount.toFixed(2)} is ready to withdraw.`,
                 itemId: request.items.id,
                 requestId,
                 isRead: false,

@@ -1560,12 +1560,12 @@ export function ChatWidget() {
                       const actor = iActor ? "You" : partnerName;
 
                       const eventLabel =
-                        et === "request_accepted" ? `✓ ${actor} accepted the request` :
-                        et === "request_declined" ? `${actor} declined the request` :
-                        et === "terms_accepted" ? `✓ ${actor} accepted the new terms` :
-                        et === "terms_declined" ? `${actor} declined the new terms` :
-                        et === "handoff_confirmed" ? "✓ Handoff confirmed" :
-                        et === "deposit_confirmed" ? "✓ Deposit secured" :
+                        et === "request_accepted" ? `✅ ${actor} accepted the request` :
+                        et === "request_declined" ? `❌ ${actor} declined the request` :
+                        et === "terms_accepted" ? `✅ ${actor} accepted the new terms` :
+                        et === "terms_declined" ? `❌ ${actor} declined the new terms` :
+                        et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
+                        et === "deposit_confirmed" ? "🔒 Deposit secured" :
                         et === "counter_proposed" ? null :
                         msg.content;
 
@@ -1574,8 +1574,7 @@ export function ChatWidget() {
                           <div className="mb-3 flex flex-col items-center gap-1.5" data-event-type={et}>
                             {et === "counter_proposed" ? (
                               <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1">
-                                <RefreshCw className="h-3 w-3 text-gray-400" />
-                                {actor} proposed new terms
+                                🔄 {actor} proposed new terms
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>

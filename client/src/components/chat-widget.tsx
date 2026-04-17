@@ -128,6 +128,12 @@ type Message = {
   requestId?: number;
 };
 
+// Parse a date-only string (YYYY-MM-DD or ISO) as local midnight to avoid UTC-shift.
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 interface ItemRequest {
   id: number;
   itemId: number;
@@ -898,7 +904,7 @@ export function ChatWidget() {
               {displayStart && displayEnd && (
                 <div className={`flex items-center gap-1 text-xs mb-0.5 ${dateChanged ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
                   <Clock className="h-3 w-3 shrink-0" />
-                  <span>{format(new Date(displayStart), "MMM d")} – {format(new Date(displayEnd), "MMM d")}</span>
+                  <span>{format(parseLocalDate(displayStart), "MMM d")} – {format(parseLocalDate(displayEnd), "MMM d")}</span>
                 </div>
               )}
               {/* Delivery & deposit — below the date */}
@@ -1565,10 +1571,10 @@ export function ChatWidget() {
                               const mEnd = msg.metadata.endDate as string | undefined;
                               const origDelivery = relatedRequest?.deliveryMethod;
                               const origDeposit = relatedRequest?.depositMethod;
-                              const origStart = relatedRequest?.startDate ? format(new Date(relatedRequest.startDate), "MMM d") : null;
-                              const origEnd = relatedRequest?.endDate ? format(new Date(relatedRequest.endDate), "MMM d") : null;
-                              const newStart = mStart ? format(new Date(mStart), "MMM d") : null;
-                              const newEnd = mEnd ? format(new Date(mEnd), "MMM d") : null;
+                              const origStart = relatedRequest?.startDate ? format(parseLocalDate(relatedRequest.startDate), "MMM d") : null;
+                              const origEnd = relatedRequest?.endDate ? format(parseLocalDate(relatedRequest.endDate), "MMM d") : null;
+                              const newStart = mStart ? format(parseLocalDate(mStart), "MMM d") : null;
+                              const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;
                               const deliveryChanged = mDelivery !== origDelivery;
                               const depositChanged = mDeposit !== origDeposit;

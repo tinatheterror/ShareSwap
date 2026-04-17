@@ -98,7 +98,7 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
           </p>
         </div>
         {n.message && (
-          <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
             {n.message}
           </p>
         )}

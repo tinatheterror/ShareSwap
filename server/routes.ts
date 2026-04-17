@@ -6367,10 +6367,10 @@ Respond with ONLY the category name, nothing else.`
         const isBorrow = request.item_requests.requestType === "BORROW";
         const systemMsgs = [
           isBorrow && shareCoinAmount > 0
-            ? `✓ ${shareCoinAmount} ShareCoins ${isBorrow ? "charged to borrower" : "processed"}`
+            ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged`
             : null,
-          `✓ The ${isBorrow ? "borrow" : "rental"} period has officially started`,
-          "✓ Security deposit is now held until the item is returned",
+          `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
+          "🔒 Security deposit is now held until the item is returned",
         ].filter(Boolean) as string[];
 
         for (const content of systemMsgs) {
@@ -6519,11 +6519,11 @@ Respond with ONLY the category name, nothing else.`
 
       await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 
-      const shareCoinAmountStr = shareCoinAmount > 0 && request.item_requests.requestType === "BORROW" ? `✓ ${shareCoinAmount} ShareCoins charged` : null;
+      const shareCoinAmountStr = shareCoinAmount > 0 && request.item_requests.requestType === "BORROW" ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged` : null;
       const systemMsgs = [
-        "✅ Handoff confirmed via PIN — borrow period has started",
+        "🤝 Handoff confirmed via PIN — borrow period has started",
         shareCoinAmountStr,
-        "✓ Security deposit is now held until the item is returned",
+        "🔒 Security deposit is now held until the item is returned",
       ].filter(Boolean) as string[];
 
       for (const content of systemMsgs) {

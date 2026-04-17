@@ -1662,7 +1662,7 @@ export function ChatWidget() {
                     if (msg.messageType === "system") {
                       return (
                         <div key={msg.id} className="mb-3 flex justify-center">
-                          <span className="text-xs text-muted-foreground text-center max-w-[80%] leading-snug">
+                          <span className="text-xs text-muted-foreground font-semibold text-center max-w-[80%] leading-snug">
                             {msg.content}
                           </span>
                         </div>

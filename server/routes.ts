@@ -4694,11 +4694,15 @@ Respond with ONLY the category name, nothing else.`
     });
 
     // Notify other party
+    const _cpItemName1 = request.items.name;
+    const _cpTitle1 = `New terms for "${_cpItemName1.length > 22 ? _cpItemName1.slice(0, 22) + "…" : _cpItemName1}"`;
+    const _cpRole1 = isOwner ? "Owner" : "Requester";
+    const _cpType1 = request.item_requests.requestType?.toLowerCase() || "request";
     await db.insert(notifications).values({
       userId: otherUserId,
       type: "terms_counter_proposed",
-      title: isOwner ? "Owner Proposed New Terms" : "Requester Proposed New Terms",
-      message: `New terms proposed for your ${request.item_requests.requestType?.toLowerCase()} request. Review and respond.`,
+      title: _cpTitle1,
+      message: `${_cpRole1} proposed new terms for your ${_cpType1} request. Review and respond.`,
       itemId: request.items.id,
       requestId,
     });
@@ -4771,11 +4775,15 @@ Respond with ONLY the category name, nothing else.`
         proposedByRole: isOwner ? "owner" : "requester",
       });
 
+      const _cpItemName2 = request.items.name;
+      const _cpTitle2 = `New terms for "${_cpItemName2.length > 22 ? _cpItemName2.slice(0, 22) + "…" : _cpItemName2}"`;
+      const _cpRole2 = isOwner ? "Owner" : "Requester";
+      const _cpType2 = request.item_requests.requestType?.toLowerCase() || "request";
       await db.insert(notifications).values({
         userId: otherUserId,
         type: "terms_counter_proposed",
-        title: "New Counter-Proposal",
-        message: `New terms proposed for your ${request.item_requests.requestType?.toLowerCase()} request.`,
+        title: _cpTitle2,
+        message: `${_cpRole2} proposed new terms for your ${_cpType2} request. Review and respond.`,
         itemId: request.items.id,
         requestId,
       });

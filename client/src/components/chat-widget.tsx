@@ -835,7 +835,7 @@ export function ChatWidget() {
       case "DEPOSIT_CONFIRMED":
         return "bg-teal-100 text-teal-800";
       case "IN_PROGRESS":
-        return "bg-green-100 text-green-800";
+        return "bg-blue-100 text-blue-800";
       case "RETURN_REQUESTED":
         return "bg-purple-100 text-purple-800";
       case "DECLINED":

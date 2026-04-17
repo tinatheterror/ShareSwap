@@ -1747,6 +1747,14 @@ export function ChatWidget() {
                     );
                   }
 
+                  if (pr.status === "RETURN_REQUESTED") {
+                    return (
+                      <div className="px-3 py-2 border-t border-amber-100 bg-amber-50">
+                        <p className="text-xs text-amber-800 font-semibold text-center py-1.5">↩️ Return requested — waiting for owner to confirm</p>
+                      </div>
+                    );
+                  }
+
                   if (pr.status === "IN_PROGRESS") {
                     const wasAutoAdvanced = (pr as any).handoffAutoAdvanced;
                     return (
@@ -1888,6 +1896,19 @@ export function ChatWidget() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    );
+                  }
+
+                  if (pr.status === "RETURN_REQUESTED") {
+                    return (
+                      <div className="px-3 py-2 border-t border-green-100 bg-green-50 space-y-1">
+                        <Button className="w-full h-10 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirm return
+                        </Button>
+                        <p className="text-xs text-center text-muted-foreground">Borrower says they've returned the item</p>
                       </div>
                     );
                   }

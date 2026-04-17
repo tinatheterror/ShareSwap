@@ -6530,9 +6530,11 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(messages).values({ content, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
       }
 
+      const _handoffPeriodType = request.item_requests.requestType === "RENT" ? "Rental" : "Borrow";
+      const _handoffMsg = `Receipt of "${request.items.name}" via code. ${_handoffPeriodType} period started.`;
       await db.insert(notifications).values([
-        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `"${request.items.name}" is with the borrower. Borrow period started.`, itemId: request.items.id, requestId },
-        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: `"${request.items.name}" picked up via PIN. Borrow period started.`, itemId: request.items.id, requestId },
+        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
+        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
       ]);
 
       res.json({ success: true, confirmed: true, message: "Handoff confirmed via PIN!" });

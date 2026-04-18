@@ -37,7 +37,11 @@ interface ReturnConfirmationModalProps {
 }
 
 const CONDITION_RATINGS = [
-  { value: 5, label: "Excellent", description: "Returned in perfect condition" },
+  {
+    value: 5,
+    label: "Excellent",
+    description: "Returned in perfect condition",
+  },
   { value: 4, label: "Good", description: "Minor wear, as expected" },
   { value: 3, label: "Fair", description: "Some wear but acceptable" },
   { value: 2, label: "Poor", description: "Noticeable damage or wear" },
@@ -62,7 +66,7 @@ export function ReturnConfirmationModal({
   const [conditionRating, setConditionRating] = useState(5);
   const [conditionNotes, setConditionNotes] = useState("");
   const [confirmDispute, setConfirmDispute] = useState(false);
-  
+
   const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
   const isRental = requestType === "RENT";
   const isEarlyReturn = endDate ? new Date() < new Date(endDate) : false;
@@ -70,11 +74,11 @@ export function ReturnConfirmationModal({
   const initiateReturnMutation = useMutation({
     mutationFn: async () => {
       setIsProcessing(true);
-      
+
       const response = await apiRequest(
         "POST",
         `/api/requests/${requestId}/return`,
-        {}
+        {},
       );
       return response.json();
     },
@@ -109,7 +113,7 @@ export function ReturnConfirmationModal({
   const confirmReturnMutation = useMutation({
     mutationFn: async () => {
       setIsProcessing(true);
-      
+
       const response = await apiRequest(
         "POST",
         `/api/requests/${requestId}/confirm-return`,
@@ -118,7 +122,7 @@ export function ReturnConfirmationModal({
           conditionNotes,
           sameCondition,
           triggerDispute: shouldTriggerDispute,
-        }
+        },
       );
       return response.json();
     },
@@ -178,15 +182,15 @@ export function ReturnConfirmationModal({
 
           <div className="space-y-4 py-4">
             {isEarlyReturn && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-amber-700 font-medium">
-                  <Clock className="h-4 w-4" />
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-amber-700 font-medium text-sm">
+                  <Clock className="h-4 w-4 shrink-0" />
                   Early Return
                 </div>
-                <p className="text-sm text-amber-600 mt-1">
+                <p className="text-xs text-amber-600 mt-0.5">
                   {isRental
-                    ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                    : "You're returning this item before your borrow period ends. No penalty applies."}
+                    ? "Returning early — no refund for unused days."
+                    : "Returning early — no penalty applies."}
                 </p>
               </div>
             )}
@@ -209,8 +213,9 @@ export function ReturnConfirmationModal({
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  Make sure you've returned the item to the {isRental ? "owner" : "lender"} before
-                  initiating the return process.
+                  Make sure you've returned the item to the{" "}
+                  {isRental ? "owner" : "lender"} before initiating the return
+                  process.
                 </p>
               </div>
             </div>
@@ -272,8 +277,8 @@ export function ReturnConfirmationModal({
               </div>
               <p className="text-sm text-blue-600 mt-1">
                 {isRental
-                  ? "This item is being returned early. You keep the full rental amount — no refund for unused days."
-                  : "This item is being returned early. The deposit will be released immediately."}
+                  ? "You keep the full rental amount — no refund for unused days."
+                  : "The deposit will be released immediately."}
               </p>
             </div>
           )}
@@ -293,16 +298,20 @@ export function ReturnConfirmationModal({
                 className="mt-0.5"
               />
               <div className="flex-1">
-                <Label htmlFor="sameCondition" className="text-sm font-medium cursor-pointer">
+                <Label
+                  htmlFor="sameCondition"
+                  className="text-sm font-medium cursor-pointer"
+                >
                   Item returned in the same condition
                 </Label>
                 <p className="text-xs text-gray-500 mt-1">
-                  Check this if the item was returned without any damage or issues
+                  Check this if the item was returned without any damage or
+                  issues
                 </p>
               </div>
             </div>
           </div>
-          
+
           {!sameCondition && (
             <div className="space-y-3">
               <Label className="flex items-center gap-2">
@@ -322,7 +331,9 @@ export function ReturnConfirmationModal({
                   >
                     <div className="flex items-baseline gap-2">
                       <div className="font-medium text-sm">{rating.label}</div>
-                      <div className="text-xs text-gray-500">{rating.description}</div>
+                      <div className="text-xs text-gray-500">
+                        {rating.description}
+                      </div>
                     </div>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -343,10 +354,17 @@ export function ReturnConfirmationModal({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Additional Notes {!sameCondition ? "(describe the issue)" : "(optional)"}</Label>
+            <Label htmlFor="notes">
+              Additional Notes{" "}
+              {!sameCondition ? "(describe the issue)" : "(optional)"}
+            </Label>
             <Textarea
               id="notes"
-              placeholder={!sameCondition ? "Please describe what happened to the item..." : "Any comments about the item condition..."}
+              placeholder={
+                !sameCondition
+                  ? "Please describe what happened to the item..."
+                  : "Any comments about the item condition..."
+              }
               value={conditionNotes}
               onChange={(e) => setConditionNotes(e.target.value)}
               rows={2}
@@ -359,18 +377,27 @@ export function ReturnConfirmationModal({
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                 <div className="flex-1">
-                  <h4 className="font-medium text-red-800 text-sm">This will open a dispute</h4>
+                  <h4 className="font-medium text-red-800 text-sm">
+                    This will open a dispute
+                  </h4>
                   <p className="text-xs text-red-600 mt-1">
-                    Since you reported damage, we'll hold the {isRental ? "renter's" : "borrower's"} ${depositAmount} deposit while we review. 
-                    Both parties will be contacted to resolve this.
+                    Since you reported damage, we'll hold the{" "}
+                    {isRental ? "renter's" : "borrower's"} ${depositAmount}{" "}
+                    deposit while we review. Both parties will be contacted to
+                    resolve this.
                   </p>
                   <div className="flex items-center gap-2 mt-3">
                     <Checkbox
                       id="confirmDispute"
                       checked={confirmDispute}
-                      onCheckedChange={(checked) => setConfirmDispute(checked === true)}
+                      onCheckedChange={(checked) =>
+                        setConfirmDispute(checked === true)
+                      }
                     />
-                    <Label htmlFor="confirmDispute" className="text-xs text-red-700 cursor-pointer">
+                    <Label
+                      htmlFor="confirmDispute"
+                      className="text-xs text-red-700 cursor-pointer"
+                    >
                       I understand and want to proceed with the dispute
                     </Label>
                   </div>
@@ -390,7 +417,7 @@ export function ReturnConfirmationModal({
               <p className="text-xs text-green-600 mt-1">
                 {isRental
                   ? "The renter's trust score will also be updated based on your rating."
-                  : "The borrower's trust score will also be updated based on your rating."}
+                  : "Their trust score will also be updated based on your rating."}
               </p>
             </div>
           )}
@@ -407,7 +434,11 @@ export function ReturnConfirmationModal({
           </Button>
           <Button
             onClick={() => confirmReturnMutation.mutate()}
-            disabled={isProcessing || (shouldTriggerDispute && !confirmDispute) || (!sameCondition && !conditionNotes.trim())}
+            disabled={
+              isProcessing ||
+              (shouldTriggerDispute && !confirmDispute) ||
+              (!sameCondition && !conditionNotes.trim())
+            }
             className={`flex-1 ${shouldTriggerDispute ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
           >
             {isProcessing ? (

@@ -1212,19 +1212,6 @@ export function ChatWidget() {
                   </Button>
                 )}
 
-              {isOwner && request.status === "RETURN_REQUESTED" && (
-                <Button
-                  size="sm"
-                  className="h-7 text-xs bg-green-600 hover:bg-green-700"
-                  onClick={() => {
-                    setSelectedRequest(request);
-                    setShowReturnModal(true);
-                  }}
-                >
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Confirm Return
-                </Button>
-              )}
 
         </div>
       </div>

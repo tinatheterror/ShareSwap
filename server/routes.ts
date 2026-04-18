@@ -23,7 +23,7 @@ import * as express from "express";
 import { itemConditionVerifications } from "@db/schema";
 import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
-import { itemRequests, deliveryArrangements } from "@db/schema";
+import { itemRequests, deliveryArrangements, extensionRequests } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
 import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements } from "@db/schema";
 import session from "express-session";
@@ -7646,6 +7646,168 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error fetching item request detail:", error);
       res.status(500).json({ error: "Failed to fetch transaction" });
+    }
+  });
+
+  // ── Extension Requests ──────────────────────────────────────────────────────
+
+  // GET pending extension for a request
+  app.get("/api/requests/:id/extension", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = parseInt(req.params.id);
+    if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
+    try {
+      const [ext] = await db
+        .select()
+        .from(extensionRequests)
+        .where(
+          and(
+            eq(extensionRequests.requestId, requestId),
+            eq(extensionRequests.status, "pending")
+          )
+        )
+        .orderBy(desc(extensionRequests.createdAt))
+        .limit(1);
+      res.json(ext || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch extension request" });
+    }
+  });
+
+  // POST borrower requests an extension
+  app.post("/api/requests/:id/extension", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = parseInt(req.params.id);
+    if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
+    const { requestedEndDate, message } = req.body;
+    if (!requestedEndDate) return res.status(400).json({ error: "requestedEndDate required" });
+
+    try {
+      const [borrow] = await db
+        .select({ requesterId: itemRequests.requesterId, ownerId: items.ownerId, status: itemRequests.status, endDate: itemRequests.endDate, itemName: items.name })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!borrow) return res.status(404).json({ error: "Request not found" });
+      if (borrow.requesterId !== req.user.id) return res.status(403).json({ error: "Not your borrow" });
+      if (borrow.status !== "IN_PROGRESS") return res.status(400).json({ error: "Can only extend in-progress borrows" });
+
+      const newEnd = new Date(requestedEndDate);
+      if (borrow.endDate && newEnd <= borrow.endDate) {
+        return res.status(400).json({ error: "New date must be after current end date" });
+      }
+
+      // Cancel any existing pending extension for this request
+      await db
+        .update(extensionRequests)
+        .set({ status: "declined", respondedAt: new Date() })
+        .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "pending")));
+
+      const [ext] = await db
+        .insert(extensionRequests)
+        .values({
+          requestId,
+          borrowerId: req.user.id,
+          ownerId: borrow.ownerId,
+          requestedEndDate: newEnd,
+          status: "pending",
+          message: message || null,
+        })
+        .returning();
+
+      // Notify owner
+      await db.insert(notifications).values({
+        userId: borrow.ownerId,
+        type: "extension_requested",
+        title: "Extension request",
+        message: `${(req.user as any).displayName || req.user.username} wants to extend the borrow of "${borrow.itemName}" to ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`,
+        requestId,
+        isRead: false,
+      });
+
+      res.json(ext);
+    } catch (error) {
+      console.error("Extension request error:", error);
+      res.status(500).json({ error: "Failed to create extension request" });
+    }
+  });
+
+  // POST owner responds to extension (accept / decline)
+  app.post("/api/requests/:id/extension/respond", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = parseInt(req.params.id);
+    if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
+    const { action } = req.body; // "accept" | "decline"
+    if (!["accept", "decline"].includes(action)) return res.status(400).json({ error: "action must be accept or decline" });
+
+    try {
+      const [pending] = await db
+        .select()
+        .from(extensionRequests)
+        .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "pending")))
+        .orderBy(desc(extensionRequests.createdAt))
+        .limit(1);
+
+      if (!pending) return res.status(404).json({ error: "No pending extension request" });
+      if (pending.ownerId !== req.user.id) return res.status(403).json({ error: "Not your item" });
+
+      const newStatus = action === "accept" ? "accepted" : "declined";
+
+      await db
+        .update(extensionRequests)
+        .set({ status: newStatus, respondedAt: new Date() })
+        .where(eq(extensionRequests.id, pending.id));
+
+      if (action === "accept") {
+        await db
+          .update(itemRequests)
+          .set({ endDate: pending.requestedEndDate })
+          .where(eq(itemRequests.id, requestId));
+      }
+
+      // Notify borrower
+      const [ownerRow] = await db.select({ name: users.displayName, username: users.username }).from(users).where(eq(users.id, req.user.id)).limit(1);
+      const [borrowRow] = await db.select({ itemName: items.name }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
+
+      await db.insert(notifications).values({
+        userId: pending.borrowerId,
+        type: action === "accept" ? "extension_accepted" : "extension_declined",
+        title: action === "accept" ? "Extension accepted!" : "Extension declined",
+        message: action === "accept"
+          ? `Your return date for "${borrowRow?.itemName}" has been extended to ${pending.requestedEndDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
+          : `Your extension request for "${borrowRow?.itemName}" was declined.`,
+        requestId,
+        isRead: false,
+      });
+
+      res.json({ success: true, status: newStatus });
+    } catch (error) {
+      console.error("Extension respond error:", error);
+      res.status(500).json({ error: "Failed to respond to extension" });
+    }
+  });
+
+  // GET all pending extensions involving the current user (borrower or owner)
+  app.get("/api/extensions/pending", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const exts = await db
+        .select()
+        .from(extensionRequests)
+        .where(
+          and(
+            eq(extensionRequests.status, "pending"),
+            or(
+              eq(extensionRequests.borrowerId, req.user.id),
+              eq(extensionRequests.ownerId, req.user.id)
+            )
+          )
+        );
+      res.json(exts);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending extensions" });
     }
   });
 

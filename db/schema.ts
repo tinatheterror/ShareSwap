@@ -780,3 +780,18 @@ export const notifications = pgTable("notifications", {
 export type InsertNotification = typeof notifications.$inferInsert;
 export type SelectNotification = typeof notifications.$inferSelect;
 
+export const extensionRequests = pgTable("extension_requests", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").notNull().references(() => itemRequests.id),
+  borrowerId: integer("borrower_id").notNull().references(() => users.id),
+  ownerId: integer("owner_id").notNull().references(() => users.id),
+  requestedEndDate: timestamp("requested_end_date").notNull(),
+  status: text("status").default("pending").notNull(), // pending | accepted | declined
+  message: text("message"),
+  respondedAt: timestamp("responded_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type InsertExtensionRequest = typeof extensionRequests.$inferInsert;
+export type SelectExtensionRequest = typeof extensionRequests.$inferSelect;
+

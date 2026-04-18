@@ -177,10 +177,52 @@ export default function RequestsPage() {
   const [proposedStartDate, setProposedStartDate] = useState<string>("");
   const [proposedEndDate, setProposedEndDate] = useState<string>("");
 
+  // Extension request state
+  const [showExtendDialog, setShowExtendDialog] = useState(false);
+  const [extendRequest, setExtendRequest] = useState<ItemRequest | null>(null);
+  const [extendDate, setExtendDate] = useState<string>("");
+
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
     refetchInterval: 8000,
     refetchOnWindowFocus: true,
+  });
+
+  const { data: pendingExtensions = [] } = useQuery<any[]>({
+    queryKey: ["/api/extensions/pending"],
+    refetchInterval: 10000,
+  });
+  const pendingExtByRequestId = Object.fromEntries(pendingExtensions.map((e) => [e.requestId, e]));
+
+  const requestExtensionMutation = useMutation({
+    mutationFn: async ({ requestId, requestedEndDate }: { requestId: number; requestedEndDate: string }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/extension`, { requestedEndDate });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/extensions/pending"] });
+      toast({ title: "Extension requested", description: "The owner has been notified." });
+      setShowExtendDialog(false);
+      setExtendDate("");
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message || "Could not send extension request.", variant: "destructive" });
+    },
+  });
+
+  const respondExtensionMutation = useMutation({
+    mutationFn: async ({ requestId, action }: { requestId: number; action: "accept" | "decline" }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/extension/respond`, { action });
+      return res.json();
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/extensions/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
+      toast({ title: vars.action === "accept" ? "Extension accepted" : "Extension declined" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed", description: err.message || "Could not respond.", variant: "destructive" });
+    },
   });
 
   const acceptMutation = useMutation({
@@ -872,17 +914,38 @@ export default function RequestsPage() {
                             )}
 
                             {request.status === "IN_PROGRESS" && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowReturnModal(true);
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                <RotateCcw className="h-4 w-4 mr-1" />
-                                Return Item
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedRequest(request);
+                                    setShowReturnModal(true);
+                                  }}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-1" />
+                                  Return Item
+                                </Button>
+                                {pendingExtByRequestId[request.id] ? (
+                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
+                                    <Clock className="h-3 w-3 mr-1" />
+                                    Extension pending
+                                  </Badge>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setExtendRequest(request);
+                                      setExtendDate(request.endDate ? new Date(new Date(request.endDate).getTime() + 86400000).toISOString().split("T")[0] : "");
+                                      setShowExtendDialog(true);
+                                    }}
+                                  >
+                                    <Clock className="h-4 w-4 mr-1" />
+                                    Need more time?
+                                  </Button>
+                                )}
+                              </>
                             )}
 
                             {request.status === "RETURN_REQUESTED" && (
@@ -967,6 +1030,35 @@ export default function RequestsPage() {
                                   </Button>
                                 )}
                               </>
+                            )}
+
+                            {request.status === "IN_PROGRESS" && pendingExtByRequestId[request.id] && (
+                              <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-sm font-medium text-amber-800 mb-1">
+                                  Extension requested to {format(new Date(pendingExtByRequestId[request.id].requestedEndDate), "MMM d, yyyy")}
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                    disabled={respondExtensionMutation.isPending}
+                                    onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "accept" })}
+                                  >
+                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-red-300 text-red-600 hover:bg-red-50"
+                                    disabled={respondExtensionMutation.isPending}
+                                    onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "decline" })}
+                                  >
+                                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                                    Decline
+                                  </Button>
+                                </div>
+                              </div>
                             )}
 
                             {request.status === "RETURN_REQUESTED" && (
@@ -1195,6 +1287,53 @@ export default function RequestsPage() {
           }}
         />
       )}
+
+      {/* Extension Request Dialog */}
+      <Dialog open={showExtendDialog} onOpenChange={(open) => { setShowExtendDialog(open); if (!open) setExtendDate(""); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-500" />
+              Request Extension
+            </DialogTitle>
+            <DialogDescription>
+              Need more time? Pick a new return date and the owner will be notified.
+            </DialogDescription>
+          </DialogHeader>
+
+          {extendRequest && (
+            <div className="space-y-4 py-2">
+              {extendRequest.endDate && (
+                <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                  <span className="text-muted-foreground">Current due date: </span>
+                  <span className="font-medium">{format(new Date(extendRequest.endDate), "MMM d, yyyy")}</span>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="ext-date">Request new return date</Label>
+                <Input
+                  id="ext-date"
+                  type="date"
+                  value={extendDate}
+                  min={extendRequest.endDate ? new Date(new Date(extendRequest.endDate).getTime() + 86400000).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setExtendDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowExtendDialog(false)}>Cancel</Button>
+            <Button
+              disabled={!extendDate || requestExtensionMutation.isPending}
+              onClick={() => extendRequest && requestExtensionMutation.mutate({ requestId: extendRequest.id, requestedEndDate: extendDate })}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              {requestExtensionMutation.isPending ? "Sending…" : "Send request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Counter-Proposal Modal (owner OR requester) */}
       <Dialog open={showCounterProposalModal} onOpenChange={setShowCounterProposalModal}>

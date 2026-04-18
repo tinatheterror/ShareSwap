@@ -625,6 +625,7 @@ export function ChatWidget() {
       case "DECLINED": return "Declined";
       case "AWAITING_HANDOFF_CONFIRM": return "Awaiting handoff";
       case "HANDOFF_DISPUTED": return "Disputed";
+      case "DISPUTED": return "Damage dispute";
       case "HANDOFF_FLAGGED": return "Flagged for review";
       default: return status || "";
     }
@@ -843,6 +844,8 @@ export function ChatWidget() {
       case "AWAITING_HANDOFF_CONFIRM":
         return "bg-indigo-100 text-indigo-800";
       case "HANDOFF_DISPUTED":
+        return "bg-red-100 text-red-800";
+      case "DISPUTED":
         return "bg-red-100 text-red-800";
       case "HANDOFF_FLAGGED":
         return "bg-orange-100 text-orange-800";

@@ -1,23 +1,21 @@
 import { Navbar } from "@/components/shared/navbar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AlertTriangle, CheckCircle, XCircle, Star, Package, User, DollarSign, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 interface Dispute {
   id: number;
@@ -120,7 +118,6 @@ export default function AdminDisputesPage() {
         <div className="space-y-5">
           {disputes.map((d) => (
             <Card key={d.id} className="overflow-hidden border-amber-200">
-              {/* Header strip */}
               <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -138,7 +135,6 @@ export default function AdminDisputesPage() {
               </div>
 
               <CardContent className="pt-5 pb-4 space-y-4">
-                {/* Item + parties */}
                 <div className="flex items-start gap-4">
                   {d.itemImage ? (
                     <img
@@ -189,7 +185,6 @@ export default function AdminDisputesPage() {
                   </div>
                 </div>
 
-                {/* Damage description from owner */}
                 <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 space-y-1">
                   <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">
                     Owner's damage report
@@ -201,7 +196,6 @@ export default function AdminDisputesPage() {
                   </p>
                 </div>
 
-                {/* Additional notes if different from reason */}
                 {d.returnConditionNotes && d.returnConditionNotes !== d.returnDisputeReason && (
                   <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 space-y-1">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -211,7 +205,6 @@ export default function AdminDisputesPage() {
                   </div>
                 )}
 
-                {/* Action buttons */}
                 <div className="flex gap-3 pt-1">
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
@@ -236,33 +229,36 @@ export default function AdminDisputesPage() {
         </div>
       </main>
 
-      {/* Confirmation dialog */}
-      <AlertDialog open={!!resolving} onOpenChange={(open) => !open && setResolving(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+      {/* Confirmation dialog using Dialog (already pre-bundled) */}
+      <Dialog open={!!resolving} onOpenChange={(open) => !open && setResolving(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {resolving?.decision === "borrower"
                 ? "Release deposit to borrower?"
                 : "Capture deposit for owner?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+            </DialogTitle>
+            <DialogDescription>
               {resolving?.decision === "borrower"
                 ? "The security deposit will be released back to the borrower. This confirms the item was returned in acceptable condition."
-                : "The security deposit will be captured and paid to the owner. This confirms damage was found and the owner's claim is valid."}
-              {" "}This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+                : "The security deposit will be captured and paid to the owner. This confirms damage was found and the owner's claim is valid."}{" "}
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setResolving(null)}>
+              Cancel
+            </Button>
+            <Button
               className={resolving?.decision === "borrower" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
               onClick={() => resolving && resolveMutation.mutate(resolving)}
+              disabled={resolveMutation.isPending}
             >
-              Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {resolveMutation.isPending ? "Processing…" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

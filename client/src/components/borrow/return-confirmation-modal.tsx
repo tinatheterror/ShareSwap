@@ -320,11 +320,9 @@ export function ReturnConfirmationModal({
                         : "border-gray-200 hover:bg-gray-50"
                     }`}
                   >
-                    <div>
+                    <div className="flex items-baseline gap-2">
                       <div className="font-medium text-sm">{rating.label}</div>
-                      <div className="text-xs text-gray-500">
-                        {rating.description}
-                      </div>
+                      <div className="text-xs text-gray-500">{rating.description}</div>
                     </div>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((star) => (

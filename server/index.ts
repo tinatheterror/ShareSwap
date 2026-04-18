@@ -35,16 +35,24 @@ process.on("unhandledRejection", (reason: any) => {
   }
 });
 
-// Log SIGTERM so we can confirm it's the workflow manager restarting us
-process.on("SIGTERM", () => {
-  log(`[info] SIGTERM received – shutting down gracefully`);
-  process.exit(0);
-});
+// Module-level reference so signal handlers can close the HTTP server
+// before exiting — this ensures the OS releases the port immediately
+// rather than leaving it in TIME_WAIT and causing EADDRINUSE on restart.
+let httpServer: import("http").Server | null = null;
 
-process.on("SIGINT", () => {
-  log(`[info] SIGINT received – shutting down gracefully`);
-  process.exit(0);
-});
+function gracefulShutdown(signal: string) {
+  log(`[info] ${signal} received – shutting down gracefully`);
+  if (httpServer) {
+    httpServer.close(() => process.exit(0));
+    // Force-exit after 3 s in case connections don't drain
+    setTimeout(() => process.exit(0), 3000).unref();
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
 
 const app = express();
 
@@ -169,6 +177,7 @@ app.use((req, res, next) => {
   setupStorageRoutes(app);
   
   const server = registerRoutes(app);
+  httpServer = server;
 
   // Initialize sample games and features
   await initializeSampleGames();

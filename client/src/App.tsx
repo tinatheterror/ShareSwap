@@ -21,8 +21,13 @@ import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
 import AdminDisputesPage from "@/pages/admin/disputes";
+import AdminDashboardPage from "@/pages/admin/index";
+import AdminUsersPage from "@/pages/admin/users";
+import AdminItemsPage from "@/pages/admin/items";
+import AdminTransactionsPage from "@/pages/admin/transactions";
 import WalletPage from "@/pages/wallet-page";
 import { ProtectedRoute } from "./lib/protected-route";
+import { useAuth } from "./hooks/use-auth";
 import ChallengesPage from "@/pages/challenges-page";
 
 import ItemDetailsPage from "@/pages/item-details-page";
@@ -51,6 +56,14 @@ import { LocationSetupWrapper } from "@/components/location-setup-wrapper";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ShareCoinAnimation } from "@/components/sharecoin-animation";
 
+function AdminRoute({ path, component: Component }: { path: string; component: () => React.JSX.Element | null }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <Route path={path}><div /></Route>;
+  if (!user) return <Route path={path}><Redirect to="/auth" /></Route>;
+  if (!(user as any).isAdmin) return <Route path={path}><Redirect to="/" /></Route>;
+  return <Route path={path}><Component /></Route>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -62,8 +75,12 @@ function Router() {
       <ProtectedRoute path="/share-options" component={ShareOptionsPage} />
       <ProtectedRoute path="/borrow" component={BorrowPage} />
       <ProtectedRoute path="/lend" component={LendPage} />
-      <ProtectedRoute path="/admin/verify-items" component={VerifyItemsPage} />
-      <ProtectedRoute path="/admin/disputes" component={AdminDisputesPage} />
+      <AdminRoute path="/admin" component={AdminDashboardPage} />
+      <AdminRoute path="/admin/users" component={AdminUsersPage} />
+      <AdminRoute path="/admin/items" component={AdminItemsPage} />
+      <AdminRoute path="/admin/transactions" component={AdminTransactionsPage} />
+      <AdminRoute path="/admin/disputes" component={AdminDisputesPage} />
+      <AdminRoute path="/admin/verify-items" component={VerifyItemsPage} />
       <ProtectedRoute path="/wallet" component={WalletPage} />
       <ProtectedRoute path="/games" component={GamesPage} />
       <ProtectedRoute path="/challenges" component={ChallengesPage} />

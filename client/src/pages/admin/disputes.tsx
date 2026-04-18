@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/shared/navbar";
+import { AdminLayout } from "@/components/admin/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,9 +81,8 @@ export default function AdminDisputesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6]">
-      <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+    <AdminLayout>
+      <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <AlertTriangle className="h-6 w-6 text-amber-500" />
           <div>
@@ -227,9 +226,8 @@ export default function AdminDisputesPage() {
             </Card>
           ))}
         </div>
-      </main>
+      </div>
 
-      {/* Confirmation dialog using Dialog (already pre-bundled) */}
       <Dialog open={!!resolving} onOpenChange={(open) => !open && setResolving(null)}>
         <DialogContent>
           <DialogHeader>
@@ -259,6 +257,6 @@ export default function AdminDisputesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminLayout>
   );
 }

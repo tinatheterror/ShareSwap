@@ -1,4 +1,4 @@
-import { Navbar } from "@/components/shared/navbar";
+import { AdminLayout } from "@/components/admin/admin-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -83,9 +83,8 @@ export default function VerifyItemsPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <AdminLayout>
+      <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">Verify Item Conditions</h1>
           <p className="text-muted-foreground">
@@ -228,7 +227,7 @@ export default function VerifyItemsPage() {
             </Card>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

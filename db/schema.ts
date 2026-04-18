@@ -38,7 +38,10 @@ export const users = pgTable("users", {
   hasCompletedFirstGift: boolean("has_completed_first_gift").default(false),
   hasCompletedFirstBorrow: boolean("has_completed_first_borrow").default(false),
   hasSeenVerificationNudge: boolean("has_seen_verification_nudge").default(false),
-  accountStatus: text("account_status").default("active"), // 'active', 'deactivated', 'pending_deletion'
+  accountStatus: text("account_status").default("active"), // 'active', 'deactivated', 'pending_deletion', 'banned'
+  isAdmin: boolean("is_admin").default(false),
+  bannedAt: timestamp("banned_at"),
+  banReason: text("ban_reason"),
   lastActiveAt: timestamp("last_active_at"),
   deactivatedAt: timestamp("deactivated_at"),
   deletionRequestedAt: timestamp("deletion_requested_at"),

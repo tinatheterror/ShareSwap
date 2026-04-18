@@ -12,7 +12,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, inArray, ilike } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
@@ -9039,9 +9039,254 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // ── Admin: List all return disputes ──
-  app.get("/api/admin/disputes", async (req, res) => {
+  // ── Admin: Shared auth guard ──
+  function requireAdmin(req: Request, res: Response, next: NextFunction) {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!(req.user as any).isAdmin) return res.status(403).json({ message: "Admin access required" });
+    next();
+  }
+
+  // ── Admin: Dashboard stats ──
+  app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
+    try {
+      const [[{ totalUsers }], [{ totalItems }], [{ totalTransactions }], [{ openDisputes }], [{ bannedUsers }]] = await Promise.all([
+        db.select({ totalUsers: sql<number>`count(*)::int` }).from(users),
+        db.select({ totalItems: sql<number>`count(*)::int` }).from(items),
+        db.select({ totalTransactions: sql<number>`count(*)::int` }).from(itemRequests),
+        db.select({ openDisputes: sql<number>`count(*)::int` }).from(itemRequests).where(eq(itemRequests.status, "DISPUTED")),
+        db.select({ bannedUsers: sql<number>`count(*)::int` }).from(users).where(eq(users.accountStatus, "banned")),
+      ]);
+      res.json({ totalUsers, totalItems, totalTransactions, openDisputes, bannedUsers });
+    } catch (err) {
+      console.error("Admin stats error:", err);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // ── Admin: List users (search by email / username / handle) ──
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const search = (req.query.search as string || "").trim();
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = 30;
+      const offset = (page - 1) * limit;
+
+      const where = search
+        ? or(
+            ilike(users.username, `%${search}%`),
+            ilike(users.email, `%${search}%`),
+            ilike(users.handle, `%${search}%`),
+            ilike(users.displayName, `%${search}%`),
+          )
+        : undefined;
+
+      const [rows, [{ total }]] = await Promise.all([
+        db.select({
+          id: users.id,
+          username: users.username,
+          handle: users.handle,
+          displayName: users.displayName,
+          email: users.email,
+          accountStatus: users.accountStatus,
+          isAdmin: users.isAdmin,
+          isVerified: users.isVerified,
+          isPremium: users.isPremium,
+          shareCoins: users.shareCoins,
+          reputationScore: users.reputationScore,
+          bannedAt: users.bannedAt,
+          banReason: users.banReason,
+          createdAt: users.createdAt,
+          lastActiveAt: users.lastActiveAt,
+        }).from(users).where(where).orderBy(desc(users.createdAt)).limit(limit).offset(offset),
+        db.select({ total: sql<number>`count(*)::int` }).from(users).where(where),
+      ]);
+
+      res.json({ users: rows, total, page, pages: Math.ceil(total / limit) });
+    } catch (err) {
+      console.error("Admin users error:", err);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  // ── Admin: Ban user ──
+  app.post("/api/admin/users/:id/ban", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { reason } = req.body as { reason?: string };
+      await db.update(users).set({
+        accountStatus: "banned",
+        bannedAt: new Date(),
+        banReason: reason || "Banned by admin",
+      }).where(eq(users.id, userId));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to ban user" });
+    }
+  });
+
+  // ── Admin: Unban user ──
+  app.post("/api/admin/users/:id/unban", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      await db.update(users).set({
+        accountStatus: "active",
+        bannedAt: null,
+        banReason: null,
+      }).where(eq(users.id, userId));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to unban user" });
+    }
+  });
+
+  // ── Admin: List items (search by name) ──
+  app.get("/api/admin/items", requireAdmin, async (req, res) => {
+    try {
+      const search = (req.query.search as string || "").trim();
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = 30;
+      const offset = (page - 1) * limit;
+
+      const where = search ? ilike(items.name, `%${search}%`) : undefined;
+
+      const [rows, [{ total }]] = await Promise.all([
+        db.select({
+          id: items.id,
+          name: items.name,
+          category: items.category,
+          conditionRating: items.conditionRating,
+          isAvailable: items.isAvailable,
+          isLendable: items.isLendable,
+          isRentable: items.isRentable,
+          isGift: items.isGift,
+          securityDeposit: items.securityDeposit,
+          photos: items.photos,
+          createdAt: items.createdAt,
+          ownerId: items.ownerId,
+          ownerUsername: users.username,
+          ownerHandle: users.handle,
+          ownerDisplayName: users.displayName,
+        }).from(items)
+          .leftJoin(users, eq(users.id, items.ownerId))
+          .where(where)
+          .orderBy(desc(items.createdAt))
+          .limit(limit).offset(offset),
+        db.select({ total: sql<number>`count(*)::int` }).from(items).where(where),
+      ]);
+
+      res.json({ items: rows, total, page, pages: Math.ceil(total / limit) });
+    } catch (err) {
+      console.error("Admin items error:", err);
+      res.status(500).json({ message: "Failed to fetch items" });
+    }
+  });
+
+  // ── Admin: Remove item (soft delete) ──
+  app.post("/api/admin/items/:id/remove", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      await db.update(items).set({ isAvailable: false }).where(eq(items.id, itemId));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to remove item" });
+    }
+  });
+
+  // ── Admin: List transactions (search by ID, user email/username, item name) ──
+  app.get("/api/admin/transactions", requireAdmin, async (req, res) => {
+    try {
+      const search = (req.query.search as string || "").trim();
+      const status = (req.query.status as string || "").trim();
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = 30;
+      const offset = (page - 1) * limit;
+
+      const requester = alias(users, "requester");
+      const owner = alias(users, "owner");
+
+      const conditions: any[] = [];
+      if (status) conditions.push(eq(itemRequests.status, status));
+      if (search) {
+        const searchNum = parseInt(search);
+        const searchConditions: any[] = [ilike(items.name, `%${search}%`), ilike(requester.username, `%${search}%`), ilike(requester.email, `%${search}%`)];
+        if (!isNaN(searchNum)) searchConditions.push(eq(itemRequests.id, searchNum));
+        conditions.push(or(...searchConditions));
+      }
+      const where = conditions.length ? and(...conditions) : undefined;
+
+      const [rows, [{ total }]] = await Promise.all([
+        db.select({
+          id: itemRequests.id,
+          status: itemRequests.status,
+          requestType: itemRequests.requestType,
+          depositStatus: itemRequests.depositStatus,
+          trustDepositAmount: itemRequests.trustDepositAmount,
+          depositPaymentIntentId: itemRequests.depositPaymentIntentId,
+          startDate: itemRequests.startDate,
+          endDate: itemRequests.endDate,
+          createdAt: itemRequests.createdAt,
+          itemId: itemRequests.itemId,
+          itemName: items.name,
+          requesterId: itemRequests.requesterId,
+          requesterUsername: requester.username,
+          requesterEmail: requester.email,
+          ownerId: items.ownerId,
+          ownerUsername: owner.username,
+        }).from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .leftJoin(requester, eq(requester.id, itemRequests.requesterId))
+          .leftJoin(owner, eq(owner.id, items.ownerId))
+          .where(where)
+          .orderBy(desc(itemRequests.createdAt))
+          .limit(limit).offset(offset),
+        db.select({ total: sql<number>`count(*)::int` })
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .leftJoin(requester, eq(requester.id, itemRequests.requesterId))
+          .where(where),
+      ]);
+
+      res.json({ transactions: rows, total, page, pages: Math.ceil(total / limit) });
+    } catch (err) {
+      console.error("Admin transactions error:", err);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+
+  // ── Admin: Transaction manual override ──
+  app.post("/api/admin/transactions/:id/override", requireAdmin, csrfProtection, async (req, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const { action } = req.body as { action: "complete" | "release_deposit" | "cancel" };
+
+      const [request] = await db.select().from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(eq(itemRequests.id, requestId)).limit(1);
+      if (!request) return res.status(404).json({ message: "Transaction not found" });
+
+      if (action === "complete") {
+        await db.update(itemRequests).set({ status: "COMPLETED" }).where(eq(itemRequests.id, requestId));
+        await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.item_requests.itemId));
+      } else if (action === "release_deposit") {
+        const pi = request.item_requests.depositPaymentIntentId;
+        if (pi) { try { await stripe.paymentIntents.cancel(pi); } catch (_) {} }
+        await db.update(itemRequests).set({ depositStatus: "released", depositReleasedAt: new Date() }).where(eq(itemRequests.id, requestId));
+      } else if (action === "cancel") {
+        const pi = request.item_requests.depositPaymentIntentId;
+        if (pi) { try { await stripe.paymentIntents.cancel(pi); } catch (_) {} }
+        await db.update(itemRequests).set({ status: "DECLINED", depositStatus: request.item_requests.depositStatus === "held" ? "released" : request.item_requests.depositStatus ?? undefined }).where(eq(itemRequests.id, requestId));
+        await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.item_requests.itemId));
+      } else {
+        return res.status(400).json({ message: "Unknown action" });
+      }
+
+      res.json({ success: true, action });
+    } catch (err) {
+      console.error("Admin override error:", err);
+      res.status(500).json({ message: "Failed to override transaction" });
+    }
+  });
+
+  // ── Admin: List all return disputes ──
+  app.get("/api/admin/disputes", requireAdmin, async (_req, res) => {
     try {
       const disputes = await db
         .select({
@@ -9061,7 +9306,7 @@ Respond with ONLY the category name, nothing else.`
           itemId: itemRequests.itemId,
           requesterId: itemRequests.requesterId,
           itemName: items.name,
-          itemImage: items.images,
+          itemImage: items.photos,
           ownerId: items.ownerId,
         })
         .from(itemRequests)
@@ -9091,8 +9336,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // ── Admin: Resolve a return dispute ──
-  app.post("/api/admin/disputes/:requestId/resolve", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+  app.post("/api/admin/disputes/:requestId/resolve", requireAdmin, csrfProtection, async (req, res) => {
     const requestId = parseInt(req.params.requestId);
     const { decision, adminNote } = req.body as { decision: "owner" | "borrower"; adminNote?: string };
     if (!decision || !["owner", "borrower"].includes(decision)) {
@@ -9154,10 +9398,7 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Get farming detection stats (admin endpoint)
-  app.get("/api/admin/farming-stats", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
+  app.get("/api/admin/farming-stats", requireAdmin, async (req, res) => {
     
     try {
       // Get recent farming detections

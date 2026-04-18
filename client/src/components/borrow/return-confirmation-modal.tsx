@@ -182,15 +182,15 @@ export function ReturnConfirmationModal({
 
           <div className="space-y-4 py-4">
             {isEarlyReturn && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-amber-700 font-medium text-sm">
-                  <Clock className="h-4 w-4 shrink-0" />
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-amber-700 font-medium">
+                  <Clock className="h-4 w-4" />
                   Early Return
                 </div>
-                <p className="text-xs text-amber-600 mt-0.5">
+                <p className="text-sm text-amber-600 mt-1">
                   {isRental
-                    ? "Returning early — no refund for unused days."
-                    : "Returning early — no penalty applies."}
+                    ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
+                    : "You're returning this item before your borrow period ends. No penalty applies."}
                 </p>
               </div>
             )}
@@ -262,9 +262,9 @@ export function ReturnConfirmationModal({
             {isEarlyReturn ? "Confirm Early Return" : "Confirm Item Return"}
           </DialogTitle>
           <DialogDescription>
-            Confirm that{" "}
+            {" "}
             <span className="font-medium text-gray-900">{itemName}</span> has
-            been returned
+            been returned early
           </DialogDescription>
         </DialogHeader>
 

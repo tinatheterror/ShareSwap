@@ -768,25 +768,36 @@ export default function ProfilePage() {
               <CardHeader className="bg-[#D4F7F1]">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex items-center gap-4 min-w-0">
-                    <Avatar className="h-16 w-16 border-2 border-white shadow-md flex-shrink-0">
-                      <AvatarImage
-                        src={(user as any)?.profilePhoto}
-                        alt={
-                          (user as any).displayName ||
-                          (user as any).handle ||
-                          user.username
-                        }
-                      />
-                      <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
-                        {(
-                          (user as any).displayName ||
-                          (user as any).handle ||
-                          user.username
-                        )
-                          .charAt(0)
-                          .toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                      <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+                        <AvatarImage
+                          src={(user as any)?.profilePhoto}
+                          alt={
+                            (user as any).displayName ||
+                            (user as any).handle ||
+                            user.username
+                          }
+                        />
+                        <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
+                          {(
+                            (user as any).displayName ||
+                            (user as any).handle ||
+                            user.username
+                          )
+                            .charAt(0)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {!(user as any)?.profilePhoto && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center gap-0.5 text-[10px] text-amber-600 hover:text-amber-700 whitespace-nowrap"
+                        >
+                          <Coins className="h-2.5 w-2.5" />
+                          <span>Add photo · +1</span>
+                        </button>
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">

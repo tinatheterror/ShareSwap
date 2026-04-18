@@ -20,6 +20,7 @@ import ShareOptionsPage from "@/pages/share-options";
 import BorrowPage from "@/pages/borrow-page";
 import LendPage from "@/pages/lend-page";
 import VerifyItemsPage from "@/pages/admin/verify-items";
+import AdminDisputesPage from "@/pages/admin/disputes";
 import WalletPage from "@/pages/wallet-page";
 import { ProtectedRoute } from "./lib/protected-route";
 import ChallengesPage from "@/pages/challenges-page";
@@ -62,6 +63,7 @@ function Router() {
       <ProtectedRoute path="/borrow" component={BorrowPage} />
       <ProtectedRoute path="/lend" component={LendPage} />
       <ProtectedRoute path="/admin/verify-items" component={VerifyItemsPage} />
+      <ProtectedRoute path="/admin/disputes" component={AdminDisputesPage} />
       <ProtectedRoute path="/wallet" component={WalletPage} />
       <ProtectedRoute path="/games" component={GamesPage} />
       <ProtectedRoute path="/challenges" component={ChallengesPage} />

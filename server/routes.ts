@@ -12,7 +12,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
@@ -9036,6 +9036,120 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Error processing borrow return:", error);
       res.status(500).json({ error: "Failed to process borrow return" });
+    }
+  });
+
+  // ── Admin: List all return disputes ──
+  app.get("/api/admin/disputes", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const disputes = await db
+        .select({
+          id: itemRequests.id,
+          status: itemRequests.status,
+          requestType: itemRequests.requestType,
+          returnDisputeReason: itemRequests.returnDisputeReason,
+          returnConditionNotes: itemRequests.returnConditionNotes,
+          returnConditionRating: itemRequests.returnConditionRating,
+          returnConditionOk: itemRequests.returnConditionOk,
+          trustDepositAmount: itemRequests.trustDepositAmount,
+          depositPaymentIntentId: itemRequests.depositPaymentIntentId,
+          depositStatus: itemRequests.depositStatus,
+          returnRequestedAt: itemRequests.returnRequestedAt,
+          returnConfirmedAt: itemRequests.returnConfirmedAt,
+          createdAt: itemRequests.createdAt,
+          itemId: itemRequests.itemId,
+          requesterId: itemRequests.requesterId,
+          itemName: items.name,
+          itemImage: items.images,
+          ownerId: items.ownerId,
+        })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.status, "DISPUTED"))
+        .orderBy(desc(itemRequests.returnConfirmedAt));
+
+      // Fetch owner + borrower display names
+      const userIds = [...new Set(disputes.flatMap(d => [d.ownerId, d.requesterId].filter(Boolean) as number[]))];
+      const userRows = userIds.length
+        ? await db.select({ id: users.id, displayName: users.displayName, username: users.username }).from(users).where(inArray(users.id, userIds))
+        : [];
+      const userMap = Object.fromEntries(userRows.map(u => [u.id, u.displayName || u.username || `User ${u.id}`]));
+
+      const result = disputes.map(d => ({
+        ...d,
+        ownerName: d.ownerId ? userMap[d.ownerId] ?? `User ${d.ownerId}` : "Unknown",
+        borrowerName: userMap[d.requesterId] ?? `User ${d.requesterId}`,
+        itemImage: Array.isArray(d.itemImage) ? d.itemImage[0] : null,
+      }));
+
+      res.json(result);
+    } catch (err) {
+      console.error("Error fetching disputes:", err);
+      res.status(500).json({ error: "Failed to fetch disputes" });
+    }
+  });
+
+  // ── Admin: Resolve a return dispute ──
+  app.post("/api/admin/disputes/:requestId/resolve", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const requestId = parseInt(req.params.requestId);
+    const { decision, adminNote } = req.body as { decision: "owner" | "borrower"; adminNote?: string };
+    if (!decision || !["owner", "borrower"].includes(decision)) {
+      return res.status(400).json({ error: "decision must be 'owner' or 'borrower'" });
+    }
+    try {
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.item_requests.status !== "DISPUTED") {
+        return res.status(400).json({ error: "Request is not in DISPUTED status" });
+      }
+
+      const ownerId = request.items.ownerId!;
+      const borrowerId = request.item_requests.requesterId;
+      const paymentIntentId = request.item_requests.depositPaymentIntentId;
+
+      if (decision === "borrower") {
+        // Release deposit back to borrower
+        if (paymentIntentId) {
+          try { await stripe.paymentIntents.cancel(paymentIntentId); } catch (_) {}
+        }
+        await db.update(itemRequests).set({
+          status: "COMPLETED",
+          depositStatus: "released",
+          depositReleasedAt: new Date(),
+        }).where(eq(itemRequests.id, requestId));
+        await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
+        // Notify both parties
+        await db.insert(notifications).values([
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return of "${request.items.name}" — your deposit has been released.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return dispute for "${request.items.name}". The deposit was released to the borrower.`, itemId: request.items.id, requestId },
+        ]);
+      } else {
+        // Capture deposit in favour of owner (damage confirmed)
+        if (paymentIntentId) {
+          try { await stripe.paymentIntents.capture(paymentIntentId); } catch (_) {}
+        }
+        await db.update(itemRequests).set({
+          status: "COMPLETED",
+          depositStatus: "captured",
+        }).where(eq(itemRequests.id, requestId));
+        await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
+        await db.insert(notifications).values([
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute resolved in your favour", message: `Admin reviewed the return of "${request.items.name}" and confirmed damage. The deposit has been captured.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return dispute for "${request.items.name}" and found evidence of damage. Your deposit has been captured.`, itemId: request.items.id, requestId },
+        ]);
+      }
+
+      res.json({ success: true, decision });
+    } catch (err) {
+      console.error("Error resolving dispute:", err);
+      res.status(500).json({ error: "Failed to resolve dispute" });
     }
   });
 

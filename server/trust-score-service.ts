@@ -214,7 +214,6 @@ export async function awardBorrowReturnPoints(
   } else {
     borrowerPoints = TRUST_POINTS.PENALTIES.DAMAGE_CONFIRMED;
     borrowerActivityType = "borrow_return_damaged";
-    lenderPoints = 0;
   }
 
   const metadata = { requestId, itemId, conditionRating, wasOnTime };

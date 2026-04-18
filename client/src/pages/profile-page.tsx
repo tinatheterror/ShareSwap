@@ -794,7 +794,8 @@ export default function ProfilePage() {
                           className="flex items-center gap-0.5 text-[10px] text-amber-600 hover:text-amber-700 whitespace-nowrap"
                         >
                           <Coins className="h-2.5 w-2.5" />
-                          <span>Add photo · +1</span>
+                          <span>+1</span>
+                          <span>· Add photo</span>
                         </button>
                       )}
                     </div>

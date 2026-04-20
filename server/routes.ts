@@ -7018,6 +7018,19 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId))
         .returning();
 
+      // System message in chat thread
+      const ownerId_ret = request.items.ownerId!;
+      const borrowerId_ret = request.item_requests.requesterId;
+      await db.insert(messages).values({
+        content: isEarlyReturn
+          ? `📦 Early return initiated by borrower — awaiting lender confirmation.`
+          : `📦 Return initiated — awaiting lender confirmation.`,
+        senderId: borrowerId_ret,
+        receiverId: ownerId_ret,
+        messageType: "system",
+        requestId,
+      });
+
       res.json({
         success: true,
         request: updated,
@@ -7109,6 +7122,17 @@ Respond with ONLY the category name, nothing else.`
           link: `/requests`,
         });
 
+        // System message in chat thread
+        const ownerId_disp = request.items.ownerId!;
+        const borrowerId_disp = request.item_requests.requesterId;
+        await db.insert(messages).values({
+          content: `🔴 Dispute opened by the lender — security deposit is on hold pending review. Our team will contact both parties within 24 hours.`,
+          senderId: ownerId_disp,
+          receiverId: borrowerId_disp,
+          messageType: "system",
+          requestId,
+        });
+
         return res.json({
           success: true,
           request: disputed,
@@ -7159,6 +7183,17 @@ Respond with ONLY the category name, nothing else.`
         .update(items)
         .set({ isAvailable: true })
         .where(eq(items.id, request.items.id));
+
+      // System message in chat thread
+      const ownerId_conf = request.items.ownerId!;
+      const borrowerId_conf = request.item_requests.requesterId;
+      await db.insert(messages).values({
+        content: `✅ Return confirmed — item received in good condition. Security deposit has been released.`,
+        senderId: ownerId_conf,
+        receiverId: borrowerId_conf,
+        messageType: "system",
+        requestId,
+      });
 
       // Award trust points using the new tiered system
       // Check if return was on time (before or on the end date)

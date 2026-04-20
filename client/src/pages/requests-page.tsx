@@ -21,6 +21,7 @@ import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
+import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 import { useVerification } from "@/hooks/use-verification";
 import { getStripePromise } from "@/lib/stripe-client";
 
@@ -180,7 +181,12 @@ export default function RequestsPage() {
   // Extension request state
   const [showExtendDialog, setShowExtendDialog] = useState(false);
   const [extendRequest, setExtendRequest] = useState<ItemRequest | null>(null);
-  const [extendDate, setExtendDate] = useState<string>("");
+  const [extendDays, setExtendDays] = useState<1 | 2 | 3 | null>(null);
+
+  // Renewal state
+  const [showRenewDialog, setShowRenewDialog] = useState(false);
+  const [renewRequest, setRenewRequest] = useState<ItemRequest | null>(null);
+  const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
 
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
@@ -188,22 +194,24 @@ export default function RequestsPage() {
     refetchOnWindowFocus: true,
   });
 
-  const { data: pendingExtensions = [] } = useQuery<any[]>({
-    queryKey: ["/api/extensions/pending"],
+  const { data: activeExtensions = [] } = useQuery<any[]>({
+    queryKey: ["/api/extensions/active"],
     refetchInterval: 10000,
   });
-  const pendingExtByRequestId = Object.fromEntries(pendingExtensions.map((e) => [e.requestId, e]));
+  const pendingExtByRequestId = Object.fromEntries(activeExtensions.filter(e => e.status === "pending").map((e) => [e.requestId, e]));
+  const acceptedExtByRequestId = Object.fromEntries(activeExtensions.filter(e => e.status === "accepted").map((e) => [e.requestId, e]));
 
   const requestExtensionMutation = useMutation({
-    mutationFn: async ({ requestId, requestedEndDate }: { requestId: number; requestedEndDate: string }) => {
-      const res = await apiRequest("POST", `/api/requests/${requestId}/extension`, { requestedEndDate });
+    mutationFn: async ({ requestId, days }: { requestId: number; days: number }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/extension`, { days });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || "Failed"); }
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/extensions/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/extensions/active"] });
       toast({ title: "Extension requested", description: "The owner has been notified." });
       setShowExtendDialog(false);
-      setExtendDate("");
+      setExtendDays(null);
     },
     onError: (err: any) => {
       toast({ title: "Failed", description: err.message || "Could not send extension request.", variant: "destructive" });
@@ -216,7 +224,7 @@ export default function RequestsPage() {
       return res.json();
     },
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/extensions/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/extensions/active"] });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       toast({ title: vars.action === "accept" ? "Extension accepted" : "Extension declined" });
     },
@@ -913,40 +921,58 @@ export default function RequestsPage() {
                               </>
                             )}
 
-                            {request.status === "IN_PROGRESS" && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedRequest(request);
-                                    setShowReturnModal(true);
-                                  }}
-                                  className="bg-blue-600 hover:bg-blue-700"
-                                >
-                                  <RotateCcw className="h-4 w-4 mr-1" />
-                                  Return Item
-                                </Button>
-                                {pendingExtByRequestId[request.id] ? (
-                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Extension pending
-                                  </Badge>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setExtendRequest(request);
-                                      setExtendDate(request.endDate ? new Date(new Date(request.endDate).getTime() + 86400000).toISOString().split("T")[0] : "");
-                                      setShowExtendDialog(true);
-                                    }}
-                                  >
-                                    <Clock className="h-4 w-4 mr-1" />
-                                    Need more time?
-                                  </Button>
-                                )}
-                              </>
-                            )}
+                            {request.status === "IN_PROGRESS" && (() => {
+                              const isOverdue = request.endDate ? new Date() > new Date(request.endDate) : false;
+                              const hasPending = !!pendingExtByRequestId[request.id];
+                              const hasAccepted = !!acceptedExtByRequestId[request.id];
+                              return (
+                                <div className="flex flex-col gap-2 w-full">
+                                  {isOverdue && (
+                                    <div className="flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      This item is overdue. Return it or start a new borrow period.
+                                    </div>
+                                  )}
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => { setSelectedRequest(request); setShowReturnModal(true); }}
+                                      className="bg-blue-600 hover:bg-blue-700"
+                                    >
+                                      <RotateCcw className="h-4 w-4 mr-1" />
+                                      Return Item
+                                    </Button>
+                                    {isOverdue ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => { setRenewRequest(request); setShowRenewDialog(true); }}
+                                      >
+                                        Start new borrow period
+                                      </Button>
+                                    ) : hasPending ? (
+                                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 self-center">
+                                        <Clock className="h-3 w-3 mr-1" />
+                                        Extension pending owner approval
+                                      </Badge>
+                                    ) : hasAccepted ? (
+                                      <span className="text-xs text-muted-foreground self-center">
+                                        Further extensions not available. Please return the item or arrange a new request.
+                                      </span>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => { setExtendRequest(request); setExtendDays(null); setShowExtendDialog(true); }}
+                                      >
+                                        <Clock className="h-4 w-4 mr-1" />
+                                        Need a bit more time?
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {request.status === "RETURN_REQUESTED" && (
                               <Badge variant="secondary" className="bg-amber-100 text-amber-800">
@@ -1032,34 +1058,50 @@ export default function RequestsPage() {
                               </>
                             )}
 
-                            {request.status === "IN_PROGRESS" && pendingExtByRequestId[request.id] && (
-                              <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p className="text-sm font-medium text-amber-800 mb-1">
-                                  Extension requested to {format(new Date(pendingExtByRequestId[request.id].requestedEndDate), "MMM d, yyyy")}
-                                </p>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    className="bg-green-600 hover:bg-green-700"
-                                    disabled={respondExtensionMutation.isPending}
-                                    onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "accept" })}
-                                  >
-                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                                    Accept
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-red-300 text-red-600 hover:bg-red-50"
-                                    disabled={respondExtensionMutation.isPending}
-                                    onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "decline" })}
-                                  >
-                                    <XCircle className="h-3.5 w-3.5 mr-1" />
-                                    Decline
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
+                            {request.status === "IN_PROGRESS" && (() => {
+                              const isOverdue = request.endDate ? new Date() > new Date(request.endDate) : false;
+                              const pendingExt = pendingExtByRequestId[request.id];
+                              return (
+                                <>
+                                  {isOverdue && (
+                                    <div className="w-full mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                      <p className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1.5">
+                                        <Clock className="h-3.5 w-3.5" /> Item is overdue
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <Button size="sm" variant="outline" className="text-xs"
+                                          onClick={() => navigate(`/messages/${request.requesterId}`)}>
+                                          Message borrower
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="text-xs border-red-300 text-red-600 hover:bg-red-50"
+                                          onClick={() => navigate(`/disputes/new?requestId=${request.id}`)}>
+                                          Report issue
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {!isOverdue && pendingExt && (
+                                    <div className="w-full mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                      <p className="text-sm font-medium text-amber-800 mb-1">
+                                        Short extension requested: {pendingExt.message} → {format(new Date(pendingExt.requestedEndDate), "MMM d, yyyy")}
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <Button size="sm" className="bg-green-600 hover:bg-green-700"
+                                          disabled={respondExtensionMutation.isPending}
+                                          onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "accept" })}>
+                                          <CheckCircle className="h-3.5 w-3.5 mr-1" /> Accept
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="border-red-300 text-red-600 hover:bg-red-50"
+                                          disabled={respondExtensionMutation.isPending}
+                                          onClick={() => respondExtensionMutation.mutate({ requestId: request.id, action: "decline" })}>
+                                          <XCircle className="h-3.5 w-3.5 mr-1" /> Decline
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
 
                             {request.status === "RETURN_REQUESTED" && (
                               <Button
@@ -1288,16 +1330,16 @@ export default function RequestsPage() {
         />
       )}
 
-      {/* Extension Request Dialog */}
-      <Dialog open={showExtendDialog} onOpenChange={(open) => { setShowExtendDialog(open); if (!open) setExtendDate(""); }}>
+      {/* Short Extension Dialog */}
+      <Dialog open={showExtendDialog} onOpenChange={(open) => { setShowExtendDialog(open); if (!open) { setExtendDays(null); } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-amber-500" />
-              Request Extension
+              Short extension (up to 3 days)
             </DialogTitle>
             <DialogDescription>
-              Need more time? Pick a new return date and the owner will be notified.
+              Short extensions help with small delays. For a longer period, start a new borrow.
             </DialogDescription>
           </DialogHeader>
 
@@ -1310,14 +1352,37 @@ export default function RequestsPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="ext-date">Request new return date</Label>
-                <Input
-                  id="ext-date"
-                  type="date"
-                  value={extendDate}
-                  min={extendRequest.endDate ? new Date(new Date(extendRequest.endDate).getTime() + 86400000).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]}
-                  onChange={(e) => setExtendDate(e.target.value)}
-                />
+                <p className="text-sm font-medium">Add extra time</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {([1, 2, 3] as const).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setExtendDays(d)}
+                      className={`py-3 rounded-lg border text-sm font-medium transition-colors ${
+                        extendDays === d
+                          ? "border-amber-500 bg-amber-50 text-amber-700"
+                          : "border-gray-200 hover:border-gray-300 text-gray-700"
+                      }`}
+                    >
+                      +{d} day{d > 1 ? "s" : ""}
+                    </button>
+                  ))}
+                </div>
+                {extendDays && extendRequest.endDate && (
+                  <p className="text-xs text-muted-foreground pt-1">
+                    New return date: <span className="font-medium text-gray-700">{format(new Date(new Date(extendRequest.endDate).getTime() + extendDays * 86400000), "MMM d, yyyy")}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="border-t pt-3">
+                <p className="text-xs text-muted-foreground mb-1">Need more than a few days?</p>
+                <button
+                  className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                  onClick={() => { setShowExtendDialog(false); setRenewRequest(extendRequest); setShowRenewDialog(true); }}
+                >
+                  Start a new borrow period →
+                </button>
               </div>
             </div>
           )}
@@ -1325,15 +1390,66 @@ export default function RequestsPage() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowExtendDialog(false)}>Cancel</Button>
             <Button
-              disabled={!extendDate || requestExtensionMutation.isPending}
-              onClick={() => extendRequest && requestExtensionMutation.mutate({ requestId: extendRequest.id, requestedEndDate: extendDate })}
+              disabled={!extendDays || requestExtensionMutation.isPending}
+              onClick={() => extendRequest && extendDays && requestExtensionMutation.mutate({ requestId: extendRequest.id, days: extendDays })}
               className="bg-amber-500 hover:bg-amber-600"
             >
-              {requestExtensionMutation.isPending ? "Sending…" : "Send request"}
+              {requestExtensionMutation.isPending ? "Sending…" : "Request extension"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Renewal Dialog */}
+      <Dialog open={showRenewDialog} onOpenChange={setShowRenewDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Start a new borrow period</DialogTitle>
+            <DialogDescription>
+              A new request will be sent to the owner. Your deposit will refresh and ShareCoins will apply.
+            </DialogDescription>
+          </DialogHeader>
+          {renewRequest && (
+            <div className="py-3 space-y-3">
+              <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+                <p><span className="text-muted-foreground">Item: </span><span className="font-medium">{renewRequest.item.name}</span></p>
+                <p><span className="text-muted-foreground">Starts: </span><span className="font-medium">{renewRequest.endDate ? format(new Date(renewRequest.endDate), "MMM d, yyyy") : "after return"}</span></p>
+                <p><span className="text-muted-foreground">Cost: </span><span className="font-medium">{renewRequest.item.shareCoinPrice || "5"} ShareCoins</span></p>
+              </div>
+              <p className="text-xs text-muted-foreground">Renewal only starts after this borrow ends. No overlapping periods.</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowRenewDialog(false)}>Cancel</Button>
+            <Button
+              className="bg-teal-600 hover:bg-teal-700"
+              onClick={() => {
+                if (!renewRequest) return;
+                const coinBalance = (user as any)?.shareCoins ?? 0;
+                const required = parseFloat(renewRequest.item.shareCoinPrice || "5");
+                if (coinBalance < required) {
+                  setShowRenewDialog(false);
+                  setShowInsufficientCoins(true);
+                } else {
+                  setShowRenewDialog(false);
+                  navigate(`/items/${renewRequest.item.id}`);
+                }
+              }}
+            >
+              Go to item →
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Insufficient ShareCoins Modal (renewal) */}
+      <InsufficientShareCoinsModal
+        isOpen={showInsufficientCoins}
+        onClose={() => setShowInsufficientCoins(false)}
+        currentBalance={(user as any)?.shareCoins ?? 0}
+        required={parseFloat(renewRequest?.item?.shareCoinPrice || "5")}
+        context="borrow"
+      />
 
       {/* Counter-Proposal Modal (owner OR requester) */}
       <Dialog open={showCounterProposalModal} onOpenChange={setShowCounterProposalModal}>

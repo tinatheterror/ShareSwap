@@ -7679,8 +7679,9 @@ Respond with ONLY the category name, nothing else.`
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const requestId = parseInt(req.params.id);
     if (isNaN(requestId)) return res.status(400).json({ error: "Invalid id" });
-    const { requestedEndDate, message } = req.body;
-    if (!requestedEndDate) return res.status(400).json({ error: "requestedEndDate required" });
+    const { days } = req.body;
+    const addDays = parseInt(days);
+    if (![1, 2, 3].includes(addDays)) return res.status(400).json({ error: "days must be 1, 2, or 3" });
 
     try {
       const [borrow] = await db
@@ -7694,12 +7695,25 @@ Respond with ONLY the category name, nothing else.`
       if (borrow.requesterId !== req.user.id) return res.status(403).json({ error: "Not your borrow" });
       if (borrow.status !== "IN_PROGRESS") return res.status(400).json({ error: "Can only extend in-progress borrows" });
 
-      const newEnd = new Date(requestedEndDate);
-      if (borrow.endDate && newEnd <= borrow.endDate) {
-        return res.status(400).json({ error: "New date must be after current end date" });
+      // Must not be overdue
+      if (borrow.endDate && new Date() > borrow.endDate) {
+        return res.status(400).json({ error: "Item is overdue — extensions no longer available" });
       }
 
-      // Cancel any existing pending extension for this request
+      // Only 1 extension per transaction
+      const [alreadyUsed] = await db
+        .select({ id: extensionRequests.id })
+        .from(extensionRequests)
+        .where(and(eq(extensionRequests.requestId, requestId), eq(extensionRequests.status, "accepted")))
+        .limit(1);
+      if (alreadyUsed) return res.status(400).json({ error: "Extension already used for this transaction" });
+
+      if (!borrow.endDate) return res.status(400).json({ error: "Borrow has no end date" });
+
+      const newEnd = new Date(borrow.endDate);
+      newEnd.setDate(newEnd.getDate() + addDays);
+
+      // Cancel any existing pending extension
       await db
         .update(extensionRequests)
         .set({ status: "declined", respondedAt: new Date() })
@@ -7708,21 +7722,20 @@ Respond with ONLY the category name, nothing else.`
       const [ext] = await db
         .insert(extensionRequests)
         .values({
-          requestId,
-          borrowerId: req.user.id,
-          ownerId: borrow.ownerId,
+          requestId: requestId as number,
+          borrowerId: req.user.id as number,
+          ownerId: borrow.ownerId as number,
           requestedEndDate: newEnd,
           status: "pending",
-          message: message || null,
+          message: `+${addDays} day${addDays > 1 ? "s" : ""}`,
         })
         .returning();
 
-      // Notify owner
       await db.insert(notifications).values({
         userId: borrow.ownerId,
         type: "extension_requested",
-        title: "Extension request",
-        message: `${(req.user as any).displayName || req.user.username} wants to extend the borrow of "${borrow.itemName}" to ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`,
+        title: "Short extension requested",
+        message: `${(req.user as any).displayName || req.user.username} is requesting +${addDays} day${addDays > 1 ? "s" : ""} to return "${borrow.itemName}" (new date: ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}).`,
         requestId,
         isRead: false,
       });
@@ -7789,8 +7802,8 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
-  // GET all pending extensions involving the current user (borrower or owner)
-  app.get("/api/extensions/pending", async (req, res) => {
+  // GET all active extensions (pending + accepted) involving the current user
+  app.get("/api/extensions/active", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const exts = await db
@@ -7798,7 +7811,10 @@ Respond with ONLY the category name, nothing else.`
         .from(extensionRequests)
         .where(
           and(
-            eq(extensionRequests.status, "pending"),
+            or(
+              eq(extensionRequests.status, "pending"),
+              eq(extensionRequests.status, "accepted")
+            ),
             or(
               eq(extensionRequests.borrowerId, req.user.id),
               eq(extensionRequests.ownerId, req.user.id)
@@ -7807,7 +7823,7 @@ Respond with ONLY the category name, nothing else.`
         );
       res.json(exts);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch pending extensions" });
+      res.status(500).json({ error: "Failed to fetch extensions" });
     }
   });
 

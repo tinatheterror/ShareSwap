@@ -278,7 +278,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-blue-600 mt-1">
                 {isRental
                   ? "You keep the full rental amount — no refund for unused days."
-                  : "The deposit will be released immediately."}
+                  : "Borrower's deposit will be released immediately."}
               </p>
             </div>
           )}
@@ -293,6 +293,8 @@ export function ReturnConfirmationModal({
                   if (checked) {
                     setConditionRating(5);
                     setConfirmDispute(false);
+                  } else {
+                    setConditionRating(4);
                   }
                 }}
                 className="mt-0.5"
@@ -319,7 +321,7 @@ export function ReturnConfirmationModal({
                 Rate Item Condition
               </Label>
               <div className="space-y-2">
-                {CONDITION_RATINGS.map((rating) => (
+                {CONDITION_RATINGS.filter(r => r.value < 5).map((rating) => (
                   <div
                     key={rating.value}
                     onClick={() => setConditionRating(rating.value)}
@@ -406,21 +408,6 @@ export function ReturnConfirmationModal({
             </div>
           )}
 
-          {!shouldTriggerDispute && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
-                <Shield className="h-4 w-4" />
-                {isRental
-                  ? `Renter's deposit of $${depositAmount} will be released`
-                  : `Borrower's deposit of $${depositAmount} will be released`}
-              </div>
-              <p className="text-xs text-green-600 mt-1">
-                {isRental
-                  ? "The renter's trust score will also be updated based on your rating."
-                  : "Their trust score will also be updated based on your rating."}
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="flex gap-3">

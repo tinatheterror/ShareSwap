@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw, Gift } from "lucide-react";
+import { Clock, MapPin, User, CheckCircle, XCircle, Package, Shield, Truck, RotateCcw, HandMetal, ArrowRightLeft, CreditCard, RefreshCw, Gift, AlertTriangle, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -60,6 +60,10 @@ interface ItemRequest {
   borrowerConfirmedReturn: boolean | null;
   returnConditionOk: boolean | null;
   returnDisputeTriggered: boolean | null;
+  returnDisputeReason: string | null;
+  returnDisputePhotoUrl: string | null;
+  returnConditionNotes: string | null;
+  returnConditionRating: number | null;
   item: {
     id: number;
     name: string;
@@ -979,6 +983,47 @@ export default function RequestsPage() {
                                 Awaiting lender confirmation
                               </Badge>
                             )}
+
+                            {request.status === "DISPUTED" && (
+                              <div className="w-full mt-2 space-y-3">
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                  <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5 mb-1">
+                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                    Damage dispute opened by the owner
+                                  </p>
+                                  {(request.returnDisputeReason || request.returnConditionNotes) && (
+                                    <p className="text-xs text-red-600 mb-2">
+                                      "{request.returnDisputeReason || request.returnConditionNotes}"
+                                    </p>
+                                  )}
+                                  {request.returnConditionRating && (
+                                    <div className="flex items-center gap-1 mb-2">
+                                      {[1,2,3,4,5].map(s => (
+                                        <Star key={s} className={`h-3.5 w-3.5 ${s <= request.returnConditionRating! ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                                      ))}
+                                      <span className="text-xs text-muted-foreground ml-1">{request.returnConditionRating}/5</span>
+                                    </div>
+                                  )}
+                                  {request.returnDisputePhotoUrl && (
+                                    <img
+                                      src={request.returnDisputePhotoUrl}
+                                      alt="Damage photo"
+                                      className="h-24 w-24 object-cover rounded-lg border border-red-200 mb-2"
+                                    />
+                                  )}
+                                  <div className="flex items-start gap-1.5 pt-1 border-t border-red-200">
+                                    <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs text-red-600">
+                                      Your deposit is on hold while our team reviews this claim. We'll contact both parties within 24 hours.
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button size="sm" variant="outline" className="text-xs"
+                                  onClick={() => navigate(`/messages/${request.item.ownerId}`)}>
+                                  Message owner
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -991,7 +1036,7 @@ export default function RequestsPage() {
         </div>
 
         {/* Active Transactions as Owner */}
-        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED"].includes(r.status)).length > 0 && (
+        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status)).length > 0 && (
           <div className="mt-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Package className="h-6 w-6 text-teal-600" />
@@ -999,7 +1044,7 @@ export default function RequestsPage() {
             </h2>
             <div className="space-y-4">
               {requests
-                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED"].includes(r.status))
+                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status))
                 .map((request) => (
                   <Card key={request.id} className="bg-white border-2 border-teal-200">
                     <CardContent className="p-6">
@@ -1115,6 +1160,47 @@ export default function RequestsPage() {
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 Confirm Return
                               </Button>
+                            )}
+
+                            {request.status === "DISPUTED" && (
+                              <div className="w-full mt-2 space-y-3">
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                  <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5 mb-1">
+                                    <AlertTriangle className="h-3.5 w-3.5" />
+                                    Your damage report is under review
+                                  </p>
+                                  {(request.returnDisputeReason || request.returnConditionNotes) && (
+                                    <p className="text-xs text-red-600 mb-2">
+                                      "{request.returnDisputeReason || request.returnConditionNotes}"
+                                    </p>
+                                  )}
+                                  {request.returnConditionRating && (
+                                    <div className="flex items-center gap-1 mb-2">
+                                      {[1,2,3,4,5].map(s => (
+                                        <Star key={s} className={`h-3.5 w-3.5 ${s <= request.returnConditionRating! ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+                                      ))}
+                                      <span className="text-xs text-muted-foreground ml-1">{request.returnConditionRating}/5</span>
+                                    </div>
+                                  )}
+                                  {request.returnDisputePhotoUrl && (
+                                    <img
+                                      src={request.returnDisputePhotoUrl}
+                                      alt="Damage evidence"
+                                      className="h-24 w-24 object-cover rounded-lg border border-red-200 mb-2"
+                                    />
+                                  )}
+                                  <div className="flex items-start gap-1.5 pt-1 border-t border-red-200">
+                                    <Shield className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs text-red-600">
+                                      The deposit is on hold. Our team will review and reach out to both parties within 24 hours.
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button size="sm" variant="outline" className="text-xs"
+                                  onClick={() => navigate(`/messages/${request.requesterId}`)}>
+                                  Message borrower
+                                </Button>
+                              </div>
                             )}
                           </div>
                         </div>

@@ -22,6 +22,7 @@ interface Dispute {
   status: string;
   requestType: string;
   returnDisputeReason: string | null;
+  returnDisputePhotoUrl: string | null;
   returnConditionNotes: string | null;
   returnConditionRating: number | null;
   trustDepositAmount: string | null;
@@ -184,7 +185,7 @@ export default function AdminDisputesPage() {
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 space-y-1">
+                <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 space-y-2">
                   <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">
                     Owner's damage report
                   </p>
@@ -193,6 +194,18 @@ export default function AdminDisputesPage() {
                       <span className="italic text-muted-foreground">No description provided.</span>
                     )}
                   </p>
+                  {d.returnDisputePhotoUrl && (
+                    <div>
+                      <p className="text-xs text-red-600 font-medium mb-1">Photo evidence:</p>
+                      <a href={d.returnDisputePhotoUrl} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={d.returnDisputePhotoUrl}
+                          alt="Damage evidence"
+                          className="h-32 w-32 object-cover rounded-lg border border-red-200 hover:opacity-90 transition-opacity cursor-pointer"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {d.returnConditionNotes && d.returnConditionNotes !== d.returnDisputeReason && (

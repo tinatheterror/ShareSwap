@@ -297,7 +297,7 @@ export function ReturnConfirmationModal({
                     setConditionRating(4);
                   }
                 }}
-                className="mt-0.5"
+                className="mt-0.5 h-5 w-5"
               />
               <div className="flex-1">
                 <Label
@@ -395,6 +395,7 @@ export function ReturnConfirmationModal({
                       onCheckedChange={(checked) =>
                         setConfirmDispute(checked === true)
                       }
+                      className="h-5 w-5"
                     />
                     <Label
                       htmlFor="confirmDispute"

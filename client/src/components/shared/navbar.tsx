@@ -91,14 +91,14 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
           {!n.isRead && (
             <span className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-primary mt-px" />
           )}
-          <p className={`text-[13px] leading-snug truncate ${
+          <p className={`text-[13px] leading-snug ${
             !n.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"
           }`}>
             {n.title}
           </p>
         </div>
         {n.message && (
-          <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+          <p className="text-[11px] text-muted-foreground line-clamp-3 mt-0.5">
             {n.message}
           </p>
         )}

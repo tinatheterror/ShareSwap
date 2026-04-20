@@ -7025,6 +7025,19 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Lender confirms return (releases deposit, updates trust score)
+  // Upload a dispute evidence photo
+  app.post("/api/uploads/dispute-photo", csrfProtection, upload.single("photo"), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ error: "No photo provided" });
+    try {
+      const url = await uploadToStorage(req.file.buffer, req.file.originalname);
+      res.json({ url });
+    } catch (err) {
+      console.error("Dispute photo upload error:", err);
+      res.status(500).json({ error: "Failed to upload photo" });
+    }
+  });
+
   app.post("/api/requests/:requestId/confirm-return", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -7032,7 +7045,7 @@ Respond with ONLY the category name, nothing else.`
 
     try {
       const requestId = parseInt(req.params.requestId);
-      const { conditionRating, conditionNotes, sameCondition, triggerDispute } = req.body;
+      const { conditionRating, conditionNotes, sameCondition, triggerDispute, disputePhotoUrl } = req.body;
       
       const [request] = await db
         .select()
@@ -7067,6 +7080,7 @@ Respond with ONLY the category name, nothing else.`
             returnConditionNotes: conditionNotes,
             returnDisputeTriggered: true,
             returnDisputeReason: conditionNotes || "Item returned in damaged condition",
+            returnDisputePhotoUrl: disputePhotoUrl || null,
             depositStatus: "disputed",
           })
           .where(eq(itemRequests.id, requestId))

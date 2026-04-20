@@ -22,6 +22,9 @@ import {
   AlertCircle,
   AlertTriangle,
   Clock,
+  Camera,
+  X,
+  ImagePlus,
 } from "lucide-react";
 
 interface ReturnConfirmationModalProps {
@@ -66,6 +69,9 @@ export function ReturnConfirmationModal({
   const [conditionRating, setConditionRating] = useState(5);
   const [conditionNotes, setConditionNotes] = useState("");
   const [confirmDispute, setConfirmDispute] = useState(false);
+  const [disputePhoto, setDisputePhoto] = useState<File | null>(null);
+  const [disputePhotoPreview, setDisputePhotoPreview] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const shouldTriggerDispute = !sameCondition && conditionRating <= 2;
   const isRental = requestType === "RENT";
@@ -114,6 +120,26 @@ export function ReturnConfirmationModal({
     mutationFn: async () => {
       setIsProcessing(true);
 
+      let disputePhotoUrl: string | null = null;
+      if (shouldTriggerDispute && disputePhoto) {
+        setIsUploadingPhoto(true);
+        const formData = new FormData();
+        formData.append("photo", disputePhoto);
+        const csrfRes = await fetch("/api/csrf-token", { credentials: "include" });
+        const { csrfToken } = await csrfRes.json();
+        const uploadRes = await fetch("/api/uploads/dispute-photo", {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-csrf-token": csrfToken },
+          body: formData,
+        });
+        setIsUploadingPhoto(false);
+        if (uploadRes.ok) {
+          const data = await uploadRes.json();
+          disputePhotoUrl = data.url;
+        }
+      }
+
       const response = await apiRequest(
         "POST",
         `/api/requests/${requestId}/confirm-return`,
@@ -122,6 +148,7 @@ export function ReturnConfirmationModal({
           conditionNotes,
           sameCondition,
           triggerDispute: shouldTriggerDispute,
+          disputePhotoUrl,
         },
       );
       return response.json();
@@ -304,11 +331,10 @@ export function ReturnConfirmationModal({
                   htmlFor="sameCondition"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Item returned in the same condition
+                  Returned in the same condition
                 </Label>
                 <p className="text-xs text-gray-500 mt-1">
-                  Check this if the item was returned without any damage or
-                  issues
+                  Item was returned with no damage or issues
                 </p>
               </div>
             </div>
@@ -321,7 +347,7 @@ export function ReturnConfirmationModal({
                 Rate Item Condition
               </Label>
               <div className="space-y-2">
-                {CONDITION_RATINGS.filter(r => r.value < 5).map((rating) => (
+                {CONDITION_RATINGS.filter((r) => r.value < 5).map((rating) => (
                   <div
                     key={rating.value}
                     onClick={() => setConditionRating(rating.value)}
@@ -378,17 +404,65 @@ export function ReturnConfirmationModal({
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
-                <div className="flex-1">
-                  <h4 className="font-medium text-red-800 text-sm">
-                    This will open a dispute
-                  </h4>
-                  <p className="text-xs text-red-600 mt-1">
-                    Since you reported damage, we'll hold the{" "}
-                    {isRental ? "renter's" : "borrower's"} ${depositAmount}{" "}
-                    deposit while we review. Both parties will be contacted to
-                    resolve this.
-                  </p>
-                  <div className="flex items-center gap-2 mt-3">
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h4 className="font-medium text-red-800 text-sm">
+                      This will open a dispute
+                    </h4>
+                    <p className="text-xs text-red-600 mt-1">
+                      Since you reported damage, we'll hold the{" "}
+                      {isRental ? "renter's" : "borrower's"} ${depositAmount}{" "}
+                      deposit while we review. Both parties will be contacted to
+                      resolve this.
+                    </p>
+                  </div>
+
+                  {/* Photo evidence */}
+                  <div>
+                    <p className="text-xs font-medium text-red-800 mb-2 flex items-center gap-1.5">
+                      <Camera className="h-3.5 w-3.5" />
+                      Add a photo of the damage (recommended)
+                    </p>
+                    {disputePhotoPreview ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={disputePhotoPreview}
+                          alt="Damage evidence"
+                          className="h-28 w-28 object-cover rounded-lg border border-red-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setDisputePhoto(null); setDisputePhotoPreview(null); }}
+                          className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-white border border-gray-300 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50"
+                        >
+                          <X className="h-3 w-3 text-gray-600" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <div className="flex items-center gap-2 px-3 py-2 border border-dashed border-red-300 rounded-lg text-xs text-red-700 hover:bg-red-100 transition-colors">
+                          <ImagePlus className="h-4 w-4" />
+                          Take photo or upload
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setDisputePhoto(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => setDisputePhotoPreview(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
                     <Checkbox
                       id="confirmDispute"
                       checked={confirmDispute}
@@ -408,7 +482,6 @@ export function ReturnConfirmationModal({
               </div>
             </div>
           )}
-
         </div>
 
         <div className="flex gap-3">
@@ -432,7 +505,7 @@ export function ReturnConfirmationModal({
             {isProcessing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {shouldTriggerDispute ? "Opening Dispute..." : "Confirming..."}
+                {isUploadingPhoto ? "Uploading photo…" : shouldTriggerDispute ? "Opening Dispute…" : "Confirming…"}
               </>
             ) : (
               <>

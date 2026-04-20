@@ -362,6 +362,7 @@ export const itemRequests = pgTable("item_requests", {
   returnConditionOk: boolean("return_condition_ok"), // true if returned in same condition
   returnDisputeTriggered: boolean("return_dispute_triggered").default(false),
   returnDisputeReason: text("return_dispute_reason"),
+  returnDisputePhotoUrl: text("return_dispute_photo_url"),
   isEarlyReturn: boolean("is_early_return").default(false),
   
   // Return tracking

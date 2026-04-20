@@ -173,6 +173,11 @@ export default function NotificationsPage() {
         return <Truck className="h-5 w-5 text-green-600" />;
       case 'courier_issue':
         return <Truck className="h-5 w-5 text-red-600" />;
+      // Return events
+      case 'return_initiated':
+        return <RotateCcw className="h-5 w-5 text-blue-500" />;
+      case 'return_confirmed':
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
       // Return reminders
       case 'return_reminder_tomorrow':
         return <Clock className="h-5 w-5 text-amber-500" />;

@@ -7018,6 +7018,19 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId))
         .returning();
 
+      // Notify owner that borrower has initiated a return
+      await db.insert(notifications).values({
+        userId: request.items.ownerId!,
+        type: "return_initiated",
+        title: isEarlyReturn ? "Early return initiated" : "Return initiated",
+        message: isEarlyReturn
+          ? `${(req.user as any).displayName || req.user.username} is returning "${request.items.name}" early. Open the app to confirm receipt.`
+          : `${(req.user as any).displayName || req.user.username} has returned "${request.items.name}". Open the app to confirm receipt.`,
+        itemId: request.items.id,
+        requestId,
+        isRead: false,
+      });
+
       // System message in chat thread
       const ownerId_ret = request.items.ownerId!;
       const borrowerId_ret = request.item_requests.requesterId;
@@ -7183,6 +7196,17 @@ Respond with ONLY the category name, nothing else.`
         .update(items)
         .set({ isAvailable: true })
         .where(eq(items.id, request.items.id));
+
+      // Notify borrower that return has been confirmed and deposit released
+      await db.insert(notifications).values({
+        userId: request.item_requests.requesterId,
+        type: "return_confirmed",
+        title: "Return confirmed",
+        message: `"${request.items.name}" received and confirmed. Your security deposit has been released.`,
+        itemId: request.items.id,
+        requestId,
+        isRead: false,
+      });
 
       // System message in chat thread
       const ownerId_conf = request.items.ownerId!;

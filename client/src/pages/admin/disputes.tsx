@@ -217,14 +217,14 @@ export default function AdminDisputesPage() {
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-1">
+                <div className="flex flex-col gap-2 pt-1 sm:flex-row">
                   <Button
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                     onClick={() => setResolving({ id: d.id, decision: "borrower" })}
                     disabled={resolveMutation.isPending}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
-                    Release deposit to borrower
+                    Release to borrower
                   </Button>
                   <Button
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white"
@@ -232,7 +232,7 @@ export default function AdminDisputesPage() {
                     disabled={resolveMutation.isPending}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
-                    Capture deposit for owner
+                    Capture for owner
                   </Button>
                 </div>
               </CardContent>

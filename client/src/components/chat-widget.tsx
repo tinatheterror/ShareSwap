@@ -323,6 +323,35 @@ export function ChatWidget() {
   const [chatProposedStart, setChatProposedStart] = useState("");
   const [chatProposedEnd, setChatProposedEnd] = useState("");
 
+  // Play a soft chime for incoming messages
+  const playMessageSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = ctx.currentTime;
+
+      const notes = [
+        { freq: 880, start: 0, duration: 0.18 },
+        { freq: 1108.73, start: 0.12, duration: 0.22 },
+      ];
+
+      notes.forEach(({ freq, start, duration }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + start);
+        gain.gain.setValueAtTime(0, now + start);
+        gain.gain.linearRampToValueAtTime(0.18, now + start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + start + duration);
+        osc.start(now + start);
+        osc.stop(now + start + duration);
+      });
+
+      setTimeout(() => ctx.close(), 800);
+    } catch {}
+  };
+
   // WebSocket setup
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.host;
@@ -333,6 +362,10 @@ export function ChatWidget() {
     onMessage: (data) => {
       // data is already a parsed object from WebSocketService
       if (data.type === "new_message") {
+        // Only play sound for messages from other users
+        if (data.message?.senderId && data.message.senderId !== user?.id) {
+          playMessageSound();
+        }
         // Refresh the inbox preview and all open message threads
         queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
         queryClient.invalidateQueries({ queryKey: ["/api/messages"] });

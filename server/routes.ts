@@ -1512,6 +1512,14 @@ Respond with ONLY valid JSON in this exact format:
           .where(eq(users.id, userId));
 
         console.log(`✅ Awarded 1 ShareCoin to user ${userId} for uploading profile photo`);
+
+        await db.insert(notifications).values({
+          userId,
+          type: "sharecoin_earned",
+          title: "+1 ShareCoin earned",
+          message: "You earned 1 ShareCoin for adding a profile photo.",
+          isRead: false,
+        });
       } else {
         await db
           .update(users)

@@ -277,7 +277,7 @@ export default function MyBalancePage() {
         <Card>
           <CardHeader className="py-4">
             <CardTitle className="text-base">Transaction History</CardTitle>
-            <CardDescription>Your rental earnings and payouts</CardDescription>
+            <CardDescription>Your earnings and payouts</CardDescription>
           </CardHeader>
           <CardContent className="py-0 pb-4">
             {balanceData?.payouts && balanceData.payouts.length > 0 ? (
@@ -293,7 +293,11 @@ export default function MyBalancePage() {
                         <p className="text-sm font-medium">
                           {payout.status === "pending_payout" || payout.status === "paid_out"
                             ? "Bank Payout"
-                            : "Rental Earnings"}
+                            : payout.disputeStatus === "captured"
+                              ? "Damage Compensation"
+                              : payout.status === "held"
+                                ? "Rental Earnings (Pending)"
+                                : "Rental Earnings"}
                         </p>
                         <p className="text-xs text-gray-500">
                           {payout.releasedAt 

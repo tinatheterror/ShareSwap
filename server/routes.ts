@@ -5399,6 +5399,7 @@ Respond with ONLY the category name, nothing else.`
           processingFee: rentalPayouts.processingFee,
           netAmount: rentalPayouts.netAmount,
           status: rentalPayouts.status,
+          disputeStatus: rentalPayouts.disputeStatus,
           releasedAt: rentalPayouts.releasedAt,
           paidOutAt: rentalPayouts.paidOutAt,
           createdAt: rentalPayouts.createdAt,
@@ -9659,6 +9660,7 @@ Respond with ONLY the category name, nothing else.`
             processingFee: "0.00",
             netAmount: depositAmt.toFixed(2),
             status: "released",
+            disputeStatus: "captured",
             stripePaymentIntentId: paymentIntentId || null,
             releasedAt: new Date(),
           });

@@ -988,36 +988,33 @@ export function ChatWidget() {
         </button>
 
         {/* Action buttons */}
-        <div className="flex gap-1.5 flex-wrap mt-2 pl-[58px]">
+        <div className="flex gap-1.5 flex-nowrap mt-2 pl-[58px]">
           {/* Counter received: inline Accept / Counter / Decline */}
           {iReceivedCounter && (
             <>
               <Button
                 size="sm"
-                className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                className="h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
                 onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
                 disabled={respondToCounterMutation.isPending}
               >
-                <CheckCircle className="h-3 w-3 mr-1" />
                 Accept
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs border-amber-400 text-amber-700 hover:bg-amber-50"
+                className="h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
                 onClick={() => openChatCounter(request, isOwner ? "owner" : "requester")}
               >
-                <RefreshCw className="h-3 w-3 mr-1" />
                 Counter
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs"
+                className="h-7 text-xs px-2"
                 onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: false })}
                 disabled={respondToCounterMutation.isPending}
               >
-                <XCircle className="h-3 w-3 mr-1" />
                 Decline
               </Button>
             </>
@@ -1028,29 +1025,26 @@ export function ChatWidget() {
                 <>
                   <Button
                     size="sm"
-                    className="h-7 text-xs bg-green-600"
+                    className="h-7 text-xs px-2 bg-green-600"
                     onClick={() => handleAcceptClick(request)}
                   >
-                    <CheckCircle className="h-3 w-3 mr-1" />
                     Accept
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs border-amber-400 text-amber-700 hover:bg-amber-50"
+                    className="h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
                     onClick={() => openChatCounter(request, "owner")}
                   >
-                    <RefreshCw className="h-3 w-3 mr-1" />
                     Counter
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs"
+                    className="h-7 text-xs px-2"
                     onClick={() => declineMutation.mutate(request.id)}
                     disabled={declineMutation.isPending}
                   >
-                    <XCircle className="h-3 w-3 mr-1" />
                     Decline
                   </Button>
                 </>

@@ -1584,8 +1584,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                     AI-Powered Valuation
                                   </p>
                                   <p className="text-xs">
-                                    {valuationResult?.reasoning ||
-                                      "AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate."}
+                                    AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.
                                   </p>
                                 </TooltipContent>
                               </Tooltip>

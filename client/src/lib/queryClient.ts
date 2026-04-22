@@ -5,9 +5,10 @@ async function throwIfResNotOk(res: Response) {
     const text = (await res.text()) || res.statusText;
     let parsed: any = null;
     try { parsed = JSON.parse(text); } catch {}
-    const error = new Error(parsed?.error || `${res.status}: ${text}`) as Error & { code?: string; status?: number };
+    const error = new Error(parsed?.error || `${res.status}: ${text}`) as Error & { code?: string; status?: number; [key: string]: any };
     error.code = parsed?.code;
     error.status = res.status;
+    if (parsed && typeof parsed === "object") Object.assign(error, parsed);
     throw error;
   }
 }

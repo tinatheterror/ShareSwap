@@ -366,9 +366,10 @@ export function ChatWidget() {
         if (data.message?.senderId && data.message.senderId !== user?.id) {
           playMessageSound();
         }
-        // Refresh the inbox preview and all open message threads
+        // Refresh inbox and force-refetch any active message thread
         queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
         queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+        queryClient.refetchQueries({ queryKey: ["/api/messages"], type: "active" });
       }
     },
     autoConnect: !!user,
@@ -418,6 +419,8 @@ export function ChatWidget() {
       return res.json();
     },
     enabled: !!selectedConversation && !!user,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   // Request mutations

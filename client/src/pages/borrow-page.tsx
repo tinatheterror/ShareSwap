@@ -1169,68 +1169,57 @@ export default function BorrowPage() {
           )}
         </div>
 
-        {showLocationModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-md">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold">Change location</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowLocationModal(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground">
-                      Search by city.
-                    </label>
-                    <Input
-                      value={userPostalCode}
-                      onChange={(e) => setUserPostalCode(e.target.value)}
-                      placeholder="Enter your city (e.g. Toronto)"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground">
-                      Radius
-                    </label>
-                    <select
-                      value={radius}
-                      onChange={(e) => setRadius(Number(e.target.value))}
-                      className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
-                    >
-                      <option value={8}>8 kilometers</option>
-                      <option value={25}>25 kilometers</option>
-                      <option value={40}>40 kilometers</option>
-                      <option value={72}>72 kilometers</option>
-                      <option value={100}>100 kilometers</option>
-                    </select>
-                  </div>
-                </div>
-                <Button
-                  className="w-full mt-6"
-                  onClick={() => {
-                    if (user && userPostalCode) {
-                      saveLocationMutation.mutate({
-                        location: userPostalCode,
-                        radius,
-                      });
-                    }
-                    setUserLocation(null);
-                    setShowLocationModal(false);
-                  }}
+        <Dialog open={showLocationModal} onOpenChange={setShowLocationModal}>
+          <DialogContent className="w-full max-w-md">
+            <DialogHeader>
+              <DialogTitle>Change location</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground">
+                  Search by city.
+                </label>
+                <Input
+                  value={userPostalCode}
+                  onChange={(e) => setUserPostalCode(e.target.value)}
+                  placeholder="Enter your city (e.g. Toronto)"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">
+                  Radius
+                </label>
+                <select
+                  value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value))}
+                  className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
                 >
-                  Apply
-                </Button>
+                  <option value={8}>8 kilometers</option>
+                  <option value={25}>25 kilometers</option>
+                  <option value={40}>40 kilometers</option>
+                  <option value={72}>72 kilometers</option>
+                  <option value={100}>100 kilometers</option>
+                </select>
               </div>
             </div>
-          </div>
-        )}
+            <Button
+              className="w-full mt-2"
+              onClick={() => {
+                if (user && userPostalCode) {
+                  saveLocationMutation.mutate({
+                    location: userPostalCode,
+                    radius,
+                  });
+                }
+                setUserLocation(null);
+                setShowLocationModal(false);
+              }}
+            >
+              Apply
+            </Button>
+          </DialogContent>
+        </Dialog>
 
         <WishlistFulfillmentPopup
           isOpen={showWishlistPopup}

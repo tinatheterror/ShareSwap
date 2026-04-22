@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -2398,57 +2399,46 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
           </form>
         </Form>
 
-        {showLocationModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-md">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold">Change location</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowLocationModal(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground">
-                      Search by city, neighbourhood or ZIP code.
-                    </label>
-                    <Input
-                      value={form.getValues("postalCode")}
-                      onChange={(e) =>
-                        form.setValue("postalCode", e.target.value)
-                      }
-                      placeholder="Enter location"
-                      className="mt-1"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={getCurrentLocation}
-                    disabled={isLoadingLocation}
-                    className="w-full"
-                  >
-                    <MapPin className="h-4 w-4 mr-2" />
-                    {isLoadingLocation
-                      ? "Getting Location..."
-                      : "Use Current Location"}
-                  </Button>
-                </div>
-                <Button
-                  className="w-full mt-6"
-                  onClick={() => setShowLocationModal(false)}
-                >
-                  Apply
-                </Button>
+        <Dialog open={showLocationModal} onOpenChange={setShowLocationModal}>
+          <DialogContent className="w-full max-w-md">
+            <DialogHeader>
+              <DialogTitle>Change location</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-muted-foreground">
+                  Search by city, neighbourhood or ZIP code.
+                </label>
+                <Input
+                  value={form.getValues("postalCode")}
+                  onChange={(e) =>
+                    form.setValue("postalCode", e.target.value)
+                  }
+                  placeholder="Enter location"
+                  className="mt-1"
+                />
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={getCurrentLocation}
+                disabled={isLoadingLocation}
+                className="w-full"
+              >
+                <MapPin className="h-4 w-4 mr-2" />
+                {isLoadingLocation
+                  ? "Getting Location..."
+                  : "Use Current Location"}
+              </Button>
             </div>
-          </div>
-        )}
+            <Button
+              className="w-full mt-2"
+              onClick={() => setShowLocationModal(false)}
+            >
+              Apply
+            </Button>
+          </DialogContent>
+        </Dialog>
 
         {/* Wishlist Matching Modal - Dating App Style */}
         <AnimatePresence>

@@ -9668,7 +9668,7 @@ Respond with ONLY the category name, nothing else.`
 
         await db.insert(notifications).values([
           { userId: ownerId, type: "dispute_resolved", title: "Dispute resolved in your favour", message: `Damage confirmed for "${request.items.name}". Deposit has been added to your balance. View it in your profile.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return dispute for "${request.items.name}" and found evidence of damage. Your deposit has been captured.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Damage was confirmed for "${request.items.name}". Your deposit has been charged.`, itemId: request.items.id, requestId },
         ]);
       }
 

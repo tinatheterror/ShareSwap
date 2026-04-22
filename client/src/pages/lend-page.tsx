@@ -2410,10 +2410,13 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   Search by city, neighbourhood or ZIP code.
                 </label>
                 <Input
-                  value={form.getValues("postalCode")}
-                  onChange={(e) =>
-                    form.setValue("postalCode", e.target.value)
-                  }
+                  value={form.watch("postalCode")}
+                  onChange={(e) => {
+                    form.setValue("postalCode", e.target.value);
+                    form.setValue("latitude", undefined);
+                    form.setValue("longitude", undefined);
+                    setDetectedLocality("");
+                  }}
                   placeholder="Enter location"
                   className="mt-1"
                 />

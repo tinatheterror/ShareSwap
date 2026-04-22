@@ -9641,8 +9641,31 @@ Respond with ONLY the category name, nothing else.`
           depositStatus: "captured",
         }).where(eq(itemRequests.id, requestId));
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
+
+        // Credit the captured deposit into the owner's balance
+        const depositAmt = parseFloat(request.item_requests.trustDepositAmount || "0");
+        if (depositAmt > 0) {
+          await db.update(users)
+            .set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${depositAmt.toFixed(2)}` })
+            .where(eq(users.id, ownerId));
+
+          // Log a payout record so it appears in their balance history
+          await db.insert(rentalPayouts).values({
+            userId: ownerId,
+            requestId,
+            amount: depositAmt.toFixed(2),
+            rentalAmount: depositAmt.toFixed(2),
+            platformFee: "0.00",
+            processingFee: "0.00",
+            netAmount: depositAmt.toFixed(2),
+            status: "released",
+            stripePaymentIntentId: paymentIntentId || null,
+            releasedAt: new Date(),
+          });
+        }
+
         await db.insert(notifications).values([
-          { userId: ownerId, type: "dispute_resolved", title: "Dispute resolved in your favour", message: `Admin reviewed the return of "${request.items.name}" and confirmed damage. The deposit has been captured.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute resolved in your favour", message: `Admin confirmed damage on "${request.items.name}". The $${depositAmt.toFixed(2)} deposit has been added to your balance.`, itemId: request.items.id, requestId },
           { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return dispute for "${request.items.name}" and found evidence of damage. Your deposit has been captured.`, itemId: request.items.id, requestId },
         ]);
       }

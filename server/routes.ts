@@ -5994,8 +5994,8 @@ Respond with ONLY the category name, nothing else.`
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      // Can only cancel if status is ACCEPTED or beyond (but not COMPLETED)
-      const cancelableStatuses = ["ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
+      // Can only cancel if pre-handoff
+      const cancelableStatuses = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
       if (!cancelableStatuses.includes(request.item_requests.status)) {
         return res.status(400).json({ 
           error: "Cannot cancel request in current status",

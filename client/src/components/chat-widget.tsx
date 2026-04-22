@@ -311,6 +311,9 @@ export function ChatWidget() {
     null,
   );
 
+  // Cancel request state
+  const [cancelConfirmRequest, setCancelConfirmRequest] = useState<ItemRequest | null>(null);
+
   // Counter-proposal state (for inline chat actions)
   const [showChatCounterModal, setShowChatCounterModal] = useState(false);
   const [chatCounterRequest, setChatCounterRequest] = useState<ItemRequest | null>(null);
@@ -457,6 +460,22 @@ export function ChatWidget() {
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message || "Could not withdraw offer", variant: "destructive" });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/cancel`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      setCancelConfirmRequest(null);
+      toast({ title: "Request cancelled", description: "The booking has been cancelled." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Could not cancel request", variant: "destructive" });
     },
   });
 
@@ -1037,18 +1056,15 @@ export function ChatWidget() {
                 </>
               )}
 
-              {/* Requester can withdraw their own PENDING offer to resend with corrected terms */}
+              {/* Borrower: Cancel request (PENDING = free cancel, no confirmation needed) */}
               {isBorrower && request.status === "PENDING" && !iCounterPending && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50"
-                  onClick={() => withdrawMutation.mutate(request.id)}
-                  disabled={withdrawMutation.isPending}
+                <button
+                  className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); cancelMutation.mutate(request.id); }}
+                  disabled={cancelMutation.isPending}
                 >
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Withdraw offer
-                </Button>
+                  Cancel request
+                </button>
               )}
 
               {/* Borrower actions (ShareCoins) */}
@@ -1195,6 +1211,16 @@ export function ChatWidget() {
                     </Badge>
                   )}
                 </>
+              )}
+
+              {/* Borrower: discreet cancel for post-accept pre-handoff */}
+              {isBorrower && ["ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING"].includes(request.status) && (
+                <button
+                  className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
+                >
+                  Cancel request
+                </button>
               )}
 
               {/* Owner actions for active transactions */}
@@ -2277,6 +2303,31 @@ export function ChatWidget() {
               className="bg-amber-500 hover:bg-amber-600"
             >
               {chatCounterMutation.isPending ? "Sending..." : "Send Counter"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel booking confirmation dialog */}
+      <Dialog open={!!cancelConfirmRequest} onOpenChange={(open) => { if (!open) setCancelConfirmRequest(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancel this booking?</DialogTitle>
+            <DialogDescription>
+              {cancelConfirmRequest?.status === "ACCEPTED" && "The owner has already accepted your request."}
+              {(cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" || cancelConfirmRequest?.status === "COURIER_PENDING") && "Your deposit will be refunded automatically."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setCancelConfirmRequest(null)}>
+              Keep booking
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelMutation.isPending}
+              onClick={() => cancelConfirmRequest && cancelMutation.mutate(cancelConfirmRequest.id)}
+            >
+              {cancelMutation.isPending ? "Cancelling…" : "Cancel booking"}
             </Button>
           </DialogFooter>
         </DialogContent>

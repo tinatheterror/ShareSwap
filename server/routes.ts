@@ -10062,7 +10062,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Validate feedback tags
-    const validTags = ["reliable", "on_time", "as_described"];
+    const validTags = ["reliable", "on_time", "as_described", "great_communication", "well_cared", "late_return", "issue_reported"];
     const cleanedTags = feedbackTags?.filter((tag: string) => validTags.includes(tag)) || [];
 
     // Create the review

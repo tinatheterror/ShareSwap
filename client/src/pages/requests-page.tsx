@@ -21,6 +21,7 @@ import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
+import { PostReturnReviewModal } from "@/components/borrow/post-return-review-modal";
 import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 import { useVerification } from "@/hooks/use-verification";
 import { getStripePromise } from "@/lib/stripe-client";
@@ -78,6 +79,8 @@ interface ItemRequest {
   requester: {
     id: number;
     username: string;
+    displayName?: string | null;
+    handle?: string | null;
   };
 }
 
@@ -191,6 +194,10 @@ export default function RequestsPage() {
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   const [renewRequest, setRenewRequest] = useState<ItemRequest | null>(null);
   const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
+
+  // Post-return review prompt
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  const [reviewForRequest, setReviewForRequest] = useState<ItemRequest | null>(null);
 
   const { data: requests = [], isLoading } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
@@ -1410,9 +1417,37 @@ export default function RequestsPage() {
           requestType={selectedRequest.requestType as "BORROW" | "RENT"}
           endDate={selectedRequest.endDate}
           onSuccess={() => {
+            const isOwner = selectedRequest.requesterId !== user?.id;
             setShowReturnModal(false);
+            if (isOwner) {
+              setReviewForRequest(selectedRequest);
+              setShowReviewPrompt(true);
+            }
             setSelectedRequest(null);
           }}
+        />
+      )}
+
+      {/* Post-Return Review Prompt (owner only) */}
+      {reviewForRequest && (
+        <PostReturnReviewModal
+          isOpen={showReviewPrompt}
+          onClose={() => {
+            setShowReviewPrompt(false);
+            setReviewForRequest(null);
+          }}
+          reviewedUserId={reviewForRequest.requester.id}
+          reviewedUserName={
+            reviewForRequest.requester.displayName ||
+            reviewForRequest.requester.handle ||
+            reviewForRequest.requester.username
+          }
+          requestId={reviewForRequest.id}
+          wasDisputed={!!reviewForRequest.returnDisputeTriggered}
+          wasLate={
+            !!reviewForRequest.endDate &&
+            new Date() > new Date(reviewForRequest.endDate)
+          }
         />
       )}
 

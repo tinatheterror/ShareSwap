@@ -8255,6 +8255,8 @@ Respond with ONLY the category name, nothing else.`
         .select({
           id: users.id,
           username: users.username,
+          displayName: users.displayName,
+          displayNameChangedAt: users.displayNameChangedAt,
           fullName: users.fullName,
           bio: users.bio,
           location: users.location,
@@ -8374,13 +8376,36 @@ Respond with ONLY the category name, nothing else.`
 
     const { fullName, bio, location, phone, displayName, defaultPostalCode } = req.body;
 
+    // Enforce 30-day cooldown on display name changes
+    if (displayName !== undefined) {
+      const [currentUser] = await db
+        .select({ displayName: users.displayName, displayNameChangedAt: users.displayNameChangedAt })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (currentUser?.displayNameChangedAt) {
+        const daysSinceChange = (Date.now() - new Date(currentUser.displayNameChangedAt).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceChange < 30) {
+          const nextAllowed = new Date(new Date(currentUser.displayNameChangedAt).getTime() + 30 * 24 * 60 * 60 * 1000);
+          return res.status(429).json({
+            error: "Display name can only be changed once every 30 days.",
+            nextAllowedAt: nextAllowed.toISOString(),
+          });
+        }
+      }
+    }
+
     // Build update object with only provided fields
-    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string; displayName: string; defaultPostalCode: string }> = {};
+    const updateData: Partial<{ fullName: string; bio: string; location: string; phone: string; displayName: string; defaultPostalCode: string; displayNameChangedAt: Date }> = {};
     if (fullName !== undefined) updateData.fullName = fullName;
     if (bio !== undefined) updateData.bio = bio;
     if (location !== undefined) updateData.location = location;
     if (phone !== undefined) updateData.phone = phone;
-    if (displayName !== undefined) updateData.displayName = displayName;
+    if (displayName !== undefined) {
+      updateData.displayName = displayName;
+      updateData.displayNameChangedAt = new Date();
+    }
     if (defaultPostalCode !== undefined) updateData.defaultPostalCode = defaultPostalCode;
 
     // If no fields to update, just return current profile
@@ -8420,6 +8445,7 @@ Respond with ONLY the category name, nothing else.`
           username: users.username,
           handle: users.handle,
           displayName: users.displayName,
+          displayNameChangedAt: users.displayNameChangedAt,
           fullName: users.fullName,
           bio: users.bio,
           location: users.location,

@@ -175,10 +175,10 @@ export default function ProfilePage() {
         description: "Your profile information has been saved successfully.",
       });
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: err.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     },
@@ -943,17 +943,31 @@ export default function ProfilePage() {
                       <label className="block text-sm font-medium mb-2">
                         Display Name
                       </label>
-                      <Input
-                        value={editForm.displayName}
-                        onChange={(e) =>
-                          setEditForm({
-                            ...editForm,
-                            displayName: e.target.value,
-                          })
-                        }
-                        placeholder="e.g. Sarah M."
-                        maxLength={40}
-                      />
+                      {(() => {
+                        const changedAt = (profile as any)?.displayNameChangedAt;
+                        const isLocked = !!changedAt && (Date.now() - new Date(changedAt).getTime()) < 30 * 24 * 60 * 60 * 1000;
+                        const nextAllowed = changedAt
+                          ? new Date(new Date(changedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
+                          : null;
+                        return (
+                          <>
+                            <Input
+                              value={editForm.displayName}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, displayName: e.target.value })
+                              }
+                              placeholder="e.g. Sarah M."
+                              maxLength={40}
+                              disabled={isLocked}
+                            />
+                            {isLocked && nextAllowed && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Can be changed again on {nextAllowed.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">

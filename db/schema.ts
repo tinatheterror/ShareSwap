@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   username: text("username").unique().notNull(),
   handle: text("handle").unique(), // Auto-generated unique handle (e.g., jessica483) - never changes
   displayName: text("display_name"), // User-editable display name shown on cards, chats, reviews
+  displayNameChangedAt: timestamp("display_name_changed_at"), // Last time display name was changed (30-day cooldown)
   password: text("password"), // Made nullable for OAuth/phone auth
   authProvider: text("auth_provider").default("local"), // 'local', 'google', 'phone'
   email: text("email"),

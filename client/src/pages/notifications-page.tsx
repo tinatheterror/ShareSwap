@@ -118,6 +118,11 @@ export default function NotificationsPage() {
       return;
     }
 
+    if (notification.type === "dispute_resolved") {
+      navigate("/my-balance");
+      return;
+    }
+
     if (notification.requestId) {
       window.dispatchEvent(
         new CustomEvent("open-chat-request", {

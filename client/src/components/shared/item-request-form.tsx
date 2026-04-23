@@ -722,16 +722,16 @@ export function ItemRequestForm({
                               onClick={() => field.onChange("in_app")}
                               className={`text-left border rounded-lg p-2.5 transition-colors ${
                                 depositValue === "in_app"
-                                  ? "border-primary bg-primary/5"
+                                  ? "border-primary bg-primary text-primary-foreground"
                                   : "border-gray-200 hover:bg-gray-50"
                               }`}
                             >
                               <span className="flex items-start gap-1.5 font-medium text-sm">
-                                <Shield className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
+                                <Shield className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_app" ? "text-primary-foreground" : "text-gray-500"}`} />
                                 Handle Deposit In-app
                               </span>
-                              <p className="text-xs text-teal-600 font-medium mt-0.5">Recommended</p>
-                              <p className="text-[10px] text-muted-foreground mt-0.5">Processing fee: ${processingFee}</p>
+                              <p className={`text-xs font-medium mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/80" : "text-teal-600"}`}>Recommended</p>
+                              <p className={`text-[10px] mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>Processing fee: ${processingFee}</p>
                             </button>
                             <button
                               type="button"
@@ -740,12 +740,12 @@ export function ItemRequestForm({
                                 isCourier
                                   ? "opacity-50 cursor-not-allowed border-gray-200"
                                   : depositValue === "in_person"
-                                  ? "border-primary bg-primary/5"
+                                  ? "border-primary bg-primary text-primary-foreground"
                                   : "border-gray-200 hover:bg-gray-50"
                               }`}
                             >
                               <span className="flex items-start gap-1.5 font-medium text-sm">
-                                <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
+                                <MapPin className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_person" ? "text-primary-foreground" : "text-gray-500"}`} />
                                 Exchange Deposit In Person
                               </span>
                             </button>
@@ -774,12 +774,12 @@ export function ItemRequestForm({
                           onClick={() => field.onChange("in_person")}
                           className={`text-left border rounded-lg p-2.5 transition-colors ${
                             field.value === "in_person"
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary bg-primary text-primary-foreground"
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
                         >
                           <span className="flex items-start gap-1.5 font-medium text-sm">
-                            <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
+                            <MapPin className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "in_person" ? "text-primary-foreground" : "text-gray-500"}`} />
                             Exchange Item In Person
                           </span>
                         </button>
@@ -788,15 +788,15 @@ export function ItemRequestForm({
                           onClick={() => field.onChange("courier")}
                           className={`text-left border rounded-lg p-2.5 transition-colors ${
                             field.value === "courier"
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary bg-primary text-primary-foreground"
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
                         >
                           <span className="flex items-start gap-1.5 font-medium text-sm">
-                            <Truck className="h-4 w-4 flex-shrink-0 mt-px text-blue-600" />
+                            <Truck className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "courier" ? "text-primary-foreground" : "text-blue-600"}`} />
                             Uber Direct
                           </span>
-                          <p className="text-xs text-gray-500 font-medium mt-0.5">+$15</p>
+                          <p className={`text-xs font-medium mt-0.5 ${field.value === "courier" ? "text-primary-foreground/80" : "text-gray-500"}`}>+$15</p>
                         </button>
                       </div>
                     </FormControl>

@@ -62,13 +62,7 @@ export function TrustDepositModal({
     trustScore,
   );
 
-  const TIER_WEEKLY_RATES: Record<number, number> = {
-    1: 2,
-    2: 5,
-    3: 10,
-    4: 20,
-  };
-  const shareCoinAmount = TIER_WEEKLY_RATES[item.tier || 2] || 5;
+  const shareCoinAmount = parseFloat(item.shareCoinPrice || "0") || 5;
   const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;
   const totalDue = depositCalc.finalDeposit + deliveryFee;
 

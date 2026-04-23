@@ -118,9 +118,15 @@ export function ItemRequestForm({
     if (isOpen && prefill) {
       if (prefill.startDate) form.setValue("startDate", prefill.startDate);
       if (prefill.endDate) form.setValue("endDate", prefill.endDate);
-      if (prefill.deliveryMethod === "in_person" || prefill.deliveryMethod === "courier")
+      if (
+        prefill.deliveryMethod === "in_person" ||
+        prefill.deliveryMethod === "courier"
+      )
         form.setValue("deliveryMethod", prefill.deliveryMethod);
-      if (prefill.depositMethod === "in_app" || prefill.depositMethod === "in_person")
+      if (
+        prefill.depositMethod === "in_app" ||
+        prefill.depositMethod === "in_person"
+      )
         form.setValue("depositMethod", prefill.depositMethod);
     }
   }, [isOpen, prefill]);
@@ -360,15 +366,30 @@ export function ItemRequestForm({
             <form
               onSubmit={form.handleSubmit((data) => {
                 if (requestType === "BORROW" && onInsufficientCoins) {
-                  const TIER_WEEKLY_RATES: Record<number, number> = { 1: 2, 2: 5, 3: 10, 4: 20 };
-                  const weeklyRate = TIER_WEEKLY_RATES[(item as any).tier || 2] || 5;
+                  const TIER_WEEKLY_RATES: Record<number, number> = {
+                    1: 2,
+                    2: 5,
+                    3: 10,
+                    4: 20,
+                  };
+                  const weeklyRate =
+                    TIER_WEEKLY_RATES[(item as any).tier || 2] || 5;
                   let borrowDays = 0;
                   if (data.startDate && data.endDate) {
                     const start = new Date(data.startDate);
                     const end = new Date(data.endDate);
-                    borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                    borrowDays = Math.max(
+                      1,
+                      Math.ceil(
+                        (end.getTime() - start.getTime()) /
+                          (1000 * 60 * 60 * 24),
+                      ) + 1,
+                    );
                   }
-                  const proratedCost = borrowDays > 0 ? Math.max(1, Math.floor((weeklyRate / 7) * borrowDays)) : weeklyRate;
+                  const proratedCost =
+                    borrowDays > 0
+                      ? Math.max(1, Math.floor((weeklyRate / 7) * borrowDays))
+                      : weeklyRate;
                   const balance = Number((user as any)?.shareCoins || 0);
                   if (balance < proratedCost) {
                     onClose();
@@ -495,7 +516,7 @@ export function ItemRequestForm({
                             <div className="flex justify-between">
                               <span className="text-gray-600 flex items-center gap-1">
                                 <Shield className="h-3 w-3" />
-                                Security deposit (refundable)
+                                Security deposit
                               </span>
                               <span className="font-medium">
                                 ${deposit.toFixed(2)}
@@ -828,16 +849,15 @@ export function ItemRequestForm({
                       <div className="flex items-center gap-2">
                         <span className="text-green-500">🟢</span>
                         <span className="text-gray-600">
-                          <span className="font-medium">Trust Deposit</span> —
-                          temporarily held and fully refunded after a safe
-                          return
+                          <span className="font-medium">Trust Deposit</span>{" "}
+                          <span className="italic">— refunded after a safe return</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-orange-500">🟠</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Non-Return Charge</span>{" "}
-                          — only applied if the item is not returned
+                          <span className="italic">— only applied if the item is not returned</span>
                         </span>
                       </div>
                     </div>
@@ -858,8 +878,8 @@ export function ItemRequestForm({
                           <div className="space-y-1 leading-none">
                             <FormLabel className="text-xs font-normal cursor-pointer text-gray-700">
                               I understand I may be charged up to $
-                              {(item as any).replacementValue} only if the item
-                              is not returned.
+                              {(item as any).replacementValue} if I don't return
+                              the item.
                             </FormLabel>
                           </div>
                         </FormItem>
@@ -897,7 +917,7 @@ export function ItemRequestForm({
                         <span className="text-orange-500">🟠</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Non-Return Charge</span>{" "}
-                          — only applied if the item is not returned
+                          <span className="italic">— only applied if the item is not returned</span>
                         </span>
                       </div>
                     </div>
@@ -967,8 +987,15 @@ export function ItemRequestForm({
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex items-center justify-between">
-                      <FormLabel>Note to owner <span className="font-normal text-muted-foreground">(optional)</span></FormLabel>
-                      <span className={`text-[11px] tabular-nums ${(field.value?.length ?? 0) > 120 ? "text-orange-500" : "text-muted-foreground"}`}>
+                      <FormLabel>
+                        Note to owner{" "}
+                        <span className="font-normal text-muted-foreground">
+                          (optional)
+                        </span>
+                      </FormLabel>
+                      <span
+                        className={`text-[11px] tabular-nums ${(field.value?.length ?? 0) > 120 ? "text-orange-500" : "text-muted-foreground"}`}
+                      >
                         {field.value?.length ?? 0}/140
                       </span>
                     </div>

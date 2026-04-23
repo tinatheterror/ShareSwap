@@ -6231,45 +6231,45 @@ Respond with ONLY the category name, nothing else.`
             .limit(1);
 
           const currentBalance = parseFloat(borrower?.shareCoins || "0");
-          
-          if (currentBalance < shareCoinAmount) {
-            return res.status(400).json({ error: "Insufficient ShareCoins balance" });
-          }
+          // Charge whatever the borrower has, up to the agreed amount — never block handoff over coins
+          const chargedAmount = Math.min(currentBalance, shareCoinAmount);
 
-          // Deduct ShareCoins from borrower
-          await db
-            .update(users)
-            .set({ shareCoins: (currentBalance - shareCoinAmount).toString() })
-            .where(eq(users.id, request.item_requests.requesterId));
-
-          // Record the transaction
-          await db.insert(shareCoinsTransactions).values({
-            userId: request.item_requests.requesterId,
-            amount: (-shareCoinAmount).toString(),
-            description: `Borrowed: ${request.items.name}`,
-            transactionType: "BORROW_CHARGE",
-          });
-
-          // Award ShareCoins to lender
-          if (request.items.ownerId) {
-            const [lender] = await db
-              .select({ shareCoins: users.shareCoins })
-              .from(users)
-              .where(eq(users.id, request.items.ownerId))
-              .limit(1);
-
-            const lenderBalance = parseFloat(lender?.shareCoins || "0");
+          if (chargedAmount > 0) {
+            // Deduct ShareCoins from borrower
             await db
               .update(users)
-              .set({ shareCoins: (lenderBalance + shareCoinAmount).toString() })
-              .where(eq(users.id, request.items.ownerId));
+              .set({ shareCoins: (currentBalance - chargedAmount).toString() })
+              .where(eq(users.id, request.item_requests.requesterId));
 
+            // Record the transaction
             await db.insert(shareCoinsTransactions).values({
-              userId: request.items.ownerId,
-              amount: shareCoinAmount.toString(),
-              description: `Lent: ${request.items.name}`,
-              transactionType: "LEND_REWARD",
+              userId: request.item_requests.requesterId,
+              amount: (-chargedAmount).toString(),
+              description: `Borrowed: ${request.items.name}`,
+              transactionType: "BORROW_CHARGE",
             });
+
+            // Award ShareCoins to lender
+            if (request.items.ownerId) {
+              const [lender] = await db
+                .select({ shareCoins: users.shareCoins })
+                .from(users)
+                .where(eq(users.id, request.items.ownerId))
+                .limit(1);
+
+              const lenderBalance = parseFloat(lender?.shareCoins || "0");
+              await db
+                .update(users)
+                .set({ shareCoins: (lenderBalance + chargedAmount).toString() })
+                .where(eq(users.id, request.items.ownerId));
+
+              await db.insert(shareCoinsTransactions).values({
+                userId: request.items.ownerId,
+                amount: chargedAmount.toString(),
+                description: `Lent: ${request.items.name}`,
+                transactionType: "LEND_REWARD",
+              });
+            }
           }
         }
 
@@ -6509,16 +6509,19 @@ Respond with ONLY the category name, nothing else.`
       if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
         const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
         const currentBalance = parseFloat(borrower?.shareCoins || "0");
-        if (currentBalance < shareCoinAmount) return res.status(400).json({ error: "Insufficient ShareCoins balance" });
+        // Charge whatever the borrower has, up to the agreed amount — never block handoff over coins
+        const chargedAmount = Math.min(currentBalance, shareCoinAmount);
 
-        await db.update(users).set({ shareCoins: (currentBalance - shareCoinAmount).toString() }).where(eq(users.id, borrowerId));
-        await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-shareCoinAmount).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
+        if (chargedAmount > 0) {
+          await db.update(users).set({ shareCoins: (currentBalance - chargedAmount).toString() }).where(eq(users.id, borrowerId));
+          await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-chargedAmount).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
 
-        if (ownerId) {
-          const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
-          const lenderBalance = parseFloat(lender?.shareCoins || "0");
-          await db.update(users).set({ shareCoins: (lenderBalance + shareCoinAmount).toString() }).where(eq(users.id, ownerId));
-          await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: shareCoinAmount.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
+          if (ownerId) {
+            const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
+            const lenderBalance = parseFloat(lender?.shareCoins || "0");
+            await db.update(users).set({ shareCoins: (lenderBalance + chargedAmount).toString() }).where(eq(users.id, ownerId));
+            await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: chargedAmount.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
+          }
         }
       }
 

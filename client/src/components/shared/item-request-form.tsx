@@ -34,7 +34,6 @@ import {
   MapPin,
   Gift,
 } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   formatReplacementValue,
   hasValidReplacementValue,
@@ -633,7 +632,7 @@ export function ItemRequestForm({
                               <div className="flex justify-between">
                                 <span className="text-gray-600 flex items-center gap-1">
                                   <Shield className="h-3 w-3" />
-                                  Trust-deposit (refundable)
+                                  Trust-deposit
                                 </span>
                                 {depositCalc.discountPercentage > 0 ? (
                                   <span className="font-medium flex items-center gap-1.5">
@@ -710,59 +709,47 @@ export function ItemRequestForm({
                       depositCalcForFee.finalDeposit * 0.03
                     ).toFixed(2);
 
+                    const depositValue = isCourier ? "in_app" : field.value;
                     return (
                       <FormItem className="space-y-3">
                         <FormLabel className="flex items-center gap-2">
                           How would you like to handle the deposit?
                         </FormLabel>
                         <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            value={isCourier ? "in_app" : field.value}
-                            className="grid grid-cols-2 gap-2"
-                          >
-                            <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                              <RadioGroupItem
-                                value="in_app"
-                                id="deposit_in_app"
-                                className="mt-0.5"
-                              />
-                              <div className="flex-1">
-                                <label
-                                  htmlFor="deposit_in_app"
-                                  className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
-                                >
-                                  <Shield className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
-                                  Handle Deposit In-app
-                                </label>
-                                <p className="text-xs text-teal-600 font-medium mt-0.5">
-                                  Recommended
-                                </p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  Processing fee: ${processingFee}
-                                </p>
-                              </div>
-                            </div>
-                            <div
-                              className={`flex items-start space-x-2 border rounded-lg p-2.5 ${isCourier ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-gray-50"}`}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => field.onChange("in_app")}
+                              className={`text-left border rounded-lg p-2.5 transition-colors ${
+                                depositValue === "in_app"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-gray-200 hover:bg-gray-50"
+                              }`}
                             >
-                              <RadioGroupItem
-                                value="in_person"
-                                id="deposit_in_person"
-                                disabled={isCourier}
-                                className="mt-0.5"
-                              />
-                              <div className="flex-1">
-                                <label
-                                  htmlFor="deposit_in_person"
-                                  className={`flex items-start gap-1.5 font-medium text-sm ${isCourier ? "cursor-not-allowed" : "cursor-pointer"}`}
-                                >
-                                  <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
-                                  Exchange Deposit In Person
-                                </label>
-                              </div>
-                            </div>
-                          </RadioGroup>
+                              <span className="flex items-start gap-1.5 font-medium text-sm">
+                                <Shield className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
+                                Handle Deposit In-app
+                              </span>
+                              <p className="text-xs text-teal-600 font-medium mt-0.5">Recommended</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">Processing fee: ${processingFee}</p>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => !isCourier && field.onChange("in_person")}
+                              className={`text-left border rounded-lg p-2.5 transition-colors ${
+                                isCourier
+                                  ? "opacity-50 cursor-not-allowed border-gray-200"
+                                  : depositValue === "in_person"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-gray-200 hover:bg-gray-50"
+                              }`}
+                            >
+                              <span className="flex items-start gap-1.5 font-medium text-sm">
+                                <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
+                                Exchange Deposit In Person
+                              </span>
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -781,47 +768,37 @@ export function ItemRequestForm({
                       How would you like to receive this item?
                     </FormLabel>
                     <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="grid grid-cols-2 gap-2"
-                      >
-                        <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                          <RadioGroupItem
-                            value="in_person"
-                            id="in_person"
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1">
-                            <label
-                              htmlFor="in_person"
-                              className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
-                            >
-                              <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
-                              Exchange Item In Person
-                            </label>
-                          </div>
-                        </div>
-                        <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                          <RadioGroupItem
-                            value="courier"
-                            id="courier"
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1">
-                            <label
-                              htmlFor="courier"
-                              className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
-                            >
-                              <Truck className="h-4 w-4 flex-shrink-0 mt-px text-blue-600" />
-                              Uber Direct
-                            </label>
-                            <p className="text-xs text-gray-500 font-medium mt-0.5">
-                              +$15
-                            </p>
-                          </div>
-                        </div>
-                      </RadioGroup>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("in_person")}
+                          className={`text-left border rounded-lg p-2.5 transition-colors ${
+                            field.value === "in_person"
+                              ? "border-primary bg-primary/5"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="flex items-start gap-1.5 font-medium text-sm">
+                            <MapPin className="h-4 w-4 flex-shrink-0 mt-px text-gray-500" />
+                            Exchange Item In Person
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("courier")}
+                          className={`text-left border rounded-lg p-2.5 transition-colors ${
+                            field.value === "courier"
+                              ? "border-primary bg-primary/5"
+                              : "border-gray-200 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="flex items-start gap-1.5 font-medium text-sm">
+                            <Truck className="h-4 w-4 flex-shrink-0 mt-px text-blue-600" />
+                            Uber Direct
+                          </span>
+                          <p className="text-xs text-gray-500 font-medium mt-0.5">+$15</p>
+                        </button>
+                      </div>
                     </FormControl>
                     {form.watch("deliveryMethod") === "courier" && (
                       <div className="bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-800">
@@ -850,14 +827,18 @@ export function ItemRequestForm({
                         <span className="text-green-500">🟢</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Trust Deposit</span>{" "}
-                          <span className="italic">— refunded after a safe return</span>
+                          <span className="italic">
+                            — refunded after a safe return
+                          </span>
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-orange-500">🟠</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Non-Return Charge</span>{" "}
-                          <span className="italic">— only applied if the item is not returned</span>
+                          <span className="italic">
+                            — only applied if item is not returned
+                          </span>
                         </span>
                       </div>
                     </div>
@@ -917,7 +898,9 @@ export function ItemRequestForm({
                         <span className="text-orange-500">🟠</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Non-Return Charge</span>{" "}
-                          <span className="italic">— only applied if the item is not returned</span>
+                          <span className="italic">
+                            — only applied if the item is not returned
+                          </span>
                         </span>
                       </div>
                     </div>

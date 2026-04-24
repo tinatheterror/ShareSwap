@@ -375,6 +375,16 @@ export const itemRequests = pgTable("item_requests", {
   // Delay notification tracking (for avoiding late return penalties when borrower communicates)
   returnDelayNotifiedAt: timestamp("return_delay_notified_at"),
   returnDelayReason: text("return_delay_reason"),
+
+  // Actual handoff/return timestamps (separate from booking period startDate/endDate)
+  // startDate/endDate = agreed booking window (pricing source, never changes post-handoff)
+  // actualHandoffAt/actualReturnAt = when the physical exchange happened
+  actualHandoffAt: timestamp("actual_handoff_at"),
+  actualReturnAt: timestamp("actual_return_at"),
+
+  // Late-handoff date-adjustment flow (owner shows up late → borrower can propose end-date shift)
+  handoffDelayAdjustmentStatus: text("handoff_delay_adjustment_status").default("none"), // "none" | "pending_owner" | "approved" | "declined"
+  proposedAdjustedEndDate: timestamp("proposed_adjusted_end_date"),
   
   // Rental-specific fields
   rentalAmount: decimal("rental_amount", { precision: 10, scale: 2 }), // rental fee in dollars

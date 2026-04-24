@@ -4255,6 +4255,10 @@ Respond with ONLY the category name, nothing else.`
         ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
         borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
         handoffConfirmDeadline: itemRequests.handoffConfirmDeadline,
+        actualHandoffAt: itemRequests.actualHandoffAt,
+        actualReturnAt: itemRequests.actualReturnAt,
+        handoffDelayAdjustmentStatus: itemRequests.handoffDelayAdjustmentStatus,
+        proposedAdjustedEndDate: itemRequests.proposedAdjustedEndDate,
         ownerConfirmedReturn: itemRequests.ownerConfirmedReturn,
         borrowerConfirmedReturn: itemRequests.borrowerConfirmedReturn,
         returnConditionOk: itemRequests.returnConditionOk,
@@ -4328,6 +4332,10 @@ Respond with ONLY the category name, nothing else.`
       ownerConfirmedHandoff: r.ownerConfirmedHandoff,
       borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
       handoffConfirmDeadline: r.handoffConfirmDeadline,
+      actualHandoffAt: r.actualHandoffAt,
+      actualReturnAt: r.actualReturnAt,
+      handoffDelayAdjustmentStatus: r.handoffDelayAdjustmentStatus,
+      proposedAdjustedEndDate: r.proposedAdjustedEndDate,
       ownerConfirmedReturn: r.ownerConfirmedReturn,
       borrowerConfirmedReturn: r.borrowerConfirmedReturn,
       returnConditionOk: r.returnConditionOk,
@@ -6274,10 +6282,17 @@ Respond with ONLY the category name, nothing else.`
         updateData.status = "IN_PROGRESS";
         updateData.handoffConfirmedAt = now;
         updateData.borrowPeriodStartedAt = now;
+        updateData.actualHandoffAt = now;
         updateData.shareCoinsCharged = true;
         updateData.shareCoinsChargedAt = now;
         updateData.depositStatus = "held";
         updateData.confirmationMethod = "manual";
+
+        // Detect late handoff (owner showed up after the booked start date)
+        const bookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
+        if (bookedStart && now > bookedStart && request.item_requests.requestType === "BORROW") {
+          updateData.handoffDelayAdjustmentStatus = "pending_borrower_decision";
+        }
 
         // Mark item as unavailable
         await db
@@ -6379,6 +6394,14 @@ Respond with ONLY the category name, nothing else.`
         // Both confirmed — send post-handoff summary messages
         const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
         const isBorrow = request.item_requests.requestType === "BORROW";
+        const bookedStartMs = request.item_requests.startDate ? new Date(request.item_requests.startDate).getTime() : null;
+        const bookedEndDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
+        const isLateHandoff = bookedStartMs && now.getTime() > bookedStartMs;
+        const isEarlyHandoff = bookedStartMs && now.getTime() < bookedStartMs;
+        const startFmt = request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
+        const endFmt = bookedEndDate ? bookedEndDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : null;
+        const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+
         const systemMsgs = [
           isBorrow && shareCoinAmount > 0
             ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged to borrower`
@@ -6387,6 +6410,9 @@ Respond with ONLY the category name, nothing else.`
             ? `➕ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} earned by lender`
             : null,
           `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
+          startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
+          isLateHandoff && isBorrow ? `⚠️ Handoff was late — borrower can request a return date adjustment from their requests page.` : null,
+          isEarlyHandoff && isBorrow ? `⏰ Early handoff — ShareCoins and return date are based on the original booked period (${startFmt} – ${endFmt}).` : null,
           "🔒 Security deposit is now held until the item is returned",
         ].filter(Boolean) as string[];
 
@@ -6519,10 +6545,14 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
+      const pinBookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
+      const pinIsLate = pinBookedStart && now > pinBookedStart && request.item_requests.requestType === "BORROW";
       await db.update(itemRequests).set({
         status: "IN_PROGRESS",
         handoffConfirmedAt: now,
         borrowPeriodStartedAt: now,
+        actualHandoffAt: now,
+        handoffDelayAdjustmentStatus: pinIsLate ? "pending_borrower_decision" : "none",
         shareCoinsCharged: true,
         shareCoinsChargedAt: now,
         depositStatus: "held",
@@ -6892,8 +6922,10 @@ Respond with ONLY the category name, nothing else.`
             }
           }
 
+          const autoBookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
+          const autoIsLate = autoBookedStart && now > autoBookedStart && request.item_requests.requestType === "BORROW";
           await db.update(itemRequests)
-            .set({ status: "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
+            .set({ status: "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, handoffDelayAdjustmentStatus: autoIsLate ? "pending_borrower_decision" : "none", shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
             .where(eq(itemRequests.id, reqId));
 
           await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
@@ -7182,15 +7214,17 @@ Respond with ONLY the category name, nothing else.`
       const isRental = request.item_requests.requestType === 'RENT';
 
       // Update request to completed (early returns get "COMPLETED_EARLY" status)
+      const returnNow = new Date();
       const [updated] = await db
         .update(itemRequests)
         .set({
           status: isEarlyReturn ? "COMPLETED_EARLY" : "COMPLETED",
-          returnConfirmedAt: new Date(),
+          returnConfirmedAt: returnNow,
+          actualReturnAt: returnNow,
           returnConditionRating: conditionRating || 5,
           returnConditionNotes: conditionNotes,
           depositStatus: "released",
-          depositReleasedAt: new Date(),
+          depositReleasedAt: returnNow,
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
@@ -7400,6 +7434,147 @@ Respond with ONLY the category name, nothing else.`
     } catch (error: any) {
       console.error("Error confirming return:", error);
       res.status(500).json({ error: "Failed to confirm return" });
+    }
+  });
+
+  // ── Late-handoff date adjustment ─────────────────────────────────────────────
+
+  // Borrower proposes a date adjustment (or accepts the original) after a late handoff
+  app.post("/api/requests/:requestId/propose-date-adjustment", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { keepOriginal, proposedEndDate } = req.body;
+
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.item_requests.requesterId !== req.user.id) return res.status(403).json({ error: "Only the borrower can propose a date adjustment" });
+      if (request.item_requests.status !== "IN_PROGRESS") return res.status(400).json({ error: "Request is not in progress" });
+      if ((request.item_requests as any).handoffDelayAdjustmentStatus !== "pending_borrower_decision") {
+        return res.status(400).json({ error: "No pending date adjustment" });
+      }
+
+      if (keepOriginal) {
+        // Borrower accepts the original end date — no change needed
+        await db.update(itemRequests)
+          .set({ handoffDelayAdjustmentStatus: "none" } as any)
+          .where(eq(itemRequests.id, requestId));
+        return res.json({ success: true, message: "Original return date kept." });
+      }
+
+      if (!proposedEndDate) return res.status(400).json({ error: "proposedEndDate required" });
+
+      const newEnd = new Date(proposedEndDate);
+      await db.update(itemRequests)
+        .set({ handoffDelayAdjustmentStatus: "pending_owner", proposedAdjustedEndDate: newEnd } as any)
+        .where(eq(itemRequests.id, requestId));
+
+      // Notify owner
+      await db.insert(notifications).values({
+        userId: request.items.ownerId!,
+        type: "date_adjustment_requested",
+        title: "Return date adjustment requested",
+        message: `Borrower of "${request.items.name}" is requesting a return date adjustment to ${newEnd.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })} due to late handoff.`,
+        itemId: request.items.id,
+        requestId,
+        isRead: false,
+      });
+
+      await db.insert(messages).values({
+        content: `📅 Borrower has requested a return date adjustment to ${newEnd.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })} due to the late handoff. Owner needs to approve or decline.`,
+        senderId: request.item_requests.requesterId,
+        receiverId: request.items.ownerId!,
+        messageType: "system",
+        requestId,
+      });
+
+      return res.json({ success: true, message: "Date adjustment request sent to owner." });
+    } catch (error: any) {
+      console.error("Error proposing date adjustment:", error);
+      res.status(500).json({ error: "Failed to propose date adjustment" });
+    }
+  });
+
+  // Owner approves or declines the borrower's proposed date adjustment
+  app.post("/api/requests/:requestId/respond-date-adjustment", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+      const { accept } = req.body;
+
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.items.ownerId !== req.user.id) return res.status(403).json({ error: "Only the owner can respond to a date adjustment" });
+      if ((request.item_requests as any).handoffDelayAdjustmentStatus !== "pending_owner") {
+        return res.status(400).json({ error: "No pending date adjustment to respond to" });
+      }
+
+      const proposedEnd = (request.item_requests as any).proposedAdjustedEndDate;
+
+      if (accept && proposedEnd) {
+        await db.update(itemRequests)
+          .set({ endDate: new Date(proposedEnd), handoffDelayAdjustmentStatus: "approved" } as any)
+          .where(eq(itemRequests.id, requestId));
+
+        await db.insert(notifications).values({
+          userId: request.item_requests.requesterId,
+          type: "date_adjustment_approved",
+          title: "Return date adjustment approved",
+          message: `Your return date for "${request.items.name}" has been updated to ${new Date(proposedEnd).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}.`,
+          itemId: request.items.id,
+          requestId,
+          isRead: false,
+        });
+
+        await db.insert(messages).values({
+          content: `✅ Owner approved the return date adjustment. New return date: ${new Date(proposedEnd).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}.`,
+          senderId: request.items.ownerId!,
+          receiverId: request.item_requests.requesterId,
+          messageType: "system",
+          requestId,
+        });
+
+        return res.json({ success: true, message: "Date adjustment approved. Return date updated." });
+      } else {
+        await db.update(itemRequests)
+          .set({ handoffDelayAdjustmentStatus: "declined" } as any)
+          .where(eq(itemRequests.id, requestId));
+
+        await db.insert(notifications).values({
+          userId: request.item_requests.requesterId,
+          type: "date_adjustment_declined",
+          title: "Return date adjustment declined",
+          message: `The owner of "${request.items.name}" has declined your return date adjustment request. The original return date stands.`,
+          itemId: request.items.id,
+          requestId,
+          isRead: false,
+        });
+
+        await db.insert(messages).values({
+          content: `❌ Owner declined the return date adjustment. Original return date stands.`,
+          senderId: request.items.ownerId!,
+          receiverId: request.item_requests.requesterId,
+          messageType: "system",
+          requestId,
+        });
+
+        return res.json({ success: true, message: "Date adjustment declined." });
+      }
+    } catch (error: any) {
+      console.error("Error responding to date adjustment:", error);
+      res.status(500).json({ error: "Failed to respond to date adjustment" });
     }
   });
 
@@ -7671,6 +7846,10 @@ Respond with ONLY the category name, nothing else.`
           confirmationMethod: itemRequests.confirmationMethod,
           handoffConfirmedAt: itemRequests.handoffConfirmedAt,
           borrowPeriodStartedAt: itemRequests.borrowPeriodStartedAt,
+          actualHandoffAt: itemRequests.actualHandoffAt,
+          actualReturnAt: itemRequests.actualReturnAt,
+          handoffDelayAdjustmentStatus: itemRequests.handoffDelayAdjustmentStatus,
+          proposedAdjustedEndDate: itemRequests.proposedAdjustedEndDate,
           handoffDisputeTriggered: itemRequests.handoffDisputeTriggered,
           handoffDisputeAt: itemRequests.handoffDisputeAt,
           handoffProofOwner: itemRequests.handoffProofOwner,

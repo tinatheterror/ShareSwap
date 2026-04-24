@@ -59,6 +59,10 @@ interface TransactionDetail {
   confirmationMethod: string | null;
   handoffConfirmedAt: string | null;
   borrowPeriodStartedAt: string | null;
+  actualHandoffAt: string | null;
+  actualReturnAt: string | null;
+  handoffDelayAdjustmentStatus: string | null;
+  proposedAdjustedEndDate: string | null;
   handoffDisputeTriggered: boolean;
   handoffDisputeAt: string | null;
   handoffProofOwner: string | null;
@@ -448,8 +452,16 @@ export default function TransactionDetailPage() {
                 {tx.startDate && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <CalendarDays className="h-3 w-3" />
-                    {format(new Date(tx.startDate), "MMM d")}
-                    {tx.endDate ? ` – ${format(new Date(tx.endDate), "MMM d, yyyy")}` : ""}
+                    {["IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(tx.status)
+                      ? <>Booked: {format(new Date(tx.startDate), "MMM d")}{tx.endDate ? ` – ${format(new Date(tx.endDate), "MMM d, yyyy")}` : ""}</>
+                      : <>{format(new Date(tx.startDate), "MMM d")}{tx.endDate ? ` – ${format(new Date(tx.endDate), "MMM d, yyyy")}` : ""}</>
+                    }
+                  </span>
+                )}
+                {tx.actualHandoffAt && ["IN_PROGRESS", "RETURN_REQUESTED", "COMPLETED", "COMPLETED_EARLY"].includes(tx.status) && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <CalendarDays className="h-3 w-3" />
+                    Handoff: {format(new Date(tx.actualHandoffAt), "MMM d")}
                   </span>
                 )}
               </div>

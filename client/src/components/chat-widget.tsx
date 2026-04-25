@@ -1713,9 +1713,12 @@ export function ChatWidget() {
                         "You"
                       );
                       return (
-                        <div key={msg.id} className="mb-3 flex justify-center">
+                        <div key={msg.id} className="mb-3 flex flex-col items-center gap-0.5">
                           <span className="text-xs text-muted-foreground font-semibold text-center max-w-[80%] leading-snug">
                             {personalizedContent}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/60">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
                       );

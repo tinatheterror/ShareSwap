@@ -358,6 +358,7 @@ async function checkAndAwardAchievements(userId: number) {
         type: "badge_earned",
         title: `Badge unlocked: ${def.title}`,
         message: def.description,
+        link: "/achievements",
         isRead: false,
       });
     }

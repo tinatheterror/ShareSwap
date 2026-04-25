@@ -10367,11 +10367,11 @@ Respond with ONLY the category name, nothing else.`
 
       // Level-up notification + ShareCoin reward if the level crossed a threshold
       const LEVEL_THRESHOLDS = [
-        { name: 'Newcomer',           minScore: 0,   coinsReward: 0  },
-        { name: 'Neighbour',          minScore: 50,  coinsReward: 10 },
-        { name: 'Trusted Member',     minScore: 150, coinsReward: 15 },
-        { name: 'Community Pillar',   minScore: 300, coinsReward: 20 },
-        { name: 'ShareSwap Champion', minScore: 500, coinsReward: 30 },
+        { name: 'Newcomer',           minScore: 0,   coinsReward: 0 },
+        { name: 'Neighbour',          minScore: 50,  coinsReward: 5 },
+        { name: 'Trusted Member',     minScore: 150, coinsReward: 5 },
+        { name: 'Community Pillar',   minScore: 300, coinsReward: 5 },
+        { name: 'ShareSwap Champion', minScore: 500, coinsReward: 5 },
       ];
       const getLevelForScore = (s: number) =>
         [...LEVEL_THRESHOLDS].reverse().find(l => s >= l.minScore) ?? LEVEL_THRESHOLDS[0];

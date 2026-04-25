@@ -374,9 +374,9 @@ export default function TransactionDetailPage() {
       <div className="min-h-screen bg-[#F3F4F6]">
         <Navbar />
         <main className="container mx-auto px-4 py-6 max-w-2xl">
-          <Button variant="ghost" onClick={() => navigate("/notifications")} className="mb-4">
+          <Button variant="ghost" onClick={() => navigate("/activity")} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Notifications
+            Back to Activity
           </Button>
           <Card>
             <CardContent className="py-16 text-center">
@@ -396,7 +396,7 @@ export default function TransactionDetailPage() {
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
       <main className="container mx-auto px-4 py-6 max-w-2xl pb-24">
-        <Button variant="ghost" onClick={() => navigate("/notifications")} className="mb-4">
+        <Button variant="ghost" onClick={() => navigate("/activity")} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>

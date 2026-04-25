@@ -177,27 +177,25 @@ function NotificationBell() {
   const handleNotificationClick = (n: Notification) => {
     if (!n.isRead) markAsReadMutation.mutate(n.id);
 
-    if (["trust_score_changed", "milestone_achieved", "badge_earned"].includes(n.type)) {
+    if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
       navigate("/achievements");
       return;
     }
-
-    if (n.type === "sharecoin_earned") {
-      navigate("/wallet");
+    if (n.type === "sharecoin_earned") { navigate("/wallet"); return; }
+    if (["dispute_resolved", "security_deposit_released", "payment_received"].includes(n.type)) {
+      navigate("/my-balance");
       return;
     }
-
     if (n.requestId) {
       window.dispatchEvent(
         new CustomEvent("open-chat-request", {
-          detail: {
-            requestId: n.requestId,
-            scrollToCounter: n.type === "terms_counter_proposed",
-          },
+          detail: { requestId: n.requestId, scrollToCounter: n.type === "terms_counter_proposed" },
         })
       );
     } else if (n.itemId) {
       navigate(`/items/${n.itemId}`);
+    } else if ((n as any).link) {
+      navigate((n as any).link);
     }
   };
 
@@ -221,8 +219,8 @@ function NotificationBell() {
       <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h6 className="text-sm font-semibold">Notifications</h6>
-          <Link href="/notifications" className="cursor-pointer text-xs text-primary hover:underline">
+          <h6 className="text-sm font-semibold">Activity</h6>
+          <Link href="/activity" className="cursor-pointer text-xs text-primary hover:underline">
             See all
           </Link>
         </div>

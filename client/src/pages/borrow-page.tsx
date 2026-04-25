@@ -1187,9 +1187,7 @@ export default function BorrowPage() {
                 />
               </div>
               <div>
-                <label className="text-sm text-muted-foreground">
-                  Radius
-                </label>
+                <label className="text-sm text-muted-foreground">Radius</label>
                 <select
                   value={radius}
                   onChange={(e) => setRadius(Number(e.target.value))}
@@ -1235,7 +1233,7 @@ export default function BorrowPage() {
           }}
           targetSelector="[data-tutorial='wishlist']"
           title="Can't Find What You Need?"
-          description="Add any item to your wishlist so neighbours know what you're looking for. When someone lists a matching item, you'll get notified right away. Find exactly what you need without having to keep checking back."
+          description="Add it to your wishlist and get notified when someone lists a matching item. Find exactly what you need without having to keep checking back."
           actionLabel="View Wishlist"
           onAction={() => navigate("/wishlists")}
         />

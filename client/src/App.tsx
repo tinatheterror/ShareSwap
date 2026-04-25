@@ -44,6 +44,7 @@ import ReferralsPage from "@/pages/referrals-page";
 import MyItemsPage from "@/pages/my-items-page";
 import ShareCoinsInfoPage from "@/pages/sharecoins-info-page";
 import NotificationsPage from "@/pages/notifications-page";
+import ActivityPage from "@/pages/activity-page";
 import TransactionDetailPage from "@/pages/transaction-detail-page";
 import RequestsPage from "@/pages/requests-page";
 import DiscoverNeighboursPage from "@/pages/discover-neighbours-page";
@@ -100,7 +101,8 @@ function Router() {
       <ProtectedRoute path="/referrals" component={ReferralsPage} />
       <ProtectedRoute path="/my-items" component={MyItemsPage} />
       <ProtectedRoute path="/requests" component={RequestsPage} />
-      <ProtectedRoute path="/notifications" component={NotificationsPage} />
+      <ProtectedRoute path="/notifications" component={ActivityPage} />
+      <ProtectedRoute path="/activity" component={ActivityPage} />
       <ProtectedRoute path="/transactions/:id" component={TransactionDetailPage} />
       <ProtectedRoute path="/discover-neighbours" component={DiscoverNeighboursPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />

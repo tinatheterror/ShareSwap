@@ -10960,30 +10960,11 @@ Respond with ONLY the category name, nothing else.`
           return;
         }
 
-        // Handle new message
+        // new_message is now handled exclusively via HTTP POST /api/messages
+        // (which saves to DB and pushes the WS notification to the receiver).
+        // Receiving a new_message frame here would be a duplicate — ignore it.
         if (data.type === "new_message") {
-          const { receiverId, content } = data.payload;
-
-          // Store message in database
-          const [storedMessage] = await db
-            .insert(messages)
-            .values({
-              content,
-              senderId: userId,
-              receiverId,
-            })
-            .returning();
-
-          // Send to receiver if online
-          const receiverWs = connectedClients.get(receiverId);
-          if (receiverWs?.readyState === WebSocket.OPEN) {
-            receiverWs.send(
-              JSON.stringify({
-                type: "new_message",
-                message: storedMessage,
-              }),
-            );
-          }
+          // no-op: persistence and real-time delivery are handled by the HTTP route
         }
       } catch (error) {
         console.error("Error processing WebSocket message:", error);

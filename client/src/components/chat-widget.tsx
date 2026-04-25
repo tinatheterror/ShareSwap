@@ -363,16 +363,21 @@ export function ChatWidget() {
   const { isConnected, send } = useWebSocket({
     url: wsUrl,
     onMessage: (data) => {
-      // data is already a parsed object from WebSocketService
       if (data.type === "new_message") {
         // Only play sound for messages from other users
         if (data.message?.senderId && data.message.senderId !== user?.id) {
           playMessageSound();
         }
-        // Refresh inbox and force-refetch any active message thread
+        // Refresh inbox list
         queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+        // Immediately refetch the currently-open thread so new message appears without refresh
         queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-        queryClient.refetchQueries({ queryKey: ["/api/messages"], type: "active" });
+        queryClient.refetchQueries({
+          queryKey: ["/api/messages", selectedConversation, activeConversationRequestId],
+          exact: true,
+          type: "active",
+        });
       }
     },
     autoConnect: !!user,
@@ -731,16 +736,7 @@ export function ChatWidget() {
       });
 
       setMessage("");
-      if (isConnected) {
-        send({
-          type: "new_message",
-          payload: {
-            senderId: user.id,
-            receiverId: selectedConversation,
-            content: message,
-          },
-        });
-      }
+      // Immediately update sender's view — receiver is notified by the HTTP handler via WebSocket
       queryClient.invalidateQueries({
         queryKey: ["/api/messages", selectedConversation, activeConversationRequestId],
       });
@@ -766,9 +762,6 @@ export function ChatWidget() {
         content: scheduleMsg,
         requestId: activeConversationRequestId,
       });
-      if (isConnected) {
-        send({ type: "new_message", payload: { senderId: user!.id, receiverId: selectedConversation, content: scheduleMsg } });
-      }
       qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
     } catch (error) {

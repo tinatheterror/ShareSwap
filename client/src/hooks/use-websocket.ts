@@ -27,24 +27,37 @@ export function useWebSocket({
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocketService | null>(null);
 
+  // Always keep the latest callbacks in a ref so the WebSocketService
+  // never calls a stale closure — critical for query invalidation.
+  const onMessageRef = useRef(onMessage);
+  const onConnectRef = useRef(onConnect);
+  const onDisconnectRef = useRef(onDisconnect);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => { onMessageRef.current = onMessage; }, [onMessage]);
+  useEffect(() => { onConnectRef.current = onConnect; }, [onConnect]);
+  useEffect(() => { onDisconnectRef.current = onDisconnect; }, [onDisconnect]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+
   useEffect(() => {
-    if (!url) return; // Don't create WebSocket if URL is empty
+    if (!url) return;
 
     wsRef.current = new WebSocketService({
       url,
       initialDelay: initialRetryDelayMs,
       maxDelay: maxRetryDelayMs,
       maxRetries,
-      onMessage,
+      // Stable wrappers that always delegate to the latest ref value.
+      onMessage: (data) => onMessageRef.current?.(data),
       onOpen: () => {
         setIsConnected(true);
-        onConnect?.();
+        onConnectRef.current?.();
       },
       onClose: () => {
         setIsConnected(false);
-        onDisconnect?.();
+        onDisconnectRef.current?.();
       },
-      onError,
+      onError: (err) => onErrorRef.current?.(err),
     });
 
     if (autoConnect) {
@@ -55,7 +68,8 @@ export function useWebSocket({
       wsRef.current?.disconnect();
       wsRef.current = null;
     };
-  }, [url]); // Only recreate when URL changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url]);
 
   const send = useCallback((data: unknown) => {
     if (!wsRef.current?.isConnected()) {
@@ -72,10 +86,5 @@ export function useWebSocket({
     wsRef.current?.disconnect();
   }, []);
 
-  return {
-    isConnected,
-    send,
-    connect,
-    disconnect,
-  };
+  return { isConnected, send, connect, disconnect };
 }

@@ -7062,8 +7062,8 @@ Respond with ONLY the category name, nothing else.`
         type: "return_initiated",
         title: isEarlyReturn ? "Early return initiated" : "Return initiated",
         message: isEarlyReturn
-          ? `${(req.user as any).displayName || req.user.username} is returning "${request.items.name}" early. Open the app to confirm receipt.`
-          : `${(req.user as any).displayName || req.user.username} has returned "${request.items.name}". Open the app to confirm receipt.`,
+          ? `${(req.user as any).displayName || req.user.username} is returning "${request.items.name}" early. Open the chat to confirm receipt.`
+          : `${(req.user as any).displayName || req.user.username} has returned "${request.items.name}". Open the chat to confirm receipt.`,
         itemId: request.items.id,
         requestId,
         isRead: false,

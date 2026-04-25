@@ -195,7 +195,7 @@ export function ReturnConfirmationModal({
   if (userRole === "borrower") {
     return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md flex flex-col max-h-[90dvh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-blue-600" />
@@ -207,6 +207,7 @@ export function ReturnConfirmationModal({
             </DialogDescription>
           </DialogHeader>
 
+          <div className="overflow-y-auto flex-1 -mx-1 px-1">
           <div className="space-y-4 py-4">
             {isEarlyReturn && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -247,8 +248,9 @@ export function ReturnConfirmationModal({
               </div>
             </div>
           </div>
+          </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-2">
             <Button
               variant="outline"
               onClick={onClose}
@@ -282,7 +284,7 @@ export function ReturnConfirmationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md flex flex-col max-h-[90dvh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -295,6 +297,7 @@ export function ReturnConfirmationModal({
           </DialogDescription>
         </DialogHeader>
 
+        <div className="overflow-y-auto flex-1 -mx-1 px-1">
         <div className="space-y-4 py-4">
           {isEarlyReturn && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -483,8 +486,9 @@ export function ReturnConfirmationModal({
             </div>
           )}
         </div>
+        </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 pt-2">
           <Button
             variant="outline"
             onClick={onClose}

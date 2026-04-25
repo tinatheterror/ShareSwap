@@ -1706,10 +1706,16 @@ export function ChatWidget() {
 
                     // System notice — subtle muted text, no box
                     if (msg.messageType === "system") {
+                      // Replace the current user's name with "You" at the start of system messages
+                      const myFormattedName = formatDisplayName(user?.displayName || user?.username);
+                      const personalizedContent = msg.content.replace(
+                        new RegExp(`^${myFormattedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s)`),
+                        "You"
+                      );
                       return (
                         <div key={msg.id} className="mb-3 flex justify-center">
                           <span className="text-xs text-muted-foreground font-semibold text-center max-w-[80%] leading-snug">
-                            {msg.content}
+                            {personalizedContent}
                           </span>
                         </div>
                       );

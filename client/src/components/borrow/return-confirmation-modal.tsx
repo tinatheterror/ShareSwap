@@ -168,14 +168,14 @@ export function ReturnConfirmationModal({
       } else if (isEarlyReturn) {
         toast({
           title: "Item returned early. Deposit released.",
-          description: `Deposit of $${depositAmount} has been released.`,
+          description: `The security deposit has been released.`,
         });
       } else {
         toast({
           title: "Return confirmed!",
           description: isRental
             ? `Deposit released and rental earnings added to your balance.`
-            : `Deposit of $${depositAmount} has been released.`,
+            : `The security deposit has been released.`,
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });

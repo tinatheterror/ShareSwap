@@ -7296,6 +7296,28 @@ Respond with ONLY the category name, nothing else.`
         // Don't fail the return if trust scoring fails
       }
 
+      // Award ShareCoins to both parties on return
+      try {
+        const borrowerCoins = await awardShareCoinsWithFirstTimeBonus(
+          request.item_requests.requesterId,
+          'BORROW',
+          request.items.name,
+          1
+        );
+        if (request.items.ownerId) {
+          await awardShareCoinsWithFirstTimeBonus(
+            request.items.ownerId,
+            'LEND',
+            request.items.name,
+            1
+          );
+        }
+        console.log(`✅ ShareCoins awarded on confirm-return: borrower=${borrowerCoins.totalAwarded}, lender=1`);
+      } catch (coinError) {
+        console.error("Error awarding ShareCoins on return:", coinError);
+        // Don't fail the return if coin award fails
+      }
+
       // Check and award referral bonus for both users (first transaction completion)
       const transactionType = request.item_requests.requestType === 'RENT' ? 'RENT' : 'BORROW';
       await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, transactionType);

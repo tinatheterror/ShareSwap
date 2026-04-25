@@ -1002,17 +1002,17 @@ export function ChatWidget() {
                 </div>
               )}
               {/* Delivery & deposit — below the date */}
-              <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground mt-0.5">
-                <span className={`flex items-center gap-0.5 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
+              <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-0.5">
+                <span className={`flex items-center gap-1 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
                   {displayDelivery === "courier"
-                    ? <Truck className="h-3 w-3 text-blue-600" />
-                    : <MapPin className="h-3 w-3 text-gray-500" />}
+                    ? <Truck className="h-3 w-3 shrink-0 text-blue-600" />
+                    : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
                   {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                 </span>
-                <span className={`flex items-center gap-0.5 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
+                <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
                   {displayDeposit === "in_app"
-                    ? <Shield className="h-3 w-3 text-gray-500" />
-                    : <MapPin className="h-3 w-3 text-gray-500" />}
+                    ? <Shield className="h-3 w-3 shrink-0 text-gray-500" />
+                    : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
                   {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                 </span>
               </div>
@@ -1648,20 +1648,20 @@ export function ChatWidget() {
                                       <span>{newStart} – {newEnd}</span>
                                     </div>
                                   )}
-                                  <div className="flex items-center gap-2.5 text-[10px] text-muted-foreground mt-0.5">
+                                  <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-0.5">
                                     {mDelivery && (
-                                      <span className={`flex items-center gap-0.5 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
+                                      <span className={`flex items-center gap-1 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
                                         {mDelivery === "courier"
-                                          ? <Truck className="h-3 w-3 text-blue-600" />
-                                          : <MapPin className="h-3 w-3 text-gray-500" />}
+                                          ? <Truck className="h-3 w-3 shrink-0 text-blue-600" />
+                                          : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
                                         {mDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                                       </span>
                                     )}
                                     {mDeposit && (
-                                      <span className={`flex items-center gap-0.5 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
+                                      <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
                                         {mDeposit === "in_app"
-                                          ? <Shield className="h-3 w-3 text-gray-500" />
-                                          : <MapPin className="h-3 w-3 text-gray-500" />}
+                                          ? <Shield className="h-3 w-3 shrink-0 text-gray-500" />
+                                          : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
                                         {mDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                       </span>
                                     )}

@@ -995,7 +995,7 @@ export default function RequestsPage() {
                                       <div className="flex-1">
                                         <p className="font-medium">Handoff happened after your booked start date</p>
                                         <p className="text-xs mt-0.5">ShareCoins are based on your original booking. You can keep the original return date or request an adjustment.</p>
-                                        <Button size="sm" className="mt-2 h-7 text-xs bg-amber-600 hover:bg-amber-700"
+                                        <Button size="sm" className="mt-2 h-7 text-xs"
                                           onClick={() => { setAdjustmentRequest(request); setShowAdjustmentModal(true); }}>
                                           Review date adjustment
                                         </Button>

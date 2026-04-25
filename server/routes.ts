@@ -10347,9 +10347,10 @@ Respond with ONLY the category name, nothing else.`
         .set({
           reputationScore: sql`reputation_score + ${reputationPoints}`,
           reputationLevel: sql`CASE 
-            WHEN reputation_score + ${reputationPoints} >= 500 THEN 'Expert'
-            WHEN reputation_score + ${reputationPoints} >= 200 THEN 'Trusted'
-            WHEN reputation_score + ${reputationPoints} >= 50 THEN 'Regular'
+            WHEN reputation_score + ${reputationPoints} >= 500 THEN 'ShareSwap Champion'
+            WHEN reputation_score + ${reputationPoints} >= 300 THEN 'Community Pillar'
+            WHEN reputation_score + ${reputationPoints} >= 150 THEN 'Trusted Member'
+            WHEN reputation_score + ${reputationPoints} >= 50  THEN 'Neighbour'
             ELSE 'Newcomer'
           END`,
         })
@@ -10364,18 +10365,42 @@ Respond with ONLY the category name, nothing else.`
         isRead: false,
       });
 
-      // Level-up notification if the level crossed a threshold
+      // Level-up notification + ShareCoin reward if the level crossed a threshold
+      const LEVEL_THRESHOLDS = [
+        { name: 'Newcomer',           minScore: 0,   coinsReward: 0  },
+        { name: 'Neighbour',          minScore: 50,  coinsReward: 10 },
+        { name: 'Trusted Member',     minScore: 150, coinsReward: 15 },
+        { name: 'Community Pillar',   minScore: 300, coinsReward: 20 },
+        { name: 'ShareSwap Champion', minScore: 500, coinsReward: 30 },
+      ];
       const getLevelForScore = (s: number) =>
-        s >= 500 ? 'Expert' : s >= 200 ? 'Trusted' : s >= 50 ? 'Regular' : 'Newcomer';
+        [...LEVEL_THRESHOLDS].reverse().find(l => s >= l.minScore) ?? LEVEL_THRESHOLDS[0];
+
       const oldScore = reviewedUserBefore?.reputationScore ?? 0;
-      const oldLevel = getLevelForScore(oldScore);
-      const newLevel = getLevelForScore(oldScore + reputationPoints);
-      if (newLevel !== oldLevel) {
+      const oldLevelDef = getLevelForScore(oldScore);
+      const newLevelDef = getLevelForScore(oldScore + reputationPoints);
+
+      if (newLevelDef.name !== oldLevelDef.name) {
+        // Award ShareCoins for leveling up
+        if (newLevelDef.coinsReward > 0) {
+          await db.update(users)
+            .set({ shareCoins: sql`share_coins + ${newLevelDef.coinsReward}` })
+            .where(eq(users.id, reviewedUserId));
+          await db.insert(notifications).values({
+            userId: reviewedUserId,
+            type: "sharecoin_earned",
+            title: `+${newLevelDef.coinsReward} ShareCoins earned`,
+            message: `You earned ${newLevelDef.coinsReward} ShareCoins for reaching ${newLevelDef.name}!`,
+            link: "/achievements",
+            isRead: false,
+          });
+        }
         await db.insert(notifications).values({
           userId: reviewedUserId,
           type: "level_up",
-          title: `Level up — now ${newLevel}`,
-          message: `You moved from ${oldLevel} to ${newLevel}. Keep sharing to climb higher!`,
+          title: `Level up — ${newLevelDef.name}!`,
+          message: `You've reached ${newLevelDef.name}. Keep sharing to unlock more perks!`,
+          link: "/achievements",
           isRead: false,
         });
       }

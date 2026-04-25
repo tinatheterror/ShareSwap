@@ -10,6 +10,8 @@ export function BackgroundPolling() {
   const { toast } = useToast();
   const isPolling = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const seenLevelUpIds = useRef<Set<number>>(new Set());
+  const levelUpInitialized = useRef(false);
 
   const checkExpiredHandoffs = useCallback(async () => {
     if (isPolling.current || !document.hasFocus()) return;
@@ -47,15 +49,55 @@ export function BackgroundPolling() {
     }
   }, [queryClient, toast]);
 
+  const checkLevelUp = useCallback(async () => {
+    try {
+      const response = await apiRequest("GET", "/api/notifications");
+      const notifications: any[] = await response.json();
+      const levelUpNotifs = notifications.filter(
+        (n: any) => n.type === "level_up" && !n.isRead
+      );
+
+      if (!levelUpInitialized.current) {
+        // First run: seed seen IDs so we don't toast existing unread level-ups
+        levelUpNotifs.forEach((n: any) => seenLevelUpIds.current.add(n.id));
+        levelUpInitialized.current = true;
+        return;
+      }
+
+      const newLevelUps = levelUpNotifs.filter(
+        (n: any) => !seenLevelUpIds.current.has(n.id)
+      );
+      for (const notif of newLevelUps) {
+        seenLevelUpIds.current.add(notif.id);
+        toast({
+          title: `🎉 ${notif.title}`,
+          description: notif.message,
+          duration: 8000,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+      }
+    } catch {
+      // Silently ignore
+    }
+  }, [queryClient, toast]);
+
   useEffect(() => {
     if (!user) return;
 
     checkExpiredHandoffs();
-    intervalRef.current = setInterval(checkExpiredHandoffs, 120000);
+    checkLevelUp();
+
+    intervalRef.current = setInterval(() => {
+      checkExpiredHandoffs();
+      checkLevelUp();
+    }, 120000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         checkExpiredHandoffs();
+        checkLevelUp();
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -64,7 +106,7 @@ export function BackgroundPolling() {
       if (intervalRef.current) clearInterval(intervalRef.current);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [user, checkExpiredHandoffs]);
+  }, [user, checkExpiredHandoffs, checkLevelUp]);
 
   return null;
 }

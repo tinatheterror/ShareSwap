@@ -1249,23 +1249,6 @@ export function ChatWidget() {
                 </button>
               )}
 
-              {/* Owner actions for active transactions */}
-              {isOwner &&
-                (request.status === "DEPOSIT_CONFIRMED" ||
-                  request.status === "COURIER_PENDING") && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    onClick={() => {
-                      setSelectedRequest(request);
-                      setShowHandoffModal(true);
-                    }}
-                  >
-                    <HandMetal className="h-3 w-3 mr-1" />
-                    Confirm Handoff
-                  </Button>
-                )}
 
 
         </div>

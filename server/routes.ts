@@ -6568,17 +6568,39 @@ Respond with ONLY the category name, nothing else.`
       await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 
       const isBorrowPin = request.item_requests.requestType === "BORROW";
-      const shareCoinChargedMsg = shareCoinAmount > 0 && isBorrowPin ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged to borrower` : null;
-      const shareCoinEarnedMsg = shareCoinAmount > 0 && isBorrowPin ? `➕ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} earned by lender` : null;
-      const systemMsgs = [
-        "🤝 Handoff confirmed via PIN — borrow period has started",
-        shareCoinChargedMsg,
-        shareCoinEarnedMsg,
-        "🔒 Security deposit is now held until the item is returned",
-      ].filter(Boolean) as string[];
 
-      for (const content of systemMsgs) {
+      // Shared system messages visible to both parties
+      const sharedSystemMsgs = [
+        "🤝 Handoff confirmed via PIN — borrow period has started",
+        "🔒 Security deposit is now held until the item is returned",
+      ];
+      for (const content of sharedSystemMsgs) {
         await db.insert(messages).values({ content, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
+      }
+
+      // Coin stamps — each visible only to the relevant party
+      if (shareCoinAmount > 0 && isBorrowPin) {
+        const coinLabel = `${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""}`;
+        // Borrower only sees "charged"
+        await db.insert(messages).values({
+          content: `🪙 ${coinLabel} charged`,
+          senderId: ownerId,
+          receiverId: borrowerId,
+          messageType: "system",
+          requestId,
+          metadata: { visibleToUserId: borrowerId },
+        });
+        // Lender only sees "earned"
+        if (ownerId) {
+          await db.insert(messages).values({
+            content: `🪙 ${coinLabel} earned`,
+            senderId: ownerId,
+            receiverId: borrowerId,
+            messageType: "system",
+            requestId,
+            metadata: { visibleToUserId: ownerId },
+          });
+        }
       }
 
       const _handoffPeriodType = request.item_requests.requestType === "RENT" ? "Rental" : "Borrow";

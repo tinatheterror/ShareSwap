@@ -1685,6 +1685,10 @@ export function ChatWidget() {
 
                     // System notice — subtle muted text, no box
                     if (msg.messageType === "system") {
+                      // Visibility guard: some stamps (e.g. coin charge/earn) are only for one party
+                      const visibleTo = (msg.metadata as any)?.visibleToUserId;
+                      if (visibleTo && visibleTo !== user.id) return null;
+
                       // Replace the current user's name with "You" at the start of system messages
                       const myFormattedName = formatDisplayName(user?.displayName || user?.username);
                       const personalizedContent = msg.content.replace(

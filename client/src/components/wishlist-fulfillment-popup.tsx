@@ -88,10 +88,10 @@ export function WishlistFulfillmentPopup({
             <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-600 rounded-full mb-4 shadow-lg">
               <Coins className="h-4 w-4 text-white" />
             </div>
-            <DialogTitle className="text-xl font-bold text-slate-800 mb-2">
+            <DialogTitle className="text-sm sm:text-xl font-bold text-slate-800 mb-2 whitespace-nowrap">
               Neighbours are looking for these items
             </DialogTitle>
-            <p className="text-slate-500 text-lg">
+            <p className="text-slate-500 text-xs sm:text-lg whitespace-nowrap">
               Fulfill urgent wishlists and earn extra ShareCoins!
             </p>
           </div>
@@ -181,23 +181,29 @@ export function WishlistFulfillmentPopup({
                       )}
 
                       {wishlist.neededDate && (
-                        <div className="flex items-center gap-2 md:gap-3">
-                          <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                        <div className="flex items-start gap-2 md:gap-3">
+                          <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                             <Calendar className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                           </div>
-                          <div>
-                            <span className="text-slate-600 font-medium text-xs md:text-base">
-                              Needed:{" "}
+                          <div className="flex flex-col">
+                            <span className="text-slate-500 font-medium text-[10px] md:text-xs leading-none">
+                              Needed
+                            </span>
+                            <span className="text-slate-700 font-semibold text-xs md:text-base">
                               {new Date(wishlist.neededDate).toLocaleDateString()}
                             </span>
                             {wishlist.returnDate &&
                               wishlist.needType === "borrow" && (
-                                <div className="text-xs text-slate-500">
-                                  Return:{" "}
-                                  {new Date(
-                                    wishlist.returnDate,
-                                  ).toLocaleDateString()}
-                                </div>
+                                <>
+                                  <span className="text-slate-500 font-medium text-[10px] md:text-xs leading-none mt-1">
+                                    Return
+                                  </span>
+                                  <span className="text-slate-700 font-semibold text-xs md:text-sm">
+                                    {new Date(
+                                      wishlist.returnDate,
+                                    ).toLocaleDateString()}
+                                  </span>
+                                </>
                               )}
                           </div>
                         </div>
@@ -206,14 +212,14 @@ export function WishlistFulfillmentPopup({
 
                     {/* Earn ShareCoins */}
                     <div className="bg-gradient-to-r from-teal-50 to-teal-100 p-2 md:p-4 rounded-lg border border-teal-200/50 mb-2 md:mb-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-1.5 md:gap-2">
-                          <Coins className="h-4 w-4 md:h-5 md:w-5 text-teal-600" />
-                          <span className="font-bold text-teal-800 text-xs md:text-base">
+                          <Coins className="h-3.5 w-3.5 md:h-5 md:w-5 text-teal-600 shrink-0" />
+                          <span className="font-bold text-teal-800 text-[11px] md:text-base">
                             Earn 10 ShareCoins
                           </span>
                         </div>
-                        <span className="text-[10px] md:text-xs text-teal-600 font-medium">
+                        <span className="text-[10px] md:text-xs text-teal-600 font-medium pl-5 sm:pl-0">
                           Upon completion
                         </span>
                       </div>

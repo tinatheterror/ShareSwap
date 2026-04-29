@@ -4489,48 +4489,12 @@ Respond with ONLY the category name, nothing else.`
           });
         }
         
-        // Award ShareCoins only if not flagged as farming
-        if (measures.awardShareCoins) {
-          // Award ShareCoins to the item owner (current user) with first-time bonus
-          const ownerResult = await awardShareCoinsWithFirstTimeBonus(
-            req.user.id,
-            'SWAP',
-            request.items.name,
-            1
-          );
-
-          // Award ShareCoins to the requester with first-time bonus
-          const requesterResult = await awardShareCoinsWithFirstTimeBonus(
-            request.item_requests.requesterId,
-            'SWAP',
-            request.items.name,
-            1
-          );
-            
-          console.log(`✅ Awarded ShareCoins for swap: Owner=${ownerResult.totalAwarded} (first-time: ${ownerResult.isFirstTime}), Requester=${requesterResult.totalAwarded} (first-time: ${requesterResult.isFirstTime})`);
-          
-          // Award trust points for successful swap completion (+30 each)
-          try {
-            await awardSwapCompletionPoints(
-              req.user.id,
-              request.item_requests.requesterId,
-              requestId,
-              request.items.id,
-              request.items.id // Both users get points for the same transaction
-            );
-            console.log(`✅ Awarded trust points for swap completion`);
-          } catch (trustError) {
-            console.error("Error awarding swap trust points:", trustError);
-          }
-
-          // Check and award referral bonus for both users (first transaction completion)
-          await checkAndAwardReferralBonus(req.user.id, requestId, 'SWAP');
-          await checkAndAwardReferralBonus(request.item_requests.requesterId, requestId, 'SWAP');
-          // Check and award any newly unlocked badges for both parties
-          await checkAndAwardAchievements(req.user.id);
-          await checkAndAwardAchievements(request.item_requests.requesterId);
+        // Coins, trust points, referral bonuses, and achievements are awarded at handoff confirmation
+        // (not at acceptance) — see confirm-handoff route below
+        if (!measures.awardShareCoins) {
+          console.log(`🚫 ShareCoins will not be awarded at handoff due to farming detection (${farmingDetection.riskLevel})`);
         } else {
-          console.log(`🚫 ShareCoins not awarded due to farming detection (${farmingDetection.riskLevel})`);
+          console.log(`✅ Swap accepted — coins/milestones deferred to handoff confirmation`);
         }
         
       } catch (error) {
@@ -6160,8 +6124,10 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Validate status (must be DEPOSIT_CONFIRMED, COURIER_PENDING, or AWAITING_HANDOFF_CONFIRM)
+      // SWAP requests skip the deposit step so they arrive here from ACCEPTED directly
+      const isSwapRequest = request.item_requests.requestType === "SWAP";
       const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
-      if (!validStatuses.includes(request.item_requests.status)) {
+      if (!validStatuses.includes(request.item_requests.status) && !(isSwapRequest && request.item_requests.status === "ACCEPTED")) {
         return res.status(400).json({ error: "Request is not ready for handoff" });
       }
 
@@ -6275,7 +6241,8 @@ Respond with ONLY the category name, nothing else.`
         }
 
         // Complete the handoff (manual confirmation path)
-        updateData.status = "IN_PROGRESS";
+        // SWAP transactions are fully complete at handoff (no return step), so mark COMPLETED
+        updateData.status = isSwapRequest ? "COMPLETED" : "IN_PROGRESS";
         updateData.handoffConfirmedAt = now;
         updateData.borrowPeriodStartedAt = now;
         updateData.actualHandoffAt = now;
@@ -6295,6 +6262,30 @@ Respond with ONLY the category name, nothing else.`
           .update(items)
           .set({ isAvailable: false })
           .where(eq(items.id, request.items.id));
+
+        // Award ShareCoins, trust points, referral bonuses, and achievements for SWAP
+        // at handoff completion (deferred from acceptance to ensure the exchange actually happened)
+        if (isSwapRequest) {
+          try {
+            const ownerId2 = request.items.ownerId!;
+            const requesterId2 = request.item_requests.requesterId;
+            const itemName2 = request.items.name;
+
+            const ownerResult = await awardShareCoinsWithFirstTimeBonus(ownerId2, 'SWAP', itemName2, 1);
+            const requesterResult = await awardShareCoinsWithFirstTimeBonus(requesterId2, 'SWAP', itemName2, 1);
+            console.log(`✅ Awarded ShareCoins for swap at handoff: Owner=${ownerResult.totalAwarded}, Requester=${requesterResult.totalAwarded}`);
+
+            await awardSwapCompletionPoints(ownerId2, requesterId2, requestId, request.items.id, request.items.id);
+            console.log(`✅ Awarded trust points for swap handoff completion`);
+
+            await checkAndAwardReferralBonus(ownerId2, requestId, 'SWAP');
+            await checkAndAwardReferralBonus(requesterId2, requestId, 'SWAP');
+            await checkAndAwardAchievements(ownerId2);
+            await checkAndAwardAchievements(requesterId2);
+          } catch (swapRewardError) {
+            console.error("Error awarding swap rewards at handoff:", swapRewardError);
+          }
+        }
       }
 
       // Update the request
@@ -6942,11 +6933,27 @@ Respond with ONLY the category name, nothing else.`
 
           const autoBookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
           const autoIsLate = autoBookedStart && now > autoBookedStart && request.item_requests.requestType === "BORROW";
+          const isAutoSwap = request.item_requests.requestType === "SWAP";
           await db.update(itemRequests)
-            .set({ status: "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, handoffDelayAdjustmentStatus: autoIsLate ? "pending_borrower_decision" : "none", shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
+            .set({ status: isAutoSwap ? "COMPLETED" : "IN_PROGRESS", handoffConfirmedAt: now, borrowPeriodStartedAt: now, actualHandoffAt: now, handoffDelayAdjustmentStatus: autoIsLate ? "pending_borrower_decision" : "none", shareCoinsCharged: true, shareCoinsChargedAt: now, depositStatus: "held", handoffAutoAdvanced: true })
             .where(eq(itemRequests.id, reqId));
 
           await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
+
+          // Award coins/milestones for SWAP at auto-confirmed handoff
+          if (isAutoSwap && ownerId2) {
+            try {
+              await awardShareCoinsWithFirstTimeBonus(ownerId2, 'SWAP', request.items.name, 1);
+              await awardShareCoinsWithFirstTimeBonus(borrowerId2, 'SWAP', request.items.name, 1);
+              await awardSwapCompletionPoints(ownerId2, borrowerId2, reqId, request.items.id, request.items.id);
+              await checkAndAwardReferralBonus(ownerId2, reqId, 'SWAP');
+              await checkAndAwardReferralBonus(borrowerId2, reqId, 'SWAP');
+              await checkAndAwardAchievements(ownerId2);
+              await checkAndAwardAchievements(borrowerId2);
+            } catch (swapAutoErr) {
+              console.error("Error awarding swap rewards on auto-advance:", swapAutoErr);
+            }
+          }
 
           const confirmingParty = ownerConfirmed ? "owner" : "borrower";
           await db.insert(notifications).values([

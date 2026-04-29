@@ -161,8 +161,8 @@ export function ReturnConfirmationModal({
         });
       } else if (isEarlyReturn && isRental) {
         toast({
-          title: "Item returned early. Rental period completed.",
-          description: `Deposit released. Full rental amount kept.`,
+          title: "Item returned early. Rental period is completed.",
+          description: `Deposit released and full rental amount was charged.`,
         });
       } else if (isEarlyReturn) {
         toast({

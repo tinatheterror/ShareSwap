@@ -512,6 +512,21 @@ export function ChatWidget() {
     },
   });
 
+  const confirmGiftHandoffMutation = useMutation({
+    mutationFn: async ({ requestId, role }: { requestId: number; role: "giver" | "receiver" }) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/confirm-gift-handoff`, { role });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      toast({ title: data.completed ? "Gift completed! 🎁" : "Confirmed!", description: data.message || "Waiting for the other party to confirm." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message || "Could not confirm handoff", variant: "destructive" });
+    },
+  });
+
   const withdrawMutation = useMutation({
     mutationFn: async (requestId: number) => {
       const res = await apiRequest("POST", `/api/requests/${requestId}/withdraw`, {});
@@ -1032,12 +1047,14 @@ export function ChatWidget() {
                     : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
                   {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                 </span>
-                <span className={`flex items-start gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
-                  {displayDeposit === "in_app"
-                    ? <Shield className="h-3 w-3 shrink-0 mt-px text-gray-500" />
-                    : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
-                  {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                </span>
+                {request.requestType !== "GIFT" && (
+                  <span className={`flex items-start gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
+                    {displayDeposit === "in_app"
+                      ? <Shield className="h-3 w-3 shrink-0 mt-px text-gray-500" />
+                      : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
+                    {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                  </span>
+                )}
               </div>
               {iSentCounter && (
                 <p className="text-[10px] text-amber-700 mt-0.5 italic">Waiting for their response…</p>
@@ -1778,6 +1795,26 @@ export function ChatWidget() {
                 if (isBorrower) {
                   const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
 
+                  if (pr.status === "ACCEPTED" && pr.requestType === "GIFT") {
+                    const alreadyConfirmed = pr.borrowerConfirmedHandoff;
+                    return (
+                      <div className="px-3 py-2 border-t border-pink-100 bg-pink-50">
+                        {alreadyConfirmed ? (
+                          <p className="text-xs text-pink-700 text-center font-medium py-1.5">✓ Confirmed — waiting for the giver to confirm</p>
+                        ) : (
+                          <Button
+                            className="w-full h-10 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-xl"
+                            disabled={confirmGiftHandoffMutation.isPending}
+                            onClick={() => confirmGiftHandoffMutation.mutate({ requestId: pr.id, role: "receiver" })}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Confirm received
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  }
+
                   if (pr.status === "ACCEPTED" && pr.requestType !== "GIFT") {
                     const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
                     return (
@@ -1868,6 +1905,26 @@ export function ChatWidget() {
 
                 // --- OWNER CTAs ---
                 if (isOwner) {
+                  if (pr.status === "ACCEPTED" && pr.requestType === "GIFT") {
+                    const alreadyConfirmed = pr.ownerConfirmedHandoff;
+                    return (
+                      <div className="px-3 py-2 border-t border-pink-100 bg-pink-50">
+                        {alreadyConfirmed ? (
+                          <p className="text-xs text-pink-700 text-center font-medium py-1.5">✓ Confirmed — waiting for the receiver to confirm</p>
+                        ) : (
+                          <Button
+                            className="w-full h-10 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium rounded-xl"
+                            disabled={confirmGiftHandoffMutation.isPending}
+                            onClick={() => confirmGiftHandoffMutation.mutate({ requestId: pr.id, role: "giver" })}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Confirm given
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  }
+
                   if (
                     pr.status === "DEPOSIT_CONFIRMED" ||
                     pr.status === "COURIER_PENDING" ||

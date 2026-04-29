@@ -4539,21 +4539,6 @@ Respond with ONLY the category name, nothing else.`
       }
     } catch (_) {}
 
-    // Handle gift acceptance - send system message (rewards given when both confirm handoff)
-    if (status === "ACCEPTED" && request.item_requests.requestType === "GIFT") {
-      try {
-        await db.insert(messages).values({
-          content: `🎁 Gift accepted! Arrange pickup or delivery for "${request.items.name}".`,
-          senderId: req.user.id,
-          receiverId: request.item_requests.requesterId,
-          requestId,
-        });
-        console.log(`✅ Gift accepted - chat message sent for pickup coordination`);
-      } catch (error) {
-        console.error("Error sending gift acceptance message:", error);
-      }
-    }
-
 
     // Handle commission for rental transactions
     if (status === "ACCEPTED" && request.item_requests.requestType === "RENT") {

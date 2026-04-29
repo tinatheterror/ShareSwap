@@ -3302,6 +3302,7 @@ Respond with ONLY the category name, nothing else.`
         itemType: items.itemType,
         condition: items.condition,
         originalValue: items.originalValue,
+        tier: items.tier,
         swapDesiredItem: items.swapDesiredItem,
         swapNotifyOnMatch: items.swapNotifyOnMatch,
         owner: {

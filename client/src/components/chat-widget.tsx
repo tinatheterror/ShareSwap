@@ -772,11 +772,14 @@ export function ChatWidget() {
     setShowCelebration(false);
     if (!selectedConversation) return;
     const acceptedRequest = requests.find((r) => r.id === selectedRequestId);
+    const isGiftRequest = acceptedRequest?.requestType === "GIFT";
     const startDateRaw = acceptedRequest?.startDate;
     const dateText = startDateRaw
       ? format(parseLocalDate(startDateRaw), "MMMM do")
       : format(new Date(), "MMMM do");
-    const scheduleMsg = `When and where can you meet on ${dateText}?`;
+    const scheduleMsg = isGiftRequest
+      ? "When and where can you meet?"
+      : `When and where can you meet on ${dateText}?`;
     try {
       await apiRequest("POST", "/api/messages", {
         receiverId: selectedConversation,

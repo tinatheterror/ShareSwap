@@ -608,8 +608,8 @@ export default function BorrowPage() {
               >
                 {filteredGiftItems[giftCarouselIndex] && (
                   <Card className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white border-pink-100">
-                    <div className="p-4">
-                      <div className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative aspect-square">
+                    <div className="p-2">
+                      <div className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative" style={{ aspectRatio: "1 / 0.9" }}>
                         <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-xs">
                           FREE
                         </Badge>
@@ -641,28 +641,41 @@ export default function BorrowPage() {
                         )}
                       </div>
                     </div>
-                    <CardContent className="px-4 pt-0 pb-4">
-                      <h3 className="font-bold text-xl mb-1 text-slate-800 truncate">
+                    <CardContent className="px-3 pt-0 pb-2">
+                      <h3 className="font-bold text-sm mb-0.5 text-slate-800 truncate">
                         {filteredGiftItems[giftCarouselIndex].name}
                       </h3>
-                      <div className="flex items-center gap-2 text-slate-600 mb-3">
-                        <MapPin className="h-4 w-4" />
-                        <span className="text-sm">
-                          {filteredGiftItems[giftCarouselIndex].city ||
-                            userPostalCode ||
-                            "Nearby"}
-                        </span>
+                      <div className="space-y-0 mb-1.5">
+                        <div className="flex items-center gap-1 text-slate-700">
+                          <MapPin className="h-3 w-3" />
+                          <span className="text-xs">
+                            {filteredGiftItems[giftCarouselIndex].city ||
+                              userPostalCode ||
+                              "Nearby"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-700">
+                          <span>
+                            <span className="font-medium">Condition:</span>{" "}
+                            {filteredGiftItems[giftCarouselIndex].conditionRating || 8}/10
+                          </span>
+                          {filteredGiftItems[giftCarouselIndex].owner?.isVerified && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                              Verified Owner
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <Button
                         size="sm"
-                        className="w-full bg-pink-500 hover:bg-pink-600 text-white text-sm h-10"
+                        className="w-full bg-pink-500 hover:bg-pink-600 text-white text-[10px] h-6"
                         onClick={() =>
                           navigate(
                             `/items/${filteredGiftItems[giftCarouselIndex].id}`,
                           )
                         }
                       >
-                        <Gift className="h-4 w-4 mr-1" />
+                        <Gift className="h-2.5 w-2.5 mr-0.5" />
                         Claim Gift
                       </Button>
                     </CardContent>
@@ -695,7 +708,7 @@ export default function BorrowPage() {
                   key={item.id}
                   className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white border-pink-100"
                 >
-                  <div className="p-4">
+                  <div className="p-2 md:p-4">
                     <div
                       className="bg-pink-50 rounded-lg flex items-center justify-center overflow-hidden relative"
                       style={{ aspectRatio: "1 / 0.9" }}
@@ -730,15 +743,28 @@ export default function BorrowPage() {
                       )}
                     </div>
                   </div>
-                  <CardContent className="px-4 pt-0 pb-4">
-                    <h3 className="font-bold text-lg mb-1 text-slate-800 truncate">
+                  <CardContent className="px-3 md:px-6 pt-0 pb-2 md:pb-4">
+                    <h3 className="font-bold text-sm md:text-xl mb-0.5 md:mb-1 text-slate-800 truncate">
                       {item.name}
                     </h3>
-                    <div className="flex items-center gap-2 text-slate-600 mb-3">
-                      <MapPin className="h-3 w-3" />
-                      <span className="text-sm">
-                        {item.city || userPostalCode || "Nearby"}
-                      </span>
+                    <div className="space-y-0 md:space-y-0.5 mb-1.5 md:mb-3">
+                      <div className="flex items-center gap-1 md:gap-2 text-slate-700">
+                        <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="text-xs md:text-sm">
+                          {item.city || userPostalCode || "Nearby"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
+                        <span>
+                          <span className="font-medium">Condition:</span>{" "}
+                          {item.conditionRating || 8}/10
+                        </span>
+                        {item.owner?.isVerified && (
+                          <span className="text-[10px] md:text-xs px-1 md:px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                            Verified Owner
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <Button
                       size="sm"

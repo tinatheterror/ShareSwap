@@ -1020,16 +1020,16 @@ export function ChatWidget() {
               )}
               {/* Delivery & deposit — below the date */}
               <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-0.5">
-                <span className={`flex items-center gap-1 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
+                <span className={`flex items-start gap-1 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
                   {displayDelivery === "courier"
-                    ? <Truck className="h-3 w-3 shrink-0 text-blue-600" />
-                    : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
+                    ? <Truck className="h-3 w-3 shrink-0 mt-px text-blue-600" />
+                    : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
                   {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                 </span>
-                <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
+                <span className={`flex items-start gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
                   {displayDeposit === "in_app"
-                    ? <Shield className="h-3 w-3 shrink-0 text-gray-500" />
-                    : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
+                    ? <Shield className="h-3 w-3 shrink-0 mt-px text-gray-500" />
+                    : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
                   {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                 </span>
               </div>
@@ -1047,7 +1047,7 @@ export function ChatWidget() {
             <>
               <Button
                 size="sm"
-                className="h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
+                className="flex-1 h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
                 onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
                 disabled={respondToCounterMutation.isPending}
               >
@@ -1056,7 +1056,7 @@ export function ChatWidget() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
+                className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
                 onClick={() => openChatCounter(request, isOwner ? "owner" : "requester")}
               >
                 Counter
@@ -1064,7 +1064,7 @@ export function ChatWidget() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs px-2"
+                className="flex-1 h-7 text-xs px-2"
                 onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: false })}
                 disabled={respondToCounterMutation.isPending}
               >
@@ -1078,7 +1078,7 @@ export function ChatWidget() {
                 <>
                   <Button
                     size="sm"
-                    className="h-7 text-xs px-2 bg-green-600"
+                    className="flex-1 h-7 text-xs px-2 bg-green-600"
                     onClick={() => handleAcceptClick(request)}
                   >
                     Accept
@@ -1086,7 +1086,7 @@ export function ChatWidget() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
+                    className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
                     onClick={() => openChatCounter(request, "owner")}
                   >
                     Counter
@@ -1094,7 +1094,7 @@ export function ChatWidget() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs px-2"
+                    className="flex-1 h-7 text-xs px-2"
                     onClick={() => declineMutation.mutate(request.id)}
                     disabled={declineMutation.isPending}
                   >

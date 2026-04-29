@@ -852,7 +852,7 @@ export default function BorrowPage() {
                       >
                         {currentItem && (
                           <Card className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
-                            <div className="p-3">
+                            <div className="p-2">
                               <div
                                 className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
                                 style={{ aspectRatio: "1 / 0.9" }}
@@ -875,31 +875,31 @@ export default function BorrowPage() {
                                       const icon =
                                         document.createElement("div");
                                       icon.innerHTML =
-                                        '<svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                                        '<svg class="h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
                                       target.parentElement?.appendChild(icon);
                                     }}
                                   />
                                 ) : (
                                   <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                                    <Camera className="h-12 w-12 text-gray-400" />
+                                    <Camera className="h-10 w-10 text-gray-400" />
                                   </div>
                                 )}
                               </div>
                             </div>
-                            <CardContent className="px-3 pt-0 pb-3">
-                              <h4 className="font-bold text-lg text-slate-800 truncate mb-1">
+                            <CardContent className="px-3 pt-0 pb-2">
+                              <h4 className="font-bold text-sm text-slate-800 truncate mb-0.5">
                                 {currentItem.name}
                               </h4>
-                              <div className="space-y-1 mb-2">
-                                <div className="flex items-center gap-2 text-slate-700">
-                                  <MapPin className="h-4 w-4" />
-                                  <span className="text-sm">
+                              <div className="space-y-0 mb-1.5">
+                                <div className="flex items-center gap-1 text-slate-700">
+                                  <MapPin className="h-3 w-3" />
+                                  <span className="text-xs">
                                     {currentItem.city ||
                                       userPostalCode ||
                                       "Nearby"}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-slate-700">
+                                <div className="flex items-center gap-1 text-xs text-slate-700">
                                   <span>
                                     <span className="font-medium">
                                       Condition:
@@ -907,16 +907,16 @@ export default function BorrowPage() {
                                     {currentItem.conditionRating || 8}/10
                                   </span>
                                   {currentItem.owner?.isVerified && (
-                                    <span className="text-xs px-1.5 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
+                                    <span className="text-[10px] px-1 py-0.5 rounded bg-white text-[#0DCEA1] border border-[#0DCEA1]/20">
                                       Verified Owner
                                     </span>
                                   )}
                                 </div>
                                 {(currentItem.isLendable ||
                                   currentItem.isRentable) && (
-                                  <div className="flex items-center gap-2 text-sm text-slate-700">
-                                    <div className="flex items-center gap-1">
-                                      <Coins className="h-4 w-4 text-teal-600" />
+                                  <div className="flex items-center gap-1 text-xs text-slate-700">
+                                    <div className="flex items-center gap-0.5">
+                                      <Coins className="h-3 w-3 text-teal-600" />
                                       <span>
                                         {currentItem.shareCoinPrice ||
                                           currentItem.shareCoinsReward ||
@@ -930,7 +930,7 @@ export default function BorrowPage() {
                                           |
                                         </span>
                                         <div className="flex items-center">
-                                          <DollarSign className="h-4 w-4 text-teal-600" />
+                                          <DollarSign className="h-3 w-3 text-teal-600" />
                                           <span>
                                             $
                                             {Number(
@@ -944,46 +944,60 @@ export default function BorrowPage() {
                                   </div>
                                 )}
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-1">
                                 {currentItem.isLendable && (
                                   <Button
                                     size="sm"
-                                    className="flex-1 text-white rounded-lg text-xs"
+                                    className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
                                     style={{ backgroundColor: "#0DCEA1" }}
                                     onClick={() =>
                                       navigate(`/items/${currentItem.id}`)
                                     }
                                   >
-                                    <HandHeart className="h-3 w-3 mr-1" />
-                                    Borrow
+                                    <HandHeart className="h-2.5 w-2.5 mr-0.5" />
+                                    Borrow It
                                   </Button>
                                 )}
                                 {currentItem.isRentable && (
                                   <Button
                                     size="sm"
-                                    className="flex-1 text-white rounded-lg text-xs"
+                                    className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
                                     style={{ backgroundColor: "#0DCEA1" }}
                                     onClick={() =>
                                       navigate(`/items/${currentItem.id}`)
                                     }
                                   >
-                                    <DollarSign className="h-3 w-3 mr-1" />
-                                    Rent
+                                    <DollarSign className="h-2.5 w-2.5 mr-0.5" />
+                                    Rent It
                                   </Button>
                                 )}
                                 {currentItem.isSwappable && (
                                   <Button
                                     size="sm"
-                                    className="flex-1 text-white rounded-lg text-xs"
+                                    className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
                                     style={{ backgroundColor: "#0DCEA1" }}
                                     onClick={() =>
                                       navigate(`/items/${currentItem.id}`)
                                     }
                                   >
-                                    <ArrowLeftRight className="h-3 w-3 mr-1" />
-                                    Swap
+                                    <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
+                                    Swap It
                                   </Button>
                                 )}
+                                {!currentItem.isLendable &&
+                                  !currentItem.isRentable &&
+                                  !currentItem.isSwappable && (
+                                    <Button
+                                      size="sm"
+                                      className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                      style={{ backgroundColor: "#0DCEA1" }}
+                                      onClick={() =>
+                                        navigate(`/items/${currentItem.id}`)
+                                      }
+                                    >
+                                      View Item
+                                    </Button>
+                                  )}
                               </div>
                             </CardContent>
                           </Card>

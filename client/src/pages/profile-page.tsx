@@ -584,10 +584,18 @@ export default function ProfilePage() {
             {userItems.length > 0 ? (
               <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
                 {userItems.map((item) => (
-                  <div key={item.id} className="w-72 flex-shrink-0 md:w-auto">
-                    <Card className="hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden">
-                      <div className="p-4">
-                        <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                  <div key={item.id} className="w-64 flex-shrink-0 md:w-auto">
+                    <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden ${item.isGift ? "border-pink-100" : ""}`}>
+                      <div className="p-2">
+                        <div
+                          className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
+                          style={{ aspectRatio: "1 / 0.9" }}
+                        >
+                          {item.isGift && (
+                            <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">
+                              FREE
+                            </Badge>
+                          )}
                           {item.photos && item.photos[0] ? (
                             <img
                               src={item.photos[0]}
@@ -595,89 +603,96 @@ export default function ProfilePage() {
                               className="w-full h-full object-cover rounded-lg"
                             />
                           ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                              <Camera className="h-16 w-16 text-gray-400" />
+                            <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
+                              {item.isGift
+                                ? <Gift className="h-10 w-10 text-pink-400" />
+                                : <Camera className="h-10 w-10 text-gray-400" />
+                              }
                             </div>
                           )}
                         </div>
                       </div>
-                      <CardContent className="px-6 pt-0 pb-4">
-                        <h3 className="font-bold text-lg mb-2 truncate">
+                      <CardContent className="px-3 pt-0 pb-2">
+                        <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">
                           {item.name}
                         </h3>
-                        <div className="space-y-1 text-sm mb-3">
-                          <p className="text-muted-foreground">
-                            Condition: {item.conditionRating}/10
+                        <div className="space-y-0 mb-1.5">
+                          <p className="text-xs text-slate-700">
+                            <span className="font-medium">Condition:</span> {item.conditionRating}/10
                           </p>
-                          {(item.isLendable || item.isRentable) && (
-                            <div className="flex items-center gap-2">
-                              <Coins className="h-4 w-4 text-teal-600" />
+                          {!item.isGift && (item.isLendable || item.isRentable) && (
+                            <div className="flex items-center gap-1 text-xs text-slate-700">
+                              <Coins className="h-3 w-3 text-teal-600" />
                               <span>
-                                {item.shareCoinPrice ||
-                                  item.shareCoinsReward ||
-                                  "5"}{" "}
-                                ShareCoins
+                                {item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins
                               </span>
                               {item.isRentable && (
                                 <>
                                   <span className="text-slate-400">|</span>
-                                  <DollarSign className="h-4 w-4 text-teal-600" />
-                                  <span>
-                                    $
-                                    {Number(item.dollarsPrice || 10).toFixed(2)}
-                                    /day
-                                  </span>
+                                  <DollarSign className="h-3 w-3 text-teal-600" />
+                                  <span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span>
                                 </>
                               )}
                             </div>
                           )}
                         </div>
                         <div className="flex gap-1">
-                          {item.isLendable && (
+                          {item.isGift ? (
                             <Button
                               size="sm"
-                              className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                              style={{ backgroundColor: "#0DCEA1" }}
+                              className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
                               onClick={() => navigate(`/items/${item.id}`)}
                             >
-                              <HandHeart className="h-3 w-3 mr-0.5" />
-                              Borrow It
+                              <Gift className="h-2.5 w-2.5 mr-0.5" />
+                              Claim Gift
                             </Button>
+                          ) : (
+                            <>
+                              {item.isLendable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <HandHeart className="h-2.5 w-2.5 mr-0.5" />
+                                  Borrow It
+                                </Button>
+                              )}
+                              {item.isRentable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <DollarSign className="h-2.5 w-2.5 mr-0.5" />
+                                  Rent It
+                                </Button>
+                              )}
+                              {item.isSwappable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
+                                  Swap It
+                                </Button>
+                              )}
+                              {!item.isLendable && !item.isRentable && !item.isSwappable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  View
+                                </Button>
+                              )}
+                            </>
                           )}
-                          {item.isRentable && (
-                            <Button
-                              size="sm"
-                              className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                              style={{ backgroundColor: "#0DCEA1" }}
-                              onClick={() => navigate(`/items/${item.id}`)}
-                            >
-                              <DollarSign className="h-3 w-3 mr-0.5" />
-                              Rent It
-                            </Button>
-                          )}
-                          {item.isSwappable && (
-                            <Button
-                              size="sm"
-                              className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                              style={{ backgroundColor: "#0DCEA1" }}
-                              onClick={() => navigate(`/items/${item.id}`)}
-                            >
-                              <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                              Swap It
-                            </Button>
-                          )}
-                          {!item.isLendable &&
-                            !item.isRentable &&
-                            !item.isSwappable && (
-                              <Button
-                                size="sm"
-                                className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                                style={{ backgroundColor: "#0DCEA1" }}
-                                onClick={() => navigate(`/items/${item.id}`)}
-                              >
-                                View
-                              </Button>
-                            )}
                         </div>
                       </CardContent>
                     </Card>

@@ -877,12 +877,17 @@ export default function BorrowPage() {
                         }
                       >
                         {currentItem && (
-                          <Card className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white">
+                          <Card className={`hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white ${currentItem.isGift ? "border-pink-100" : ""}`}>
                             <div className="p-2">
                               <div
-                                className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
+                                className={`rounded-lg flex items-center justify-center overflow-hidden relative ${currentItem.isGift ? "bg-pink-50" : "bg-gray-100"}`}
                                 style={{ aspectRatio: "1 / 0.9" }}
                               >
+                                {currentItem.isGift && (
+                                  <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">
+                                    FREE
+                                  </Badge>
+                                )}
                                 {currentItem.photos && currentItem.photos[0] ? (
                                   <img
                                     src={currentItem.photos[0]}
@@ -893,21 +898,25 @@ export default function BorrowPage() {
                                         e.target as HTMLImageElement;
                                       target.style.display = "none";
                                       target.parentElement?.classList.add(
-                                        "bg-gray-200",
+                                        currentItem.isGift ? "bg-pink-100" : "bg-gray-200",
                                         "flex",
                                         "items-center",
                                         "justify-center",
                                       );
                                       const icon =
                                         document.createElement("div");
-                                      icon.innerHTML =
-                                        '<svg class="h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                                      icon.innerHTML = currentItem.isGift
+                                        ? '<svg class="h-10 w-10 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>'
+                                        : '<svg class="h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
                                       target.parentElement?.appendChild(icon);
                                     }}
                                   />
                                 ) : (
-                                  <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                                    <Camera className="h-10 w-10 text-gray-400" />
+                                  <div className={`w-full h-full flex items-center justify-center rounded-lg ${currentItem.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
+                                    {currentItem.isGift
+                                      ? <Gift className="h-10 w-10 text-pink-400" />
+                                      : <Camera className="h-10 w-10 text-gray-400" />
+                                    }
                                   </div>
                                 )}
                               </div>
@@ -938,8 +947,7 @@ export default function BorrowPage() {
                                     </span>
                                   )}
                                 </div>
-                                {(currentItem.isLendable ||
-                                  currentItem.isRentable) && (
+                                {!currentItem.isGift && (currentItem.isLendable || currentItem.isRentable) && (
                                   <div className="flex items-center gap-1 text-xs text-slate-700">
                                     <div className="flex items-center gap-0.5">
                                       <Coins className="h-3 w-3 text-teal-600" />
@@ -952,17 +960,11 @@ export default function BorrowPage() {
                                     </div>
                                     {currentItem.isRentable && (
                                       <>
-                                        <span className="text-slate-400">
-                                          |
-                                        </span>
+                                        <span className="text-slate-400">|</span>
                                         <div className="flex items-center">
                                           <DollarSign className="h-3 w-3 text-teal-600" />
                                           <span>
-                                            $
-                                            {Number(
-                                              currentItem.dollarsPrice || 10,
-                                            ).toFixed(0)}
-                                            /wk
+                                            ${Number(currentItem.dollarsPrice || 10).toFixed(0)}/wk
                                           </span>
                                         </div>
                                       </>
@@ -971,59 +973,62 @@ export default function BorrowPage() {
                                 )}
                               </div>
                               <div className="flex gap-1">
-                                {currentItem.isLendable && (
+                                {currentItem.isGift ? (
                                   <Button
                                     size="sm"
-                                    className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                    style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() =>
-                                      navigate(`/items/${currentItem.id}`)
-                                    }
+                                    className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
+                                    onClick={() => navigate(`/items/${currentItem.id}`)}
                                   >
-                                    <HandHeart className="h-2.5 w-2.5 mr-0.5" />
-                                    Borrow It
+                                    <Gift className="h-2.5 w-2.5 mr-0.5" />
+                                    Claim Gift
                                   </Button>
+                                ) : (
+                                  <>
+                                    {currentItem.isLendable && (
+                                      <Button
+                                        size="sm"
+                                        className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                        style={{ backgroundColor: "#0DCEA1" }}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
+                                      >
+                                        <HandHeart className="h-2.5 w-2.5 mr-0.5" />
+                                        Borrow It
+                                      </Button>
+                                    )}
+                                    {currentItem.isRentable && (
+                                      <Button
+                                        size="sm"
+                                        className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                        style={{ backgroundColor: "#0DCEA1" }}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
+                                      >
+                                        <DollarSign className="h-2.5 w-2.5 mr-0.5" />
+                                        Rent It
+                                      </Button>
+                                    )}
+                                    {currentItem.isSwappable && (
+                                      <Button
+                                        size="sm"
+                                        className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                        style={{ backgroundColor: "#0DCEA1" }}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
+                                      >
+                                        <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
+                                        Swap It
+                                      </Button>
+                                    )}
+                                    {!currentItem.isLendable && !currentItem.isRentable && !currentItem.isSwappable && (
+                                      <Button
+                                        size="sm"
+                                        className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                        style={{ backgroundColor: "#0DCEA1" }}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
+                                      >
+                                        View Item
+                                      </Button>
+                                    )}
+                                  </>
                                 )}
-                                {currentItem.isRentable && (
-                                  <Button
-                                    size="sm"
-                                    className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                    style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() =>
-                                      navigate(`/items/${currentItem.id}`)
-                                    }
-                                  >
-                                    <DollarSign className="h-2.5 w-2.5 mr-0.5" />
-                                    Rent It
-                                  </Button>
-                                )}
-                                {currentItem.isSwappable && (
-                                  <Button
-                                    size="sm"
-                                    className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                    style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() =>
-                                      navigate(`/items/${currentItem.id}`)
-                                    }
-                                  >
-                                    <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
-                                    Swap It
-                                  </Button>
-                                )}
-                                {!currentItem.isLendable &&
-                                  !currentItem.isRentable &&
-                                  !currentItem.isSwappable && (
-                                    <Button
-                                      size="sm"
-                                      className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                      style={{ backgroundColor: "#0DCEA1" }}
-                                      onClick={() =>
-                                        navigate(`/items/${currentItem.id}`)
-                                      }
-                                    >
-                                      View Item
-                                    </Button>
-                                  )}
                               </div>
                             </CardContent>
                           </Card>
@@ -1066,13 +1071,18 @@ export default function BorrowPage() {
                 {filteredItems.map((item) => (
                   <Card
                     key={item.id}
-                    className="hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white"
+                    className={`hover:shadow-lg transition-shadow rounded-xl overflow-hidden bg-white ${item.isGift ? "border-pink-100" : ""}`}
                   >
                     <div className="p-2 md:p-4">
                       <div
-                        className="bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden"
+                        className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
                         style={{ aspectRatio: "1 / 0.9" }}
                       >
+                        {item.isGift && (
+                          <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-xs">
+                            FREE
+                          </Badge>
+                        )}
                         {item.photos && item.photos[0] ? (
                           <img
                             src={item.photos[0]}
@@ -1082,20 +1092,24 @@ export default function BorrowPage() {
                               const target = e.target as HTMLImageElement;
                               target.style.display = "none";
                               target.parentElement?.classList.add(
-                                "bg-gray-200",
+                                item.isGift ? "bg-pink-100" : "bg-gray-200",
                                 "flex",
                                 "items-center",
                                 "justify-center",
                               );
                               const icon = document.createElement("div");
-                              icon.innerHTML =
-                                '<svg class="h-10 w-10 md:h-16 md:w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
+                              icon.innerHTML = item.isGift
+                                ? '<svg class="h-10 w-10 md:h-16 md:w-16 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>'
+                                : '<svg class="h-10 w-10 md:h-16 md:w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>';
                               target.parentElement?.appendChild(icon);
                             }}
                           />
                         ) : (
-                          <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg">
-                            <Camera className="h-10 w-10 md:h-16 md:w-16 text-gray-400" />
+                          <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
+                            {item.isGift
+                              ? <Gift className="h-10 w-10 md:h-16 md:w-16 text-pink-400" />
+                              : <Camera className="h-10 w-10 md:h-16 md:w-16 text-gray-400" />
+                            }
                           </div>
                         )}
                       </div>
@@ -1126,7 +1140,7 @@ export default function BorrowPage() {
                           )}
                         </div>
 
-                        {(item.isLendable || item.isRentable) && (
+                        {!item.isGift && (item.isLendable || item.isRentable) && (
                           <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-slate-700">
                             <div className="flex items-center gap-0.5 md:gap-1">
                               <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
@@ -1155,51 +1169,62 @@ export default function BorrowPage() {
                       </div>
 
                       <div className="flex gap-1">
-                        {item.isLendable && (
+                        {item.isGift ? (
                           <Button
                             size="sm"
-                            className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
-                            style={{ backgroundColor: "#0DCEA1" }}
+                            className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] md:text-xs h-6 md:h-8 whitespace-nowrap"
                             onClick={() => navigate(`/items/${item.id}`)}
                           >
-                            <HandHeart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
-                            Borrow It
+                            <Gift className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
+                            Claim Gift
                           </Button>
+                        ) : (
+                          <>
+                            {item.isLendable && (
+                              <Button
+                                size="sm"
+                                className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+                                style={{ backgroundColor: "#0DCEA1" }}
+                                onClick={() => navigate(`/items/${item.id}`)}
+                              >
+                                <HandHeart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
+                                Borrow It
+                              </Button>
+                            )}
+                            {item.isRentable && (
+                              <Button
+                                size="sm"
+                                className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+                                style={{ backgroundColor: "#0DCEA1" }}
+                                onClick={() => navigate(`/items/${item.id}`)}
+                              >
+                                <DollarSign className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
+                                Rent It
+                              </Button>
+                            )}
+                            {item.isSwappable && (
+                              <Button
+                                size="sm"
+                                className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+                                style={{ backgroundColor: "#0DCEA1" }}
+                                onClick={() => navigate(`/items/${item.id}`)}
+                              >
+                                <ArrowLeftRight className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
+                                Swap It
+                              </Button>
+                            )}
+                            {!item.isLendable && !item.isRentable && !item.isSwappable && (
+                              <Button
+                                size="sm"
+                                className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+                                style={{ backgroundColor: "#0DCEA1" }}
+                                onClick={() => navigate(`/items/${item.id}`)}
+                              >
+                                View
+                              </Button>
+                            )}
+                          </>
                         )}
-                        {item.isRentable && (
-                          <Button
-                            size="sm"
-                            className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
-                            style={{ backgroundColor: "#0DCEA1" }}
-                            onClick={() => navigate(`/items/${item.id}`)}
-                          >
-                            <DollarSign className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
-                            Rent It
-                          </Button>
-                        )}
-                        {item.isSwappable && (
-                          <Button
-                            size="sm"
-                            className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
-                            style={{ backgroundColor: "#0DCEA1" }}
-                            onClick={() => navigate(`/items/${item.id}`)}
-                          >
-                            <ArrowLeftRight className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
-                            Swap It
-                          </Button>
-                        )}
-                        {!item.isLendable &&
-                          !item.isRentable &&
-                          !item.isSwappable && (
-                            <Button
-                              size="sm"
-                              className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
-                              style={{ backgroundColor: "#0DCEA1" }}
-                              onClick={() => navigate(`/items/${item.id}`)}
-                            >
-                              View
-                            </Button>
-                          )}
                       </div>
                     </CardContent>
                   </Card>

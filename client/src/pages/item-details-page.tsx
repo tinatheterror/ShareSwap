@@ -26,6 +26,7 @@ import {
   formatReplacementValue,
   hasValidReplacementValue,
 } from "@/lib/replacement-value";
+import { DISCOUNT_TIERS } from "@/lib/rental-calculator";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { useAuth } from "@/hooks/use-auth";
 import { formatDisplayName } from "@/lib/utils";
@@ -232,6 +233,16 @@ export default function ItemDetailsPage() {
             <span className="text-lg font-bold text-teal-700">
               ${Number(item.dollarsPrice || 10).toFixed(0)}/week
             </span>
+          </div>
+          <div className="flex gap-3 text-xs text-muted-foreground mt-0.5 mb-1">
+            {DISCOUNT_TIERS.map((tier) => (
+              <span key={tier.label} className="flex items-center gap-0.5">
+                <span>{tier.label}:</span>
+                <span className={tier.discountPct > 0 ? "text-teal-600 font-medium" : ""}>
+                  {tier.discountPct > 0 ? `${tier.discountPct}% off` : "base rate"}
+                </span>
+              </span>
+            ))}
           </div>
           <p className="text-sm text-muted-foreground">
             Security Deposit: ${Number(item.securityDeposit || 0).toFixed(0)}

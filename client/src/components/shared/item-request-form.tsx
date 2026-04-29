@@ -33,6 +33,7 @@ import {
   Truck,
   MapPin,
   Gift,
+  Tag,
 } from "lucide-react";
 import {
   formatReplacementValue,
@@ -44,6 +45,7 @@ import { Link } from "wouter";
 import type { SelectItem } from "@db/schema";
 import { calculateSwap, getSwapTierLabel } from "@/lib/swap-calculator";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
+import { calculateRentalPrice, getDiscountLabel } from "@/lib/rental-calculator";
 import { useVerification } from "@/hooks/use-verification";
 
 const formSchema = z.object({
@@ -472,9 +474,8 @@ export function ItemRequestForm({
                   }
 
                   const weeklyRate = Number((item as any).dollarsPrice) || 10;
-                  const dailyRate = Math.max(1, Math.round(weeklyRate / 7));
-                  const rentalCost =
-                    rentalDays > 0 ? dailyRate * rentalDays : 0;
+                  const pricing = rentalDays > 0 ? calculateRentalPrice(weeklyRate, rentalDays) : null;
+                  const discountLabel = pricing ? getDiscountLabel(pricing.weeks) : "";
 
                   // Delivery cost
                   const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
@@ -488,18 +489,27 @@ export function ItemRequestForm({
                         Cost Breakdown
                       </div>
 
-                      {rentalDays > 0 ? (
+                      {pricing ? (
                         <div className="space-y-1.5 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">
-                              Rental ({rentalDays}{" "}
-                              {rentalDays === 1 ? "day" : "days"} × $
-                              {dailyRate.toFixed(2)}/day)
+                              Rental ({pricing.weeks} {pricing.weeks === 1 ? "week" : "weeks"} × ${weeklyRate}/wk)
                             </span>
                             <span className="font-medium">
-                              ${rentalCost.toFixed(2)}
+                              ${pricing.subtotal.toFixed(2)}
                             </span>
                           </div>
+                          {pricing.discountPct > 0 && (
+                            <div className="flex justify-between text-teal-700">
+                              <span className="flex items-center gap-1">
+                                <Tag className="h-3 w-3" />
+                                {discountLabel}
+                              </span>
+                              <span className="font-medium">
+                                −${pricing.discountAmount.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
                           {deliveryCost > 0 && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">
@@ -510,8 +520,12 @@ export function ItemRequestForm({
                               </span>
                             </div>
                           )}
+                          <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5 mt-0.5">
+                            <span>Rental total</span>
+                            <span className="text-teal-700">${(pricing.total + deliveryCost).toFixed(2)}</span>
+                          </div>
 
-                          <div className="border-t border-gray-200 pt-1.5 mt-1.5">
+                          <div className="border-t border-gray-200 pt-1.5 mt-0.5">
                             <div className="flex justify-between">
                               <span className="text-gray-600 flex items-center gap-1">
                                 <Shield className="h-3 w-3" />
@@ -527,9 +541,14 @@ export function ItemRequestForm({
                           </div>
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-500">
-                          Select dates to see cost breakdown
-                        </p>
+                        <div className="space-y-1 text-xs text-gray-500">
+                          <p>Select dates to see cost breakdown</p>
+                          <div className="flex gap-3 pt-1">
+                            <span>1 wk: base rate</span>
+                            <span className="text-teal-600 font-medium">2–3 wks: 10% off</span>
+                            <span className="text-teal-600 font-medium">4+ wks: 20% off</span>
+                          </div>
+                        </div>
                       )}
                     </div>
                   );

@@ -1761,7 +1761,7 @@ export function ChatWidget() {
                     );
                   }
 
-                  if (pr.status === "ACCEPTED" && pr.requestType !== "GIFT") {
+                  if (pr.status === "ACCEPTED" && pr.requestType !== "GIFT" && pr.requestType !== "SWAP") {
                     const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
                     return (
                       <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
@@ -1777,7 +1777,8 @@ export function ChatWidget() {
                   if (
                     pr.requestType !== "RENT" &&
                     ((pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
-                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff))
+                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff) ||
+                    (pr.status === "ACCEPTED" && pr.requestType === "SWAP"))
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const pinUsed = (pr as any).pinUsed;
@@ -1876,7 +1877,8 @@ export function ChatWidget() {
                     pr.requestType !== "RENT" &&
                     (pr.status === "DEPOSIT_CONFIRMED" ||
                     pr.status === "COURIER_PENDING" ||
-                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff))
+                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff) ||
+                    (pr.status === "ACCEPTED" && pr.requestType === "SWAP"))
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const isPinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;

@@ -523,6 +523,8 @@ export function ChatWidget() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      // Refresh user so coin balance updates and coin animation fires
+      qc.invalidateQueries({ queryKey: ["/api/user"] });
       toast({ title: data.completed ? "Gift completed! 🎁" : "Confirmed!", description: data.message || "Waiting for the other party to confirm." });
     },
     onError: (err: any) => {

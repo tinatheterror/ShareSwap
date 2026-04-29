@@ -1422,6 +1422,7 @@ export default function RequestsPage() {
             setShowTrustDepositModal(false);
             setSelectedRequest(null);
           }}
+          requestType={selectedRequest.requestType}
           request={{
             id: selectedRequest.id,
             itemId: selectedRequest.itemId,

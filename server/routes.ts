@@ -3722,11 +3722,20 @@ Respond with ONLY the category name, nothing else.`
         preview = `${reqData!.requestType} · ${reqData!.status}`;
       }
 
-      // Prefer the requestId from the most recent message (so inbox click opens the right context),
+      // Active statuses — an active request always wins over the message-based requestId.
+      // This prevents a new pending request from being overshadowed by messages belonging
+      // to a previously completed transaction with the same partner.
+      const ACTIVE_STATUSES = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS"];
+      const mostRecentReqIsActive = reqData && ACTIVE_STATUSES.includes(reqData.status);
+
+      // If the most recent request is active, always anchor to it.
+      // Otherwise prefer the requestId from the most recent message (opens the right message thread),
       // falling back to the most recently created request for this partner.
-      const anchorRequestId = (previewType === "message" && msgData?.lastMsgRequestId)
-        ? msgData.lastMsgRequestId
-        : (reqData?.id || null);
+      const anchorRequestId = mostRecentReqIsActive
+        ? reqData!.id
+        : ((previewType === "message" && msgData?.lastMsgRequestId)
+            ? msgData.lastMsgRequestId
+            : (reqData?.id || null));
 
       // Look up the anchored request details (may differ from reqData when message requestId wins)
       const anchorReq = anchorRequestId && anchorRequestId !== reqData?.id

@@ -18,6 +18,7 @@ function parseLocalDate(dateStr: string): Date {
 interface TrustDepositModalProps {
   isOpen: boolean;
   onClose: () => void;
+  requestType?: string;
   request: {
     id: number;
     itemId: number;
@@ -42,6 +43,7 @@ interface TrustDepositModalProps {
 export function TrustDepositModal({
   isOpen,
   onClose,
+  requestType,
   request,
   item,
   ownerId,
@@ -49,6 +51,7 @@ export function TrustDepositModal({
   courierFee = 0,
   onSuccess,
 }: TrustDepositModalProps) {
+  const isRental = requestType === "RENT";
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
@@ -113,7 +116,7 @@ export function TrustDepositModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && !succeeded && onClose()}>
       <DialogContent className="sm:max-w-xs p-0 rounded-2xl overflow-hidden">
         <VisuallyHidden>
-          <DialogTitle>{succeeded ? "Deposit secured" : "Confirm your borrow"}</DialogTitle>
+          <DialogTitle>{succeeded ? "Deposit secured" : isRental ? "Confirm your rental" : "Confirm your borrow"}</DialogTitle>
         </VisuallyHidden>
 
         {succeeded ? (
@@ -121,7 +124,7 @@ export function TrustDepositModal({
           <div className="flex flex-col px-7 pt-8 pb-7 text-center">
             <p className="text-3xl mb-2">✅</p>
             <p className="text-lg font-bold text-gray-900 mb-1">Deposit secured</p>
-            <p className="text-sm text-gray-400 mb-6">Your borrow is confirmed for</p>
+            <p className="text-sm text-gray-400 mb-6">{isRental ? "Your rental is confirmed for" : "Your borrow is confirmed for"}</p>
 
             <p className={`text-base font-semibold text-gray-900 ${request.startDate && request.endDate ? "mb-1" : "mb-6"}`}>{item.name}</p>
             {request.startDate && request.endDate && (
@@ -142,10 +145,12 @@ export function TrustDepositModal({
               <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-2">
                 Next step
               </p>
-              <p className="text-sm text-gray-700 mb-1">Coordinate pickup with the lender</p>
-              <p className="text-xs text-gray-400">
-                {shareCoinAmount} ShareCoins will be charged at handoff
-              </p>
+              <p className="text-sm text-gray-700 mb-1">Coordinate pickup with the {isRental ? "owner" : "lender"}</p>
+              {!isRental && (
+                <p className="text-xs text-gray-400">
+                  {shareCoinAmount} ShareCoins will be charged at handoff
+                </p>
+              )}
             </div>
 
             <Button
@@ -167,7 +172,7 @@ export function TrustDepositModal({
           <div className="flex flex-col px-7 pt-8 pb-7">
             <div className="text-center mb-8">
               <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">
-                Confirm your borrow
+                {isRental ? "Confirm your rental" : "Confirm your borrow"}
               </p>
               <p className="text-lg font-bold text-gray-900">{item.name}</p>
             </div>
@@ -179,10 +184,12 @@ export function TrustDepositModal({
               <p className="text-sm text-gray-500">Fully refundable deposit</p>
             </div>
 
-            <p className="text-center text-xs text-gray-400 mb-6 flex items-center justify-center gap-1">
-              <Coins className="h-3 w-3 flex-shrink-0 text-yellow-500" />
-              {shareCoinAmount} ShareCoins charged at pickup
-            </p>
+            {!isRental && (
+              <p className="text-center text-xs text-gray-400 mb-6 flex items-center justify-center gap-1">
+                <Coins className="h-3 w-3 flex-shrink-0 text-yellow-500" />
+                {shareCoinAmount} ShareCoins charged at pickup
+              </p>
+            )}
 
             <Button
               onClick={() => payDepositMutation.mutate()}

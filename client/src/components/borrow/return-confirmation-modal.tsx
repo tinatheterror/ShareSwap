@@ -25,6 +25,7 @@ import {
   Camera,
   X,
   ImagePlus,
+  MessageSquare,
 } from "lucide-react";
 
 interface ReturnConfirmationModalProps {
@@ -253,11 +254,25 @@ export function ReturnConfirmationModal({
           <div className="flex gap-3 pt-2">
             <Button
               variant="outline"
-              onClick={onClose}
               disabled={isProcessing}
               className="flex-1"
+              onClick={() => {
+                onClose();
+                if (isEarlyReturn) {
+                  window.dispatchEvent(
+                    new CustomEvent("open-chat-request", { detail: { requestId } })
+                  );
+                }
+              }}
             >
-              Cancel
+              {isEarlyReturn ? (
+                <>
+                  <MessageSquare className="h-4 w-4 mr-1.5" />
+                  Message Lender
+                </>
+              ) : (
+                "Cancel"
+              )}
             </Button>
             <Button
               onClick={() => initiateReturnMutation.mutate()}

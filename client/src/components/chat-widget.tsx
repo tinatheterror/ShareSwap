@@ -794,11 +794,12 @@ export function ChatWidget() {
     if (!selectedConversation) return;
     const acceptedRequest = requests.find((r) => r.id === selectedRequestId);
     const isGiftRequest = acceptedRequest?.requestType === "GIFT";
+    const isSwapRequest = acceptedRequest?.requestType === "SWAP";
     const startDateRaw = acceptedRequest?.startDate;
     const dateText = startDateRaw
       ? format(parseLocalDate(startDateRaw), "MMMM do")
       : format(new Date(), "MMMM do");
-    const scheduleMsg = isGiftRequest
+    const scheduleMsg = (isGiftRequest || isSwapRequest)
       ? "When and where can you meet?"
       : `When and where can you meet on ${dateText}?`;
     try {

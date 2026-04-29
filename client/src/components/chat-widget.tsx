@@ -156,6 +156,7 @@ interface ItemRequest {
   courierPickupWindow: string | null;
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
+  returnDisputeTriggered: boolean | null;
   negotiationStatus: string | null;
   counterDeliveryMethod: string | null;
   counterDepositMethod: string | null;
@@ -412,6 +413,26 @@ export function ChatWidget() {
     queryKey: ["/api/requests"],
     enabled: !!user,
   });
+
+  // Detect when a lender's request transitions to COMPLETED → prompt review
+  const prevReqStatusesRef = useRef<Record<number, string>>({});
+  useEffect(() => {
+    if (!user || !requests.length) return;
+    const prev = prevReqStatusesRef.current;
+    for (const req of requests) {
+      const was = prev[req.id];
+      if (was && was !== "COMPLETED" && req.status === "COMPLETED" && req.item.ownerId === user.id) {
+        if (!showReviewPrompt) {
+          setReviewForRequest(req);
+          setShowReviewPrompt(true);
+        }
+        break;
+      }
+    }
+    const next: Record<number, string> = {};
+    for (const req of requests) next[req.id] = req.status;
+    prevReqStatusesRef.current = next;
+  }, [requests]);
 
   // Fetch messages for selected conversation, scoped to the active request
   const { data: messages = [], isLoading: isLoadingMessages } = useQuery<
@@ -2271,7 +2292,7 @@ export function ChatWidget() {
             reviewForRequest.requester.username
           }
           requestId={reviewForRequest.id}
-          wasDisputed={false}
+          wasDisputed={!!reviewForRequest.returnDisputeTriggered}
           wasLate={
             !!reviewForRequest.endDate &&
             new Date() > new Date(reviewForRequest.endDate)

@@ -559,7 +559,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Shield className="h-3 w-3 text-teal-400 flex-shrink-0" />
-                    <span>Trust Score: {(publicProfile as any).trustScore ?? 0}/100</span>
+                    <span>Trust Score: {(publicProfile as any).trustScore ?? 0}</span>
                   </div>
                   {(publicProfile as any).createdAt && (
                     <div className="flex items-center gap-1">

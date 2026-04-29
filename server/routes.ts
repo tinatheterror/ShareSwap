@@ -10531,6 +10531,7 @@ Respond with ONLY the category name, nothing else.`
       reviewCount,
       activeStatus,
       responseTime,
+      trustScore: userWithActive.reputationScore ?? 0,
     });
   });
 

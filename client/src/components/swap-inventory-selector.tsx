@@ -169,7 +169,7 @@ export function SwapInventorySelector({
                 Add items in Tier {Math.max(1, targetTier - 1)}-{targetTier + 1}{" "}
                 to swap
               </p>
-              <Button onClick={() => (window.location.href = "/lend")}>
+              <Button onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}>
                 Add an item
               </Button>
             </div>
@@ -285,7 +285,7 @@ export function SwapInventorySelector({
               <Button
                 variant="outline"
                 className="w-full mt-2"
-                onClick={() => (window.location.href = "/lend")}
+                onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Add an item

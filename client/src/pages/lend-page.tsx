@@ -206,6 +206,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const searchParams = new URLSearchParams(searchString);
   const editItemId = searchParams.get("edit");
   const prefillItemName = searchParams.get("prefill");
+  const swapReturnTo = searchParams.get("swapReturnTo");
   const isEditMode = !!editItemId;
 
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
@@ -2757,7 +2758,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         isOpen={showWishlistFulfillmentPopup}
         onClose={() => {
           setShowWishlistFulfillmentPopup(false);
-          if (listedItemData?.id) {
+          if (swapReturnTo) {
+            navigate(swapReturnTo);
+          } else if (listedItemData?.id) {
             navigate(`/items/${listedItemData.id}`);
           } else {
             navigate("/borrow");

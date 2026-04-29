@@ -1231,22 +1231,6 @@ export function ChatWidget() {
                       </Button>
                     )}
 
-                  {(request.status === "DEPOSIT_CONFIRMED" ||
-                    request.status === "COURIER_PENDING") && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowHandoffModal(true);
-                      }}
-                    >
-                      <HandMetal className="h-3 w-3 mr-1" />
-                      Confirm Received
-                    </Button>
-                  )}
-
                   {request.status === "IN_PROGRESS" && (
                     <Button
                       size="sm"
@@ -1818,8 +1802,9 @@ export function ChatWidget() {
                   }
 
                   if (
-                    (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
-                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff)
+                    pr.requestType !== "RENT" &&
+                    ((pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
+                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff))
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const pinUsed = (pr as any).pinUsed;
@@ -1915,9 +1900,10 @@ export function ChatWidget() {
                   }
 
                   if (
-                    pr.status === "DEPOSIT_CONFIRMED" ||
+                    pr.requestType !== "RENT" &&
+                    (pr.status === "DEPOSIT_CONFIRMED" ||
                     pr.status === "COURIER_PENDING" ||
-                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff)
+                    (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff))
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const isPinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;

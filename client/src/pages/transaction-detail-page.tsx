@@ -482,11 +482,7 @@ export default function TransactionDetailPage() {
                   trustScore: tx.ownerTrustScore,
                   avatar: tx.ownerAvatar,
                 }}
-                role={
-                  tx.requestType === "borrow" || tx.requestType === "rent"
-                    ? "Owner / Lender"
-                    : "Owner"
-                }
+                role="Owner"
               />
               <PartyCard
                 user={{
@@ -499,9 +495,10 @@ export default function TransactionDetailPage() {
                   avatar: tx.requesterAvatar,
                 }}
                 role={
-                  tx.requestType === "borrow" || tx.requestType === "rent"
-                    ? "Borrower / Renter"
-                    : "Requester"
+                  tx.requestType === "rent" ? "Renter"
+                  : tx.requestType === "swap" ? "Swapper"
+                  : tx.requestType === "gift" ? "Recipient"
+                  : "Borrower"
                 }
               />
             </div>
@@ -615,7 +612,7 @@ export default function TransactionDetailPage() {
                   {tx.handoffProofBorrower && (
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">
-                        Borrower's statement
+                        {tx.requestType === "rent" ? "Renter's" : tx.requestType === "swap" ? "Swapper's" : tx.requestType === "gift" ? "Recipient's" : "Borrower's"} statement
                       </p>
                       <p className="text-sm bg-white rounded-md p-2.5 border text-gray-800">
                         {tx.handoffProofBorrower}

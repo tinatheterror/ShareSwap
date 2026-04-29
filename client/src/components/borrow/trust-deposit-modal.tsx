@@ -145,7 +145,7 @@ export function TrustDepositModal({
               <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-2">
                 Next step
               </p>
-              <p className="text-sm text-gray-700 mb-1">Coordinate pickup with the {isRental ? "owner" : "lender"}</p>
+              <p className="text-sm text-gray-700 mb-1">Coordinate pickup with the owner</p>
               {!isRental && (
                 <p className="text-xs text-gray-400">
                   {shareCoinAmount} ShareCoins will be charged at handoff
@@ -158,7 +158,7 @@ export function TrustDepositModal({
               className="w-full h-12 bg-teal-600 hover:bg-teal-700 text-white text-base font-medium rounded-xl mb-3"
             >
               <MessageCircle className="h-4 w-4 mr-2" />
-              Message lender
+              Message owner
             </Button>
             <button
               onClick={handleViewRequest}

@@ -1064,7 +1064,7 @@ export default function RequestsPage() {
 
                             {request.status === "RETURN_REQUESTED" && (
                               <Badge variant="secondary" className="bg-amber-100 text-amber-800">
-                                Awaiting lender confirmation
+                                Awaiting owner confirmation
                               </Badge>
                             )}
 
@@ -1165,7 +1165,7 @@ export default function RequestsPage() {
                                 {request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff && (
                                   <Badge variant="secondary" className="bg-amber-100 text-amber-800">
                                     <Clock className="h-3 w-3 mr-1" />
-                                    Waiting for borrower
+                                    Waiting for {request.requestType === "RENT" ? "renter" : request.requestType === "SWAP" ? "swapper" : request.requestType === "GIFT" ? "recipient" : "borrower"}
                                   </Badge>
                                 )}
                                 {/* Show confirm button if owner hasn't confirmed yet */}
@@ -1200,8 +1200,8 @@ export default function RequestsPage() {
                                       </p>
                                       {request.proposedAdjustedEndDate && (
                                         <p className="text-xs text-amber-700 mb-2">
-                                          Borrower proposes new return date: <strong>{format(new Date(request.proposedAdjustedEndDate), "MMM d, yyyy")}</strong>
-                                          <br />Handoff was late — borrower is requesting the missed days back.
+                                          {request.requestType === "RENT" ? "Renter" : "Borrower"} proposes new return date: <strong>{format(new Date(request.proposedAdjustedEndDate), "MMM d, yyyy")}</strong>
+                                          <br />Handoff was late — {request.requestType === "RENT" ? "renter" : "borrower"} is requesting the missed days back.
                                         </p>
                                       )}
                                       <div className="flex gap-2">
@@ -1226,7 +1226,7 @@ export default function RequestsPage() {
                                       <div className="flex gap-2">
                                         <Button size="sm" variant="outline" className="text-xs"
                                           onClick={() => navigate(`/messages/${request.requesterId}`)}>
-                                          Message borrower
+                                          Message {request.requestType === "RENT" ? "renter" : "borrower"}
                                         </Button>
                                         <Button size="sm" variant="outline" className="text-xs border-red-300 text-red-600 hover:bg-red-50"
                                           onClick={() => navigate(`/disputes/new?requestId=${request.id}`)}>
@@ -1308,7 +1308,7 @@ export default function RequestsPage() {
                                 </div>
                                 <Button size="sm" variant="outline" className="text-xs"
                                   onClick={() => navigate(`/messages/${request.requesterId}`)}>
-                                  Message borrower
+                                  Message {request.requestType === "RENT" ? "renter" : "borrower"}
                                 </Button>
                               </div>
                             )}
@@ -1447,7 +1447,7 @@ export default function RequestsPage() {
               setSelectedRequest(null);
               toast({
                 title: "Ready for handoff!",
-                description: "Coordinate with the lender to pick up your item.",
+                description: "Coordinate with the owner to pick up your item.",
               });
             }
           }}

@@ -43,6 +43,9 @@ export function HandoffConfirmationModal({
   pinUsed,
   onSuccess,
 }: HandoffConfirmationModalProps) {
+  const isRental = requestType === "RENT";
+  const otherParty = isRental ? "renter" : "borrower";
+  const OtherParty = otherParty.charAt(0).toUpperCase() + otherParty.slice(1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -183,14 +186,14 @@ export function HandoffConfirmationModal({
               </DialogTitle>
               <DialogDescription>
                 {otherPartyConfirmed
-                  ? "The borrower already confirmed. Reporting this will open a dispute."
-                  : "The borrower will have 24 hours to respond."}
+                  ? `The ${otherParty} already confirmed. Reporting this will open a dispute.`
+                  : `The ${otherParty} will have 24 hours to respond.`}
               </DialogDescription>
             </DialogHeader>
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-800">
               {otherPartyConfirmed
                 ? "⚠️ This will open a dispute. Both parties must submit proof within 24 hours."
-                : "We'll notify the borrower and wait for their response."}
+                : `We'll notify the ${otherParty} and wait for their response.`}
             </div>
             <div className="flex gap-3 pt-1">
               <Button variant="outline" onClick={() => setShowDenyView(false)} disabled={isProcessing} className="flex-1">Go back</Button>
@@ -214,7 +217,7 @@ export function HandoffConfirmationModal({
             {otherPartyConfirmed && (
               <div className="flex items-start gap-2 text-sm text-green-700">
                 <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>Borrower has already confirmed. Your confirmation will complete the handoff.</span>
+                <span>{OtherParty} has already confirmed. Your confirmation will complete the handoff.</span>
               </div>
             )}
             <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">

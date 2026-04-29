@@ -2019,7 +2019,7 @@ export function ChatWidget() {
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Confirm return
                         </Button>
-                        <p className="text-xs text-center text-muted-foreground">Borrower says they've returned the item</p>
+                        <p className="text-xs text-center text-muted-foreground">{pr.requestType === "RENT" ? "Renter" : pr.requestType === "SWAP" ? "Swapper" : pr.requestType === "GIFT" ? "Recipient" : "Borrower"} says they've returned the item</p>
                       </div>
                     );
                   }
@@ -2201,7 +2201,7 @@ export function ChatWidget() {
               setSelectedRequest(null);
               toast({
                 title: "Ready for handoff!",
-                description: "Coordinate with the lender to pick up your item.",
+                description: "Coordinate with the owner to pick up your item.",
               });
             }
           }}

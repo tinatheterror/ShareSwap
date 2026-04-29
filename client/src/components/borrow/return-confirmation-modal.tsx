@@ -94,14 +94,12 @@ export function ReturnConfirmationModal({
       if (isEarlyReturn) {
         toast({
           title: "Early return initiated!",
-          description: isRental
-            ? "Waiting for owner to confirm. No refund for unused days."
-            : "Waiting for lender to confirm the return.",
+          description: "Waiting for owner to confirm. No refund for unused days.",
         });
       } else {
         toast({
           title: "Return initiated!",
-          description: "Waiting for lender to confirm the return.",
+          description: "Waiting for owner to confirm the return.",
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -227,14 +225,10 @@ export function ReturnConfirmationModal({
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center gap-2 text-blue-700 font-medium">
                 <Shield className="h-4 w-4" />
-                {isRental
-                  ? "Your deposit will be released after owner confirms"
-                  : "Your deposit will be released after lender confirms"}
+                Your deposit will be released after owner confirms
               </div>
               <p className="text-sm text-blue-600 mt-1">
-                {isRental
-                  ? `Once the owner confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`
-                  : `Once the lender confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`}
+                {`Once the owner confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`}
               </p>
             </div>
 
@@ -242,9 +236,7 @@ export function ReturnConfirmationModal({
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  Make sure you've returned the item to the{" "}
-                  {isRental ? "owner" : "lender"} before initiating the return
-                  process.
+                  Make sure you've returned the item to the owner before initiating the return process.
                 </p>
               </div>
             </div>
@@ -268,7 +260,7 @@ export function ReturnConfirmationModal({
               {isEarlyReturn ? (
                 <>
                   <MessageSquare className="h-4 w-4 mr-1.5" />
-                  Message Lender
+                  Message Owner
                 </>
               ) : (
                 "Cancel"

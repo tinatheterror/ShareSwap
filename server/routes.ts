@@ -4200,7 +4200,7 @@ Respond with ONLY the category name, nothing else.`
         userId: item.ownerId,
         type: "item_request",
         title: `New ${requestTypeLabel} request`,
-        message: `${requesterName} wants to ${requestType.toLowerCase()} "${item.name}"`,
+        message: `${requesterName} wants to ${requestType === "GIFT" ? "claim gift" : requestType.toLowerCase()} "${item.name}"`,
         itemId: item.id,
         requestId: request.id,
         isRead: false,

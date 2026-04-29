@@ -617,7 +617,7 @@ export default function RequestsPage() {
                                   {(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} would love your {request.item.name}
                                 </span>
                               ) : (
-                                <span>{(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} wants to {request.requestType.toLowerCase()}</span>
+                                <span>{(request.requester as any).displayName || (request.requester as any).handle || formatDisplayName(request.requester.username)} wants to {request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}</span>
                               )}
                             </div>
                           </div>

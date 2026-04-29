@@ -1007,7 +1007,7 @@ export function ChatWidget() {
               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-0.5">
                 <User className="h-3 w-3 shrink-0" />
                 {isOwner ? (
-                  <span className="truncate">{requesterName} wants to {request.requestType.toLowerCase()}</span>
+                  <span className="truncate">{requesterName} wants to {request.requestType === "GIFT" ? "claim gift" : request.requestType.toLowerCase()}</span>
                 ) : (
                   <span>You requested to {request.requestType.toLowerCase()}</span>
                 )}

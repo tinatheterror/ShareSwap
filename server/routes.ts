@@ -6566,7 +6566,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Shared system messages visible to both parties
       const sharedSystemMsgs = [
-        "🤝 Handoff confirmed via PIN — borrow period has started",
+        `🤝 Handoff confirmed via PIN — ${request.item_requests.requestType === "RENT" ? "rental" : "borrow"} period has started`,
         "🔒 Security deposit is now held until the item is returned",
       ];
       for (const content of sharedSystemMsgs) {

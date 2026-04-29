@@ -765,11 +765,14 @@ export function ChatWidget() {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
     } catch (error) {
       console.error("Failed to send message:", error);
+      toast({ title: "Couldn't send message", description: "Please try again.", variant: "destructive" });
     }
   };
 
   const handleScheduleClick = async () => {
     setShowCelebration(false);
+    // Restore focus to the message input after the overlay dismisses
+    setTimeout(() => messageInputRef.current?.focus(), 350);
     if (!selectedConversation) return;
     const acceptedRequest = requests.find((r) => r.id === selectedRequestId);
     const isGiftRequest = acceptedRequest?.requestType === "GIFT";
@@ -1775,7 +1778,7 @@ export function ChatWidget() {
                 if (isBorrower) {
                   const bt = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
 
-                  if (pr.status === "ACCEPTED") {
+                  if (pr.status === "ACCEPTED" && pr.requestType !== "GIFT") {
                     const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
                     return (
                       <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
@@ -2110,7 +2113,10 @@ export function ChatWidget() {
 
       <CelebrationAnimation
         isVisible={showCelebration}
-        onComplete={() => setShowCelebration(false)}
+        onComplete={() => {
+          setShowCelebration(false);
+          setTimeout(() => messageInputRef.current?.focus(), 350);
+        }}
         onSchedule={handleScheduleClick}
         message="Request accepted! Setting up exchange..."
       />

@@ -372,6 +372,9 @@ export function ChatWidget() {
         // Refresh inbox list
         queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
         queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+        // Refresh requests so status changes (e.g. PENDING → ACCEPTED) appear immediately
+        // without the user needing to manually refresh the page.
+        queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
         // Immediately refetch the currently-open thread so new message appears without refresh
         queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
         queryClient.refetchQueries({

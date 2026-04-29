@@ -7092,7 +7092,7 @@ Respond with ONLY the category name, nothing else.`
         isRead: false,
       });
 
-      // System message in main chat thread (no requestId so it shows in general conversation)
+      // System message scoped to the request so it appears in the request's chat thread
       const ownerId_ret = request.items.ownerId!;
       const borrowerId_ret = request.item_requests.requesterId;
       await db.insert(messages).values({
@@ -7102,6 +7102,7 @@ Respond with ONLY the category name, nothing else.`
         senderId: borrowerId_ret,
         receiverId: ownerId_ret,
         messageType: "system",
+        requestId: requestId,
       });
 
       res.json({
@@ -7195,7 +7196,7 @@ Respond with ONLY the category name, nothing else.`
           link: `/requests`,
         });
 
-        // System message in main chat thread (no requestId so it shows in general conversation)
+        // System message scoped to the request thread
         const ownerId_disp = request.items.ownerId!;
         const borrowerId_disp = request.item_requests.requesterId;
         await db.insert(messages).values({
@@ -7203,6 +7204,7 @@ Respond with ONLY the category name, nothing else.`
           senderId: ownerId_disp,
           receiverId: borrowerId_disp,
           messageType: "system",
+          requestId,
         });
 
         return res.json({
@@ -7269,7 +7271,7 @@ Respond with ONLY the category name, nothing else.`
         isRead: false,
       });
 
-      // System message in main chat thread (no requestId so it shows in general conversation)
+      // System message scoped to the request thread
       const ownerId_conf = request.items.ownerId!;
       const borrowerId_conf = request.item_requests.requesterId;
       await db.insert(messages).values({
@@ -7277,6 +7279,7 @@ Respond with ONLY the category name, nothing else.`
         senderId: ownerId_conf,
         receiverId: borrowerId_conf,
         messageType: "system",
+        requestId,
       });
 
       // Award trust points using the new tiered system

@@ -135,9 +135,9 @@ export function TrustDepositModal({
 
             <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1">
               <p className="text-sm text-gray-700">
-                <span className="font-medium">${totalDue.toFixed(2)}</span> deposit charged to your card{" "}
-                <span className="text-gray-400">•••• 4242</span>
+                <span className="font-medium">${totalDue.toFixed(2)}</span> deposit charged to your card
               </p>
+              <p className="text-sm text-gray-400">•••• 4242</p>
               <p className="text-xs text-gray-400 whitespace-nowrap italic">Held securely and refunded after safe return</p>
             </div>
 

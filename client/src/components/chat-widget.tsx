@@ -1188,20 +1188,6 @@ export function ChatWidget() {
                     </Button>
                   )}
 
-                  {request.status === "IN_PROGRESS" && (
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowReturnModal(true);
-                      }}
-                    >
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      Return Item
-                    </Button>
-                  )}
-
                   {request.status === "RETURN_REQUESTED" && (
                     <Badge
                       variant="secondary"
@@ -1230,20 +1216,6 @@ export function ChatWidget() {
                         Book Courier
                       </Button>
                     )}
-
-                  {request.status === "IN_PROGRESS" && (
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowReturnModal(true);
-                      }}
-                    >
-                      <RotateCcw className="h-3 w-3 mr-1" />
-                      Return Item
-                    </Button>
-                  )}
 
                   {request.status === "RETURN_REQUESTED" && (
                     <Badge

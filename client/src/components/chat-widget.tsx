@@ -1050,7 +1050,7 @@ export function ChatWidget() {
                     : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
                   {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                 </span>
-                {request.requestType !== "GIFT" && request.requestType !== "RENT" && (
+                {request.requestType !== "GIFT" && request.requestType !== "RENT" && request.requestType !== "SWAP" && (
                   <span className={`flex items-start gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
                     {displayDeposit === "in_app"
                       ? <Shield className="h-3 w-3 shrink-0 mt-px text-gray-500" />

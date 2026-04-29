@@ -1216,20 +1216,6 @@ export function ChatWidget() {
               {/* Renter actions (Cash payment) */}
               {isBorrower && request.requestType === "RENT" && (
                 <>
-                  {request.status === "ACCEPTED" && (
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs bg-green-600 hover:bg-green-700"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowRentalDepositModal(true);
-                      }}
-                    >
-                      <Shield className="h-3 w-3 mr-1" />
-                      Pay Rental Deposit
-                    </Button>
-                  )}
-
                   {request.status === "DEPOSIT_CONFIRMED" &&
                     request.deliveryMethod === "courier" && (
                       <Button

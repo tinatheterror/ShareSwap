@@ -4512,13 +4512,6 @@ Respond with ONLY the category name, nothing else.`
           status === "ACCEPTED" ? "request_accepted" : "request_declined",
           { requestType: request.item_requests.requestType, itemName: request.items.name }
         );
-        // If deposit is skipped, also log a note so the chat thread makes it clear
-        if (skipDeposit) {
-          await logRequestEvent(req.user.id, request.item_requests.requesterId, requestId,
-            "deposit_skipped",
-            { depositMethod: "in_person" }
-          );
-        }
       }
     } catch (_) {}
 
@@ -4846,15 +4839,6 @@ Respond with ONLY the category name, nothing else.`
         }
       );
 
-      // If deposit is skipped, note it in the chat thread
-      if (skipDeposit) {
-        try {
-          await logRequestEvent(req.user.id, otherUserId, requestId,
-            "deposit_skipped",
-            { depositMethod: "in_person" }
-          );
-        } catch (_) {}
-      }
 
       await db.insert(notifications).values({
         userId: otherUserId,

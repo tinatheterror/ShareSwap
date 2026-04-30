@@ -1609,7 +1609,6 @@ export function ChatWidget() {
                         et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                         et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                         et === "deposit_confirmed" ? "🔒 Deposit secured" :
-                        et === "deposit_skipped" ? "💵 Cash deposit to be exchanged at handoff" :
                         et === "counter_proposed" ? null :
                         msg.content;
 

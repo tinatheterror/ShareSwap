@@ -380,9 +380,10 @@ export function ItemRequestForm({
                       ) + 1,
                     );
                   }
-                  const dailyRate = Math.max(1, Math.floor(weeklyPrice / 7));
                   const proratedCost =
-                    borrowDays > 0 ? dailyRate * borrowDays : weeklyPrice;
+                    borrowDays > 0
+                      ? Math.max(1, Math.ceil((weeklyPrice / 7) * borrowDays))
+                      : weeklyPrice;
                   const balance = Number((user as any)?.shareCoins || 0);
                   if (balance < proratedCost) {
                     onClose();
@@ -555,7 +556,6 @@ export function ItemRequestForm({
                   const deliveryMethod = form.watch("deliveryMethod");
 
                   const weeklyPrice = parseFloat((item as any).shareCoinPrice || "0") || 5;
-                  const dailyRate = Math.max(1, Math.floor(weeklyPrice / 7));
 
                   let borrowDays = 0;
                   if (startDate && endDate) {
@@ -570,9 +570,11 @@ export function ItemRequestForm({
                     );
                   }
 
-                  // Duration-based cost: dailyRate × days
+                  // Duration-based cost: ceil( (weeklyPrice / 7) × days )
                   const proratedCost =
-                    borrowDays > 0 ? dailyRate * borrowDays : weeklyPrice;
+                    borrowDays > 0
+                      ? Math.max(1, Math.ceil((weeklyPrice / 7) * borrowDays))
+                      : weeklyPrice;
 
                   // Delivery cost for courier
                   const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
@@ -616,7 +618,7 @@ export function ItemRequestForm({
                             </span>
                           </div>
                           <p className="text-[10px] text-gray-400">
-                            {dailyRate} SC/day × {borrowDays} {borrowDays === 1 ? "day" : "days"}
+                            {weeklyPrice} SC/week × {borrowDays} {borrowDays === 1 ? "day" : "days"} ÷ 7
                           </p>
                           {deliveryCost > 0 && (
                             <div className="flex justify-between">

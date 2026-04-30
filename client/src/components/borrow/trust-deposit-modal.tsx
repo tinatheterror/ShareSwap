@@ -65,15 +65,15 @@ export function TrustDepositModal({
     trustScore,
   );
 
-  // Duration-based cost: dailyRate = floor(weeklyPrice / 7), cost = dailyRate × days
+  // Duration-based cost: ceil( (weeklyPrice / 7) × days )
+  // e.g. 10 SC/week × 4 days → ceil(10/7 × 4) = ceil(5.71) = 6 SC
   const _rawSCPrice = parseFloat(item.shareCoinPrice || "0") || 5;
   const shareCoinAmount = (() => {
     if (!request.startDate || !request.endDate) return _rawSCPrice;
     const start = parseLocalDate(request.startDate);
     const end = parseLocalDate(request.endDate);
     const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000) + 1);
-    const dailyRate = Math.max(1, Math.floor(_rawSCPrice / 7));
-    return dailyRate * borrowDays;
+    return Math.max(1, Math.ceil((_rawSCPrice / 7) * borrowDays));
   })();
   const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;
   const totalDue = depositCalc.finalDeposit + deliveryFee;

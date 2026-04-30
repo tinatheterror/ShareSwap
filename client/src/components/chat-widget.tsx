@@ -1163,19 +1163,6 @@ export function ChatWidget() {
               {/* Borrower actions (ShareCoins) */}
               {isBorrower && request.requestType === "BORROW" && (
                 <>
-                  {request.status === "ACCEPTED" && (
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs bg-teal-600 hover:bg-teal-700"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowTrustDepositModal(true);
-                      }}
-                    >
-                      <Shield className="h-3 w-3 mr-1" />
-                      Pay Deposit
-                    </Button>
-                  )}
 
                   {request.status === "DEPOSIT_CONFIRMED" &&
                     request.deliveryMethod === "courier" && (

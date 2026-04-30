@@ -4426,17 +4426,9 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    // When deposit method is "in_person" there is no online payment step — skip straight to DEPOSIT_CONFIRMED
-    const skipDeposit =
-      status === "ACCEPTED" &&
-      request.item_requests.depositMethod === "in_person" &&
-      request.item_requests.requestType !== "SWAP"; // SWAPs have no deposit
-
-    const effectiveStatus = skipDeposit ? "DEPOSIT_CONFIRMED" : status;
-
     const [updatedRequest] = await db
       .update(itemRequests)
-      .set({ status: effectiveStatus })
+      .set({ status })
       .where(eq(itemRequests.id, requestId))
       .returning();
 
@@ -4787,17 +4779,11 @@ Respond with ONLY the category name, nothing else.`
       // When the REQUESTER accepts, the owner still needs to formally approve.
       const ownerIsAccepting = isOwner;
 
-      // Skip online deposit payment when deposit method is in_person — go straight to DEPOSIT_CONFIRMED
-      const skipDeposit =
-        ownerIsAccepting &&
-        finalDepositMethod === "in_person" &&
-        request.item_requests.requestType !== "SWAP";
-
       const [updated] = await db
         .update(itemRequests)
         .set({
           negotiationStatus: "terms_accepted",
-          status: ownerIsAccepting ? (skipDeposit ? "DEPOSIT_CONFIRMED" : "ACCEPTED") : request.item_requests.status,
+          status: ownerIsAccepting ? "ACCEPTED" : request.item_requests.status,
           deliveryMethod: finalDeliveryMethod,
           depositMethod: finalDepositMethod,
           startDate: finalStartDate,
@@ -4839,15 +4825,12 @@ Respond with ONLY the category name, nothing else.`
         }
       );
 
-
       await db.insert(notifications).values({
         userId: otherUserId,
         type: ownerIsAccepting ? "request_accepted" : "terms_accepted",
         title: ownerIsAccepting ? "Request accepted" : "Terms accepted",
         message: ownerIsAccepting
-          ? skipDeposit
-            ? `"${request.items.name}" — ready for handoff. Exchange the deposit in person.`
-            : `"${request.items.name}" — pay your deposit to confirm.`
+          ? `"${request.items.name}" — pay your deposit to confirm.`
           : "Your terms were accepted. Accept or decline to proceed.",
         itemId: request.items.id,
         requestId,

@@ -590,8 +590,8 @@ export default function ProfilePage() {
             {userItems.length > 0 ? (
               <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
                 {userItems.map((item) => (
-                  <div key={item.id} className="w-64 flex-shrink-0 md:w-auto">
-                    <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden ${item.isGift ? "border-pink-100" : ""}`}>
+                  <div key={item.id} className="w-64 flex-shrink-0 md:w-auto h-full">
+                    <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
                       <div className="p-2">
                         <div
                           className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
@@ -618,11 +618,11 @@ export default function ProfilePage() {
                           )}
                         </div>
                       </div>
-                      <CardContent className="px-3 pt-0 pb-2">
+                      <CardContent className="px-3 pt-0 pb-2 flex flex-col flex-1">
                         <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">
                           {item.name}
                         </h3>
-                        <div className="space-y-0 mb-1.5">
+                        <div className="space-y-0 mb-1.5 flex-1">
                           <p className="text-xs text-slate-700">
                             <span className="font-medium">Condition:</span> {item.conditionRating}/10
                           </p>
@@ -642,7 +642,7 @@ export default function ProfilePage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 mt-auto">
                           {item.isGift ? (
                             <Button
                               size="sm"

@@ -1790,7 +1790,14 @@ export function ChatWidget() {
                     );
                   }
 
-                  if (pr.status === "ACCEPTED" && pr.requestType !== "GIFT" && pr.requestType !== "SWAP") {
+                  // BORROW + in_person deposit: skip the Pay Deposit step (backend auto-advances to DEPOSIT_CONFIRMED).
+                  // Guard here handles any edge-case legacy ACCEPTED rows — drop through to the handoff PIN block below.
+                  if (
+                    pr.status === "ACCEPTED" &&
+                    pr.requestType !== "GIFT" &&
+                    pr.requestType !== "SWAP" &&
+                    !(pr.requestType === "BORROW" && pr.depositMethod === "in_person")
+                  ) {
                     const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
                     return (
                       <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
@@ -1807,11 +1814,14 @@ export function ChatWidget() {
                     pr.requestType !== "RENT" &&
                     ((pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff) ||
-                    (pr.status === "ACCEPTED" && pr.requestType === "SWAP"))
+                    (pr.status === "ACCEPTED" && pr.requestType === "SWAP") ||
+                    // Legacy: BORROW + in_person deposit stuck at ACCEPTED before auto-advance existed
+                    (pr.status === "ACCEPTED" && pr.requestType === "BORROW" && pr.depositMethod === "in_person"))
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const pinUsed = (pr as any).pinUsed;
                     const pinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
+                    const isInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
                     return (
                       <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-1">
                         <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
@@ -1819,7 +1829,10 @@ export function ChatWidget() {
                           <KeyRound className="h-4 w-4 mr-2" />
                           {pinExpired || pinUsed ? "Confirm received" : "Enter handoff code"}
                         </Button>
-                        {!pinExpired && !pinUsed && (
+                        {isInPersonDeposit && !pinExpired && !pinUsed && (
+                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before confirming</p>
+                        )}
+                        {!isInPersonDeposit && !pinExpired && !pinUsed && (
                           <p className="text-xs text-center text-muted-foreground">Ask the owner for the 4-digit handoff code when you meet</p>
                         )}
                       </div>
@@ -1907,12 +1920,18 @@ export function ChatWidget() {
                     (pr.status === "DEPOSIT_CONFIRMED" ||
                     pr.status === "COURIER_PENDING" ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff) ||
-                    (pr.status === "ACCEPTED" && pr.requestType === "SWAP"))
+                    (pr.status === "ACCEPTED" && pr.requestType === "SWAP") ||
+                    // Legacy: BORROW + in_person deposit stuck at ACCEPTED before auto-advance existed
+                    (pr.status === "ACCEPTED" && pr.requestType === "BORROW" && pr.depositMethod === "in_person"))
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const isPinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
+                    const isOwnerInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
                     return (
                       <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-2">
+                        {isOwnerInPersonDeposit && (
+                          <p className="text-xs text-center text-amber-700 font-medium bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">💵 Collect the security deposit in person before sharing your code</p>
+                        )}
                         {/* PIN display card */}
                         <div className="rounded-xl border border-indigo-200 bg-white px-4 py-3 space-y-2">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 uppercase tracking-wide">

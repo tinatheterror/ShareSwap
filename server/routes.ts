@@ -4435,6 +4435,20 @@ Respond with ONLY the category name, nothing else.`
     // Generate handoff PIN on acceptance (owner gets a unique 4-digit code to verify the exchange)
     if (status === "ACCEPTED") {
       try { await issueHandoffPin(requestId); } catch (_) {}
+
+      // For BORROW requests where the deposit is exchanged in person, no in-app payment is
+      // needed — skip straight to DEPOSIT_CONFIRMED so the handoff PIN flow unlocks immediately.
+      if (
+        request.item_requests.requestType === "BORROW" &&
+        request.item_requests.depositMethod === "in_person"
+      ) {
+        const [advanced] = await db
+          .update(itemRequests)
+          .set({ status: "DEPOSIT_CONFIRMED" })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+        if (advanced) return res.json(advanced);
+      }
     }
 
     // Award ShareCoins for successful swaps (with anti-farming protection)
@@ -4825,23 +4839,44 @@ Respond with ONLY the category name, nothing else.`
         }
       );
 
+      // Notification message: for in-person BORROW deposit, skip deposit step messaging
+      const inPersonBorrowDeposit =
+        ownerIsAccepting &&
+        request.item_requests.requestType === "BORROW" &&
+        finalDepositMethod === "in_person";
+
       await db.insert(notifications).values({
         userId: otherUserId,
         type: ownerIsAccepting ? "request_accepted" : "terms_accepted",
         title: ownerIsAccepting ? "Request accepted" : "Terms accepted",
         message: ownerIsAccepting
-          ? `"${request.items.name}" — pay your deposit to confirm.`
+          ? inPersonBorrowDeposit
+            ? `"${request.items.name}" — meet up and exchange the deposit in person.`
+            : `"${request.items.name}" — pay your deposit to confirm.`
           : "Your terms were accepted. Accept or decline to proceed.",
         itemId: request.items.id,
         requestId,
       });
 
+      // For BORROW with in-person deposit, skip the in-app deposit step entirely
+      let finalRequest = updated;
+      if (inPersonBorrowDeposit) {
+        const [advanced] = await db
+          .update(itemRequests)
+          .set({ status: "DEPOSIT_CONFIRMED" })
+          .where(eq(itemRequests.id, requestId))
+          .returning();
+        if (advanced) finalRequest = advanced;
+      }
+
       return res.json({
         success: true,
-        request: updated,
+        request: finalRequest,
         ownerAccepted: ownerIsAccepting,
         message: ownerIsAccepting
-          ? "Request accepted! The requester can now pay their deposit."
+          ? inPersonBorrowDeposit
+            ? "Request accepted! Meet up and exchange the deposit in person."
+            : "Request accepted! The requester can now pay their deposit."
           : "You've accepted the new terms. Waiting for owner to accept.",
       });
     } else {
@@ -6118,10 +6153,15 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Validate status (must be DEPOSIT_CONFIRMED, COURIER_PENDING, or AWAITING_HANDOFF_CONFIRM)
-      // SWAP requests skip the deposit step so they arrive here from ACCEPTED directly
+      // SWAP requests and BORROW+in_person-deposit requests skip the in-app deposit step so they
+      // may arrive here from ACCEPTED directly (legacy rows before auto-advance was introduced).
       const isSwapRequest = request.item_requests.requestType === "SWAP";
+      const isInPersonBorrowDeposit =
+        request.item_requests.requestType === "BORROW" &&
+        request.item_requests.depositMethod === "in_person";
       const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
-      if (!validStatuses.includes(request.item_requests.status) && !(isSwapRequest && request.item_requests.status === "ACCEPTED")) {
+      const acceptedStatusOk = (isSwapRequest || isInPersonBorrowDeposit) && request.item_requests.status === "ACCEPTED";
+      if (!validStatuses.includes(request.item_requests.status) && !acceptedStatusOk) {
         return res.status(400).json({ error: "Request is not ready for handoff" });
       }
 

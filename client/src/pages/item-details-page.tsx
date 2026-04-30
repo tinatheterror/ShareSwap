@@ -425,7 +425,7 @@ export default function ItemDetailsPage() {
                   </p>
 
                   {(item as any).owner && (
-                    <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-2 mt-3 flex-wrap">
                       <span className="text-sm text-muted-foreground">
                         Shared by
                       </span>
@@ -446,15 +446,10 @@ export default function ItemDetailsPage() {
                           size="sm"
                         />
                       </div>
+                      <span className="text-muted-foreground/40">·</span>
+                      <Badge variant="secondary" className="text-xs">{item.conditionRating}/10</Badge>
                     </div>
                   )}
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="font-medium">Condition</h3>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{item.conditionRating}/10</Badge>
-                  </div>
                 </div>
 
                 {isOwner ? (

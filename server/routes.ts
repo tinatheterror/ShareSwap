@@ -10593,15 +10593,25 @@ Respond with ONLY the category name, nothing else.`
 
     const reviewCount = reviews.length;
 
-    const [activeStatus, responseTime] = await Promise.all([
+    const [activeStatus, responseTime, completedSharesResult] = await Promise.all([
       computeActiveStatusFromDb(user.id, userWithActive.lastActiveAt ?? null),
       computeResponseTime(user.id),
+      db.select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(itemRequests.itemId, items.id))
+        .where(and(
+          or(eq(itemRequests.requesterId, user.id), sql`${items.ownerId} = ${user.id}`),
+          or(eq(itemRequests.status, 'COMPLETED'), eq(itemRequests.status, 'COMPLETED_EARLY'))
+        )),
     ]);
+
+    const completedShares = Number(completedSharesResult[0]?.count ?? 0);
 
     res.json({
       ...userWithActive,
       averageRating: Math.round(averageRating * 10) / 10,
       reviewCount,
+      completedShares,
       activeStatus,
       responseTime,
       trustScore: userWithActive.reputationScore ?? 0,

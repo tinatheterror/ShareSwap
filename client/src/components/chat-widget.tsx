@@ -1495,7 +1495,7 @@ export function ChatWidget() {
                     {partnerProfile && partnerProfile.reviewCount > 0 && (
                       <span className="flex items-center gap-0.5">
                         <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-                        <span className="font-medium text-gray-700">{partnerProfile.averageRating}</span>
+                        <span className="font-medium text-gray-700">{Number(partnerProfile.averageRating).toFixed(1)}</span>
                         <span>({partnerProfile.reviewCount})</span>
                       </span>
                     )}

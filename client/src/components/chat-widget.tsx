@@ -979,27 +979,17 @@ export function ChatWidget() {
     const iSentCounter = iCounterPending && request.counterProposedBy === user?.id;
     const iReceivedCounter = iCounterPending && request.counterProposedBy !== user?.id;
 
-    // Effective terms to display (counter terms if pending, else original)
-    const displayDelivery = iCounterPending
-      ? (request.counterDeliveryMethod || request.deliveryMethod)
-      : request.deliveryMethod;
-    const displayDeposit = iCounterPending
-      ? (request.counterDepositMethod || request.depositMethod)
-      : request.depositMethod;
-    const displayStart = iCounterPending ? request.counterStartDate : request.startDate;
-    const displayEnd = iCounterPending ? request.counterEndDate : request.endDate;
+    // Always show original request terms in the card.
+    // Counter-proposed terms are already displayed inline in the chat event ("proposed new terms").
+    const displayDelivery = request.deliveryMethod;
+    const displayDeposit = request.depositMethod;
+    const displayStart = request.startDate;
+    const displayEnd = request.endDate;
 
-    // Only highlight the fields that actually changed in the counter-proposal
-    const dateChanged = iCounterPending && (
-      request.counterStartDate !== request.startDate ||
-      request.counterEndDate !== request.endDate
-    );
-    const deliveryChanged = iCounterPending &&
-      request.counterDeliveryMethod !== null &&
-      request.counterDeliveryMethod !== request.deliveryMethod;
-    const depositChanged = iCounterPending &&
-      request.counterDepositMethod !== null &&
-      request.counterDepositMethod !== request.depositMethod;
+    // No field-level highlighting in the card — counter diff is shown in the chat event
+    const dateChanged = false;
+    const deliveryChanged = false;
+    const depositChanged = false;
 
     return (
       <div

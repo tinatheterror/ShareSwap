@@ -4523,52 +4523,14 @@ Respond with ONLY the category name, nothing else.`
 
 
     // Handle commission for rental transactions
+    // NOTE: Platform commission is FREE for all of 2026. Commission is charged in real money
+    // (not ShareCoins) when billing is activated in 2027+. No ShareCoin deduction is made here.
     if (status === "ACCEPTED" && request.item_requests.requestType === "RENT") {
-      try {
-        const rentalPrice = parseFloat(request.items.dollarsPrice || "0");
-        
-        if (rentalPrice > 0) {
-          // Check if requester is premium user
-          const [requesterUser] = await db
-            .select({ isPremium: users.isPremium })
-            .from(users)
-            .where(eq(users.id, request.item_requests.requesterId))
-            .limit(1);
-          
-          const isPremiumUser = requesterUser?.isPremium || false;
-          const commissionDetails = calculateCommission(rentalPrice, 'RENTAL', isPremiumUser);
-          
-          if (commissionDetails.commissionAmount > 0) {
-            // Log platform commission with new messaging
-            console.log(`✅ ${platformConfig.messaging.commission}`);
-            console.log(`Commission: $${commissionDetails.commissionAmount.toFixed(2)} (${(commissionDetails.rate * 100).toFixed(1)}% of $${rentalPrice}) - Premium: ${isPremiumUser}`);
-            console.log(`Breakdown: $${commissionDetails.platformAmount.toFixed(2)} platform sustainability, $${commissionDetails.userRewardAmount.toFixed(2)} user reward fund`);
-            
-            // Record commission transaction
-            await db.insert(shareCoinsTransactions).values({
-              userId: request.item_requests.requesterId,
-              amount: (-commissionDetails.commissionAmount).toString(),
-              description: `Platform commission for renting: ${request.items.name}${isPremiumUser ? ' (Premium Rate)' : ''}`,
-              transactionType: "COMMISSION",
-            });
-            
-            // Record commission details in platform_commissions table
-            await db.insert(platformCommissions).values({
-              transactionId: requestId,
-              amount: commissionDetails.commissionAmount.toString(),
-              commissionRate: commissionDetails.rate.toString(),
-              transactionType: "RENTAL",
-              itemId: request.items.id,
-              payerId: request.item_requests.requesterId,
-            });
-          } else {
-            console.log(`No commission charged: amount below minimum ($${platformConfig.minimumCommission})`);
-          }
-        }
-      } catch (error) {
-        console.error("Error processing rental commission:", error);
-        // Don't fail the request acceptance if commission processing fails
+      const currentYear = new Date().getFullYear();
+      if (currentYear <= 2026) {
+        console.log(`🎉 Platform commission waived — free for all of 2026`);
       }
+      // Future real-money billing will be wired here when the 2026 free period ends.
     }
 
     res.json(updatedRequest);
@@ -9384,9 +9346,17 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Rental already marked as returned" });
       }
 
-      // Calculate commission details for ShareCoin rewards
+      // Platform commission is FREE for all of 2026; charged in real money (not ShareCoins) from 2027+.
+      // Use $0 commission for the free period so no charges are recorded or deducted.
       const rentalPrice = parseFloat(rental.items.dollarsPrice || "0");
-      const commissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
+      const freeCommissionPeriod = new Date().getFullYear() <= 2026;
+      const rawCommissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
+      const commissionDetails = freeCommissionPeriod
+        ? { ...rawCommissionDetails, commissionAmount: 0, platformAmount: 0, shareCoinsFromReward: rawCommissionDetails.shareCoinsFromReward }
+        : rawCommissionDetails;
+      if (freeCommissionPeriod) {
+        console.log(`🎉 Platform commission waived at return — free for all of 2026`);
+      }
 
       // Award ShareCoins to both users for successful rental completion
       const shareCoinsReward = platformConfig.shareCoinsRewards.successfulRental;

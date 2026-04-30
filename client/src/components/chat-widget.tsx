@@ -816,10 +816,8 @@ export function ChatWidget() {
     }
   };
 
-  const handleScheduleClick = async () => {
+  const handleScheduleClick = () => {
     setShowCelebration(false);
-    // Restore focus to the message input after the overlay dismisses
-    setTimeout(() => messageInputRef.current?.focus(), 350);
     if (!selectedConversation) return;
     const acceptedRequest = requests.find((r) => r.id === selectedRequestId);
     const isGiftRequest = acceptedRequest?.requestType === "GIFT";
@@ -831,17 +829,15 @@ export function ChatWidget() {
     const scheduleMsg = (isGiftRequest || isSwapRequest)
       ? "When and where can you meet?"
       : `When and where can you meet on ${dateText}?`;
-    try {
-      await apiRequest("POST", "/api/messages", {
-        receiverId: selectedConversation,
-        content: scheduleMsg,
-        requestId: activeConversationRequestId,
-      });
-      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
-      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
-    } catch (error) {
-      console.error("Failed to send schedule message:", error);
-    }
+    // Pre-fill the input so the user can edit before sending
+    setMessage(scheduleMsg);
+    setTimeout(() => {
+      const input = messageInputRef.current;
+      if (input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }, 350);
   };
 
   const handleAcceptClick = async (request: ItemRequest) => {

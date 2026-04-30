@@ -264,10 +264,31 @@ export default function ItemDetailsPage() {
           <div>
             <p className="font-medium">Swap</p>
             <div className="flex items-center gap-2 mb-1">
-              <ArrowLeftRight className="h-4 w-4 text-[#0DCEA1]" />
-              <span className="text-lg font-bold text-[#0BB88C]">
-                Exchange items
-              </span>
+              <ArrowLeftRight className="h-4 w-4 text-teal-700" />
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button className="focus:outline-none">
+                      <Badge
+                        variant="outline"
+                        className="border-teal-700 text-teal-700 cursor-help"
+                      >
+                        {getSwapTierLabel(itemTier) + " " + "Item"}
+                      </Badge>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    className="p-0 border-0 bg-transparent shadow-none"
+                  >
+                    <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
+                      <Info className="h-3 w-3 inline mr-1" />
+                      Swaps allow same-tier or ±1 tier items, with ShareCoins
+                      balancing the difference.
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             {(item as any).swapDesiredItem && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -275,30 +296,6 @@ export default function ItemDetailsPage() {
                 {(item as any).swapDesiredItem}
               </p>
             )}
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button className="focus:outline-none">
-                    <Badge
-                      variant="outline"
-                      className="border-[#0DCEA1]/50 text-[#0BB88C] cursor-help"
-                    >
-                      {getSwapTierLabel(itemTier)}
-                    </Badge>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  className="p-0 border-0 bg-transparent shadow-none"
-                >
-                  <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
-                    <Info className="h-3 w-3 inline mr-1" />
-                    Swaps allow same-tier or ±1 tier items, with ShareCoins
-                    balancing the difference.
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
           {hasPendingSwap ? (
             <Button
@@ -462,10 +459,20 @@ export default function ItemDetailsPage() {
 
                 {isOwner ? (
                   <div className="pt-2 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">This is your listing</p>
-                    <p className="text-xs text-muted-foreground">You can't request your own items</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      This is your listing
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      You can't request your own items
+                    </p>
                     <Link href={`/lend?edit=${item.id}`}>
-                      <Button variant="outline" size="sm" className="mt-1 text-xs">Edit listing</Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-1 text-xs"
+                      >
+                        Edit listing
+                      </Button>
                     </Link>
                   </div>
                 ) : item.isGift ? (
@@ -504,7 +511,9 @@ export default function ItemDetailsPage() {
 
         {requestType && (
           <ItemRequestForm
-            onInsufficientCoins={(required) => setInsufficientCoinsModal({ required, context: "borrow" })}
+            onInsufficientCoins={(required) =>
+              setInsufficientCoinsModal({ required, context: "borrow" })
+            }
             item={item}
             requestType={requestType}
             isOpen={!!requestType}

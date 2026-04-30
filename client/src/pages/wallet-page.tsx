@@ -19,7 +19,7 @@ export default function WalletPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">ShareCoin Wallet</h1>
           <p className="text-4xl font-bold text-primary">
-            {Number(user?.shareCoins).toFixed(2)} ShareCoins
+            {Math.round(Number(user?.shareCoins))} ShareCoins
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export default function WalletPage() {
                       isPositive ? "text-teal-600" : "text-teal-700"
                     }`}>
                       {isPositive ? "+" : "-"}
-                      {Math.abs(Number(transaction.amount)).toFixed(2)}
+                      {Math.round(Math.abs(Number(transaction.amount)))}
                     </p>
                   </div>
                 );

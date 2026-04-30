@@ -371,7 +371,7 @@ export function Navbar() {
                           <Coins className="h-5 w-5 text-primary" />
                           <div className="flex flex-col items-start">
                             <span className="text-xs text-muted-foreground">Total Balance</span>
-                            <span>{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
+                            <span>{user?.shareCoins ? Math.round(Number(user.shareCoins)) : 0} ShareCoins</span>
                           </div>
                         </Button>
                       </DropdownMenuTrigger>
@@ -486,7 +486,7 @@ export function Navbar() {
                     <Coins className="h-3 w-3 text-primary flex-shrink-0" />
                     <div className="flex flex-col items-center">
                       <span className="text-[7px] text-muted-foreground leading-tight whitespace-nowrap">Total Balance</span>
-                      <span className="text-[9px] font-medium whitespace-nowrap">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"} ShareCoins</span>
+                      <span className="text-[9px] font-medium whitespace-nowrap">{user?.shareCoins ? Math.round(Number(user.shareCoins)) : 0} ShareCoins</span>
                     </div>
                   </Button>
                 </SheetTrigger>
@@ -499,7 +499,7 @@ export function Navbar() {
                       <div className="flex flex-col items-center rounded-lg">
                       <div className="flex items-center gap-2">
                         <Coins className="h-8 w-8 text-primary" />
-                        <span className="text-3xl font-bold text-primary">{user?.shareCoins ? Number(user.shareCoins).toFixed(2) : "0.00"}</span>
+                        <span className="text-3xl font-bold text-primary">{user?.shareCoins ? Math.round(Number(user.shareCoins)) : 0}</span>
                       </div>
                       <span className="text-sm text-muted-foreground mt-1">ShareCoins</span>
                       </div>

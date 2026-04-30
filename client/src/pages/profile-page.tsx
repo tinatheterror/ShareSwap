@@ -145,10 +145,16 @@ export default function ProfilePage() {
     enabled: !!usernameFromUrl && !isOwnProfile,
   });
 
-  // Fetch user's reviews if viewing another user's profile
+  // Fetch reviews — for another user's profile use the URL username,
+  // for own profile use the logged-in user's username.
   const { data: userReviews = [] } = useQuery<any[]>({
     queryKey: [`/api/users/username/${usernameFromUrl}/reviews`],
     enabled: !!usernameFromUrl && !isOwnProfile,
+  });
+
+  const { data: ownReviews = [] } = useQuery<any[]>({
+    queryKey: [`/api/users/username/${user?.username}/reviews`],
+    enabled: !!isOwnProfile && !!user?.username,
   });
 
   const { data: profile } = useQuery<UserProfile>({
@@ -1470,6 +1476,55 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Reviews — what neighbours say about you */}
+            <Card style={{ backgroundColor: "#D4F7F1" }}>
+              <CardHeader className="py-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MessageSquare className="h-4 w-4 text-teal-600" />
+                  What Neighbours Say
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {ownReviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {ownReviews.slice(0, 5).map((review: any) => (
+                      <div key={review.id} className="bg-white rounded-lg p-3 border border-teal-100">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-medium text-slate-600">
+                            @{(review.reviewer as any).handle || review.reviewer.username}
+                          </span>
+                          <div className="flex items-center gap-0.5">
+                            {[...Array(5)].map((_: any, i: number) => (
+                              <Star
+                                key={i}
+                                className={`h-3 w-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="text-xs text-slate-600 italic line-clamp-2">"{review.comment}"</p>
+                        )}
+                        <p className="text-xs text-slate-400 mt-1">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                    {ownReviews.length > 5 && (
+                      <p className="text-xs text-center text-teal-600 font-medium">
+                        +{ownReviews.length - 5} more reviews on your Achievements page
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-3">
+                    <MessageSquare className="h-6 w-6 text-slate-300 mx-auto mb-1.5" />
+                    <p className="text-xs text-slate-500">No reviews yet. Complete transactions to receive feedback from neighbours!</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

@@ -1566,7 +1566,16 @@ export function ChatWidget() {
                       </div>
                     );
                   })()}
-                  {messages.map((msg) => {
+                  {(() => {
+                    // The most recent counter_proposed event per request — only that one shows action buttons.
+                    // Earlier counter events (already acted on) should be read-only history.
+                    const latestCounterMsgIdByRequest = new Map<number, number>();
+                    for (const m of messages) {
+                      if (m.messageType === "event" && m.metadata?.eventType === "counter_proposed" && m.requestId) {
+                        latestCounterMsgIdByRequest.set(m.requestId, m.id);
+                      }
+                    }
+                    return messages.map((msg) => {
                     const borrowerTrust = Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100));
 
                     // System event messages — subtle centered text, no colored boxes
@@ -1576,8 +1585,12 @@ export function ChatWidget() {
                         ? requests.find((r) => r.id === msg.requestId)
                         : null;
                       const isCounterPending = et === "counter_proposed";
+                      const isLatestCounterEvent = msg.requestId
+                        ? latestCounterMsgIdByRequest.get(msg.requestId) === msg.id
+                        : false;
                       const iAmResponder = relatedRequest &&
                         isCounterPending &&
+                        isLatestCounterEvent &&
                         relatedRequest.counterProposedBy !== null &&
                         relatedRequest.counterProposedBy !== user.id &&
                         relatedRequest.negotiationStatus === "counter_proposed";
@@ -1734,7 +1747,8 @@ export function ChatWidget() {
                         </div>
                       </React.Fragment>
                     );
-                  })}
+                  });
+                  })()}
 
                   <div ref={messagesEndRef} />
                 </ScrollArea>

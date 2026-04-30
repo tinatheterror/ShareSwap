@@ -499,10 +499,7 @@ export default function ItemDetailsPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <h3 className="font-medium">Sharing Options</h3>
-                    {getSharingOptions()}
-                  </div>
+                  <div className="space-y-4">{getSharingOptions()}</div>
                 )}
               </div>
             </div>

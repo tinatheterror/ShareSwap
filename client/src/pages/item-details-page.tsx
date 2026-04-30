@@ -130,13 +130,13 @@ export default function ItemDetailsPage() {
 
   if (!item) return null;
 
+  const isOwner = !!user && user.id === (item as any).ownerId;
+
   // Create ordered sharing options based on context
   const getSharingOptions = () => {
     const itemReplacementValue = (item as any).replacementValue;
     const itemTier = (item as any).tier || 2;
     const itemOriginalValue = (item as any).originalValue || "$50–$150";
-
-    const isOwner = user?.id === (item as any).ownerId;
     const reputationScore = user?.reputationScore || 0;
     const viewerTrustScore = Math.min(
       100,
@@ -471,7 +471,15 @@ export default function ItemDetailsPage() {
                   </div>
                 </div>
 
-                {item.isGift ? (
+                {isOwner ? (
+                  <div className="pt-2 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">This is your listing</p>
+                    <p className="text-xs text-muted-foreground">You can't request your own items</p>
+                    <Link href={`/lend?edit=${item.id}`}>
+                      <Button variant="outline" size="sm" className="mt-1 text-xs">Edit listing</Button>
+                    </Link>
+                  </div>
+                ) : item.isGift ? (
                   <div className="pt-2">
                     {hasPendingGift ? (
                       <Button

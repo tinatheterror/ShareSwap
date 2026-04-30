@@ -4153,6 +4153,11 @@ Respond with ONLY the category name, nothing else.`
         .send("Item not found or not available for this type of request");
     }
 
+    // Prevent owners from requesting their own items
+    if (item.ownerId === req.user.id) {
+      return res.status(403).json({ error: "You cannot request your own item" });
+    }
+
     // Prevent borrowing if Replacement Value is missing
     if (requestType === "BORROW" && !item.replacementValue) {
       return res

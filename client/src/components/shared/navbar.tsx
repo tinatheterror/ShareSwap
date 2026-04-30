@@ -16,8 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link, useLocation } from "wouter";
 import { Coins, Gamepad2, Trophy, Heart, Users, Package, Bell, HandHeart, HelpCircle, Menu, Home, User, LogOut, Mail, MessageSquareText, ChevronRight, Star, TrendingUp, ShieldAlert, DollarSign, Unlock, Flag, Truck, Gift, AlertTriangle, Clock, AlertCircle, ShieldCheck, ArrowLeftRight, UserCheck } from "lucide-react";
 import { HeartPeopleIcon } from "@/components/ui/heart-people-icon";
-import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popup";
@@ -78,25 +77,16 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
   const hasUrl = !!(n.requestId || n.itemId);
   return (
     <button
-      className={`group w-full text-left flex items-start gap-2.5 px-3 py-2.5 rounded-md transition-colors cursor-pointer hover:bg-muted/40 ${
-        !n.isRead ? "bg-primary/[0.06]" : ""
-      }`}
+      className="group w-full text-left flex items-start gap-2.5 px-3 py-2.5 rounded-md transition-colors cursor-pointer hover:bg-muted/40"
       onClick={() => onAction(n)}
     >
       <div className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-muted flex items-center justify-center">
         {getNotificationIcon(n.type)}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          {!n.isRead && (
-            <span className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-primary mt-px" />
-          )}
-          <p className={`text-[13px] leading-snug ${
-            !n.isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80"
-          }`}>
-            {n.title}
-          </p>
-        </div>
+        <p className="text-[13px] leading-snug font-medium text-foreground/80">
+          {n.title}
+        </p>
         {n.message && (
           <p className="text-[11px] text-muted-foreground line-clamp-3 mt-0.5">
             {n.message}
@@ -118,12 +108,6 @@ function NotificationBell() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 
-  const { data: unreadData } = useQuery<{ count: number }>({
-    queryKey: ["/api/notifications/unread-count"],
-    enabled: !!user?.id,
-    refetchInterval: 120000,
-  });
-
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     enabled: !!user?.id,
@@ -139,7 +123,6 @@ function NotificationBell() {
         await apiRequest("POST", "/api/notifications/check-return-reminders", {});
         if (!isCancelled) {
           queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
         }
       } catch {}
     };
@@ -148,35 +131,7 @@ function NotificationBell() {
     return () => { isCancelled = true; clearTimeout(timer); clearInterval(interval); };
   }, [user?.id]);
 
-  const markAsReadMutation = useMutation({
-    mutationFn: (notificationId: number) =>
-      apiRequest("PATCH", `/api/notifications/${notificationId}/read`),
-    onMutate: async (notificationId: number) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/notifications"] });
-      await queryClient.cancelQueries({ queryKey: ["/api/notifications/unread-count"] });
-      const prev = queryClient.getQueryData<Notification[]>(["/api/notifications"]);
-      const prevCount = queryClient.getQueryData<{ count: number }>(["/api/notifications/unread-count"]);
-      queryClient.setQueryData<Notification[]>(["/api/notifications"], (old) =>
-        old?.map((n) => n.id === notificationId ? { ...n, isRead: true } : n)
-      );
-      queryClient.setQueryData<{ count: number }>(["/api/notifications/unread-count"], (old) => ({
-        count: Math.max(0, (old?.count ?? 1) - 1),
-      }));
-      return { prev, prevCount };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.prev) queryClient.setQueryData(["/api/notifications"], context.prev);
-      if (context?.prevCount) queryClient.setQueryData(["/api/notifications/unread-count"], context.prevCount);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
-    },
-  });
-
   const handleNotificationClick = (n: Notification) => {
-    if (!n.isRead) markAsReadMutation.mutate(n.id);
-
     if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
       navigate("/achievements");
       return;
@@ -199,9 +154,7 @@ function NotificationBell() {
     }
   };
 
-  const unreadNotifications = allNotifications.filter((n) => !n.isRead);
   const recentNotifications = allNotifications.slice(0, 20);
-  const unreadCount = unreadData?.count ?? 0;
   const hasNotifications = allNotifications.length > 0;
 
   return (
@@ -209,15 +162,9 @@ function NotificationBell() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative p-2 hover:text-primary">
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 p-0 text-xs font-bold flex items-center justify-center min-w-0">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </Badge>
-          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h6 className="text-sm font-semibold">Activity</h6>
           <Link href="/activity" className="cursor-pointer text-xs text-primary hover:underline">
@@ -231,37 +178,11 @@ function NotificationBell() {
               Your recent activity will appear here
             </p>
           ) : (
-            <>
-              {/* Section 1: Unread */}
-              {unreadNotifications.length > 0 && (
-                <div>
-                  <p className="px-3 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Unread · {unreadNotifications.length}
-                  </p>
-                  <div className="px-1.5 pb-1 space-y-0.5">
-                    {unreadNotifications.map((n) => (
-                      <NotificationItem key={n.id} n={n} onAction={handleNotificationClick} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Section 2: Recent */}
-              {recentNotifications.filter((n) => n.isRead).length > 0 && (
-                <div className={unreadNotifications.length > 0 ? "border-t mt-1" : ""}>
-                  <p className="px-3 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Recent activity
-                  </p>
-                  <div className="px-1.5 pb-2 space-y-0.5">
-                    {recentNotifications
-                      .filter((n) => n.isRead)
-                      .map((n) => (
-                        <NotificationItem key={n.id} n={n} onAction={handleNotificationClick} />
-                      ))}
-                  </div>
-                </div>
-              )}
-            </>
+            <div className="px-1.5 py-2 space-y-0.5">
+              {recentNotifications.map((n) => (
+                <NotificationItem key={n.id} n={n} onAction={handleNotificationClick} />
+              ))}
+            </div>
           )}
         </div>
       </DropdownMenuContent>

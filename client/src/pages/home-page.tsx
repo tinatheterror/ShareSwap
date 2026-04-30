@@ -212,8 +212,8 @@ export default function HomePage() {
               onClick={() => setGiveModal("import")}
               className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
             >
-              <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
-                <Download className="h-5 w-5 text-blue-700" />
+              <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
+                <Download className="h-5 w-5 text-teal-700" />
               </div>
               <div>
                 <p className="font-semibold text-gray-900">Import a listing</p>
@@ -225,8 +225,8 @@ export default function HomePage() {
               onClick={() => setGiveModal("wishlist")}
               className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
             >
-              <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0 group-hover:bg-rose-200 transition-colors">
-                <HeartPeopleIcon className="h-5 w-5 text-rose-600" />
+              <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
+                <HeartPeopleIcon className="h-5 w-5 text-teal-700" />
               </div>
               <div>
                 <p className="font-semibold text-gray-900">See what people need</p>

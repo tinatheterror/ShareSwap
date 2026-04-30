@@ -70,6 +70,7 @@ type Conversation = {
 };
 
 type InboxItem = {
+  requestId: number;
   partnerId: number;
   partnerUsername: string;
   partnerDisplayName: string | null;
@@ -83,13 +84,14 @@ type InboxItem = {
   previewType: "message" | "request";
   previewSentByMe: boolean | null;
   unreadCount: number;
-  requestId: number | null;
-  requestType: string | null;
-  requestStatus: string | null;
+  requestType: string;
+  requestStatus: string;
   requestNegotiationStatus: string | null;
-  itemName: string | null;
-  itemId: number | null;
+  itemName: string;
+  itemId: number;
+  itemPhoto: string | null;
   iAmRequester: boolean;
+  isArchived: boolean;
 };
 
 type PublicProfile = {
@@ -187,7 +189,8 @@ type MessageFilter =
   | "renting"
   | "swapping"
   | "gifting"
-  | "unread";
+  | "unread"
+  | "archived";
 
 function DepositPaymentForm({
   clientSecret,
@@ -393,11 +396,19 @@ export function ChatWidget() {
     enabled: !!user,
   });
 
-  // Unified inbox — sorted by most recent activity across messages and requests
+  // Unified inbox — one entry per request, active threads only
   const { data: inboxItems = [], isLoading: isLoadingInbox } = useQuery<InboxItem[]>({
     queryKey: ["/api/inbox"],
     enabled: !!user,
     refetchInterval: 30_000,
+  });
+
+  // Archived inbox — completed / cancelled / declined threads
+  const { data: archivedInboxItems = [], isLoading: isLoadingArchived } = useQuery<InboxItem[]>({
+    queryKey: ["/api/inbox", "archived"],
+    queryFn: () => fetch("/api/inbox?archived=true", { credentials: "include" }).then(r => r.json()),
+    enabled: !!user && messageFilter === "archived",
+    refetchInterval: 60_000,
   });
 
   // Partner public profile for chat header
@@ -736,10 +747,12 @@ export function ChatWidget() {
   };
 
   // Filter inbox items based on active pill
-  const filteredInboxItems = inboxItems.filter((item) => {
-    if (messageFilter === "all") return true;
+  // The source list depends on the active filter tab
+  const baseInboxItems = messageFilter === "archived" ? archivedInboxItems : inboxItems;
+
+  const filteredInboxItems = baseInboxItems.filter((item) => {
+    if (messageFilter === "all" || messageFilter === "archived") return true;
     if (messageFilter === "unread") {
-      // Show items with unread messages or requests needing action
       const needsAction =
         item.unreadCount > 0 ||
         (item.requestStatus === "PENDING" && !item.iAmRequester) ||
@@ -753,11 +766,11 @@ export function ChatWidget() {
     return true;
   });
 
-  const openConversationWithPartner = (partnerId: number, requestId: number | null, unreadCount: number) => {
+  const openConversationWithPartner = (partnerId: number, requestId: number, unreadCount: number) => {
     setSelectedConversation(partnerId);
     setActiveConversationRequestId(requestId);
     if (unreadCount > 0) {
-      apiRequest("POST", `/api/messages/mark-read/${partnerId}`)
+      apiRequest("POST", `/api/messages/mark-read/${partnerId}`, { requestId })
         .then(() => {
           qc.invalidateQueries({ queryKey: ["/api/conversations"] });
           qc.invalidateQueries({ queryKey: ["/api/inbox"] });
@@ -1294,13 +1307,14 @@ export function ChatWidget() {
                   { key: "swapping", label: "Swap" },
                   { key: "gifting", label: "Gift" },
                   { key: "unread", label: "Action" },
+                  { key: "archived", label: "Archive" },
                 ].map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => setMessageFilter(tab.key as MessageFilter)}
                     className={`px-2.5 py-1 rounded-full text-xs flex items-center gap-1 ${
                       messageFilter === tab.key
-                        ? "bg-gray-800 text-white"
+                        ? tab.key === "archived" ? "bg-gray-500 text-white" : "bg-gray-800 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
@@ -1314,16 +1328,16 @@ export function ChatWidget() {
                 ))}
               </div>
 
-              {/* Unified inbox list — single sorted timeline */}
+              {/* Inbox list — one entry per request */}
               <ScrollArea className="flex-1">
-                {isLoadingInbox ? (
+                {(messageFilter === "archived" ? isLoadingArchived : isLoadingInbox) ? (
                   <div className="flex items-center justify-center p-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : filteredInboxItems.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Nothing here yet</p>
+                    <p className="text-sm">{messageFilter === "archived" ? "No archived chats" : "Nothing here yet"}</p>
                   </div>
                 ) : (
                   <div className="divide-y">
@@ -1332,8 +1346,9 @@ export function ChatWidget() {
                       const initials = getPartnerInitials(item.partnerDisplayName, item.partnerUsername);
                       const activeStatus = getActiveStatus(item.partnerLastActiveAt);
                       const needsAction =
-                        (item.requestStatus === "PENDING" && !item.iAmRequester) ||
-                        item.requestNegotiationStatus === "counter_proposed";
+                        !item.isArchived &&
+                        ((item.requestStatus === "PENDING" && !item.iAmRequester) ||
+                        item.requestNegotiationStatus === "counter_proposed");
                       const isActive = activeStatus?.label === "Active now";
                       const activityTime = new Date(item.lastActivityTime);
                       const now = new Date();
@@ -1344,7 +1359,7 @@ export function ChatWidget() {
 
                       return (
                         <button
-                          key={item.partnerId}
+                          key={item.requestId}
                           onClick={() => openConversationWithPartner(item.partnerId, item.requestId, item.unreadCount)}
                           className={`w-full px-3 py-2.5 text-left transition-colors ${item.requestStatus === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-purple-50"} ${needsAction ? "bg-amber-50/60 hover:bg-amber-50" : ""}`}
                         >
@@ -1390,12 +1405,19 @@ export function ChatWidget() {
                                 </div>
                               </div>
 
-                              {/* Row 2: item name */}
-                              {item.itemName && (
-                                <div className="-mt-1 mb-0.5">
-                                  <span className="text-[11px] font-semibold italic text-gray-700 truncate leading-none">{item.itemName}</span>
-                                </div>
-                              )}
+                              {/* Row 2: item photo + name */}
+                              <div className="-mt-0.5 mb-0.5 flex items-center gap-1.5">
+                                {item.itemPhoto ? (
+                                  <img
+                                    src={item.itemPhoto}
+                                    alt={item.itemName}
+                                    className="w-5 h-5 rounded object-cover flex-shrink-0 border border-gray-200"
+                                  />
+                                ) : (
+                                  <div className="w-5 h-5 rounded bg-gray-200 flex-shrink-0" />
+                                )}
+                                <span className="text-[11px] font-semibold italic text-gray-700 truncate leading-none">{item.itemName}</span>
+                              </div>
 
                               {/* Row 3: preview */}
                               <p className={`text-xs truncate ${item.unreadCount > 0 ? "text-gray-800 font-medium" : "text-muted-foreground"}`}>

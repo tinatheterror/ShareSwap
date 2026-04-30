@@ -3462,18 +3462,20 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "Invalid partner ID" });
     }
 
-    try {
-      await db
-        .update(messages)
-        .set({ isRead: true })
-        .where(
-          and(
-            eq(messages.senderId, partnerId),
-            eq(messages.receiverId, req.user.id),
-            eq(messages.isRead, false)
-          )
-        );
+    const requestId = req.body?.requestId ? parseInt(req.body.requestId) : null;
 
+    try {
+      const baseWhere = and(
+        eq(messages.senderId, partnerId),
+        eq(messages.receiverId, req.user.id),
+        eq(messages.isRead, false)
+      );
+      // If a requestId is provided, scope to that thread only
+      const whereClause = requestId
+        ? and(baseWhere, eq(messages.requestId, requestId))
+        : baseWhere;
+
+      await db.update(messages).set({ isRead: true }).where(whereClause);
       res.json({ success: true });
     } catch (error) {
       console.error("Error marking messages as read:", error);
@@ -3580,44 +3582,15 @@ Respond with ONLY the category name, nothing else.`
     });
   });
 
-  // Unified inbox: combines item requests + direct messages sorted by most recent activity
+  // Unified inbox: one entry per item request, sorted by most recent activity.
+  // ?archived=true returns completed/cancelled/declined threads; default returns active ones.
   app.get("/api/inbox", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const userId = req.user.id;
+    const showArchived = req.query.archived === "true";
 
-    // --- Gather all messages involving this user ---
-    const allMessages = await db
-      .select({
-        id: messages.id,
-        senderId: messages.senderId,
-        receiverId: messages.receiverId,
-        content: messages.content,
-        isRead: messages.isRead,
-        createdAt: messages.createdAt,
-        messageType: messages.messageType,
-        requestId: messages.requestId,
-      })
-      .from(messages)
-      .where(or(eq(messages.senderId, userId), eq(messages.receiverId, userId)))
-      .orderBy(desc(messages.createdAt));
-
-    // Build per-partner message map
-    const partnerMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number; lastSenderId: number; lastMsgRequestId: number | null }>();
-    for (const msg of allMessages) {
-      const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
-      if (!partnerMsgMap.has(partnerId)) {
-        const unread = allMessages.filter(
-          m => m.senderId === partnerId && m.receiverId === userId && !m.isRead
-        ).length;
-        partnerMsgMap.set(partnerId, {
-          lastMsg: msg.content,
-          lastTime: msg.createdAt!,
-          unread,
-          lastSenderId: msg.senderId,
-          lastMsgRequestId: msg.requestId ?? null,
-        });
-      }
-    }
+    // Statuses considered "archived" (transaction done — read-only history)
+    const ARCHIVED_STATUSES = ["COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
 
     // --- Gather all item requests involving this user ---
     const allRequests = await db
@@ -3627,6 +3600,7 @@ Respond with ONLY the category name, nothing else.`
         ownerId: items.ownerId,
         itemName: items.name,
         itemId: itemRequests.itemId,
+        itemPhotos: items.photos,
         requestType: itemRequests.requestType,
         status: itemRequests.status,
         negotiationStatus: itemRequests.negotiationStatus,
@@ -3642,23 +3616,67 @@ Respond with ONLY the category name, nothing else.`
       )
       .orderBy(desc(itemRequests.createdAt));
 
-    // Build per-partner request map (most recent request per partner)
-    const partnerReqMap = new Map<number, typeof allRequests[0]>();
-    for (const req of allRequests) {
-      const partnerId: number | null = req.requesterId === userId ? req.ownerId : req.requesterId;
-      if (partnerId !== null && !partnerReqMap.has(partnerId)) {
-        partnerReqMap.set(partnerId, req);
+    // Filter to the appropriate archive bucket
+    const filteredRequests = allRequests.filter(r =>
+      showArchived ? ARCHIVED_STATUSES.includes(r.status) : !ARCHIVED_STATUSES.includes(r.status)
+    );
+
+    if (filteredRequests.length === 0) {
+      return res.json([]);
+    }
+
+    // Batch-fetch all messages for these requests in one query
+    const reqIds = filteredRequests.map(r => r.id);
+    const allThreadMessages = reqIds.length > 0
+      ? await db
+          .select({
+            id: messages.id,
+            senderId: messages.senderId,
+            receiverId: messages.receiverId,
+            content: messages.content,
+            isRead: messages.isRead,
+            createdAt: messages.createdAt,
+            messageType: messages.messageType,
+            requestId: messages.requestId,
+          })
+          .from(messages)
+          .where(
+            and(
+              or(eq(messages.senderId, userId), eq(messages.receiverId, userId)),
+              sql`${messages.requestId} = ANY(ARRAY[${sql.raw(reqIds.join(','))}]::int[])`
+            )
+          )
+          .orderBy(desc(messages.createdAt))
+      : [];
+
+    // Build per-request message map
+    const reqMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number; lastSenderId: number }>();
+    for (const msg of allThreadMessages) {
+      const rid = msg.requestId!;
+      if (!reqMsgMap.has(rid)) {
+        const unread = allThreadMessages.filter(
+          m => m.requestId === rid && m.senderId !== userId && m.receiverId === userId && !m.isRead
+        ).length;
+        reqMsgMap.set(rid, {
+          lastMsg: msg.content,
+          lastTime: msg.createdAt!,
+          unread,
+          lastSenderId: msg.senderId,
+        });
       }
     }
 
-    // Collect all partner IDs
-    const partnerIdsSet = new Set<number>([...Array.from(partnerMsgMap.keys()), ...Array.from(partnerReqMap.keys())]);
+    // Collect unique partner IDs
+    const partnerIdsSet = new Set<number>();
+    for (const r of filteredRequests) {
+      const pid = r.requesterId === userId ? r.ownerId : r.requesterId;
+      if (pid !== null) partnerIdsSet.add(pid);
+    }
     const partnerIds = Array.from(partnerIdsSet);
 
     // Fetch partner user details
-    const partnerDetails = await Promise.all(
-      Array.from(partnerIds).map(async (pid) => {
-        const [u] = await db
+    const partnerDetails = partnerIds.length > 0
+      ? await db
           .select({
             id: users.id,
             username: users.username,
@@ -3668,13 +3686,11 @@ Respond with ONLY the category name, nothing else.`
             lastActiveAt: users.lastActiveAt,
           })
           .from(users)
-          .where(eq(users.id, pid));
-        return u;
-      })
-    );
-    const partnerMap = new Map(partnerDetails.filter(Boolean).map(u => [u.id, u]));
+          .where(sql`${users.id} = ANY(ARRAY[${sql.raw(partnerIds.join(','))}]::int[])`)
+      : [];
+    const partnerMap = new Map(partnerDetails.map(u => [u.id, u]));
 
-    // Compute active status + response times for all partners (parallel)
+    // Compute active status + response times (parallel)
     const partnerStatResults = await Promise.all(
       partnerIds.map(async (pid) => {
         const partner = partnerMap.get(pid);
@@ -3688,86 +3704,59 @@ Respond with ONLY the category name, nothing else.`
     const partnerActiveStatusMap = new Map(partnerStatResults.map(r => [r.pid, r.activeStatus]));
     const partnerResponseTimeMap = new Map(partnerStatResults.map(r => [r.pid, r.responseTime]));
 
-    // Build unified inbox entries
-    const inboxItems = Array.from(partnerIds).map((pid) => {
-      const partner = partnerMap.get(pid);
-      const msgData = partnerMsgMap.get(pid);
-      const reqData = partnerReqMap.get(pid);
+    // Build one inbox entry per request
+    const inboxItems = filteredRequests.map((reqData) => {
+      const partnerId: number = reqData.requesterId === userId ? reqData.ownerId! : reqData.requesterId;
+      const partner = partnerMap.get(partnerId);
+      const msgData = reqMsgMap.get(reqData.id);
 
       const msgTime = msgData?.lastTime ? new Date(msgData.lastTime) : null;
-      const reqTime = reqData?.createdAt ? new Date(reqData.createdAt) : null;
+      const reqTime = reqData.createdAt ? new Date(reqData.createdAt) : new Date(0);
 
-      // Most recent activity time
       let lastActivityTime: Date;
       let preview: string;
       let previewType: "message" | "request";
+      let previewSentByMe: boolean | null;
 
-      if (msgTime && reqTime) {
-        if (msgTime >= reqTime) {
-          lastActivityTime = msgTime;
-          previewType = "message";
-          preview = msgData!.lastMsg;
-        } else {
-          lastActivityTime = reqTime;
-          previewType = "request";
-          preview = `${reqData!.requestType} · ${reqData!.status}`;
-        }
-      } else if (msgTime) {
+      if (msgTime && msgTime >= reqTime) {
         lastActivityTime = msgTime;
         previewType = "message";
         preview = msgData!.lastMsg;
+        previewSentByMe = msgData!.lastSenderId === userId;
       } else {
-        lastActivityTime = reqTime!;
+        lastActivityTime = reqTime;
         previewType = "request";
-        preview = `${reqData!.requestType} · ${reqData!.status}`;
+        preview = `${reqData.requestType} · ${reqData.status}`;
+        previewSentByMe = null;
       }
 
-      // Active statuses — an active request always wins over the message-based requestId.
-      // This prevents a new pending request from being overshadowed by messages belonging
-      // to a previously completed transaction with the same partner.
-      const ACTIVE_STATUSES = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS"];
-      const mostRecentReqIsActive = reqData && ACTIVE_STATUSES.includes(reqData.status);
-
-      // If the most recent request is active, always anchor to it.
-      // Otherwise prefer the requestId from the most recent message (opens the right message thread),
-      // falling back to the most recently created request for this partner.
-      const anchorRequestId = mostRecentReqIsActive
-        ? reqData!.id
-        : ((previewType === "message" && msgData?.lastMsgRequestId)
-            ? msgData.lastMsgRequestId
-            : (reqData?.id || null));
-
-      // Look up the anchored request details (may differ from reqData when message requestId wins)
-      const anchorReq = anchorRequestId && anchorRequestId !== reqData?.id
-        ? allRequests.find(r => r.id === anchorRequestId) ?? reqData
-        : reqData;
-
       return {
-        partnerId: pid,
+        requestId: reqData.id,
+        partnerId,
         partnerUsername: partner?.username || "Unknown",
         partnerDisplayName: partner?.displayName || null,
         partnerPhoto: partner?.profilePhoto || null,
         partnerIsVerified: partner?.isVerified || false,
         partnerLastActiveAt: partner?.lastActiveAt || null,
-        partnerActiveStatus: partnerActiveStatusMap.get(pid) || null,
-        partnerResponseTime: partnerResponseTimeMap.get(pid) || null,
+        partnerActiveStatus: partnerActiveStatusMap.get(partnerId) || null,
+        partnerResponseTime: partnerResponseTimeMap.get(partnerId) || null,
         lastActivityTime,
         preview,
         previewType,
-        previewSentByMe: previewType === "message" ? (msgData?.lastSenderId === userId) : null,
+        previewSentByMe,
         unreadCount: msgData?.unread || 0,
-        // Request info anchored to the most recently active request
-        requestId: anchorRequestId,
-        requestType: anchorReq?.requestType || null,
-        requestStatus: anchorReq?.status || null,
-        requestNegotiationStatus: anchorReq?.negotiationStatus || null,
-        itemName: anchorReq?.itemName || null,
-        itemId: anchorReq?.itemId || null,
-        iAmRequester: anchorReq ? anchorReq.requesterId === userId : false,
+        requestType: reqData.requestType,
+        requestStatus: reqData.status,
+        requestNegotiationStatus: reqData.negotiationStatus || null,
+        itemName: reqData.itemName,
+        itemId: reqData.itemId,
+        itemPhoto: (reqData.itemPhotos as string[] | null)?.[0] ?? null,
+        iAmRequester: reqData.requesterId === userId,
+        isArchived: ARCHIVED_STATUSES.includes(reqData.status),
       };
     });
 
-    // Sort by most recent activity
+    // Sort by most recent activity (newest first)
     inboxItems.sort((a, b) => b.lastActivityTime.getTime() - a.lastActivityTime.getTime());
 
     res.json(inboxItems);

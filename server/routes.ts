@@ -6097,6 +6097,22 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // ── ShareCoin borrow-cost helper ───────────────────────────────────────────
+  // Formula: dailyRate = floor(weeklyPrice / 7), cost = dailyRate × days
+  // e.g. 10 SC/week item borrowed 4 days → floor(10/7)=1 × 4 = 4 SC
+  function calcBorrowShareCoinCost(
+    shareCoinPrice: number,
+    startDate: Date | string | null | undefined,
+    endDate: Date | string | null | undefined,
+  ): number {
+    if (!startDate || !endDate || shareCoinPrice <= 0) return Math.max(1, shareCoinPrice);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000) + 1);
+    const dailyRate = Math.max(1, Math.floor(shareCoinPrice / 7));
+    return dailyRate * borrowDays;
+  }
+
   // Confirm handoff (item exchanged - charges ShareCoins, starts borrow period)
   app.post("/api/requests/:requestId/handoff", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -6199,7 +6215,13 @@ Respond with ONLY the category name, nothing else.`
       // If both parties have now confirmed, complete the handoff
       if (bothConfirmed) {
         // Charge ShareCoins from borrower (only for BORROW type)
-        const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+        const shareCoinAmount = request.item_requests.requestType === "BORROW"
+          ? calcBorrowShareCoinCost(
+              parseFloat(request.items.shareCoinPrice || "0"),
+              request.item_requests.startDate,
+              request.item_requests.endDate,
+            )
+          : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
         
         if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
           const [borrower] = await db
@@ -6387,7 +6409,13 @@ Respond with ONLY the category name, nothing else.`
         ]);
       } else {
         // Both confirmed — send post-handoff summary messages
-        const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+        const shareCoinAmount = request.item_requests.requestType === "BORROW"
+          ? calcBorrowShareCoinCost(
+              parseFloat(request.items.shareCoinPrice || "0"),
+              request.item_requests.startDate,
+              request.item_requests.endDate,
+            )
+          : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
         const isBorrow = request.item_requests.requestType === "BORROW";
         const bookedStartMs = request.item_requests.startDate ? new Date(request.item_requests.startDate).getTime() : null;
         const bookedEndDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
@@ -6522,7 +6550,13 @@ Respond with ONLY the category name, nothing else.`
       const now = new Date();
       const ownerId = request.items.ownerId!;
       const borrowerId = request.item_requests.requesterId;
-      const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+      const shareCoinAmount = request.item_requests.requestType === "BORROW"
+        ? calcBorrowShareCoinCost(
+            parseFloat(request.items.shareCoinPrice || "0"),
+            request.item_requests.startDate,
+            request.item_requests.endDate,
+          )
+        : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
 
       if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
         const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
@@ -6922,7 +6956,13 @@ Respond with ONLY the category name, nothing else.`
 
         // ── Case 1: One confirmed, other is silent (no denial) → auto-confirm ──
         if ((ownerConfirmed || borrowerConfirmed) && !ownerDenied && !borrowerDenied) {
-          const shareCoinAmount = parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+          const shareCoinAmount = request.item_requests.requestType === "BORROW"
+          ? calcBorrowShareCoinCost(
+              parseFloat(request.items.shareCoinPrice || "0"),
+              request.item_requests.startDate,
+              request.item_requests.endDate,
+            )
+          : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
 
           if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
             const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);

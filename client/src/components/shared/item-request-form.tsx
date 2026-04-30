@@ -367,14 +367,7 @@ export function ItemRequestForm({
             <form
               onSubmit={form.handleSubmit((data) => {
                 if (requestType === "BORROW" && onInsufficientCoins) {
-                  const TIER_WEEKLY_RATES: Record<number, number> = {
-                    1: 2,
-                    2: 5,
-                    3: 10,
-                    4: 20,
-                  };
-                  const weeklyRate =
-                    TIER_WEEKLY_RATES[(item as any).tier || 2] || 5;
+                  const weeklyPrice = parseFloat((item as any).shareCoinPrice || "0") || 5;
                   let borrowDays = 0;
                   if (data.startDate && data.endDate) {
                     const start = new Date(data.startDate);
@@ -387,10 +380,9 @@ export function ItemRequestForm({
                       ) + 1,
                     );
                   }
+                  const dailyRate = Math.max(1, Math.floor(weeklyPrice / 7));
                   const proratedCost =
-                    borrowDays > 0
-                      ? Math.max(1, Math.floor((weeklyRate / 7) * borrowDays))
-                      : weeklyRate;
+                    borrowDays > 0 ? dailyRate * borrowDays : weeklyPrice;
                   const balance = Number((user as any)?.shareCoins || 0);
                   if (balance < proratedCost) {
                     onClose();
@@ -557,20 +549,13 @@ export function ItemRequestForm({
               {/* Borrow Cost Breakdown - Only for BORROW */}
               {requestType === "BORROW" &&
                 (() => {
-                  // Tier-based weekly ShareCoin borrow rates
-                  const TIER_WEEKLY_RATES: Record<number, number> = {
-                    1: 2, // Tier 1: Under $50 - 2 SC/week
-                    2: 5, // Tier 2: $50-$199 - 5 SC/week
-                    3: 10, // Tier 3: $200-$499 - 10 SC/week
-                    4: 20, // Tier 4: $500-$2,000 - 20 SC/week
-                  };
-                  const itemTierForRate = (item as any).tier || 2;
-                  const weeklyRate = TIER_WEEKLY_RATES[itemTierForRate] || 5;
-
                   // Watch dates and calculate days
                   const startDate = form.watch("startDate");
                   const endDate = form.watch("endDate");
                   const deliveryMethod = form.watch("deliveryMethod");
+
+                  const weeklyPrice = parseFloat((item as any).shareCoinPrice || "0") || 5;
+                  const dailyRate = Math.max(1, Math.floor(weeklyPrice / 7));
 
                   let borrowDays = 0;
                   if (startDate && endDate) {
@@ -585,11 +570,9 @@ export function ItemRequestForm({
                     );
                   }
 
-                  // Calculate prorated ShareCoin cost: (Weekly Rate ÷ 7) × days, rounded down, minimum 1
+                  // Duration-based cost: dailyRate × days
                   const proratedCost =
-                    borrowDays > 0
-                      ? Math.max(1, Math.floor((weeklyRate / 7) * borrowDays))
-                      : weeklyRate;
+                    borrowDays > 0 ? dailyRate * borrowDays : weeklyPrice;
 
                   // Delivery cost for courier
                   const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
@@ -633,7 +616,7 @@ export function ItemRequestForm({
                             </span>
                           </div>
                           <p className="text-[10px] text-gray-400">
-                            Weekly rate: {weeklyRate} SC/week
+                            {dailyRate} SC/day × {borrowDays} {borrowDays === 1 ? "day" : "days"}
                           </p>
                           {deliveryCost > 0 && (
                             <div className="flex justify-between">

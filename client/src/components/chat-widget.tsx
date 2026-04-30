@@ -515,7 +515,9 @@ export function ChatWidget() {
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
       if (vars.accept && data.ownerAccepted) {
-        // Owner fully accepted via counter path — show celebration
+        // Owner fully accepted via counter path — anchor selectedRequestId so
+        // handleScheduleClick can read the correct startDate for the auto-reply.
+        setSelectedRequestId(vars.requestId);
         setShowCelebration(true);
       } else {
         toast({

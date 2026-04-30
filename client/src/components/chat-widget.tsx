@@ -422,10 +422,11 @@ export function ChatWidget() {
     enabled: !!selectedConversation,
   });
 
-  // Fetch requests
+  // Fetch requests — poll every 20s as a safety net for WebSocket drops
   const { data: requests = [] } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
     enabled: !!user,
+    refetchInterval: 20_000,
   });
 
   // Detect when a lender's request transitions to COMPLETED → prompt review
@@ -458,12 +459,14 @@ export function ChatWidget() {
         ? `/api/messages/${selectedConversation}?requestId=${activeConversationRequestId}`
         : `/api/messages/${selectedConversation}`;
       const res = await fetch(url, { credentials: "include" });
+      if (res.status === 401) return []; // session expired — silently return empty until user refreshes
       if (!res.ok) throw new Error("Failed to fetch messages");
       return res.json();
     },
     enabled: !!selectedConversation && !!user,
     refetchOnMount: "always",
     staleTime: 0,
+    refetchInterval: 10_000, // Poll every 10s when a conversation is open as WebSocket fallback
   });
 
   // Request mutations
@@ -798,9 +801,18 @@ export function ChatWidget() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/inbox"] });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to send message:", error);
-      toast({ title: "Couldn't send message", description: "Please try again.", variant: "destructive" });
+      const status = error?.status ?? 0;
+      if (status === 401) {
+        toast({
+          title: "Session expired",
+          description: "Please refresh the page to sign back in.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Couldn't send message", description: "Please try again.", variant: "destructive" });
+      }
     }
   };
 

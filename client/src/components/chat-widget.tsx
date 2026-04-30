@@ -1654,11 +1654,11 @@ export function ChatWidget() {
                                         {mDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
                                       </span>
                                     )}
-                                    {mDeposit && (
-                                      <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
+                                    {mDeposit && depositChanged && (
+                                      <span className="flex items-center gap-1 text-amber-600 font-medium">
                                         {mDeposit === "in_app"
-                                          ? <Shield className="h-3 w-3 shrink-0 text-gray-500" />
-                                          : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
+                                          ? <Shield className="h-3 w-3 shrink-0" />
+                                          : <MapPin className="h-3 w-3 shrink-0" />}
                                         {mDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                       </span>
                                     )}

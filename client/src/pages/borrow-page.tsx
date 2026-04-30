@@ -799,7 +799,11 @@ export default function BorrowPage() {
               <div className="flex-1 h-px bg-gradient-to-r from-teal-200 to-transparent"></div>
             </div>
           )}
-          {filteredItems.length === 0 && searchQuery ? (
+          {isLoading && searchQuery ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-teal-200 border-t-teal-600" />
+            </div>
+          ) : filteredItems.length === 0 && searchQuery ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div
                 className="rounded-2xl p-8 max-w-md w-full text-center"

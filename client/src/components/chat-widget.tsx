@@ -738,7 +738,7 @@ export function ChatWidget() {
     switch (status) {
       case "PENDING": return iAmRequester ? "Waiting for response" : "Needs your response";
       case "ACCEPTED": return "Accepted";
-      case "DEPOSIT_CONFIRMED": return "Deposit confirmed";
+      case "DEPOSIT_CONFIRMED": return inboxItem.depositMethod === "in_person" ? "Ready for handoff" : "Deposit confirmed";
       case "IN_PROGRESS": return "In progress";
       case "RETURN_REQUESTED": return "Return requested";
       case "COMPLETED": return "Completed";
@@ -1609,6 +1609,7 @@ export function ChatWidget() {
                         et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                         et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
                         et === "deposit_confirmed" ? "🔒 Deposit secured" :
+                        et === "deposit_skipped" ? "💵 Cash deposit to be exchanged at handoff" :
                         et === "counter_proposed" ? null :
                         msg.content;
 
@@ -1790,7 +1791,7 @@ export function ChatWidget() {
                     );
                   }
 
-                  if (pr.status === "ACCEPTED" && pr.requestType !== "GIFT" && pr.requestType !== "SWAP") {
+                  if (pr.status === "ACCEPTED" && pr.requestType !== "GIFT" && pr.requestType !== "SWAP" && pr.depositMethod !== "in_person") {
                     const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
                     return (
                       <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
@@ -2430,7 +2431,8 @@ export function ChatWidget() {
             <DialogTitle>Cancel this booking?</DialogTitle>
             <DialogDescription>
               {cancelConfirmRequest?.status === "ACCEPTED" && "The owner has already accepted your request."}
-              {(cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" || cancelConfirmRequest?.status === "COURIER_PENDING") && "Your deposit will be refunded automatically."}
+              {(cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" || cancelConfirmRequest?.status === "COURIER_PENDING") && cancelConfirmRequest?.depositMethod !== "in_person" && "Your deposit will be refunded automatically."}
+              {(cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" || cancelConfirmRequest?.status === "COURIER_PENDING") && cancelConfirmRequest?.depositMethod === "in_person" && "No online deposit was paid — cancellation is straightforward."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 sm:justify-end">

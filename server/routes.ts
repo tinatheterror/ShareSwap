@@ -10364,51 +10364,78 @@ Respond with ONLY the category name, nothing else.`
       isRead: false,
     });
 
-    // Calculate reputation points based on rating
-    const reputationPoints = Math.max(rating - 3, 0) * 10; // 0 points for 3 stars or less, 10 for 4 stars, 20 for 5 stars
+    // --- Compute ALL points upfront so the notification and level-up check are accurate ---
 
-    // Read current level before update so we can detect a level-up
+    // Base points from star rating (0 for ≤3 stars, 10 for 4 stars, 20 for 5 stars)
+    const reviewPoints = Math.max(rating - 3, 0) * 10;
+
+    // Positive feedback tag points (+12 each for reliable / on_time / as_described)
+    const POSITIVE_TAG_POINTS: Record<string, number> = {
+      reliable: 12, on_time: 12, as_described: 12,
+    };
+    const positiveTagsAwarded = cleanedTags.filter(t => t in POSITIVE_TAG_POINTS);
+    const feedbackTagPoints = positiveTagsAwarded.reduce((sum, t) => sum + POSITIVE_TAG_POINTS[t], 0);
+
+    const totalPoints = reviewPoints + feedbackTagPoints;
+
+    // Read current score/level BEFORE any update
     const [reviewedUserBefore] = await db
       .select({ reputationScore: users.reputationScore, reputationLevel: users.reputationLevel })
       .from(users)
       .where(eq(users.id, reviewedUserId))
       .limit(1);
 
-    // Record reputation activity if positive points
-    if (reputationPoints > 0) {
-      await db.insert(reputationActivities).values({
-        userId: reviewedUserId,
-        activityType: "RECEIVE_REVIEW",
-        points: reputationPoints,
-        itemId: transaction.items.id,
-        description: `Received a ${rating}-star review`,
-      });
+    const oldScore = reviewedUserBefore?.reputationScore ?? 0;
 
-      // Update user's reputation score
+    if (totalPoints > 0) {
+      // Log reputation activities (one per source)
+      if (reviewPoints > 0) {
+        await db.insert(reputationActivities).values({
+          userId: reviewedUserId,
+          activityType: "RECEIVE_REVIEW",
+          points: reviewPoints,
+          itemId: transaction.items.id,
+          description: `Received a ${rating}-star review`,
+        });
+      }
+      if (feedbackTagPoints > 0) {
+        await db.insert(reputationActivities).values({
+          userId: reviewedUserId,
+          activityType: "positive_feedback" as any,
+          points: feedbackTagPoints,
+          description: `Positive feedback tags: ${positiveTagsAwarded.join(", ")}`,
+        });
+      }
+
+      // Apply ALL points in one DB update (includes reputationLevel recalculation)
       await db
         .update(users)
         .set({
-          reputationScore: sql`reputation_score + ${reputationPoints}`,
-          reputationLevel: sql`CASE 
-            WHEN reputation_score + ${reputationPoints} >= 500 THEN 'ShareSwap Champion'
-            WHEN reputation_score + ${reputationPoints} >= 300 THEN 'Community Pillar'
-            WHEN reputation_score + ${reputationPoints} >= 150 THEN 'Trusted Member'
-            WHEN reputation_score + ${reputationPoints} >= 50  THEN 'Neighbour'
+          reputationScore: sql`reputation_score + ${totalPoints}`,
+          reputationLevel: sql`CASE
+            WHEN reputation_score + ${totalPoints} >= 500 THEN 'ShareSwap Champion'
+            WHEN reputation_score + ${totalPoints} >= 300 THEN 'Community Pillar'
+            WHEN reputation_score + ${totalPoints} >= 150 THEN 'Trusted Member'
+            WHEN reputation_score + ${totalPoints} >= 50  THEN 'Neighbour'
             ELSE 'Newcomer'
           END`,
         })
         .where(eq(users.id, reviewedUserId));
 
-      // Trust score changed notification
+      // Build a transparent breakdown for the notification message
+      const breakdownParts: string[] = [];
+      if (reviewPoints > 0) breakdownParts.push(`${reviewPoints} from ${rating}-star rating`);
+      if (feedbackTagPoints > 0) breakdownParts.push(`${feedbackTagPoints} from ${positiveTagsAwarded.length} positive tag${positiveTagsAwarded.length !== 1 ? 's' : ''}`);
+
       await db.insert(notifications).values({
         userId: reviewedUserId,
         type: "trust_score_changed",
         title: "Trust score increased",
-        message: `Your trust score went up by ${reputationPoints} point${reputationPoints !== 1 ? 's' : ''} after receiving a ${rating}-star review.`,
+        message: `Your trust score went up by ${totalPoints} point${totalPoints !== 1 ? 's' : ''} (${breakdownParts.join(" + ")}) after ${req.user.username}'s review.`,
         isRead: false,
       });
 
-      // Level-up notification + ShareCoin reward if the level crossed a threshold
+      // Level-up check uses totalPoints so tags that push across a threshold are caught
       const LEVEL_THRESHOLDS = [
         { name: 'Newcomer',           minScore: 0,   coinsReward: 0 },
         { name: 'Neighbour',          minScore: 50,  coinsReward: 5 },
@@ -10419,12 +10446,10 @@ Respond with ONLY the category name, nothing else.`
       const getLevelForScore = (s: number) =>
         [...LEVEL_THRESHOLDS].reverse().find(l => s >= l.minScore) ?? LEVEL_THRESHOLDS[0];
 
-      const oldScore = reviewedUserBefore?.reputationScore ?? 0;
       const oldLevelDef = getLevelForScore(oldScore);
-      const newLevelDef = getLevelForScore(oldScore + reputationPoints);
+      const newLevelDef = getLevelForScore(oldScore + totalPoints);
 
       if (newLevelDef.name !== oldLevelDef.name) {
-        // Award ShareCoins for leveling up
         if (newLevelDef.coinsReward > 0) {
           await db.update(users)
             .set({ shareCoins: sql`share_coins + ${newLevelDef.coinsReward}` })
@@ -10441,27 +10466,18 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(notifications).values({
           userId: reviewedUserId,
           type: "level_up",
-          title: `Level up — ${newLevelDef.name}!`,
+          title: `Level up — ${newLevelDef.name}! 🎉`,
           message: `You've reached ${newLevelDef.name}. Keep sharing to unlock more perks!`,
           link: "/achievements",
           isRead: false,
         });
+        console.log(`🎉 Level up: user ${reviewedUserId} reached ${newLevelDef.name} (score ${oldScore} → ${oldScore + totalPoints})`);
       }
     }
 
-    // Award trust points for positive feedback tags (+12 each for reliable/on_time/as_described)
-    if (cleanedTags.length > 0) {
-      try {
-        await awardFeedbackPoints(
-          reviewedUserId,
-          transactionId,
-          cleanedTags as ("reliable" | "on_time" | "as_described")[]
-        );
-        console.log(`✅ Awarded trust points for feedback tags: ${cleanedTags.join(", ")}`);
-      } catch (trustError) {
-        console.error("Error awarding feedback trust points:", trustError);
-      }
-    }
+    // awardFeedbackPoints is no longer called here — points are fully handled above.
+    // (It still exists for other callers such as the handoff confirmation route.)
+    console.log(`✅ Review processed: ${reviewPoints} base + ${feedbackTagPoints} tag pts = ${totalPoints} total for user ${reviewedUserId}`);
 
     res.status(201).json(review);
   });

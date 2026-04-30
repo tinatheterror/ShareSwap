@@ -1225,6 +1225,22 @@ export function ChatWidget() {
                       </Button>
                     )}
 
+                  {(request.status === "DEPOSIT_CONFIRMED" ||
+                    request.status === "COURIER_PENDING") && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowHandoffModal(true);
+                      }}
+                    >
+                      <HandMetal className="h-3 w-3 mr-1" />
+                      Confirm Received
+                    </Button>
+                  )}
+
                   {request.status === "RETURN_REQUESTED" && (
                     <Badge
                       variant="secondary"
@@ -1812,17 +1828,32 @@ export function ChatWidget() {
                   }
 
                   if (
-                    pr.requestType !== "RENT" &&
-                    ((pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
+                    (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff) ||
                     (pr.status === "ACCEPTED" && pr.requestType === "SWAP") ||
                     // Legacy: BORROW + in_person deposit stuck at ACCEPTED before auto-advance existed
-                    (pr.status === "ACCEPTED" && pr.requestType === "BORROW" && pr.depositMethod === "in_person"))
+                    (pr.status === "ACCEPTED" && pr.requestType === "BORROW" && pr.depositMethod === "in_person")
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const pinUsed = (pr as any).pinUsed;
                     const pinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
                     const isInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
+
+                    // For RENT: gate the handoff button behind the rental start date
+                    const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+                    const rentalStart = pr.requestType === "RENT" && pr.startDate ? parseLocalDate(pr.startDate) : null;
+                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight;
+
+                    if (isBeforeRentalStart) {
+                      return (
+                        <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                          <p className="text-xs text-center text-indigo-700 font-medium py-1.5">
+                            📅 Pickup on {format(rentalStart, "MMMM d")} — return here then to confirm handoff
+                          </p>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-1">
                         <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
@@ -1917,17 +1948,32 @@ export function ChatWidget() {
                   }
 
                   if (
-                    pr.requestType !== "RENT" &&
-                    (pr.status === "DEPOSIT_CONFIRMED" ||
+                    pr.status === "DEPOSIT_CONFIRMED" ||
                     pr.status === "COURIER_PENDING" ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff) ||
                     (pr.status === "ACCEPTED" && pr.requestType === "SWAP") ||
                     // Legacy: BORROW + in_person deposit stuck at ACCEPTED before auto-advance existed
-                    (pr.status === "ACCEPTED" && pr.requestType === "BORROW" && pr.depositMethod === "in_person"))
+                    (pr.status === "ACCEPTED" && pr.requestType === "BORROW" && pr.depositMethod === "in_person")
                   ) {
                     const pinExpiresAt = (pr as any).pinExpiresAt;
                     const isPinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
                     const isOwnerInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
+
+                    // For RENT: gate the handoff code behind the rental start date
+                    const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+                    const rentalStart = pr.requestType === "RENT" && pr.startDate ? parseLocalDate(pr.startDate) : null;
+                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight;
+
+                    if (isBeforeRentalStart) {
+                      return (
+                        <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
+                          <p className="text-xs text-center text-indigo-700 font-medium py-1.5">
+                            📅 Handoff on {format(rentalStart, "MMMM d")} — your code will be ready then
+                          </p>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-2">
                         {isOwnerInPersonDeposit && (
@@ -2299,6 +2345,7 @@ export function ChatWidget() {
           userRole={
             selectedRequest.requesterId === user?.id ? "borrower" : "owner"
           }
+          requestType={selectedRequest.requestType as "BORROW" | "RENT"}
           deliveryMethod={
             (selectedRequest.deliveryMethod === "courier"
               ? "courier"

@@ -816,12 +816,8 @@ export function ChatWidget() {
     }
   };
 
-  const handleScheduleClick = async () => {
-    setShowCelebration(false);
-    // Restore focus to the message input after the overlay dismisses
-    setTimeout(() => messageInputRef.current?.focus(), 350);
-    if (!selectedConversation) return;
-    const acceptedRequest = requests.find((r) => r.id === selectedRequestId);
+  const sendScheduleMessage = async (requestId: number, conversationUserId: number, convRequestId: number) => {
+    const acceptedRequest = requests.find((r) => r.id === requestId);
     const isGiftRequest = acceptedRequest?.requestType === "GIFT";
     const isSwapRequest = acceptedRequest?.requestType === "SWAP";
     const startDateRaw = acceptedRequest?.startDate;
@@ -833,15 +829,20 @@ export function ChatWidget() {
       : `When and where can you meet on ${dateText}?`;
     try {
       await apiRequest("POST", "/api/messages", {
-        receiverId: selectedConversation,
+        receiverId: conversationUserId,
         content: scheduleMsg,
-        requestId: activeConversationRequestId,
+        requestId: convRequestId,
       });
-      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", conversationUserId, convRequestId] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
     } catch (error) {
       console.error("Failed to send schedule message:", error);
     }
+  };
+
+  const handleScheduleClick = async () => {
+    setShowCelebration(false);
+    setTimeout(() => messageInputRef.current?.focus(), 350);
   };
 
   const handleAcceptClick = async (request: ItemRequest) => {

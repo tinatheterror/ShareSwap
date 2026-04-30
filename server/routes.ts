@@ -5609,27 +5609,39 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId))
         .returning();
 
-      // Create escrow record for rental earnings (held until return confirmed)
+      // Create escrow record for rental earnings (held until return confirmed).
+      // Commission split: 5% to platform Stripe account, 95% to owner pending balance.
+      // During the 2026 free period the platform fee is waived — owner receives 100%.
+      // The Stripe processing fee (~2.9% + $0.30) is absorbed by the platform from its 5% cut,
+      // so it is never deducted from the owner's share.
       if (rentalAmount && rentalAmount > 0) {
         const actualRentalAmount = parseFloat(rentalAmount);
-        const actualPlatformFee = 0; // 0% platform fee for 2025
-        const actualProcessingFee = actualRentalAmount * 0.03; // 3% processing fee
-        const netAmount = actualRentalAmount - actualPlatformFee - actualProcessingFee;
-        
+        const freeCommissionPeriod = new Date().getFullYear() <= 2026;
+        const actualPlatformFee = freeCommissionPeriod
+          ? 0                                    // free period — no platform cut
+          : parseFloat((actualRentalAmount * 0.05).toFixed(2)); // 5% commission
+        const netAmount = parseFloat((actualRentalAmount - actualPlatformFee).toFixed(2));
+
+        if (freeCommissionPeriod) {
+          console.log(`🎉 Platform fee waived (2026 free period) — owner receives full $${netAmount.toFixed(2)}`);
+        } else {
+          console.log(`💰 Platform fee $${actualPlatformFee.toFixed(2)} (5%) — owner receives $${netAmount.toFixed(2)}`);
+        }
+
         // Create held payout record for the owner
         await db.insert(rentalPayouts).values({
           userId: request.items.ownerId!,
           requestId: requestId,
           amount: actualRentalAmount.toString(),
           rentalAmount: actualRentalAmount.toString(),
-          platformFee: actualPlatformFee.toString(),
-          processingFee: actualProcessingFee.toFixed(2),
+          platformFee: actualPlatformFee.toFixed(2),
+          processingFee: "0.00",
           netAmount: netAmount.toFixed(2),
           status: 'held',
           stripePaymentIntentId: paymentIntentId,
           holdUntil: request.item_requests.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
-        
+
         // Add to owner's pending balance
         await db
           .update(users)
@@ -5637,7 +5649,7 @@ Respond with ONLY the category name, nothing else.`
             pendingRentalBalance: sql`COALESCE(${users.pendingRentalBalance}, 0) + ${netAmount.toFixed(2)}`,
           })
           .where(eq(users.id, request.items.ownerId!));
-        
+
         console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
       }
 

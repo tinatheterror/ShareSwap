@@ -427,7 +427,15 @@ export default function AchievementsPage() {
                       className="p-3 rounded-lg bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-100"
                     >
                       <div className="flex items-start gap-3">
-                        <Quote className="h-4 w-4 text-teal-400 flex-shrink-0 mt-0.5" />
+                        <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                          {(review.reviewer as any).profilePhoto ? (
+                            <img src={(review.reviewer as any).profilePhoto} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white text-[10px] font-bold">
+                              {((review.reviewer as any).displayName || review.reviewer.username).charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           {review.comment && (
                             <p className="text-sm text-slate-700 italic mb-2 line-clamp-2">
@@ -436,7 +444,7 @@ export default function AchievementsPage() {
                           )}
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-slate-500">
-                              — {review.reviewer.username}
+                              — {(review.reviewer as any).displayName || (review.reviewer as any).handle || review.reviewer.username}
                             </span>
                             <div className="flex items-center gap-0.5">
                               {[...Array(5)].map((_, i) => (

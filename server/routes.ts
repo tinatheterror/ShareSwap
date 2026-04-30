@@ -10314,6 +10314,8 @@ Respond with ONLY the category name, nothing else.`
         reviewer: {
           id: users.id,
           username: users.username,
+          displayName: users.displayName,
+          profilePhoto: users.profilePhoto,
         },
       })
       .from(userReviews)
@@ -10699,6 +10701,8 @@ Respond with ONLY the category name, nothing else.`
         reviewer: {
           id: users.id,
           username: users.username,
+          displayName: users.displayName,
+          profilePhoto: users.profilePhoto,
           handle: users.handle,
           isVerified: users.isVerified,
           reputationLevel: users.reputationLevel,

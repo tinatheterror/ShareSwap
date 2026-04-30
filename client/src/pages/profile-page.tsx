@@ -724,8 +724,14 @@ export default function ProfilePage() {
                       style={{ backgroundColor: "#D4F7F1" }}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-teal-600 rounded-full flex items-center justify-center text-white font-bold">
-                          {review.reviewer.username.charAt(0).toUpperCase()}
+                        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                          {(review.reviewer as any).profilePhoto ? (
+                            <img src={(review.reviewer as any).profilePhoto} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">
+                              {((review.reviewer as any).displayName || review.reviewer.username).charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -733,9 +739,7 @@ export default function ProfilePage() {
                               href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}
                               className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer"
                             >
-                              @
-                              {(review.reviewer as any).handle ||
-                                review.reviewer.username.split("@")[0]}
+                              {(review.reviewer as any).displayName || (review.reviewer as any).handle || review.reviewer.username.split("@")[0]}
                             </Link>
                             <UserBadges
                               isVerified={review.reviewer.isVerified}
@@ -1494,7 +1498,7 @@ export default function ProfilePage() {
                       <div key={review.id} className="bg-white rounded-lg p-3 border border-teal-100">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs font-medium text-slate-600">
-                            @{(review.reviewer as any).handle || review.reviewer.username}
+                            {(review.reviewer as any).displayName || (review.reviewer as any).handle || review.reviewer.username}
                           </span>
                           <div className="flex items-center gap-0.5">
                             {[...Array(5)].map((_: any, i: number) => (

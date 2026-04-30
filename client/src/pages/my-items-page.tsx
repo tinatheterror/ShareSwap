@@ -27,7 +27,7 @@ import type { SelectItem } from "@db/schema";
 
 const TIER_NAMES: Record<number, string> = {
   1: "Tier 1 – Budget Friendly",
-  2: "Tier 2 – Everyday Household Item",
+  2: "Tier 2 – Everyday Household",
   3: "Tier 3 – Premium Item",
   4: "Tier 4 – High Value Item",
 };
@@ -238,15 +238,15 @@ export default function MyItemsPage() {
                     <TooltipProvider>
                       <div className="p-4 bg-white rounded-lg border border-teal-200 mb-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-black font-medium">
+                          <span className="text-black font-small">
                             {TIER_NAMES[(item as any).tier] ||
                               `Tier ${(item as any).tier}`}
                           </span>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full cursor-help">
-                                <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-                                <span className="text-xs text-teal-700 font-medium">
+                                <Sparkles className="h-3 w-3 text-teal-600" />
+                                <span className="text-xs text-teal-700 font-small">
                                   AI valued
                                 </span>
                               </div>

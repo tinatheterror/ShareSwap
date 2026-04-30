@@ -40,8 +40,14 @@ export default function HomePage() {
       setShowTutorial(true);
     } else {
       const handleLocationDone = () => setShowTutorial(true);
-      window.addEventListener("location-setup-complete", handleLocationDone, { once: true });
-      return () => window.removeEventListener("location-setup-complete", handleLocationDone);
+      window.addEventListener("location-setup-complete", handleLocationDone, {
+        once: true,
+      });
+      return () =>
+        window.removeEventListener(
+          "location-setup-complete",
+          handleLocationDone,
+        );
     }
   }, [user]);
 
@@ -57,7 +63,8 @@ export default function HomePage() {
     }
 
     const referralFromUrl = params.get("referral") === "applied";
-    const referralFromSession = sessionStorage.getItem("referralApplied") === "true";
+    const referralFromSession =
+      sessionStorage.getItem("referralApplied") === "true";
 
     if (referralFromUrl || referralFromSession) {
       setShowReferralBanner(true);
@@ -186,13 +193,15 @@ export default function HomePage() {
       </main>
 
       {/* Give Choice Dialog */}
-      <Dialog open={giveModal === "choice"} onOpenChange={(open) => !open && setGiveModal(null)}>
+      <Dialog
+        open={giveModal === "choice"}
+        onOpenChange={(open) => !open && setGiveModal(null)}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-center">Give to the ShareChest</DialogTitle>
-            <p className="text-sm text-muted-foreground text-center">
+            <DialogTitle className="text-xl font-bold text-center">
               How would you like to share?
-            </p>
+            </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 pt-2">
             <button
@@ -204,7 +213,9 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-gray-900">List an item</p>
-                <p className="text-xs text-muted-foreground">Fill in the item details yourself</p>
+                <p className="text-xs text-muted-foreground">
+                  Fill in the item details yourself
+                </p>
               </div>
             </button>
 
@@ -217,7 +228,9 @@ export default function HomePage() {
               </div>
               <div>
                 <p className="font-semibold text-gray-900">Import a listing</p>
-                <p className="text-xs text-muted-foreground">From Facebook Marketplace or Craigslist</p>
+                <p className="text-xs text-muted-foreground">
+                  From Facebook Marketplace or Craigslist
+                </p>
               </div>
             </button>
 
@@ -229,8 +242,12 @@ export default function HomePage() {
                 <HeartPeopleIcon className="h-5 w-5 text-teal-700" />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">See what people need</p>
-                <p className="text-xs text-muted-foreground">Fulfill a wishlist and earn ShareCoins</p>
+                <p className="font-semibold text-gray-900">
+                  See what people need
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Fulfill a wishlist and earn ShareCoins
+                </p>
               </div>
             </button>
           </div>

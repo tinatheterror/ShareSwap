@@ -2638,6 +2638,7 @@ export function ChatWidget() {
             reviewForRequest.requester.username
           }
           requestId={reviewForRequest.id}
+          requestType={reviewForRequest.requestType as "BORROW" | "RENT" | "SWAP" | "GIFT"}
           wasDisputed={!!reviewForRequest.returnDisputeTriggered}
           wasLate={
             !!reviewForRequest.endDate &&

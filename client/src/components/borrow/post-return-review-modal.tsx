@@ -9,13 +9,38 @@ import { apiRequest } from "@/lib/queryClient";
 import { Star, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const QUICK_TAGS = [
-  { key: "on_time",             label: "Returned on time" },
-  { key: "great_communication", label: "Great communication" },
-  { key: "well_cared",          label: "Item well cared for" },
-  { key: "late_return",         label: "Late return" },
-  { key: "issue_reported",      label: "Issue reported" },
-];
+const TAGS_BY_TYPE: Record<string, { key: string; label: string }[]> = {
+  BORROW: [
+    { key: "on_time",             label: "Returned on time" },
+    { key: "great_communication", label: "Great communication" },
+    { key: "well_cared",          label: "Item well cared for" },
+    { key: "late_return",         label: "Late return" },
+    { key: "issue_reported",      label: "Issue reported" },
+  ],
+  RENT: [
+    { key: "on_time",             label: "Returned on time" },
+    { key: "great_communication", label: "Great communication" },
+    { key: "well_cared",          label: "Item well cared for" },
+    { key: "late_return",         label: "Late return" },
+    { key: "issue_reported",      label: "Issue reported" },
+  ],
+  SWAP: [
+    { key: "great_communication", label: "Great communication" },
+    { key: "item_as_described",   label: "Item as described" },
+    { key: "fair_exchange",       label: "Fair exchange" },
+    { key: "item_not_described",  label: "Item not as described" },
+    { key: "no_show",             label: "No-show / cancelled last minute" },
+    { key: "issue_reported",      label: "Issue reported" },
+  ],
+  GIFT: [
+    { key: "great_communication", label: "Great communication" },
+    { key: "generous_giver",      label: "Generous giver" },
+    { key: "item_as_described",   label: "Item as described" },
+    { key: "picked_up_promptly",  label: "Picked up promptly" },
+    { key: "no_show",             label: "Didn't collect" },
+    { key: "issue_reported",      label: "Issue reported" },
+  ],
+};
 
 interface PostReturnReviewModalProps {
   isOpen: boolean;
@@ -23,6 +48,7 @@ interface PostReturnReviewModalProps {
   reviewedUserId: number;
   reviewedUserName: string;
   requestId: number;
+  requestType?: "BORROW" | "RENT" | "SWAP" | "GIFT";
   wasDisputed?: boolean;
   wasLate?: boolean;
 }
@@ -33,11 +59,14 @@ export function PostReturnReviewModal({
   reviewedUserId,
   reviewedUserName,
   requestId,
+  requestType = "BORROW",
   wasDisputed = false,
   wasLate = false,
 }: PostReturnReviewModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const quickTags = TAGS_BY_TYPE[requestType] ?? TAGS_BY_TYPE.BORROW;
 
   const defaultTags = wasDisputed
     ? ["issue_reported"]
@@ -87,6 +116,12 @@ export function PostReturnReviewModal({
     ? "How was this experience overall?"
     : `How was your experience with ${firstName}?`;
 
+  const typeLabel =
+    requestType === "SWAP" ? "Swap complete" :
+    requestType === "GIFT" ? "Gift complete" :
+    requestType === "RENT" ? "Rental complete" :
+    "Transaction complete";
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden">
@@ -94,7 +129,7 @@ export function PostReturnReviewModal({
         {/* Header */}
         <div className="px-6 pt-6 pb-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">
-            Transaction complete
+            {typeLabel}
           </p>
           <h2 className="text-lg font-bold text-foreground leading-snug">
             {heading}
@@ -130,7 +165,7 @@ export function PostReturnReviewModal({
         <div className="px-6 pb-4">
           <p className="text-xs text-muted-foreground mb-2">Select what applied</p>
           <div className="flex flex-wrap gap-2">
-            {QUICK_TAGS.map((tag) => (
+            {quickTags.map((tag) => (
               <button
                 key={tag.key}
                 onClick={() => toggleTag(tag.key)}

@@ -67,7 +67,7 @@ const inferCategory = (itemName: string): string => {
   const name = itemName.toLowerCase();
 
   if (
-    /baby|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier/i.test(
+    /baby|bassinet|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier|pram|playpen|highchair|bouncer/i.test(
       name,
     )
   ) {

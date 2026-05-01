@@ -34,6 +34,7 @@ interface UserStats {
   successfulHandoffs: number;
   referrals: number;
   helpedUrgent: number;
+  reviewsLeft: number;
 }
 
 interface Review {
@@ -247,6 +248,13 @@ export default function AchievementsPage() {
       achieved: currentLevelIndex >= 1,
       icon: <Star className="h-5 w-5" />,
     },
+    {
+      id: "first-review-left",
+      title: "Left your first review",
+      description: "Gave feedback to help the community",
+      achieved: (stats?.reviewsLeft || 0) >= 1,
+      icon: <MessageSquare className="h-5 w-5" />,
+    },
   ];
 
   const earnedBadges = badges.filter((b) => b.earned);
@@ -415,10 +423,17 @@ export default function AchievementsPage() {
 
             {/* Reviews */}
             <div>
-              <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-teal-500" />
-                What Neighbours Say
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-teal-500" />
+                  What Neighbours Say
+                </h2>
+                {(stats?.reviewsLeft || 0) > 0 && (
+                  <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {stats!.reviewsLeft} review{stats!.reviewsLeft !== 1 ? "s" : ""} left for others
+                  </span>
+                )}
+              </div>
               {reviews && reviews.length > 0 ? (
                 <div className="space-y-2">
                   {reviews.slice(0, 3).map((review) => (

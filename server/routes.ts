@@ -8700,6 +8700,12 @@ Respond with ONLY the category name, nothing else.`
           eq(wishlists.urgency, "urgent")
         ));
 
+      // Count reviews left by this user for others
+      const [reviewsLeftCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(userReviews)
+        .where(eq(userReviews.reviewerId, userId));
+
       res.json({
         totalBorrowed: Number(borrowedCount?.count || 0),
         totalLent: Number(lentCount?.count || 0),
@@ -8708,6 +8714,7 @@ Respond with ONLY the category name, nothing else.`
         successfulHandoffs: Number(handoffCount?.count || 0),
         referrals: Number(referralCount?.count || 0),
         helpedUrgent: Math.min(Number(urgentCount?.count || 0), 1), // Cap at 1 for milestone
+        reviewsLeft: Number(reviewsLeftCount?.count || 0),
       });
     } catch (error) {
       console.error("Error fetching user stats:", error);

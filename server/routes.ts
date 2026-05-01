@@ -4332,6 +4332,8 @@ Respond with ONLY the category name, nothing else.`
         reqDisplayName: users.displayName,
         reqIsVerified: users.isVerified,
         reqReputationLevel: users.reputationLevel,
+        ownerUsername: sql<string | null>`(SELECT username FROM users WHERE id = ${items.ownerId})`,
+        ownerDisplayName: sql<string | null>`(SELECT display_name FROM users WHERE id = ${items.ownerId})`,
       })
       .from(itemRequests)
       .innerJoin(items, eq(items.id, itemRequests.itemId))
@@ -4417,6 +4419,10 @@ Respond with ONLY the category name, nothing else.`
         displayName: r.reqDisplayName,
         isVerified: r.reqIsVerified,
         reputationLevel: r.reqReputationLevel,
+      },
+      owner: {
+        username: r.ownerUsername,
+        displayName: r.ownerDisplayName,
       },
     }));
 

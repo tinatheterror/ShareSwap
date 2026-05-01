@@ -191,6 +191,10 @@ interface ItemRequest {
     username: string;
     displayName: string | null;
   };
+  owner: {
+    username: string | null;
+    displayName: string | null;
+  };
 }
 
 type MessageFilter =
@@ -447,18 +451,21 @@ export function ChatWidget() {
     refetchInterval: 20_000,
   });
 
-  // Detect when a lender's request transitions to COMPLETED → prompt review
+  // Detect when a request transitions to COMPLETED → prompt review
   const prevReqStatusesRef = useRef<Record<number, string>>({});
   useEffect(() => {
     if (!user || !requests.length) return;
     const prev = prevReqStatusesRef.current;
     for (const req of requests) {
       const was = prev[req.id];
-      if (was && was !== "COMPLETED" && req.status === "COMPLETED" && req.item.ownerId === user.id) {
-        if (!showReviewPrompt) {
-          setReviewForRequest(req);
-          setShowReviewPrompt(true);
-        }
+      if (!was || was === "COMPLETED" || req.status !== "COMPLETED") continue;
+      const isOwner     = req.item.ownerId === user.id;
+      const isRequester = req.requesterId === user.id;
+      const isBothSides = req.requestType === "SWAP" || req.requestType === "GIFT";
+      // Owner is always prompted; requester is prompted only for SWAP / GIFT
+      if ((isOwner || (isRequester && isBothSides)) && !showReviewPrompt) {
+        setReviewForRequest(req);
+        setShowReviewPrompt(true);
         break;
       }
     }
@@ -2625,27 +2632,33 @@ export function ChatWidget() {
         />
       )}
 
-      {reviewForRequest && (
-        <PostReturnReviewModal
-          isOpen={showReviewPrompt}
-          onClose={() => {
-            setShowReviewPrompt(false);
-            setReviewForRequest(null);
-          }}
-          reviewedUserId={reviewForRequest.requester.id}
-          reviewedUserName={
-            reviewForRequest.requester.displayName ||
-            reviewForRequest.requester.username
-          }
-          requestId={reviewForRequest.id}
-          requestType={reviewForRequest.requestType as "BORROW" | "RENT" | "SWAP" | "GIFT"}
-          wasDisputed={!!reviewForRequest.returnDisputeTriggered}
-          wasLate={
-            !!reviewForRequest.endDate &&
-            new Date() > new Date(reviewForRequest.endDate)
-          }
-        />
-      )}
+      {reviewForRequest && (() => {
+        const reviewingAsOwner = reviewForRequest.item.ownerId === user?.id;
+        const reviewedUserId = reviewingAsOwner
+          ? reviewForRequest.requester.id
+          : reviewForRequest.item.ownerId;
+        const reviewedUserName = reviewingAsOwner
+          ? (reviewForRequest.requester.displayName || reviewForRequest.requester.username)
+          : (reviewForRequest.owner?.displayName || reviewForRequest.owner?.username || "Item Owner");
+        return (
+          <PostReturnReviewModal
+            isOpen={showReviewPrompt}
+            onClose={() => {
+              setShowReviewPrompt(false);
+              setReviewForRequest(null);
+            }}
+            reviewedUserId={reviewedUserId}
+            reviewedUserName={reviewedUserName}
+            requestId={reviewForRequest.id}
+            requestType={reviewForRequest.requestType as "BORROW" | "RENT" | "SWAP" | "GIFT"}
+            wasDisputed={!!reviewForRequest.returnDisputeTriggered}
+            wasLate={
+              !!reviewForRequest.endDate &&
+              new Date() > new Date(reviewForRequest.endDate)
+            }
+          />
+        );
+      })()}
 
       {/* Chat Counter-Proposal Modal */}
       {/* Swap counter modal */}

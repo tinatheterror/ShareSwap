@@ -81,7 +81,7 @@ async function awardShareCoinsWithFirstTimeBonus(
   const isFirstTime = !user?.hasCompleted;
   let totalAwarded = 0;
   
-  // Award first-time bonus if applicable
+  // Award first-time bonus only — no recurring completion reward
   if (isFirstTime) {
     await db.insert(shareCoinsTransactions).values({
       userId,
@@ -96,35 +96,15 @@ async function awardShareCoinsWithFirstTimeBonus(
       .update(users)
       .set({ [field]: true })
       .where(eq(users.id, userId));
+
+    // Update ShareCoins balance
+    await db
+      .update(users)
+      .set({ shareCoins: sql`share_coins + 1` })
+      .where(eq(users.id, userId));
   }
-  
-  // Award base completion reward
-  await db.insert(shareCoinsTransactions).values({
-    userId,
-    amount: baseReward.toString(),
-    description: `Successful ${actionType.charAt(0) + actionType.slice(1).toLowerCase()}: ${itemName}`,
-    transactionType: "EARNED",
-  });
-  totalAwarded += baseReward;
-  
-  // Update user's ShareCoins balance
-  await db
-    .update(users)
-    .set({
-      shareCoins: sql`share_coins + ${totalAwarded}`,
-    })
-    .where(eq(users.id, userId));
 
-  // Notify user of ShareCoins earned
-  await db.insert(notifications).values({
-    userId,
-    type: "sharecoin_earned",
-    title: `+${totalAwarded} ShareCoin${totalAwarded !== 1 ? 's' : ''} earned`,
-    message: `You earned ${totalAwarded} ShareCoin${totalAwarded !== 1 ? 's' : ''} for ${isFirstTime ? 'completing your first' : 'a successful'} ${actionType.charAt(0) + actionType.slice(1).toLowerCase()} of "${itemName}"${isFirstTime ? ' — plus a first-time bonus!' : '.'}`,
-    isRead: false,
-  });
-
-  // Notify user of first-time milestones
+  // Only notify if something was actually awarded (first-time only)
   if (isFirstTime) {
     const actionLabels: Record<string, string> = {
       'RENT': 'first rental',
@@ -135,9 +115,9 @@ async function awardShareCoinsWithFirstTimeBonus(
     };
     await db.insert(notifications).values({
       userId,
-      type: "milestone_achieved",
-      title: "Milestone unlocked!",
-      message: `You've completed your ${actionLabels[actionType] || 'first action'} on ShareSwap. Keep sharing to unlock more!`,
+      type: "sharecoin_earned",
+      title: `+1 ShareCoin earned`,
+      message: `You earned 1 ShareCoin for your ${actionLabels[actionType] || 'first action'} on ShareSwap!`,
       isRead: false,
     });
   }
@@ -286,51 +266,93 @@ async function checkAndAwardReferralBonus(
 
 // ── Achievement / Badge System ─────────────────────────────────────────────────
 const ACHIEVEMENT_DEFS = [
-  { name: 'first_transaction', title: 'First Share', description: 'You completed your first transaction on ShareSwap!', icon: '🌱', color: '#22c55e', category: 'milestone' },
-  { name: 'five_transactions', title: 'Community Sharer', description: 'Completed 5 transactions — you\'re an active member!', icon: '⭐', color: '#f59e0b', category: 'milestone' },
-  { name: 'ten_transactions', title: 'Power Sharer', description: 'Completed 10 transactions — you\'re a ShareSwap regular!', icon: '🏆', color: '#ef4444', category: 'milestone' },
-  { name: 'first_lend', title: 'First Lend', description: 'Lent an item to a neighbour for the first time.', icon: '🤝', color: '#3b82f6', category: 'lending' },
-  { name: 'five_lends', title: 'Generous Lender', description: 'Lent items 5 times — your neighbours appreciate you!', icon: '💫', color: '#3b82f6', category: 'lending' },
-  { name: 'first_gift', title: 'Gift Giver', description: 'Gave your first gift on ShareSwap.', icon: '🎁', color: '#ec4899', category: 'social' },
-  { name: 'first_swap', title: 'Swap Starter', description: 'Completed your first item swap.', icon: '🔄', color: '#8b5cf6', category: 'social' },
-  { name: 'verified_member', title: 'Verified Member', description: 'Completed identity verification on ShareSwap.', icon: '✅', color: '#06b6d4', category: 'milestone' },
+  // Existing badges
+  { name: 'first_transaction',   title: 'First Share',           description: 'You completed your first transaction on ShareSwap!',            icon: '🌱', color: '#22c55e', category: 'milestone' },
+  { name: 'five_transactions',   title: 'Community Sharer',      description: 'Completed 5 transactions — you\'re an active member!',          icon: '⭐', color: '#f59e0b', category: 'milestone' },
+  { name: 'ten_transactions',    title: 'Power Sharer',          description: 'Completed 10 transactions — you\'re a ShareSwap regular!',      icon: '🏆', color: '#ef4444', category: 'milestone' },
+  { name: 'first_lend',          title: 'First Lend',            description: 'Lent an item to a neighbour for the first time.',               icon: '🤝', color: '#3b82f6', category: 'lending'  },
+  { name: 'five_lends',          title: 'Generous Lender',       description: 'Lent items 5 times — your neighbours appreciate you!',          icon: '💫', color: '#3b82f6', category: 'lending'  },
+  { name: 'first_gift',          title: 'Gift Giver',            description: 'Gave your first gift on ShareSwap.',                            icon: '🎁', color: '#ec4899', category: 'social'   },
+  { name: 'first_swap',          title: 'Swap Starter',          description: 'Completed your first item swap.',                               icon: '🔄', color: '#8b5cf6', category: 'social'   },
+  { name: 'verified_member',     title: 'Verified Member',       description: 'Completed identity verification on ShareSwap.',                 icon: '✅', color: '#06b6d4', category: 'milestone' },
+  // New milestone badges
+  { name: 'five_swaps',          title: 'Swap Champion',         description: 'Completed 5 swaps — you\'re a trading pro!',                   icon: '🔁', color: '#7c3aed', category: 'social'   },
+  { name: 'ten_gifts',           title: 'Generous Soul',         description: 'Gave away 10 items — your generosity inspires the community!',  icon: '💝', color: '#db2777', category: 'social'   },
+  { name: 'five_borrows',        title: 'Active Borrower',       description: 'Borrowed 5 items — making the most of your community!',         icon: '🛍️', color: '#0891b2', category: 'milestone' },
+  { name: 'five_listed',         title: 'ShareChest Curator',    description: 'Listed 5 items — your ShareChest is open for business!',        icon: '🗝️', color: '#059669', category: 'lending'  },
+  { name: 'five_reviews_left',   title: 'Community Voice',       description: 'Left 5 reviews — helping neighbours make great decisions!',     icon: '💬', color: '#d97706', category: 'social'   },
+  { name: 'first_referral',      title: 'Community Builder',     description: 'Referred a friend to ShareSwap — growing the neighbourhood!',  icon: '🌐', color: '#2563eb', category: 'milestone' },
+  { name: 'three_in_week',       title: 'Weekly Warrior',        description: 'Completed 3 transactions in a single week — on a roll!',        icon: '⚡', color: '#ea580c', category: 'milestone' },
+  { name: 'five_reviews_received', title: 'Highly Rated',        description: 'Received 5 reviews — your neighbours love working with you!',  icon: '⭐', color: '#ca8a04', category: 'milestone' },
 ];
 
 async function checkAndAwardAchievements(userId: number) {
   try {
     const completedWhere = or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY"));
     const ownerItemsSub = sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const [[user], [totalRow], [lentRow], [giftRow], [swapRow]] = await Promise.all([
+    const [
+      [user],
+      [totalRow], [lentRow], [giftRow], [swapRow],
+      [borrowRow], [itemsRow], [reviewsLeftRow], [referralRow], [weeklyRow], [reviewsReceivedRow],
+    ] = await Promise.all([
       db.select({ isVerified: users.isVerified }).from(users).where(eq(users.id, userId)).limit(1),
+      // Total completed transactions (any side)
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
+      // Items lent (as owner)
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(eq(items.ownerId, userId), completedWhere)),
+      // Gifts given (as owner)
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(eq(items.ownerId, userId), eq(itemRequests.requestType, "GIFT"), completedWhere)),
+      // Swaps (any side)
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), eq(itemRequests.requestType, "SWAP"), completedWhere)),
+      // Borrows (as requester)
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(eq(itemRequests.requesterId, userId), eq(itemRequests.requestType, "BORROW"), completedWhere)),
+      // Items listed by user
+      db.select({ cnt: sql<number>`count(*)` }).from(items).where(eq(items.ownerId, userId)),
+      // Reviews left by user
+      db.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewerId, userId)),
+      // Referrals made
+      db.select({ cnt: sql<number>`count(*)` }).from(referrals).where(eq(referrals.referrerId, userId)),
+      // Completed transactions in the past 7 days
       db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
-        or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere
+        or(eq(itemRequests.requesterId, userId), ownerItemsSub),
+        completedWhere,
+        sql`${itemRequests.updatedAt} >= ${sevenDaysAgo}`,
       )),
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(
-        eq(items.ownerId, userId), completedWhere
-      )),
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).innerJoin(items, eq(items.id, itemRequests.itemId)).where(and(
-        eq(items.ownerId, userId), eq(itemRequests.requestType, "GIFT"), completedWhere
-      )),
-      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
-        or(eq(itemRequests.requesterId, userId), ownerItemsSub), eq(itemRequests.requestType, "SWAP"), completedWhere
-      )),
+      // Reviews received
+      db.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewedUserId, userId)),
     ]);
 
-    const total = Number(totalRow?.cnt ?? 0);
-    const lent = Number(lentRow?.cnt ?? 0);
-    const gifts = Number(giftRow?.cnt ?? 0);
-    const swaps = Number(swapRow?.cnt ?? 0);
+    const total          = Number(totalRow?.cnt ?? 0);
+    const lent           = Number(lentRow?.cnt ?? 0);
+    const gifts          = Number(giftRow?.cnt ?? 0);
+    const swaps          = Number(swapRow?.cnt ?? 0);
+    const borrows        = Number(borrowRow?.cnt ?? 0);
+    const listed         = Number(itemsRow?.cnt ?? 0);
+    const reviewsLeft    = Number(reviewsLeftRow?.cnt ?? 0);
+    const refs           = Number(referralRow?.cnt ?? 0);
+    const weekly         = Number(weeklyRow?.cnt ?? 0);
+    const reviewsRx      = Number(reviewsReceivedRow?.cnt ?? 0);
 
     const metKeys: string[] = [];
-    if (total >= 1) metKeys.push('first_transaction');
-    if (total >= 5) metKeys.push('five_transactions');
-    if (total >= 10) metKeys.push('ten_transactions');
-    if (lent >= 1) metKeys.push('first_lend');
-    if (lent >= 5) metKeys.push('five_lends');
-    if (gifts >= 1) metKeys.push('first_gift');
-    if (swaps >= 1) metKeys.push('first_swap');
+    if (total >= 1)       metKeys.push('first_transaction');
+    if (total >= 5)       metKeys.push('five_transactions');
+    if (total >= 10)      metKeys.push('ten_transactions');
+    if (lent >= 1)        metKeys.push('first_lend');
+    if (lent >= 5)        metKeys.push('five_lends');
+    if (gifts >= 1)       metKeys.push('first_gift');
+    if (swaps >= 1)       metKeys.push('first_swap');
     if (user?.isVerified) metKeys.push('verified_member');
+    // New milestones
+    if (swaps >= 5)       metKeys.push('five_swaps');
+    if (gifts >= 10)      metKeys.push('ten_gifts');
+    if (borrows >= 5)     metKeys.push('five_borrows');
+    if (listed >= 5)      metKeys.push('five_listed');
+    if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
+    if (refs >= 1)        metKeys.push('first_referral');
+    if (weekly >= 3)      metKeys.push('three_in_week');
+    if (reviewsRx >= 5)   metKeys.push('five_reviews_received');
 
     for (const key of metKeys) {
       const def = ACHIEVEMENT_DEFS.find(d => d.name === key);
@@ -352,12 +374,20 @@ async function checkAndAwardAchievements(userId: number) {
       ).limit(1);
       if (existing) continue;
 
+      // Newly unlocked — award +1 ShareCoin
       await db.insert(userAchievements).values({ userId, achievementId: achievement.id, isCompleted: true, progress: 100 });
+      await db.insert(shareCoinsTransactions).values({
+        userId,
+        amount: "1",
+        description: `Badge unlocked: ${def.title}`,
+        transactionType: "EARNED",
+      });
+      await db.update(users).set({ shareCoins: sql`share_coins + 1` }).where(eq(users.id, userId));
       await db.insert(notifications).values({
         userId,
         type: "badge_earned",
-        title: `Badge unlocked: ${def.title}`,
-        message: def.description,
+        title: `🏅 Badge unlocked: ${def.title}`,
+        message: `${def.description} +1 ShareCoin awarded!`,
         link: "/achievements",
         isRead: false,
       });
@@ -5089,22 +5119,8 @@ Respond with ONLY the category name, nothing else.`
       const giverId = request.items.ownerId!;
       const receiverId = request.item_requests.requesterId;
 
-      // Award to giver
-      await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 1);
-      
-      // Award to receiver
-      await db.insert(shareCoinsTransactions).values({
-        userId: receiverId,
-        amount: "1",
-        description: `Received gift: ${request.items.name}`,
-        transactionType: "GIFT_RECEIVED",
-      });
-      await db
-        .update(users)
-        .set({ 
-          shareCoins: sql`${users.shareCoins} + 1`
-        })
-        .where(eq(users.id, receiverId));
+      // Award first-time bonus to giver only
+      await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 0);
 
       // Update trust scores
       try {
@@ -8706,6 +8722,32 @@ Respond with ONLY the category name, nothing else.`
         .from(userReviews)
         .where(eq(userReviews.reviewerId, userId));
 
+      // Count reviews received by this user
+      const [reviewsReceivedCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(userReviews)
+        .where(eq(userReviews.reviewedUserId, userId));
+
+      // Count items listed by user
+      const [itemsListedCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(items)
+        .where(eq(items.ownerId, userId));
+
+      // Count completed transactions in past 7 days
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [weeklyActivityCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(and(
+          or(
+            eq(itemRequests.requesterId, userId),
+            sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
+          ),
+          or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
+          sql`${itemRequests.updatedAt} >= ${sevenDaysAgo}`,
+        ));
+
       res.json({
         totalBorrowed: Number(borrowedCount?.count || 0),
         totalLent: Number(lentCount?.count || 0),
@@ -8713,8 +8755,11 @@ Respond with ONLY the category name, nothing else.`
         totalGifts: Number(giftCount?.count || 0),
         successfulHandoffs: Number(handoffCount?.count || 0),
         referrals: Number(referralCount?.count || 0),
-        helpedUrgent: Math.min(Number(urgentCount?.count || 0), 1), // Cap at 1 for milestone
+        helpedUrgent: Math.min(Number(urgentCount?.count || 0), 1),
         reviewsLeft: Number(reviewsLeftCount?.count || 0),
+        reviewsReceived: Number(reviewsReceivedCount?.count || 0),
+        itemsListed: Number(itemsListedCount?.count || 0),
+        weeklyActivity: Number(weeklyActivityCount?.count || 0),
       });
     } catch (error) {
       console.error("Error fetching user stats:", error);

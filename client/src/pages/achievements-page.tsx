@@ -35,6 +35,9 @@ interface UserStats {
   referrals: number;
   helpedUrgent: number;
   reviewsLeft: number;
+  reviewsReceived: number;
+  itemsListed: number;
+  weeklyActivity: number;
 }
 
 interface Review {
@@ -207,25 +210,11 @@ export default function AchievementsPage() {
 
   const milestones = [
     {
-      id: "first-borrow",
-      title: "First time borrowing",
-      description: "Started your sharing journey",
-      achieved: (stats?.totalBorrowed || 0) >= 1,
-      icon: <Heart className="h-5 w-5" />,
-    },
-    {
       id: "first-lend",
       title: "First item shared",
       description: "Opened your ShareChest to neighbours",
       achieved: (stats?.totalLent || 0) >= 1,
       icon: <Gift className="h-5 w-5" />,
-    },
-    {
-      id: "first-swap",
-      title: "First swap completed",
-      description: "Made a fair exchange",
-      achieved: (stats?.totalSwaps || 0) >= 1,
-      icon: <ArrowLeftRight className="h-5 w-5" />,
     },
     {
       id: "ten-handoffs",
@@ -254,6 +243,62 @@ export default function AchievementsPage() {
       description: "Gave feedback to help the community",
       achieved: (stats?.reviewsLeft || 0) >= 1,
       icon: <MessageSquare className="h-5 w-5" />,
+    },
+    {
+      id: "five-swaps",
+      title: "5 swaps completed",
+      description: "Become a trading pro in your neighbourhood",
+      achieved: (stats?.totalSwaps || 0) >= 5,
+      icon: <ArrowLeftRight className="h-5 w-5" />,
+    },
+    {
+      id: "ten-gifts",
+      title: "10 gifts given",
+      description: "Generosity that inspires the whole community",
+      achieved: (stats?.totalGifts || 0) >= 10,
+      icon: <Gift className="h-5 w-5" />,
+    },
+    {
+      id: "five-borrows",
+      title: "5 borrows completed",
+      description: "Making the most of what your community offers",
+      achieved: (stats?.totalBorrowed || 0) >= 5,
+      icon: <Package className="h-5 w-5" />,
+    },
+    {
+      id: "five-listed",
+      title: "5 items listed",
+      description: "Your ShareChest is open for business",
+      achieved: (stats?.itemsListed || 0) >= 5,
+      icon: <TrendingUp className="h-5 w-5" />,
+    },
+    {
+      id: "five-reviews-left",
+      title: "5 reviews left",
+      description: "Helping neighbours make great decisions",
+      achieved: (stats?.reviewsLeft || 0) >= 5,
+      icon: <MessageSquare className="h-5 w-5" />,
+    },
+    {
+      id: "first-referral",
+      title: "Referred a friend",
+      description: "Growing the ShareSwap neighbourhood",
+      achieved: (stats?.referrals || 0) >= 1,
+      icon: <Users className="h-5 w-5" />,
+    },
+    {
+      id: "weekly-warrior",
+      title: "3 transactions in a week",
+      description: "On a sharing roll — keep the momentum going!",
+      achieved: (stats?.weeklyActivity || 0) >= 3,
+      icon: <Zap className="h-5 w-5" />,
+    },
+    {
+      id: "five-reviews-received",
+      title: "Received 5 reviews",
+      description: "Your neighbours love working with you",
+      achieved: (stats?.reviewsReceived || 0) >= 5,
+      icon: <Star className="h-5 w-5" />,
     },
   ];
 

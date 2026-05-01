@@ -35,6 +35,7 @@ import {
   BadgeCheck,
   Circle,
   KeyRound,
+  Zap,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -158,6 +159,9 @@ interface ItemRequest {
   courierPickupWindow: string | null;
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
+  earlyHandoffRequestedByOwner: boolean | null;
+  earlyHandoffRequestedByRenter: boolean | null;
+  earlyHandoffApprovedAt: string | null;
   returnDisputeTriggered: boolean | null;
   negotiationStatus: string | null;
   counterDeliveryMethod: string | null;
@@ -320,6 +324,9 @@ export function ChatWidget() {
 
   // Cancel request state
   const [cancelConfirmRequest, setCancelConfirmRequest] = useState<ItemRequest | null>(null);
+
+  // Early handoff (RENT) — track which requests have the "Start handoff early" step expanded
+  const [earlyHandoffExpanded, setEarlyHandoffExpanded] = useState<Set<number>>(new Set());
 
   // Counter-proposal state (for inline chat actions)
   const [showChatCounterModal, setShowChatCounterModal] = useState(false);
@@ -637,6 +644,24 @@ export function ChatWidget() {
       setChatCounterRequest(null);
       toast({ title: "Counter Sent", description: "The other party will be notified." });
     },
+  });
+
+  const earlyHandoffMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/request-early-handoff`, {});
+      return res.json();
+    },
+    onSuccess: (data, requestId) => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages"] });
+      setEarlyHandoffExpanded(prev => { const s = new Set(prev); s.delete(requestId); return s; });
+      if (data.approved) {
+        toast({ title: "Early handoff approved!", description: "The handoff PIN is now active." });
+      } else {
+        toast({ title: "Request sent", description: "Waiting for the other party to agree." });
+      }
+    },
+    onError: () => { toast({ title: "Error", description: "Could not request early handoff", variant: "destructive" }); },
   });
 
   const openChatCounter = (request: ItemRequest, role: "owner" | "requester") => {
@@ -1839,23 +1864,73 @@ export function ChatWidget() {
                     const pinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
                     const isInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
 
-                    // For RENT: gate the handoff button behind the rental start date
+                    // For RENT: gate handoff behind the rental start date (bypass if early handoff approved or overdue)
                     const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
                     const rentalStart = pr.requestType === "RENT" && pr.startDate ? parseLocalDate(pr.startDate) : null;
-                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight;
+                    const earlyApproved = !!pr.earlyHandoffApprovedAt;
+                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight && !earlyApproved;
+                    const isOverdue = rentalStart && rentalStart < todayMidnight && pr.requestType === "RENT";
 
                     if (isBeforeRentalStart) {
+                      const myRequested = !!pr.earlyHandoffRequestedByRenter;
+                      const otherRequested = !!pr.earlyHandoffRequestedByOwner;
+                      const isExpanded = earlyHandoffExpanded.has(pr.id);
                       return (
-                        <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
-                          <p className="text-xs text-center text-indigo-700 font-medium py-1.5">
+                        <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-1.5">
+                          <p className="text-xs text-center text-indigo-700 font-medium">
                             📅 Pickup on {format(rentalStart, "MMMM d")} — return here then to confirm handoff
                           </p>
+                          {myRequested ? (
+                            <p className="text-xs text-center text-amber-700 font-medium">
+                              ⏳ Waiting for the owner to agree to early handoff
+                            </p>
+                          ) : otherRequested ? (
+                            <div className="space-y-1">
+                              <p className="text-xs text-center text-amber-700 font-medium">⚡ Owner wants to hand off early</p>
+                              <Button
+                                size="sm"
+                                className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                                disabled={earlyHandoffMutation.isPending}
+                                onClick={() => earlyHandoffMutation.mutate(pr.id)}
+                              >
+                                Agree to early handoff
+                              </Button>
+                            </div>
+                          ) : isExpanded ? (
+                            <div className="space-y-1">
+                              <Button
+                                size="sm"
+                                className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                                disabled={earlyHandoffMutation.isPending}
+                                onClick={() => earlyHandoffMutation.mutate(pr.id)}
+                              >
+                                <Zap className="h-3 w-3 mr-1" />
+                                Start handoff early
+                              </Button>
+                              <button
+                                className="text-xs text-muted-foreground hover:text-indigo-600 w-full text-center"
+                                onClick={() => setEarlyHandoffExpanded(prev => { const s = new Set(prev); s.delete(pr.id); return s; })}
+                              >
+                                Never mind
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="text-xs text-indigo-600 hover:text-indigo-800 w-full text-center font-medium"
+                              onClick={() => setEarlyHandoffExpanded(prev => new Set(prev).add(pr.id))}
+                            >
+                              Handing off earlier? →
+                            </button>
+                          )}
                         </div>
                       );
                     }
 
                     return (
                       <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-1">
+                        {isOverdue && (
+                          <p className="text-xs text-center text-amber-700 font-medium">⚠️ Handoff overdue</p>
+                        )}
                         <Button className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowHandoffModal(true); }}>
                           <KeyRound className="h-4 w-4 mr-2" />
@@ -1959,23 +2034,73 @@ export function ChatWidget() {
                     const isPinExpired = pinExpiresAt ? new Date(pinExpiresAt) < new Date() : false;
                     const isOwnerInPersonDeposit = pr.requestType === "BORROW" && pr.depositMethod === "in_person";
 
-                    // For RENT: gate the handoff code behind the rental start date
+                    // For RENT: gate the handoff code behind the rental start date (bypass if early handoff approved)
                     const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
                     const rentalStart = pr.requestType === "RENT" && pr.startDate ? parseLocalDate(pr.startDate) : null;
-                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight;
+                    const earlyApproved = !!pr.earlyHandoffApprovedAt;
+                    const isBeforeRentalStart = rentalStart && rentalStart > todayMidnight && !earlyApproved;
+                    const isOverdue = rentalStart && rentalStart < todayMidnight && pr.requestType === "RENT";
 
                     if (isBeforeRentalStart) {
+                      const myRequested = !!pr.earlyHandoffRequestedByOwner;
+                      const otherRequested = !!pr.earlyHandoffRequestedByRenter;
+                      const isExpanded = earlyHandoffExpanded.has(pr.id);
                       return (
-                        <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50">
-                          <p className="text-xs text-center text-indigo-700 font-medium py-1.5">
+                        <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-1.5">
+                          <p className="text-xs text-center text-indigo-700 font-medium">
                             📅 Handoff on {format(rentalStart, "MMMM d")} — your code will be ready then
                           </p>
+                          {myRequested ? (
+                            <p className="text-xs text-center text-amber-700 font-medium">
+                              ⏳ Waiting for the renter to agree to early handoff
+                            </p>
+                          ) : otherRequested ? (
+                            <div className="space-y-1">
+                              <p className="text-xs text-center text-amber-700 font-medium">⚡ Renter wants to hand off early</p>
+                              <Button
+                                size="sm"
+                                className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                                disabled={earlyHandoffMutation.isPending}
+                                onClick={() => earlyHandoffMutation.mutate(pr.id)}
+                              >
+                                Agree to early handoff
+                              </Button>
+                            </div>
+                          ) : isExpanded ? (
+                            <div className="space-y-1">
+                              <Button
+                                size="sm"
+                                className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
+                                disabled={earlyHandoffMutation.isPending}
+                                onClick={() => earlyHandoffMutation.mutate(pr.id)}
+                              >
+                                <Zap className="h-3 w-3 mr-1" />
+                                Start handoff early
+                              </Button>
+                              <button
+                                className="text-xs text-muted-foreground hover:text-indigo-600 w-full text-center"
+                                onClick={() => setEarlyHandoffExpanded(prev => { const s = new Set(prev); s.delete(pr.id); return s; })}
+                              >
+                                Never mind
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="text-xs text-indigo-600 hover:text-indigo-800 w-full text-center font-medium"
+                              onClick={() => setEarlyHandoffExpanded(prev => new Set(prev).add(pr.id))}
+                            >
+                              Handing off earlier? →
+                            </button>
+                          )}
                         </div>
                       );
                     }
 
                     return (
                       <div className="px-3 py-2 border-t border-indigo-100 bg-indigo-50 space-y-2">
+                        {isOverdue && (
+                          <p className="text-xs text-center text-amber-700 font-medium">⚠️ Handoff overdue</p>
+                        )}
                         {isOwnerInPersonDeposit && (
                           <p className="text-xs text-center text-amber-700 font-medium bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">💵 Collect the security deposit in person before sharing your code</p>
                         )}

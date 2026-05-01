@@ -4263,6 +4263,10 @@ Respond with ONLY the category name, nothing else.`
         actualHandoffAt: itemRequests.actualHandoffAt,
         actualReturnAt: itemRequests.actualReturnAt,
         handoffDelayAdjustmentStatus: itemRequests.handoffDelayAdjustmentStatus,
+        // Early handoff (RENT)
+        earlyHandoffRequestedByOwner: itemRequests.earlyHandoffRequestedByOwner,
+        earlyHandoffRequestedByRenter: itemRequests.earlyHandoffRequestedByRenter,
+        earlyHandoffApprovedAt: itemRequests.earlyHandoffApprovedAt,
         proposedAdjustedEndDate: itemRequests.proposedAdjustedEndDate,
         ownerConfirmedReturn: itemRequests.ownerConfirmedReturn,
         borrowerConfirmedReturn: itemRequests.borrowerConfirmedReturn,
@@ -6492,6 +6496,72 @@ Respond with ONLY the category name, nothing else.`
       return res.json({ pin: expired ? null : pin, pinExpiresAt, pinUsed, expired: !!expired });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch PIN" });
+    }
+  });
+
+  // Request early handoff (RENT only) — either party can request; PIN unlocks when both agree
+  app.post("/api/requests/:requestId/request-early-handoff", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const requestId = parseInt(req.params.requestId);
+
+      const [request] = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(itemRequests.id, requestId))
+        .limit(1);
+
+      if (!request) return res.status(404).json({ error: "Request not found" });
+      if (request.item_requests.requestType !== "RENT") return res.status(400).json({ error: "Early handoff only applies to rental requests" });
+      if (request.item_requests.status !== "DEPOSIT_CONFIRMED" && request.item_requests.status !== "COURIER_PENDING") {
+        return res.status(400).json({ error: "Request is not in the right state for early handoff" });
+      }
+
+      const isOwner = request.items.ownerId === req.user.id;
+      const isRenter = request.item_requests.requesterId === req.user.id;
+      if (!isOwner && !isRenter) return res.status(403).json({ error: "Unauthorized" });
+
+      const alreadyApproved = (request.item_requests as any).earlyHandoffApprovedAt;
+      if (alreadyApproved) return res.json({ approved: true, message: "Early handoff already approved" });
+
+      const now = new Date();
+      const ownerAlready = (request.item_requests as any).earlyHandoffRequestedByOwner ?? false;
+      const renterAlready = (request.item_requests as any).earlyHandoffRequestedByRenter ?? false;
+
+      const updateData: Record<string, unknown> = {};
+      if (isOwner) updateData.earlyHandoffRequestedByOwner = true;
+      if (isRenter) updateData.earlyHandoffRequestedByRenter = true;
+
+      const bothAgreed = (isOwner && renterAlready) || (isRenter && ownerAlready);
+      if (bothAgreed) updateData.earlyHandoffApprovedAt = now;
+
+      await db.update(itemRequests).set(updateData as any).where(eq(itemRequests.id, requestId));
+
+      // System message to the chat
+      const msgContent = bothAgreed
+        ? `⚡ Both parties agreed to an early handoff — PIN is now active`
+        : isOwner
+          ? `⚡ Owner requested an early handoff before ${request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : "the start date"} — waiting for renter to agree`
+          : `⚡ Renter requested an early handoff before ${request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : "the start date"} — waiting for owner to agree`;
+
+      await db.insert(messages).values({
+        senderId: req.user.id,
+        receiverId: isOwner ? request.item_requests.requesterId : request.items.ownerId,
+        content: msgContent,
+        requestId,
+        messageType: "system",
+      });
+
+      return res.json({
+        approved: bothAgreed,
+        ownerRequested: isOwner ? true : ownerAlready,
+        renterRequested: isRenter ? true : renterAlready,
+        message: bothAgreed ? "Early handoff approved — PIN is now active" : "Request recorded — waiting for the other party to agree",
+      });
+    } catch (error) {
+      console.error("request-early-handoff error:", error);
+      res.status(500).json({ error: "Failed to process early handoff request" });
     }
   });
 

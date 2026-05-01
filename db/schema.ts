@@ -352,7 +352,12 @@ export const itemRequests = pgTable("item_requests", {
   handoffProofDeadline: timestamp("handoff_proof_deadline"),
   handoffProofOwner: text("handoff_proof_owner"),   // proof note submitted by owner
   handoffProofBorrower: text("handoff_proof_borrower"), // proof note submitted by borrower
-  
+
+  // Early handoff (RENT) — either party can request; PIN unlocks when both agree
+  earlyHandoffRequestedByOwner: boolean("early_handoff_requested_by_owner").default(false),
+  earlyHandoffRequestedByRenter: boolean("early_handoff_requested_by_renter").default(false),
+  earlyHandoffApprovedAt: timestamp("early_handoff_approved_at"),
+
   // Return tracking - dual confirmation
   ownerConfirmedReturn: boolean("owner_confirmed_return").default(false),
   ownerConfirmedReturnAt: timestamp("owner_confirmed_return_at"),

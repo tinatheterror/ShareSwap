@@ -26,36 +26,41 @@ export default function WalletPage() {
         <Card>
           <CardContent className="pt-6">
             <h2 className="text-xl font-semibold mb-4">Transaction History</h2>
-            <div className="space-y-4">
+            <div className="space-y-2">
               {transactions.map((transaction) => {
                 const isPositive = Number(transaction.amount) >= 0;
                 return (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-4 rounded-lg border"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg border"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="shrink-0">
                       {isPositive ? (
-                        <ArrowUpCircle className="h-8 w-8 text-teal-500" />
+                        <ArrowUpCircle className="h-5 w-5 text-teal-500" />
                       ) : (
-                        <ArrowDownCircle className="h-8 w-8 text-teal-700" />
+                        <ArrowDownCircle className="h-5 w-5 text-teal-700" />
                       )}
-                      <div>
-                        <p className="font-medium">{transaction.description}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(transaction.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
                     </div>
-                    <p className={`text-lg font-semibold ${
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate leading-tight">
+                        {transaction.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-tight">
+                        {new Date(transaction.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <p className={`text-sm font-semibold shrink-0 ${
                       isPositive ? "text-teal-600" : "text-teal-700"
                     }`}>
                       {isPositive ? "+" : "-"}
-                      {Math.round(Math.abs(Number(transaction.amount)))}
+                      {Math.abs(Number(transaction.amount)).toFixed(2)}
                     </p>
                   </div>
                 );
               })}
+              {transactions.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-6">No transactions yet</p>
+              )}
             </div>
           </CardContent>
         </Card>

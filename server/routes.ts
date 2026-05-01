@@ -5142,6 +5142,15 @@ Respond with ONLY the category name, nothing else.`
       await checkAndAwardAchievements(giverId);
       await checkAndAwardAchievements(receiverId);
 
+      // Send chat completion stamp
+      await db.insert(messages).values({
+        content: `🎁 Gift complete! "${request.items.name}" has been handed over. Enjoy your new item!`,
+        senderId: giverId,
+        receiverId,
+        messageType: "system",
+        requestId,
+      });
+
       // Send completion notification to both parties
       await db.insert(notifications).values([
         {
@@ -5169,7 +5178,23 @@ Respond with ONLY the category name, nothing else.`
       });
     }
 
-    // Only one party confirmed so far
+    // Only one party confirmed so far — look up the confirming user's name
+    const [confirmerUser] = await db
+      .select({ displayName: users.displayName, username: users.username })
+      .from(users)
+      .where(eq(users.id, req.user.id))
+      .limit(1);
+    const confirmerName = confirmerUser?.displayName || confirmerUser?.username || (role === "giver" ? "The giver" : "The receiver");
+
+    // Send a chat stamp so both parties can see who confirmed
+    await db.insert(messages).values({
+      content: `${confirmerName} confirmed the handoff ✅\nIf only one person confirms, we'll complete this automatically in 24 hours.`,
+      senderId: request.items.ownerId!,
+      receiverId: request.item_requests.requesterId,
+      messageType: "system",
+      requestId,
+    });
+
     const otherPartyId = role === "giver" ? request.item_requests.requesterId : request.items.ownerId!;
     await db.insert(notifications).values({
       userId: otherPartyId,

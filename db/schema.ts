@@ -395,7 +395,14 @@ export const itemRequests = pgTable("item_requests", {
   rentalAmount: decimal("rental_amount", { precision: 10, scale: 2 }), // rental fee in dollars
   rentalProcessingFee: decimal("rental_processing_fee", { precision: 10, scale: 2 }), // 3% processing fee
   rentalPlatformFee: decimal("rental_platform_fee", { precision: 10, scale: 2 }), // platform commission (0% for 2025)
-  
+
+  // Swap item tracking
+  swapOfferedItemIds: integer("swap_offered_item_ids").array().default([]),  // requester's offered items (initial)
+  counterSwapOwnerItemIds: integer("counter_swap_owner_item_ids").array().default([]), // owner's items in counter
+  counterSwapRequesterItemIds: integer("counter_swap_requester_item_ids").array().default([]), // requester's items in counter
+  counterNote: text("counter_note"),    // optional note with counter offer
+  counterRound: integer("counter_round").default(0), // 0=initial, 1=first counter, 2=second (max)
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   itemIdx: index("item_requests_item_id_idx").on(table.itemId),

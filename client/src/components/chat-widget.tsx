@@ -50,6 +50,7 @@ import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmati
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
 import { PostReturnReviewModal } from "@/components/borrow/post-return-review-modal";
 import { CelebrationAnimation } from "@/components/celebration-animation";
+import { SwapCounterModal } from "@/components/swap-counter-modal";
 import {
   Elements,
   PaymentElement,
@@ -169,6 +170,11 @@ interface ItemRequest {
   counterStartDate: string | null;
   counterEndDate: string | null;
   counterProposedBy: number | null;
+  swapOfferedItemIds: number[] | null;
+  counterSwapOwnerItemIds: number[] | null;
+  counterSwapRequesterItemIds: number[] | null;
+  counterNote: string | null;
+  counterRound: number | null;
   item: {
     id: number;
     name: string;
@@ -336,6 +342,11 @@ export function ChatWidget() {
   const [chatProposedDeposit, setChatProposedDeposit] = useState("in_app");
   const [chatProposedStart, setChatProposedStart] = useState("");
   const [chatProposedEnd, setChatProposedEnd] = useState("");
+
+  // Swap counter modal state
+  const [showSwapCounterModal, setShowSwapCounterModal] = useState(false);
+  const [swapCounterRequest, setSwapCounterRequest] = useState<ItemRequest | null>(null);
+  const [swapCounterIsOwner, setSwapCounterIsOwner] = useState(false);
 
   // Play a soft chime for incoming messages
   const playMessageSound = () => {
@@ -646,6 +657,36 @@ export function ChatWidget() {
     },
   });
 
+  const swapCounterMutation = useMutation({
+    mutationFn: async ({ requestId, swapOwnerItemIds, swapRequesterItemIds, counterNote, isResponse }: {
+      requestId: number;
+      swapOwnerItemIds: number[];
+      swapRequesterItemIds: number[];
+      counterNote: string;
+      isResponse: boolean;
+    }) => {
+      const endpoint = isResponse
+        ? `/api/requests/${requestId}/respond-to-counter`
+        : `/api/requests/${requestId}/counter-proposal`;
+      const body = isResponse
+        ? { counter: { swapOwnerItemIds, swapRequesterItemIds, counterNote } }
+        : { swapOwnerItemIds, swapRequesterItemIds, counterNote };
+      const res = await apiRequest("POST", endpoint, body);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages", selectedConversation, activeConversationRequestId] });
+      setShowSwapCounterModal(false);
+      setSwapCounterRequest(null);
+      toast({ title: "Swap Counter Sent", description: "The other party will be notified." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err?.message || "Could not send counter", variant: "destructive" });
+    },
+  });
+
   const earlyHandoffMutation = useMutation({
     mutationFn: async (requestId: number) => {
       const res = await apiRequest("POST", `/api/requests/${requestId}/request-early-handoff`, {});
@@ -665,6 +706,13 @@ export function ChatWidget() {
   });
 
   const openChatCounter = (request: ItemRequest, role: "owner" | "requester") => {
+    // SWAP requests get a dedicated item-picker modal
+    if (request.requestType === "SWAP") {
+      setSwapCounterRequest(request);
+      setSwapCounterIsOwner(role === "owner");
+      setShowSwapCounterModal(true);
+      return;
+    }
     setChatCounterRequest(request);
     setChatCounterRole(role);
     const d = request.counterDeliveryMethod || request.deliveryMethod || "in_person";
@@ -1134,14 +1182,16 @@ export function ChatWidget() {
               >
                 Accept
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
-                onClick={() => openChatCounter(request, isOwner ? "owner" : "requester")}
-              >
-                Counter
-              </Button>
+              {!(request.requestType === "SWAP" && (request.counterRound ?? 0) >= 2) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
+                  onClick={() => openChatCounter(request, isOwner ? "owner" : "requester")}
+                >
+                  Counter
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
@@ -1693,6 +1743,35 @@ export function ChatWidget() {
                             )}
 
                             {et === "counter_proposed" && msg.metadata && (() => {
+                              const isSwapCounter = relatedRequest?.requestType === "SWAP";
+                              if (isSwapCounter) {
+                                const ownerNames = (msg.metadata.swapOwnerItemNames as string[] | undefined) ?? [];
+                                const requesterNames = (msg.metadata.swapRequesterItemNames as string[] | undefined) ?? [];
+                                const cnote = msg.metadata.counterNote as string | undefined;
+                                const round = msg.metadata.counterRound as number | undefined;
+                                return (
+                                  <div className="w-full pl-[70px] flex flex-col gap-1 mt-0.5">
+                                    {round !== undefined && (
+                                      <span className="text-[10px] text-muted-foreground font-medium">Counter {round} of 2</span>
+                                    )}
+                                    {ownerNames.length > 0 && (
+                                      <div className="text-[11px] text-amber-700 bg-amber-50 rounded-md px-2 py-1 border border-amber-100">
+                                        <span className="font-semibold">Owner offers: </span>
+                                        {ownerNames.join(" + ")}
+                                      </div>
+                                    )}
+                                    {requesterNames.length > 0 && (
+                                      <div className="text-[11px] text-blue-700 bg-blue-50 rounded-md px-2 py-1 border border-blue-100">
+                                        <span className="font-semibold">Requester offers: </span>
+                                        {requesterNames.join(" + ")}
+                                      </div>
+                                    )}
+                                    {cnote && (
+                                      <p className="text-[11px] text-muted-foreground italic mt-0.5">"{cnote}"</p>
+                                    )}
+                                  </div>
+                                );
+                              }
                               const mDelivery = msg.metadata.deliveryMethod as string | undefined;
                               const mDeposit = msg.metadata.depositMethod as string | undefined;
                               const mStart = msg.metadata.startDate as string | undefined;
@@ -1746,14 +1825,16 @@ export function ChatWidget() {
                                 >
                                   Accept
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs"
-                                  onClick={() => openChatCounter(relatedRequest, iAmOwner ? "owner" : "requester")}
-                                >
-                                  Counter
-                                </Button>
+                                {!(relatedRequest.requestType === "SWAP" && (relatedRequest.counterRound ?? 0) >= 2) && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    onClick={() => openChatCounter(relatedRequest, iAmOwner ? "owner" : "requester")}
+                                  >
+                                    Counter
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -2566,6 +2647,28 @@ export function ChatWidget() {
       )}
 
       {/* Chat Counter-Proposal Modal */}
+      {/* Swap counter modal */}
+      {swapCounterRequest && (
+        <SwapCounterModal
+          key={swapCounterRequest.id}
+          open={showSwapCounterModal}
+          onClose={() => { setShowSwapCounterModal(false); setSwapCounterRequest(null); }}
+          request={swapCounterRequest}
+          currentUserId={user?.id ?? 0}
+          isOwner={swapCounterIsOwner}
+          isPending={swapCounterMutation.isPending}
+          onSubmit={({ swapOwnerItemIds, swapRequesterItemIds, counterNote, isResponse }) => {
+            swapCounterMutation.mutate({
+              requestId: swapCounterRequest.id,
+              swapOwnerItemIds,
+              swapRequesterItemIds,
+              counterNote,
+              isResponse,
+            });
+          }}
+        />
+      )}
+
       <Dialog open={showChatCounterModal} onOpenChange={setShowChatCounterModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

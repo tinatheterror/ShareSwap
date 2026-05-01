@@ -53,6 +53,11 @@ interface ItemRequest {
   counterEndDate: string | null;
   counterProposedBy: number | null;
   counterProposedAt: string | null;
+  swapOfferedItemIds: number[] | null;
+  counterSwapOwnerItemIds: number[] | null;
+  counterSwapRequesterItemIds: number[] | null;
+  counterNote: string | null;
+  counterRound: number | null;
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
   handoffConfirmDeadline: string | null;

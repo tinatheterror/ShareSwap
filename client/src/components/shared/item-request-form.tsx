@@ -150,6 +150,7 @@ export function ItemRequestForm({
         ...data,
         requestType,
         swapOfferItemId: swapOfferItem?.id,
+        swapOfferedItemIds: swapOfferItem?.id ? [swapOfferItem.id] : [],
         deliveryMethod: data.deliveryMethod,
         depositMethod: data.depositMethod,
       });

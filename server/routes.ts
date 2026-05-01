@@ -12,7 +12,7 @@ import {
   shareCoinsTransactions,
   notifications,
 } from "@db/schema";
-import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, inArray, ilike } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, gte, lt, ne, isNull, isNotNull, inArray, notInArray, ilike } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { WebSocket, WebSocketServer } from "ws";
 import { log } from "./vite";
@@ -4097,7 +4097,7 @@ Respond with ONLY the category name, nothing else.`
   // Create item request
   app.post("/api/items/:itemId/request", requireEmailVerified, async (req: any, res) => {
     const itemId = parseInt(req.params.itemId);
-    const { requestType, message, startDate, endDate, deliveryMethod } = req.body;
+    const { requestType, message, startDate, endDate, deliveryMethod, swapOfferedItemIds } = req.body;
 
     // BORROW and RENT require full verification (email + ID + payment)
     if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
@@ -4174,6 +4174,9 @@ Respond with ONLY the category name, nothing else.`
         status: "PENDING",
         deliveryMethod: validatedDeliveryMethod,
         deliveryConfirmed: false,
+        ...(requestType === "SWAP" && Array.isArray(swapOfferedItemIds) && swapOfferedItemIds.length > 0
+          ? { swapOfferedItemIds: swapOfferedItemIds.map(Number) }
+          : {}),
       })
       .returning();
 
@@ -4256,6 +4259,12 @@ Respond with ONLY the category name, nothing else.`
         counterProposedAt: itemRequests.counterProposedAt,
         termsAcceptedAt: itemRequests.termsAcceptedAt,
         termsDeclinedAt: itemRequests.termsDeclinedAt,
+        // Swap item tracking
+        swapOfferedItemIds: itemRequests.swapOfferedItemIds,
+        counterSwapOwnerItemIds: itemRequests.counterSwapOwnerItemIds,
+        counterSwapRequesterItemIds: itemRequests.counterSwapRequesterItemIds,
+        counterNote: itemRequests.counterNote,
+        counterRound: itemRequests.counterRound,
         // Handoff / return confirmations
         ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
         borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
@@ -4338,6 +4347,11 @@ Respond with ONLY the category name, nothing else.`
       counterProposedAt: r.counterProposedAt,
       termsAcceptedAt: r.termsAcceptedAt,
       termsDeclinedAt: r.termsDeclinedAt,
+      swapOfferedItemIds: r.swapOfferedItemIds,
+      counterSwapOwnerItemIds: r.counterSwapOwnerItemIds,
+      counterSwapRequesterItemIds: r.counterSwapRequesterItemIds,
+      counterNote: r.counterNote,
+      counterRound: r.counterRound,
       ownerConfirmedHandoff: r.ownerConfirmedHandoff,
       borrowerConfirmedHandoff: r.borrowerConfirmedHandoff,
       handoffConfirmDeadline: r.handoffConfirmDeadline,
@@ -4592,7 +4606,8 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const requestId = parseInt(req.params.requestId);
-    const { deliveryMethod, depositMethod, startDate, endDate } = req.body;
+    const { deliveryMethod, depositMethod, startDate, endDate,
+            swapOwnerItemIds, swapRequesterItemIds, counterNote } = req.body;
 
     // Load the request with item — user must be owner or requester
     const [request] = await db
@@ -4618,13 +4633,30 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "Can only propose changes to pending requests" });
     }
 
-    // If the user is the requester responding to an owner counter, they must have a counter to respond to
     const isRequester = req.user.id === request.item_requests.requesterId;
     const isOwner = req.user.id === request.items.ownerId;
+    const isSwap = request.item_requests.requestType === "SWAP";
 
     if (isRequester && request.item_requests.negotiationStatus !== "counter_proposed") {
       return res.status(400).json({ error: "No counter-proposal to respond to with your own counter" });
     }
+
+    // Enforce max 2 counter rounds for SWAP
+    if (isSwap) {
+      const currentRound = request.item_requests.counterRound ?? 0;
+      if (currentRound >= 2) {
+        return res.status(400).json({ error: "Maximum counter rounds (2) reached. Please accept or decline." });
+      }
+    }
+
+    const newRound = (request.item_requests.counterRound ?? 0) + 1;
+
+    const swapUpdateFields = isSwap ? {
+      counterSwapOwnerItemIds: Array.isArray(swapOwnerItemIds) ? swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
+      counterSwapRequesterItemIds: Array.isArray(swapRequesterItemIds) ? swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
+      counterNote: counterNote ?? null,
+      counterRound: newRound,
+    } : {};
 
     const [updated] = await db
       .update(itemRequests)
@@ -4636,11 +4668,34 @@ Respond with ONLY the category name, nothing else.`
         counterEndDate: endDate ? new Date(endDate) : (request.item_requests.endDate ?? null),
         counterProposedAt: new Date(),
         counterProposedBy: req.user.id,
+        ...swapUpdateFields,
       })
       .where(eq(itemRequests.id, requestId))
       .returning();
 
     const otherUserId = isOwner ? request.item_requests.requesterId : request.items.ownerId!;
+
+    // For SWAP counters, also resolve item names for the event metadata
+    let swapEventMeta: Record<string, unknown> = {};
+    if (isSwap) {
+      const allSwapIds = [
+        ...(updated.counterSwapOwnerItemIds ?? []),
+        ...(updated.counterSwapRequesterItemIds ?? []),
+      ].filter(Boolean);
+      const swapItemNames: Record<number, string> = {};
+      if (allSwapIds.length > 0) {
+        const swapItems = await db.select({ id: items.id, name: items.name }).from(items).where(inArray(items.id, allSwapIds));
+        for (const si of swapItems) swapItemNames[si.id] = si.name;
+      }
+      swapEventMeta = {
+        swapOwnerItemIds: updated.counterSwapOwnerItemIds,
+        swapRequesterItemIds: updated.counterSwapRequesterItemIds,
+        swapOwnerItemNames: (updated.counterSwapOwnerItemIds ?? []).map(id => swapItemNames[id] ?? `Item #${id}`),
+        swapRequesterItemNames: (updated.counterSwapRequesterItemIds ?? []).map(id => swapItemNames[id] ?? `Item #${id}`),
+        counterNote: updated.counterNote,
+        counterRound: updated.counterRound,
+      };
+    }
 
     // Log event in chat
     await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
@@ -4649,6 +4704,7 @@ Respond with ONLY the category name, nothing else.`
       startDate: updated.counterStartDate,
       endDate: updated.counterEndDate,
       proposedByRole: isOwner ? "owner" : "requester",
+      ...swapEventMeta,
     });
 
     // Notify other party
@@ -4660,7 +4716,7 @@ Respond with ONLY the category name, nothing else.`
       userId: otherUserId,
       type: "terms_counter_proposed",
       title: _cpTitle1,
-      message: `${_cpRole1} proposed new terms for your ${_cpType1} request. Review and respond.`,
+      message: `${_cpRole1} proposed new ${isSwap ? "swap" : "terms"} for your ${_cpType1} request. Review and respond.`,
       itemId: request.items.id,
       requestId,
     });
@@ -4675,7 +4731,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     const requestId = parseInt(req.params.requestId);
-    const { accept, counter } = req.body; // accept: bool | counter: { deliveryMethod, depositMethod, startDate, endDate }
+    const { accept, counter } = req.body; // accept: bool | counter: { deliveryMethod, depositMethod, startDate, endDate, swapOwnerItemIds, swapRequesterItemIds, counterNote }
 
     const [request] = await db
       .select()
@@ -4700,6 +4756,8 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "No counter-proposal to respond to" });
     }
 
+    const isSwap = request.item_requests.requestType === "SWAP";
+
     const isRequester = req.user.id === request.item_requests.requesterId;
     const isOwner = req.user.id === request.items.ownerId;
     const otherUserId = isRequester ? request.items.ownerId! : request.item_requests.requesterId;
@@ -4711,6 +4769,22 @@ Respond with ONLY the category name, nothing else.`
 
     // Counter-back
     if (counter) {
+      // Enforce max 2 counter rounds for SWAP
+      if (isSwap) {
+        const currentRound = request.item_requests.counterRound ?? 0;
+        if (currentRound >= 2) {
+          return res.status(400).json({ error: "Maximum counter rounds (2) reached. Please accept or decline." });
+        }
+      }
+
+      const newRound = (request.item_requests.counterRound ?? 0) + 1;
+      const swapCounterFields = isSwap ? {
+        counterSwapOwnerItemIds: Array.isArray(counter.swapOwnerItemIds) ? counter.swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
+        counterSwapRequesterItemIds: Array.isArray(counter.swapRequesterItemIds) ? counter.swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
+        counterNote: counter.counterNote ?? null,
+        counterRound: newRound,
+      } : {};
+
       const [updated] = await db
         .update(itemRequests)
         .set({
@@ -4721,9 +4795,28 @@ Respond with ONLY the category name, nothing else.`
           counterEndDate: counter.endDate ? new Date(counter.endDate) : (request.item_requests.counterEndDate ?? null),
           counterProposedAt: new Date(),
           counterProposedBy: req.user.id,
+          ...swapCounterFields,
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
+
+      let swapCounterBackMeta: Record<string, unknown> = {};
+      if (isSwap) {
+        const allSwapIds2 = [...(updated.counterSwapOwnerItemIds ?? []), ...(updated.counterSwapRequesterItemIds ?? [])].filter(Boolean);
+        const swapItemNames2: Record<number, string> = {};
+        if (allSwapIds2.length > 0) {
+          const swapItems2 = await db.select({ id: items.id, name: items.name }).from(items).where(inArray(items.id, allSwapIds2));
+          for (const si of swapItems2) swapItemNames2[si.id] = si.name;
+        }
+        swapCounterBackMeta = {
+          swapOwnerItemIds: updated.counterSwapOwnerItemIds,
+          swapRequesterItemIds: updated.counterSwapRequesterItemIds,
+          swapOwnerItemNames: (updated.counterSwapOwnerItemIds ?? []).map(id => swapItemNames2[id] ?? `Item #${id}`),
+          swapRequesterItemNames: (updated.counterSwapRequesterItemIds ?? []).map(id => swapItemNames2[id] ?? `Item #${id}`),
+          counterNote: updated.counterNote,
+          counterRound: updated.counterRound,
+        };
+      }
 
       await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
         deliveryMethod: updated.counterDeliveryMethod,
@@ -4731,6 +4824,7 @@ Respond with ONLY the category name, nothing else.`
         startDate: updated.counterStartDate,
         endDate: updated.counterEndDate,
         proposedByRole: isOwner ? "owner" : "requester",
+        ...swapCounterBackMeta,
       });
 
       const _cpItemName2 = request.items.name;
@@ -4867,6 +4961,45 @@ Respond with ONLY the category name, nothing else.`
 
       return res.json({ success: true, request: updated, message: "Request cancelled" });
     }
+  });
+
+  // Fetch swap-eligible items for a user (for counter-proposal item picker)
+  // Returns items that are: isAvailable, isSwappable, not in active locked transactions, not archived
+  app.get("/api/swap-eligible-items", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const partnerId = req.query.partnerId ? parseInt(req.query.partnerId as string) : null;
+    const userId = partnerId ?? req.user.id;
+
+    const LOCKED_STATUSES = ["ACCEPTED", "DEPOSIT_CONFIRMED", "IN_PROGRESS", "COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
+
+    // Get all item IDs currently locked in active transactions
+    const lockedItemRows = await db
+      .select({ itemId: itemRequests.itemId })
+      .from(itemRequests)
+      .where(inArray(itemRequests.status, LOCKED_STATUSES));
+    const lockedItemIds = lockedItemRows.map(r => r.itemId);
+
+    const eligibleItems = await db
+      .select({
+        id: items.id,
+        name: items.name,
+        photos: items.photos,
+        tier: items.tier,
+        shareCoinPrice: items.shareCoinPrice,
+        originalValue: items.originalValue,
+        ownerId: items.ownerId,
+      })
+      .from(items)
+      .where(
+        and(
+          eq(items.ownerId, userId),
+          eq(items.isAvailable, true),
+          eq(items.isSwappable, true),
+          lockedItemIds.length > 0 ? notInArray(items.id, lockedItemIds) : undefined
+        )
+      );
+
+    res.json(eligibleItems);
   });
 
   // Gift handoff confirmation - for both giver and receiver

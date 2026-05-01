@@ -46,12 +46,14 @@ export const platformConfig = {
   // Minimum commission amounts
   minimumCommission: 0.50, // Don't charge commission under $0.50
   
-  // ShareCoin rewards
+  // ShareCoin rewards (first-time bonuses only — no recurring completion rewards)
   shareCoinsRewards: {
-    successfulSwap: 1,
-    successfulRental: 1, // 1 ShareCoin to both users when item is returned
-    firstTimeRenter: 2,
-    firstTimeLender: 2,
+    firstTimeBorrow: 1,   // +1 SC on your very first borrow
+    firstTimeLend: 1,     // +1 SC on your very first lend
+    firstTimeRent: 1,     // +1 SC on your very first rental
+    firstTimeGift: 1,     // +1 SC on your very first gift given
+    firstTimeSwap: 1,     // +1 SC on your very first swap
+    badgeUnlock: 1,       // +1 SC each time a new badge/milestone is unlocked
   },
   
   // ShareCoin conversion for user reward fund
@@ -60,7 +62,7 @@ export const platformConfig = {
   // Platform messaging
   messaging: {
     commission: "Only pay when you earn — our platform grows with you.",
-    shareCoinsReward: "Earn ShareCoins when items are successfully returned!",
+    shareCoinsReward: "Earn ShareCoins for first-time milestones and unlocking badges!",
     commissionBreakdown: "3% supports platform growth, 2% rewards our community with ShareCoins"
   }
 };

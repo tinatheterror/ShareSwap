@@ -66,7 +66,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 5,
     title: "Earn More ShareCoins",
     description:
-      "Need more ShareCoins? Tap on your wallet to discover more ways you can earn: fulfill a neighbour's wishlist, invite friends to join, or play sponsored games for instant rewards.",
+      "Need more ShareCoins? Earn them through first-time milestones (your first borrow, lend, swap, gift, or rental), unlocking achievement badges, inviting friends, or playing sponsored games — check your wallet for all the ways.",
     highlightSelector: '[data-tutorial="wallet"]',
     positionAbove: false,
   },

@@ -5121,11 +5121,10 @@ Respond with ONLY the category name, nothing else.`
         .set({ isAvailable: false })
         .where(eq(items.id, request.items.id));
 
-      // Award ShareCoins to both parties
       const giverId = request.items.ownerId!;
       const receiverId = request.item_requests.requesterId;
 
-      // Award first-time bonus to giver only
+      // Award first-time bonus to giver only (no recurring reward; receiver gets nothing)
       await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 0);
 
       // Update trust scores
@@ -5148,16 +5147,16 @@ Respond with ONLY the category name, nothing else.`
         {
           userId: giverId,
           type: "gift_completed",
-          title: "Gift completed",
-          message: `"${request.items.name}" received. +1 ShareCoin`,
+          title: "Gift completed! 🎁",
+          message: `"${request.items.name}" successfully handed over. First-time gift bonus: +1 SC.`,
           itemId: request.items.id,
           requestId: requestId,
         },
         {
           userId: receiverId,
           type: "gift_completed",
-          title: "Gift received",
-          message: `"${request.items.name}" is yours. +1 ShareCoin`,
+          title: "Gift received! 🎁",
+          message: `"${request.items.name}" is yours — enjoy! Thanks for being part of the ShareSwap community.`,
           itemId: request.items.id,
           requestId: requestId,
         },
@@ -5166,7 +5165,7 @@ Respond with ONLY the category name, nothing else.`
       return res.json({
         success: true,
         completed: true,
-        message: "Gift exchange complete! Both parties have been awarded ShareCoins.",
+        message: "Gift complete! The giver earns a first-time bonus ShareCoin. Enjoy your new item!",
       });
     }
 

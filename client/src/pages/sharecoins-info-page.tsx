@@ -55,11 +55,11 @@ export default function ShareCoinsInfoPage() {
                   Lenders
                 </h3>
                 <p className="text-slate-600">
-                  <span className="font-semibold">Earn ShareCoins upon delivery to borrower.</span>
+                  <span className="font-semibold">Earn ShareCoins when the borrower picks up your item.</span>
                 </p>
                 <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
                   <p className="text-sm text-slate-700">
-                    <strong>Example:</strong> You lend a stroller → coins are credited to your account once the borrower receives it.
+                    <strong>Example:</strong> You lend a stroller → coins are credited to your account at handoff.
                   </p>
                 </div>
               </div>
@@ -121,15 +121,19 @@ export default function ShareCoinsInfoPage() {
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                    <p className="text-slate-700">Urgent requests: <strong>+2 coins</strong></p>
+                    <p className="text-slate-700">Your first borrow, lend, swap, gift, or rental: <strong>+1 coin</strong></p>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                    <p className="text-slate-700">Lending to fulfill wishlist items: <strong>+1–3 coins</strong></p>
+                    <p className="text-slate-700">Unlocking a badge or milestone: <strong>+1 coin</strong></p>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                    <p className="text-slate-700">First-time lenders or special promotions: <strong>+1 coin</strong></p>
+                    <p className="text-slate-700">Referring a friend who completes their first transaction: <strong>variable bonus</strong></p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-3 h-3 bg-teal-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                    <p className="text-slate-700">Reaching a new reputation level: <strong>level reward coins</strong></p>
                   </div>
                 </div>
               </div>
@@ -233,22 +237,22 @@ export default function ShareCoinsInfoPage() {
                     <td className="py-3 px-4 text-slate-700">Blender (Medium)</td>
                     <td className="py-3 px-4 text-slate-700">10 ShareCoins</td>
                     <td className="py-3 px-4 text-slate-700">8 ShareCoins</td>
-                    <td className="py-3 px-4 text-slate-700">2 ShareCoins urgent</td>
-                    <td className="py-3 px-4 text-slate-600 text-sm">Coins credited upon delivery</td>
+                    <td className="py-3 px-4 text-slate-700">+1 if first-time</td>
+                    <td className="py-3 px-4 text-slate-600 text-sm">Coins credited at handoff</td>
                   </tr>
                   <tr className="border-b border-slate-200">
                     <td className="py-3 px-4 text-slate-700">Stroller (High)</td>
                     <td className="py-3 px-4 text-slate-700">15 ShareCoins</td>
                     <td className="py-3 px-4 text-slate-700">12 ShareCoins</td>
-                    <td className="py-3 px-4 text-slate-700">3 ShareCoins wishlist</td>
-                    <td className="py-3 px-4 text-slate-600 text-sm">Coins credited upon delivery</td>
+                    <td className="py-3 px-4 text-slate-700">+1 if first-time</td>
+                    <td className="py-3 px-4 text-slate-600 text-sm">Coins credited at handoff</td>
                   </tr>
                   <tr>
                     <td className="py-3 px-4 text-slate-700">Board Game (Low)</td>
                     <td className="py-3 px-4 text-slate-700">5 ShareCoins</td>
                     <td className="py-3 px-4 text-slate-700">4 ShareCoins</td>
-                    <td className="py-3 px-4 text-slate-700">0 ShareCoins</td>
-                    <td className="py-3 px-4 text-slate-600 text-sm">Coins credited upon delivery</td>
+                    <td className="py-3 px-4 text-slate-700">+1 if first-time</td>
+                    <td className="py-3 px-4 text-slate-600 text-sm">Coins credited at handoff</td>
                   </tr>
                 </tbody>
               </table>

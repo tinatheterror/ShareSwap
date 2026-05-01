@@ -326,7 +326,7 @@ export default function FAQPage() {
                         { icon: MapPin, label: "Item Handoff" },
                         {
                           icon: Coins,
-                          label: "ShareCoins earned upon delivery",
+                          label: "ShareCoins earned at handoff",
                         },
                         { icon: RotateCcw, label: "Item Returned" },
                         { icon: Wallet, label: "Give Deposit Back" },
@@ -627,7 +627,7 @@ export default function FAQPage() {
                   </div>
                 </div>
 
-                {/* Rentals */}
+                {/* First-Time Milestones */}
                 <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 border border-green-200">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-green-200 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -635,10 +635,10 @@ export default function FAQPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        Completing
+                        First-Time
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Transactions
+                        Milestones
                       </p>
                     </div>
                   </div>
@@ -661,18 +661,18 @@ export default function FAQPage() {
                   </div>
                 </div>
 
-                {/* Urgent Help */}
+                {/* Badge Unlocks */}
                 <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-3 border border-orange-200">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-orange-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Clock className="h-4 w-4 text-orange-600" />
+                      <Star className="h-4 w-4 text-orange-600" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        Urgent Help
+                        Badge Unlocks
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Fulfilled in time
+                        +1 SC per badge
                       </p>
                     </div>
                   </div>

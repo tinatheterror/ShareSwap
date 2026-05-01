@@ -6560,36 +6560,50 @@ Respond with ONLY the category name, nothing else.`
           },
         ]);
       } else {
-        // Both confirmed — send post-handoff summary messages
-        const shareCoinAmount = request.item_requests.requestType === "BORROW"
-          ? calcBorrowShareCoinCost(
-              parseFloat(request.items.shareCoinPrice || "0"),
-              request.item_requests.startDate,
-              request.item_requests.endDate,
-            )
-          : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-        const isBorrow = request.item_requests.requestType === "BORROW";
-        const bookedStartMs = request.item_requests.startDate ? new Date(request.item_requests.startDate).getTime() : null;
-        const bookedEndDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
-        const isLateHandoff = bookedStartMs && now.getTime() > bookedStartMs;
-        const isEarlyHandoff = bookedStartMs && now.getTime() < bookedStartMs;
-        const startFmt = request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
-        const endFmt = bookedEndDate ? bookedEndDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : null;
-        const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+        // Both confirmed — send type-appropriate post-handoff summary messages
+        const reqType = request.item_requests.requestType;
+        const isBorrow = reqType === "BORROW";
+        const isRent   = reqType === "RENT";
+        const isSwap   = reqType === "SWAP";
+        const isGift   = reqType === "GIFT";
 
-        const systemMsgs = [
-          isBorrow && shareCoinAmount > 0
-            ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged to borrower`
-            : null,
-          isBorrow && shareCoinAmount > 0
-            ? `➕ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} earned by lender`
-            : null,
-          `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
-          startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
-          isLateHandoff && isBorrow ? `⚠️ Handoff was late — borrower can request a return date adjustment from their requests page.` : null,
-          isEarlyHandoff && isBorrow ? `⏰ Early handoff — ShareCoins and return date are based on the original booked period (${startFmt} – ${endFmt}).` : null,
-          "🔒 Security deposit is now held until the item is returned",
-        ].filter(Boolean) as string[];
+        let systemMsgs: string[] = [];
+
+        if (isSwap) {
+          systemMsgs = [`🔄 Swap complete! Both items have been exchanged. Enjoy!`];
+        } else if (isGift) {
+          systemMsgs = [`🎁 Gift successfully handed over! Generosity makes the neighbourhood stronger.`];
+        } else {
+          // BORROW or RENT
+          const shareCoinAmount = isBorrow
+            ? calcBorrowShareCoinCost(
+                parseFloat(request.items.shareCoinPrice || "0"),
+                request.item_requests.startDate,
+                request.item_requests.endDate,
+              )
+            : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+          const bookedStartMs = request.item_requests.startDate ? new Date(request.item_requests.startDate).getTime() : null;
+          const bookedEndDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
+          const isLateHandoff = bookedStartMs && now.getTime() > bookedStartMs;
+          const isEarlyHandoff = bookedStartMs && now.getTime() < bookedStartMs;
+          const startFmt = request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
+          const endFmt = bookedEndDate ? bookedEndDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : null;
+          const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+
+          systemMsgs = [
+            isBorrow && shareCoinAmount > 0
+              ? `➖ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} charged to borrower`
+              : null,
+            isBorrow && shareCoinAmount > 0
+              ? `➕ ${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""} earned by lender`
+              : null,
+            `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
+            startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
+            isLateHandoff && isBorrow ? `⚠️ Handoff was late — borrower can request a return date adjustment from their requests page.` : null,
+            isEarlyHandoff && isBorrow ? `⏰ Early handoff — ShareCoins and return date are based on the original booked period (${startFmt} – ${endFmt}).` : null,
+            isRent ? `🔒 Security deposit is now held until the item is returned` : null,
+          ].filter(Boolean) as string[];
+        }
 
         for (const content of systemMsgs) {
           await db.insert(messages).values({

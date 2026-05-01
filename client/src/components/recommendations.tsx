@@ -34,6 +34,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = e.touches[0].clientX; // reset so stale value never triggers a swipe
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {

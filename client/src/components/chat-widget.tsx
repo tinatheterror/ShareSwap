@@ -2578,7 +2578,7 @@ export function ChatWidget() {
           userRole={
             selectedRequest.requesterId === user?.id ? "borrower" : "owner"
           }
-          requestType={selectedRequest.requestType as "BORROW" | "RENT"}
+          requestType={selectedRequest.requestType as "BORROW" | "RENT" | "GIFT" | "SWAP"}
           deliveryMethod={
             (selectedRequest.deliveryMethod === "courier"
               ? "courier"

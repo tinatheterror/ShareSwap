@@ -21,7 +21,7 @@ interface HandoffConfirmationModalProps {
   userRole: "owner" | "borrower";
   deliveryMethod: "in_person" | "courier";
   otherPartyConfirmed?: boolean;
-  requestType?: "BORROW" | "RENT";
+  requestType?: "BORROW" | "RENT" | "GIFT" | "SWAP";
   pinExpiresAt?: string | null;
   pinUsed?: boolean;
   onSuccess: () => void;
@@ -44,7 +44,9 @@ export function HandoffConfirmationModal({
   onSuccess,
 }: HandoffConfirmationModalProps) {
   const isRental = requestType === "RENT";
-  const otherParty = isRental ? "renter" : "borrower";
+  const isGift = requestType === "GIFT";
+  const isSwap = requestType === "SWAP";
+  const otherParty = isRental ? "renter" : isGift ? "receiver" : isSwap ? "partner" : "borrower";
   const OtherParty = otherParty.charAt(0).toUpperCase() + otherParty.slice(1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -89,7 +91,8 @@ export function HandoffConfirmationModal({
     },
     onSuccess: () => {
       invalidate();
-      toast({ title: "Handoff confirmed!", description: "Borrow period has started." });
+      const desc = isGift ? "Gift successfully received!" : isSwap ? "Swap successfully completed!" : "Borrow period has started.";
+      toast({ title: "Confirmed!", description: desc });
       onSuccess();
     },
     onError: (err: any) => {

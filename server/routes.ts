@@ -6717,8 +6717,11 @@ Respond with ONLY the category name, nothing else.`
       const isBorrower = request.item_requests.requesterId === req.user.id;
       if (!isBorrower) return res.status(403).json({ error: "Only the borrower can submit the PIN" });
 
+      const requestType = request.item_requests.requestType;
+      const isNoDepositType = requestType === "GIFT" || requestType === "SWAP";
       const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
-      if (!validStatuses.includes(request.item_requests.status)) {
+      // GIFT and SWAP skip the deposit step — they stay at ACCEPTED until handoff
+      if (!validStatuses.includes(request.item_requests.status) && !(isNoDepositType && request.item_requests.status === "ACCEPTED")) {
         return res.status(400).json({ error: "Handoff already completed or not ready" });
       }
 
@@ -6752,41 +6755,49 @@ Respond with ONLY the category name, nothing else.`
       const now = new Date();
       const ownerId = request.items.ownerId!;
       const borrowerId = request.item_requests.requesterId;
-      const shareCoinAmount = request.item_requests.requestType === "BORROW"
-        ? calcBorrowShareCoinCost(
-            parseFloat(request.items.shareCoinPrice || "0"),
-            request.item_requests.startDate,
-            request.item_requests.endDate,
-          )
-        : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
+      const isGiftPin = requestType === "GIFT";
+      const isSwapPin = requestType === "SWAP";
+      const isGiftOrSwapPin = isGiftPin || isSwapPin;
 
-      if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
-        const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
-        const currentBalance = parseFloat(borrower?.shareCoins || "0");
-        const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
-
-        await db.update(users).set({ shareCoins: (currentBalance - charged).toString() }).where(eq(users.id, borrowerId));
-        await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-charged).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
-
-        if (ownerId && charged > 0) {
-          const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
-          const lenderBalance = parseFloat(lender?.shareCoins || "0");
-          await db.update(users).set({ shareCoins: (lenderBalance + charged).toString() }).where(eq(users.id, ownerId));
-          await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: charged.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
+      // For BORROW, charge/earn ShareCoins at handoff
+      if (requestType === "BORROW") {
+        const shareCoinAmount = calcBorrowShareCoinCost(
+          parseFloat(request.items.shareCoinPrice || "0"),
+          request.item_requests.startDate,
+          request.item_requests.endDate,
+        );
+        if (shareCoinAmount > 0) {
+          const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
+          const currentBalance = parseFloat(borrower?.shareCoins || "0");
+          const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
+          await db.update(users).set({ shareCoins: (currentBalance - charged).toString() }).where(eq(users.id, borrowerId));
+          await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-charged).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
+          if (ownerId && charged > 0) {
+            const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
+            const lenderBalance = parseFloat(lender?.shareCoins || "0");
+            await db.update(users).set({ shareCoins: (lenderBalance + charged).toString() }).where(eq(users.id, ownerId));
+            await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: charged.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
+          }
+          const coinLabel = `${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""}`;
+          await db.insert(messages).values({ content: `🪙 ${coinLabel} charged`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: borrowerId } });
+          if (ownerId) await db.insert(messages).values({ content: `🪙 ${coinLabel} earned`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: ownerId } });
         }
       }
 
+      // GIFT / SWAP → mark as COMPLETED immediately; BORROW/RENT → IN_PROGRESS (period begins)
       const pinBookedStart = request.item_requests.startDate ? new Date(request.item_requests.startDate) : null;
-      const pinIsLate = pinBookedStart && now > pinBookedStart && request.item_requests.requestType === "BORROW";
+      const pinIsLate = pinBookedStart && now > pinBookedStart && requestType === "BORROW";
+      const newStatus = isGiftOrSwapPin ? "COMPLETED" : "IN_PROGRESS";
+
       await db.update(itemRequests).set({
-        status: "IN_PROGRESS",
+        status: newStatus,
         handoffConfirmedAt: now,
-        borrowPeriodStartedAt: now,
+        ...(isGiftOrSwapPin ? { completedAt: now } : { borrowPeriodStartedAt: now }),
         actualHandoffAt: now,
         handoffDelayAdjustmentStatus: pinIsLate ? "pending_borrower_decision" : "none",
-        shareCoinsCharged: true,
-        shareCoinsChargedAt: now,
-        depositStatus: "held",
+        shareCoinsCharged: !isGiftOrSwapPin,
+        shareCoinsChargedAt: isGiftOrSwapPin ? null : now,
+        depositStatus: isGiftOrSwapPin ? null : "held",
         ownerConfirmedHandoff: true,
         ownerConfirmedHandoffAt: now,
         borrowerConfirmedHandoff: true,
@@ -6797,50 +6808,34 @@ Respond with ONLY the category name, nothing else.`
 
       await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 
-      const isBorrowPin = request.item_requests.requestType === "BORROW";
-
-      // Shared system messages visible to both parties
-      const sharedSystemMsgs = [
-        `🤝 Handoff confirmed via PIN — ${request.item_requests.requestType === "RENT" ? "rental" : "borrow"} period has started`,
-        "🔒 Security deposit is now held until the item is returned",
-      ];
-      for (const content of sharedSystemMsgs) {
-        await db.insert(messages).values({ content, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
-      }
-
-      // Coin stamps — each visible only to the relevant party
-      if (shareCoinAmount > 0 && isBorrowPin) {
-        const coinLabel = `${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""}`;
-        // Borrower only sees "charged"
+      // System messages
+      if (isGiftPin) {
         await db.insert(messages).values({
-          content: `🪙 ${coinLabel} charged`,
-          senderId: ownerId,
-          receiverId: borrowerId,
-          messageType: "system",
-          requestId,
-          metadata: { visibleToUserId: borrowerId },
+          content: `🎁 Gift confirmed via PIN — "${request.items.name}" successfully received!`,
+          senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId,
         });
-        // Lender only sees "earned"
-        if (ownerId) {
-          await db.insert(messages).values({
-            content: `🪙 ${coinLabel} earned`,
-            senderId: ownerId,
-            receiverId: borrowerId,
-            messageType: "system",
-            requestId,
-            metadata: { visibleToUserId: ownerId },
-          });
-        }
+      } else if (isSwapPin) {
+        await db.insert(messages).values({
+          content: `🔄 Swap confirmed via PIN — items successfully exchanged!`,
+          senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId,
+        });
+      } else {
+        const periodType = requestType === "RENT" ? "rental" : "borrow";
+        await db.insert(messages).values({ content: `🤝 Handoff confirmed via PIN — ${periodType} period has started`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
+        await db.insert(messages).values({ content: "🔒 Security deposit is now held until the item is returned", senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
       }
 
-      const _handoffPeriodType = request.item_requests.requestType === "RENT" ? "Rental" : "Borrow";
-      const _handoffMsg = `Receipt of "${request.items.name}" via code. ${_handoffPeriodType} period started.`;
+      const _handoffMsg = isGiftPin
+        ? `Gift of "${request.items.name}" confirmed via code.`
+        : isSwapPin
+        ? `Swap of "${request.items.name}" confirmed via code.`
+        : `Receipt of "${request.items.name}" via code. ${requestType === "RENT" ? "Rental" : "Borrow"} period started.`;
       await db.insert(notifications).values([
         { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
         { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
       ]);
 
-      res.json({ success: true, confirmed: true, message: "Handoff confirmed via PIN!" });
+      res.json({ success: true, confirmed: true, message: isGiftPin ? "Gift confirmed via PIN!" : isSwapPin ? "Swap confirmed via PIN!" : "Handoff confirmed via PIN!" });
     } catch (error: any) {
       console.error("Error verifying handoff PIN:", error);
       res.status(500).json({ error: "Failed to verify PIN" });

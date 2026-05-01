@@ -1018,6 +1018,8 @@ export function ChatWidget() {
     const iCounterPending = request.negotiationStatus === "counter_proposed";
     const iSentCounter = iCounterPending && request.counterProposedBy === user?.id;
     const iReceivedCounter = iCounterPending && request.counterProposedBy !== user?.id;
+    // Terms accepted by requester — owner still needs to formally confirm
+    const iTermsAccepted = request.negotiationStatus === "terms_accepted" && request.status === "PENDING";
 
     // Always show original request terms in the card.
     // Counter-proposed terms are already displayed inline in the chat event ("proposed new terms").
@@ -1034,7 +1036,7 @@ export function ChatWidget() {
     return (
       <div
         key={request.id}
-        className={`p-3 border-b transition-colors ${iReceivedCounter ? "bg-amber-50 hover:bg-amber-100/70" : request.status === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-gray-50"}`}
+        className={`p-3 border-b transition-colors ${iReceivedCounter ? "bg-amber-50 hover:bg-amber-100/70" : iTermsAccepted && isOwner ? "bg-green-50 hover:bg-green-100/70" : request.status === "AWAITING_HANDOFF_CONFIRM" ? "" : "hover:bg-gray-50"}`}
       >
         <button
           className="w-full text-left"
@@ -1049,6 +1051,10 @@ export function ChatWidget() {
             ) : iReceivedCounter ? (
               <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 text-white pointer-events-none">
                 COUNTER RECEIVED
+              </Badge>
+            ) : iTermsAccepted ? (
+              <Badge className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 pointer-events-none">
+                TERMS AGREED
               </Badge>
             ) : (
               <Badge className={`text-[10px] px-1.5 py-0 pointer-events-none ${getStatusColor(request.status)}`}>
@@ -1108,6 +1114,9 @@ export function ChatWidget() {
               {iSentCounter && (
                 <p className="text-[10px] text-amber-700 mt-0.5 italic">Waiting for their response…</p>
               )}
+              {iTermsAccepted && isOwner && (
+                <p className="text-[10px] text-green-700 mt-0.5 font-medium">✅ Requester accepted your terms</p>
+              )}
             </div>
           </div>
         </button>
@@ -1145,15 +1154,28 @@ export function ChatWidget() {
             </>
           )}
 
-              {/* Owner actions for pending requests (no active counter) */}
-              {isOwner && request.status === "PENDING" && !iCounterPending && (
+              {/* Owner: terms were accepted by requester — formally confirm */}
+              {isOwner && iTermsAccepted && (
+                <Button
+                  size="sm"
+                  className="flex-1 h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
+                  onClick={() => handleAcceptClick(request)}
+                  disabled={acceptMutation.isPending}
+                >
+                  {acceptMutation.isPending ? "Confirming…" : "Confirm & Accept"}
+                </Button>
+              )}
+
+              {/* Owner actions for pending requests (no active counter, terms not yet agreed) */}
+              {isOwner && request.status === "PENDING" && !iCounterPending && !iTermsAccepted && (
                 <>
                   <Button
                     size="sm"
                     className="flex-1 h-7 text-xs px-2 bg-green-600"
                     onClick={() => handleAcceptClick(request)}
+                    disabled={acceptMutation.isPending}
                   >
-                    Accept
+                    {acceptMutation.isPending ? "Accepting…" : "Accept"}
                   </Button>
                   <Button
                     size="sm"
@@ -1175,8 +1197,13 @@ export function ChatWidget() {
                 </>
               )}
 
+              {/* Borrower: waiting for owner to confirm after terms agreed */}
+              {isBorrower && iTermsAccepted && (
+                <p className="text-[10px] text-green-700 italic">Waiting for owner to confirm…</p>
+              )}
+
               {/* Borrower: Cancel request (PENDING = free cancel, no confirmation needed) */}
-              {isBorrower && request.status === "PENDING" && !iCounterPending && (
+              {isBorrower && request.status === "PENDING" && !iCounterPending && !iTermsAccepted && (
                 <button
                   className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); cancelMutation.mutate(request.id); }}

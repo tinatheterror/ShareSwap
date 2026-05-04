@@ -1790,33 +1790,63 @@ export function ChatWidget() {
                               const newStart = mStart ? format(parseLocalDate(mStart), "MMM d") : null;
                               const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;
-                              const deliveryChanged = mDelivery !== origDelivery;
-                              const depositChanged = mDeposit !== origDeposit;
+                              const deliveryChanged = mDelivery && mDelivery !== origDelivery;
+                              const depositChanged = mDeposit && mDeposit !== origDeposit;
+                              const deliveryLabel = (d?: string | null) => d === "courier" ? "Uber Direct" : "In Person";
+                              const depositLabel = (d?: string | null) => d === "in_app" ? "Deposit In-app" : "Deposit In Person";
                               return (
-                                <div className="w-full pl-[70px] flex flex-col">
-                                  {newStart && newEnd && (
-                                    <div className={`flex items-center gap-1 text-xs mb-0.5 ${dateChanged ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
-                                      <Clock className="h-3 w-3 shrink-0" />
-                                      <span>{newStart} – {newEnd}</span>
+                                <div className="w-full pl-[70px]">
+                                  <div className="flex items-stretch gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-[11px]">
+                                    {/* Old terms */}
+                                    <div className="flex flex-col gap-1 text-muted-foreground min-w-0 flex-1">
+                                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Current</span>
+                                      {origStart && origEnd && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3 shrink-0" />
+                                          {origStart} – {origEnd}
+                                        </span>
+                                      )}
+                                      {origDelivery && (
+                                        <span className="flex items-center gap-1">
+                                          {origDelivery === "courier"
+                                            ? <Truck className="h-3 w-3 shrink-0" />
+                                            : <MapPin className="h-3 w-3 shrink-0" />}
+                                          {deliveryLabel(origDelivery)}
+                                        </span>
+                                      )}
+                                      {origDeposit && (
+                                        <span className="flex items-center gap-1">
+                                          <Shield className="h-3 w-3 shrink-0" />
+                                          {depositLabel(origDeposit)}
+                                        </span>
+                                      )}
                                     </div>
-                                  )}
-                                  <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-0.5">
-                                    {mDelivery && (
-                                      <span className={`flex items-center gap-1 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
-                                        {mDelivery === "courier"
-                                          ? <Truck className="h-3 w-3 shrink-0 text-blue-600" />
-                                          : <MapPin className="h-3 w-3 shrink-0 text-gray-500" />}
-                                        {mDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
-                                      </span>
-                                    )}
-                                    {mDeposit && depositChanged && (
-                                      <span className="flex items-center gap-1 text-amber-600 font-medium">
-                                        {mDeposit === "in_app"
-                                          ? <Shield className="h-3 w-3 shrink-0" />
-                                          : <MapPin className="h-3 w-3 shrink-0" />}
-                                        {mDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                                      </span>
-                                    )}
+                                    {/* Arrow */}
+                                    <div className="flex items-center text-gray-400 font-bold text-base px-1">→</div>
+                                    {/* New terms */}
+                                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                      <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-500 mb-0.5">Proposed</span>
+                                      {newStart && newEnd && (
+                                        <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
+                                          <Clock className="h-3 w-3 shrink-0" />
+                                          {newStart} – {newEnd}
+                                        </span>
+                                      )}
+                                      {mDelivery && (
+                                        <span className={`flex items-center gap-1 ${deliveryChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
+                                          {mDelivery === "courier"
+                                            ? <Truck className="h-3 w-3 shrink-0" />
+                                            : <MapPin className="h-3 w-3 shrink-0" />}
+                                          {deliveryLabel(mDelivery)}
+                                        </span>
+                                      )}
+                                      {mDeposit && (
+                                        <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
+                                          <Shield className="h-3 w-3 shrink-0" />
+                                          {depositLabel(mDeposit)}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               );

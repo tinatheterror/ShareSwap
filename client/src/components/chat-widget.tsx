@@ -2183,9 +2183,6 @@ export function ChatWidget() {
                         {isOverdue && (
                           <p className="text-xs text-center text-amber-700 font-medium">⚠️ Handoff overdue</p>
                         )}
-                        {isOwnerInPersonDeposit && (
-                          <p className="text-xs text-center text-amber-700 font-medium bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">💵 Collect the security deposit in person before sharing your code</p>
-                        )}
                         {/* PIN display card */}
                         <div className="rounded-xl border border-indigo-200 bg-white px-4 py-3 space-y-2">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-700 uppercase tracking-wide">
@@ -2231,6 +2228,9 @@ export function ChatWidget() {
                         >
                           Confirm manually instead →
                         </button>
+                        {isOwnerInPersonDeposit && (
+                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before sharing your code</p>
+                        )}
                       </div>
                     );
                   }

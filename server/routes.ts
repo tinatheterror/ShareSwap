@@ -6631,7 +6631,7 @@ Respond with ONLY the category name, nothing else.`
             startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
             isLateHandoff && isBorrow ? `⚠️ Handoff was late — borrower can request a return date adjustment from their requests page.` : null,
             isEarlyHandoff && isBorrow ? `⏰ Early handoff — ShareCoins and return date are based on the original booked period (${startFmt} – ${endFmt}).` : null,
-            isRent ? `🔒 Security deposit is now held until the item is returned` : null,
+            isRent && request.item_requests.depositMethod !== "in_person" ? `🔒 Security deposit is now held until the item is returned` : null,
           ].filter(Boolean) as string[];
         }
 
@@ -6882,7 +6882,9 @@ Respond with ONLY the category name, nothing else.`
       } else {
         const periodType = requestType === "RENT" ? "rental" : "borrow";
         await db.insert(messages).values({ content: `🤝 Handoff confirmed via PIN — ${periodType} period has started`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
-        await db.insert(messages).values({ content: "🔒 Security deposit is now held until the item is returned", senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
+        if (request.item_requests.depositMethod !== "in_person") {
+          await db.insert(messages).values({ content: "🔒 Security deposit is now held until the item is returned", senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
+        }
       }
 
       const _handoffMsg = isGiftPin

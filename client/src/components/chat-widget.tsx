@@ -1852,37 +1852,6 @@ export function ChatWidget() {
                               );
                             })()}
 
-                            {iAmResponder && relatedRequest && (
-                              <div className="flex gap-2 mt-0.5">
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs bg-foreground text-background hover:bg-foreground/90"
-                                  onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: true })}
-                                  disabled={respondToCounterMutation.isPending}
-                                >
-                                  Accept
-                                </Button>
-                                {!(relatedRequest.requestType === "SWAP" && (relatedRequest.counterRound ?? 0) >= 2) && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    onClick={() => openChatCounter(relatedRequest, iAmOwner ? "owner" : "requester")}
-                                  >
-                                    Counter
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 text-xs"
-                                  onClick={() => respondToCounterMutation.mutate({ requestId: relatedRequest.id, accept: false })}
-                                  disabled={respondToCounterMutation.isPending}
-                                >
-                                  Decline
-                                </Button>
-                              </div>
-                            )}
                           </div>
                         </React.Fragment>
                       );

@@ -20,7 +20,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Edit, Trash2, Plus, Package, Coins, Sparkles } from "lucide-react";
+import { Trash2, Plus, Package, Coins, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectItem } from "@db/schema";
@@ -176,10 +176,10 @@ export default function MyItemsPage() {
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
-                className="overflow-hidden hover:shadow-lg transition-shadow"
+                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => navigate(`/lend?edit=${item.id}`)}
               >
-                <Link href={`/items/${item.id}`}>
-                  <div className="aspect-video bg-muted relative cursor-pointer">
+                <div className="aspect-video bg-muted relative">
                     {item.photos[0] ? (
                       <img
                         src={item.photos[0]}
@@ -199,13 +199,10 @@ export default function MyItemsPage() {
                       </Badge>
                     </div>
                   </div>
-                </Link>
                 <CardContent className="p-4">
-                  <Link href={`/items/${item.id}`}>
-                    <h3 className="font-semibold text-lg mb-2 hover:text-teal-600 cursor-pointer">
+                    <h3 className="font-semibold text-lg mb-2">
                       {item.name}
                     </h3>
-                  </Link>
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                     {item.description}
                   </p>
@@ -277,19 +274,13 @@ export default function MyItemsPage() {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <Link href={`/lend?edit=${item.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Edit className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                    </Link>
+                  <div className="flex justify-end">
                     <Button
                       variant="outline"
                       size="sm"
                       className="hover:bg-teal-50"
                       style={{ color: "#0DCEA1" }}
-                      onClick={() => setItemToDelete(item)}
+                      onClick={(e) => { e.stopPropagation(); setItemToDelete(item); }}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

@@ -1391,7 +1391,6 @@ export function ChatWidget() {
                   { key: "renting", label: "Rent" },
                   { key: "swapping", label: "Swap" },
                   { key: "gifting", label: "Gift" },
-                  { key: "unread", label: "Action" },
                   { key: "archived", label: "Archive" },
                 ].map((tab) => (
                   <button

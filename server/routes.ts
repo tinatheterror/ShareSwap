@@ -6292,7 +6292,7 @@ Respond with ONLY the category name, nothing else.`
     const start = new Date(startDate);
     const end = new Date(endDate);
     const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000) + 1);
-    return Math.max(1, Math.ceil((shareCoinPrice / 7) * borrowDays));
+    return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
   }
 
   // Confirm handoff (item exchanged - charges ShareCoins, starts borrow period)

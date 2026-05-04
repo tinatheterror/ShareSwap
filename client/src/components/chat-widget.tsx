@@ -1585,9 +1585,9 @@ export function ChatWidget() {
                       <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-wrap-none overflow-hidden">
                     {partnerProfile && partnerProfile.reviewCount > 0 && (
-                      <span className="flex items-center gap-0.5">
+                      <span className="flex items-center gap-0.5 shrink-0">
                         <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
                         <span className="font-medium text-gray-700">{Number(partnerProfile.averageRating).toFixed(1)}</span>
                         <span>({partnerProfile.reviewCount})</span>
@@ -1600,14 +1600,14 @@ export function ChatWidget() {
                       if (!activeLabel && !responseTime) return null;
                       const isActiveNow = activeLabel === "Active now";
                       return (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1 min-w-0 overflow-hidden">
                           {activeLabel && (
-                            <span className={`flex items-center gap-0.5 ${isActiveNow ? "text-green-600" : "text-muted-foreground"}`}>
+                            <span className={`whitespace-nowrap shrink-0 ${isActiveNow ? "text-green-600" : "text-muted-foreground"}`}>
                               {activeLabel}
                             </span>
                           )}
-                          {activeLabel && responseTime && <span className="text-muted-foreground">·</span>}
-                          {responseTime && <span className="text-muted-foreground">{responseTime}</span>}
+                          {activeLabel && responseTime && <span className="text-muted-foreground shrink-0">·</span>}
+                          {responseTime && <span className="text-muted-foreground whitespace-nowrap truncate">{responseTime}</span>}
                         </span>
                       );
                     })()}

@@ -2019,7 +2019,7 @@ export function ChatWidget() {
                           {pinExpired || pinUsed ? "Confirm received" : "Enter handoff code"}
                         </Button>
                         {isInPersonDeposit && !pinExpired && !pinUsed && (
-                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before confirming</p>
+                          <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to pay the security deposit in person before confirming</p>
                         )}
                         {!isInPersonDeposit && !pinExpired && !pinUsed && (
                           <p className="text-xs text-center text-muted-foreground">Ask the owner for the 4-digit handoff code when you meet</p>

@@ -1289,22 +1289,6 @@ export function ChatWidget() {
                       </Button>
                     )}
 
-                  {(request.status === "DEPOSIT_CONFIRMED" ||
-                    request.status === "COURIER_PENDING") && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowHandoffModal(true);
-                      }}
-                    >
-                      <HandMetal className="h-3 w-3 mr-1" />
-                      Confirm Received
-                    </Button>
-                  )}
-
                   {request.status === "RETURN_REQUESTED" && (
                     <Badge
                       variant="secondary"
@@ -1333,22 +1317,6 @@ export function ChatWidget() {
                         Book Courier
                       </Button>
                     )}
-
-                  {(request.status === "DEPOSIT_CONFIRMED" ||
-                    request.status === "COURIER_PENDING") && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowHandoffModal(true);
-                      }}
-                    >
-                      <HandMetal className="h-3 w-3 mr-1" />
-                      Confirm Received
-                    </Button>
-                  )}
 
                   {request.status === "RETURN_REQUESTED" && (
                     <Badge

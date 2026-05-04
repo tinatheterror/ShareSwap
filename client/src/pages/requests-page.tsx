@@ -1525,6 +1525,7 @@ export default function RequestsPage() {
           userRole={selectedRequest.requesterId === user?.id ? "borrower" : "owner"}
           requestType={selectedRequest.requestType as "BORROW" | "RENT"}
           endDate={selectedRequest.endDate}
+          depositMethod={selectedRequest.depositMethod}
           onSuccess={() => {
             setShowReturnModal(false);
             setSelectedRequest(null);

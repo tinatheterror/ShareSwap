@@ -2587,6 +2587,7 @@ export function ChatWidget() {
           }
           requestType={selectedRequest.requestType as "BORROW" | "RENT"}
           endDate={selectedRequest.endDate}
+          depositMethod={selectedRequest.depositMethod}
           onSuccess={() => {
             const isOwner = selectedRequest.requesterId !== user?.id;
             setShowReturnModal(false);

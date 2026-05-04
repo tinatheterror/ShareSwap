@@ -37,6 +37,7 @@ interface ReturnConfirmationModalProps {
   userRole: "owner" | "borrower";
   requestType?: "BORROW" | "RENT";
   endDate?: string | Date | null;
+  depositMethod?: string | null;
   onSuccess: () => void;
 }
 
@@ -61,6 +62,7 @@ export function ReturnConfirmationModal({
   userRole,
   requestType = "BORROW",
   endDate,
+  depositMethod,
   onSuccess,
 }: ReturnConfirmationModalProps) {
   const { toast } = useToast();
@@ -222,15 +224,27 @@ export function ReturnConfirmationModal({
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-blue-700 font-medium">
-                <Shield className="h-4 w-4" />
-                Your deposit will be released after owner confirms
+            {depositMethod === "in_person" ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-amber-700 font-medium">
+                  <Shield className="h-4 w-4" />
+                  Remember to collect your deposit back in person
+                </div>
+                <p className="text-sm text-amber-600 mt-1">
+                  {`Your $${depositAmount} deposit was paid in person. Make sure the owner returns it to you when you hand back the item.`}
+                </p>
               </div>
-              <p className="text-sm text-blue-600 mt-1">
-                {`Once the owner confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`}
-              </p>
-            </div>
+            ) : (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-700 font-medium">
+                  <Shield className="h-4 w-4" />
+                  Your deposit will be released after owner confirms
+                </div>
+                <p className="text-sm text-blue-600 mt-1">
+                  {`Once the owner confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`}
+                </p>
+              </div>
+            )}
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <div className="flex items-start gap-2">

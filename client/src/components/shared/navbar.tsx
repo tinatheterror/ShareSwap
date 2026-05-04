@@ -107,12 +107,29 @@ function NotificationBell() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
+  const prevNotifIdsRef = useRef<Set<number>>(new Set());
 
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
     enabled: !!user?.id,
-    refetchInterval: 120000,
+    refetchInterval: 30000,
   });
+
+  // When a new sharecoin_earned notification arrives, immediately refresh the user's
+  // balance so the coin animation fires at the right time (handoff, not return).
+  useEffect(() => {
+    if (!allNotifications.length) return;
+    const currentIds = new Set(allNotifications.map((n) => n.id));
+    const hasNewEarned =
+      prevNotifIdsRef.current.size > 0 &&
+      allNotifications.some(
+        (n) => n.type === "sharecoin_earned" && !prevNotifIdsRef.current.has(n.id)
+      );
+    if (hasNewEarned) {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    }
+    prevNotifIdsRef.current = currentIds;
+  }, [allNotifications]);
 
   useEffect(() => {
     if (!user?.id) return;

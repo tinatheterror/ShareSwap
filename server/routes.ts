@@ -6449,6 +6449,20 @@ Respond with ONLY the category name, nothing else.`
               description: `Lent: ${request.items.name}`,
               transactionType: "LEND_REWARD",
             });
+
+            // First-time lend bonus (only fires on their very first lend)
+            await awardShareCoinsWithFirstTimeBonus(request.items.ownerId, 'LEND', request.items.name, 1);
+
+            // Notify lender so their client refreshes balance and shows coin animation at handoff
+            await db.insert(notifications).values({
+              userId: request.items.ownerId,
+              type: "sharecoin_earned",
+              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} earned`,
+              message: `You earned ${charged} ShareCoin${charged !== 1 ? "s" : ""} for lending "${request.items.name}"`,
+              requestId,
+              itemId: request.items.id,
+              isRead: false,
+            });
           }
         }
 
@@ -6837,6 +6851,20 @@ Respond with ONLY the category name, nothing else.`
             const lenderBalance = parseFloat(lender?.shareCoins || "0");
             await db.update(users).set({ shareCoins: (lenderBalance + charged).toString() }).where(eq(users.id, ownerId));
             await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: charged.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
+
+            // First-time lend bonus (only fires on their very first lend)
+            await awardShareCoinsWithFirstTimeBonus(ownerId, 'LEND', request.items.name, 1);
+
+            // Notify lender so their client refreshes balance and shows coin animation at handoff
+            await db.insert(notifications).values({
+              userId: ownerId,
+              type: "sharecoin_earned",
+              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} earned`,
+              message: `You earned ${charged} ShareCoin${charged !== 1 ? "s" : ""} for lending "${request.items.name}"`,
+              requestId,
+              itemId: request.items.id,
+              isRead: false,
+            });
           }
           const coinLabel = `${shareCoinAmount} ShareCoin${shareCoinAmount !== 1 ? "s" : ""}`;
           await db.insert(messages).values({ content: `🪙 ${coinLabel} charged`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId, metadata: { visibleToUserId: borrowerId } });
@@ -7630,7 +7658,7 @@ Respond with ONLY the category name, nothing else.`
         // Don't fail the return if trust scoring fails
       }
 
-      // Award ShareCoins to both parties on return
+      // Award ShareCoins to borrower on return (lender already received coins at handoff)
       try {
         const borrowerCoins = await awardShareCoinsWithFirstTimeBonus(
           request.item_requests.requesterId,
@@ -7638,15 +7666,7 @@ Respond with ONLY the category name, nothing else.`
           request.items.name,
           1
         );
-        if (request.items.ownerId) {
-          await awardShareCoinsWithFirstTimeBonus(
-            request.items.ownerId,
-            'LEND',
-            request.items.name,
-            1
-          );
-        }
-        console.log(`✅ ShareCoins awarded on confirm-return: borrower=${borrowerCoins.totalAwarded}, lender=1`);
+        console.log(`✅ ShareCoins awarded on confirm-return: borrower=${borrowerCoins.totalAwarded}`);
       } catch (coinError) {
         console.error("Error awarding ShareCoins on return:", coinError);
         // Don't fail the return if coin award fails

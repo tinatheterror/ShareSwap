@@ -5006,7 +5006,7 @@ Respond with ONLY the category name, nothing else.`
     const partnerId = req.query.partnerId ? parseInt(req.query.partnerId as string) : null;
     const userId = partnerId ?? req.user.id;
 
-    const LOCKED_STATUSES = ["ACCEPTED", "DEPOSIT_CONFIRMED", "IN_PROGRESS", "COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
+    const LOCKED_STATUSES = ["ACCEPTED", "DEPOSIT_CONFIRMED", "IN_PROGRESS"];
 
     // Get all item IDs currently locked in active transactions
     const lockedItemRows = await db

@@ -1,0 +1,127 @@
+Refactor the “Counter Swap Offer” modal for better clarity, hierarchy, and usability.
+
+Goal:
+Make the swap counter flow feel visual and intuitive by prioritizing the selected trade, reducing clutter, and improving empty states.
+
+Requirements:
+
+1. Replace the top “Your Offer / Their Offer / 0 SC” summary strip.
+
+Current issue:
+The SC summary is abstract and doesn’t show what’s actually being traded.
+
+New behavior:
+Show a visual comparison strip using the selected item cards.
+
+Layout:
+
+Current Counter Offer
+
+[Your selected item card] ↔ [Their selected item card]
+
+Below each card show:
+
+* item title
+* tier
+
+Center status:
+
+* “Fair swap” if no ShareCoin offset is needed
+  OR
+* “+X ShareCoins needed” if there is a tier difference
+
+Do not show “0 SC” anymore.
+
+2. Add context for what is being countered.
+
+Directly under the modal title, add:
+
+Current swap:
+[original item] ↔ [original item]
+
+This should reflect the original swap request before any counter changes.
+
+3. Simplify section labels.
+
+Change:
+
+“Your items (what you offer)”
+to:
+“Your items”
+
+Change:
+
+“Their items (what you'll take)”
+to:
+“Their items”
+
+4. Remove the “1 selected” pills/badges.
+
+Selection should be visually indicated by:
+
+* highlighted border
+* checkmark badge
+
+Do not show separate selected-count pills.
+
+5. Improve empty states.
+
+Replace:
+
+“Requester has no swap-eligible items”
+
+With:
+
+“No eligible swap items available”
+
+Style it as a centered muted empty state.
+
+6. Tighten layout spacing.
+
+Reduce excessive vertical whitespace between:
+
+* top comparison strip
+* item sections
+* footer
+
+If only one item exists in a section:
+
+* center it better
+* allow slightly larger card width
+
+7. Keep item cards tappable for preview.
+
+Clicking any item card should open the existing item preview modal.
+
+Do not remove this behavior.
+
+8. Improve CTA behavior.
+
+Keep footer buttons:
+
+Cancel
+Send Counter
+
+But:
+
+* disable “Send Counter” unless both sides have a valid selected item
+* keep button enabled only when swap is valid
+
+9. Preserve backend logic.
+
+Do NOT modify:
+
+* swap eligibility logic
+* tier matching rules
+* ShareCoin offset calculation
+* counter-offer submission logic
+
+UI-only refactor.
+
+Target result:
+A cleaner modal where users immediately understand:
+
+* what the current swap is
+* what the new proposed swap is
+* whether the trade is fair
+* what they are changing

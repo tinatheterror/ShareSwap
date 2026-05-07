@@ -10812,6 +10812,12 @@ Respond with ONLY the category name, nothing else.`
           await db.update(users)
             .set({ shareCoins: sql`share_coins + ${newLevelDef.coinsReward}` })
             .where(eq(users.id, reviewedUserId));
+          await db.insert(shareCoinsTransactions).values({
+            userId: reviewedUserId,
+            amount: newLevelDef.coinsReward.toString(),
+            description: `Level Up Bonus — ${newLevelDef.name}`,
+            transactionType: "EARNED",
+          });
           await db.insert(notifications).values({
             userId: reviewedUserId,
             type: "sharecoin_earned",

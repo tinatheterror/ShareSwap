@@ -48,7 +48,8 @@ import {
   TRUST_POINTS,
   applyLateReturnPenalty,
   applyCancellationPenalty,
-  applyDepositClaimedPenalty
+  applyDepositClaimedPenalty,
+  applyLowReviewPenalty
 } from "./trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "./ai-valuation";
 import { calculateReplacementValueAndTier } from "./replacement-value";
@@ -10834,6 +10835,43 @@ Respond with ONLY the category name, nothing else.`
 
     // awardFeedbackPoints is no longer called here — points are fully handled above.
     // (It still exists for other callers such as the handoff confirmation route.)
+
+    // --- Low-review trust penalty (1 or 2 stars + negative tags required) ---
+    const NEGATIVE_REVIEW_TAGS = ["late_return", "issue_reported"];
+    const selectedNegativeTags = cleanedTags.filter((t: string) => NEGATIVE_REVIEW_TAGS.includes(t));
+    if ((rating === 1 || rating === 2) && selectedNegativeTags.length > 0) {
+      try {
+        const penaltyResult = await applyLowReviewPenalty(
+          reviewedUserId,
+          review.id,
+          rating as 1 | 2,
+          selectedNegativeTags,
+        );
+        if (penaltyResult.wasGracePass) {
+          await db.insert(notifications).values({
+            userId: reviewedUserId,
+            type: "trust_score_changed",
+            title: "Trust score notice ⚠️",
+            message: `You received a ${rating}-star review with concerns raised. This is your first notice — no points deducted. A repeat will reduce your trust score.`,
+            isRead: false,
+          });
+          console.log(`⚠️ Grace pass issued to user ${reviewedUserId} for ${rating}-star review with tags: ${selectedNegativeTags.join(", ")}`);
+        } else if (penaltyResult.applied) {
+          const deduction = rating === 1 ? 10 : 5;
+          await db.insert(notifications).values({
+            userId: reviewedUserId,
+            type: "trust_score_changed",
+            title: "Trust score reduced ⚠️",
+            message: `Your trust score dropped by ${deduction} points after a ${rating}-star review citing: ${selectedNegativeTags.join(", ")}. Consistent positive exchanges will rebuild it.`,
+            isRead: false,
+          });
+          console.log(`🚨 Low-review penalty applied to user ${reviewedUserId}: ${rating}-star, tags: ${selectedNegativeTags.join(", ")}, deduction: -${deduction}`);
+        }
+      } catch (penaltyErr) {
+        console.error("Error applying low-review trust penalty:", penaltyErr);
+      }
+    }
+
     console.log(`✅ Review processed: ${reviewPoints} base + ${feedbackTagPoints} tag pts = ${totalPoints} total for user ${reviewedUserId}`);
 
     res.status(201).json(review);

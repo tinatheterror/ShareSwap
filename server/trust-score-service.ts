@@ -31,7 +31,9 @@ export const TRUST_POINTS = {
     LATE_RETURN_NO_COMMUNICATION: -25,
     CANCEL_AFTER_ACCEPTANCE: -20,
     IGNORING_MESSAGES: -18,
-    // Minor penalties removed - we don't penalize for minor issues
+    // Low-review penalties (only when negative tags are also selected)
+    LOW_REVIEW_ONE_STAR: -10,
+    LOW_REVIEW_TWO_STAR: -5,
   },
 };
 
@@ -43,6 +45,8 @@ export const GRACE_PASS_CONFIG = {
   ENABLED_PENALTY_TYPES: [
     "late_return_no_communication",
     "cancel_after_acceptance",
+    "low_review_one_star",
+    "low_review_two_star",
   ] as const,
   // Period to check for prior offenses (30 days)
   LOOKBACK_DAYS: 30,
@@ -71,6 +75,9 @@ export type TrustActivityType =
   | "late_return_no_communication"
   | "cancel_after_acceptance"
   | "ignoring_messages"
+  // Low-review penalties
+  | "low_review_one_star"
+  | "low_review_two_star"
   // Grace pass (no points deducted, just warning)
   | "grace_pass_warning";
 
@@ -82,7 +89,9 @@ export type PenaltyType =
   | "repeated_no_shows"
   | "late_return_no_communication"
   | "cancel_after_acceptance"
-  | "ignoring_messages";
+  | "ignoring_messages"
+  | "low_review_one_star"
+  | "low_review_two_star";
 
 interface TrustActivityMetadata {
   requestId?: number;
@@ -355,6 +364,8 @@ const PENALTY_POINTS: Record<PenaltyType, number> = {
     TRUST_POINTS.PENALTIES.LATE_RETURN_NO_COMMUNICATION,
   cancel_after_acceptance: TRUST_POINTS.PENALTIES.CANCEL_AFTER_ACCEPTANCE,
   ignoring_messages: TRUST_POINTS.PENALTIES.IGNORING_MESSAGES,
+  low_review_one_star: TRUST_POINTS.PENALTIES.LOW_REVIEW_ONE_STAR,
+  low_review_two_star: TRUST_POINTS.PENALTIES.LOW_REVIEW_TWO_STAR,
 };
 
 async function checkGracePassEligibility(
@@ -545,4 +556,20 @@ export async function applyDamageConfirmedPenalty(
   });
 
   return { applied: result.applied };
+}
+
+// Low-review penalty — only triggered when reviewer also selected negative tags.
+// Grace pass applies: first offence within 30 days gets a warning, not a deduction.
+export async function applyLowReviewPenalty(
+  userId: number,
+  reviewId: number,
+  rating: 1 | 2,
+  negativeTags: string[],
+): Promise<{ applied: boolean; wasGracePass: boolean }> {
+  const penaltyType = rating === 1 ? "low_review_one_star" : "low_review_two_star";
+  const result = await applyTrustPenalty(userId, penaltyType, {
+    reviewId,
+    feedbackTags: negativeTags,
+  });
+  return { applied: result.applied, wasGracePass: result.wasGracePass ?? false };
 }

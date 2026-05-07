@@ -1256,8 +1256,86 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             })}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
+            {/* Mobile Photo Section — first on mobile, hidden on desktop */}
+            <div className="lg:hidden">
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="font-medium mb-2">Photos</h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Minimum 1 photo required. AI needs it to valuate your item more accurately.
+                  </p>
+                  <Tabs value={uploadMethod} onValueChange={handleTabChange}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="smartscan">✨ SmartScan</TabsTrigger>
+                      <TabsTrigger value="manual">Upload</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="smartscan" className="mt-4">
+                      <SmartScan onAnalysisComplete={handleSmartScanComplete} />
+                    </TabsContent>
+                    <TabsContent value="manual" className="mt-4">
+                      {selectedPhotos.length === 0 ? (
+                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                          <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile" onChange={handlePhotoChange} />
+                          <label htmlFor="photos-mobile">
+                            <div className="cursor-pointer">
+                              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground">Click to upload photos</p>
+                            </div>
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm text-green-600">
+                            <Check className="w-4 h-4" />
+                            <span>{selectedPhotos.length} photo{selectedPhotos.length > 1 ? "s" : ""} added</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedPhotos.map((photo, idx) => (
+                              <div key={idx} className="relative group w-16 h-16">
+                                <img src={photoPreviewUrls[idx]} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                                    <X className="w-3 h-3 text-gray-700" />
+                                  </button>
+                                </div>
+                                {idx === 0 && (
+                                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                    <Check className="w-2.5 h-2.5 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            <label htmlFor="photos-mobile-add" className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                              <Plus className="w-5 h-5 text-gray-400" />
+                            </label>
+                            <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile-add" onChange={handlePhotoChange} />
+                          </div>
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                  {smartScanPhotos.length > 0 && (
+                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
+                      <p className="text-sm text-teal-700">✨ SmartScan detected {smartScanPhotos.length} photos - form auto-filled!</p>
+                    </div>
+                  )}
+                  {isEditMode && existingPhotos.length > 0 && selectedPhotos.length === 0 && (
+                    <div className="mt-4">
+                      <p className="text-sm text-muted-foreground mb-2">Current photos:</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {existingPhotos.map((photo, idx) => (
+                          <img key={idx} src={photo} alt={`Item photo ${idx + 1}`} className="w-20 h-20 object-cover rounded-lg border" />
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">Upload new photos to replace these</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Left Column - Form Fields */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-start-2 lg:col-span-2">
               <Card>
                 <CardContent className="pt-6 space-y-6">
                   {/* Question 1: Item Name with Item Type inline */}
@@ -1429,131 +1507,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     />
                   </div>
 
-                  {/* Mobile Photos Section - shown only on small screens */}
-                  <div className="lg:hidden border-t pt-4">
-                    <h3 className="font-medium mb-2">Photos</h3>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      Minimum 1 photo required. AI needs it to valuate your item
-                      more accurately.
-                    </p>
-                    <Tabs value={uploadMethod} onValueChange={handleTabChange}>
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="smartscan">
-                          ✨ SmartScan
-                        </TabsTrigger>
-                        <TabsTrigger value="manual">Upload</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="smartscan" className="mt-4">
-                        <SmartScan
-                          onAnalysisComplete={handleSmartScanComplete}
-                        />
-                      </TabsContent>
-                      <TabsContent value="manual" className="mt-4">
-                        {selectedPhotos.length === 0 ? (
-                          <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              className="hidden"
-                              id="photos-mobile"
-                              onChange={handlePhotoChange}
-                            />
-                            <label htmlFor="photos-mobile">
-                              <div className="cursor-pointer">
-                                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                                <p className="text-sm text-muted-foreground">
-                                  Click to upload photos
-                                </p>
-                              </div>
-                            </label>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-green-600">
-                              <Check className="w-4 h-4" />
-                              <span>
-                                {selectedPhotos.length} photo
-                                {selectedPhotos.length > 1 ? "s" : ""} added
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {selectedPhotos.map((photo, idx) => (
-                                <div
-                                  key={idx}
-                                  className="relative group w-16 h-16"
-                                >
-                                  <img
-                                    src={photoPreviewUrls[idx]}
-                                    alt={`Photo ${idx + 1}`}
-                                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-                                  />
-                                  <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => removePhoto(idx)}
-                                      className="p-1 bg-white rounded-full hover:bg-gray-100"
-                                    >
-                                      <X className="w-3 h-3 text-gray-700" />
-                                    </button>
-                                  </div>
-                                  {idx === 0 && (
-                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                      <Check className="w-2.5 h-2.5 text-white" />
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                              <label
-                                htmlFor="photos-mobile-add"
-                                className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
-                              >
-                                <Plus className="w-5 h-5 text-gray-400" />
-                              </label>
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                className="hidden"
-                                id="photos-mobile-add"
-                                onChange={handlePhotoChange}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </TabsContent>
-                    </Tabs>
-                    {smartScanPhotos.length > 0 && (
-                      <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
-                        <p className="text-sm text-teal-700">
-                          ✨ SmartScan detected {smartScanPhotos.length} photos
-                          - form auto-filled!
-                        </p>
-                      </div>
-                    )}
-                    {isEditMode &&
-                      existingPhotos.length > 0 &&
-                      selectedPhotos.length === 0 && (
-                        <div className="mt-4">
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Current photos:
-                          </p>
-                          <div className="flex gap-2 flex-wrap">
-                            {existingPhotos.map((photo, idx) => (
-                              <img
-                                key={idx}
-                                src={photo}
-                                alt={`Item photo ${idx + 1}`}
-                                className="w-20 h-20 object-cover rounded-lg border"
-                              />
-                            ))}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Upload new photos to replace these
-                          </p>
-                        </div>
-                      )}
-                  </div>
 
                   {/* Tier Preview - show after condition and value are selected */}
                   <div className="border-t pt-4">
@@ -2245,8 +2198,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
               </Card>
             </div>
 
-            {/* Right Column - Photos (Desktop only) */}
-            <div className="hidden lg:block lg:col-span-1">
+            {/* Left Column - Photos (Desktop only) */}
+            <div className="hidden lg:block lg:col-start-1 lg:col-span-1 lg:row-start-1">
               <Card className="sticky top-8">
                 <CardContent className="pt-6">
                   <h3 className="font-medium mb-2">Photos</h3>
@@ -2377,7 +2330,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             </div>
 
             {/* Submit Button - Same Width as Card Above */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-start-2 lg:col-span-2">
               <Button
                 type="submit"
                 className="w-full"

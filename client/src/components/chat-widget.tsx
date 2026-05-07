@@ -1584,7 +1584,7 @@ export function ChatWidget() {
                       <BadgeCheck className="h-5 w-5 fill-[#0DCEA1] stroke-white flex-shrink-0" />
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-wrap-none overflow-hidden">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground flex-nowrap overflow-hidden">
                     {partnerProfile && partnerProfile.reviewCount > 0 && (
                       <span className="flex items-center gap-0.5 shrink-0">
                         <Star className="h-3 w-3 text-amber-400 fill-amber-400" />

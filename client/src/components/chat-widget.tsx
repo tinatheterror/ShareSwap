@@ -930,6 +930,11 @@ export function ChatWidget() {
 
   const handleAcceptClick = async (request: ItemRequest) => {
     setSelectedRequestId(request.id);
+    // Ensure conversation context is set so the celebration auto-reply works regardless
+    // of whether the owner clicked Accept from the list panel or from inside a conversation.
+    const partnerId = request.item.ownerId === user?.id ? request.requesterId : request.item.ownerId;
+    setSelectedConversation(partnerId);
+    setActiveConversationRequestId(request.id);
     // Delivery & deposit were already chosen by the requester — accept directly without re-asking.
     // For BORROW/RENT, create the delivery arrangement from the request's existing terms first.
     if (request.requestType === "BORROW" || request.requestType === "RENT") {

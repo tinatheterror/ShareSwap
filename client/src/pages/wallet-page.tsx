@@ -7,9 +7,9 @@ import type { SelectShareCoinsTransaction } from "@db/schema";
 
 export default function WalletPage() {
   const { user } = useAuth();
-  
+
   const { data: transactions = [] } = useQuery<SelectShareCoinsTransaction[]>({
-    queryKey: ['/api/transactions'],
+    queryKey: ["/api/transactions"],
   });
 
   return (
@@ -45,13 +45,15 @@ export default function WalletPage() {
                       <p className="text-sm font-medium truncate leading-tight">
                         {transaction.description}
                       </p>
-                      <p className="text-xs text-muted-foreground leading-tight">
+                      <p className="text-xxs text-muted-foreground leading-tight">
                         {new Date(transaction.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <p className={`text-sm font-semibold shrink-0 ${
-                      isPositive ? "text-teal-600" : "text-teal-700"
-                    }`}>
+                    <p
+                      className={`text-sm font-semibold shrink-0 ${
+                        isPositive ? "text-teal-600" : "text-teal-700"
+                      }`}
+                    >
                       {isPositive ? "+" : "-"}
                       {Math.abs(Number(transaction.amount)).toFixed(2)}
                     </p>
@@ -59,7 +61,9 @@ export default function WalletPage() {
                 );
               })}
               {transactions.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground py-6">No transactions yet</p>
+                <p className="text-center text-sm text-muted-foreground py-6">
+                  No transactions yet
+                </p>
               )}
             </div>
           </CardContent>

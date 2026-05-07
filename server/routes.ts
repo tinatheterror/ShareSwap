@@ -5144,7 +5144,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Send chat completion stamp
       await db.insert(messages).values({
-        content: `🎁 Gift has been handed over. Enjoy your new item!`,
+        content: `🎁 Gift has been handed over. Thank you for caring!`,
         senderId: giverId,
         receiverId,
         messageType: "system",

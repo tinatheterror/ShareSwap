@@ -147,8 +147,6 @@ export default function BorrowPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const itemPath = (id: number, ownerId: number) =>
-    ownerId === user?.id ? `/lend?edit=${id}` : `/items/${id}`;
 
   // Load saved location preferences from user profile
   useEffect(() => {
@@ -771,7 +769,7 @@ export default function BorrowPage() {
                     <Button
                       size="sm"
                       className="w-full bg-pink-500 hover:bg-pink-600 text-white text-xs h-8"
-                      onClick={() => navigate(itemPath(item.id, item.ownerId))}
+                      onClick={() => navigate(`/items/${item.id}`)}
                     >
                       <Gift className="h-3 w-3 mr-1" />
                       Claim Gift
@@ -983,7 +981,7 @@ export default function BorrowPage() {
                                   <Button
                                     size="sm"
                                     className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
-                                    onClick={() => navigate(itemPath(currentItem.id, currentItem.ownerId))}
+                                    onClick={() => navigate(`/items/${currentItem.id}`)}
                                   >
                                     <Gift className="h-2.5 w-2.5 mr-0.5" />
                                     Claim Gift
@@ -995,7 +993,7 @@ export default function BorrowPage() {
                                         size="sm"
                                         className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
                                         style={{ backgroundColor: "#0DCEA1" }}
-                                        onClick={() => navigate(itemPath(currentItem.id, currentItem.ownerId))}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
                                       >
                                         <HandHeart className="h-2.5 w-2.5 mr-0.5" />
                                         Borrow It
@@ -1006,7 +1004,7 @@ export default function BorrowPage() {
                                         size="sm"
                                         className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
                                         style={{ backgroundColor: "#0DCEA1" }}
-                                        onClick={() => navigate(itemPath(currentItem.id, currentItem.ownerId))}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
                                       >
                                         <DollarSign className="h-2.5 w-2.5 mr-0.5" />
                                         Rent It
@@ -1017,7 +1015,7 @@ export default function BorrowPage() {
                                         size="sm"
                                         className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
                                         style={{ backgroundColor: "#0DCEA1" }}
-                                        onClick={() => navigate(itemPath(currentItem.id, currentItem.ownerId))}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
                                       >
                                         <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
                                         Swap It
@@ -1028,7 +1026,7 @@ export default function BorrowPage() {
                                         size="sm"
                                         className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
                                         style={{ backgroundColor: "#0DCEA1" }}
-                                        onClick={() => navigate(itemPath(currentItem.id, currentItem.ownerId))}
+                                        onClick={() => navigate(`/items/${currentItem.id}`)}
                                       >
                                         View Item
                                       </Button>
@@ -1179,7 +1177,7 @@ export default function BorrowPage() {
                           <Button
                             size="sm"
                             className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] md:text-xs h-6 md:h-8 whitespace-nowrap"
-                            onClick={() => navigate(itemPath(item.id, item.ownerId))}
+                            onClick={() => navigate(`/items/${item.id}`)}
                           >
                             <Gift className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
                             Claim Gift
@@ -1191,7 +1189,7 @@ export default function BorrowPage() {
                                 size="sm"
                                 className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                                 style={{ backgroundColor: "#0DCEA1" }}
-                                onClick={() => navigate(itemPath(item.id, item.ownerId))}
+                                onClick={() => navigate(`/items/${item.id}`)}
                               >
                                 <HandHeart className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
                                 Borrow It
@@ -1202,7 +1200,7 @@ export default function BorrowPage() {
                                 size="sm"
                                 className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                                 style={{ backgroundColor: "#0DCEA1" }}
-                                onClick={() => navigate(itemPath(item.id, item.ownerId))}
+                                onClick={() => navigate(`/items/${item.id}`)}
                               >
                                 <DollarSign className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
                                 Rent It
@@ -1213,7 +1211,7 @@ export default function BorrowPage() {
                                 size="sm"
                                 className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                                 style={{ backgroundColor: "#0DCEA1" }}
-                                onClick={() => navigate(itemPath(item.id, item.ownerId))}
+                                onClick={() => navigate(`/items/${item.id}`)}
                               >
                                 <ArrowLeftRight className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5" />
                                 Swap It
@@ -1224,7 +1222,7 @@ export default function BorrowPage() {
                                 size="sm"
                                 className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
                                 style={{ backgroundColor: "#0DCEA1" }}
-                                onClick={() => navigate(itemPath(item.id, item.ownerId))}
+                                onClick={() => navigate(`/items/${item.id}`)}
                               >
                                 View
                               </Button>

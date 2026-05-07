@@ -280,9 +280,9 @@ export default function SwapPage() {
                   
                   <Button 
                     className="w-full  text-white text-sm py-2 rounded-lg" style={{ backgroundColor: "#0DCEA1" }}
-                    onClick={() => navigate(item.ownerId === user?.id ? `/lend?edit=${item.id}` : `/items/${item.id}`)}
+                    onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    {item.ownerId === user?.id ? "Edit Listing" : "Propose Swap"}
+                    Propose Swap
                   </Button>
                 </CardContent>
               </Card>

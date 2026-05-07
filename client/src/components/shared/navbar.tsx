@@ -305,10 +305,10 @@ export function Navbar() {
                   <NavigationMenuItem>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex items-center gap-2 hover:text-primary hover:border-primary" data-tutorial="wallet">
-                          <Coins className="h-5 w-5 text-primary" />
-                          <div className="flex flex-col items-start">
-                            <span className="text-xs text-muted-foreground">Total Balance</span>
+                        <Button variant="outline" className="flex flex-col items-start gap-0.5 hover:text-primary hover:border-primary" data-tutorial="wallet">
+                          <span className="text-xs text-muted-foreground">Total Balance</span>
+                          <div className="flex items-center gap-1.5">
+                            <Coins className="h-4 w-4 text-primary" />
                             <span>{user?.shareCoins ? Math.round(Number(user.shareCoins)) : 0} ShareCoins</span>
                           </div>
                         </Button>
@@ -420,10 +420,10 @@ export function Navbar() {
             {user && (
               <Sheet open={mobileWalletOpen} onOpenChange={setMobileWalletOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-1 hover:text-primary hover:border-primary px-2 py-1 h-auto ml-1" data-tutorial="wallet">
-                    <Coins className="h-3 w-3 text-primary flex-shrink-0" />
-                    <div className="flex flex-col items-center">
-                      <span className="text-[7px] text-muted-foreground leading-tight whitespace-nowrap">Total Balance</span>
+                  <Button variant="outline" className="flex flex-col items-start gap-0 hover:text-primary hover:border-primary px-2 py-1 h-auto ml-1" data-tutorial="wallet">
+                    <span className="text-[7px] text-muted-foreground leading-tight whitespace-nowrap">Total Balance</span>
+                    <div className="flex items-center gap-1">
+                      <Coins className="h-3 w-3 text-primary flex-shrink-0" />
                       <span className="text-[9px] font-medium whitespace-nowrap">{user?.shareCoins ? Math.round(Number(user.shareCoins)) : 0} ShareCoins</span>
                     </div>
                   </Button>

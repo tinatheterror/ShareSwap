@@ -922,6 +922,9 @@ export function ChatWidget() {
 
   const handleScheduleClick = async () => {
     setShowCelebration(false);
+    if (selectedRequestId && selectedConversation && activeConversationRequestId) {
+      await sendScheduleMessage(selectedRequestId, selectedConversation, activeConversationRequestId);
+    }
     setTimeout(() => messageInputRef.current?.focus(), 350);
   };
 

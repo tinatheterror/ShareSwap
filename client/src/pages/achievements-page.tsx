@@ -5,6 +5,7 @@ import { Navbar } from "@/components/shared/navbar";
 import { useAuth } from "@/hooks/use-auth";
 import {
   Shield,
+  BadgeCheck,
   Handshake,
   Gift,
   Zap,
@@ -100,7 +101,7 @@ export default function AchievementsPage() {
     : 100;
 
   const badges = [
-    { id: "verified", name: "Verified Neighbour", icon: <Shield className="h-6 w-6" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200" },
+    { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-6 w-6" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200" },
     { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-6 w-6" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200" },
     { id: "generous", name: "Generous Gifter", icon: <Gift className="h-6 w-6" />, earned: (stats?.totalGifts || 0) >= 1, color: "bg-pink-100 text-pink-700 border-pink-200" },
     { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-6 w-6" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200" },
@@ -175,7 +176,7 @@ export default function AchievementsPage() {
             <div className="flex flex-wrap gap-1">
               {user?.isVerified && (
                 <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs">
-                  <CheckCircle className="h-3 w-3 mr-1" />Verified
+                  <BadgeCheck className="h-3 w-3 mr-1" />Verified
                 </Badge>
               )}
               <Badge variant="outline" className="text-slate-600 text-xs">

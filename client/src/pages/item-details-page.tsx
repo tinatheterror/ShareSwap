@@ -18,6 +18,7 @@ import {
   Info,
   Clock,
   Gift,
+  Pencil,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
@@ -132,7 +133,7 @@ export default function ItemDetailsPage() {
   const isOwner = !!user && user.id === (item as any).ownerId;
 
   // Create ordered sharing options based on context
-  const getSharingOptions = () => {
+  const getSharingOptions = (ownerView = false) => {
     const itemReplacementValue = (item as any).replacementValue;
     const itemTier = (item as any).tier || 2;
     const itemOriginalValue = (item as any).originalValue || "$50–$150";
@@ -141,7 +142,7 @@ export default function ItemDetailsPage() {
       100,
       Math.round((reputationScore / 500) * 100),
     );
-    const depositCalc = isOwner
+    const depositCalc = ownerView
       ? calculateSecurityDeposit(itemTier, itemOriginalValue, 0)
       : calculateSecurityDeposit(itemTier, itemOriginalValue, viewerTrustScore);
 
@@ -198,7 +199,7 @@ export default function ItemDetailsPage() {
             </p>
           )}
         </div>
-        {hasPendingBorrow ? (
+        {!ownerView && (hasPendingBorrow ? (
           <Button
             disabled
             className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
@@ -217,7 +218,7 @@ export default function ItemDetailsPage() {
             <HandHeart className="h-4 w-4 mr-1" />
             Request to Borrow
           </Button>
-        )}
+        ))}
       </div>
     ) : null;
 
@@ -237,7 +238,7 @@ export default function ItemDetailsPage() {
             Security Deposit: ${Number(item.securityDeposit || 0).toFixed(0)}
           </p>
         </div>
-        {hasPendingRent ? (
+        {!ownerView && (hasPendingRent ? (
           <Button
             disabled
             className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
@@ -254,7 +255,7 @@ export default function ItemDetailsPage() {
             <DollarSign className="h-4 w-4 mr-1" />
             Request to Rent
           </Button>
-        )}
+        ))}
       </div>
     ) : null;
 
@@ -297,7 +298,7 @@ export default function ItemDetailsPage() {
               </p>
             )}
           </div>
-          {hasPendingSwap ? (
+          {!ownerView && (hasPendingSwap ? (
             <Button
               disabled
               className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
@@ -314,7 +315,7 @@ export default function ItemDetailsPage() {
               <ArrowLeftRight className="h-4 w-4 mr-1" />
               Request Swap
             </Button>
-          )}
+          ))}
         </div>
       </div>
     ) : null;
@@ -336,7 +337,7 @@ export default function ItemDetailsPage() {
             This item is being given away for free
           </p>
         </div>
-        {hasPendingGift ? (
+        {!ownerView && (hasPendingGift ? (
           <Button
             disabled
             className="w-full sm:w-40 bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
@@ -353,7 +354,7 @@ export default function ItemDetailsPage() {
             <Gift className="h-4 w-4 mr-1" />
             Send Gift Request
           </Button>
-        )}
+        ))}
       </div>
     ) : null;
 
@@ -453,22 +454,16 @@ export default function ItemDetailsPage() {
                 </div>
 
                 {isOwner ? (
-                  <div className="pt-2 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30 p-4 text-center space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      This is your listing
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      You can't request your own items
-                    </p>
-                    <Link href={`/lend?edit=${item.id}`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-1 text-xs"
-                      >
-                        Edit listing
-                      </Button>
-                    </Link>
+                  <div className="space-y-4">
+                    {getSharingOptions(true)}
+                    <div className="pt-1">
+                      <Link href={`/lend?edit=${item.id}`}>
+                        <Button className="w-full sm:w-auto" variant="outline">
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit your listing
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 ) : item.isGift ? (
                   <div className="pt-2">

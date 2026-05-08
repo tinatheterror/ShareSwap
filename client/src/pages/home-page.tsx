@@ -214,7 +214,7 @@ export default function HomePage() {
               <div>
                 <p className="font-semibold text-gray-900">List an item</p>
                 <p className="text-xs text-muted-foreground">
-                  Fill in the item details yourself
+                  Add item details or use ShareSmart Scan
                 </p>
               </div>
             </button>

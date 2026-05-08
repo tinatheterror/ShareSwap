@@ -185,7 +185,10 @@ const baseFormSchema = z.object({
   postalCode: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
-});
+}).refine(
+  (data) => data.isLendable || data.isSwappable || data.isRentable || data.isGift,
+  { message: "Please select at least one option", path: ["isLendable"] },
+);
 
 const formSchema = baseFormSchema.refine(
   (data) => {
@@ -1737,6 +1740,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     <p className="text-sm text-gray-400">
                       Select one or more options
                     </p>
+                    {form.formState.errors.isLendable && (
+                      <p className="text-sm font-medium text-destructive">{form.formState.errors.isLendable.message as string}</p>
+                    )}
 
                     {/* Borrow, Rental, and Swap Cards - show side by side when selected */}
                     {(watchIsLendable || watchIsRentable || watchIsSwappable) &&

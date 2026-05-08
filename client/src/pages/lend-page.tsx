@@ -1333,7 +1333,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                 <CardContent className="pt-6">
                   <h3 className="font-medium mb-2">Photos</h3>
                   <p className="text-xs text-muted-foreground mb-4">
-                    Minimum 1 photo required. AI needs it to valuate your item more accurately.
+                    Minimum 1 photo required.
                   </p>
                   {selectedPhotos.length === 0 ? (
                     <div className="border-2 border-dashed rounded-lg p-6 text-center">

@@ -83,6 +83,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import sharesmartIcon from "@assets/image_1778264805231.png";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVerification } from "@/hooks/use-verification";
@@ -1373,7 +1374,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       </div>
                       <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAiGenerating ? "bg-teal-50 border-teal-200" : "bg-white border-gray-200 hover:border-teal-200"}`}>
                         <div className="flex items-center gap-2.5">
-                          <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
+                          <img src={sharesmartIcon} alt="" className={`w-5 h-5 flex-shrink-0 ${isAiGenerating ? "animate-pulse" : ""}`} />
                           <div>
                             <p className="text-sm font-semibold text-gray-800 leading-tight">ShareSmart Scan</p>
                             <p className="text-xs text-muted-foreground leading-tight">Generate your listing with AI</p>
@@ -2346,7 +2347,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       </div>
                       <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAiGenerating ? "bg-teal-50 border-teal-200" : "bg-white border-gray-200 hover:border-teal-200"}`}>
                         <div className="flex items-center gap-2.5">
-                          <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
+                          <img src={sharesmartIcon} alt="" className={`w-5 h-5 flex-shrink-0 ${isAiGenerating ? "animate-pulse" : ""}`} />
                           <div>
                             <p className="text-sm font-semibold text-gray-800 leading-tight">ShareSmart Scan</p>
                             <p className="text-xs text-muted-foreground leading-tight">Generate your listing with AI</p>

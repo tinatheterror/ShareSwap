@@ -706,10 +706,21 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const applyAiData = (data: { title: string; description: string; condition: string; category: string; originalPrice: string }) => {
     if (data.title) form.setValue("name", data.title);
     if (data.description) form.setValue("description", data.description);
-    if (data.condition && (CONDITIONS as readonly string[]).includes(data.condition)) {
-      form.setValue("condition", data.condition);
+    if (data.condition) {
       const ratingMap: Record<string, number> = { "New / Like New": 10, Good: 7, Fair: 5, "Well Loved": 3 };
-      form.setValue("conditionRating", ratingMap[data.condition] || 5);
+      const fuzzyConditionMap: Record<string, string> = {
+        "new": "New / Like New", "like new": "New / Like New", "new/like new": "New / Like New",
+        "new / like new": "New / Like New", "excellent": "New / Like New",
+        "good": "Good", "very good": "Good",
+        "fair": "Fair", "okay": "Fair", "used": "Fair",
+        "well loved": "Well Loved", "poor": "Well Loved", "worn": "Well Loved",
+      };
+      const normalised = data.condition.trim().toLowerCase();
+      const resolved = (CONDITIONS as readonly string[]).includes(data.condition.trim())
+        ? data.condition.trim()
+        : fuzzyConditionMap[normalised] || "Good";
+      form.setValue("condition", resolved);
+      form.setValue("conditionRating", ratingMap[resolved] || 7);
     }
     if (data.category && (ITEM_TYPES as readonly string[]).includes(data.category)) {
       form.setValue("itemType", data.category);

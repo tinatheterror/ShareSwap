@@ -1844,12 +1844,12 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
 {
   "title": "Concise marketplace-friendly title, max 60 characters",
   "description": "Honest practical description highlighting key features and any visible wear, 50-200 characters",
-  "condition": "One of exactly: New / Like New, Good, Fair, Well Loved — be conservative, never exaggerate",
+  "condition": "One of exactly: New / Like New, Good, Fair, Well Loved — assess visible wear, fading, pilling, or damage. If item looks clean and lightly used choose Good. If clearly worn or faded choose Fair. Never return empty.",
   "category": "One of exactly: Baby & Kids, Clothing & Accessories, Electronics, Hobbies & Collectibles, Home & Kitchen, Tools & Equipment",
-  "originalPrice": "Estimated original retail price as a plain number string e.g. '79.99'. If uncertain return empty string."
+  "originalPrice": "Your best-estimate original retail price as a plain number string e.g. '79.99'. Use typical retail prices for the item type and any visible brand — for generic clothing estimate $40-80, branded $80-200, designer $200+. Never return empty string, always give your best guess."
 }
 
-Be accurate and practical. If uncertain about condition choose the more conservative option. Return ONLY the JSON, no other text.`,
+Be accurate and practical. Always populate every field — never leave condition or originalPrice blank. Return ONLY the JSON, no other text.`,
             },
             ...imageContents,
           ],

@@ -1614,7 +1614,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         >
                           {/* Top row: tier badge only */}
                           <div className="mb-2">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-sm font-semibold border border-teal-100">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-sm font-semibold">
                               {TIER_NAMES[calculatedTier]}
                             </span>
                           </div>

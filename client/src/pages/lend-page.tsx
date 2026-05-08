@@ -1508,7 +1508,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                     key={value}
                                     type="button"
                                     variant="outline"
-                                    className={`h-10 px-2 text-xs rounded-full transition-all ${
+                                    className={`h-auto min-h-[48px] md:h-12 py-2 px-2 text-xs transition-all ${
                                       field.value === value
                                         ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]"
                                         : "bg-white hover:bg-gray-50"
@@ -1666,7 +1666,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsLendable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`h-auto min-h-[48px] md:h-12 py-2 px-2 flex flex-col items-center justify-center gap-1 transition-all ${watchIsLendable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -1683,7 +1683,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsRentable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`h-auto min-h-[48px] md:h-12 py-2 px-2 flex flex-col items-center justify-center gap-1 transition-all ${watchIsRentable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -1700,7 +1700,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsSwappable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`h-auto min-h-[48px] md:h-12 py-2 px-2 flex flex-col items-center justify-center gap-1 transition-all ${watchIsSwappable ? "bg-[#0DCEA1] hover:bg-[#0bb88f] text-black border-[#0DCEA1]" : "bg-white hover:bg-gray-50"} ${watchIsGift ? "opacity-50 cursor-not-allowed" : ""}`}
                         disabled={watchIsGift}
                         onClick={() => {
                           if (!watchIsGift) {
@@ -1717,7 +1717,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-10 rounded-full flex items-center justify-center gap-1.5 transition-all px-2 ${watchIsGift ? "bg-pink-500 hover:bg-pink-600 text-white border-pink-500" : "bg-white hover:bg-gray-50"}`}
+                        className={`h-auto min-h-[48px] md:h-12 py-2 px-2 flex flex-col items-center justify-center gap-1 transition-all ${watchIsGift ? "bg-pink-500 hover:bg-pink-600 text-white border-pink-500" : "bg-white hover:bg-gray-50"}`}
                         onClick={() => {
                           const newGiftValue = !watchIsGift;
                           form.setValue("isGift", newGiftValue);

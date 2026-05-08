@@ -1375,7 +1375,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         </label>
                         <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile-add" onChange={handlePhotoChange} />
                       </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg border bg-teal-50 border-teal-200">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-teal-50">
                         <div className="flex items-center gap-2.5">
                           <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
                           <div>
@@ -2343,7 +2343,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           onChange={handlePhotoChange}
                         />
                       </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg border bg-teal-50 border-teal-200">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-teal-50">
                         <div className="flex items-center gap-2.5">
                           <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
                           <div>

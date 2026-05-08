@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,8 +77,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
-import { SmartScan } from "@/components/smartscan";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVerification } from "@/hooks/use-verification";
@@ -328,18 +327,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     };
   }, []);
 
-  const handleTabChange = useCallback(
-    (v: string) => {
-      stopCamera();
-      setUploadMethod(v as "smartscan" | "manual");
-    },
-    [stopCamera],
-  );
-
-  const [uploadMethod, setUploadMethod] = useState<"smartscan" | "manual">(
-    "manual",
-  );
-  const [smartScanPhotos, setSmartScanPhotos] = useState<string[]>([]);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [showReplaceModal, setShowReplaceModal] = useState(false);
+  const [pendingAiData, setPendingAiData] = useState<{ title: string; description: string; condition: string; category: string; originalPrice: string } | null>(null);
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
   const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] =
@@ -429,7 +419,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   // Check if we have at least one photo (used for tier calculation and validation)
   const hasPhotos =
     selectedPhotos.length > 0 ||
-    smartScanPhotos.length > 0 ||
     existingPhotos.length > 0;
 
   const calculatedTier =
@@ -584,24 +573,68 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     } catch {}
   }, [isEditMode]);
 
-  // Convert files to base64 for AI valuation
+  // Convert files to base64 for AI valuation / autofill
   const getPhotoDataUrls = async (): Promise<string[]> => {
-    // If we have SmartScan photos, use those (they're already URLs)
-    if (smartScanPhotos.length > 0) {
-      return smartScanPhotos.slice(0, 3); // Limit to 3 for API efficiency
-    }
-
-    // Convert selected files to base64
-    const photoPromises = selectedPhotos.slice(0, 3).map((file) => {
-      return new Promise<string>((resolve, reject) => {
+    const photoPromises = selectedPhotos.slice(0, 3).map((file) =>
+      new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(file);
-      });
-    });
-
+      })
+    );
     return Promise.all(photoPromises);
+  };
+
+  const mapOriginalPrice = (priceStr: string): string => {
+    const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
+    if (isNaN(price)) return "";
+    if (price < 50) return "Under $50";
+    if (price < 200) return "$50–$199";
+    if (price < 500) return "$200–$499";
+    return "$500–$2,000";
+  };
+
+  const applyAiData = (data: { title: string; description: string; condition: string; category: string; originalPrice: string }) => {
+    if (data.title) form.setValue("name", data.title);
+    if (data.description) form.setValue("description", data.description);
+    if (data.condition && (CONDITIONS as readonly string[]).includes(data.condition)) {
+      form.setValue("condition", data.condition);
+      const ratingMap: Record<string, number> = { "New / Like New": 10, Good: 7, Fair: 5, "Well Loved": 3 };
+      form.setValue("conditionRating", ratingMap[data.condition] || 5);
+    }
+    if (data.category && (ITEM_TYPES as readonly string[]).includes(data.category)) {
+      form.setValue("itemType", data.category);
+    }
+    if (data.originalPrice) {
+      const mapped = mapOriginalPrice(data.originalPrice);
+      if (mapped) form.setValue("originalValue", mapped);
+    }
+    if (data.title) detectItemCategory(data.title);
+  };
+
+  const handleAiAutofill = async () => {
+    if (selectedPhotos.length === 0) return;
+    setIsAiGenerating(true);
+    try {
+      const dataUrls = await getPhotoDataUrls();
+      const response = await apiRequest("POST", "/api/listings/ai-generate", { imageDataUrls: dataUrls });
+      const aiData = await response.json();
+      if (!response.ok) throw new Error(aiData.error || "Failed");
+      const currentName = form.getValues("name");
+      const currentDesc = form.getValues("description");
+      if (currentName?.trim() || currentDesc?.trim()) {
+        setPendingAiData(aiData);
+        setShowReplaceModal(true);
+      } else {
+        applyAiData(aiData);
+        toast({ title: "Listing details generated", description: "Review and edit before publishing." });
+      }
+    } catch {
+      toast({ title: "Couldn't generate listing details. Try again.", variant: "destructive" });
+    } finally {
+      setIsAiGenerating(false);
+    }
   };
 
   // Fetch AI valuation when relevant fields change (debounced)
@@ -666,7 +699,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     watchConditionRating,
     watchOriginalValue,
     selectedPhotos,
-    smartScanPhotos,
   ]);
 
   // Trigger tier glow animation when tier first appears
@@ -757,10 +789,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         ) {
           return valuationResult.internalItemValue;
         }
-        if (smartScanAnalysis?.estimatedValue) {
-          const v = parseFloat(smartScanAnalysis.estimatedValue);
-          if (!isNaN(v) && v > 0 && v >= rangeMidpoint * 0.3) return v;
-        }
         return rangeMidpoint;
       };
       const params = new URLSearchParams({
@@ -821,44 +849,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     }
   }, [form.watch("name"), allWishlists]);
 
-  const [smartScanAnalysis, setSmartScanAnalysis] = useState<any>(null);
-
-  const handleSmartScanComplete = (analysis: any, photos: string[]) => {
-    // Auto-fill form with AI-detected values
-    form.setValue("name", analysis.name);
-    form.setValue("description", analysis.description);
-    form.setValue(
-      "conditionRating",
-      snapConditionRating(analysis.conditionRating ?? 5),
-    );
-
-    // Auto-fill value range if AI suggested one (especially important for luxury items)
-    if (
-      analysis.suggestedValueRange &&
-      ORIGINAL_VALUES.includes(analysis.suggestedValueRange)
-    ) {
-      form.setValue("originalValue", analysis.suggestedValueRange);
-    } else if (analysis.isLuxuryBrand && analysis.estimatedValue) {
-      const value = parseFloat(analysis.estimatedValue);
-      if (value >= 500) {
-        form.setValue("originalValue", "$500–$2,000");
-      } else if (value >= 200) {
-        form.setValue("originalValue", "$200–$499");
-      } else if (value >= 50) {
-        form.setValue("originalValue", "$50–$199");
-      }
-    }
-
-    setSmartScanPhotos(photos);
-    setSmartScanAnalysis(analysis); // Store full analysis for submission
-
-    toast({
-      title: "✨ Form Auto-Filled!",
-      description: analysis.isLuxuryBrand
-        ? "Luxury brand detected! Value range auto-selected. Review and adjust as needed."
-        : "Review and adjust the AI-detected details as needed.",
-    });
-  };
 
   const getCurrentLocation = async () => {
     setIsLoadingLocation(true);
@@ -955,31 +945,15 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const createItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       // Require at least 1 photo
-      if (selectedPhotos.length === 0 && smartScanPhotos.length === 0) {
+      if (selectedPhotos.length === 0) {
         throw new Error("Please upload at least one photo of your item");
       }
 
       const formData = new FormData();
 
-      // Use SmartScan photos or manual uploads
-      if (smartScanPhotos.length > 0 && smartScanAnalysis) {
-        formData.append("smartScanPhotos", JSON.stringify(smartScanPhotos));
-        formData.append("wasSmartScanned", "true");
-
-        if (smartScanAnalysis.category) {
-          formData.append("category", smartScanAnalysis.category);
-        }
-        if (smartScanAnalysis.brand) {
-          formData.append("brand", smartScanAnalysis.brand);
-        }
-        if (smartScanAnalysis.estimatedValue) {
-          formData.append("estimatedValue", smartScanAnalysis.estimatedValue);
-        }
-      } else {
-        selectedPhotos.forEach((photo) => {
-          formData.append("photos", photo);
-        });
-      }
+      selectedPhotos.forEach((photo) => {
+        formData.append("photos", photo);
+      });
 
       Object.entries(data).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
@@ -1264,59 +1238,55 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   <p className="text-xs text-muted-foreground mb-4">
                     Minimum 1 photo required. AI needs it to valuate your item more accurately.
                   </p>
-                  <Tabs value={uploadMethod} onValueChange={handleTabChange}>
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="smartscan">✨ SmartScan</TabsTrigger>
-                      <TabsTrigger value="manual">Upload</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="smartscan" className="mt-4">
-                      <SmartScan onAnalysisComplete={handleSmartScanComplete} />
-                    </TabsContent>
-                    <TabsContent value="manual" className="mt-4">
-                      {selectedPhotos.length === 0 ? (
-                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                          <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile" onChange={handlePhotoChange} />
-                          <label htmlFor="photos-mobile">
-                            <div className="cursor-pointer">
-                              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                              <p className="text-sm text-muted-foreground">Click to upload photos</p>
+                  {selectedPhotos.length === 0 ? (
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                      <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile" onChange={handlePhotoChange} />
+                      <label htmlFor="photos-mobile">
+                        <div className="cursor-pointer">
+                          <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">Click to upload photos</p>
+                        </div>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <Check className="w-4 h-4" />
+                        <span>{selectedPhotos.length} photo{selectedPhotos.length > 1 ? "s" : ""} added</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPhotos.map((photo, idx) => (
+                          <div key={idx} className="relative group w-16 h-16">
+                            <img src={photoPreviewUrls[idx]} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                            <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                                <X className="w-3 h-3 text-gray-700" />
+                              </button>
                             </div>
-                          </label>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-sm text-green-600">
-                            <Check className="w-4 h-4" />
-                            <span>{selectedPhotos.length} photo{selectedPhotos.length > 1 ? "s" : ""} added</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedPhotos.map((photo, idx) => (
-                              <div key={idx} className="relative group w-16 h-16">
-                                <img src={photoPreviewUrls[idx]} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
-                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
-                                    <X className="w-3 h-3 text-gray-700" />
-                                  </button>
-                                </div>
-                                {idx === 0 && (
-                                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                    <Check className="w-2.5 h-2.5 text-white" />
-                                  </div>
-                                )}
+                            {idx === 0 && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-white" />
                               </div>
-                            ))}
-                            <label htmlFor="photos-mobile-add" className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
-                              <Plus className="w-5 h-5 text-gray-400" />
-                            </label>
-                            <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile-add" onChange={handlePhotoChange} />
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                  {smartScanPhotos.length > 0 && (
-                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
-                      <p className="text-sm text-teal-700">✨ SmartScan detected {smartScanPhotos.length} photos - form auto-filled!</p>
+                        ))}
+                        <label htmlFor="photos-mobile-add" className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                          <Plus className="w-5 h-5 text-gray-400" />
+                        </label>
+                        <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile-add" onChange={handlePhotoChange} />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleAiAutofill}
+                        disabled={isAiGenerating}
+                        className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                      >
+                        {isAiGenerating ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /><span>Analyzing your item…</span></>
+                        ) : (
+                          <><Sparkles className="w-4 h-4 mr-2" />Auto-fill listing</>
+                        )}
+                      </Button>
                     </div>
                   )}
                   {isEditMode && existingPhotos.length > 0 && selectedPhotos.length === 0 && (
@@ -1749,17 +1719,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                       rangeMidpoint * 0.3
                                   ) {
                                     return valuationResult.internalItemValue;
-                                  }
-                                  if (smartScanAnalysis?.estimatedValue) {
-                                    const aiVal = parseFloat(
-                                      smartScanAnalysis.estimatedValue,
-                                    );
-                                    if (
-                                      !isNaN(aiVal) &&
-                                      aiVal > 0 &&
-                                      aiVal >= rangeMidpoint * 0.3
-                                    )
-                                      return aiVal;
                                   }
                                   return rangeMidpoint;
                                 };
@@ -2207,98 +2166,85 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     Minimum 1 photo required. AI needs it to valuate your item
                     more accurately.
                   </p>
-                  <Tabs value={uploadMethod} onValueChange={handleTabChange}>
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="smartscan">✨ SmartScan</TabsTrigger>
-                      <TabsTrigger value="manual">Upload</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="smartscan" className="mt-4">
-                      <SmartScan onAnalysisComplete={handleSmartScanComplete} />
-                    </TabsContent>
-
-                    <TabsContent value="manual" className="mt-4">
-                      {selectedPhotos.length === 0 ? (
-                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            id="photos"
-                            onChange={handlePhotoChange}
-                          />
-                          <label htmlFor="photos">
-                            <div className="cursor-pointer">
-                              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                              <p className="text-sm text-muted-foreground">
-                                Click to upload photos
-                              </p>
-                            </div>
-                          </label>
+                  {selectedPhotos.length === 0 ? (
+                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        id="photos"
+                        onChange={handlePhotoChange}
+                      />
+                      <label htmlFor="photos">
+                        <div className="cursor-pointer">
+                          <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">
+                            Click to upload photos
+                          </p>
                         </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 text-sm text-green-600">
-                            <Check className="w-4 h-4" />
-                            <span>
-                              {selectedPhotos.length} photo
-                              {selectedPhotos.length > 1 ? "s" : ""} added
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedPhotos.map((photo, idx) => (
-                              <div
-                                key={idx}
-                                className="relative group w-16 h-16"
-                              >
-                                <img
-                                  src={photoPreviewUrls[idx]}
-                                  alt={`Photo ${idx + 1}`}
-                                  className="w-16 h-16 object-cover rounded-lg border border-gray-200"
-                                />
-                                <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => removePhoto(idx)}
-                                    className="p-1 bg-white rounded-full hover:bg-gray-100"
-                                  >
-                                    <X className="w-3 h-3 text-gray-700" />
-                                  </button>
-                                </div>
-                                {idx === 0 && (
-                                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                    <Check className="w-2.5 h-2.5 text-white" />
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                            <label
-                              htmlFor="photos-add"
-                              className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
-                            >
-                              <Plus className="w-5 h-5 text-gray-400" />
-                            </label>
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              multiple
-                              className="hidden"
-                              id="photos-add"
-                              onChange={handlePhotoChange}
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-green-600">
+                        <Check className="w-4 h-4" />
+                        <span>
+                          {selectedPhotos.length} photo
+                          {selectedPhotos.length > 1 ? "s" : ""} added
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPhotos.map((photo, idx) => (
+                          <div key={idx} className="relative group w-16 h-16">
+                            <img
+                              src={photoPreviewUrls[idx]}
+                              alt={`Photo ${idx + 1}`}
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                             />
+                            <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <button
+                                type="button"
+                                onClick={() => removePhoto(idx)}
+                                className="p-1 bg-white rounded-full hover:bg-gray-100"
+                              >
+                                <X className="w-3 h-3 text-gray-700" />
+                              </button>
+                            </div>
+                            {idx === 0 && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-
-                  {smartScanPhotos.length > 0 && (
-                    <div className="p-3 bg-teal-50 rounded-lg border border-teal-200 mt-4">
-                      <p className="text-sm text-teal-700">
-                        ✨ SmartScan detected {smartScanPhotos.length} photos -
-                        form auto-filled!
-                      </p>
+                        ))}
+                        <label
+                          htmlFor="photos-add"
+                          className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
+                        >
+                          <Plus className="w-5 h-5 text-gray-400" />
+                        </label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          id="photos-add"
+                          onChange={handlePhotoChange}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleAiAutofill}
+                        disabled={isAiGenerating}
+                        className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                      >
+                        {isAiGenerating ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /><span>Analyzing your item…</span></>
+                        ) : (
+                          <><Sparkles className="w-4 h-4 mr-2" />Auto-fill listing</>
+                        )}
+                      </Button>
                     </div>
                   )}
 
@@ -2651,6 +2597,40 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Replace existing details confirmation modal */}
+        <Dialog open={showReplaceModal} onOpenChange={setShowReplaceModal}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Replace existing listing details?</DialogTitle>
+            </DialogHeader>
+            <DialogDescription>
+              Your listing already has some details filled in. Do you want to replace them with the AI-generated content?
+            </DialogDescription>
+            <div className="flex gap-3 mt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowReplaceModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+                onClick={() => {
+                  if (pendingAiData) {
+                    applyAiData(pendingAiData);
+                    toast({ title: "Listing details replaced", description: "Review and edit before publishing." });
+                  }
+                  setShowReplaceModal(false);
+                  setPendingAiData(null);
+                }}
+              >
+                Replace
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Match Confirmation Modal */}
         <AnimatePresence>

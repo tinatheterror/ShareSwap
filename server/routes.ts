@@ -1812,6 +1812,73 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
     }
   });
 
+  // AI-powered listing autofill from uploaded photos
+  app.post("/api/listings/ai-generate", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const { imageDataUrls } = req.body;
+    if (!imageDataUrls || !Array.isArray(imageDataUrls) || imageDataUrls.length === 0) {
+      return res.status(400).json({ error: "At least one image is required" });
+    }
+
+    try {
+      const openai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+
+      const imageContents = (imageDataUrls as string[]).slice(0, 3).map((url) => ({
+        type: "image_url" as const,
+        image_url: { url },
+      }));
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `You are helping list an item on a peer-to-peer sharing marketplace. Analyze the uploaded photos and return ONLY a JSON object:
+
+{
+  "title": "Concise marketplace-friendly title, max 60 characters",
+  "description": "Honest practical description highlighting key features and any visible wear, 50-200 characters",
+  "condition": "One of exactly: New / Like New, Good, Fair, Well Loved — be conservative, never exaggerate",
+  "category": "One of exactly: Baby & Kids, Clothing & Accessories, Electronics, Hobbies & Collectibles, Home & Kitchen, Tools & Equipment",
+  "originalPrice": "Estimated original retail price as a plain number string e.g. '79.99'. If uncertain return empty string."
+}
+
+Be accurate and practical. If uncertain about condition choose the more conservative option. Return ONLY the JSON, no other text.`,
+            },
+            ...imageContents,
+          ],
+        }],
+        max_tokens: 400,
+        temperature: 0.2,
+      });
+
+      const aiResponse = completion.choices[0]?.message?.content;
+      if (!aiResponse) throw new Error("No response from AI");
+
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON in response");
+
+      const data = JSON.parse(jsonMatch[0]);
+
+      res.json({
+        title: data.title || "",
+        description: data.description || "",
+        condition: data.condition || "",
+        category: data.category || "",
+        originalPrice: data.originalPrice || "",
+      });
+    } catch (error) {
+      console.error("AI generate listing error:", error);
+      res.status(500).json({ error: "Failed to generate listing details" });
+    }
+  });
+
   // Import listing from marketplace URL
   app.post("/api/import-listing", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) {

@@ -83,7 +83,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import sharesmartIcon from "@assets/image_1778264805231.png";
+import sharesmartIcon from "@/assets/sharesmart-icon.png";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVerification } from "@/hooks/use-verification";
@@ -335,8 +335,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [aiScanEnabled, setAiScanEnabled] = useState(false);
-  const [showReplaceModal, setShowReplaceModal] = useState(false);
-  const [pendingAiData, setPendingAiData] = useState<{ title: string; description: string; condition: string; category: string; originalPrice: string } | null>(null);
 
   // Photo editor state
   const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
@@ -706,6 +704,15 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     if (data.title) detectItemCategory(data.title);
   };
 
+  const clearAiFields = () => {
+    form.setValue("name", "");
+    form.setValue("description", "");
+    form.setValue("condition", "");
+    form.setValue("conditionRating", 5);
+    form.setValue("itemType", "");
+    form.setValue("originalValue", "");
+  };
+
   const handleAiAutofill = async () => {
     if (selectedPhotos.length === 0) return;
     setIsAiGenerating(true);
@@ -714,20 +721,13 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       const response = await apiRequest("POST", "/api/listings/ai-generate", { imageDataUrls: dataUrls });
       const aiData = await response.json();
       if (!response.ok) throw new Error(aiData.error || "Failed");
-      const currentName = form.getValues("name");
-      const currentDesc = form.getValues("description");
-      if (currentName?.trim() || currentDesc?.trim()) {
-        setPendingAiData(aiData);
-        setShowReplaceModal(true);
-      } else {
-        applyAiData(aiData);
-        toast({ title: "Listing details generated", description: "Review and edit before publishing." });
-      }
+      applyAiData(aiData);
+      toast({ title: "Listing details generated", description: "Review and edit before publishing." });
     } catch {
       toast({ title: "Couldn't generate listing details. Try again.", variant: "destructive" });
+      setAiScanEnabled(false);
     } finally {
       setIsAiGenerating(false);
-      setAiScanEnabled(false);
     }
   };
 
@@ -1388,6 +1388,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                             onCheckedChange={(checked) => {
                               setAiScanEnabled(checked);
                               if (checked) handleAiAutofill();
+                              else clearAiFields();
                             }}
                           />
                         )}
@@ -2361,6 +2362,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                             onCheckedChange={(checked) => {
                               setAiScanEnabled(checked);
                               if (checked) handleAiAutofill();
+                              else clearAiFields();
                             }}
                           />
                         )}
@@ -2760,40 +2762,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
               </Button>
               <Button type="button" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white" onClick={saveEditedPhoto} disabled={isApplyingRotation}>
                 Save Photo
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Replace existing details confirmation modal */}
-        <Dialog open={showReplaceModal} onOpenChange={setShowReplaceModal}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Replace existing listing details?</DialogTitle>
-            </DialogHeader>
-            <DialogDescription>
-              Your listing already has some details filled in. Do you want to replace them with the AI-generated content?
-            </DialogDescription>
-            <div className="flex gap-3 mt-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowReplaceModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
-                onClick={() => {
-                  if (pendingAiData) {
-                    applyAiData(pendingAiData);
-                    toast({ title: "Listing details replaced", description: "Review and edit before publishing." });
-                  }
-                  setShowReplaceModal(false);
-                  setPendingAiData(null);
-                }}
-              >
-                Replace
               </Button>
             </div>
           </DialogContent>

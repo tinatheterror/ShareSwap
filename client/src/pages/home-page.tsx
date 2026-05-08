@@ -206,7 +206,7 @@ export default function HomePage() {
           <div className="flex flex-col gap-3 pt-2">
             <button
               onClick={() => setGiveModal("list")}
-              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
+              className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-teal-50 transition-all text-left group"
             >
               <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
                 <Plus className="h-5 w-5 text-teal-700" />
@@ -221,7 +221,7 @@ export default function HomePage() {
 
             <button
               onClick={() => setGiveModal("import")}
-              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
+              className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-teal-50 transition-all text-left group"
             >
               <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
                 <Download className="h-5 w-5 text-teal-700" />
@@ -236,7 +236,7 @@ export default function HomePage() {
 
             <button
               onClick={() => setGiveModal("wishlist")}
-              className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-gray-50 hover:bg-teal-50 hover:border-teal-300 transition-all text-left group"
+              className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-teal-50 transition-all text-left group"
             >
               <div className="w-11 h-11 rounded-full bg-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
                 <HeartPeopleIcon className="h-5 w-5 text-teal-700" />

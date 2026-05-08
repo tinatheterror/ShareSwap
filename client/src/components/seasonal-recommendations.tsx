@@ -31,12 +31,12 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
 
   const getSeasonIcon = (season: string) => {
     switch (season.toLowerCase()) {
-      case 'winter': return <Snowflake className="h-4 w-4" />;
-      case 'summer': return <Sun className="h-4 w-4" />;
+      case 'winter': return <Snowflake className="h-3 w-3" />;
+      case 'summer': return <Sun className="h-3 w-3" />;
       case 'fall':
-      case 'autumn': return <Leaf className="h-4 w-4" />;
-      case 'spring': return <Flower className="h-4 w-4" />;
-      default: return <Sun className="h-4 w-4" />;
+      case 'autumn': return <Leaf className="h-3 w-3" />;
+      case 'spring': return <Flower className="h-3 w-3" />;
+      default: return <Sun className="h-3 w-3" />;
     }
   };
 
@@ -110,10 +110,10 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                     <Camera className="h-16 w-16 text-gray-400" />
                   </div>
                 )}
-                <div className="absolute top-3 right-3">
-                  <Badge className="text-sm bg-teal-100 text-teal-800 border-teal-200">
+                <div className="absolute top-2 right-2">
+                  <Badge className="text-[10px] md:text-xs bg-teal-100 text-teal-800 border-teal-200">
                     {getSeasonIcon(item.seasonalRelevance)}
-                    <span className="ml-1">{item.seasonalRelevance}</span>
+                    <span className="ml-1 capitalize">{item.seasonalRelevance}</span>
                   </Badge>
                 </div>
               </div>

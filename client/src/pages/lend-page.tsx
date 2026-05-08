@@ -1604,7 +1604,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           {/* Top row: tier badge + AI valued badge */}
                           <div className="flex items-center justify-between mb-2">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-xs font-semibold tracking-wide border border-teal-100">
-                              {TIER_LABELS[calculatedTier]}
+                              {TIER_NAMES[calculatedTier]}
                             </span>
                             {valuationResult && !isLoadingValuation && (
                               <Tooltip>
@@ -1621,11 +1621,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                               </Tooltip>
                             )}
                           </div>
-
-                          {/* Middle: tier subtitle as headline */}
-                          <p className="text-sm font-semibold text-gray-700 mb-3">
-                            {TIER_SUBTITLES[calculatedTier]}
-                          </p>
 
                           {/* Bottom: ShareCoin value as visual anchor */}
                           {valuationResult && !isLoadingValuation ? (

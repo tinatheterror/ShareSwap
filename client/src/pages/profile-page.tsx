@@ -59,6 +59,8 @@ import {
   Clock,
   MessageSquare,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
@@ -104,6 +106,30 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [location] = useLocation();
+  const [expandedReviewers, setExpandedReviewers] = useState<Set<number>>(new Set());
+  const toggleReviewer = (reviewerId: number) =>
+    setExpandedReviewers(prev => {
+      const next = new Set(prev);
+      next.has(reviewerId) ? next.delete(reviewerId) : next.add(reviewerId);
+      return next;
+    });
+
+  // Group flat review list by reviewer, sorted by most-recent unique reviewer first
+  const groupReviews = (reviews: any[]) => {
+    const map = new Map<number, { reviewer: any; reviews: any[]; avgRating: number; latestDate: string }>();
+    for (const r of reviews) {
+      const id = r.reviewer.id;
+      if (!map.has(id)) map.set(id, { reviewer: r.reviewer, reviews: [], avgRating: 0, latestDate: r.createdAt });
+      const g = map.get(id)!;
+      g.reviews.push(r);
+      if (new Date(r.createdAt) > new Date(g.latestDate)) g.latestDate = r.createdAt;
+    }
+    for (const g of map.values()) {
+      g.avgRating = g.reviews.reduce((s, r) => s + r.rating, 0) / g.reviews.length;
+    }
+    return [...map.values()].sort((a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime());
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     fullName: "",
@@ -712,62 +738,82 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Reviews */}
+          {/* Reviews — grouped by reviewer */}
           <div>
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
             {userReviews.length > 0 ? (
               <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
-                {userReviews.map((review: any) => (
-                  <div key={review.id} className="w-80 flex-shrink-0 md:w-auto">
-                    <Card
-                      className="p-4"
-                      style={{ backgroundColor: "#D4F7F1" }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                          {(review.reviewer as any).profilePhoto ? (
-                            <img src={(review.reviewer as any).profilePhoto} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">
-                              {((review.reviewer as any).displayName || review.reviewer.username).charAt(0).toUpperCase()}
+                {groupReviews(userReviews).map((group) => {
+                  const isExpanded = expandedReviewers.has(group.reviewer.id);
+                  const mostRecent = group.reviews[0];
+                  const displayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
+                  return (
+                    <div key={group.reviewer.id} className="w-80 flex-shrink-0 md:w-auto">
+                      <Card className="p-4" style={{ backgroundColor: "#D4F7F1" }}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                            {group.reviewer.profilePhoto ? (
+                              <img src={group.reviewer.profilePhoto} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">
+                                {displayName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
+                                {displayName}
+                              </Link>
+                              <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
                             </div>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Link
-                              href={`/profile/${(review.reviewer as any).handle || review.reviewer.username}`}
-                              className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer"
-                            >
-                              {(review.reviewer as any).displayName || (review.reviewer as any).handle || review.reviewer.username.split("@")[0]}
-                            </Link>
-                            <UserBadges
-                              isVerified={review.reviewer.isVerified}
-                              reputationLevel={review.reviewer.reputationLevel}
-                              size="sm"
-                            />
-                            <span className="text-muted-foreground text-sm">
-                              {new Date(review.createdAt).toLocaleDateString()}
-                            </span>
+                            {/* Summary row */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-0.5">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                                ))}
+                              </div>
+                              <span className="text-sm font-medium">{group.avgRating.toFixed(1)}</span>
+                              <span className="text-xs text-muted-foreground">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
+                            </div>
+                            {/* Most recent comment preview */}
+                            {mostRecent.comment && !isExpanded && (
+                              <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>
+                            )}
+                            {/* Expanded: all individual reviews */}
+                            {isExpanded && (
+                              <div className="mt-3 space-y-2 border-t border-teal-200 pt-3">
+                                {group.reviews.map((r: any) => (
+                                  <div key={r.id} className="bg-white/60 rounded-lg p-2.5">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="flex items-center gap-0.5">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                                        ))}
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    {r.comment && <p className="text-xs text-muted-foreground italic">"{r.comment}"</p>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {/* Expand / collapse toggle */}
+                            {group.reviews.length > 1 && (
+                              <button
+                                onClick={() => toggleReviewer(group.reviewer.id)}
+                                className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium"
+                              >
+                                {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide reviews</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
+                              </button>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1 mb-2">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
-                              />
-                            ))}
-                          </div>
-                          {review.comment && (
-                            <p className="text-sm text-muted-foreground">
-                              {review.comment}
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    </Card>
-                  </div>
-                ))}
+                      </Card>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <Card className="p-6 text-center text-muted-foreground">
@@ -1483,7 +1529,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Reviews — what neighbours say about you */}
+            {/* Reviews — what neighbours say about you (grouped by reviewer) */}
             <Card style={{ backgroundColor: "#D4F7F1" }}>
               <CardHeader className="py-3">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -1494,32 +1540,60 @@ export default function ProfilePage() {
               <CardContent className="pt-0">
                 {ownReviews.length > 0 ? (
                   <div className="space-y-3">
-                    {ownReviews.slice(0, 5).map((review: any) => (
-                      <div key={review.id} className="bg-white rounded-lg p-3 border border-teal-100">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-medium text-slate-600">
-                            {(review.reviewer as any).displayName || (review.reviewer as any).handle || review.reviewer.username}
-                          </span>
-                          <div className="flex items-center gap-0.5">
-                            {[...Array(5)].map((_: any, i: number) => (
-                              <Star
-                                key={i}
-                                className={`h-3 w-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`}
-                              />
-                            ))}
+                    {groupReviews(ownReviews).slice(0, 5).map((group) => {
+                      const isExpanded = expandedReviewers.has(group.reviewer.id);
+                      const mostRecent = group.reviews[0];
+                      const displayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
+                      return (
+                        <div key={group.reviewer.id} className="bg-white rounded-lg p-3 border border-teal-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-slate-700">{displayName}</span>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-0.5">
+                                {[...Array(5)].map((_: any, i: number) => (
+                                  <Star key={i} className={`h-3 w-3 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
+                                ))}
+                              </div>
+                              <span className="text-xs text-slate-500">{group.avgRating.toFixed(1)}</span>
+                            </div>
                           </div>
+                          {group.reviews.length > 1 && (
+                            <p className="text-xs text-teal-600 mb-1">{group.reviews.length} transactions</p>
+                          )}
+                          {mostRecent.comment && !isExpanded && (
+                            <p className="text-xs text-slate-600 italic line-clamp-2">"{mostRecent.comment}"</p>
+                          )}
+                          {isExpanded && (
+                            <div className="mt-2 space-y-2 border-t border-teal-100 pt-2">
+                              {group.reviews.map((r: any) => (
+                                <div key={r.id} className="bg-teal-50/50 rounded p-2">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <div className="flex items-center gap-0.5">
+                                      {[...Array(5)].map((_: any, i: number) => (
+                                        <Star key={i} className={`h-2.5 w-2.5 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
+                                      ))}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                  {r.comment && <p className="text-xs text-slate-600 italic">"{r.comment}"</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {group.reviews.length > 1 && (
+                            <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-1.5 flex items-center gap-0.5 text-[11px] text-teal-600 hover:text-teal-700 font-medium">
+                              {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
+                            </button>
+                          )}
+                          {group.reviews.length === 1 && (
+                            <p className="text-xs text-slate-400 mt-1">{new Date(mostRecent.createdAt).toLocaleDateString()}</p>
+                          )}
                         </div>
-                        {review.comment && (
-                          <p className="text-xs text-slate-600 italic line-clamp-2">"{review.comment}"</p>
-                        )}
-                        <p className="text-xs text-slate-400 mt-1">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                    {ownReviews.length > 5 && (
+                      );
+                    })}
+                    {groupReviews(ownReviews).length > 5 && (
                       <p className="text-xs text-center text-teal-600 font-medium">
-                        +{ownReviews.length - 5} more reviews on your Achievements page
+                        +{groupReviews(ownReviews).length - 5} more reviewers on your Achievements page
                       </p>
                     )}
                   </div>

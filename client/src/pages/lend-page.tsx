@@ -1601,17 +1601,26 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                             tierGlow ? "ring-1 ring-teal-300 ring-offset-1" : ""
                           }`}
                         >
-                          {/* Top row: tier badge + AI valued badge */}
-                          <div className="flex items-center justify-between mb-2">
+                          {/* Top row: tier badge only */}
+                          <div className="mb-2">
                             <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-sm font-semibold border border-teal-100">
                               {TIER_NAMES[calculatedTier]}
                             </span>
-                            {valuationResult && !isLoadingValuation && (
+                          </div>
+
+                          {/* Bottom: ShareCoin value + AI valued inline */}
+                          {valuationResult && !isLoadingValuation ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Coins className="h-5 w-5 text-teal-600" />
+                              <span className="text-2xl font-bold text-gray-900 leading-none">
+                                {valuationResult.shareCoinsValue}
+                              </span>
+                              <span className="text-xs text-gray-500 font-medium">ShareCoins/week</span>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md cursor-help">
-                                    <Sparkles className="h-3 w-3 text-amber-500" />
-                                    <span className="text-xs text-amber-700 font-semibold">AI valued</span>
+                                  <div className="flex items-center gap-0.5 cursor-help ml-1">
+                                    <Sparkles className="h-2.5 w-2.5 text-amber-400" />
+                                    <span className="text-[10px] text-amber-600 font-medium">AI valued</span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
@@ -1619,24 +1628,13 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                   <p className="text-xs">AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.</p>
                                 </TooltipContent>
                               </Tooltip>
-                            )}
-                          </div>
-
-                          {/* Bottom: ShareCoin value as visual anchor */}
-                          {valuationResult && !isLoadingValuation ? (
-                            <div className="flex items-baseline gap-1.5">
-                              <Coins className="h-5 w-5 text-teal-600 self-center" />
-                              <span className="text-2xl font-bold text-gray-900 leading-none">
-                                {valuationResult.shareCoinsValue}
-                              </span>
-                              <span className="text-xs text-gray-500 font-medium">ShareCoins/week</span>
                             </div>
                           ) : (
-                            <div className="flex items-baseline gap-1.5">
+                            <div className="flex items-center gap-1.5">
                               {isLoadingValuation && (
-                                <div className="h-4 w-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin self-center mr-1" />
+                                <div className="h-4 w-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mr-1" />
                               )}
-                              <Coins className="h-5 w-5 text-teal-600 self-center" />
+                              <Coins className="h-5 w-5 text-teal-600" />
                               <span className="text-2xl font-bold text-gray-900 leading-none">
                                 {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"}
                               </span>

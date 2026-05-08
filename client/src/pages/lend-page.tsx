@@ -328,6 +328,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   }, []);
 
   const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiScanEnabled, setAiScanEnabled] = useState(false);
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [pendingAiData, setPendingAiData] = useState<{ title: string; description: string; condition: string; category: string; originalPrice: string } | null>(null);
   const [importUrl, setImportUrl] = useState<string>("");
@@ -634,6 +635,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       toast({ title: "Couldn't generate listing details. Try again.", variant: "destructive" });
     } finally {
       setIsAiGenerating(false);
+      setAiScanEnabled(false);
     }
   };
 
@@ -1275,18 +1277,26 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         </label>
                         <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile-add" onChange={handlePhotoChange} />
                       </div>
-                      <Button
-                        type="button"
-                        onClick={handleAiAutofill}
-                        disabled={isAiGenerating}
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-                      >
+                      <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAiGenerating ? "bg-teal-50 border-teal-200" : "bg-white border-gray-200 hover:border-teal-200"}`}>
+                        <div className="flex items-center gap-2.5">
+                          <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800 leading-tight">ShareSmart Scan</p>
+                            <p className="text-xs text-muted-foreground leading-tight">Generate your listing with AI</p>
+                          </div>
+                        </div>
                         {isAiGenerating ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /><span>Analyzing your item…</span></>
+                          <Loader2 className="w-4 h-4 text-teal-500 animate-spin flex-shrink-0" />
                         ) : (
-                          <><Sparkles className="w-4 h-4 mr-2" />Auto-fill listing</>
+                          <Switch
+                            checked={aiScanEnabled}
+                            onCheckedChange={(checked) => {
+                              setAiScanEnabled(checked);
+                              if (checked) handleAiAutofill();
+                            }}
+                          />
                         )}
-                      </Button>
+                      </div>
                     </div>
                   )}
                   {isEditMode && existingPhotos.length > 0 && selectedPhotos.length === 0 && (
@@ -2233,18 +2243,26 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           onChange={handlePhotoChange}
                         />
                       </div>
-                      <Button
-                        type="button"
-                        onClick={handleAiAutofill}
-                        disabled={isAiGenerating}
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-                      >
+                      <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${isAiGenerating ? "bg-teal-50 border-teal-200" : "bg-white border-gray-200 hover:border-teal-200"}`}>
+                        <div className="flex items-center gap-2.5">
+                          <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800 leading-tight">ShareSmart Scan</p>
+                            <p className="text-xs text-muted-foreground leading-tight">Generate your listing with AI</p>
+                          </div>
+                        </div>
                         {isAiGenerating ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /><span>Analyzing your item…</span></>
+                          <Loader2 className="w-4 h-4 text-teal-500 animate-spin flex-shrink-0" />
                         ) : (
-                          <><Sparkles className="w-4 h-4 mr-2" />Auto-fill listing</>
+                          <Switch
+                            checked={aiScanEnabled}
+                            onCheckedChange={(checked) => {
+                              setAiScanEnabled(checked);
+                              if (checked) handleAiAutofill();
+                            }}
+                          />
                         )}
-                      </Button>
+                      </div>
                     </div>
                   )}
 

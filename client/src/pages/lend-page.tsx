@@ -61,6 +61,9 @@ import {
   Plus,
   Check,
   Bell,
+  RotateCcw,
+  RotateCw,
+  Pencil,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -78,6 +81,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVerification } from "@/hooks/use-verification";
@@ -331,6 +336,92 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const [aiScanEnabled, setAiScanEnabled] = useState(false);
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [pendingAiData, setPendingAiData] = useState<{ title: string; description: string; condition: string; category: string; originalPrice: string } | null>(null);
+
+  // Photo editor state
+  const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
+  const [editOriginalSrc, setEditOriginalSrc] = useState<string>("");
+  const [editPhotoSrc, setEditPhotoSrc] = useState<string>("");
+  const [editRotation, setEditRotation] = useState<number>(0);
+  const [editCrop, setEditCrop] = useState<Crop | undefined>(undefined);
+  const [editCompletedCrop, setEditCompletedCrop] = useState<PixelCrop | null>(null);
+  const [isApplyingRotation, setIsApplyingRotation] = useState(false);
+  const editImgRef = useRef<HTMLImageElement>(null);
+
+  const applyRotationToImage = (src: string, rotation: number): Promise<string> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const swapped = rotation === 90 || rotation === 270;
+        const w = swapped ? img.naturalHeight : img.naturalWidth;
+        const h = swapped ? img.naturalWidth : img.naturalHeight;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+        ctx.restore();
+        resolve(canvas.toDataURL("image/jpeg", 0.95));
+      };
+      img.src = src;
+    });
+
+  const openPhotoEditor = (idx: number) => {
+    const src = photoPreviewUrls[idx];
+    setEditingPhotoIdx(idx);
+    setEditOriginalSrc(src);
+    setEditPhotoSrc(src);
+    setEditRotation(0);
+    setEditCrop(undefined);
+    setEditCompletedCrop(null);
+  };
+
+  const handleRotate = async (dir: "cw" | "ccw") => {
+    const next = (editRotation + (dir === "cw" ? 90 : -90) + 360) % 360;
+    setEditRotation(next);
+    setIsApplyingRotation(true);
+    const rotated = await applyRotationToImage(editOriginalSrc, next);
+    setEditPhotoSrc(rotated);
+    setEditCrop(undefined);
+    setEditCompletedCrop(null);
+    setIsApplyingRotation(false);
+  };
+
+  const saveEditedPhoto = () => {
+    if (editingPhotoIdx === null || !editImgRef.current) return;
+    const img = editImgRef.current;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    let finalCanvas: HTMLCanvasElement;
+    if (editCompletedCrop && editCompletedCrop.width > 0 && editCompletedCrop.height > 0) {
+      const sx = nw / img.width;
+      const sy = nh / img.height;
+      finalCanvas = document.createElement("canvas");
+      finalCanvas.width = Math.round(editCompletedCrop.width * sx);
+      finalCanvas.height = Math.round(editCompletedCrop.height * sy);
+      finalCanvas.getContext("2d")!.drawImage(
+        img,
+        Math.round(editCompletedCrop.x * sx), Math.round(editCompletedCrop.y * sy),
+        Math.round(editCompletedCrop.width * sx), Math.round(editCompletedCrop.height * sy),
+        0, 0, finalCanvas.width, finalCanvas.height,
+      );
+    } else {
+      finalCanvas = document.createElement("canvas");
+      finalCanvas.width = nw;
+      finalCanvas.height = nh;
+      finalCanvas.getContext("2d")!.drawImage(img, 0, 0);
+    }
+    finalCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `edited-${Date.now()}.jpg`, { type: "image/jpeg" });
+      const url = URL.createObjectURL(blob);
+      setSelectedPhotos(prev => { const n = [...prev]; n[editingPhotoIdx!] = file; return n; });
+      setPhotoPreviewUrls(prev => { const n = [...prev]; n[editingPhotoIdx!] = url; return n; });
+      setEditingPhotoIdx(null);
+    }, "image/jpeg", 0.92);
+  };
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
   const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] =
@@ -1260,7 +1351,10 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         {selectedPhotos.map((photo, idx) => (
                           <div key={idx} className="relative group w-16 h-16">
                             <img src={photoPreviewUrls[idx]} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
-                            <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                              <button type="button" onClick={() => openPhotoEditor(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                                <Pencil className="w-3 h-3 text-gray-700" />
+                              </button>
                               <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
                                 <X className="w-3 h-3 text-gray-700" />
                               </button>
@@ -2212,7 +2306,14 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                               alt={`Photo ${idx + 1}`}
                               className="w-16 h-16 object-cover rounded-lg border border-gray-200"
                             />
-                            <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => openPhotoEditor(idx)}
+                                className="p-1 bg-white rounded-full hover:bg-gray-100"
+                              >
+                                <Pencil className="w-3 h-3 text-gray-700" />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => removePhoto(idx)}
@@ -2615,6 +2716,53 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Photo editor modal */}
+        <Dialog open={editingPhotoIdx !== null} onOpenChange={(open) => { if (!open) setEditingPhotoIdx(null); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Photo</DialogTitle>
+              <DialogDescription>Rotate or drag to crop your photo, then save.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex justify-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => handleRotate("ccw")} disabled={isApplyingRotation}>
+                  <RotateCcw className="w-4 h-4 mr-1.5" />Rotate Left
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleRotate("cw")} disabled={isApplyingRotation}>
+                  <RotateCw className="w-4 h-4 mr-1.5" />Rotate Right
+                </Button>
+              </div>
+              <div className="flex justify-center min-h-40 items-center">
+                {isApplyingRotation ? (
+                  <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
+                ) : editPhotoSrc ? (
+                  <ReactCrop
+                    crop={editCrop}
+                    onChange={(c) => setEditCrop(c)}
+                    onComplete={(c) => setEditCompletedCrop(c)}
+                  >
+                    <img
+                      ref={editImgRef}
+                      src={editPhotoSrc}
+                      alt="Edit"
+                      className="max-h-80 max-w-full object-contain"
+                    />
+                  </ReactCrop>
+                ) : null}
+              </div>
+              <p className="text-xs text-center text-muted-foreground">Drag to select a crop area, or save with just rotation applied.</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingPhotoIdx(null)}>
+                Cancel
+              </Button>
+              <Button type="button" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white" onClick={saveEditedPhoto} disabled={isApplyingRotation}>
+                Save Photo
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Replace existing details confirmation modal */}
         <Dialog open={showReplaceModal} onOpenChange={setShowReplaceModal}>

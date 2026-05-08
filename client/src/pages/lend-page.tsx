@@ -1470,15 +1470,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                             </FormItem>
                           )}
                         />
-                        <p className="text-xs text-gray-400 mt-1">
-                          {isDetectingCategory ? (
-                            <span className="text-teal-500 animate-pulse">
-                              AI detecting...
-                            </span>
-                          ) : (
-                            "AI will auto-detect"
-                          )}
-                        </p>
                       </div>
                     </div>
                   </div>

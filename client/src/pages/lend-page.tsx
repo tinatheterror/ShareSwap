@@ -113,6 +113,20 @@ const TIER_NAMES: Record<number, string> = {
   4: "Tier 4 – High Value Item",
 };
 
+const TIER_LABELS: Record<number, string> = {
+  1: "Tier 1",
+  2: "Tier 2",
+  3: "Tier 3",
+  4: "Tier 4",
+};
+
+const TIER_SUBTITLES: Record<number, string> = {
+  1: "Budget Friendly",
+  2: "Everyday Household Item",
+  3: "Premium Item",
+  4: "High Value Item",
+};
+
 const TIER_WEEKLY_BANDS: Record<
   number,
   { min: number; max: number; display: string }
@@ -1583,65 +1597,59 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     {calculatedTier && (
                       <TooltipProvider>
                         <div
-                          className={`p-4 bg-white rounded-lg border border-teal-200 transition-all duration-500 ${
-                            tierGlow
-                              ? "ring-2 ring-teal-400 ring-offset-2 shadow-[0_0_15px_rgba(13,206,161,0.5)]"
-                              : ""
+                          className={`p-4 bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-500 ${
+                            tierGlow ? "ring-1 ring-teal-300 ring-offset-1" : ""
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-black font-medium">
-                              {TIER_NAMES[calculatedTier]}
+                          {/* Top row: tier badge + AI valued badge */}
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 text-xs font-semibold tracking-wide border border-teal-100">
+                              {TIER_LABELS[calculatedTier]}
                             </span>
                             {valuationResult && !isLoadingValuation && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full cursor-help">
-                                    <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-                                    <span className="text-xs text-teal-700 font-medium">
-                                      AI valued
-                                    </span>
+                                  <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md cursor-help">
+                                    <Sparkles className="h-3 w-3 text-amber-500" />
+                                    <span className="text-xs text-amber-700 font-semibold">AI valued</span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
-                                  <p className="text-sm font-medium mb-1">
-                                    AI-Powered Valuation
-                                  </p>
-                                  <p className="text-xs">
-                                    AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.
-                                  </p>
+                                  <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
+                                  <p className="text-xs">AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.</p>
                                 </TooltipContent>
                               </Tooltip>
                             )}
                           </div>
-                          <div className="mt-2">
-                            {valuationResult && !isLoadingValuation ? (
-                              <div className="flex items-center gap-1.5 text-sm">
-                                <Coins className="h-5 w-5 text-teal-600" />
-                                <span className="font-semibold text-black-700 text-lg">
-                                  {valuationResult.shareCoinsValue}{" "}
-                                  ShareCoins/week
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 text-sm">
-                                {isLoadingValuation && (
-                                  <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                                )}
-                                <Coins className="h-5 w-5 text-teal-600" />
-                                <span className="font-medium text-teal-700">
-                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display ||
-                                    "5"}{" "}
-                                  ShareCoins/week
-                                </span>
-                                {isLoadingValuation && (
-                                  <span className="text-gray-400 text-xs">
-                                    (calculating...)
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
+
+                          {/* Middle: tier subtitle as headline */}
+                          <p className="text-sm font-semibold text-gray-700 mb-3">
+                            {TIER_SUBTITLES[calculatedTier]}
+                          </p>
+
+                          {/* Bottom: ShareCoin value as visual anchor */}
+                          {valuationResult && !isLoadingValuation ? (
+                            <div className="flex items-baseline gap-1.5">
+                              <Coins className="h-5 w-5 text-teal-600 self-center" />
+                              <span className="text-2xl font-bold text-gray-900 leading-none">
+                                {valuationResult.shareCoinsValue}
+                              </span>
+                              <span className="text-xs text-gray-500 font-medium">ShareCoins/week</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-baseline gap-1.5">
+                              {isLoadingValuation && (
+                                <div className="h-4 w-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin self-center mr-1" />
+                              )}
+                              <Coins className="h-5 w-5 text-teal-600 self-center" />
+                              <span className="text-2xl font-bold text-gray-900 leading-none">
+                                {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"}
+                              </span>
+                              <span className="text-xs text-gray-500 font-medium">
+                                ShareCoins/week{isLoadingValuation && <span className="text-gray-400 ml-1">(calculating…)</span>}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </TooltipProvider>
                     )}

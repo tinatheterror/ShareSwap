@@ -156,7 +156,7 @@ export default function ItemDetailsPage() {
           <div className="flex items-center gap-2 mb-1">
             <Coins className="h-4 w-4 text-teal-600" />
             <span className="text-lg font-bold text-teal-700">
-              {item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins
+              {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins
             </span>
           </div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">

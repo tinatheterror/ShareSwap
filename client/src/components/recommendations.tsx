@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { Sparkles, Camera, Coins, MapPin, HandHeart, DollarSign, ArrowLeftRight, Gift } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import type { SelectItem } from "@db/schema";
 
 interface RecommendedItem extends SelectItem {
@@ -19,6 +20,7 @@ interface RecommendationsProps {
 
 export function Recommendations({ limit = 6, showTitle = true }: RecommendationsProps) {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -187,7 +189,16 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
         </div>
 
         <div className="flex gap-1">
-          {item.isGift ? (
+          {item.ownerId === user?.id ? (
+            <Button
+              size="sm"
+              className="text-white rounded-lg text-[10px] md:text-xs px-1.5 md:px-2 h-6 md:h-8 whitespace-nowrap"
+              style={{ backgroundColor: "#0DCEA1" }}
+              onClick={() => navigate(`/items/${item.id}`)}
+            >
+              View It
+            </Button>
+          ) : item.isGift ? (
             <Button
               size="sm"
               className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] md:text-xs h-6 md:h-8 whitespace-nowrap"
@@ -238,7 +249,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
                   style={{ backgroundColor: "#0DCEA1" }}
                   onClick={() => navigate(`/items/${item.id}`)}
                 >
-                  View Item
+                  View It
                 </Button>
               )}
             </>

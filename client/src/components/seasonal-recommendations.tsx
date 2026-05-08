@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { Snowflake, Sun, Leaf, Flower, Camera, Coins, MapPin, HandHeart, DollarSign, ArrowLeftRight } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import type { SelectItem } from "@db/schema";
 
 interface SeasonalItem extends SelectItem {
@@ -17,6 +18,7 @@ interface SeasonalRecommendationsProps {
 
 export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsProps) {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
 
   const { data: seasonalItems = [], isLoading } = useQuery<SeasonalItem[]>({
     queryKey: ['/api/recommendations/seasonal', limit],
@@ -154,48 +156,61 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
               </div>
 
               <div className="flex gap-1">
-                {item.isLendable && (
+                {item.ownerId === user?.id ? (
                   <Button
                     size="sm"
                     className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
                     style={{ backgroundColor: '#0DCEA1' }}
                     onClick={() => navigate(`/items/${item.id}`)}
                   >
-                    <HandHeart className="h-3 w-3 mr-0.5" />
-                    Borrow It
+                    View It
                   </Button>
-                )}
-                {item.isRentable && (
-                  <Button
-                    size="sm"
-                    className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                    style={{ backgroundColor: '#0DCEA1' }}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
-                    <DollarSign className="h-3 w-3 mr-0.5" />
-                    Rent It
-                  </Button>
-                )}
-                {item.isSwappable && (
-                  <Button
-                    size="sm"
-                    className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                    style={{ backgroundColor: '#0DCEA1' }}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
-                    <ArrowLeftRight className="h-3 w-3 mr-0.5" />
-                    Swap It
-                  </Button>
-                )}
-                {!item.isLendable && !item.isRentable && !item.isSwappable && (
-                  <Button
-                    size="sm"
-                    className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
-                    style={{ backgroundColor: '#0DCEA1' }}
-                    onClick={() => navigate(`/items/${item.id}`)}
-                  >
-                    View
-                  </Button>
+                ) : (
+                  <>
+                    {item.isLendable && (
+                      <Button
+                        size="sm"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        <HandHeart className="h-3 w-3 mr-0.5" />
+                        Borrow It
+                      </Button>
+                    )}
+                    {item.isRentable && (
+                      <Button
+                        size="sm"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        <DollarSign className="h-3 w-3 mr-0.5" />
+                        Rent It
+                      </Button>
+                    )}
+                    {item.isSwappable && (
+                      <Button
+                        size="sm"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        <ArrowLeftRight className="h-3 w-3 mr-0.5" />
+                        Swap It
+                      </Button>
+                    )}
+                    {!item.isLendable && !item.isRentable && !item.isSwappable && (
+                      <Button
+                        size="sm"
+                        className="text-white rounded-lg text-xs px-2 whitespace-nowrap"
+                        style={{ backgroundColor: '#0DCEA1' }}
+                        onClick={() => navigate(`/items/${item.id}`)}
+                      >
+                        View It
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>

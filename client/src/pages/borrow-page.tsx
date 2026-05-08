@@ -977,7 +977,16 @@ export default function BorrowPage() {
                                 )}
                               </div>
                               <div className="flex gap-1">
-                                {currentItem.isGift ? (
+                                {currentItem.ownerId === user?.id ? (
+                                  <Button
+                                    size="sm"
+                                    className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                    style={{ backgroundColor: "#0DCEA1" }}
+                                    onClick={() => navigate(`/items/${currentItem.id}`)}
+                                  >
+                                    View It
+                                  </Button>
+                                ) : currentItem.isGift ? (
                                   <Button
                                     size="sm"
                                     className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
@@ -1028,7 +1037,7 @@ export default function BorrowPage() {
                                         style={{ backgroundColor: "#0DCEA1" }}
                                         onClick={() => navigate(`/items/${currentItem.id}`)}
                                       >
-                                        View Item
+                                        View It
                                       </Button>
                                     )}
                                   </>

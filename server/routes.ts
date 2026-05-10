@@ -2090,22 +2090,28 @@ Return only the JSON object, no other text.`;
 
 
   // Import listing from marketplace screenshot using GPT-4 Vision
-  app.post('/api/import-from-screenshot', upload.single('screenshot'), async (req, res) => {
+  app.post('/api/import-from-screenshot', upload.array('screenshots', 5), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
     try {
-      if (!req.file) {
-        return res.status(400).json({ error: 'Screenshot image is required' });
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ error: 'At least one screenshot is required' });
       }
-
-      const base64Image = req.file.buffer.toString('base64');
-      const mimeType = req.file.mimetype || 'image/jpeg';
 
       const openai = new OpenAI({
         apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
       });
+
+      const imageContent = files.map(file => ({
+        type: 'image_url' as const,
+        image_url: {
+          url: `data:${file.mimetype || 'image/jpeg'};base64,${file.buffer.toString('base64')}`,
+          detail: 'high' as const,
+        },
+      }));
 
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o',
@@ -2113,16 +2119,10 @@ Return only the JSON object, no other text.`;
           {
             role: 'user',
             content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`,
-                  detail: 'high',
-                },
-              },
+              ...imageContent,
               {
                 type: 'text',
-                text: `Analyze this marketplace listing screenshot and extract every visible detail. Return ONLY valid JSON with EXACTLY these fields:
+                text: `Analyze ${files.length > 1 ? 'these marketplace listing screenshots' : 'this marketplace listing screenshot'} and extract every visible detail. Return ONLY valid JSON with EXACTLY these fields:
 {
   "name": "item name, max 60 chars",
   "description": "full description from the listing, cleaned up",

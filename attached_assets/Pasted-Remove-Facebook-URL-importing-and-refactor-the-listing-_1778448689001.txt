@@ -1,0 +1,130 @@
+Remove Facebook URL importing and refactor the listing import flow to use screenshot-based AI importing only.
+
+Goal:
+Make listing imports faster, more reliable, and platform-agnostic by using screenshots instead of URL scraping/importing.
+
+Requirements:
+Remove URL import functionality.
+
+Delete:
+Facebook listing URL input
+URL validation logic
+URL import API calls
+failed import retry flow
+any “Paste Marketplace URL” UI
+Do not leave dead code or hidden UI.
+Replace with screenshot-based import flow.
+
+New primary CTA:
+Import Marketplace Listing
+Helper text:
+Upload marketplace screenshots to auto-generate your listing.
+
+Screenshot upload flow.
+
+Allow users to:
+upload 1 or multiple screenshots
+drag and drop on desktop
+upload from camera roll on mobile
+
+Supported sources include:
+Facebook Marketplace
+Craigslist
+Poshmark
+OfferUp
+Karrot market
+screenshots from any resale platform
+
+Do not hardcode platform-specific logic.
+AI extraction behavior.
+Use uploaded screenshots with the existing multimodal AI system.
+
+Extract and autofill:
+title
+description
+item condition
+category
+estimated original price
+
+If visible in screenshots, also attempt to detect:
+brand
+dimensions/specs
+marketplace price
+
+Improve onboarding UX.
+Do NOT frame screenshots as a fallback.
+This is now the primary intentional flow.
+
+Avoid messaging like:
+“Facebook blocks imports”
+
+Instead use:
+Fastest and most reliable way to import listings
+Loading state.
+Show:
+Scanning your listing…
+
+Subtext:
+Generating details from your screenshots
+Disable upload button while processing.
+
+Error state.
+
+Show:
+We couldn’t read this listing clearly.
+Try uploading clearer screenshots.
+Autofill review flow.
+
+After AI extraction:
+prefill listing form
+allow full manual editing before publish
+never auto-publish
+Preserve existing AI autofill architecture.
+
+Do NOT rebuild:
+
+AI generation endpoint
+pricing logic
+tier system
+ShareCoin valuation
+
+Only refactor the import source from URLs → screenshots.
+
+UI polish.
+
+Design the import section to feel:
+
+modern
+visual-first
+AI-assisted
+mobile-friendly
+
+Goal:
+Make importing a marketplace listing feel effortless and reliable without depending on fragile Facebook URL scraping.
+
+Extract listing photos from screenshots.
+
+Attempt to automatically detect, crop, and import the item photos shown inside uploaded marketplace screenshots.
+
+Requirements:
+
+detect the main product images within screenshots
+crop out marketplace UI/chrome when possible
+generate clean listing-ready images
+import extracted images into the listing photo uploader automatically
+
+Users should be able to:
+
+review extracted photos
+remove photos
+reorder photos
+upload additional manual photos
+
+If photo extraction confidence is low:
+
+do not fail the import
+show a warning:
+
+“We couldn’t extract clean item photos from this screenshot. Add photos manually for better results.”
+
+Do not auto-publish screenshots directly as listing photos without cropping/review.

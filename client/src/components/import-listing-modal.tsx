@@ -94,6 +94,16 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     fileRef.current?.click();
   };
 
+  const getFreshCsrfToken = async (): Promise<string | null> => {
+    await fetch("/api/csrf-token", { credentials: "include" });
+    const cookies = document.cookie.split(";");
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split("=");
+      if (name === "x-csrf-token") return decodeURIComponent(value);
+    }
+    return null;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -106,10 +116,17 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     setStep("scanning");
 
     try {
+      const csrfToken = await getFreshCsrfToken();
+
       const formData = new FormData();
       formData.append("screenshot", file);
 
-      const res = await apiRequest("POST", "/api/import-from-screenshot", formData);
+      const res = await fetch("/api/import-from-screenshot", {
+        method: "POST",
+        headers: csrfToken ? { "x-csrf-token": csrfToken } : {},
+        body: formData,
+        credentials: "include",
+      });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

@@ -1,6 +1,12 @@
 import { Navbar } from "@/components/shared/navbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -174,35 +180,38 @@ const calculateShareCoinsForDays = (
   return { min: minCoins, max: maxCoins };
 };
 
-const baseFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(10, "Please provide a detailed description"),
-  itemType: z.string().min(1, "Item type is required"),
-  condition: z.string().min(1, "Condition is required"),
-  originalValue: z.string().min(1, "Original value is required"),
-  isLendable: z.boolean().default(true),
-  isSwappable: z.boolean().default(false),
-  isRentable: z.boolean().default(false),
-  isGift: z.boolean().default(false),
-  swapDesiredItem: z.string().optional(),
-  swapNotifyOnMatch: z.boolean().default(false),
-  availableFromDate: z.string().optional(),
-  availableToDate: z.string().optional(),
-  securityDeposit: z.coerce
-    .number()
-    .min(0, "Security deposit must be positive")
-    .optional(),
-  conditionRating: z.coerce
-    .number()
-    .min(1)
-    .max(10, "Rating must be between 1 and 10"),
-  postalCode: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-}).refine(
-  (data) => data.isLendable || data.isSwappable || data.isRentable || data.isGift,
-  { message: "Please select at least one option", path: ["isLendable"] },
-);
+const baseFormSchema = z
+  .object({
+    name: z.string().min(1, "Name is required"),
+    description: z.string().min(10, "Please provide a detailed description"),
+    itemType: z.string().min(1, "Item type is required"),
+    condition: z.string().min(1, "Condition is required"),
+    originalValue: z.string().min(1, "Original value is required"),
+    isLendable: z.boolean().default(true),
+    isSwappable: z.boolean().default(false),
+    isRentable: z.boolean().default(false),
+    isGift: z.boolean().default(false),
+    swapDesiredItem: z.string().optional(),
+    swapNotifyOnMatch: z.boolean().default(false),
+    availableFromDate: z.string().optional(),
+    availableToDate: z.string().optional(),
+    securityDeposit: z.coerce
+      .number()
+      .min(0, "Security deposit must be positive")
+      .optional(),
+    conditionRating: z.coerce
+      .number()
+      .min(1)
+      .max(10, "Rating must be between 1 and 10"),
+    postalCode: z.string().optional(),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+  })
+  .refine(
+    (data) =>
+      data.isLendable || data.isSwappable || data.isRentable || data.isGift,
+    { message: "Please select at least one option", path: ["isLendable"] },
+  );
 
 const formSchema = baseFormSchema.refine(
   (data) => {
@@ -359,11 +368,16 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const [editPhotoSrc, setEditPhotoSrc] = useState<string>("");
   const [editRotation, setEditRotation] = useState<number>(0);
   const [editCrop, setEditCrop] = useState<Crop | undefined>(undefined);
-  const [editCompletedCrop, setEditCompletedCrop] = useState<PixelCrop | null>(null);
+  const [editCompletedCrop, setEditCompletedCrop] = useState<PixelCrop | null>(
+    null,
+  );
   const [isApplyingRotation, setIsApplyingRotation] = useState(false);
   const editImgRef = useRef<HTMLImageElement>(null);
 
-  const applyRotationToImage = (src: string, rotation: number): Promise<string> =>
+  const applyRotationToImage = (
+    src: string,
+    rotation: number,
+  ): Promise<string> =>
     new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -411,32 +425,57 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     const nw = img.naturalWidth;
     const nh = img.naturalHeight;
     let finalCanvas: HTMLCanvasElement;
-    if (editCompletedCrop && editCompletedCrop.width > 0 && editCompletedCrop.height > 0) {
+    if (
+      editCompletedCrop &&
+      editCompletedCrop.width > 0 &&
+      editCompletedCrop.height > 0
+    ) {
       const sx = nw / img.width;
       const sy = nh / img.height;
       finalCanvas = document.createElement("canvas");
       finalCanvas.width = Math.round(editCompletedCrop.width * sx);
       finalCanvas.height = Math.round(editCompletedCrop.height * sy);
-      finalCanvas.getContext("2d")!.drawImage(
-        img,
-        Math.round(editCompletedCrop.x * sx), Math.round(editCompletedCrop.y * sy),
-        Math.round(editCompletedCrop.width * sx), Math.round(editCompletedCrop.height * sy),
-        0, 0, finalCanvas.width, finalCanvas.height,
-      );
+      finalCanvas
+        .getContext("2d")!
+        .drawImage(
+          img,
+          Math.round(editCompletedCrop.x * sx),
+          Math.round(editCompletedCrop.y * sy),
+          Math.round(editCompletedCrop.width * sx),
+          Math.round(editCompletedCrop.height * sy),
+          0,
+          0,
+          finalCanvas.width,
+          finalCanvas.height,
+        );
     } else {
       finalCanvas = document.createElement("canvas");
       finalCanvas.width = nw;
       finalCanvas.height = nh;
       finalCanvas.getContext("2d")!.drawImage(img, 0, 0);
     }
-    finalCanvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `edited-${Date.now()}.jpg`, { type: "image/jpeg" });
-      const url = URL.createObjectURL(blob);
-      setSelectedPhotos(prev => { const n = [...prev]; n[editingPhotoIdx!] = file; return n; });
-      setPhotoPreviewUrls(prev => { const n = [...prev]; n[editingPhotoIdx!] = url; return n; });
-      setEditingPhotoIdx(null);
-    }, "image/jpeg", 0.92);
+    finalCanvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `edited-${Date.now()}.jpg`, {
+          type: "image/jpeg",
+        });
+        const url = URL.createObjectURL(blob);
+        setSelectedPhotos((prev) => {
+          const n = [...prev];
+          n[editingPhotoIdx!] = file;
+          return n;
+        });
+        setPhotoPreviewUrls((prev) => {
+          const n = [...prev];
+          n[editingPhotoIdx!] = url;
+          return n;
+        });
+        setEditingPhotoIdx(null);
+      },
+      "image/jpeg",
+      0.92,
+    );
   };
   const [importUrl, setImportUrl] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
@@ -482,7 +521,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
           }
         };
         geocodePostalCode();
-      // GPS disabled — no fallback to browser geolocation
+        // GPS disabled — no fallback to browser geolocation
       }
     }
   }, [user?.defaultPostalCode, user?.defaultCity]);
@@ -525,9 +564,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const watchConditionRating = form.watch("conditionRating");
 
   // Check if we have at least one photo (used for tier calculation and validation)
-  const hasPhotos =
-    selectedPhotos.length > 0 ||
-    existingPhotos.length > 0;
+  const hasPhotos = selectedPhotos.length > 0 || existingPhotos.length > 0;
 
   const calculatedTier =
     watchCondition && watchOriginalValue && watchItemType && hasPhotos
@@ -683,13 +720,14 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
   // Convert files to base64 for AI valuation / autofill
   const getPhotoDataUrls = async (): Promise<string[]> => {
-    const photoPromises = selectedPhotos.slice(0, 3).map((file) =>
-      new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      })
+    const photoPromises = selectedPhotos.slice(0, 3).map(
+      (file) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        }),
     );
     return Promise.all(photoPromises);
   };
@@ -703,26 +741,50 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     return "$500–$2,000";
   };
 
-  const applyAiData = (data: { title: string; description: string; condition: string; category: string; originalPrice: string }) => {
+  const applyAiData = (data: {
+    title: string;
+    description: string;
+    condition: string;
+    category: string;
+    originalPrice: string;
+  }) => {
     if (data.title) form.setValue("name", data.title);
     if (data.description) form.setValue("description", data.description);
     if (data.condition) {
-      const ratingMap: Record<string, number> = { "New / Like New": 10, Good: 7, Fair: 5, "Well Loved": 3 };
+      const ratingMap: Record<string, number> = {
+        "New / Like New": 10,
+        Good: 7,
+        Fair: 5,
+        "Well Loved": 3,
+      };
       const fuzzyConditionMap: Record<string, string> = {
-        "new": "New / Like New", "like new": "New / Like New", "new/like new": "New / Like New",
-        "new / like new": "New / Like New", "excellent": "New / Like New",
-        "good": "Good", "very good": "Good",
-        "fair": "Fair", "okay": "Fair", "used": "Fair",
-        "well loved": "Well Loved", "poor": "Well Loved", "worn": "Well Loved",
+        new: "New / Like New",
+        "like new": "New / Like New",
+        "new/like new": "New / Like New",
+        "new / like new": "New / Like New",
+        excellent: "New / Like New",
+        good: "Good",
+        "very good": "Good",
+        fair: "Fair",
+        okay: "Fair",
+        used: "Fair",
+        "well loved": "Well Loved",
+        poor: "Well Loved",
+        worn: "Well Loved",
       };
       const normalised = data.condition.trim().toLowerCase();
-      const resolved = (CONDITIONS as readonly string[]).includes(data.condition.trim())
+      const resolved = (CONDITIONS as readonly string[]).includes(
+        data.condition.trim(),
+      )
         ? data.condition.trim()
         : fuzzyConditionMap[normalised] || "Good";
       form.setValue("condition", resolved);
       form.setValue("conditionRating", ratingMap[resolved] || 7);
     }
-    if (data.category && (ITEM_TYPES as readonly string[]).includes(data.category)) {
+    if (
+      data.category &&
+      (ITEM_TYPES as readonly string[]).includes(data.category)
+    ) {
       form.setValue("itemType", data.category);
     }
     if (data.originalPrice) {
@@ -746,13 +808,21 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     setIsAiGenerating(true);
     try {
       const dataUrls = await getPhotoDataUrls();
-      const response = await apiRequest("POST", "/api/listings/ai-generate", { imageDataUrls: dataUrls });
+      const response = await apiRequest("POST", "/api/listings/ai-generate", {
+        imageDataUrls: dataUrls,
+      });
       const aiData = await response.json();
       if (!response.ok) throw new Error(aiData.error || "Failed");
       applyAiData(aiData);
-      toast({ title: "Listing details generated", description: "Review and edit before publishing." });
+      toast({
+        title: "Listing details generated",
+        description: "Review and edit before publishing.",
+      });
     } catch {
-      toast({ title: "Couldn't generate listing details. Try again.", variant: "destructive" });
+      toast({
+        title: "Couldn't generate listing details. Try again.",
+        variant: "destructive",
+      });
       setAiScanEnabled(false);
     } finally {
       setIsAiGenerating(false);
@@ -970,7 +1040,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       setMatchedWishlists([]);
     }
   }, [form.watch("name"), allWishlists]);
-
 
   const getCurrentLocation = async () => {
     setIsLoadingLocation(true);
@@ -1362,11 +1431,20 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   </p>
                   {selectedPhotos.length === 0 ? (
                     <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                      <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile" onChange={handlePhotoChange} />
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        id="photos-mobile"
+                        onChange={handlePhotoChange}
+                      />
                       <label htmlFor="photos-mobile">
                         <div className="cursor-pointer">
                           <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                          <p className="text-sm text-muted-foreground">Click to upload photos</p>
+                          <p className="text-sm text-muted-foreground">
+                            Click to upload photos
+                          </p>
                         </div>
                       </label>
                     </div>
@@ -1374,17 +1452,32 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm text-green-600">
                         <Check className="w-4 h-4" />
-                        <span>{selectedPhotos.length} photo{selectedPhotos.length > 1 ? "s" : ""} added</span>
+                        <span>
+                          {selectedPhotos.length} photo
+                          {selectedPhotos.length > 1 ? "s" : ""} added
+                        </span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {selectedPhotos.map((photo, idx) => (
                           <div key={idx} className="relative group w-16 h-16">
-                            <img src={photoPreviewUrls[idx]} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
+                            <img
+                              src={photoPreviewUrls[idx]}
+                              alt={`Photo ${idx + 1}`}
+                              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                            />
                             <div className="absolute inset-0 bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                              <button type="button" onClick={() => openPhotoEditor(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                              <button
+                                type="button"
+                                onClick={() => openPhotoEditor(idx)}
+                                className="p-1 bg-white rounded-full hover:bg-gray-100"
+                              >
                                 <Pencil className="w-3 h-3 text-gray-700" />
                               </button>
-                              <button type="button" onClick={() => removePhoto(idx)} className="p-1 bg-white rounded-full hover:bg-gray-100">
+                              <button
+                                type="button"
+                                onClick={() => removePhoto(idx)}
+                                className="p-1 bg-white rounded-full hover:bg-gray-100"
+                              >
                                 <X className="w-3 h-3 text-gray-700" />
                               </button>
                             </div>
@@ -1395,17 +1488,33 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                             )}
                           </div>
                         ))}
-                        <label htmlFor="photos-mobile-add" className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors">
+                        <label
+                          htmlFor="photos-mobile-add"
+                          className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-teal-400 hover:bg-teal-50 transition-colors"
+                        >
                           <Plus className="w-5 h-5 text-gray-400" />
                         </label>
-                        <Input type="file" accept="image/*" multiple className="hidden" id="photos-mobile-add" onChange={handlePhotoChange} />
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          id="photos-mobile-add"
+                          onChange={handlePhotoChange}
+                        />
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-teal-50">
                         <div className="flex items-center gap-2.5">
-                          <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
+                          <Sparkles
+                            className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`}
+                          />
                           <div>
-                            <p className="text-sm font-semibold text-gray-800 leading-tight">ShareSmart Scan</p>
-                            <p className="text-xs text-muted-foreground leading-tight">Generate your listing with AI</p>
+                            <p className="text-sm font-semibold text-gray-800 leading-tight">
+                              ShareSmart Scan
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-tight">
+                              Generate your listing with AI
+                            </p>
                           </div>
                         </div>
                         {isAiGenerating ? (
@@ -1423,17 +1532,28 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       </div>
                     </div>
                   )}
-                  {isEditMode && existingPhotos.length > 0 && selectedPhotos.length === 0 && (
-                    <div className="mt-4">
-                      <p className="text-sm text-muted-foreground mb-2">Current photos:</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {existingPhotos.map((photo, idx) => (
-                          <img key={idx} src={photo} alt={`Item photo ${idx + 1}`} className="w-20 h-20 object-cover rounded-lg border" />
-                        ))}
+                  {isEditMode &&
+                    existingPhotos.length > 0 &&
+                    selectedPhotos.length === 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Current photos:
+                        </p>
+                        <div className="flex gap-2 flex-wrap">
+                          {existingPhotos.map((photo, idx) => (
+                            <img
+                              key={idx}
+                              src={photo}
+                              alt={`Item photo ${idx + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg border"
+                            />
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Upload new photos to replace these
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">Upload new photos to replace these</p>
-                    </div>
-                  )}
+                    )}
                 </CardContent>
               </Card>
             </div>
@@ -1602,7 +1722,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     />
                   </div>
 
-
                   {/* Tier Preview - show after condition and value are selected */}
                   <div className="border-t pt-4">
                     {calculatedTier && (
@@ -1626,17 +1745,27 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                               <span className="text-2xl font-bold text-gray-900 leading-none">
                                 {valuationResult.shareCoinsValue}
                               </span>
-                              <span className="text-xs text-gray-500 font-medium">ShareCoins/week</span>
+                              <span className="text-xs text-gray-500 font-medium">
+                                ShareCoins/week
+                              </span>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="flex items-center gap-0.5 cursor-help ml-1">
                                     <Sparkles className="h-2.5 w-2.5 text-amber-400" />
-                                    <span className="text-[10px] text-amber-600 font-medium">AI valued</span>
+                                    <span className="text-[10px] text-amber-600 font-medium">
+                                      AI valued
+                                    </span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
-                                  <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
-                                  <p className="text-xs">AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.</p>
+                                  <p className="text-sm font-medium mb-1">
+                                    AI-Powered Valuation
+                                  </p>
+                                  <p className="text-xs">
+                                    AI analyzes condition, brand quality,
+                                    category demand, and seasonal factors to
+                                    determine the exact rate.
+                                  </p>
                                 </TooltipContent>
                               </Tooltip>
                             </div>
@@ -1647,10 +1776,16 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                               )}
                               <Coins className="h-5 w-5 text-teal-600" />
                               <span className="text-2xl font-bold text-gray-900 leading-none">
-                                {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"}
+                                {TIER_WEEKLY_BANDS[calculatedTier]?.display ||
+                                  "5"}
                               </span>
                               <span className="text-xs text-gray-500 font-medium">
-                                ShareCoins/week{isLoadingValuation && <span className="text-gray-400 ml-1">(calculating…)</span>}
+                                ShareCoins/week
+                                {isLoadingValuation && (
+                                  <span className="text-gray-400 ml-1">
+                                    (calculating…)
+                                  </span>
+                                )}
                               </span>
                             </div>
                           )}
@@ -1753,7 +1888,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       Select one or more options
                     </p>
                     {form.formState.errors.isLendable && (
-                      <p className="text-sm font-medium text-destructive">{form.formState.errors.isLendable.message as string}</p>
+                      <p className="text-sm font-medium text-destructive">
+                        {form.formState.errors.isLendable.message as string}
+                      </p>
                     )}
 
                     {/* Borrow, Rental, and Swap Cards - show side by side when selected */}
@@ -2357,10 +2494,16 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       </div>
                       <div className="flex items-center justify-between p-3 rounded-lg bg-teal-50">
                         <div className="flex items-center gap-2.5">
-                          <Sparkles className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`} />
+                          <Sparkles
+                            className={`w-4 h-4 flex-shrink-0 ${isAiGenerating ? "text-teal-500 animate-pulse" : "text-teal-600"}`}
+                          />
                           <div>
-                            <p className="text-sm font-semibold text-gray-800 leading-tight">ShareSmart Scan</p>
-                            <p className="text-xs text-muted-foreground leading-tight">Generate your listing with AI</p>
+                            <p className="text-sm font-semibold text-gray-800 leading-tight">
+                              ShareSmart Scan
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-tight">
+                              Generate your listing with AI
+                            </p>
                           </div>
                         </div>
                         {isAiGenerating ? (
@@ -2730,19 +2873,40 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         </AnimatePresence>
 
         {/* Photo editor modal */}
-        <Dialog open={editingPhotoIdx !== null} onOpenChange={(open) => { if (!open) setEditingPhotoIdx(null); }}>
+        <Dialog
+          open={editingPhotoIdx !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingPhotoIdx(null);
+          }}
+        >
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Edit Photo</DialogTitle>
-              <DialogDescription>Rotate or drag to crop your photo, then save.</DialogDescription>
+              <DialogDescription>
+                Rotate or drag to crop your photo, then save.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="flex justify-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => handleRotate("ccw")} disabled={isApplyingRotation}>
-                  <RotateCcw className="w-4 h-4 mr-1.5" />Rotate Left
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRotate("ccw")}
+                  disabled={isApplyingRotation}
+                >
+                  <RotateCcw className="w-4 h-4 mr-1.5" />
+                  Rotate Left
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => handleRotate("cw")} disabled={isApplyingRotation}>
-                  <RotateCw className="w-4 h-4 mr-1.5" />Rotate Right
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRotate("cw")}
+                  disabled={isApplyingRotation}
+                >
+                  <RotateCw className="w-4 h-4 mr-1.5" />
+                  Rotate Right
                 </Button>
               </div>
               <div className="flex justify-center min-h-40 items-center">
@@ -2763,13 +2927,25 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   </ReactCrop>
                 ) : null}
               </div>
-              <p className="text-xs text-center text-muted-foreground">Drag to select a crop area, or save with just rotation applied.</p>
+              <p className="text-xs text-center text-muted-foreground">
+                Drag to select a crop area, or save with just rotation applied.
+              </p>
             </div>
             <div className="flex gap-3 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingPhotoIdx(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setEditingPhotoIdx(null)}
+              >
                 Cancel
               </Button>
-              <Button type="button" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white" onClick={saveEditedPhoto} disabled={isApplyingRotation}>
+              <Button
+                type="button"
+                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+                onClick={saveEditedPhoto}
+                disabled={isApplyingRotation}
+              >
                 Save Photo
               </Button>
             </div>

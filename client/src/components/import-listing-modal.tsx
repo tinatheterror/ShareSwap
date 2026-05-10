@@ -52,6 +52,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
   const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
+  const [importMethod, setImportMethod] = useState<"url" | "screenshot" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleClose = () => {
@@ -59,6 +60,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     setImportUrl("");
     setIsImporting(false);
     setExtracted(null);
+    setImportMethod(null);
     onClose();
   };
 
@@ -135,6 +137,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
 
       const data: ExtractedData = await res.json();
       setExtracted(data);
+      setImportMethod("screenshot");
       setStep("done");
     } catch (err: any) {
       toast({ title: "Analysis failed", description: err.message || "Could not analyze screenshot", variant: "destructive" });
@@ -170,7 +173,11 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
             <DialogTitle className="text-xl font-bold">Import a Listing</DialogTitle>
           </div>
           <DialogDescription className="text-sm text-muted-foreground">
-            Paste a marketplace link and we'll auto-fill the details.
+            {step === "done" && importMethod === "screenshot"
+              ? "We've extracted the details from your screenshot."
+              : step === "done"
+              ? "We've extracted the details from your listing."
+              : "Paste a marketplace link and we'll auto-fill the details."}
           </DialogDescription>
         </DialogHeader>
 

@@ -314,7 +314,10 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                 <Row label="Condition" value={`${extracted.condition} (${extracted.conditionRating}/10)`} />
               )}
               {extracted.originalValue && (
-                <Row label="Value range" value={`${extracted.originalValue} · Tier ${extracted.suggestedTier}`} />
+                <Row label="Est. value" value={extracted.originalValue} />
+              )}
+              {extracted.suggestedTier && (
+                <Row label="Sharing tier" value={`Tier ${extracted.suggestedTier}`} />
               )}
               {extracted.price != null && (
                 <Row label="Listed price" value={`$${extracted.price}`} />

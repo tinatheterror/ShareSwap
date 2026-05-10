@@ -314,7 +314,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                 <Row label="Condition" value={`${extracted.condition} (${extracted.conditionRating}/10)`} />
               )}
               {extracted.originalValue && (
-                <Row label="Est. value" value={extracted.originalValue} />
+                <Row label="Original price" value={extracted.originalValue} />
               )}
               {extracted.suggestedTier && (
                 <Row label="Sharing tier" value={`Tier ${extracted.suggestedTier}`} />

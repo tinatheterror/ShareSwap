@@ -65,6 +65,7 @@ interface ExtractedData {
   originalValue: string;
   suggestedTier: number;
   photoScores: number[];
+  photoCrops: (NormCrop | null)[];
 }
 
 const PLATFORMS = ["Facebook Marketplace", "Craigslist", "Poshmark", "OfferUp", "Karrot", "Any resale platform"];
@@ -163,15 +164,14 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       const data: ExtractedData = await res.json();
       setExtracted(data);
 
-      // Show full screenshots — no auto-crop applied. Users crop manually via the inline tool.
-      const allPhotos: CroppedPhoto[] = fileItems.map((item) => ({
-        id: uid(),
-        file: item.file,
-        preview: item.preview,
-        originalFile: item.file,
-        originalPreview: item.preview,
-        normCrop: null,
-      }));
+      // Apply AI crop where available; otherwise keep full screenshot.
+      const allPhotos: CroppedPhoto[] = await Promise.all(
+        fileItems.map(async (item, i) => {
+          const norm = data.photoCrops?.[i] ?? null;
+          const { file: f, preview } = await cropToFile(item.file, item.preview, norm);
+          return { id: uid(), file: f, preview, originalFile: item.file, originalPreview: item.preview, normCrop: norm };
+        })
+      );
       setCroppedPhotos(allPhotos);
       setSelectedIds(new Set(allPhotos.map((p) => p.id)));
       setStep("photos");
@@ -365,7 +365,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                       onClick={() => toggleSelect(photo.id)}
                       className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${isSelected ? "border-teal-500 ring-2 ring-teal-200" : "border-gray-200 opacity-50 hover:opacity-70"}`}
                     >
-                      <img src={photo.preview} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                      <img src={photo.preview} alt={`Photo ${i + 1}`} className="w-full h-full object-contain bg-gray-100" />
                       <div className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center shadow ${isSelected ? "bg-teal-500" : "bg-gray-400/80"}`}>
                         {isSelected ? <Check className="h-3 w-3 text-white" /> : <X className="h-3 w-3 text-white" />}
                       </div>

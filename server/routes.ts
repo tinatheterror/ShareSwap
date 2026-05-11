@@ -2135,13 +2135,15 @@ Return only the JSON object, no other text.`;
   "modelVersion": "model number, version, year, size or empty string",
   "isLuxury": <true or false>,
   "originalValue": "Under $50" or "$50–$199" or "$200–$499" or "$500–$2,000",
-  "suggestedTier": <1, 2, 3, or 4>
+  "suggestedTier": <1, 2, 3, or 4>,
+  "photoScores": [<0.0-1.0 per image>]
 }
 
 Condition mapping: new/like new/mint → "New / Like New" (rating 9-10); good/great/excellent → "Good" (7-8); fair/used/okay → "Fair" (5-6); worn/damaged/poor → "Well Loved" (1-4).
 IMPORTANT — originalValue is the item's ORIGINAL RETAIL PRICE when bought new (not the current asking/listing price). Estimate based on item type, brand, and model. Examples: basic clothing/shoes → "$50–$199"; branded electronics/appliances → "$200–$499" or "$500–$2,000"; luxury goods → "$500–$2,000". Do NOT use the marketplace listing price to determine originalValue.
 Tier: under $50 → tier 1; $50-$199 → tier 2; $200-$499 → tier 3; $500+ → tier 4. Tier is based on originalValue only.
 Luxury: true if brand is designer/premium (e.g. Gucci, LV, Apple, Sony, Dyson, Rolex, etc).
+photoScores: for each image in order, rate 0.0-1.0 how clearly it shows the main product item (not marketplace UI, not profile photos, not nav/icons). Score 0.8+ for a clear product photo taking up most of the image, 0.5-0.7 for product visible but small or partially obscured, below 0.5 for UI-only/text-only/no product visible.
 Return only the JSON object, no other text.`
               }
             ]
@@ -2184,6 +2186,11 @@ Return only the JSON object, no other text.`
       const validTiers = [1, 2, 3, 4];
       const validValues = ['Under $50', '$50–$199', '$200–$499', '$500–$2,000'];
 
+      const rawScores = Array.isArray(extracted.photoScores) ? extracted.photoScores : [];
+      const photoScores = files.map((_, i) =>
+        Math.min(1, Math.max(0, parseFloat(String(rawScores[i] ?? 0.5)) || 0.5))
+      );
+
       return res.json({
         name: (extracted.name || 'Imported Item').substring(0, 60),
         description: extracted.description || '',
@@ -2197,6 +2204,7 @@ Return only the JSON object, no other text.`
         isLuxury: !!extracted.isLuxury,
         originalValue: validValues.includes(extracted.originalValue) ? extracted.originalValue : '$50–$199',
         suggestedTier: validTiers.includes(parseInt(String(extracted.suggestedTier))) ? parseInt(String(extracted.suggestedTier)) : 2,
+        photoScores,
       });
     } catch (error) {
       const err = error as any;

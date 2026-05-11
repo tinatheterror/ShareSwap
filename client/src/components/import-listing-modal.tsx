@@ -7,7 +7,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import {
   Upload,
   Image,
@@ -18,15 +17,17 @@ import {
   Plus,
   Sparkles,
   Pencil,
+  Check,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { setImportedPhotos } from "@/lib/import-store";
 
 interface ImportListingModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Step = "upload" | "scanning" | "done" | "error";
+type Step = "upload" | "scanning" | "photos" | "done" | "error";
 
 interface FileItem {
   file: File;
@@ -46,6 +47,7 @@ interface ExtractedData {
   isLuxury: boolean;
   originalValue: string;
   suggestedTier: number;
+  photoScores: number[];
 }
 
 const PLATFORMS = [
@@ -57,14 +59,16 @@ const PLATFORMS = [
   "Any resale platform",
 ];
 
+const CONFIDENCE_THRESHOLD = 0.55;
+
 export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps) {
-  const { toast } = useToast();
   const [, navigate] = useLocation();
   const [step, setStep] = useState<Step>("upload");
   const [fileItems, setFileItems] = useState<FileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
+  const [selectedPhotoIndices, setSelectedPhotoIndices] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleClose = () => {
@@ -74,6 +78,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     setIsDragging(false);
     setDragCounter(0);
     setExtracted(null);
+    setSelectedPhotoIndices(new Set());
     onClose();
   };
 
@@ -147,10 +152,33 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       }
       const data: ExtractedData = await res.json();
       setExtracted(data);
-      setStep("done");
+
+      const scores = data.photoScores || fileItems.map(() => 0.5);
+      const preSelected = new Set<number>(
+        scores.map((s, i) => (s >= CONFIDENCE_THRESHOLD ? i : -1)).filter((i) => i >= 0)
+      );
+      setSelectedPhotoIndices(preSelected);
+      setStep("photos");
     } catch {
       setStep("error");
     }
+  };
+
+  const togglePhoto = (index: number) => {
+    setSelectedPhotoIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
+
+  const handlePhotosNext = () => {
+    const selected = fileItems
+      .filter((_, i) => selectedPhotoIndices.has(i))
+      .map((item) => item.file);
+    setImportedPhotos(selected);
+    setStep("done");
   };
 
   const handleListExtracted = () => {
@@ -169,11 +197,17 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     fileItems.forEach((item) => URL.revokeObjectURL(item.preview));
     setFileItems([]);
     setExtracted(null);
+    setSelectedPhotoIndices(new Set());
     setStep("upload");
   };
 
+  const hasHighConfidencePhotos =
+    extracted?.photoScores?.some((s) => s >= CONFIDENCE_THRESHOLD) ?? false;
+
   const subtitleText =
-    step === "done"
+    step === "photos"
+      ? "Choose which screenshots to use as listing photos."
+      : step === "done"
       ? "Review the extracted details before filling in your listing form."
       : step === "scanning"
       ? "Our AI is reading your listing..."
@@ -189,7 +223,6 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
           type="file"
           accept="image/*"
           multiple
-          capture={undefined}
           className="hidden"
           onChange={handleFileInputChange}
         />
@@ -209,7 +242,6 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
         {/* ── Step: Upload ─────────────────────────────────── */}
         {step === "upload" && (
           <div className="space-y-4">
-            {/* Platform pills */}
             <div className="flex flex-wrap gap-1.5">
               {PLATFORMS.map((p) => (
                 <span
@@ -249,17 +281,22 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                 </div>
               ) : (
                 <div className="p-3 space-y-3">
-                  {/* Preview grid */}
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {fileItems.map((item, i) => (
-                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group">
+                      <div
+                        key={i}
+                        className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group"
+                      >
                         <img
                           src={item.preview}
                           alt={`Screenshot ${i + 1}`}
                           className="w-full h-full object-cover"
                         />
                         <button
-                          onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(i);
+                          }}
                           className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="h-3 w-3" />
@@ -284,11 +321,10 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
             </div>
 
             {/* Tip */}
-            <p className="text-xs text-muted-foreground text-center leading-relaxed">
-              Fastest & most reliable way to import from any marketplace.
+            <p className="text-xs text-muted-foreground text-center">
+              Screenshots showing the item gallery work best. Fastest & most reliable way to import from any marketplace.
             </p>
 
-            {/* Actions */}
             <div className="space-y-2">
               <Button
                 onClick={handleScan}
@@ -314,16 +350,94 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
         {/* ── Step: Scanning ──────────────────────────────── */}
         {step === "scanning" && (
           <div className="py-12 flex flex-col items-center gap-4 text-center">
-            <div className="relative w-16 h-16">
-              <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center">
-                <Loader2 className="h-8 w-8 text-teal-600 animate-spin" />
-              </div>
+            <div className="w-16 h-16 rounded-full bg-teal-50 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 text-teal-600 animate-spin" />
             </div>
             <div>
               <p className="font-semibold text-gray-800 text-lg">Scanning your listing…</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Generating details from your screenshot{fileItems.length !== 1 ? "s" : ""}
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step: Photos Review ─────────────────────────── */}
+        {step === "photos" && (
+          <div className="space-y-4">
+            {!hasHighConfidencePhotos ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2.5">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-800">
+                  We couldn't detect clear product photos in these screenshots. You can still select any to use, or skip and add photos manually.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2.5">
+                <Image className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-800">
+                  We pre-selected screenshots that appear to show the item clearly. Tap to deselect or add more.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {fileItems.map((item, i) => {
+                const score = extracted?.photoScores?.[i] ?? 0;
+                const isSelected = selectedPhotoIndices.has(i);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => togglePhoto(i)}
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      isSelected
+                        ? "border-teal-500 ring-2 ring-teal-200"
+                        : "border-gray-200 opacity-60 hover:opacity-90"
+                    }`}
+                  >
+                    <img
+                      src={item.preview}
+                      alt={`Screenshot ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Confidence badge */}
+                    {score >= CONFIDENCE_THRESHOLD && (
+                      <span className="absolute top-1 left-1 bg-teal-500 text-white text-[9px] font-bold px-1 rounded">
+                        CLEAR
+                      </span>
+                    )}
+                    {/* Selected overlay */}
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-teal-500/10 flex items-end justify-end p-1">
+                        <div className="w-5 h-5 rounded-full bg-teal-500 flex items-center justify-center">
+                          <Check className="h-3 w-3 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              {selectedPhotoIndices.size === 0
+                ? "No photos selected — you can add photos manually on the listing form"
+                : `${selectedPhotoIndices.size} photo${selectedPhotoIndices.size !== 1 ? "s" : ""} selected`}
+            </p>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={resetToUpload} className="flex-1">
+                ← Back
+              </Button>
+              <Button
+                onClick={handlePhotosNext}
+                className="flex-[2] text-white gap-1"
+                style={{ backgroundColor: "#0DCEA1" }}
+              >
+                {selectedPhotoIndices.size > 0
+                  ? `Use ${selectedPhotoIndices.size} photo${selectedPhotoIndices.size !== 1 ? "s" : ""}`
+                  : "Skip photos"} →
+              </Button>
             </div>
           </div>
         )}
@@ -339,13 +453,10 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
               </div>
             </div>
 
-            <div className="bg-white border rounded-xl p-4 space-y-3 text-sm max-h-64 overflow-y-auto">
+            <div className="bg-white border rounded-xl p-4 space-y-3 text-sm max-h-60 overflow-y-auto">
               {extracted.name && <Row label="Item" value={extracted.name} />}
               {extracted.brand && (
-                <Row
-                  label="Brand"
-                  value={`${extracted.brand}${extracted.isLuxury ? " ✦ Luxury" : ""}`}
-                />
+                <Row label="Brand" value={`${extracted.brand}${extracted.isLuxury ? " ✦ Luxury" : ""}`} />
               )}
               {extracted.itemType && <Row label="Category" value={extracted.itemType} />}
               {extracted.condition && (
@@ -368,17 +479,9 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
               )}
             </div>
 
-            {/* Photo notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2.5">
-              <Image className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-800">
-                We couldn't extract clean item photos from your screenshot. Add photos manually for best results.
-              </p>
-            </div>
-
             <div className="flex gap-2">
-              <Button variant="outline" onClick={resetToUpload} className="flex-1 gap-1">
-                Try again
+              <Button variant="outline" onClick={() => setStep("photos")} className="flex-1">
+                ← Back
               </Button>
               <Button
                 onClick={handleListExtracted}

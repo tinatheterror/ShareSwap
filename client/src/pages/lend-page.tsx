@@ -17,6 +17,7 @@ import { WishlistFulfillmentPopup } from "@/components/wishlist-fulfillment-popu
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDisplayName } from "@/lib/utils";
+import { getImportedPhotos, clearImportedPhotos } from "@/lib/import-store";
 import {
   calculateSecurityDeposit,
   formatDeposit,
@@ -686,7 +687,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     }
   }, [prefillItemName, isEditMode]);
 
-  // Pre-fill from marketplace import (URL import or screenshot analysis)
+  // Pre-fill from marketplace import (screenshot analysis)
   useEffect(() => {
     if (isEditMode) return;
     const raw = sessionStorage.getItem("shareswap_import_data");
@@ -716,6 +717,25 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       if (data.itemType) form.setValue("itemType", data.itemType);
       if (data.name) detectItemCategory(data.name);
     } catch {}
+  }, [isEditMode]);
+
+  // Pre-fill photos from marketplace import (selected screenshots)
+  useEffect(() => {
+    if (isEditMode) return;
+    const files = getImportedPhotos();
+    if (files.length === 0) return;
+    clearImportedPhotos();
+    setSelectedPhotos((prev) => [...prev, ...files]);
+    const readAsDataURL = (file: File): Promise<string> =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(file);
+      });
+    Promise.all(files.map(readAsDataURL)).then((urls) => {
+      setPhotoPreviewUrls((prev) => [...prev, ...urls]);
+    });
   }, [isEditMode]);
 
   // Convert files to base64 for AI valuation / autofill

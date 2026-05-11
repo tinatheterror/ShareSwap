@@ -122,33 +122,21 @@ function RecropModal({
   onClose: () => void;
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
-  const [crop, setCrop] = useState<Crop>(() => {
-    if (photo.normCrop) {
-      return {
-        unit: "%",
-        x: photo.normCrop.x * 100,
-        y: photo.normCrop.y * 100,
-        width: photo.normCrop.w * 100,
-        height: photo.normCrop.h * 100,
-      };
-    }
-    return centerCrop(makeAspectCrop({ unit: "%", width: 90 }, 1, 100, 100), 100, 100);
-  });
+  // Start with no selection — user draws their own precise crop
+  const [crop, setCrop] = useState<Crop | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    const img = imgRef.current;
-    if (!img) { setSaving(false); return; }
-    const scaleX = img.naturalWidth / img.width;
-    const scaleY = img.naturalHeight / img.height;
-    // Convert crop (%) back to normalized 0-1
-    const norm: NormCrop = {
-      x: (crop.x / 100),
-      y: (crop.y / 100),
-      w: ((crop as any).width / 100),
-      h: ((crop as any).height / 100),
-    };
+    let norm: NormCrop | null = null;
+    if (crop && (crop as any).width > 0 && (crop as any).height > 0) {
+      norm = {
+        x: crop.x / 100,
+        y: crop.y / 100,
+        w: (crop as any).width / 100,
+        h: (crop as any).height / 100,
+      };
+    }
     const { file, preview } = await cropToFile(photo.originalFile, photo.originalPreview, norm);
     onSave({ ...photo, file, preview, normCrop: norm });
     setSaving(false);
@@ -158,29 +146,33 @@ function RecropModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <p className="font-semibold text-gray-800">Adjust crop</p>
+          <p className="font-semibold text-gray-800">Crop photo</p>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-4 bg-gray-900 flex items-center justify-center max-h-[60vh] overflow-auto">
-          <ReactCrop crop={crop} onChange={(_, pct) => setCrop(pct)} keepSelection>
+        <div className="p-3 bg-gray-900 flex items-center justify-center max-h-[62vh] overflow-auto">
+          <ReactCrop
+            crop={crop}
+            onChange={(_, pct) => setCrop(pct)}
+            keepSelection={false}
+          >
             <img
               ref={imgRef}
               src={photo.originalPreview}
-              alt="Recrop"
-              className="max-w-full max-h-[55vh] object-contain"
+              alt="Crop"
+              className="max-w-full max-h-[58vh] object-contain"
             />
           </ReactCrop>
         </div>
         <p className="text-xs text-muted-foreground text-center py-2">
-          Drag to select the product area
+          Draw a box around the product only · tap outside to reset
         </p>
         <div className="flex gap-2 p-4 pt-0">
           <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
           <Button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !crop || (crop as any).width === 0}
             className="flex-[2] text-white gap-1"
             style={{ backgroundColor: "#0DCEA1" }}
           >

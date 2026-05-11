@@ -179,7 +179,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       ? "Our AI is reading your listing..."
       : step === "error"
       ? "Something went wrong. Try uploading clearer screenshots."
-      : "Upload screenshots of listings from other platforms to generate your listing details.";
+      : "Upload screenshots of your listing from other platforms to generate new listing details.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

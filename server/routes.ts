@@ -2136,7 +2136,8 @@ Return only the JSON object, no other text.`;
   "isLuxury": <true or false>,
   "originalValue": "Under $50" or "$50–$199" or "$200–$499" or "$500–$2,000",
   "suggestedTier": <1, 2, 3, or 4>,
-  "photoScores": [<0.0-1.0 per image>]
+  "photoScores": [<0.0-1.0 per image>],
+  "photoCrops": [{"x": <0-1>, "y": <0-1>, "w": <0-1>, "h": <0-1>} or null per image]
 }
 
 Condition mapping: new/like new/mint → "New / Like New" (rating 9-10); good/great/excellent → "Good" (7-8); fair/used/okay → "Fair" (5-6); worn/damaged/poor → "Well Loved" (1-4).
@@ -2144,6 +2145,7 @@ IMPORTANT — originalValue is the item's ORIGINAL RETAIL PRICE when bought new 
 Tier: under $50 → tier 1; $50-$199 → tier 2; $200-$499 → tier 3; $500+ → tier 4. Tier is based on originalValue only.
 Luxury: true if brand is designer/premium (e.g. Gucci, LV, Apple, Sony, Dyson, Rolex, etc).
 photoScores: for each image in order, rate 0.0-1.0 how clearly it shows the main product item (not marketplace UI, not profile photos, not nav/icons). Score 0.8+ for a clear product photo taking up most of the image, 0.5-0.7 for product visible but small or partially obscured, below 0.5 for UI-only/text-only/no product visible.
+photoCrops: for each image in order, if a clear product photo region is visible inside the screenshot, return normalized bounding box {x, y, w, h} (all values 0.0-1.0 relative to the full image dimensions, where x/y is top-left corner) that tightly crops the main product photo area excluding marketplace UI, navigation bars, price labels, profile photos, and chrome. Return null if no clean crop region can be identified with high confidence.
 Return only the JSON object, no other text.`
               }
             ]
@@ -2191,6 +2193,18 @@ Return only the JSON object, no other text.`
         Math.min(1, Math.max(0, parseFloat(String(rawScores[i] ?? 0.5)) || 0.5))
       );
 
+      const rawCrops = Array.isArray(extracted.photoCrops) ? extracted.photoCrops : [];
+      const photoCrops = files.map((_, i) => {
+        const c = rawCrops[i];
+        if (!c || typeof c !== 'object') return null;
+        const x = parseFloat(String(c.x));
+        const y = parseFloat(String(c.y));
+        const w = parseFloat(String(c.w));
+        const h = parseFloat(String(c.h));
+        if ([x, y, w, h].some(isNaN) || x < 0 || y < 0 || w <= 0.05 || h <= 0.05 || x + w > 1.01 || y + h > 1.01) return null;
+        return { x: Math.max(0, x), y: Math.max(0, y), w: Math.min(1 - x, w), h: Math.min(1 - y, h) };
+      });
+
       return res.json({
         name: (extracted.name || 'Imported Item').substring(0, 60),
         description: extracted.description || '',
@@ -2205,6 +2219,7 @@ Return only the JSON object, no other text.`
         originalValue: validValues.includes(extracted.originalValue) ? extracted.originalValue : '$50–$199',
         suggestedTier: validTiers.includes(parseInt(String(extracted.suggestedTier))) ? parseInt(String(extracted.suggestedTier)) : 2,
         photoScores,
+        photoCrops,
       });
     } catch (error) {
       const err = error as any;

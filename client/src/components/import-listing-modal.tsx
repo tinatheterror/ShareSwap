@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Upload,
-  Image,
   Loader2,
   CheckCircle2,
   AlertTriangle,
@@ -17,8 +16,6 @@ import {
   Plus,
   Sparkles,
   Pencil,
-  Check,
-  Crop,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { setImportedPhotos } from "@/lib/import-store";
@@ -28,7 +25,7 @@ interface ImportListingModalProps {
   onClose: () => void;
 }
 
-type Step = "upload" | "scanning" | "photos" | "done" | "error";
+type Step = "upload" | "scanning" | "done" | "error";
 
 interface FileItem {
   file: File;
@@ -40,13 +37,6 @@ interface PhotoCrop {
   y: number;
   w: number;
   h: number;
-}
-
-interface ProcessedPhoto {
-  file: File;
-  preview: string;       // cropped data URL (or original preview if no crop)
-  originalPreview: string;
-  wasCropped: boolean;
 }
 
 interface ExtractedData {
@@ -75,16 +65,14 @@ const PLATFORMS = [
   "Any resale platform",
 ];
 
-const CONFIDENCE_THRESHOLD = 0.55;
+const CONFIDENCE_THRESHOLD = 0.45;
 
 async function applyCanvasCrop(
   file: File,
-  originalPreview: string,
+  preview: string,
   crop: PhotoCrop | null,
-): Promise<ProcessedPhoto> {
-  if (!crop) {
-    return { file, preview: originalPreview, originalPreview, wasCropped: false };
-  }
+): Promise<File> {
+  if (!crop) return file;
   return new Promise((resolve) => {
     const img = new window.Image();
     img.onload = () => {
@@ -92,40 +80,27 @@ async function applyCanvasCrop(
       const sy = Math.round(crop.y * img.naturalHeight);
       const sw = Math.round(crop.w * img.naturalWidth);
       const sh = Math.round(crop.h * img.naturalHeight);
-      if (sw < 10 || sh < 10) {
-        resolve({ file, preview: originalPreview, originalPreview, wasCropped: false });
-        return;
-      }
+      if (sw < 20 || sh < 20) { resolve(file); return; }
       const canvas = document.createElement("canvas");
       canvas.width = sw;
       canvas.height = sh;
       const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve({ file, preview: originalPreview, originalPreview, wasCropped: false });
-        return;
-      }
+      if (!ctx) { resolve(file); return; }
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-      const croppedDataUrl = canvas.toDataURL("image/jpeg", 0.92);
       canvas.toBlob(
         (blob) => {
-          if (!blob) {
-            resolve({ file, preview: originalPreview, originalPreview, wasCropped: false });
-            return;
-          }
-          const croppedFile = new File(
-            [blob],
-            file.name.replace(/\.[^.]+$/, "_cropped.jpg"),
-            { type: "image/jpeg" },
+          resolve(
+            blob
+              ? new File([blob], file.name.replace(/\.[^.]+$/, "_crop.jpg"), { type: "image/jpeg" })
+              : file,
           );
-          resolve({ file: croppedFile, preview: croppedDataUrl, originalPreview, wasCropped: true });
         },
         "image/jpeg",
         0.92,
       );
     };
-    img.onerror = () =>
-      resolve({ file, preview: originalPreview, originalPreview, wasCropped: false });
-    img.src = originalPreview;
+    img.onerror = () => resolve(file);
+    img.src = preview;
   });
 }
 
@@ -136,9 +111,6 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
   const [extracted, setExtracted] = useState<ExtractedData | null>(null);
-  const [processedPhotos, setProcessedPhotos] = useState<ProcessedPhoto[]>([]);
-  const [selectedPhotoIndices, setSelectedPhotoIndices] = useState<Set<number>>(new Set());
-  const [showOriginal, setShowOriginal] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleClose = () => {
@@ -148,9 +120,6 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     setIsDragging(false);
     setDragCounter(0);
     setExtracted(null);
-    setProcessedPhotos([]);
-    setSelectedPhotoIndices(new Set());
-    setShowOriginal(null);
     onClose();
   };
 
@@ -158,7 +127,10 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     const images = incoming.filter((f) => f.type.startsWith("image/"));
     if (images.length === 0) return;
     setFileItems((prev) => {
-      const combined = [...prev, ...images.map((f) => ({ file: f, preview: URL.createObjectURL(f) }))];
+      const combined = [
+        ...prev,
+        ...images.map((f) => ({ file: f, preview: URL.createObjectURL(f) })),
+      ];
       return combined.slice(0, 5);
     });
   }, []);
@@ -225,40 +197,25 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       const data: ExtractedData = await res.json();
       setExtracted(data);
 
-      // Apply canvas crops to each photo
+      // Auto-crop all qualifying photos and pass to lend-page
       const crops = data.photoCrops || [];
-      const processed = await Promise.all(
-        fileItems.map((item, i) => applyCanvasCrop(item.file, item.preview, crops[i] ?? null)),
-      );
-      setProcessedPhotos(processed);
-
-      // Pre-select high-confidence photos
       const scores = data.photoScores || fileItems.map(() => 0.5);
-      const preSelected = new Set<number>(
-        scores.map((s, i) => (s >= CONFIDENCE_THRESHOLD ? i : -1)).filter((i) => i >= 0),
+      const qualifying = fileItems.filter((_, i) => scores[i] >= CONFIDENCE_THRESHOLD);
+      const toProcess = qualifying.length > 0 ? qualifying : fileItems;
+      const croppedFiles = await Promise.all(
+        toProcess.map((item, i) => {
+          const originalIndex = qualifying.length > 0
+            ? fileItems.indexOf(item)
+            : i;
+          return applyCanvasCrop(item.file, item.preview, crops[originalIndex] ?? null);
+        }),
       );
-      setSelectedPhotoIndices(preSelected);
-      setStep("photos");
+      setImportedPhotos(croppedFiles);
+
+      setStep("done");
     } catch {
       setStep("error");
     }
-  };
-
-  const togglePhoto = (index: number) => {
-    setSelectedPhotoIndices((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
-
-  const handlePhotosNext = () => {
-    const selected = processedPhotos
-      .filter((_, i) => selectedPhotoIndices.has(i))
-      .map((p) => p.file);
-    setImportedPhotos(selected);
-    setStep("done");
   };
 
   const handleListExtracted = () => {
@@ -277,23 +234,14 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     fileItems.forEach((item) => URL.revokeObjectURL(item.preview));
     setFileItems([]);
     setExtracted(null);
-    setProcessedPhotos([]);
-    setSelectedPhotoIndices(new Set());
-    setShowOriginal(null);
     setStep("upload");
   };
 
-  const hasHighConfidencePhotos =
-    extracted?.photoScores?.some((s) => s >= CONFIDENCE_THRESHOLD) ?? false;
-  const anyCropped = processedPhotos.some((p) => p.wasCropped);
-
   const subtitleText =
-    step === "photos"
-      ? "Choose which photos to use for your listing."
-      : step === "done"
+    step === "done"
       ? "Review the extracted details before filling in your listing form."
       : step === "scanning"
-      ? "Our AI is reading your listing..."
+      ? "Our AI is reading your listing…"
       : step === "error"
       ? "Something went wrong. Try uploading clearer screenshots."
       : "Upload screenshots of your listing from other platforms to generate new listing details.";
@@ -369,9 +317,16 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                         key={i}
                         className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group"
                       >
-                        <img src={item.preview} alt={`Screenshot ${i + 1}`} className="w-full h-full object-cover" />
+                        <img
+                          src={item.preview}
+                          alt={`Screenshot ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
                         <button
-                          onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(i);
+                          }}
                           className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="h-3 w-3" />
@@ -396,7 +351,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Screenshots showing the item gallery work best. Fastest & most reliable way to import from any marketplace.
+              Screenshots showing the item gallery work best. Fastest &amp; most reliable way to import from any marketplace.
             </p>
 
             <div className="space-y-2">
@@ -430,114 +385,8 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
             <div>
               <p className="font-semibold text-gray-800 text-lg">Scanning your listing…</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Generating details from your screenshot{fileItems.length !== 1 ? "s" : ""}
+                Extracting item details and cropping photos
               </p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step: Photos Review ─────────────────────────── */}
-        {step === "photos" && (
-          <div className="space-y-4">
-            {anyCropped ? (
-              <div className="bg-teal-50 border border-teal-100 rounded-lg p-3 flex items-start gap-2.5">
-                <Crop className="h-4 w-4 text-teal-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-teal-800">
-                  We auto-cropped the product photos from your screenshots — marketplace UI removed. Tap to deselect or keep all.
-                </p>
-              </div>
-            ) : !hasHighConfidencePhotos ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2.5">
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-800">
-                  We couldn't detect clear product photos. You can still select any to use, or skip and add photos manually.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2.5">
-                <Image className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-800">
-                  We pre-selected screenshots that show the item clearly. Tap to deselect any.
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {processedPhotos.map((photo, i) => {
-                const score = extracted?.photoScores?.[i] ?? 0;
-                const isSelected = selectedPhotoIndices.has(i);
-                const isShowingOriginal = showOriginal === i;
-                return (
-                  <div key={i} className="space-y-1">
-                    <button
-                      onClick={() => togglePhoto(i)}
-                      className={`relative aspect-square w-full rounded-lg overflow-hidden border-2 transition-all ${
-                        isSelected
-                          ? "border-teal-500 ring-2 ring-teal-200"
-                          : "border-gray-200 opacity-60 hover:opacity-90"
-                      }`}
-                    >
-                      <img
-                        src={isShowingOriginal ? photo.originalPreview : photo.preview}
-                        alt={`Photo ${i + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Crop badge */}
-                      {photo.wasCropped && !isShowingOriginal && (
-                        <span className="absolute top-1 left-1 bg-teal-600 text-white text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5">
-                          <Crop className="h-2 w-2" />
-                          Cropped
-                        </span>
-                      )}
-                      {/* High confidence badge (no crop) */}
-                      {!photo.wasCropped && score >= CONFIDENCE_THRESHOLD && (
-                        <span className="absolute top-1 left-1 bg-teal-500 text-white text-[9px] font-bold px-1 rounded">
-                          CLEAR
-                        </span>
-                      )}
-                      {/* Selected checkmark */}
-                      {isSelected && (
-                        <div className="absolute inset-0 bg-teal-500/10 flex items-end justify-end p-1">
-                          <div className="w-5 h-5 rounded-full bg-teal-500 flex items-center justify-center">
-                            <Check className="h-3 w-3 text-white" />
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                    {/* Toggle original/cropped */}
-                    {photo.wasCropped && (
-                      <button
-                        onClick={() => setShowOriginal(isShowingOriginal ? null : i)}
-                        className="w-full text-[10px] text-muted-foreground hover:text-gray-700 text-center transition-colors"
-                      >
-                        {isShowingOriginal ? "Show cropped" : "View original"}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <p className="text-xs text-muted-foreground text-center">
-              {selectedPhotoIndices.size === 0
-                ? "No photos selected — you can add photos manually on the listing form"
-                : `${selectedPhotoIndices.size} photo${selectedPhotoIndices.size !== 1 ? "s" : ""} selected`}
-            </p>
-
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={resetToUpload} className="flex-1">
-                ← Back
-              </Button>
-              <Button
-                onClick={handlePhotosNext}
-                className="flex-[2] text-white gap-1"
-                style={{ backgroundColor: "#0DCEA1" }}
-              >
-                {selectedPhotoIndices.size > 0
-                  ? `Use ${selectedPhotoIndices.size} photo${selectedPhotoIndices.size !== 1 ? "s" : ""}`
-                  : "Skip photos"}{" "}
-                →
-              </Button>
             </div>
           </div>
         )}
@@ -549,18 +398,26 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
               <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-green-800">Details extracted!</p>
-                <p className="text-sm text-green-700">Review below and we'll pre-fill the listing form.</p>
+                <p className="text-sm text-green-700">
+                  We'll pre-fill your listing form and load your photos — you can review and edit everything before publishing.
+                </p>
               </div>
             </div>
 
             <div className="bg-white border rounded-xl p-4 space-y-3 text-sm max-h-60 overflow-y-auto">
               {extracted.name && <Row label="Item" value={extracted.name} />}
               {extracted.brand && (
-                <Row label="Brand" value={`${extracted.brand}${extracted.isLuxury ? " ✦ Luxury" : ""}`} />
+                <Row
+                  label="Brand"
+                  value={`${extracted.brand}${extracted.isLuxury ? " ✦ Luxury" : ""}`}
+                />
               )}
               {extracted.itemType && <Row label="Category" value={extracted.itemType} />}
               {extracted.condition && (
-                <Row label="Condition" value={`${extracted.condition} (${extracted.conditionRating}/10)`} />
+                <Row
+                  label="Condition"
+                  value={`${extracted.condition} (${extracted.conditionRating}/10)`}
+                />
               )}
               {extracted.originalValue && (
                 <Row label="Original price" value={extracted.originalValue} />
@@ -575,12 +432,16 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                 <Row label="Model / version" value={extracted.modelVersion} />
               )}
               {extracted.visibleDamage && (
-                <Row label="Visible damage" value={extracted.visibleDamage} className="text-amber-700" />
+                <Row
+                  label="Visible damage"
+                  value={extracted.visibleDamage}
+                  className="text-amber-700"
+                />
               )}
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep("photos")} className="flex-1">
+              <Button variant="outline" onClick={resetToUpload} className="flex-1">
                 ← Back
               </Button>
               <Button
@@ -631,7 +492,15 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
   );
 }
 
-function Row({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+function Row({
+  label,
+  value,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground shrink-0">{label}</span>

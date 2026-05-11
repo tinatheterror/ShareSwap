@@ -239,7 +239,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
 
   const subtitleText =
     step === "done"
-      ? "Review the extracted details before filling in your listing form."
+      ? "Review and edit listing details before publishing."
       : step === "scanning"
       ? "Our AI is reading your listing…"
       : step === "error"
@@ -425,9 +425,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
               {extracted.suggestedTier > 0 && (
                 <Row label="Sharing tier" value={`Tier ${extracted.suggestedTier}`} />
               )}
-              {extracted.price != null && (
-                <Row label="Listed price" value={`$${extracted.price}`} />
-              )}
+
               {extracted.modelVersion && (
                 <Row label="Model / version" value={extracted.modelVersion} />
               )}

@@ -362,6 +362,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [aiScanEnabled, setAiScanEnabled] = useState(false);
+  const [isFromImport, setIsFromImport] = useState(false);
 
   // Photo editor state
   const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
@@ -716,6 +717,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         );
       if (data.itemType) form.setValue("itemType", data.itemType);
       if (data.name) detectItemCategory(data.name);
+      setIsFromImport(true);
     } catch {}
   }, [isEditMode]);
 
@@ -725,6 +727,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     const files = getImportedPhotos();
     if (files.length === 0) return;
     clearImportedPhotos();
+    setIsFromImport(true);
     setSelectedPhotos((prev) => [...prev, ...files]);
     const readAsDataURL = (file: File): Promise<string> =>
       new Promise((resolve) => {
@@ -1523,6 +1526,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           onChange={handlePhotoChange}
                         />
                       </div>
+                      {!isFromImport && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-teal-50">
                         <div className="flex items-center gap-2.5">
                           <Sparkles
@@ -1550,6 +1554,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           />
                         )}
                       </div>
+                      )}
                     </div>
                   )}
                   {isEditMode &&
@@ -2512,6 +2517,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           onChange={handlePhotoChange}
                         />
                       </div>
+                      {!isFromImport && (
                       <div className="flex items-center justify-between p-3 rounded-lg bg-teal-50">
                         <div className="flex items-center gap-2.5">
                           <Sparkles
@@ -2539,6 +2545,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           />
                         )}
                       </div>
+                      )}
                     </div>
                   )}
 

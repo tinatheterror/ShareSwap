@@ -179,7 +179,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       ? "Our AI is reading your listing..."
       : step === "error"
       ? "Something went wrong. Try uploading clearer screenshots."
-      : "Upload screenshots to auto-fill your listing details.";
+      : "Upload screenshots of your listing from other platforms to auto-fill your listing details.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -285,7 +285,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
 
             {/* Tip */}
             <p className="text-xs text-muted-foreground text-center leading-relaxed">
-              Fastest & most reliable — works with any marketplace.
+              Fastest & most reliable way to import from any marketplace.
             </p>
 
             {/* Actions */}

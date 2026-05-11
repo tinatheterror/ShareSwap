@@ -90,6 +90,7 @@
     "react-image-crop": "^11.0.10",
     "react-resizable-panels": "^2.1.4",
     "recharts": "^2.13.0",
+    "sharp": "^0.34.5",
     "stripe": "^20.0.0",
     "stripe-replit-sync": "^1.0.0",
     "tailwind-merge": "^2.5.4",

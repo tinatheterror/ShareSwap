@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import * as uberDirect from "./uber-direct";
@@ -2136,8 +2137,7 @@ Return only the JSON object, no other text.`;
   "isLuxury": <true or false>,
   "originalValue": "Under $50" or "$50–$199" or "$200–$499" or "$500–$2,000",
   "suggestedTier": <1, 2, 3, or 4>,
-  "photoScores": [<0.0-1.0 per image>],
-  "photoCrops": [<crop object or null per image>]
+  "photoScores": [<0.0-1.0 per image>]
 }
 
 Condition mapping: new/like new/mint → "New / Like New" (rating 9-10); good/great/excellent → "Good" (7-8); fair/used/okay → "Fair" (5-6); worn/damaged/poor → "Well Loved" (1-4).
@@ -2145,7 +2145,6 @@ IMPORTANT — originalValue is the item's ORIGINAL RETAIL PRICE when bought new 
 Tier: under $50 → tier 1; $50-$199 → tier 2; $200-$499 → tier 3; $500+ → tier 4. Tier is based on originalValue only.
 Luxury: true if brand is designer/premium (e.g. Gucci, LV, Apple, Sony, Dyson, Rolex, etc).
 photoScores: for each image in order, rate 0.0-1.0 how clearly it shows the main product item (not marketplace UI, not profile photos, not nav/icons). Score 0.8+ for a clear product photo taking up most of the image, 0.5-0.7 for product visible but small or partially obscured, below 0.5 for UI-only/text-only/no product visible.
-photoCrops: For each screenshot, look for the main embedded PRODUCT PHOTO — the rectangular photographic image of the item being sold, which sits inside the surrounding app UI (navigation bar, price text, title, description, seller info, buttons etc.). Return {"top": T, "left": L, "bottom": B, "right": R} where T/L/B/R are INTEGER percentages (0–100) of where that photo rectangle sits within the full screenshot — for example if the product photo occupies the top 55% at full width: {"top": 2, "left": 0, "bottom": 57, "right": 100}. Add ~2% padding on each side so nothing is cut off. Return null if the screenshot IS already a clean standalone product photo with no surrounding app UI chrome (e.g. a plain photo on a clean background with no status bar, no buttons, no text overlays).
 Return only the JSON object, no other text.`
               }
             ]
@@ -2193,24 +2192,85 @@ Return only the JSON object, no other text.`
         Math.min(1, Math.max(0, parseFloat(String(rawScores[i] ?? 0.5)) || 0.5))
       );
 
-      const rawCrops = Array.isArray(extracted.photoCrops) ? extracted.photoCrops : [];
-      const photoCrops = files.map((_, i) => {
-        const c = rawCrops[i];
-        if (!c || typeof c !== 'object') return null;
-        const top = Math.min(100, Math.max(0, parseInt(String(c.top))));
-        const left = Math.min(100, Math.max(0, parseInt(String(c.left))));
-        const bottom = Math.min(100, Math.max(top + 10, parseInt(String(c.bottom))));
-        const right = Math.min(100, Math.max(left + 10, parseInt(String(c.right))));
-        if (isNaN(top) || isNaN(left) || isNaN(bottom) || isNaN(right)) return null;
-        // Only use crop if it meaningfully trims the image (not just the whole thing)
-        const trimW = right - left;
-        const trimH = bottom - top;
-        if (trimW < 20 || trimH < 15) return null;
-        // Convert to NormCrop {x,y,w,h} 0-1
-        return { x: left / 100, y: top / 100, w: trimW / 100, h: trimH / 100 };
-      });
+      // Pixel-based photo boundary detection using sharp
+      const photoCrops = await Promise.all(files.map(async (file) => {
+        try {
+          const img = sharp(file.buffer);
+          const meta = await img.metadata();
+          const { width = 1, height = 1 } = meta;
 
-      console.log('[Screenshot Import] photoCrops:', JSON.stringify(photoCrops));
+          // Get raw RGB pixels (3 channels, no alpha)
+          const { data } = await img.raw().toColorspace('srgb').toBuffer({ resolveWithObject: true });
+          const channels = 3;
+
+          // Helper: compute lightness (0-255) and variance for a single row
+          const rowStats = (y: number) => {
+            let sumR = 0, sumG = 0, sumB = 0;
+            const base = y * width * channels;
+            for (let x = 0; x < width; x++) {
+              const i = base + x * channels;
+              sumR += data[i]; sumG += data[i + 1]; sumB += data[i + 2];
+            }
+            const meanR = sumR / width, meanG = sumG / width, meanB = sumB / width;
+            const meanL = (meanR + meanG + meanB) / 3;
+
+            let varSum = 0;
+            for (let x = 0; x < width; x++) {
+              const i = base + x * channels;
+              const l = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              varSum += (l - meanL) ** 2;
+            }
+            return { meanL, variance: varSum / width };
+          };
+
+          // Classify each row: "photo" = high variance or dark, "ui" = bright + low variance
+          const UI_LIGHT_THRESHOLD = 210;  // rows where avg brightness > this are "light"
+          const UI_VAR_THRESHOLD = 600;    // rows where variance < this are "uniform"
+          const isUiRow = (y: number) => {
+            const { meanL, variance } = rowStats(y);
+            return meanL > UI_LIGHT_THRESHOLD && variance < UI_VAR_THRESHOLD;
+          };
+
+          // Skip status bar: first ~6% of height
+          const skipTop = Math.floor(height * 0.06);
+
+          // Find the bottom of the photo: scan downward from skipTop.
+          // Photo ends when we hit 4+ consecutive UI rows, after seeing at least 15% photo height.
+          const MIN_PHOTO_HEIGHT = Math.floor(height * 0.15);
+          let photoBottom = height; // default: full image
+          let uiRunLength = 0;
+          let photoRowsSeen = 0;
+
+          for (let y = skipTop; y < height; y++) {
+            if (isUiRow(y)) {
+              uiRunLength++;
+              if (photoRowsSeen >= MIN_PHOTO_HEIGHT && uiRunLength >= 4) {
+                photoBottom = y - uiRunLength + 1; // first UI row of this run
+                break;
+              }
+            } else {
+              uiRunLength = 0;
+              photoRowsSeen++;
+            }
+          }
+
+          // Only crop if we found a meaningful boundary (not just the whole image)
+          const trimH = photoBottom / height;
+          if (trimH > 0.85) {
+            // The whole image is photographic — no UI chrome found, don't crop
+            return null;
+          }
+
+          // Add small padding buffer (2%) and clamp
+          const yEnd = Math.min(1, trimH + 0.02);
+          const result = { x: 0, y: skipTop / height, w: 1, h: yEnd - (skipTop / height) };
+          console.log(`[Screenshot Import] Pixel crop: y=${result.y.toFixed(2)} h=${result.h.toFixed(2)} (photoBottom=${photoBottom}/${height})`);
+          return result;
+        } catch (e) {
+          console.warn('[Screenshot Import] sharp detection failed:', e);
+          return null;
+        }
+      }));
 
       return res.json({
         name: (extracted.name || 'Imported Item').substring(0, 60),

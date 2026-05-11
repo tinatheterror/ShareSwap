@@ -65,7 +65,6 @@ interface ExtractedData {
   originalValue: string;
   suggestedTier: number;
   photoScores: number[];
-  photoCrops: (NormCrop[] | null)[];
 }
 
 const PLATFORMS = ["Facebook Marketplace", "Craigslist", "Poshmark", "OfferUp", "Karrot", "Any resale platform"];
@@ -164,20 +163,15 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       const data: ExtractedData = await res.json();
       setExtracted(data);
 
-      const allPhotos: CroppedPhoto[] = [];
-      for (let i = 0; i < fileItems.length; i++) {
-        const regions: NormCrop[] = Array.isArray(data.photoCrops?.[i]) ? (data.photoCrops[i] as NormCrop[]) : [];
-        const { file, preview: origPreview } = fileItems[i];
-        if (regions.length === 0) {
-          const { file: f, preview } = await cropToFile(file, origPreview, null);
-          allPhotos.push({ id: uid(), file: f, preview, originalFile: file, originalPreview: origPreview, normCrop: null });
-        } else {
-          for (const norm of regions) {
-            const { file: f, preview } = await cropToFile(file, origPreview, norm);
-            allPhotos.push({ id: uid(), file: f, preview, originalFile: file, originalPreview: origPreview, normCrop: norm });
-          }
-        }
-      }
+      // Show full screenshots — no auto-crop applied. Users crop manually via the inline tool.
+      const allPhotos: CroppedPhoto[] = fileItems.map((item) => ({
+        id: uid(),
+        file: item.file,
+        preview: item.preview,
+        originalFile: item.file,
+        originalPreview: item.preview,
+        normCrop: null,
+      }));
       setCroppedPhotos(allPhotos);
       setSelectedIds(new Set(allPhotos.map((p) => p.id)));
       setStep("photos");
@@ -358,8 +352,8 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
         {step === "photos" && (
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              {croppedPhotos.length} photo{croppedPhotos.length !== 1 ? "s" : ""} detected — {selectedIds.size} selected.
-              Tap to keep or remove. Use arrows to reorder.
+              {croppedPhotos.length} screenshot{croppedPhotos.length !== 1 ? "s" : ""} — {selectedIds.size} selected.
+              Tap to keep or remove. Use the crop icon to remove UI chrome before using as a listing photo.
             </p>
 
             <div className="grid grid-cols-3 gap-3">
@@ -372,11 +366,6 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                       className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${isSelected ? "border-teal-500 ring-2 ring-teal-200" : "border-gray-200 opacity-50 hover:opacity-70"}`}
                     >
                       <img src={photo.preview} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                      {photo.normCrop && (
-                        <span className="absolute top-1 left-1 bg-teal-600/90 text-white text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5">
-                          <CropIcon className="h-2 w-2" /> AI
-                        </span>
-                      )}
                       <div className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center shadow ${isSelected ? "bg-teal-500" : "bg-gray-400/80"}`}>
                         {isSelected ? <Check className="h-3 w-3 text-white" /> : <X className="h-3 w-3 text-white" />}
                       </div>

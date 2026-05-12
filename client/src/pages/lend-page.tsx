@@ -716,6 +716,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
           snapConditionRating(Number(data.conditionRating)),
         );
       if (data.itemType) form.setValue("itemType", data.itemType);
+      if (data.originalValue) form.setValue("originalValue", data.originalValue);
       if (data.name) detectItemCategory(data.name);
       setIsFromImport(true);
     } catch {}

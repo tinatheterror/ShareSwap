@@ -1565,19 +1565,24 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         <p className="text-sm text-muted-foreground mb-2">
                           Current photos:
                         </p>
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="flex gap-2 overflow-x-auto pb-1">
                           {existingPhotos.map((photo, idx) => (
-                            <img
-                              key={idx}
-                              src={photo}
-                              alt={`Item photo ${idx + 1}`}
-                              className="w-20 h-20 object-cover rounded-lg border"
-                            />
+                            <div key={idx} className="relative shrink-0">
+                              <img
+                                src={photo}
+                                alt={`Item photo ${idx + 1}`}
+                                className="w-20 h-20 object-cover rounded-lg border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setExistingPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black transition-colors"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
                           ))}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Upload new photos to replace these
-                        </p>
                       </div>
                     )}
                 </CardContent>
@@ -2558,19 +2563,24 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         <p className="text-sm text-muted-foreground mb-2">
                           Current photos:
                         </p>
-                        <div className="flex gap-2 flex-wrap">
+                        <div className="flex gap-2 overflow-x-auto pb-1">
                           {existingPhotos.map((photo, idx) => (
-                            <img
-                              key={idx}
-                              src={photo}
-                              alt={`Item photo ${idx + 1}`}
-                              className="w-20 h-20 object-cover rounded-lg border"
-                            />
+                            <div key={idx} className="relative shrink-0">
+                              <img
+                                src={photo}
+                                alt={`Item photo ${idx + 1}`}
+                                className="w-20 h-20 object-cover rounded-lg border"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setExistingPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black transition-colors"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
                           ))}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Upload new photos to replace these
-                        </p>
                       </div>
                     )}
                 </CardContent>

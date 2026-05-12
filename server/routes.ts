@@ -2223,29 +2223,36 @@ Return only the JSON object, no other text.`
             return { meanL, variance: varSum / width };
           };
 
-          // Classify each row: "photo" = high variance or dark, "ui" = bright + low variance
-          const UI_LIGHT_THRESHOLD = 210;  // rows where avg brightness > this are "light"
-          const UI_VAR_THRESHOLD = 600;    // rows where variance < this are "uniform"
-          const isUiRow = (y: number) => {
-            const { meanL, variance } = rowStats(y);
-            return meanL > UI_LIGHT_THRESHOLD && variance < UI_VAR_THRESHOLD;
+          // Per-row: count pixels that are "near white" (all channels > 200).
+          // Marketplace UI chrome is consistently white/light; photo content is not.
+          const rowWhiteFrac = (y: number) => {
+            const base = y * width * channels;
+            let whiteCount = 0;
+            for (let x = 0; x < width; x++) {
+              const i = base + x * channels;
+              if (data[i] > 200 && data[i + 1] > 200 && data[i + 2] > 200) whiteCount++;
+            }
+            return whiteCount / width;
           };
 
-          // Skip status bar: first ~6% of height
-          const skipTop = Math.floor(height * 0.06);
+          // UI row = >50% near-white pixels. Only whiteness matters — not variance,
+          // since dark uniform photo backgrounds would also have low variance.
+          const isUiRow = (y: number) => rowWhiteFrac(y) > 0.50;
 
-          // Find the bottom of the photo: scan downward from skipTop.
-          // Photo ends when we hit 4+ consecutive UI rows, after seeing at least 15% photo height.
+          // Skip status bar: first ~5% of height
+          const skipTop = Math.floor(height * 0.05);
+
+          // Find photo bottom: first run of 3+ consecutive UI rows after ≥15% photo height.
           const MIN_PHOTO_HEIGHT = Math.floor(height * 0.15);
-          let photoBottom = height; // default: full image
+          let photoBottom = height;
           let uiRunLength = 0;
           let photoRowsSeen = 0;
 
           for (let y = skipTop; y < height; y++) {
             if (isUiRow(y)) {
               uiRunLength++;
-              if (photoRowsSeen >= MIN_PHOTO_HEIGHT && uiRunLength >= 4) {
-                photoBottom = y - uiRunLength + 1; // first UI row of this run
+              if (photoRowsSeen >= MIN_PHOTO_HEIGHT && uiRunLength >= 3) {
+                photoBottom = y - uiRunLength + 1;
                 break;
               }
             } else {
@@ -2254,17 +2261,18 @@ Return only the JSON object, no other text.`
             }
           }
 
-          // Only crop if we found a meaningful boundary (not just the whole image)
+          // Only crop if boundary found well before end of image
           const trimH = photoBottom / height;
-          if (trimH > 0.85) {
-            // The whole image is photographic — no UI chrome found, don't crop
+          if (trimH > 0.82) {
+            console.log(`[Screenshot Import] No clear UI boundary found (trimH=${trimH.toFixed(2)}) — skipping crop`);
             return null;
           }
 
-          // Add small padding buffer (2%) and clamp
-          const yEnd = Math.min(1, trimH + 0.02);
-          const result = { x: 0, y: skipTop / height, w: 1, h: yEnd - (skipTop / height) };
-          console.log(`[Screenshot Import] Pixel crop: y=${result.y.toFixed(2)} h=${result.h.toFixed(2)} (photoBottom=${photoBottom}/${height})`);
+          // Pad 1% at bottom so nothing clips
+          const yStart = skipTop / height;
+          const yEnd = Math.min(1, trimH + 0.01);
+          const result = { x: 0, y: yStart, w: 1, h: yEnd - yStart };
+          console.log(`[Screenshot Import] Pixel crop: photoBottom=${photoBottom}/${height} (${(trimH*100).toFixed(0)}%), result=${JSON.stringify(result)}`);
           return result;
         } catch (e) {
           console.warn('[Screenshot Import] sharp detection failed:', e);

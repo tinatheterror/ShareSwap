@@ -629,7 +629,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep("photos")} className="flex-1">← Back</Button>
               <Button onClick={handleListExtracted} className="flex-[2] text-white gap-1" style={{ backgroundColor: "#0DCEA1" }}>
-                List this item →
+                Go to listing form →
               </Button>
             </div>
           </div>

@@ -434,7 +434,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     : step === "done" ? "You can review and edit your listing form before publishing."
     : step === "scanning" ? ""
     : step === "error" ? "Something went wrong. Try uploading clearer screenshots."
-    : "Upload screenshots of your listing from Facebook Marketplace, Poshmark, OfferUp, and more.";
+    : "Upload screenshots of your listing from any marketplace to generate a new listing.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -502,7 +502,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground text-center">Screenshots showing the item gallery work best.</p>
+            <p className="text-xs text-muted-foreground text-center">Screenshots of the full listing page work best.</p>
 
             <div className="space-y-2">
               <Button onClick={handleScan} disabled={fileItems.length === 0} className="w-full h-12 text-white font-semibold text-base gap-2" style={{ backgroundColor: "#0DCEA1" }}>

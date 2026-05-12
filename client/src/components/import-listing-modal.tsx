@@ -531,11 +531,6 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
         {/* ── Photos review ─────────────────────────────── */}
         {step === "photos" && (
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              {croppedPhotos.length} screenshot{croppedPhotos.length !== 1 ? "s" : ""} — {selectedIds.size} selected.
-              Tap to keep or remove. Use the crop icon to remove UI chrome before using as a listing photo.
-            </p>
-
             <div className="grid grid-cols-3 gap-3">
               {croppedPhotos.map((photo, i) => {
                 const isSelected = selectedIds.has(photo.id);

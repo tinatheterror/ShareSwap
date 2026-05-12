@@ -429,10 +429,10 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
   const cropTargetPhoto = croppedPhotos.find((p) => p.id === cropTargetId);
 
   const subtitleText =
-    step === "cropping" ? "Draw a box around the product photo area."
-    : step === "photos" ? "We detected and cropped the main photo from each screenshot. Adjust or remove any that look off."
+    step === "cropping" ? "Draw a box around the product only."
+    : step === "photos" ? "Keep, remove, reorder, or recrop detected photos."
     : step === "done" ? "Review and edit listing details before publishing."
-    : step === "scanning" ? "Reading your listing and isolating product photos…"
+    : step === "scanning" ? "Our AI is reading your listing…"
     : step === "error" ? "Something went wrong. Try uploading clearer screenshots."
     : "Upload screenshots of your listing from Facebook Marketplace, Poshmark, OfferUp, and more.";
 

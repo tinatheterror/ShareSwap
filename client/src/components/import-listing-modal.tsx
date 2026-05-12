@@ -432,7 +432,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
     step === "cropping" ? "Draw a box around the product only."
     : step === "photos" ? "Keep, remove, reorder, or recrop detected photos."
     : step === "done" ? "You can review and edit your listing form before publishing."
-    : step === "scanning" ? "Our AI is reading your listing…"
+    : step === "scanning" ? ""
     : step === "error" ? "Something went wrong. Try uploading clearer screenshots."
     : "Upload screenshots of your listing from Facebook Marketplace, Poshmark, OfferUp, and more.";
 

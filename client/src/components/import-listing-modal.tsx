@@ -450,7 +450,7 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
               {step === "cropping" ? "Crop Photo" : "Import Marketplace Listing"}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-sm text-muted-foreground">{subtitleText}</DialogDescription>
+          {subtitleText && <DialogDescription className="text-sm text-muted-foreground">{subtitleText}</DialogDescription>}
         </DialogHeader>
 
         {/* ── Upload ─────────────────────────────────────── */}

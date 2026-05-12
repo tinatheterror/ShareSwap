@@ -538,7 +538,6 @@ export function ItemRequestForm({
                         <div className="space-y-1 text-xs text-gray-500">
                           <p>Select dates to see cost breakdown</p>
                           <div className="flex gap-3 pt-1">
-                            <span>1 wk: base rate</span>
                             <span className="text-teal-600 font-medium">2–3 wks: 10% off</span>
                             <span className="text-teal-600 font-medium">4+ wks: 20% off</span>
                           </div>
@@ -832,7 +831,7 @@ export function ItemRequestForm({
                       {(item as any).replacementValue}
                     </div>
 
-                    <div className="bg-gray-50 rounded-md p-1.5 space-y-1 text-xs">
+                    <div className="bg-gray-50 rounded-md p-1.5 space-y-1 text-[10px]">
                       <div className="flex items-center gap-2">
                         <span className="text-green-500">🟢</span>
                         <span className="text-gray-600">
@@ -895,7 +894,7 @@ export function ItemRequestForm({
                       {(item as any).replacementValue}
                     </div>
 
-                    <div className="bg-gray-50 rounded-md p-1.5 space-y-1 text-xs">
+                    <div className="bg-gray-50 rounded-md p-1.5 space-y-1 text-[10px]">
                       <div className="flex items-center gap-2">
                         <span className="text-green-500">🟢</span>
                         <span className="text-gray-600">

@@ -65,13 +65,92 @@ interface ExtractedData {
   originalValue: string;
   suggestedTier: number;
   photoScores: number[];
-  photoCrops: (NormCrop | null)[];
 }
 
 const PLATFORMS = ["Facebook Marketplace", "Craigslist", "Poshmark", "OfferUp", "Karrot", "Any resale platform"];
 
 let _uid = 0;
 const uid = () => String(++_uid);
+
+// Detect the product photo region within a marketplace screenshot using canvas pixel analysis.
+// Returns a NormCrop {x,y,w,h} (0-1) or null if the image appears to already be a clean photo.
+function detectPhotoCrop(preview: string): Promise<NormCrop | null> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      // Work at reduced resolution for speed (max 600px wide)
+      const scale = Math.min(1, 600 / img.naturalWidth);
+      const w = Math.floor(img.naturalWidth * scale);
+      const h = Math.floor(img.naturalHeight * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+      const { data } = ctx.getImageData(0, 0, w, h); // RGBA
+
+      // "Light" pixel = all channels > 175 (catches JPEG-compressed whites & light grays)
+      const isLight = (i: number) => data[i] > 175 && data[i + 1] > 175 && data[i + 2] > 175;
+
+      const rowLightFrac = (y: number) => {
+        let n = 0;
+        for (let x = 0; x < w; x++) if (isLight((y * w + x) * 4)) n++;
+        return n / w;
+      };
+      const colLightFrac = (x: number) => {
+        let n = 0;
+        for (let y = 0; y < h; y++) if (isLight((y * w + x) * 4)) n++;
+        return n / h;
+      };
+
+      const UI_FRAC = 0.45; // stripe where >45% pixels are light = UI chrome
+      const RUN = 3;        // consecutive UI stripes needed to declare boundary
+
+      const findRowBoundary = () => {
+        const skip = Math.floor(h * 0.05);
+        const minPhoto = Math.floor(h * 0.15);
+        let run = 0, seen = 0;
+        for (let y = skip; y < h; y++) {
+          if (rowLightFrac(y) > UI_FRAC) { run++; if (seen >= minPhoto && run >= RUN) return y - run + 1; }
+          else { run = 0; seen++; }
+        }
+        return h;
+      };
+
+      const findColBoundary = () => {
+        const skip = Math.floor(w * 0.05);
+        const minPhoto = Math.floor(w * 0.20);
+        let run = 0, seen = 0;
+        for (let x = skip; x < w; x++) {
+          if (colLightFrac(x) > UI_FRAC) { run++; if (seen >= minPhoto && run >= RUN) return x - run + 1; }
+          else { run = 0; seen++; }
+        }
+        return w;
+      };
+
+      const photoBottom = findRowBoundary();
+      const photoRight = findColBoundary();
+      const hCrop = photoBottom / h;
+      const wCrop = photoRight / w;
+
+      // Sample rows for diagnostics
+      const samples = [0,10,20,30,40,50,60,70,80,90].map(p => `${p}%:${rowLightFrac(Math.floor(h*p/100)).toFixed(2)}`).join(" ");
+      console.log(`[ImportModal] ${w}x${h} hCrop=${hCrop.toFixed(2)} wCrop=${wCrop.toFixed(2)} | ${samples}`);
+
+      const hTrimmed = hCrop < 0.82;
+      const wTrimmed = wCrop < 0.82;
+      if (!hTrimmed && !wTrimmed) { console.log("[ImportModal] No boundary found — keeping full image"); resolve(null); return; }
+
+      const yStart = 0.03;
+      const yEnd = hTrimmed ? Math.min(1, hCrop + 0.01) : 1;
+      const xEnd = wTrimmed ? Math.min(1, wCrop + 0.01) : 1;
+      const result: NormCrop = { x: 0, y: yStart, w: xEnd, h: yEnd - yStart };
+      console.log("[ImportModal] Crop:", result);
+      resolve(result);
+    };
+    img.onerror = () => resolve(null);
+    img.src = preview;
+  });
+}
 
 async function cropToFile(
   originalFile: File,
@@ -164,10 +243,10 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       const data: ExtractedData = await res.json();
       setExtracted(data);
 
-      // Apply AI crop where available; otherwise keep full screenshot.
+      // Client-side pixel detection: find product photo boundary in each screenshot.
       const allPhotos: CroppedPhoto[] = await Promise.all(
-        fileItems.map(async (item, i) => {
-          const norm = data.photoCrops?.[i] ?? null;
+        fileItems.map(async (item) => {
+          const norm = await detectPhotoCrop(item.preview);
           const { file: f, preview } = await cropToFile(item.file, item.preview, norm);
           return { id: uid(), file: f, preview, originalFile: item.file, originalPreview: item.preview, normCrop: norm };
         })
@@ -366,6 +445,11 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
                       className={`relative w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${isSelected ? "border-teal-500 ring-2 ring-teal-200" : "border-gray-200 opacity-50 hover:opacity-70"}`}
                     >
                       <img src={photo.preview} alt={`Photo ${i + 1}`} className="w-full h-full object-contain bg-gray-100" />
+                      {photo.normCrop && (
+                        <span className="absolute top-1 left-1 bg-teal-600/90 text-white text-[9px] font-bold px-1 py-0.5 rounded flex items-center gap-0.5">
+                          <CropIcon className="h-2 w-2" /> Auto
+                        </span>
+                      )}
                       <div className={`absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center shadow ${isSelected ? "bg-teal-500" : "bg-gray-400/80"}`}>
                         {isSelected ? <Check className="h-3 w-3 text-white" /> : <X className="h-3 w-3 text-white" />}
                       </div>

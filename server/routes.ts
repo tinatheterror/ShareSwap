@@ -2192,94 +2192,6 @@ Return only the JSON object, no other text.`
         Math.min(1, Math.max(0, parseFloat(String(rawScores[i] ?? 0.5)) || 0.5))
       );
 
-      // Pixel-based photo boundary detection using sharp
-      const photoCrops = await Promise.all(files.map(async (file) => {
-        try {
-          const img = sharp(file.buffer);
-          const meta = await img.metadata();
-          const { width = 1, height = 1 } = meta;
-
-          // Get raw RGB pixels (3 channels, no alpha)
-          const { data } = await img.raw().toColorspace('srgb').toBuffer({ resolveWithObject: true });
-          const channels = 3;
-
-          // Helper: compute lightness (0-255) and variance for a single row
-          const rowStats = (y: number) => {
-            let sumR = 0, sumG = 0, sumB = 0;
-            const base = y * width * channels;
-            for (let x = 0; x < width; x++) {
-              const i = base + x * channels;
-              sumR += data[i]; sumG += data[i + 1]; sumB += data[i + 2];
-            }
-            const meanR = sumR / width, meanG = sumG / width, meanB = sumB / width;
-            const meanL = (meanR + meanG + meanB) / 3;
-
-            let varSum = 0;
-            for (let x = 0; x < width; x++) {
-              const i = base + x * channels;
-              const l = (data[i] + data[i + 1] + data[i + 2]) / 3;
-              varSum += (l - meanL) ** 2;
-            }
-            return { meanL, variance: varSum / width };
-          };
-
-          // Per-row: count pixels that are "near white" (all channels > 200).
-          // Marketplace UI chrome is consistently white/light; photo content is not.
-          const rowWhiteFrac = (y: number) => {
-            const base = y * width * channels;
-            let whiteCount = 0;
-            for (let x = 0; x < width; x++) {
-              const i = base + x * channels;
-              if (data[i] > 200 && data[i + 1] > 200 && data[i + 2] > 200) whiteCount++;
-            }
-            return whiteCount / width;
-          };
-
-          // UI row = >50% near-white pixels. Only whiteness matters — not variance,
-          // since dark uniform photo backgrounds would also have low variance.
-          const isUiRow = (y: number) => rowWhiteFrac(y) > 0.50;
-
-          // Skip status bar: first ~5% of height
-          const skipTop = Math.floor(height * 0.05);
-
-          // Find photo bottom: first run of 3+ consecutive UI rows after ≥15% photo height.
-          const MIN_PHOTO_HEIGHT = Math.floor(height * 0.15);
-          let photoBottom = height;
-          let uiRunLength = 0;
-          let photoRowsSeen = 0;
-
-          for (let y = skipTop; y < height; y++) {
-            if (isUiRow(y)) {
-              uiRunLength++;
-              if (photoRowsSeen >= MIN_PHOTO_HEIGHT && uiRunLength >= 3) {
-                photoBottom = y - uiRunLength + 1;
-                break;
-              }
-            } else {
-              uiRunLength = 0;
-              photoRowsSeen++;
-            }
-          }
-
-          // Only crop if boundary found well before end of image
-          const trimH = photoBottom / height;
-          if (trimH > 0.82) {
-            console.log(`[Screenshot Import] No clear UI boundary found (trimH=${trimH.toFixed(2)}) — skipping crop`);
-            return null;
-          }
-
-          // Pad 1% at bottom so nothing clips
-          const yStart = skipTop / height;
-          const yEnd = Math.min(1, trimH + 0.01);
-          const result = { x: 0, y: yStart, w: 1, h: yEnd - yStart };
-          console.log(`[Screenshot Import] Pixel crop: photoBottom=${photoBottom}/${height} (${(trimH*100).toFixed(0)}%), result=${JSON.stringify(result)}`);
-          return result;
-        } catch (e) {
-          console.warn('[Screenshot Import] sharp detection failed:', e);
-          return null;
-        }
-      }));
-
       return res.json({
         name: (extracted.name || 'Imported Item').substring(0, 60),
         description: extracted.description || '',
@@ -2294,7 +2206,6 @@ Return only the JSON object, no other text.`
         originalValue: validValues.includes(extracted.originalValue) ? extracted.originalValue : '$50–$199',
         suggestedTier: validTiers.includes(parseInt(String(extracted.suggestedTier))) ? parseInt(String(extracted.suggestedTier)) : 2,
         photoScores,
-        photoCrops,
       });
     } catch (error) {
       const err = error as any;

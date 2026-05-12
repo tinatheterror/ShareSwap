@@ -72,14 +72,25 @@ const PLATFORMS = ["Facebook Marketplace", "Craigslist", "Poshmark", "OfferUp", 
 let _uid = 0;
 const uid = () => String(++_uid);
 
-// Detect the product photo region within a marketplace screenshot using canvas pixel analysis.
-// Returns a NormCrop {x,y,w,h} (0-1) or null if the image appears to already be a clean photo.
+/**
+ * Detect the product photo region within a marketplace screenshot using canvas pixel analysis.
+ *
+ * Strategy:
+ *  - Classify screenshot by aspect ratio to pick the right preset.
+ *  - Portrait phone (aspect ≤ 0.65): photo is in top portion — scan rows, fallback to top 50%.
+ *  - Landscape phone (aspect ≥ 1.5): photo is on left side — scan columns.
+ *  - Square / near-square: likely already a product photo — no crop.
+ *  - Reject dense screenshots (collages, grids) by counting multiple boundaries.
+ *
+ * Returns NormCrop {x,y,w,h} (all 0–1) or null (keep full image as-is).
+ */
 function detectPhotoCrop(preview: string): Promise<NormCrop | null> {
   return new Promise((resolve) => {
     const img = new window.Image();
     img.onload = () => {
-      // Work at reduced resolution for speed (max 600px wide)
-      const scale = Math.min(1, 600 / img.naturalWidth);
+      // Scale to ≤600px on longest side for speed
+      const longSide = Math.max(img.naturalWidth, img.naturalHeight);
+      const scale = Math.min(1, 600 / longSide);
       const w = Math.floor(img.naturalWidth * scale);
       const h = Math.floor(img.naturalHeight * scale);
       const canvas = document.createElement("canvas");
@@ -88,64 +99,128 @@ function detectPhotoCrop(preview: string): Promise<NormCrop | null> {
       ctx.drawImage(img, 0, 0, w, h);
       const { data } = ctx.getImageData(0, 0, w, h); // RGBA
 
-      // "Light" pixel = all channels > 175 (catches JPEG-compressed whites & light grays)
+      const aspect = w / h;
+
+      // — pixel helpers ——————————————————————————————————————
+      // "Light" = all channels > 175 (catches JPEG-compressed whites and light grays)
       const isLight = (i: number) => data[i] > 175 && data[i + 1] > 175 && data[i + 2] > 175;
+      const rowFrac  = (y: number) => { let n=0; for (let x=0;x<w;x++) if (isLight((y*w+x)*4)) n++; return n/w; };
+      const colFrac  = (x: number) => { let n=0; for (let y=0;y<h;y++) if (isLight((y*w+x)*4)) n++; return n/h; };
 
-      const rowLightFrac = (y: number) => {
-        let n = 0;
-        for (let x = 0; x < w; x++) if (isLight((y * w + x) * 4)) n++;
-        return n / w;
-      };
-      const colLightFrac = (x: number) => {
-        let n = 0;
-        for (let y = 0; y < h; y++) if (isLight((y * w + x) * 4)) n++;
-        return n / h;
-      };
+      const UI = 0.45; // fraction threshold for "UI chrome stripe"
+      const RUN = 3;   // consecutive UI stripes to confirm boundary
 
-      const UI_FRAC = 0.45; // stripe where >45% pixels are light = UI chrome
-      const RUN = 3;        // consecutive UI stripes needed to declare boundary
-
-      const findRowBoundary = () => {
-        const skip = Math.floor(h * 0.05);
-        const minPhoto = Math.floor(h * 0.15);
+      // Find first UI-stripe run in rows (scans top → bottom)
+      const findRowBoundary = (skipFrac = 0.05, minPhotoFrac = 0.18) => {
+        const skip = Math.floor(h * skipFrac);
+        const minP = Math.floor(h * minPhotoFrac);
         let run = 0, seen = 0;
         for (let y = skip; y < h; y++) {
-          if (rowLightFrac(y) > UI_FRAC) { run++; if (seen >= minPhoto && run >= RUN) return y - run + 1; }
+          if (rowFrac(y) > UI) { run++; if (seen >= minP && run >= RUN) return (y - run + 1) / h; }
           else { run = 0; seen++; }
         }
-        return h;
+        return 1.0; // no boundary found
       };
 
-      const findColBoundary = () => {
-        const skip = Math.floor(w * 0.05);
-        const minPhoto = Math.floor(w * 0.20);
+      // Find first UI-stripe run in columns (scans left → right)
+      const findColBoundary = (skipFrac = 0.05, minPhotoFrac = 0.20) => {
+        const skip = Math.floor(w * skipFrac);
+        const minP = Math.floor(w * minPhotoFrac);
         let run = 0, seen = 0;
         for (let x = skip; x < w; x++) {
-          if (colLightFrac(x) > UI_FRAC) { run++; if (seen >= minPhoto && run >= RUN) return x - run + 1; }
+          if (colFrac(x) > UI) { run++; if (seen >= minP && run >= RUN) return (x - run + 1) / w; }
           else { run = 0; seen++; }
         }
-        return w;
+        return 1.0;
       };
 
-      const photoBottom = findRowBoundary();
-      const photoRight = findColBoundary();
-      const hCrop = photoBottom / h;
-      const wCrop = photoRight / w;
+      // Count how many distinct row-boundary "zones" exist (dense grid detection)
+      const countRowBoundaries = () => {
+        let count = 0, inZone = false;
+        for (let y = 0; y < h; y++) {
+          const light = rowFrac(y) > UI;
+          if (light && !inZone) { count++; inZone = true; }
+          if (!light) inZone = false;
+        }
+        return count;
+      };
 
-      // Sample rows for diagnostics
-      const samples = [0,10,20,30,40,50,60,70,80,90].map(p => `${p}%:${rowLightFrac(Math.floor(h*p/100)).toFixed(2)}`).join(" ");
-      console.log(`[ImportModal] ${w}x${h} hCrop=${hCrop.toFixed(2)} wCrop=${wCrop.toFixed(2)} | ${samples}`);
+      // Overall average lightness of the image (≥ 10 sample rows)
+      const avgLight = [0,10,20,30,40,50,60,70,80,90]
+        .reduce((s, p) => s + rowFrac(Math.floor(h * p / 100)), 0) / 10;
 
-      const hTrimmed = hCrop < 0.82;
-      const wTrimmed = wCrop < 0.82;
-      if (!hTrimmed && !wTrimmed) { console.log("[ImportModal] No boundary found — keeping full image"); resolve(null); return; }
+      const samples = [0,10,20,30,40,50,60,70,80,90]
+        .map(p => `${p}%:${rowFrac(Math.floor(h*p/100)).toFixed(2)}`).join(" ");
+      console.log(`[ImportModal] ${w}x${h} aspect=${aspect.toFixed(2)} avgLight=${avgLight.toFixed(2)} | ${samples}`);
 
-      const yStart = 0.03;
-      const yEnd = hTrimmed ? Math.min(1, hCrop + 0.01) : 1;
-      const xEnd = wTrimmed ? Math.min(1, wCrop + 0.01) : 1;
-      const result: NormCrop = { x: 0, y: yStart, w: xEnd, h: yEnd - yStart };
-      console.log("[ImportModal] Crop:", result);
-      resolve(result);
+      // — Reject dense / complex screenshots ————————————————
+      const zones = countRowBoundaries();
+      if (zones >= 4) {
+        console.log(`[ImportModal] Dense screenshot (${zones} UI zones) — skipping crop`);
+        resolve(null); return;
+      }
+
+      // — Square / near-square: already a product photo ——————
+      // (aspect 0.7–1.4, low average lightness → clean product shot)
+      if (aspect > 0.70 && aspect < 1.40) {
+        if (avgLight < 0.35) {
+          console.log("[ImportModal] Square-ish with low light — likely clean product photo, no crop");
+          resolve(null); return;
+        }
+        // Square with moderate light: might be a marketplace card — try row boundary
+        const hCrop = findRowBoundary();
+        if (hCrop < 0.75) {
+          const result: NormCrop = { x: 0, y: 0.03, w: 1, h: Math.min(0.97, hCrop + 0.01) - 0.03 };
+          console.log("[ImportModal] Square preset → row crop", result);
+          resolve(result); return;
+        }
+        resolve(null); return;
+      }
+
+      // — Portrait phone screenshot (aspect ≤ 0.65) ——————————
+      // Facebook Marketplace, Poshmark, OfferUp: photo fills top ~45-55%
+      if (aspect <= 0.65) {
+        const hCrop = findRowBoundary(0.05, 0.20);
+        if (hCrop < 0.75) {
+          // Clear boundary found — use it with a small buffer
+          const result: NormCrop = { x: 0, y: 0.04, w: 1, h: Math.min(0.96, hCrop + 0.01) - 0.04 };
+          console.log(`[ImportModal] Portrait preset → boundary at ${(hCrop*100).toFixed(0)}%`, result);
+          resolve(result); return;
+        }
+        // No boundary found — conservative fallback: top 50% (photo area on most platforms)
+        if (avgLight < 0.50) {
+          // Image has some dark content: fallback crop is reasonable
+          const result: NormCrop = { x: 0, y: 0.04, w: 1, h: 0.51 };
+          console.log("[ImportModal] Portrait: no boundary — using top 50% fallback", result);
+          resolve(result); return;
+        }
+        // Image is mostly light (could be a text-heavy page) — don't crop
+        console.log("[ImportModal] Portrait: bright overall — skipping crop");
+        resolve(null); return;
+      }
+
+      // — Landscape phone screenshot (aspect ≥ 1.5) ——————————
+      // Photo on left side, listing details on right
+      if (aspect >= 1.5) {
+        const wCrop = findColBoundary(0.05, 0.20);
+        if (wCrop < 0.82) {
+          const result: NormCrop = { x: 0, y: 0.03, w: Math.min(0.97, wCrop + 0.01), h: 0.94 };
+          console.log(`[ImportModal] Landscape preset → col boundary at ${(wCrop*100).toFixed(0)}%`, result);
+          resolve(result); return;
+        }
+        // No column boundary — try rows (stacked layout)
+        const hCrop = findRowBoundary(0.05, 0.15);
+        if (hCrop < 0.80) {
+          const result: NormCrop = { x: 0, y: 0.03, w: 1, h: Math.min(0.97, hCrop + 0.01) - 0.03 };
+          console.log(`[ImportModal] Landscape fallback → row boundary at ${(hCrop*100).toFixed(0)}%`, result);
+          resolve(result); return;
+        }
+        console.log("[ImportModal] Landscape: no clear boundary — skipping crop");
+        resolve(null); return;
+      }
+
+      // Fallback for other ratios
+      resolve(null);
     };
     img.onerror = () => resolve(null);
     img.src = preview;
@@ -243,10 +318,36 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
       const data: ExtractedData = await res.json();
       setExtracted(data);
 
-      // Client-side pixel detection: find product photo boundary in each screenshot.
+      // Client-side pixel detection: run on all screenshots in parallel.
+      const rawNorms = await Promise.all(fileItems.map((item) => detectPhotoCrop(item.preview)));
+
+      // Multi-screenshot consensus: if multiple screenshots agree on a similar crop boundary,
+      // use the median value for better accuracy.
+      const validNorms = rawNorms.filter((n): n is NormCrop => n !== null);
+      let consensusNorms = rawNorms;
+      if (validNorms.length >= 2) {
+        // Collect bottom-edge values (y + h) for consensus
+        const bottoms = validNorms.map(n => n.y + n.h).sort((a, b) => a - b);
+        const medianBottom = bottoms[Math.floor(bottoms.length / 2)];
+        const rights = validNorms.map(n => n.x + n.w).sort((a, b) => a - b);
+        const medianRight = rights[Math.floor(rights.length / 2)];
+        // Only apply consensus if boundaries are reasonably close (within 15%)
+        const bottomSpread = bottoms[bottoms.length - 1] - bottoms[0];
+        const rightSpread = rights[rights.length - 1] - rights[0];
+        if (bottomSpread < 0.15 || rightSpread < 0.15) {
+          consensusNorms = rawNorms.map(n => n ? {
+            x: n.x,
+            y: n.y,
+            w: rightSpread < 0.15 ? Math.min(1 - n.x, medianRight - n.x) : n.w,
+            h: bottomSpread < 0.15 ? Math.min(1 - n.y, medianBottom - n.y) : n.h,
+          } : null);
+          console.log(`[ImportModal] Consensus crop applied: bottom=${medianBottom.toFixed(2)} right=${medianRight.toFixed(2)}`);
+        }
+      }
+
       const allPhotos: CroppedPhoto[] = await Promise.all(
-        fileItems.map(async (item) => {
-          const norm = await detectPhotoCrop(item.preview);
+        fileItems.map(async (item, i) => {
+          const norm = consensusNorms[i];
           const { file: f, preview } = await cropToFile(item.file, item.preview, norm);
           return { id: uid(), file: f, preview, originalFile: item.file, originalPreview: item.preview, normCrop: norm };
         })
@@ -328,12 +429,12 @@ export function ImportListingModal({ isOpen, onClose }: ImportListingModalProps)
   const cropTargetPhoto = croppedPhotos.find((p) => p.id === cropTargetId);
 
   const subtitleText =
-    step === "cropping" ? "Draw a box around the product only."
-    : step === "photos" ? "Keep, remove, reorder, or recrop detected photos."
+    step === "cropping" ? "Draw a box around the product photo area."
+    : step === "photos" ? "We detected and cropped the main photo from each screenshot. Adjust or remove any that look off."
     : step === "done" ? "Review and edit listing details before publishing."
-    : step === "scanning" ? "Our AI is reading your listing…"
+    : step === "scanning" ? "Reading your listing and isolating product photos…"
     : step === "error" ? "Something went wrong. Try uploading clearer screenshots."
-    : "Upload screenshots of your listing from other platforms to generate new listing details.";
+    : "Upload screenshots of your listing from Facebook Marketplace, Poshmark, OfferUp, and more.";
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

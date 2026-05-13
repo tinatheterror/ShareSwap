@@ -448,7 +448,7 @@ export default function ItemDetailsPage() {
                         />
                       </div>
                       <span className="text-muted-foreground/40">·</span>
-                      <Badge variant="secondary" className="text-xs">{item.conditionRating}/10</Badge>
+                      <Badge variant="secondary" className="text-xs">Condition: {item.conditionRating}/10</Badge>
                     </div>
                   )}
                 </div>

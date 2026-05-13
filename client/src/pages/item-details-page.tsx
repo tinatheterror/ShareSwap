@@ -419,7 +419,7 @@ export default function ItemDetailsPage() {
               <div className="space-y-6">
                 <div>
                   <h1 className="text-2xl font-bold">{item.name}</h1>
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {item.description}
                   </p>
 

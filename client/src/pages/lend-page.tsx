@@ -71,6 +71,7 @@ import {
   RotateCcw,
   RotateCw,
   Pencil,
+  Package,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -363,6 +364,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [aiScanEnabled, setAiScanEnabled] = useState(false);
   const [isFromImport, setIsFromImport] = useState(false);
+  const [isFromSwap, setIsFromSwap] = useState(false);
 
   // Photo editor state
   const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
@@ -719,6 +721,27 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       if (data.originalValue) form.setValue("originalValue", data.originalValue);
       if (data.name) detectItemCategory(data.name);
       setIsFromImport(true);
+    } catch {}
+  }, [isEditMode]);
+
+  // Pre-fill from completed swap (item the user just received)
+  useEffect(() => {
+    if (isEditMode) return;
+    const raw = sessionStorage.getItem("shareswap_swap_prefill");
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      sessionStorage.removeItem("shareswap_swap_prefill");
+      if (data.name) {
+        form.setValue("name", data.name);
+        detectItemCategory(data.name);
+      }
+      if (data.description) form.setValue("description", data.description);
+      if (data.originalValue) form.setValue("originalValue", data.originalValue);
+      if (Array.isArray(data.photos) && data.photos.length > 0) {
+        setExistingPhotos(data.photos);
+      }
+      setIsFromSwap(true);
     } catch {}
   }, [isEditMode]);
 
@@ -1434,6 +1457,17 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
       <VerificationModal />
       <main className="max-w-7xl mx-auto px-4 pt-0 md:pt-4 pb-8">
+        {isFromSwap && (
+          <div className="mb-4 flex items-start gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3 text-sm text-teal-800">
+            <Package className="h-4 w-4 mt-0.5 shrink-0 text-teal-600" />
+            <div>
+              <p className="font-medium">Draft listing from your swap</p>
+              <p className="text-xs text-teal-700/80 mt-0.5">
+                Details are pre-filled from the item you received — condition, category, and photos may need updating. Edit anything before publishing.
+              </p>
+            </div>
+          </div>
+        )}
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((data) => {

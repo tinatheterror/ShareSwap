@@ -291,8 +291,7 @@ export default function ItemDetailsPage() {
             </div>
             {(item as any).swapDesiredItem && (
               <p className="text-sm text-muted-foreground mt-1">
-                <span className="font-medium text-slate-700">Looking for:</span>{" "}
-                {(item as any).swapDesiredItem}
+                Looking for: {(item as any).swapDesiredItem}
               </p>
             )}
           </div>

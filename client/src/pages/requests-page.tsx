@@ -396,7 +396,7 @@ export default function RequestsPage() {
         setShowCelebration(true);
         toast({
           title: "Gift Complete!",
-          description: "Thank you for being part of the sharing community! +1 ShareCoins",
+          description: "Enjoy your new item! +1 ShareCoins",
         });
       } else {
         toast({

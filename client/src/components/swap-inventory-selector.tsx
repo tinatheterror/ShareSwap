@@ -123,7 +123,7 @@ export function SwapInventorySelector({
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden">
         {/* Hero Section - Target Item */}
         <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-6 text-white">
           <div className="flex items-center gap-4">
@@ -219,7 +219,7 @@ export function SwapInventorySelector({
                         <p className="font-medium text-gray-900 truncate">
                           {item.name}
                         </p>
-                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                        <div className="flex items-center flex-wrap gap-1 text-xs text-gray-500 mt-0.5">
                           <span>Tier {tierInfo.tier} -</span>
                           <Coins className="h-3 w-3" />
                           <span>{tierInfo.coins} ShareCoins</span>

@@ -396,97 +396,71 @@ export default function FAQPage() {
                   How Swapping Works
                 </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  Trade item-for-item between neighbours. No cash. No deposits.
-                  Just swap. Value differences are balanced with ShareCoins. Our
-                  tier system ensures fair exchanges.
+                  Trade items with neighbours — no cash, no deposits. Any tier
+                  can swap with any other tier. Bundle multiple items on your
+                  side to match value. Differences are settled with ShareCoins
+                  (max 50 SC offset).
                 </p>
 
-                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
+                <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 mb-4">
                   <p className="text-[#0DCEA1] font-medium text-sm mb-3">
                     Tiers & ShareCoin Values
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">
-                        Tier 1
-                      </p>
-                      <p className="text-xs text-gray-500">Everyday</p>
-                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
-                        5 SC
-                      </p>
+                      <p className="text-sm font-medium text-gray-700">Tier 1</p>
+                      <p className="text-xs text-gray-500">Under $50</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">5 SC</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">
-                        Tier 2
-                      </p>
-                      <p className="text-xs text-gray-500">Mid-value</p>
-                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
-                        10 SC
-                      </p>
+                      <p className="text-sm font-medium text-gray-700">Tier 2</p>
+                      <p className="text-xs text-gray-500">$50–$199</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">10 SC</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">
-                        Tier 3
-                      </p>
-                      <p className="text-xs text-gray-500">High-value</p>
-                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
-                        20 SC
-                      </p>
+                      <p className="text-sm font-medium text-gray-700">Tier 3</p>
+                      <p className="text-xs text-gray-500">$200–$499</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">20 SC</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-sm font-medium text-gray-700">
-                        Tier 4
-                      </p>
-                      <p className="text-xs text-gray-500">Premium</p>
-                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">
-                        40 SC
-                      </p>
+                      <p className="text-sm font-medium text-gray-700">Tier 4</p>
+                      <p className="text-xs text-gray-500">$500–$2,000</p>
+                      <p className="text-[#0DCEA1] font-medium text-xs sm:text-sm mt-1">40 SC</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4">
                   <p className="font-medium text-gray-800 text-sm mb-3">
-                    Swap Differences
-                  </p>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Value offset to how ShareCoins are earned.
-                  </p>
-                </div>
-
-                <div className="mt-4">
-                  <p className="font-medium text-gray-800 text-sm mb-3">
                     Swap Rules
                   </p>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          Same-tier swaps
-                        </p>
-                        <p className="text-xs text-gray-500">Direct swaps.</p>
+                        <p className="text-sm font-medium text-gray-700">Any tier can swap with any tier</p>
+                        <p className="text-xs text-gray-500">No tier restrictions — mix and match freely.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Bundle multiple items</p>
+                        <p className="text-xs text-gray-500">Offer more than one item on your side to better match the other side's value.</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          One-tier difference
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          The person with the lower-tier item adds ShareCoins to
-                          balance the value.
-                        </p>
+                        <p className="text-sm font-medium text-gray-700">Value difference up to 50 SC</p>
+                        <p className="text-xs text-gray-500">The side with lower total value tops up with ShareCoins to balance the swap.</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          Two tier difference
-                        </p>
-                        <p className="text-xs text-gray-500">Not allowed.</p>
+                        <p className="text-sm font-medium text-gray-700">Offset over 50 SC not allowed</p>
+                        <p className="text-xs text-gray-500">If the gap is too large, add more items to your offer to bring it within range.</p>
                       </div>
                     </div>
                   </div>

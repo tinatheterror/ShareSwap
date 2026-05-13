@@ -262,7 +262,7 @@ export default function ItemDetailsPage() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <p className="font-medium">Swap</p>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-1 mb-1">
               <ArrowLeftRight className="h-4 w-4 text-teal-700" />
               <TooltipProvider delayDuration={0}>
                 <Tooltip>

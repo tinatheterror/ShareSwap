@@ -5768,16 +5768,16 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Request is not in accepted state" });
       }
 
-      // Total amount to authorize (deposit + processing fee + courier if applicable)
-      // Rental fee will be charged on handoff, deposit is held
-      const totalHoldAmount = depositAmount + (processingFee || 0) + (courierFee || 0);
+      // Collect full rental + deposit + fees in one charge.
+      // Rental is transferred to owner after handoff; deposit is refunded on safe return.
+      const totalChargeAmount = (rentalAmount || 0) + depositAmount + (processingFee || 0) + (courierFee || 0);
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalHoldAmount * 100),
+        amount: Math.round(totalChargeAmount * 100),
         currency: "usd",
-        capture_method: "manual",
+        capture_method: "automatic",
         metadata: {
-          type: "rental_deposit",
+          type: "rental_payment",
           requestId: requestId.toString(),
           userId: req.user.id.toString(),
           depositAmount: depositAmount.toString(),
@@ -5836,10 +5836,10 @@ Respond with ONLY the category name, nothing else.`
       // Verify the PaymentIntent with Stripe
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-      // Verify payment intent is in the correct state (requires_capture = authorized but not captured)
-      if (paymentIntent.status !== "requires_capture") {
+      // Verify payment intent is in the correct state (succeeded = charged, or requires_capture = legacy manual hold)
+      if (paymentIntent.status !== "succeeded" && paymentIntent.status !== "requires_capture") {
         return res.status(400).json({ 
-          error: "Payment has not been authorized correctly",
+          error: "Payment has not been completed correctly",
           status: paymentIntent.status
         });
       }

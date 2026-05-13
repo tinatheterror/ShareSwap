@@ -1921,13 +1921,27 @@ export function ChatWidget() {
                     );
                   }
 
+                  // RENT ACCEPTED → combined rental + deposit payment
+                  if (pr.status === "ACCEPTED" && pr.requestType === "RENT") {
+                    return (
+                      <div className="px-3 py-2 border-t border-green-100 bg-green-50">
+                        <Button
+                          className="w-full h-10 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowRentalDepositModal(true); }}
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Pay & Confirm Booking
+                        </Button>
+                      </div>
+                    );
+                  }
+
                   // BORROW + in_person deposit: skip the Pay Deposit step (backend auto-advances to DEPOSIT_CONFIRMED).
                   // Guard here handles any edge-case legacy ACCEPTED rows — drop through to the handoff PIN block below.
                   if (
                     pr.status === "ACCEPTED" &&
-                    pr.requestType !== "GIFT" &&
-                    pr.requestType !== "SWAP" &&
-                    !(pr.requestType === "BORROW" && pr.depositMethod === "in_person")
+                    pr.requestType === "BORROW" &&
+                    !(pr.depositMethod === "in_person")
                   ) {
                     const dc = calculateSecurityDeposit(pr.item.tier || 2, pr.item.originalValue || "$50–$150", bt);
                     return (

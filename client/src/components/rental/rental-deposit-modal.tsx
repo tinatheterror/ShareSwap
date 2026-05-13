@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,10 +7,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { DollarSign, Shield, Truck, Loader2, CheckCircle2, CreditCard, Info } from "lucide-react";
+import { DollarSign, Shield, Truck, Loader2, CreditCard, Info, RefreshCw } from "lucide-react";
 import { calculateRentalDeposit, calculateRentalRate } from "@/lib/rental-calculator";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
@@ -39,22 +40,31 @@ interface RentalDepositModalProps {
   onSuccess: (nextStep: string) => void;
 }
 
-function RentalPaymentForm({
+function PayAndConfirmForm({
   clientSecret,
   onSuccess,
   onCancel,
-  isProcessing,
-  setIsProcessing,
+  rentalPrice,
+  depositAmount,
+  processingFee,
+  deliveryFee,
+  days,
 }: {
   clientSecret: string;
   onSuccess: (paymentIntentId: string) => void;
   onCancel: () => void;
-  isProcessing: boolean;
-  setIsProcessing: (v: boolean) => void;
+  rentalPrice: number;
+  depositAmount: number;
+  processingFee: number;
+  deliveryFee: number;
+  days: number;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const totalDueNow = rentalPrice + depositAmount + processingFee + deliveryFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +84,7 @@ function RentalPaymentForm({
           variant: "destructive",
         });
         setIsProcessing(false);
-      } else if (paymentIntent && paymentIntent.status === "requires_capture") {
+      } else if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture")) {
         onSuccess(paymentIntent.id);
       }
     } catch (err: any) {
@@ -89,19 +99,73 @@ function RentalPaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Breakdown */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 divide-y divide-gray-200 text-sm">
+        <div className="flex justify-between items-center px-4 py-2.5">
+          <span className="text-gray-600 flex items-center gap-2">
+            <DollarSign className="h-3.5 w-3.5 text-green-600" />
+            Rental ({days} day{days !== 1 ? "s" : ""})
+          </span>
+          <span className="font-medium">${rentalPrice.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between items-center px-4 py-2.5">
+          <span className="text-gray-600 flex items-center gap-2">
+            <Shield className="h-3.5 w-3.5 text-blue-600" />
+            Security deposit
+            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">REFUNDABLE</span>
+          </span>
+          <span className="font-medium">${depositAmount.toFixed(2)}</span>
+        </div>
+        {deliveryFee > 0 && (
+          <div className="flex justify-between items-center px-4 py-2.5">
+            <span className="text-gray-600 flex items-center gap-2">
+              <Truck className="h-3.5 w-3.5 text-orange-500" />
+              Courier delivery
+            </span>
+            <span className="font-medium">${deliveryFee.toFixed(2)}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center px-4 py-2.5">
+          <span className="text-gray-500 text-xs">Processing fee (3%)</span>
+          <span className="text-gray-500 text-xs">${processingFee.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between items-center px-4 py-3 bg-white rounded-b-lg">
+          <span className="font-semibold text-gray-900">Total due today</span>
+          <span className="font-bold text-lg text-gray-900">${totalDueNow.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Deposit info note */}
+      <div className="flex gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
+        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
+        <span>
+          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is refunded when you return the item in good condition.
+          The <span className="font-medium">${rentalPrice.toFixed(2)} rental</span> is released to the owner after handoff.
+        </span>
+      </div>
+
+      {/* Stripe payment form */}
       <PaymentElement />
-      <div className="flex gap-2 pt-4">
+
+      <div className="flex gap-2 pt-1">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">
           Cancel
         </Button>
-        <Button type="submit" disabled={!stripe || isProcessing} className="flex-1 bg-primary hover:bg-primary/90">
+        <Button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+        >
           {isProcessing ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processing...
+              Processing…
             </>
           ) : (
-            "Authorize Payment"
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Pay & Confirm Booking
+            </>
           )}
         </Button>
       </div>
@@ -119,9 +183,8 @@ export function RentalDepositModal({
 }: RentalDepositModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [step, setStep] = useState<"summary" | "payment">("summary");
+  const [initError, setInitError] = useState<string | null>(null);
 
   const itemValue = item.replacementValue || 100;
   const depositCalc = calculateRentalDeposit(itemValue, item.tier || 2);
@@ -131,23 +194,22 @@ export function RentalDepositModal({
     ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
     : 7;
 
-  const rentalPrice = item.dollarsPrice 
-    ? parseFloat(item.dollarsPrice) 
+  const rentalPrice = item.dollarsPrice
+    ? parseFloat(item.dollarsPrice)
     : rentalCalc.dailyRate * days;
 
-  const platformFee = 0;
-  const processingFee = Math.round((rentalPrice + depositCalc.deposit) * 0.03 * 100) / 100;
+  const depositAmount = depositCalc.deposit;
+  const processingFee = Math.round((rentalPrice + depositAmount) * 0.03 * 100) / 100;
   const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;
-  const totalDueNow = depositCalc.deposit + processingFee + deliveryFee;
 
   const createPaymentHoldMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/rentals/create-payment-hold", {
         requestId: request.id,
-        depositAmount: depositCalc.deposit,
+        depositAmount,
         rentalAmount: rentalPrice,
-        processingFee: processingFee,
-        platformFee: platformFee,
+        processingFee,
+        platformFee: 0,
         courierFee: deliveryFee,
       });
       return response.json();
@@ -155,15 +217,11 @@ export function RentalDepositModal({
     onSuccess: (data) => {
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
-        setStep("payment");
+        setInitError(null);
       }
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create payment",
-        variant: "destructive",
-      });
+      setInitError(error.message || "Failed to initialize payment");
     },
   });
 
@@ -171,42 +229,44 @@ export function RentalDepositModal({
     mutationFn: async (paymentIntentId: string) => {
       const response = await apiRequest("POST", `/api/requests/${request.id}/confirm-rental-deposit`, {
         paymentIntentId,
-        depositAmount: depositCalc.deposit,
+        depositAmount,
         rentalAmount: rentalPrice,
-        processingFee: processingFee,
-        platformFee: platformFee,
+        processingFee,
+        platformFee: 0,
       });
       return response.json();
     },
     onSuccess: (data) => {
-      setIsProcessing(false);
       toast({
-        title: "Payment authorized!",
-        description: "Your rental deposit has been secured.",
+        title: "Booking confirmed!",
+        description: "Your rental and deposit have been secured.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
       onSuccess(data.nextStep || (request.deliveryMethod === "courier" ? "book_courier" : "await_handoff"));
     },
     onError: (error: any) => {
-      setIsProcessing(false);
       toast({
         title: "Error",
-        description: error.message || "Failed to confirm payment",
+        description: error.message || "Failed to confirm booking",
         variant: "destructive",
       });
     },
   });
 
-  const handleProceedToPayment = () => {
-    createPaymentHoldMutation.mutate();
-  };
+  useEffect(() => {
+    if (isOpen && !clientSecret && !createPaymentHoldMutation.isPending) {
+      createPaymentHoldMutation.mutate();
+    }
+  }, [isOpen]);
 
-  const handlePaymentSuccess = (paymentIntentId: string) => {
-    confirmPaymentMutation.mutate(paymentIntentId);
+  const handleClose = () => {
+    setClientSecret(null);
+    setInitError(null);
+    onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -214,139 +274,39 @@ export function RentalDepositModal({
             Confirm Your Rental
           </DialogTitle>
           <DialogDescription>
-            Complete payment to rent{" "}
-            <span className="font-medium text-gray-900">{item.name}</span>
+            Renting <span className="font-medium text-gray-900">{item.name}</span>
           </DialogDescription>
         </DialogHeader>
 
-        {step === "summary" ? (
-          <div className="space-y-4 py-4">
-            {item.photos?.[0] && (
-              <div className="flex justify-center">
-                <img
-                  src={item.photos[0]}
-                  alt={item.name}
-                  className="w-24 h-24 object-cover rounded-lg border"
-                />
-              </div>
-            )}
-
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
-              <div className="text-green-800 font-medium flex items-center gap-2">
-                <DollarSign className="h-4 w-4" />
-                Rental Payment Summary
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Rental period</span>
-                  <span className="font-medium">{days} day{days > 1 ? "s" : ""}</span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-green-600" />
-                    Rental fee
-                  </span>
-                  <span className="font-medium">${rentalPrice.toFixed(2)}</span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-blue-600" />
-                    Security deposit (refundable)
-                  </span>
-                  <span className="font-medium">${depositCalc.deposit.toFixed(2)}</span>
-                </div>
-
-                {deliveryFee > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 flex items-center gap-2">
-                      <Truck className="h-4 w-4 text-orange-600" />
-                      Courier delivery
-                    </span>
-                    <span className="font-medium">${deliveryFee.toFixed(2)}</span>
-                  </div>
-                )}
-
-                {platformFee > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Platform fee</span>
-                    <span className="font-medium">${platformFee.toFixed(2)}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Processing fee (3%)</span>
-                  <span className="font-medium">${processingFee.toFixed(2)}</span>
-                </div>
-
-                <div className="border-t border-green-200 pt-2 mt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700 font-medium">Authorized now</span>
-                    <span className="text-green-700 font-semibold text-lg">
-                      ${totalDueNow.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Rental fee of ${rentalPrice.toFixed(2)} charged on successful handoff
-                  </div>
-                </div>
-              </div>
+        <div className="py-2">
+          {createPaymentHoldMutation.isPending || (!clientSecret && !initError) ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+              <span className="text-sm">Setting up payment…</span>
             </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2">
-              <Info className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-blue-700">
-                <p className="font-medium mb-1">How it works:</p>
-                <ul className="space-y-0.5 list-disc ml-3">
-                  <li>Security deposit is held (not charged) until item return</li>
-                  <li>Rental fee is charged when you receive the item</li>
-                  <li>Deposit released when item returned in good condition</li>
-                </ul>
-              </div>
+          ) : initError ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <p className="text-sm text-destructive text-center">{initError}</p>
+              <Button variant="outline" size="sm" onClick={() => createPaymentHoldMutation.mutate()}>
+                <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                Try again
+              </Button>
             </div>
-
-            <Button
-              onClick={handleProceedToPayment}
-              disabled={createPaymentHoldMutation.isPending}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              {createPaymentHoldMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Setting up payment...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Proceed to Payment
-                </>
-              )}
-            </Button>
-          </div>
-        ) : (
-          <div className="py-4">
-            {clientSecret ? (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <RentalPaymentForm
-                  clientSecret={clientSecret}
-                  onSuccess={handlePaymentSuccess}
-                  onCancel={() => {
-                    setStep("summary");
-                    setClientSecret(null);
-                  }}
-                  isProcessing={isProcessing}
-                  setIsProcessing={setIsProcessing}
-                />
-              </Elements>
-            ) : (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-              </div>
-            )}
-          </div>
-        )}
+          ) : clientSecret ? (
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <PayAndConfirmForm
+                clientSecret={clientSecret}
+                onSuccess={(paymentIntentId) => confirmPaymentMutation.mutate(paymentIntentId)}
+                onCancel={handleClose}
+                rentalPrice={rentalPrice}
+                depositAmount={depositAmount}
+                processingFee={processingFee}
+                deliveryFee={deliveryFee}
+                days={days}
+              />
+            </Elements>
+          ) : null}
+        </div>
       </DialogContent>
     </Dialog>
   );

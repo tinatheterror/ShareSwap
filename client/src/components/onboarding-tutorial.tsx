@@ -66,7 +66,7 @@ const tutorialSteps: TutorialStep[] = [
     id: 5,
     title: "Earn More ShareCoins",
     description:
-      "Need more ShareCoins? Earn a bonus coin the first time you borrow, lend, swap, gift, or rent — plus extra for unlocking achievement badges, inviting friends, or reaching a new reputation level. Check your wallet for the full breakdown.",
+      "Need more ShareCoins? Earn them through first-time milestones (your first borrow, lend, swap, gift, or rental), unlocking achievement badges, inviting friends, or playing sponsored games — check your wallet for all the ways.",
     highlightSelector: '[data-tutorial="wallet"]',
     positionAbove: false,
   },

@@ -5246,10 +5246,41 @@ Respond with ONLY the category name, nothing else.`
       // Award first-time bonus to giver only (no recurring reward; receiver gets nothing)
       await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 0);
 
-      // Update trust scores
+      // Update trust scores — with anti-farming guards
       try {
-        await awardGiftingPoints(giverId, receiverId, requestId, request.items.id);
-        console.log(`✅ Awarded trust points for completed gift`);
+        // Guard 1: only award gift trust points once per giver→receiver pair (lifetime)
+        const [priorGiftBetweenPair] = await db
+          .select({ cnt: sql<number>`count(*)` })
+          .from(itemRequests)
+          .innerJoin(items, eq(items.id, itemRequests.itemId))
+          .where(
+            and(
+              eq(itemRequests.requestType, "GIFT"),
+              eq(itemRequests.status, "COMPLETED"),
+              eq(items.ownerId, giverId),
+              eq(itemRequests.requesterId, receiverId),
+              ne(itemRequests.id, requestId),
+            ),
+          );
+
+        // Guard 2: receiver account must be at least 14 days old
+        const [receiverUser] = await db
+          .select({ createdAt: users.createdAt })
+          .from(users)
+          .where(eq(users.id, receiverId))
+          .limit(1);
+        const receiverAgeDays = receiverUser
+          ? (Date.now() - new Date(receiverUser.createdAt!).getTime()) / 86_400_000
+          : 0;
+
+        if (Number(priorGiftBetweenPair?.cnt ?? 1) > 0) {
+          console.log(`⚠️ Gift trust points skipped — giver ${giverId} has already gifted receiver ${receiverId} before (pair cap).`);
+        } else if (receiverAgeDays < 14) {
+          console.log(`⚠️ Gift trust points skipped — receiver ${receiverId} account is only ${receiverAgeDays.toFixed(1)} days old (minimum 14).`);
+        } else {
+          await awardGiftingPoints(giverId, receiverId, requestId, request.items.id);
+          console.log(`✅ Awarded trust points for completed gift`);
+        }
       } catch (trustError) {
         console.error("Error awarding gift trust points:", trustError);
       }
@@ -10862,6 +10893,28 @@ Respond with ONLY the category name, nothing else.`
       .limit(1);
 
     const oldScore = reviewedUserBefore?.reputationScore ?? 0;
+
+    // Anti-farming: trust points from reviews are awarded at most once per reviewer→reviewed
+    // pair per 90-day rolling window. The review itself is still saved and visible.
+    if (totalPoints > 0) {
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const [priorPairReview] = await db
+        .select({ id: userReviews.id })
+        .from(userReviews)
+        .where(
+          and(
+            eq(userReviews.reviewerId, req.user.id),
+            eq(userReviews.reviewedUserId, reviewedUserId),
+            gte(userReviews.createdAt, ninetyDaysAgo),
+            ne(userReviews.id, review.id),
+          ),
+        )
+        .limit(1);
+      if (priorPairReview) {
+        console.log(`⚠️ Review trust points skipped — reviewer ${req.user.id} already awarded points to ${reviewedUserId} within 90 days (pair cap).`);
+        return res.json({ success: true, review, pointsAwarded: 0 });
+      }
+    }
 
     if (totalPoints > 0) {
       // Log reputation activities (one per source)

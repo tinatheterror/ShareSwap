@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Info, Package } from "lucide-react";
-import { getTierShareCoins } from "@/lib/swap-calculator";
+import { getTierShareCoins, calculateMultiSwap, MAX_SWAP_OFFSET } from "@/lib/swap-calculator";
 
 interface SwapItem {
   id: number;
@@ -70,12 +70,6 @@ function getTotalSC(itemIds: number[], allItems: SwapItem[]): number {
   }, 0);
 }
 
-function scToTier(sc: number): number {
-  if (sc <= 5) return 1;
-  if (sc <= 10) return 2;
-  if (sc <= 20) return 3;
-  return 4;
-}
 
 function SelectedItemPreview({ item, label }: { item: SwapItem | null; label: string }) {
   const photo = item?.photos?.[0];
@@ -165,17 +159,13 @@ function ItemGrid({
   items,
   selected,
   onToggle,
-  partnerSC,
   isLoading,
 }: {
   items: SwapItem[];
   selected: number[];
   onToggle: (id: number) => void;
-  partnerSC: number;
   isLoading: boolean;
 }) {
-  const partnerTier = scToTier(Math.max(partnerSC, 1));
-
   return (
     <div className="min-h-[100px]">
       {isLoading ? (
@@ -187,26 +177,19 @@ function ItemGrid({
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-sm text-muted-foreground">
           <Package className="h-6 w-6 text-muted-foreground/30" />
-          <span className="italic text-xs">No eligible swap items available</span>
+          <span className="italic text-xs">No swappable items available</span>
         </div>
       ) : (
         <div className={`grid gap-2 px-1 ${items.length === 1 ? "grid-cols-1 max-w-[160px] mx-auto" : "grid-cols-2 sm:grid-cols-3"}`}>
-          {items.map((item) => {
-            const myTier = item.tier ?? 1;
-            const tierOk = Math.abs(myTier - partnerTier) <= 1 || selected.includes(item.id);
-            const selSC = getTotalSC(selected, items) + (selected.includes(item.id) ? 0 : getTierShareCoins(myTier));
-            const wouldBeTier = scToTier(selSC);
-            const stillOk = Math.abs(wouldBeTier - partnerTier) <= 2;
-            return (
-              <ItemCard
-                key={item.id}
-                item={item}
-                selected={selected.includes(item.id)}
-                onToggle={onToggle}
-                disabled={!tierOk && !selected.includes(item.id) && !stillOk}
-              />
-            );
-          })}
+          {items.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              selected={selected.includes(item.id)}
+              onToggle={onToggle}
+              disabled={false}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -270,10 +253,9 @@ export function SwapCounterModal({
 
   const ownerSC = getTotalSC(ownerItemIds, allItems);
   const requesterSC = getTotalSC(requesterItemIds, allItems);
-  const ownerTier = scToTier(Math.max(ownerSC, 1));
-  const requesterTier = scToTier(Math.max(requesterSC, 1));
-  const tierDiff = Math.abs(ownerTier - requesterTier);
-  const isCompatible = ownerItemIds.length > 0 && requesterItemIds.length > 0 && tierDiff <= 1;
+  const valuation = calculateMultiSwap(ownerSC, requesterSC);
+  const bothSidesSelected = ownerItemIds.length > 0 && requesterItemIds.length > 0;
+  const isCompatible = bothSidesSelected && !valuation.exceedsMax;
 
   const ownerItem = request.item;
 
@@ -310,15 +292,23 @@ export function SwapCounterModal({
     onSubmit({ swapOwnerItemIds: ownerItemIds, swapRequesterItemIds: requesterItemIds, counterNote: note.trim(), isResponse });
   };
 
-  const statusColor = tierDiff === 0 ? "text-emerald-500" : tierDiff === 1 ? "text-amber-500" : "text-red-500";
-  const statusMsg =
-    !isCompatible
-      ? ownerItemIds.length === 0 || requesterItemIds.length === 0
-        ? "Select items on both sides"
-        : `${tierDiff} tier gap — max 1 allowed`
-      : tierDiff === 0
-      ? "Fair swap"
-      : `+${Math.abs(ownerSC - requesterSC)} SC offset needed`;
+  const statusColor = !bothSidesSelected
+    ? "text-muted-foreground"
+    : valuation.exceedsMax
+    ? "text-red-500"
+    : valuation.isFair
+    ? "text-emerald-500"
+    : "text-amber-500";
+
+  const statusMsg = !bothSidesSelected
+    ? "Select items on both sides"
+    : valuation.exceedsMax
+    ? `Offset ${valuation.offset} SC — max ${MAX_SWAP_OFFSET} SC`
+    : valuation.isFair
+    ? "Fair swap"
+    : valuation.offsetDirection === "you_pay"
+    ? `You pay ${valuation.offset} SC`
+    : `You receive +${valuation.offset} SC`;
 
   // For visual comparison strip: first selected item on each side
   const ownerSelectedItem = allItems.find((i) => ownerItemIds.includes(i.id)) ?? null;
@@ -369,15 +359,33 @@ export function SwapCounterModal({
             <div className="px-5 py-4 space-y-4">
 
               {/* Visual comparison strip */}
-              <div className="rounded-xl border bg-muted/20 px-4 py-3 flex items-center gap-3">
-                <SelectedItemPreview item={ownerSelectedItem} label={myOwnerLabel} />
-                <div className="flex flex-col items-center gap-1 flex-shrink-0 px-1">
-                  <ArrowLeftRight className={`h-5 w-5 ${statusColor}`} />
-                  <span className={`text-[10px] font-medium text-center max-w-[90px] leading-tight ${statusColor}`}>
-                    {statusMsg}
-                  </span>
+              <div className="rounded-xl border bg-muted/20 px-4 py-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <SelectedItemPreview item={ownerSelectedItem} label={myOwnerLabel} />
+                  <div className="flex flex-col items-center gap-1 flex-shrink-0 px-1">
+                    <ArrowLeftRight className={`h-5 w-5 ${statusColor}`} />
+                    <span className={`text-[10px] font-medium text-center max-w-[90px] leading-tight ${statusColor}`}>
+                      {statusMsg}
+                    </span>
+                  </div>
+                  <SelectedItemPreview item={requesterSelectedItem} label={myRequesterLabel} />
                 </div>
-                <SelectedItemPreview item={requesterSelectedItem} label={myRequesterLabel} />
+                {/* SC totals summary */}
+                {bothSidesSelected && (
+                  <div className={`flex items-center justify-between text-[10px] font-medium px-1 pt-2 border-t ${
+                    valuation.exceedsMax ? "text-red-500" : "text-muted-foreground"
+                  }`}>
+                    <span>{ownerSC} SC total</span>
+                    {valuation.isFair ? (
+                      <span className="text-emerald-500">Fair swap</span>
+                    ) : (
+                      <span className={valuation.exceedsMax ? "text-red-500" : "text-amber-500"}>
+                        {valuation.offset} SC offset
+                      </span>
+                    )}
+                    <span>{requesterSC} SC total</span>
+                  </div>
+                )}
               </div>
 
               {/* Owner's items panel */}
@@ -389,7 +397,6 @@ export function SwapCounterModal({
                   items={ownerPanelItems}
                   selected={ownerItemIds}
                   onToggle={toggleOwnerItem}
-                  partnerSC={requesterSC}
                   isLoading={isOwner ? myLoading : partnerLoading}
                 />
               </div>
@@ -403,16 +410,15 @@ export function SwapCounterModal({
                   items={requesterPanelItems}
                   selected={requesterItemIds}
                   onToggle={toggleRequesterItem}
-                  partnerSC={ownerSC}
                   isLoading={isOwner ? partnerLoading : myLoading}
                 />
               </div>
 
-              {/* Tier hint */}
+              {/* Value hint */}
               {(ownerPanelItems.length > 0 || requesterPanelItems.length > 0) && (
                 <div className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
                   <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Combine multiple items to balance value. T1=5SC · T2=10SC · T3=20SC · T4=40SC</span>
+                  <span>Any tier combination is allowed — value difference is settled with ShareCoins. T1=5SC · T2=10SC · T3=20SC · T4=40SC · Max offset: {MAX_SWAP_OFFSET} SC</span>
                 </div>
               )}
 

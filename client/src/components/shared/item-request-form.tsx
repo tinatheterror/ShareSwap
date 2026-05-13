@@ -43,7 +43,7 @@ import { useState, useEffect } from "react";
 import * as z from "zod";
 import { Link } from "wouter";
 import type { SelectItem } from "@db/schema";
-import { calculateSwap, getSwapTierLabel } from "@/lib/swap-calculator";
+import { getTierShareCoins, calculateMultiSwap } from "@/lib/swap-calculator";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { calculateRentalPrice, getDiscountLabel } from "@/lib/rental-calculator";
 import { useVerification } from "@/hooks/use-verification";
@@ -70,7 +70,7 @@ type Props = {
   requestType: "BORROW" | "RENT" | "SWAP" | "GIFT";
   isOpen: boolean;
   onClose: () => void;
-  swapOfferItem?: SelectItem | null;
+  swapOfferItem?: SelectItem[] | null;
   onInsufficientCoins?: (required: number) => void;
   prefill?: Prefill | null;
 };
@@ -149,8 +149,8 @@ export function ItemRequestForm({
       const res = await apiRequest("POST", `/api/items/${item.id}/request`, {
         ...data,
         requestType,
-        swapOfferItemId: swapOfferItem?.id,
-        swapOfferedItemIds: swapOfferItem?.id ? [swapOfferItem.id] : [],
+        swapOfferItemId: swapOfferItem?.[0]?.id,
+        swapOfferedItemIds: swapOfferItem?.map((i) => i.id) ?? [],
         deliveryMethod: data.deliveryMethod,
         depositMethod: data.depositMethod,
       });
@@ -257,94 +257,76 @@ export function ItemRequestForm({
               </div>
             )}
 
-          {requestType === "SWAP" && swapOfferItem && (
+          {requestType === "SWAP" && swapOfferItem && swapOfferItem.length > 0 && (
             <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-lg p-4 space-y-3">
               <div className="flex items-center gap-2 text-[#0BB88C] font-medium">
                 <ArrowLeftRight className="h-4 w-4" />
                 Swap Summary
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="text-xs text-[#0DCEA1] mb-1">
-                    You're offering:
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                      {swapOfferItem.photos?.[0] ? (
-                        <img
-                          src={swapOfferItem.photos[0]}
-                          alt={swapOfferItem.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Camera className="h-4 w-4 text-gray-400" />
+              <div className="flex items-start gap-3">
+                {/* Your side */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-[#0DCEA1] mb-1.5">You're offering:</div>
+                  <div className="space-y-1.5">
+                    {swapOfferItem.map((offerItem) => (
+                      <div key={offerItem.id} className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                          {offerItem.photos?.[0] ? (
+                            <img src={offerItem.photos[0]} alt={offerItem.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Camera className="h-3 w-3 text-gray-400" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 max-w-[100px] overflow-visible">
-                      <p
-                        className="text-sm font-medium text-gray-900 truncate"
-                        style={{ lineHeight: "1.4" }}
-                      >
-                        {swapOfferItem.name}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]"
-                      >
-                        {getSwapTierLabel((swapOfferItem as any).tier || 2)}
-                      </Badge>
-                    </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-gray-900 truncate">{offerItem.name}</p>
+                          <p className="text-[10px] text-[#0BB88C]">T{(offerItem as any).tier || 2} · {getTierShareCoins((offerItem as any).tier || 2)} SC</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]/70" />
-                <div className="flex-1">
-                  <div className="text-xs text-[#0DCEA1] mb-1">For their:</div>
+                <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]/70 mt-5 flex-shrink-0" />
+                {/* Their side */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-[#0DCEA1] mb-1.5">For their:</div>
                   <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                    <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                       {item.photos?.[0] ? (
-                        <img
-                          src={item.photos[0]}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Camera className="h-4 w-4 text-gray-400" />
+                          <Camera className="h-3 w-3 text-gray-400" />
                         </div>
                       )}
                     </div>
-                    <div className="min-w-0 max-w-[100px] overflow-visible">
-                      <p
-                        className="text-sm font-medium text-gray-900 truncate"
-                        style={{ lineHeight: "1.4" }}
-                      >
-                        {item.name}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-[#0DCEA1]/50 text-[#0BB88C]"
-                      >
-                        {getSwapTierLabel((item as any).tier || 2)}
-                      </Badge>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-gray-900 truncate">{item.name}</p>
+                      <p className="text-[10px] text-[#0BB88C]">T{(item as any).tier || 2} · {getTierShareCoins((item as any).tier || 2)} SC</p>
                     </div>
                   </div>
                 </div>
               </div>
+              {/* Offset summary */}
               {(() => {
-                const yourTier = (swapOfferItem as any).tier || 2;
-                const theirTier = (item as any).tier || 2;
-                const swap = calculateSwap(yourTier, theirTier);
-                if (swap.fairness === "offset_required") {
-                  return (
-                    <div className="flex items-center gap-2 text-[#0BB88C] text-sm bg-[#E6FBF5] p-2 rounded">
-                      <Coins className="h-4 w-4" />
-                      {swap.message}
-                    </div>
-                  );
-                }
-                return null;
+                const yourSC = swapOfferItem.reduce((s, i) => s + getTierShareCoins((i as any).tier || 2), 0);
+                const theirSC = getTierShareCoins((item as any).tier || 2);
+                const result = calculateMultiSwap(yourSC, theirSC);
+                return (
+                  <div className={`flex items-center gap-2 text-sm p-2 rounded ${
+                    result.isFair ? "text-[#0BB88C] bg-[#E6FBF5]" : "text-amber-700 bg-amber-50"
+                  }`}>
+                    <Coins className="h-4 w-4 flex-shrink-0" />
+                    <span>
+                      {result.isFair
+                        ? "Fair swap — no ShareCoin adjustment"
+                        : result.offsetDirection === "you_pay"
+                        ? `You pay ${result.offset} ShareCoins to balance the swap`
+                        : `You receive +${result.offset} ShareCoins`}
+                    </span>
+                  </div>
+                );
               })()}
             </div>
           )}

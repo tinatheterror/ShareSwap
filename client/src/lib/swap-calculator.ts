@@ -1,21 +1,59 @@
-// Swap Calculator - Tier-based fairness with ShareCoin offsets
+// Swap Calculator — value-based with ShareCoin offsets, no tier restrictions
 
 // Fixed ShareCoin values per tier
 const TIER_SHARECOIN_VALUES: Record<number, number> = {
   1: 5,   // Tier 1: Under $50
-  2: 10,  // Tier 2: $50-$199
-  3: 20,  // Tier 3: $200-$499
-  4: 40,  // Tier 4: $500-$2,000
+  2: 10,  // Tier 2: $50–$199
+  3: 20,  // Tier 3: $200–$499
+  4: 40,  // Tier 4: $500–$2,000
 };
 
-const MAX_TIER = 4;
+// Maximum allowed ShareCoin offset between the two sides of a swap
+export const MAX_SWAP_OFFSET = 50;
+
+export function getTierShareCoins(tier: number): number {
+  return TIER_SHARECOIN_VALUES[tier] || 10;
+}
+
+export interface MultiSwapResult {
+  yourTotal: number;
+  theirTotal: number;
+  offset: number;
+  offsetDirection: 'none' | 'you_pay' | 'you_receive';
+  isFair: boolean;
+  exceedsMax: boolean;
+  message: string;
+}
+
+/** Primary calculation: compare two side totals (in ShareCoins) */
+export function calculateMultiSwap(yourSC: number, theirSC: number): MultiSwapResult {
+  const offset = Math.abs(yourSC - theirSC);
+  const offsetDirection =
+    offset === 0 ? 'none' : yourSC < theirSC ? 'you_pay' : 'you_receive';
+  const exceedsMax = offset > MAX_SWAP_OFFSET;
+
+  let message: string;
+  if (offset === 0) {
+    message = 'Fair swap — no ShareCoin adjustment needed';
+  } else if (exceedsMax) {
+    message = `Offset of ${offset} SC exceeds the ${MAX_SWAP_OFFSET} SC maximum`;
+  } else if (offsetDirection === 'you_pay') {
+    message = `You pay ${offset} ShareCoins to balance the swap`;
+  } else {
+    message = `You receive +${offset} ShareCoins to balance the swap`;
+  }
+
+  return { yourTotal: yourSC, theirTotal: theirSC, offset, offsetDirection, isFair: offset === 0, exceedsMax, message };
+}
+
+// ── Backward-compatible types & functions ────────────────────────────────────
 
 export type SwapFairness = 'fair' | 'offset_required' | 'not_allowed';
 
 export interface SwapCalculation {
   fairness: SwapFairness;
   tierDifference: number;
-  offsetRequired: number; // ShareCoins needed from lower-tier side
+  offsetRequired: number;
   offsetDirection: 'none' | 'you_pay' | 'they_pay';
   yourTier: number;
   theirTier: number;
@@ -32,89 +70,45 @@ export interface SwapEligibility {
   fairSwapMessage: string;
 }
 
-export function getTierShareCoins(tier: number): number {
-  return TIER_SHARECOIN_VALUES[tier] || 10;
-}
-
-export function getSwapEligibility(tier: number): SwapEligibility {
-  const yourShareCoins = getTierShareCoins(tier);
-  
-  // Can swap with same tier or ±1 tier
-  const acceptableTiers: number[] = [];
-  if (tier > 1) acceptableTiers.push(tier - 1);
-  acceptableTiers.push(tier);
-  if (tier < MAX_TIER) acceptableTiers.push(tier + 1);
-  
-  // Build fair swap message
-  const sameTierMsg = `Tier ${tier} items`;
-  const lowerTierMsg = tier > 1 ? `Tier ${tier - 1} (+${yourShareCoins - getTierShareCoins(tier - 1)} SC offset)` : null;
-  const higherTierMsg = tier < MAX_TIER ? `Tier ${tier + 1} (−${getTierShareCoins(tier + 1) - yourShareCoins} SC offset)` : null;
-  
-  let fairSwapMessage = `Fair swap: ${sameTierMsg}`;
-  if (lowerTierMsg) fairSwapMessage += `, or ${lowerTierMsg}`;
-  if (higherTierMsg) fairSwapMessage += `, or ${higherTierMsg}`;
-  
-  return {
-    canSwap: true,
-    acceptableTiers,
-    yourTier: tier,
-    yourShareCoins,
-    fairSwapMessage,
-  };
-}
-
+/** Single-item comparison — kept for any remaining callers */
 export function calculateSwap(yourTier: number, theirTier: number): SwapCalculation {
   const yourShareCoins = getTierShareCoins(yourTier);
   const theirShareCoins = getTierShareCoins(theirTier);
   const tierDifference = Math.abs(yourTier - theirTier);
-  const shareCoinsGap = Math.abs(yourShareCoins - theirShareCoins);
-  
-  // Same tier = fair swap, no offset
-  if (tierDifference === 0) {
-    return {
-      fairness: 'fair',
-      tierDifference: 0,
-      offsetRequired: 0,
-      offsetDirection: 'none',
-      yourTier,
-      theirTier,
-      yourShareCoins,
-      theirShareCoins,
-      message: 'Fair swap! No offset needed.',
-    };
-  }
-  
-  // 1 tier difference = allowed with ShareCoin offset
-  if (tierDifference === 1) {
-    const offsetDirection = yourTier < theirTier ? 'you_pay' : 'they_pay';
-    const offsetAmount = shareCoinsGap;
-    
-    return {
-      fairness: 'offset_required',
-      tierDifference: 1,
-      offsetRequired: offsetAmount,
-      offsetDirection,
-      yourTier,
-      theirTier,
-      yourShareCoins,
-      theirShareCoins,
-      message: offsetDirection === 'you_pay' 
-        ? `You pay ${offsetAmount} ShareCoins to balance the swap`
-        : `You receive +${offsetAmount} ShareCoins to balance the swap`,
-    };
-  }
-  
-  // 2+ tier difference = not allowed
+  const offset = Math.abs(yourShareCoins - theirShareCoins);
+  const offsetDirection =
+    yourShareCoins < theirShareCoins ? 'you_pay'
+    : yourShareCoins > theirShareCoins ? 'they_pay'
+    : 'none';
+  const exceedsMax = offset > MAX_SWAP_OFFSET;
+  const fairness: SwapFairness =
+    exceedsMax ? 'not_allowed' : offset === 0 ? 'fair' : 'offset_required';
+
   return {
-    fairness: 'not_allowed',
+    fairness,
     tierDifference,
-    offsetRequired: 0,
-    offsetDirection: 'none',
+    offsetRequired: offset,
+    offsetDirection,
     yourTier,
     theirTier,
     yourShareCoins,
     theirShareCoins,
-    message: `Swap not allowed. Maximum 1-tier difference permitted (${tierDifference} tier gap).`,
+    message:
+      offset === 0 ? 'Fair swap! No offset needed.'
+      : exceedsMax ? `Offset too large (${offset} SC exceeds max ${MAX_SWAP_OFFSET} SC)`
+      : offsetDirection === 'you_pay'
+        ? `You pay ${offset} ShareCoins to balance the swap`
+        : `You receive +${offset} ShareCoins to balance the swap`,
+  };
+}
+
+export function getSwapEligibility(tier: number): SwapEligibility {
+  return {
+    canSwap: true,
+    acceptableTiers: [1, 2, 3, 4],
+    yourTier: tier,
+    yourShareCoins: getTierShareCoins(tier),
+    fairSwapMessage: `Any tier — value difference settled with ShareCoins (max ${MAX_SWAP_OFFSET} SC offset)`,
   };
 }
 
@@ -122,13 +116,6 @@ export function getSwapTierLabel(tier: number): string {
   return `Tier ${tier}`;
 }
 
-export function getAcceptableSwapsLabel(tier: number): string {
-  const eligibility = getSwapEligibility(tier);
-  const labels = eligibility.acceptableTiers.map(t => {
-    if (t === tier) return `Tier ${t}`;
-    const offset = Math.abs(getTierShareCoins(tier) - getTierShareCoins(t));
-    const direction = t < tier ? '+' : '−';
-    return `Tier ${t} (${direction}${offset} SC)`;
-  });
-  return labels.join(' • ');
+export function getAcceptableSwapsLabel(_tier: number): string {
+  return `Any tier · value difference settled with ShareCoins (max ${MAX_SWAP_OFFSET} SC)`;
 }

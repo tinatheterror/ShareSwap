@@ -5,20 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  ArrowLeftRight,
-  Camera,
-  Check,
-  Coins,
-  Package,
-  Plus,
-} from "lucide-react";
+import { ArrowLeftRight, Camera, Check, Coins, Package, Plus, AlertTriangle, Info } from "lucide-react";
 import type { SelectItem } from "@db/schema";
-import {
-  calculateSwap,
-  getSwapTierLabel,
-  getTierShareCoins,
-} from "@/lib/swap-calculator";
+import { getTierShareCoins, calculateMultiSwap, MAX_SWAP_OFFSET } from "@/lib/swap-calculator";
 import { useAuth } from "@/hooks/use-auth";
 import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 
@@ -26,16 +15,11 @@ type Props = {
   targetItem: SelectItem;
   isOpen: boolean;
   onClose: () => void;
-  onSelectItem: (item: SelectItem) => void;
+  onSelectItem: (items: SelectItem[]) => void;
 };
 
-export function SwapInventorySelector({
-  targetItem,
-  isOpen,
-  onClose,
-  onSelectItem,
-}: Props) {
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectItem }: Props) {
+  const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
   const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
   const [insufficientRequired, setInsufficientRequired] = useState(0);
   const queryClient = useQueryClient();
@@ -48,261 +32,272 @@ export function SwapInventorySelector({
   });
 
   const toggleSwapMutation = useMutation({
-    mutationFn: async ({
-      itemId,
-      isSwappable,
-    }: {
-      itemId: number;
-      isSwappable: boolean;
-    }) => {
-      const res = await apiRequest("PATCH", `/api/items/${itemId}`, {
-        isSwappable,
-      });
+    mutationFn: async ({ itemId, isSwappable }: { itemId: number; isSwappable: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/items/${itemId}`, { isSwappable });
       return res.json();
     },
     onMutate: async ({ itemId, isSwappable }) => {
       await queryClient.cancelQueries({ queryKey: ["/api/my-items"] });
-      const previousItems = queryClient.getQueryData<SelectItem[]>([
-        "/api/my-items",
-      ]);
+      const previousItems = queryClient.getQueryData<SelectItem[]>(["/api/my-items"]);
       queryClient.setQueryData<SelectItem[]>(["/api/my-items"], (old) =>
-        old?.map((item) =>
-          item.id === itemId ? { ...item, isSwappable } : item,
-        ),
+        old?.map((item) => (item.id === itemId ? { ...item, isSwappable } : item)),
       );
       return { previousItems };
     },
     onError: (_err, _variables, context) => {
-      if (context?.previousItems) {
-        queryClient.setQueryData(["/api/my-items"], context.previousItems);
-      }
+      if (context?.previousItems) queryClient.setQueryData(["/api/my-items"], context.previousItems);
     },
   });
 
   const targetTier = (targetItem as any).tier || 2;
-  const targetShareCoins = getTierShareCoins(targetTier);
+  const targetSC = getTierShareCoins(targetTier);
 
+  // All user items except the target item itself
   const allUserItems = myItems.filter((item) => item.id !== targetItem.id);
+  const swappableItems = allUserItems.filter((item) => item.isSwappable);
+  const notSwappableItems = allUserItems.filter((item) => !item.isSwappable);
 
-  const tierCompatibleItems = allUserItems.filter((item) => {
-    const itemTier = (item as any).tier || 2;
-    const swap = calculateSwap(itemTier, targetTier);
-    return swap.fairness !== "not_allowed";
-  });
+  // Value calculation
+  const yourSC = selectedItemIds.reduce((sum, id) => {
+    const item = swappableItems.find((i) => i.id === id);
+    return sum + (item ? getTierShareCoins((item as any).tier || 2) : 0);
+  }, 0);
+  const valuation = calculateMultiSwap(yourSC, targetSC);
 
-  const swappableItems = tierCompatibleItems.filter((item) => item.isSwappable);
-  const needsSwapEnabled = tierCompatibleItems.filter(
-    (item) => !item.isSwappable,
-  );
+  const toggleItem = (id: number) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const handleConfirmSelection = () => {
-    const selectedItem = swappableItems.find((i) => i.id === selectedItemId);
-    if (!selectedItem) return;
+    if (selectedItemIds.length === 0) return;
+    const selected = swappableItems.filter((i) => selectedItemIds.includes(i.id));
+    if (valuation.exceedsMax) return;
 
-    const itemTier = (selectedItem as any).tier || 2;
-    const swap = calculateSwap(itemTier, targetTier);
-
-    // Check if user needs to pay an offset and has enough ShareCoins
-    if (swap.offsetDirection === "you_pay" && swap.offsetRequired > 0) {
+    if (valuation.offsetDirection === "you_pay" && valuation.offset > 0) {
       const balance = Number(user?.shareCoins || 0);
-      if (balance < swap.offsetRequired) {
-        setInsufficientRequired(swap.offsetRequired);
+      if (balance < valuation.offset) {
+        setInsufficientRequired(valuation.offset);
         setShowInsufficientCoins(true);
         return;
       }
     }
-
-    onSelectItem(selectedItem);
+    onSelectItem(selected);
   };
 
-  const formatTierDisplay = (tier: number) => {
-    const coins = getTierShareCoins(tier);
-    return { tier, coins };
-  };
+  const canSubmit = selectedItemIds.length > 0 && !valuation.exceedsMax;
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden">
-        {/* Hero Section - Target Item */}
-        <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-6 text-white">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-white/10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
-              {targetItem.photos?.[0] ? (
-                <img
-                  src={targetItem.photos[0]}
-                  alt={targetItem.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Camera className="h-8 w-8 text-white/50" />
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden">
+          {/* Hero — target item */}
+          <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-6 text-white">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 bg-white/10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
+                {targetItem.photos?.[0] ? (
+                  <img src={targetItem.photos[0]} alt={targetItem.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Camera className="h-8 w-8 text-white/50" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-bold truncate">{targetItem.name}</h2>
+                <div className="flex items-center gap-1.5 mt-2 text-white/80 text-sm">
+                  <span>Tier {targetTier} –</span>
+                  <Coins className="h-3.5 w-3.5" />
+                  <span>{targetSC} SC</span>
                 </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold truncate">{targetItem.name}</h2>
-              <div className="flex items-center gap-1.5 mt-2 text-gray-800 text-sm">
-                <span>Tier {targetTier} –</span>
-                <Coins className="h-3.5 w-3.5" />
-                <span>{targetShareCoins} ShareCoins</span>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Content Section - White Background */}
-        <div className="p-5 bg-white">
-          <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Select one of your items to trade
-          </h3>
+          {/* Content */}
+          <div className="p-5 bg-white">
+            <h3 className="text-sm font-medium text-gray-500 mb-3">
+              Select one or more of your items to trade
+            </h3>
 
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0DCEA1]"></div>
-            </div>
-          ) : swappableItems.length === 0 && needsSwapEnabled.length === 0 ? (
-            <div className="text-center py-10">
-              <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium">No eligible items</p>
-              <p className="text-sm text-gray-400 mt-1 mb-4">
-                Add items in Tier {Math.max(1, targetTier - 1)}-{targetTier + 1}{" "}
-                to swap
-              </p>
-              <Button onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}>
-                Add an item
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-2 max-h-[280px] overflow-y-auto">
-                {/* Show all tier-compatible items */}
-                {tierCompatibleItems.map((item) => {
-                  const itemTier = (item as any).tier || 2;
-                  const tierInfo = formatTierDisplay(itemTier);
-                  const swap = calculateSwap(itemTier, targetTier);
-                  const isSelected = selectedItemId === item.id;
-                  const canSelect = item.isSwappable;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg transition-all border ${
-                        !canSelect
-                          ? "border-gray-200 bg-gray-100 opacity-60"
-                          : isSelected
-                            ? "border-[#0DCEA1] bg-[#E6FBF5] cursor-pointer"
-                            : "border-gray-100 hover:border-gray-200 hover:bg-gray-50 cursor-pointer"
-                      }`}
-                      onClick={() => canSelect && setSelectedItemId(item.id)}
-                    >
-                      <div className="w-14 h-14 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
-                        {item.photos?.[0] ? (
-                          <img
-                            src={item.photos[0]}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Camera className="h-5 w-5 text-gray-400" />
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0DCEA1]" />
+              </div>
+            ) : swappableItems.length === 0 && notSwappableItems.length === 0 ? (
+              <div className="text-center py-10">
+                <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 font-medium">No eligible items</p>
+                <p className="text-sm text-gray-400 mt-1 mb-4">Add items and mark them as swappable</p>
+                <Button onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}>
+                  Add an item
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                  {/* Swappable items */}
+                  {swappableItems.map((item) => {
+                    const tier = (item as any).tier || 2;
+                    const sc = getTierShareCoins(tier);
+                    const isSelected = selectedItemIds.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg transition-all border cursor-pointer ${
+                          isSelected
+                            ? "border-[#0DCEA1] bg-[#E6FBF5]"
+                            : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+                        }`}
+                        onClick={() => toggleItem(item.id)}
+                      >
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
+                          {item.photos?.[0] ? (
+                            <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Camera className="h-4 w-4 text-gray-400" />
+                            </div>
+                          )}
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-[#0DCEA1]/30 flex items-center justify-center">
+                              <Check className="h-4 w-4 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{item.name}</p>
+                          <div className="flex items-center flex-wrap gap-1 text-xs text-gray-500 mt-0.5">
+                            <span>Tier {tier}</span>
+                            <span className="text-gray-300">·</span>
+                            <Coins className="h-3 w-3" />
+                            <span>{sc} SC</span>
                           </div>
-                        )}
-                        {isSelected && canSelect && (
-                          <div className="absolute inset-0 bg-[#0DCEA1]/30 flex items-center justify-center">
-                            <Check className="h-5 w-5 text-white" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {item.name}
-                        </p>
-                        <div className="flex items-center flex-wrap gap-1 text-xs text-gray-500 mt-0.5">
-                          <span>Tier {tierInfo.tier} -</span>
-                          <Coins className="h-3 w-3" />
-                          <span>{tierInfo.coins} ShareCoins</span>
-                          {canSelect &&
-                            (swap.fairness === "fair" ? (
-                              <>
-                                <span className="text-gray-300 ml-1">·</span>
-                                <span className="text-green-600">
-                                  Fair swap
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-gray-300 ml-1">·</span>
-                                <span className="text-gray-500">
-                                  {swap.offsetDirection === "you_pay"
-                                    ? `+${swap.offsetRequired} SC`
-                                    : `-${swap.offsetRequired} SC`}
-                                </span>
-                              </>
-                            ))}
                         </div>
                       </div>
+                    );
+                  })}
 
-                      {/* Toggle for non-swappable items */}
-                      {!canSelect && (
-                        <div
-                          className="flex items-center gap-2 flex-shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span className="text-xs text-gray-500">Swap it</span>
+                  {/* Not-yet-swappable items */}
+                  {notSwappableItems.map((item) => {
+                    const tier = (item as any).tier || 2;
+                    const sc = getTierShareCoins(tier);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50 opacity-60"
+                      >
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                          {item.photos?.[0] ? (
+                            <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Camera className="h-4 w-4 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-700 text-sm truncate">{item.name}</p>
+                          <div className="flex items-center flex-wrap gap-1 text-xs text-gray-400 mt-0.5">
+                            <span>Tier {tier}</span>
+                            <span className="text-gray-300">·</span>
+                            <Coins className="h-3 w-3" />
+                            <span>{sc} SC</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-xs text-gray-400">Enable</span>
                           <Switch
-                            checked={item.isSwappable ?? false}
-                            onCheckedChange={(checked) => {
-                              toggleSwapMutation.mutate({
-                                itemId: item.id,
-                                isSwappable: checked,
-                              });
-                            }}
+                            checked={false}
+                            onCheckedChange={(checked) =>
+                              toggleSwapMutation.mutate({ itemId: item.id, isSwappable: checked })
+                            }
                             disabled={toggleSwapMutation.isPending}
                           />
                         </div>
-                      )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Fairness summary */}
+                {selectedItemIds.length > 0 && (
+                  <div className={`mt-3 rounded-lg px-3 py-2.5 text-xs border ${
+                    valuation.exceedsMax
+                      ? "bg-red-50 border-red-200 text-red-700"
+                      : valuation.isFair
+                      ? "bg-green-50 border-green-200 text-green-700"
+                      : "bg-amber-50 border-amber-200 text-amber-700"
+                  }`}>
+                    <div className="flex items-center justify-between mb-1.5 font-medium">
+                      <span>Your offer: {yourSC} SC</span>
+                      <ArrowLeftRight className="h-3 w-3 mx-1" />
+                      <span>Their offer: {targetSC} SC</span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="flex items-center gap-1">
+                      {valuation.exceedsMax
+                        ? <AlertTriangle className="h-3 w-3 shrink-0" />
+                        : <Info className="h-3 w-3 shrink-0" />}
+                      <span>
+                        {valuation.isFair
+                          ? "Fair swap — no ShareCoin adjustment"
+                          : valuation.offsetDirection === "you_pay"
+                          ? `You pay ${valuation.offset} SC to balance`
+                          : valuation.offsetDirection === "you_receive"
+                          ? `You receive +${valuation.offset} SC`
+                          : valuation.message}
+                      </span>
+                    </div>
+                    {valuation.exceedsMax && (
+                      <p className="mt-1 text-[10px] opacity-80">Maximum allowed offset is {MAX_SWAP_OFFSET} SC</p>
+                    )}
+                  </div>
+                )}
 
-              {/* Action buttons */}
-              <div className="flex gap-2 pt-4 mt-4 border-t">
-                <Button variant="outline" className="flex-1" onClick={onClose}>
-                  Cancel
-                </Button>
+                {/* SC scale hint */}
+                {selectedItemIds.length === 0 && (
+                  <div className="flex items-center gap-1.5 mt-3 text-[11px] text-muted-foreground">
+                    <Info className="h-3 w-3 shrink-0" />
+                    <span>T1=5SC · T2=10SC · T3=20SC · T4=40SC · Difference settled with ShareCoins</span>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-2 pt-4 mt-3 border-t">
+                  <Button variant="outline" className="flex-1" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1 bg-[#0DCEA1] hover:bg-[#0BB88C]"
+                    disabled={!canSubmit}
+                    onClick={handleConfirmSelection}
+                  >
+                    <ArrowLeftRight className="h-4 w-4 mr-2" />
+                    Swap
+                  </Button>
+                </div>
                 <Button
-                  className="flex-1 bg-[#0DCEA1] hover:bg-[#0BB88C]"
-                  disabled={!selectedItemId}
-                  onClick={handleConfirmSelection}
+                  variant="outline"
+                  className="w-full mt-2"
+                  onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}
                 >
-                  <ArrowLeftRight className="h-4 w-4 mr-2" />
-                  Swap
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add an item
                 </Button>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full mt-2"
-                onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add an item
-              </Button>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-    <InsufficientShareCoinsModal
-      isOpen={showInsufficientCoins}
-      onClose={() => setShowInsufficientCoins(false)}
-      currentBalance={Number(user?.shareCoins || 0)}
-      required={insufficientRequired}
-      context="swap"
-    />
+      <InsufficientShareCoinsModal
+        isOpen={showInsufficientCoins}
+        onClose={() => setShowInsufficientCoins(false)}
+        currentBalance={Number(user?.shareCoins || 0)}
+        required={insufficientRequired}
+        context="swap"
+      />
     </>
   );
 }

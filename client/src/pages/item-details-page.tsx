@@ -49,9 +49,7 @@ type ItemRequest = {
 export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [showSwapSelector, setShowSwapSelector] = useState(false);
-  const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem | null>(
-    null,
-  );
+  const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem[] | null>(null);
   const [showGiftClaimModal, setShowGiftClaimModal] = useState(false);
   const [insufficientCoinsModal, setInsufficientCoinsModal] = useState<{
     required: number;
@@ -284,8 +282,8 @@ export default function ItemDetailsPage() {
                   >
                     <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
                       <Info className="h-3 w-3 inline mr-1" />
-                      Swaps allow same-tier or ±1 tier items, with ShareCoins
-                      balancing the difference.
+                      Any tier combination is allowed — ShareCoins settle the
+                      value difference automatically.
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -506,7 +504,7 @@ export default function ItemDetailsPage() {
             isOpen={!!requestType}
             onClose={() => {
               setRequestType(null);
-              setSelectedSwapItem(null);
+              setSelectedSwapItem(null as any);
               setPrefill(null);
             }}
             swapOfferItem={selectedSwapItem}
@@ -518,8 +516,8 @@ export default function ItemDetailsPage() {
           targetItem={item}
           isOpen={showSwapSelector}
           onClose={() => setShowSwapSelector(false)}
-          onSelectItem={(selectedItem) => {
-            setSelectedSwapItem(selectedItem);
+          onSelectItem={(selectedItems) => {
+            setSelectedSwapItem(selectedItems);
             setShowSwapSelector(false);
             setRequestType("SWAP");
           }}

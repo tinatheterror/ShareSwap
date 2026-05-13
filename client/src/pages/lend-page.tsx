@@ -2180,9 +2180,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                         >
                                           <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
                                             <Info className="h-3 w-3 inline mr-1" />
-                                            Swaps allow same-tier or ±1 tier
-                                            items, with ShareCoins balancing the
-                                            difference.
+                                            Any tier combination is allowed —
+                                            ShareCoins settle the value
+                                            difference automatically.
                                           </div>
                                         </TooltipContent>
                                       </Tooltip>

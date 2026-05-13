@@ -103,6 +103,26 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
   );
 }
 
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1046.5, now);
+    osc.frequency.exponentialRampToValueAtTime(1318.5, now + 0.12);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.start(now);
+    osc.stop(now + 0.35);
+    setTimeout(() => ctx.close(), 600);
+  } catch {}
+}
+
 function NotificationBell() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -115,18 +135,18 @@ function NotificationBell() {
     refetchInterval: 30000,
   });
 
-  // When a new sharecoin_earned notification arrives, immediately refresh the user's
-  // balance so the coin animation fires at the right time (handoff, not return).
+  // Play a sound and refresh balance when new notifications arrive.
   useEffect(() => {
     if (!allNotifications.length) return;
     const currentIds = new Set(allNotifications.map((n) => n.id));
-    const hasNewEarned =
-      prevNotifIdsRef.current.size > 0 &&
-      allNotifications.some(
-        (n) => n.type === "sharecoin_earned" && !prevNotifIdsRef.current.has(n.id)
-      );
-    if (hasNewEarned) {
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+    if (prevNotifIdsRef.current.size > 0) {
+      const newNotifs = allNotifications.filter((n) => !prevNotifIdsRef.current.has(n.id));
+      if (newNotifs.length > 0) {
+        playNotificationSound();
+        if (newNotifs.some((n) => n.type === "sharecoin_earned")) {
+          queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        }
+      }
     }
     prevNotifIdsRef.current = currentIds;
   }, [allNotifications]);

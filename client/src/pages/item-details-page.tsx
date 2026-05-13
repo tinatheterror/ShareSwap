@@ -153,7 +153,7 @@ export default function ItemDetailsPage() {
       >
         <div>
           <p className="font-medium">Borrow</p>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-1 mb-1">
             <Coins className="h-4 w-4 text-teal-600" />
             <span className="text-lg font-bold text-teal-700">
               {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins

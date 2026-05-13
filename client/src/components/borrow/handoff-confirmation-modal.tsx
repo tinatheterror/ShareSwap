@@ -324,13 +324,6 @@ export function HandoffConfirmationModal({
             <KeyRound className="h-4 w-4 text-indigo-500" />
             Enter handoff code
           </DialogTitle>
-          <DialogDescription>
-            {view === "expired"
-              ? "This code has expired."
-              : view === "rate_limited"
-              ? "Too many incorrect attempts."
-              : "Enter the 4-digit code from the owner."}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="py-2 space-y-4">

@@ -366,7 +366,7 @@ export default function AchievementsPage() {
           {/* Milestones: 3 columns of 6 */}
           <div>
             <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-teal-500" />Milestones
+              <CheckCircle className="h-4 w-4 text-teal-500" />Milestones
             </h2>
             <div className="grid grid-cols-3 gap-x-8 gap-y-0">
               <div className="space-y-2">
@@ -390,7 +390,7 @@ export default function AchievementsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-teal-500" />Milestones
+                <CheckCircle className="h-4 w-4 text-teal-500" />Milestones
               </h2>
               <div className="space-y-2">
                 {milestones.map((m) => <MilestoneRow key={m.id} milestone={m} size="sm" />)}

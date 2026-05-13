@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeftRight, Camera, Check, Coins, Package, Plus, AlertTriangle, Info } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { getTierShareCoins, calculateMultiSwap, MAX_SWAP_OFFSET } from "@/lib/swap-calculator";
@@ -22,7 +19,6 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
   const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
   const [insufficientRequired, setInsufficientRequired] = useState(0);
-  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const { data: myItems = [], isLoading } = useQuery<SelectItem[]>({
@@ -31,31 +27,13 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
     staleTime: 0,
   });
 
-  const toggleSwapMutation = useMutation({
-    mutationFn: async ({ itemId, isSwappable }: { itemId: number; isSwappable: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/items/${itemId}`, { isSwappable });
-      return res.json();
-    },
-    onMutate: async ({ itemId, isSwappable }) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/my-items"] });
-      const previousItems = queryClient.getQueryData<SelectItem[]>(["/api/my-items"]);
-      queryClient.setQueryData<SelectItem[]>(["/api/my-items"], (old) =>
-        old?.map((item) => (item.id === itemId ? { ...item, isSwappable } : item)),
-      );
-      return { previousItems };
-    },
-    onError: (_err, _variables, context) => {
-      if (context?.previousItems) queryClient.setQueryData(["/api/my-items"], context.previousItems);
-    },
-  });
-
   const targetTier = (targetItem as any).tier || 2;
   const targetSC = getTierShareCoins(targetTier);
 
-  // All user items except the target item itself
-  const allUserItems = myItems.filter((item) => item.id !== targetItem.id);
-  const swappableItems = allUserItems.filter((item) => item.isSwappable);
-  const notSwappableItems = allUserItems.filter((item) => !item.isSwappable);
+  // Only show items that are both swappable and currently available
+  const swappableItems = myItems.filter(
+    (item) => item.id !== targetItem.id && item.isSwappable && item.isAvailable !== false,
+  );
 
   // Value calculation
   const yourSC = selectedItemIds.reduce((sum, id) => {
@@ -125,7 +103,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0DCEA1]" />
               </div>
-            ) : swappableItems.length === 0 && notSwappableItems.length === 0 ? (
+            ) : swappableItems.length === 0 ? (
               <div className="text-center py-10">
                 <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">No eligible items</p>
@@ -179,46 +157,6 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
                     );
                   })}
 
-                  {/* Not-yet-swappable items */}
-                  {notSwappableItems.map((item) => {
-                    const tier = (item as any).tier || 2;
-                    const sc = getTierShareCoins(tier);
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50 opacity-60"
-                      >
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                          {item.photos?.[0] ? (
-                            <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Camera className="h-4 w-4 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-700 text-sm truncate">{item.name}</p>
-                          <div className="flex items-center flex-wrap gap-1 text-xs text-gray-400 mt-0.5">
-                            <span>Tier {tier}</span>
-                            <span className="text-gray-300">·</span>
-                            <Coins className="h-3 w-3" />
-                            <span>{sc} SC</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <span className="text-xs text-gray-400">Enable</span>
-                          <Switch
-                            checked={false}
-                            onCheckedChange={(checked) =>
-                              toggleSwapMutation.mutate({ itemId: item.id, isSwappable: checked })
-                            }
-                            disabled={toggleSwapMutation.isPending}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
 
                 {/* Fairness summary */}

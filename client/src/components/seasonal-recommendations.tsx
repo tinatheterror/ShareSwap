@@ -140,7 +140,7 @@ export function SeasonalRecommendations({ limit = 6 }: SeasonalRecommendationsPr
                   <div className="flex items-center gap-2 text-sm text-slate-700">
                     <div className="flex items-center gap-1">
                       <Coins className="h-4 w-4 text-teal-600" />
-                      <span>{item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins</span>
+                      <span>{Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins</span>
                     </div>
                     {item.isRentable && (
                       <>

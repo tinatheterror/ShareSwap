@@ -157,7 +157,7 @@ export function TrustDepositModal({
               <p className="text-sm text-gray-700 mb-1">Coordinate pickup with the owner</p>
               {!isRental && (
                 <p className="text-xs text-gray-400">
-                  {shareCoinAmount} ShareCoins will be charged at handoff
+                  {Math.round(shareCoinAmount)} ShareCoins will be charged at handoff
                 </p>
               )}
             </div>
@@ -196,7 +196,7 @@ export function TrustDepositModal({
             {!isRental && (
               <p className="text-center text-xs text-gray-400 mb-6 flex items-center justify-center gap-1">
                 <Coins className="h-3 w-3 flex-shrink-0 text-yellow-500" />
-                {shareCoinAmount} ShareCoins charged at pickup
+                {Math.round(shareCoinAmount)} ShareCoins charged at pickup
               </p>
             )}
 

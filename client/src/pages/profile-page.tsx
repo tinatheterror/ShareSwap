@@ -656,7 +656,7 @@ export default function ProfilePage() {
                             <div className="flex items-center gap-1 text-xs text-slate-700">
                               <Coins className="h-3 w-3 text-teal-600" />
                               <span>
-                                {item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins
+                                {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins
                               </span>
                               {item.isRentable && (
                                 <>
@@ -1491,7 +1491,7 @@ export default function ProfilePage() {
                       <span className="text-sm text-slate-600">ShareCoins</span>
                     </div>
                     <span className="font-semibold text-teal-700">
-                      {profile?.shareCoins || 0}
+                      {Math.round(Number(profile?.shareCoins || 0))}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

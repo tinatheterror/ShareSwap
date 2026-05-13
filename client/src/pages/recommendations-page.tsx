@@ -109,7 +109,7 @@ export default function RecommendationsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <Badge variant="secondary" className="text-sm">
-                    {item.shareCoinsReward} ShareCoins
+                    {Math.round(Number(item.shareCoinsReward || 0))} ShareCoins
                   </Badge>
                   <Button
                     variant="default"

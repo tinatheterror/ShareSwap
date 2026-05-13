@@ -172,7 +172,7 @@ export function Recommendations({ limit = 6, showTitle = true }: Recommendations
               <div className="flex items-center gap-0.5 md:gap-1">
                 <Coins className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                 <span>
-                  {item.shareCoinPrice || item.shareCoinsReward || "5"} ShareCoins
+                  {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins
                 </span>
               </div>
               {item.isRentable && (

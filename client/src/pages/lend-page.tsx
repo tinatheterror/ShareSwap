@@ -1774,7 +1774,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <Coins className="h-5 w-5 text-teal-600" />
                               <span className="text-2xl font-bold text-gray-900 leading-none">
-                                {valuationResult.shareCoinsValue}
+                                {Math.round(Number(valuationResult.shareCoinsValue))}
                               </span>
                               <span className="text-xs text-gray-500 font-medium">
                                 ShareCoins/week
@@ -1939,7 +1939,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                               </div>
                               <div className="text-sm font-semibold text-gray-800">
                                 {valuationResult ? (
-                                  <>{valuationResult.shareCoinsValue}</>
+                                  <>{Math.round(Number(valuationResult.shareCoinsValue))}</>
+
                                 ) : isLoadingValuation ? (
                                   <span className="text-gray-500">...</span>
                                 ) : (

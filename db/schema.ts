@@ -403,6 +403,10 @@ export const itemRequests = pgTable("item_requests", {
   counterNote: text("counter_note"),    // optional note with counter offer
   counterRound: integer("counter_round").default(0), // 0=initial, 1=first counter, 2=second (max)
 
+  // Auto-unarchive tracking: set when a new message arrives on a completed/cancelled/declined thread.
+  // The thread stays active until 14 days after this timestamp with no unread messages.
+  unarchivedAt: timestamp("unarchived_at"),
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   itemIdx: index("item_requests_item_id_idx").on(table.itemId),

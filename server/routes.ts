@@ -3504,15 +3504,33 @@ Respond with ONLY the category name, nothing else.`
   // Chat API endpoints
   app.post("/api/messages", requireEmailVerified, async (req: any, res) => {
     const { receiverId, content, requestId } = req.body;
+    const parsedRequestId = requestId ? parseInt(requestId) : null;
+
     const [message] = await db
       .insert(messages)
       .values({
         senderId: req.user.id,
         receiverId,
         content,
-        requestId: requestId ? parseInt(requestId) : null,
+        requestId: parsedRequestId,
       })
       .returning();
+
+    // Auto-unarchive: if this message belongs to a completed/cancelled/declined thread,
+    // record the unarchive timestamp so the thread resurfaces in the active inbox.
+    if (parsedRequestId) {
+      const ARCHIVED_STATUSES = ["COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
+      const [reqRow] = await db
+        .select({ status: itemRequests.status })
+        .from(itemRequests)
+        .where(eq(itemRequests.id, parsedRequestId));
+      if (reqRow && ARCHIVED_STATUSES.includes(reqRow.status)) {
+        await db
+          .update(itemRequests)
+          .set({ unarchivedAt: new Date() })
+          .where(eq(itemRequests.id, parsedRequestId));
+      }
+    }
 
     // Push to recipient in real-time if they are connected
     const receiverWs = connectedClients.get(receiverId);
@@ -3700,6 +3718,10 @@ Respond with ONLY the category name, nothing else.`
     // Statuses considered "archived" (transaction done — read-only history)
     const ARCHIVED_STATUSES = ["COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
 
+    // How long a thread stays active after being unarchived by a new message (before re-archiving if no unread)
+    const UNARCHIVE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+    const reArchiveCutoff = new Date(Date.now() - UNARCHIVE_WINDOW_MS);
+
     // --- Gather all item requests involving this user ---
     const allRequests = await db
       .select({
@@ -3712,6 +3734,7 @@ Respond with ONLY the category name, nothing else.`
         requestType: itemRequests.requestType,
         status: itemRequests.status,
         negotiationStatus: itemRequests.negotiationStatus,
+        unarchivedAt: itemRequests.unarchivedAt,
         createdAt: itemRequests.createdAt,
       })
       .from(itemRequests)
@@ -3724,18 +3747,13 @@ Respond with ONLY the category name, nothing else.`
       )
       .orderBy(desc(itemRequests.createdAt));
 
-    // Filter to the appropriate archive bucket
-    const filteredRequests = allRequests.filter(r =>
-      showArchived ? ARCHIVED_STATUSES.includes(r.status) : !ARCHIVED_STATUSES.includes(r.status)
-    );
-
-    if (filteredRequests.length === 0) {
+    if (allRequests.length === 0) {
       return res.json([]);
     }
 
-    // Batch-fetch all messages for these requests in one query
-    const reqIds = filteredRequests.map(r => r.id);
-    const allThreadMessages = reqIds.length > 0
+    // Batch-fetch messages for ALL requests so we can compute effective archive status
+    const allReqIds = allRequests.map(r => r.id);
+    const allThreadMessages = allReqIds.length > 0
       ? await db
           .select({
             id: messages.id,
@@ -3751,13 +3769,13 @@ Respond with ONLY the category name, nothing else.`
           .where(
             and(
               or(eq(messages.senderId, userId), eq(messages.receiverId, userId)),
-              sql`${messages.requestId} = ANY(ARRAY[${sql.raw(reqIds.join(','))}]::int[])`
+              sql`${messages.requestId} = ANY(ARRAY[${sql.raw(allReqIds.join(','))}]::int[])`
             )
           )
           .orderBy(desc(messages.createdAt))
       : [];
 
-    // Build per-request message map
+    // Build per-request message map (covers all requests so we can use unread for archive decisions)
     const reqMsgMap = new Map<number, { lastMsg: string; lastTime: Date; unread: number; lastSenderId: number }>();
     for (const msg of allThreadMessages) {
       const rid = msg.requestId!;
@@ -3772,6 +3790,29 @@ Respond with ONLY the category name, nothing else.`
           lastSenderId: msg.senderId,
         });
       }
+    }
+
+    // Determine effective archive status for each request.
+    // A status-archived thread can be temporarily active if a new message unarchived it:
+    //   - unarchivedAt set within last 14 days → active regardless of unread
+    //   - unarchivedAt set but older than 14 days → re-archive only if no unread messages remain
+    const isEffectivelyArchived = (r: { status: string; unarchivedAt: Date | null }, unread: number): boolean => {
+      if (!ARCHIVED_STATUSES.includes(r.status)) return false;
+      if (!r.unarchivedAt) return true;
+      const unarchivedDate = new Date(r.unarchivedAt);
+      if (unarchivedDate > reArchiveCutoff) return false; // within 14-day active window
+      return unread === 0; // beyond 14 days: re-archive only if no unread messages
+    };
+
+    // Now filter to the requested bucket
+    const filteredRequests = allRequests.filter(r => {
+      const unread = reqMsgMap.get(r.id)?.unread ?? 0;
+      const archived = isEffectivelyArchived(r, unread);
+      return showArchived ? archived : !archived;
+    });
+
+    if (filteredRequests.length === 0) {
+      return res.json([]);
     }
 
     // Collect unique partner IDs
@@ -3860,7 +3901,7 @@ Respond with ONLY the category name, nothing else.`
         itemId: reqData.itemId,
         itemPhoto: (reqData.itemPhotos as string[] | null)?.[0] ?? null,
         iAmRequester: reqData.requesterId === userId,
-        isArchived: ARCHIVED_STATUSES.includes(reqData.status),
+        isArchived: isEffectivelyArchived(reqData, msgData?.unread ?? 0),
       };
     });
 

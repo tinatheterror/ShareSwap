@@ -329,8 +329,6 @@ export function HandoffConfirmationModal({
               ? "This code has expired."
               : view === "rate_limited"
               ? "Too many incorrect attempts."
-              : view === "wrong_pin"
-              ? "That code didn't match."
               : "Enter the 4-digit code from the owner."}
           </DialogDescription>
         </DialogHeader>

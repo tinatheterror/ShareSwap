@@ -170,6 +170,20 @@ function NotificationBell() {
 
   const handleNotificationClick = (n: Notification) => {
     if (["trust_score_changed", "milestone_achieved", "badge_earned", "level_up"].includes(n.type)) {
+      if (n.type === "trust_score_changed") {
+        const increaseMatch = n.message.match(/(?:went up by|\+)(\d+)\s*point/);
+        const decreaseMatch = n.message.match(/dropped by (\d+)\s*point/);
+        const currentScore = user?.reputationScore ?? 0;
+        if (increaseMatch) {
+          const delta = parseInt(increaseMatch[1]);
+          navigate(`/achievements?from=${Math.max(0, currentScore - delta)}`);
+          return;
+        } else if (decreaseMatch) {
+          const delta = parseInt(decreaseMatch[1]);
+          navigate(`/achievements?from=${currentScore + delta}`);
+          return;
+        }
+      }
       navigate("/achievements");
       return;
     }

@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from "react";
+import { useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -80,6 +82,10 @@ function MilestoneRow({ milestone, size = "md" }: { milestone: MilestoneItem; si
 
 export default function AchievementsPage() {
   const { user } = useAuth();
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+  const fromParam = params.get("from");
+  const fromScore = fromParam !== null ? parseInt(fromParam) : null;
 
   const { data: stats } = useQuery<UserStats>({ queryKey: ["/api/user-stats"] });
   const { data: reviews } = useQuery<Review[]>({
@@ -88,6 +94,45 @@ export default function AchievementsPage() {
   });
 
   const reputationScore = user?.reputationScore || 0;
+
+  // Animated display score — counts up from fromScore to reputationScore
+  const [displayScore, setDisplayScore] = useState(fromScore !== null ? fromScore : reputationScore);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (fromScore === null || fromScore === reputationScore) {
+      setDisplayScore(reputationScore);
+      return;
+    }
+    const start = fromScore;
+    const end = reputationScore;
+    const duration = 1400;
+    let startTime: number | null = null;
+
+    const tick = (now: number) => {
+      if (!startTime) startTime = now;
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayScore(Math.round(start + (end - start) * eased));
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    // Small delay so the page renders before animating
+    const delay = setTimeout(() => {
+      rafRef.current = requestAnimationFrame(tick);
+    }, 300);
+
+    return () => {
+      clearTimeout(delay);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [fromScore, reputationScore]);
+
+  const displayTrustPercentage = Math.min(100, Math.round((displayScore / 500) * 100));
   const trustPercentage = Math.min(100, Math.round((reputationScore / 500) * 100));
 
   const currentLevelIndex = LEVELS.findIndex((level, index) => {
@@ -142,6 +187,9 @@ export default function AchievementsPage() {
   const col2 = milestones.slice(6, 12);
   const col3 = milestones.slice(12, 18);
 
+  // SVG circle constants
+  const CIRCUMFERENCE = 2 * Math.PI * 42; // r=42 → ~263.9
+
   const TrustRing = ({ gradientId }: { gradientId: string }) => (
     <Card className="overflow-hidden">
       <CardContent className="py-4 px-5">
@@ -149,14 +197,24 @@ export default function AchievementsPage() {
           <div className="flex flex-col items-center flex-shrink-0 gap-1">
             <div className="relative w-28 h-28">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${trustPercentage * 2.64} 264`} className="transition-all duration-1000 ease-out" />
                 <defs>
                   <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#0DCEA1" />
                     <stop offset="100%" stopColor="#10B981" />
                   </linearGradient>
                 </defs>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke={`url(#${gradientId})`}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(displayTrustPercentage / 100) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                  style={{ transition: fromScore !== null ? "none" : "stroke-dasharray 1s ease-out" }}
+                />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <Shield className="h-8 w-8 text-teal-500 mb-1" />
@@ -164,7 +222,7 @@ export default function AchievementsPage() {
                 <span className="text-sm font-medium text-slate-600">Score</span>
               </div>
             </div>
-            <span className="text-lg font-bold text-slate-800">{reputationScore}</span>
+            <span className="text-lg font-bold text-slate-800 tabular-nums">{displayScore}</span>
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-slate-800 mb-1">
@@ -311,15 +369,12 @@ export default function AchievementsPage() {
               <Sparkles className="h-4 w-4 text-teal-500" />Milestones
             </h2>
             <div className="grid grid-cols-3 gap-x-8 gap-y-0">
-              {/* Col 1 */}
               <div className="space-y-2">
                 {col1.map((m) => <MilestoneRow key={m.id} milestone={m} />)}
               </div>
-              {/* Col 2 */}
               <div className="space-y-2">
                 {col2.map((m) => <MilestoneRow key={m.id} milestone={m} />)}
               </div>
-              {/* Col 3 */}
               <div className="space-y-2">
                 {col3.map((m) => <MilestoneRow key={m.id} milestone={m} />)}
               </div>

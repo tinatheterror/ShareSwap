@@ -447,10 +447,10 @@ export default function FAQPage() {
 
                 <div className="mt-4">
                   <p className="font-medium text-gray-800 text-sm mb-3">
-                    Swap Tier Offset
+                    Swap Differences
                   </p>
                   <p className="text-xs text-gray-500 mb-3">
-                    Balance value differences to how ShareCoins are earned.
+                    Value offset to how ShareCoins are earned.
                   </p>
                 </div>
 
@@ -566,10 +566,10 @@ export default function FAQPage() {
                     </div>
                     <div>
                       <p className="text-xs font-medium text-gray-700">
-                        Swap Tier Offset
+                        Swap Differences
                       </p>
                       <p className="text-[10px] text-gray-500">
-                        Balance value differences
+                        Value offset
                       </p>
                     </div>
                   </div>
@@ -604,7 +604,7 @@ export default function FAQPage() {
                         Lending Items
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Earn when you lend
+                        Earn from lending
                       </p>
                     </div>
                   </div>
@@ -618,10 +618,10 @@ export default function FAQPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        Swap Tier Offset
+                        Swap Differences
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Balance value differences
+                        Value offset
                       </p>
                     </div>
                   </div>
@@ -635,10 +635,10 @@ export default function FAQPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        First-Time
+                        Milestones
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        Milestones
+                        Achieved
                       </p>
                     </div>
                   </div>
@@ -669,10 +669,10 @@ export default function FAQPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-gray-700 truncate">
-                        Badge Unlocks
+                        Badges
                       </p>
                       <p className="text-[10px] text-gray-500 truncate">
-                        +1 SC per badge
+                        Unlocked
                       </p>
                     </div>
                   </div>

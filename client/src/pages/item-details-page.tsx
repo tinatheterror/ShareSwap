@@ -157,13 +157,13 @@ export default function ItemDetailsPage() {
               {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins
             </span>
           </div>
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <span>Trust-Deposit:</span>
+          <p className="text-sm text-muted-foreground">
+            Trust-Deposit:{" "}
             {depositCalc.discountPercentage > 0 ? (
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="flex items-center gap-1.5 cursor-help">
+                    <span className="inline-flex items-center gap-1.5 cursor-help">
                       <span className="relative text-black">
                         <span className="absolute inset-0 flex items-center">
                           <span className="w-full h-[2px] bg-teal-500"></span>
@@ -188,9 +188,9 @@ export default function ItemDetailsPage() {
                 </Tooltip>
               </TooltipProvider>
             ) : (
-              <span>${depositCalc.finalDeposit}</span>
+              `$${depositCalc.finalDeposit}`
             )}
-          </div>
+          </p>
           {hasValidReplacementValue(itemReplacementValue) && (
             <p className="text-[10px] text-gray-400 mt-1">
               Max charge if not returned: ${itemReplacementValue}

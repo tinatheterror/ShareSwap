@@ -765,18 +765,35 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     });
   }, [isEditMode]);
 
-  // Convert files to base64 for AI valuation / autofill
+  // Resize and compress a File to a JPEG data URL (max 1024px, 80% quality)
+  const compressPhoto = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const MAX = 1024;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+            else { width = Math.round((width * MAX) / height); height = MAX; }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+
+  // Convert files to compressed base64 for AI valuation / autofill
   const getPhotoDataUrls = async (): Promise<string[]> => {
-    const photoPromises = selectedPhotos.slice(0, 3).map(
-      (file) =>
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        }),
-    );
-    return Promise.all(photoPromises);
+    return Promise.all(selectedPhotos.slice(0, 3).map(compressPhoto));
   };
 
   const mapOriginalPrice = (priceStr: string): string => {
@@ -865,7 +882,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
         title: "Listing details generated",
         description: "Review and edit before publishing.",
       });
-    } catch {
+    } catch (err) {
+      console.error("ShareSmart Scan error:", err);
       toast({
         title: "Couldn't generate listing details. Try again.",
         variant: "destructive",

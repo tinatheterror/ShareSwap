@@ -20,7 +20,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Trash2, Plus, Package, Coins, Sparkles } from "lucide-react";
+import { Trash2, Plus, Package, Coins, Sparkles, Pencil } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectItem } from "@db/schema";
@@ -191,6 +191,24 @@ export default function MyItemsPage() {
                         <Package className="h-12 w-12 text-muted-foreground" />
                       </div>
                     )}
+                    {/* Top-left action buttons */}
+                    <div className="absolute top-2 left-2 flex gap-1">
+                      <button
+                        className="h-7 w-7 flex items-center justify-center rounded-md bg-white/90 hover:bg-white shadow-sm text-gray-500 hover:text-red-500 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setItemToDelete(item); }}
+                        title="Delete item"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        className="h-7 w-7 flex items-center justify-center rounded-md bg-white/90 hover:bg-white shadow-sm text-gray-500 hover:text-teal-600 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/lend?edit=${item.id}`); }}
+                        title="Edit item"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    {/* Availability badge — top right */}
                     <div className="absolute top-2 right-2">
                       <Badge
                         variant={item.isAvailable ? "default" : "secondary"}
@@ -273,18 +291,6 @@ export default function MyItemsPage() {
                     </TooltipProvider>
                   )}
 
-                  {/* Action Buttons */}
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="hover:bg-teal-50"
-                      style={{ color: "#0DCEA1" }}
-                      onClick={(e) => { e.stopPropagation(); setItemToDelete(item); }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}

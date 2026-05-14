@@ -252,10 +252,10 @@ export default function MyItemsPage() {
                   {(item as any).tier && (
                     <TooltipProvider>
                       <div className="p-4 bg-white rounded-xl border border-gray-200 mb-4">
-                        <p className="text-sm font-medium text-teal-600 mb-2">
+                        <div className="inline-block bg-teal-50 text-teal-700 text-sm font-medium px-3 py-1 rounded-lg mb-2">
                           {TIER_NAMES[(item as any).tier] ||
                             `Tier ${(item as any).tier}`}
-                        </p>
+                        </div>
                         <div className="flex items-center gap-2">
                           <Coins className="h-5 w-5 text-teal-600 shrink-0" />
                           <span className="font-bold text-gray-900 text-lg leading-none">

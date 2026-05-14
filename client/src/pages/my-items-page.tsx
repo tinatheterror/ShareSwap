@@ -248,44 +248,35 @@ export default function MyItemsPage() {
                     </Badge>
                   </div>
 
-                  {/* Tier Info - Same card as lend page */}
+                  {/* Tier Info */}
                   {(item as any).tier && (
                     <TooltipProvider>
-                      <div className="p-4 bg-white rounded-lg border border-teal-200 mb-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-black font-small">
-                            {TIER_NAMES[(item as any).tier] ||
-                              `Tier ${(item as any).tier}`}
+                      <div className="p-4 bg-white rounded-xl border border-gray-200 mb-4">
+                        <p className="text-sm font-medium text-teal-600 mb-2">
+                          {TIER_NAMES[(item as any).tier] ||
+                            `Tier ${(item as any).tier}`}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Coins className="h-5 w-5 text-teal-600 shrink-0" />
+                          <span className="font-bold text-gray-900 text-lg leading-none">
+                            {TIER_SHARECOINS[(item as any).tier] || 5}
                           </span>
+                          <span className="text-sm text-gray-600">ShareCoins/week</span>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1.5 bg-teal-50 px-3 py-1 rounded-full cursor-help">
-                                <Sparkles className="h-3 w-3 text-teal-600" />
-                                <span className="text-xs text-teal-700 font-small">
-                                  AI valued
-                                </span>
+                              <div className="flex items-center gap-1 cursor-help ml-1">
+                                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                                <span className="text-xs text-amber-500 font-medium">AI valued</span>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
-                              <p className="text-sm font-medium mb-1">
-                                AI-Powered Valuation
-                              </p>
+                              <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
                               <p className="text-xs">
                                 AI analyzes condition, brand quality, category
-                                demand, and seasonal factors to determine the
-                                exact rate.
+                                demand, and seasonal factors to determine the exact rate.
                               </p>
                             </TooltipContent>
                           </Tooltip>
-                        </div>
-                        <div className="mt-2">
-                          <div className="flex items-center gap-1.5 text-sm">
-                            <Coins className="h-5 w-5 text-teal-600" />
-                            <span className="font-semibold text-teal-700 text-lg">
-                              {TIER_SHARECOINS[(item as any).tier] || 5}{" "}
-                              ShareCoins/week
-                            </span>
-                          </div>
                         </div>
                       </div>
                     </TooltipProvider>

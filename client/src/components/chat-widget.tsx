@@ -1107,12 +1107,20 @@ export function ChatWidget() {
     // Terms accepted by requester — owner still needs to formally confirm
     const iTermsAccepted = request.negotiationStatus === "terms_accepted" && request.status === "PENDING";
 
-    // Always show original request terms in the card.
-    // Counter-proposed terms are already displayed inline in the chat event ("proposed new terms").
-    const displayDelivery = request.deliveryMethod;
-    const displayDeposit = request.depositMethod;
-    const displayStart = request.startDate;
-    const displayEnd = request.endDate;
+    // Show the most recent counter terms when one is pending; otherwise show base request terms.
+    // After acceptance the counter dates are promoted into startDate/endDate so those remain correct.
+    const displayDelivery = iCounterPending
+      ? (request.counterDeliveryMethod ?? request.deliveryMethod)
+      : request.deliveryMethod;
+    const displayDeposit = iCounterPending
+      ? (request.counterDepositMethod ?? request.depositMethod)
+      : request.depositMethod;
+    const displayStart = iCounterPending
+      ? (request.counterStartDate ?? request.startDate)
+      : request.startDate;
+    const displayEnd = iCounterPending
+      ? (request.counterEndDate ?? request.endDate)
+      : request.endDate;
 
     // No field-level highlighting in the card — counter diff is shown in the chat event
     const dateChanged = false;

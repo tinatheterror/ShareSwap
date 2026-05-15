@@ -251,12 +251,27 @@ function NotificationBell() {
 
   const recentNotifications = allNotifications.slice(0, 20);
   const hasNotifications = allNotifications.length > 0;
+  const unreadCount = allNotifications.filter((n) => !n.isRead).length;
+
+  const handleOpenChange = async (open: boolean) => {
+    if (open && unreadCount > 0) {
+      try {
+        await apiRequest("POST", "/api/notifications/read-all", {});
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      } catch {}
+    }
+  };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative p-2 hover:text-primary">
           <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white leading-none pointer-events-none">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden">

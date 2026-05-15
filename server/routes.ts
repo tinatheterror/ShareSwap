@@ -5030,16 +5030,17 @@ Respond with ONLY the category name, nothing else.`
         };
       }
 
-      // Log event in chat — snapshot original (pre-counter) dates so the chat card can show "Current → Proposed"
+      // Log event in chat — snapshot the PREVIOUS counter's proposed terms as "orig" so the
+      // chat card can show "Previous (pending counter) → New proposal"
       await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
         deliveryMethod: updated.counterDeliveryMethod,
         depositMethod: updated.counterDepositMethod,
         startDate: updated.counterStartDate,
         endDate: updated.counterEndDate,
-        origDeliveryMethod: request.item_requests.deliveryMethod,
-        origDepositMethod: request.item_requests.depositMethod,
-        origStartDate: request.item_requests.startDate,
-        origEndDate: request.item_requests.endDate,
+        origDeliveryMethod: request.item_requests.counterDeliveryMethod ?? request.item_requests.deliveryMethod,
+        origDepositMethod: request.item_requests.counterDepositMethod ?? request.item_requests.depositMethod,
+        origStartDate: request.item_requests.counterStartDate ?? request.item_requests.startDate,
+        origEndDate: request.item_requests.counterEndDate ?? request.item_requests.endDate,
         proposedByRole: isOwner ? "owner" : "requester",
         ...swapCounterBackMeta,
       });

@@ -1817,7 +1817,7 @@ export function ChatWidget() {
                                   <div className="flex items-stretch gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-[11px]">
                                     {/* Old terms */}
                                     <div className="flex flex-col gap-1 text-muted-foreground min-w-0 flex-1">
-                                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Current</span>
+                                      <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">Previous</span>
                                       {origStart && origEnd && (
                                         <span className="flex items-center gap-1">
                                           <Clock className="h-3 w-3 shrink-0" />

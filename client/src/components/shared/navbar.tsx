@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -106,28 +107,57 @@ function NotificationItem({ n, onAction }: { n: Notification; onAction: (n: Noti
 function playNotificationSound() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(1046.5, now);
-    osc.frequency.exponentialRampToValueAtTime(1318.5, now + 0.12);
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-    osc.start(now);
-    osc.stop(now + 0.35);
-    setTimeout(() => ctx.close(), 600);
+    const play = () => {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(1046.5, now);
+      osc.frequency.exponentialRampToValueAtTime(1318.5, now + 0.12);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+      setTimeout(() => ctx.close(), 600);
+    };
+    if (ctx.state === "suspended") {
+      ctx.resume().then(play).catch(() => {});
+    } else {
+      play();
+    }
   } catch {}
 }
+
+const NOTIF_TITLES: Record<string, string> = {
+  item_request:               "New request",
+  request_accepted:           "Request accepted",
+  request_declined:           "Request declined",
+  request_cancelled:          "Request cancelled",
+  sharecoin_earned:           "ShareCoins earned",
+  trust_score_changed:        "Trust score updated",
+  return_reminder:            "Return reminder",
+  return_overdue:             "Return overdue ⚠️",
+  dispute_opened:             "Dispute opened",
+  dispute_resolved:           "Dispute resolved",
+  terms_counter_proposed:     "Counter-proposal received",
+  item_returned:              "Item returned",
+  payment_received:           "Payment received",
+  security_deposit_released:  "Deposit released",
+  milestone_achieved:         "Milestone reached 🎉",
+  badge_earned:               "New badge earned",
+  level_up:                   "Level up! 🎉",
+};
 
 function NotificationBell() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const prevNotifIdsRef = useRef<Set<number>>(new Set());
+  const initializedRef = useRef(false);
 
   const { data: allNotifications = [] } = useQuery<Notification[]>({
     queryKey: ["/api/notifications"],
@@ -135,19 +165,33 @@ function NotificationBell() {
     refetchInterval: 30000,
   });
 
-  // Play a sound and refresh balance when new notifications arrive.
+  // Play a sound + show a toast when new notifications arrive.
   useEffect(() => {
     if (!allNotifications.length) return;
     const currentIds = new Set(allNotifications.map((n) => n.id));
-    if (prevNotifIdsRef.current.size > 0) {
-      const newNotifs = allNotifications.filter((n) => !prevNotifIdsRef.current.has(n.id));
-      if (newNotifs.length > 0) {
-        playNotificationSound();
-        if (newNotifs.some((n) => n.type === "sharecoin_earned")) {
-          queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-        }
+
+    if (!initializedRef.current) {
+      // First load — seed the ref so we can detect genuinely new ones later.
+      initializedRef.current = true;
+      prevNotifIdsRef.current = currentIds;
+      return;
+    }
+
+    const newNotifs = allNotifications.filter((n) => !prevNotifIdsRef.current.has(n.id));
+    if (newNotifs.length > 0) {
+      playNotificationSound();
+      newNotifs.forEach((n) => {
+        toast({
+          title: NOTIF_TITLES[n.type] ?? "New notification",
+          description: n.message,
+          duration: 6000,
+        });
+      });
+      if (newNotifs.some((n) => n.type === "sharecoin_earned")) {
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       }
     }
+
     prevNotifIdsRef.current = currentIds;
   }, [allNotifications]);
 

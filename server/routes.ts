@@ -6494,8 +6494,9 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // ── ShareCoin borrow-cost helper ───────────────────────────────────────────
-  // Formula: ceil( (weeklyPrice / 7) × days )
-  // e.g. 10 SC/week item borrowed 4 days → ceil(10/7 × 4) = ceil(5.71) = 6 SC
+  // end date = return day (not last usage day), so usage days = end - start (no +1)
+  // Formula: round( (weeklyPrice / 7) × days )
+  // e.g. 10 SC/week item borrowed start=Mon, return=Fri → 4 usage days → round(10/7 × 4) = 6 SC
   function calcBorrowShareCoinCost(
     shareCoinPrice: number,
     startDate: Date | string | null | undefined,
@@ -6504,7 +6505,7 @@ Respond with ONLY the category name, nothing else.`
     if (!startDate || !endDate || shareCoinPrice <= 0) return Math.max(1, shareCoinPrice);
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000) + 1);
+    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
     return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
   }
 

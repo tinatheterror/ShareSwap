@@ -1794,8 +1794,8 @@ export function ChatWidget() {
                               const newStart = mStart ? format(parseLocalDate(mStart), "MMM d") : null;
                               const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;
-                              const deliveryChanged = mDelivery && mDelivery !== origDelivery;
-                              const depositChanged = mDeposit && mDeposit !== origDeposit;
+                              const deliveryChanged = !!mDelivery && !!origDelivery && mDelivery !== origDelivery;
+                              const depositChanged = !!mDeposit && !!origDeposit && mDeposit !== origDeposit;
                               const deliveryLabel = (d?: string | null) => d === "courier" ? "Uber Direct" : "In Person";
                               const depositLabel = (d?: string | null) => d === "in_app" ? "Deposit In-app" : "Deposit In Person";
 

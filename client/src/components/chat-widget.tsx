@@ -1807,18 +1807,7 @@ export function ChatWidget() {
                               const deliveryLabel = (d?: string | null) => d === "courier" ? "Uber Direct" : "In Person";
                               const depositLabel = (d?: string | null) => d === "in_app" ? "Deposit In-app" : "Deposit In Person";
 
-                              // For BORROW: recalculate SC cost for original vs proposed date range
                               const isBorrowCounter = relatedRequest?.requestType === "BORROW";
-                              const calcSC = (start: string | null | undefined, end: string | null | undefined) => {
-                                const wp = parseFloat((relatedRequest as any)?.shareCoinPrice || "0");
-                                if (!start || !end || wp <= 0) return Math.max(1, wp);
-                                const s = new Date(start), e = new Date(end);
-                                const days = Math.max(1, Math.ceil((e.getTime() - s.getTime()) / 86_400_000) + 1);
-                                return Math.max(1, Math.round((wp / 7) * days));
-                              };
-                              const origSC = isBorrowCounter ? calcSC(relatedRequest?.startDate, relatedRequest?.endDate) : null;
-                              const newSC = isBorrowCounter && mStart && mEnd ? calcSC(mStart, mEnd) : null;
-                              const costChanged = origSC !== null && newSC !== null && origSC !== newSC;
 
                               return (
                                 <div className="w-full pl-[70px]">
@@ -1830,12 +1819,6 @@ export function ChatWidget() {
                                         <span className="flex items-center gap-1">
                                           <Clock className="h-3 w-3 shrink-0" />
                                           {origStart} – {origEnd}
-                                        </span>
-                                      )}
-                                      {origSC !== null && (
-                                        <span className="flex items-center gap-1">
-                                          <Coins className="h-3 w-3 shrink-0 text-teal-500" />
-                                          {origSC} SC
                                         </span>
                                       )}
                                       {origDelivery && (
@@ -1862,18 +1845,6 @@ export function ChatWidget() {
                                         <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
                                           <Clock className="h-3 w-3 shrink-0" />
                                           {newStart} – {newEnd}
-                                        </span>
-                                      )}
-                                      {newSC !== null && (
-                                        <span className={`flex items-center gap-1 ${costChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
-                                          <Coins className="h-3 w-3 shrink-0 text-teal-500" />
-                                          {newSC} SC
-                                          {costChanged && newSC > origSC! && (
-                                            <span className="text-[10px] text-amber-500 ml-0.5">(+{newSC - origSC!})</span>
-                                          )}
-                                          {costChanged && newSC < origSC! && (
-                                            <span className="text-[10px] text-teal-600 ml-0.5">(-{origSC! - newSC})</span>
-                                          )}
                                         </span>
                                       )}
                                       {mDelivery && (

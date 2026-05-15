@@ -6628,7 +6628,7 @@ Respond with ONLY the category name, nothing else.`
             .where(eq(users.id, request.item_requests.requesterId))
             .limit(1);
 
-          const currentBalance = parseFloat(borrower?.shareCoins || "0");
+          const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
           const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
 
           // Deduct ShareCoins from borrower (charge what they have, at most the full amount)
@@ -6653,7 +6653,7 @@ Respond with ONLY the category name, nothing else.`
               .where(eq(users.id, request.items.ownerId))
               .limit(1);
 
-            const lenderBalance = parseFloat(lender?.shareCoins || "0");
+            const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
             await db
               .update(users)
               .set({ shareCoins: (lenderBalance + charged).toString() })
@@ -7064,13 +7064,13 @@ Respond with ONLY the category name, nothing else.`
         );
         if (shareCoinAmount > 0) {
           const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
-          const currentBalance = parseFloat(borrower?.shareCoins || "0");
+          const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
           const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
           await db.update(users).set({ shareCoins: (currentBalance - charged).toString() }).where(eq(users.id, borrowerId));
           await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-charged).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
           if (ownerId && charged > 0) {
             const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
-            const lenderBalance = parseFloat(lender?.shareCoins || "0");
+            const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
             await db.update(users).set({ shareCoins: (lenderBalance + charged).toString() }).where(eq(users.id, ownerId));
             await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: charged.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
 
@@ -7478,13 +7478,13 @@ Respond with ONLY the category name, nothing else.`
 
           if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
             const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);
-            const currentBalance = parseFloat(borrower?.shareCoins || "0");
+            const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
             if (currentBalance >= shareCoinAmount) {
               await db.update(users).set({ shareCoins: (currentBalance - shareCoinAmount).toString() }).where(eq(users.id, borrowerId2));
               await db.insert(shareCoinsTransactions).values({ userId: borrowerId2, amount: (-shareCoinAmount).toString(), description: `Borrowed: ${request.items.name} (auto-confirmed)`, transactionType: "BORROW_CHARGE" });
               if (ownerId2) {
                 const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId2)).limit(1);
-                const lenderBalance = parseFloat(lender?.shareCoins || "0");
+                const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
                 await db.update(users).set({ shareCoins: (lenderBalance + shareCoinAmount).toString() }).where(eq(users.id, ownerId2));
                 await db.insert(shareCoinsTransactions).values({ userId: ownerId2, amount: shareCoinAmount.toString(), description: `Lent: ${request.items.name} (auto-confirmed)`, transactionType: "LEND_REWARD" });
               }

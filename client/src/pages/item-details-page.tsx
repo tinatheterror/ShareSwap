@@ -179,10 +179,9 @@ export default function ItemDetailsPage() {
                     side="bottom"
                     className="p-0 border-0 bg-transparent shadow-none"
                   >
-                    <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
-                      <Info className="h-3 w-3 inline mr-1" />
-                      Discounted {depositCalc.discountPercentage}% by your trust
-                      score
+                    <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C] flex items-center gap-1">
+                      <Info className="h-3 w-3 shrink-0" />
+                      <span>Discounted {depositCalc.discountPercentage}% by your trust score</span>
                     </div>
                   </TooltipContent>
                 </Tooltip>

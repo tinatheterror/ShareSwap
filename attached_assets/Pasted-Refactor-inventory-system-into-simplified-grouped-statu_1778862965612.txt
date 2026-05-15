@@ -1,0 +1,178 @@
+Refactor inventory system into simplified grouped statuses with deletion rules.
+
+Goal:
+Simplify the inventory architecture into a cleaner, more human-friendly status system while preserving detailed transaction logic internally.
+
+New inventory structure:
+
+1. Available
+
+2. Unavailable
+   Substatuses:
+* Reserved
+* In dispute
+* Paused
+
+3. Out with a Neighbour
+   Substatuses:
+* Lent out
+* Rented out
+
+4. Passed On
+   Substatuses:
+* Gifted
+* Swapped
+
+Requirements:
+1. Replace current inventory status presentation.
+Refactor all user-facing inventory displays to use the new grouped status model.
+
+Top-level statuses:
+* Available
+* Unavailable
+* Out with a Neighbour
+* Passed On
+
+Each item should also display its substatus underneath.
+Examples:
+Unavailable
+Reserved until Sept 12
+
+Unavailable
+In dispute
+
+Out with a Neighbour
+Rented out
+
+Passed On
+Swapped
+
+2. implement or keep internal substatus logic.
+Do NOT remove:
+* reservation logic
+* dispute workflows
+* rental/lending transaction states
+* pause functionality
+
+Only simplify the user-facing inventory structure.
+
+3. Update inventory filtering.
+
+Replace old filters with:
+
+* Available
+* Unavailable
+* Out with a Neighbour
+* Passed On
+
+Filtering behavior:
+
+Unavailable includes:
+* Reserved
+* In dispute
+* Paused
+
+Out with a neighbour includes:
+* Lent out
+* Rented out
+
+Passed on includes:
+* Gifted
+* Swapped
+
+4. Add contextual styling.
+Grouped statuses should still visually distinguish substatuses.
+
+Examples:
+* Reserved → amber accent
+* In dispute → red accent
+* Paused → gray accent
+* Lent out / Rented out → blue accent
+* Gifted / Swapped → muted neutral accent
+
+Do not make all grouped states visually identical.
+
+5. Preserve ownership behavior.
+
+Available:
+* requestable
+* visible publicly
+
+Unavailable:
+* still owned by user
+* temporarily not requestable
+
+Out with a neighbour:
+* temporarily with another user
+* still owned by user
+
+Passed On:
+* no longer owned by user
+* removed from active inventory
+* removed from public listings
+* removed from swap selectors
+* removed from request flows
+
+6. Add deletion rules.
+Deletable:
+* Available
+* Paused
+* Passed On (Gifted / Swapped)
+
+Not deletable:
+* Reserved
+* In dispute
+* Lent out
+* Rented out
+
+Reason:
+Items connected to active transactions or disputes must remain preserved.
+
+7. Use soft deletion only.
+Deleting an item should:
+* remove it from the user-facing inventory/history
+* preserve backend transaction records
+* preserve reviews
+* preserve dispute history
+* preserve transaction snapshots
+
+Never hard-delete transactional history.
+
+8. Rename deletion action for Passed On.
+Instead of:
+Delete
+
+Use:
+Remove from history
+for Gifted and Swapped items.
+
+9. Keep transaction states separate from inventory states.
+Do NOT convert workflow events into inventory statuses.
+
+Examples:
+* Extension requested
+* Pickup overdue
+* Return pending
+
+These should remain transaction-level states/badges.
+
+10. UX goals.
+
+The inventory system should feel:
+
+* simple
+* warm
+* community-oriented
+* easy to scan quickly
+* non-technical
+
+Avoid enterprise-style complexity.
+
+11. Branding detail.
+
+Use:
+“Out with a neighbour”
+
+as the user-facing grouped status label.
+
+Keep the tone friendly and community-driven.

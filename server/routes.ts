@@ -2790,27 +2790,35 @@ Respond with ONLY the category name, nothing else.`
         return res.status(403).json({ error: "You can only delete your own items" });
       }
 
-      // Check if item has any active requests or transactions
-      const activeRequests = await db.query.itemRequests.findMany({
+      // Block deletion for items with active/ongoing transactions
+      const BLOCKED_STATUSES = [
+        "PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING",
+        "AWAITING_HANDOFF_CONFIRM", "HANDOFF_CONFIRMED", "IN_PROGRESS",
+        "HANDOFF_DISPUTED", "DISPUTED"
+      ];
+      const blockingRequests = await db.query.itemRequests.findMany({
         where: and(
           eq(itemRequests.itemId, itemId),
-          or(
-            eq(itemRequests.status, "PENDING"),
-            eq(itemRequests.status, "ACCEPTED")
-          )
+          inArray(itemRequests.status, BLOCKED_STATUSES)
         ),
       });
 
-      if (activeRequests.length > 0) {
-        return res.status(400).json({ 
-          error: "Cannot delete item with active requests. Please complete or decline pending requests first." 
-        });
+      if (blockingRequests.length > 0) {
+        const s = blockingRequests[0].status;
+        const isDispute = s === 'HANDOFF_DISPUTED' || s === 'DISPUTED';
+        const isActive = ['IN_PROGRESS', 'HANDOFF_CONFIRMED', 'DEPOSIT_CONFIRMED', 'COURIER_PENDING', 'AWAITING_HANDOFF_CONFIRM'].includes(s);
+        const msg = isDispute
+          ? "This item is in a dispute and cannot be removed until resolved."
+          : isActive
+          ? "This item is currently out with a neighbour and cannot be removed."
+          : "This item has a pending or accepted request. Please complete or decline it first.";
+        return res.status(400).json({ error: msg });
       }
 
-      // Delete the item
-      await db.delete(items).where(eq(items.id, itemId));
+      // Soft-delete: preserve all transaction history
+      await db.update(items).set({ isDeleted: true, isAvailable: false }).where(eq(items.id, itemId));
 
-      res.json({ success: true, message: "Item permanently removed" });
+      res.json({ success: true, message: "Item removed from your inventory" });
     } catch (error) {
       console.error("Error deleting item:", error);
       res.status(500).json({ error: "Failed to delete item" });
@@ -2848,6 +2856,7 @@ Respond with ONLY the category name, nothing else.`
 
       let whereConditions = [
         eq(items.isAvailable, true),
+        eq(items.isDeleted, false),
         sql`${items.latitude} IS NOT NULL`,
         sql`${items.longitude} IS NOT NULL`,
         sql`${items.latitude}::numeric >= ${bbox.minLat}`,
@@ -2936,7 +2945,7 @@ Respond with ONLY the category name, nothing else.`
     try {
       const { type } = req.query; // Add type filter (rent, borrow, swap, gift)
       
-      let whereConditions = [eq(items.isAvailable, true)];
+      let whereConditions = [eq(items.isAvailable, true), eq(items.isDeleted, false)];
       
       // Add type-specific filtering
       if (type === 'rent') {
@@ -2996,10 +3005,43 @@ Respond with ONLY the category name, nothing else.`
       const userItems = await db
         .select()
         .from(items)
-        .where(eq(items.ownerId, req.user.id))
+        .where(and(eq(items.ownerId, req.user.id), eq(items.isDeleted, false)))
         .orderBy(desc(items.createdAt));
 
-      res.json(userItems);
+      if (userItems.length === 0) {
+        return res.json([]);
+      }
+
+      // Fetch most-relevant request per item (for grouped status derivation on the client)
+      const itemIds = userItems.map((i) => i.id);
+      const STATUS_PRIORITY: Record<string, number> = {
+        HANDOFF_DISPUTED: 10, DISPUTED: 9,
+        IN_PROGRESS: 8, HANDOFF_CONFIRMED: 7,
+        DEPOSIT_CONFIRMED: 6, COURIER_PENDING: 5, AWAITING_HANDOFF_CONFIRM: 4,
+        ACCEPTED: 3, PENDING: 2,
+        COMPLETED_EARLY: 1, COMPLETED: 0,
+      };
+      const allRequests = await db.query.itemRequests.findMany({
+        where: and(
+          inArray(itemRequests.itemId, itemIds),
+          notInArray(itemRequests.status, ["CANCELLED", "REJECTED"])
+        ),
+        columns: { id: true, itemId: true, status: true, requestType: true, startDate: true, endDate: true },
+      });
+      const requestMap = new Map<number, typeof allRequests[0]>();
+      for (const req of allRequests) {
+        const curr = requestMap.get(req.itemId);
+        const newPri = STATUS_PRIORITY[req.status] ?? -1;
+        const oldPri = curr ? (STATUS_PRIORITY[curr.status] ?? -1) : -2;
+        if (newPri > oldPri) requestMap.set(req.itemId, req);
+      }
+
+      const enriched = userItems.map((item) => ({
+        ...item,
+        activeRequest: requestMap.get(item.id) ?? null,
+      }));
+
+      res.json(enriched);
     } catch (error) {
       console.error("Error fetching user items:", error);
       res.status(500).json({ error: "Failed to fetch your items" });

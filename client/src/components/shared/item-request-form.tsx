@@ -871,12 +871,9 @@ export function ItemRequestForm({
                       </div>
                     </FormControl>
                     {form.watch("deliveryMethod") === "courier" && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-800">
-                        <strong>Note:</strong> If you book the courier, you
-                        handle any courier issues (lost/damaged in transit).
-                        Trust-deposit only activates after successful delivery
-                        confirmation.
-                      </div>
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        ⚠️ ShareSwap is not responsible for courier issues (lost/damaged in transit). You assume full responsibility for delivery — no platform protection applies until successful delivery confirmation.
+                      </p>
                     )}
                     <FormMessage />
                   </FormItem>

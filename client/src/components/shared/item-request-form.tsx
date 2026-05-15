@@ -45,7 +45,10 @@ import { Link } from "wouter";
 import type { SelectItem } from "@db/schema";
 import { getTierShareCoins, calculateMultiSwap } from "@/lib/swap-calculator";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
-import { calculateRentalPrice, getDiscountLabel } from "@/lib/rental-calculator";
+import {
+  calculateRentalPrice,
+  getDiscountLabel,
+} from "@/lib/rental-calculator";
 import { useVerification } from "@/hooks/use-verification";
 
 const formSchema = z.object({
@@ -257,79 +260,114 @@ export function ItemRequestForm({
               </div>
             )}
 
-          {requestType === "SWAP" && swapOfferItem && swapOfferItem.length > 0 && (
-            <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2 text-[#0BB88C] font-medium">
-                <ArrowLeftRight className="h-4 w-4" />
-                Swap Summary
-              </div>
-              <div className="flex items-start gap-3">
-                {/* Your side */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-[#0DCEA1] mb-1.5">You're offering:</div>
-                  <div className="space-y-1.5">
-                    {swapOfferItem.map((offerItem) => (
-                      <div key={offerItem.id} className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                          {offerItem.photos?.[0] ? (
-                            <img src={offerItem.photos[0]} alt={offerItem.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Camera className="h-3 w-3 text-gray-400" />
-                            </div>
-                          )}
+          {requestType === "SWAP" &&
+            swapOfferItem &&
+            swapOfferItem.length > 0 && (
+              <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2 text-[#0BB88C] font-medium">
+                  <ArrowLeftRight className="h-4 w-4" />
+                  Swap Summary
+                </div>
+                <div className="flex items-start gap-3">
+                  {/* Your side */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-[#0DCEA1] mb-1.5">
+                      You're offering:
+                    </div>
+                    <div className="space-y-1.5">
+                      {swapOfferItem.map((offerItem) => (
+                        <div
+                          key={offerItem.id}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                            {offerItem.photos?.[0] ? (
+                              <img
+                                src={offerItem.photos[0]}
+                                alt={offerItem.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Camera className="h-3 w-3 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-900 truncate">
+                              {offerItem.name}
+                            </p>
+                            <p className="text-[10px] text-[#0BB88C]">
+                              T{(offerItem as any).tier || 2} ·{" "}
+                              {getTierShareCoins((offerItem as any).tier || 2)}{" "}
+                              SC
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-gray-900 truncate">{offerItem.name}</p>
-                          <p className="text-[10px] text-[#0BB88C]">T{(offerItem as any).tier || 2} · {getTierShareCoins((offerItem as any).tier || 2)} SC</p>
-                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]/70 mt-5 flex-shrink-0" />
+                  {/* Their side */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-[#0DCEA1] mb-1.5">
+                      For their:
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                        {item.photos?.[0] ? (
+                          <img
+                            src={item.photos[0]}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Camera className="h-3 w-3 text-gray-400" />
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-                <ArrowLeftRight className="h-5 w-5 text-[#0DCEA1]/70 mt-5 flex-shrink-0" />
-                {/* Their side */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-[#0DCEA1] mb-1.5">For their:</div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                      {item.photos?.[0] ? (
-                        <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Camera className="h-3 w-3 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-gray-900 truncate">{item.name}</p>
-                      <p className="text-[10px] text-[#0BB88C]">T{(item as any).tier || 2} · {getTierShareCoins((item as any).tier || 2)} SC</p>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-gray-900 truncate">
+                          {item.name}
+                        </p>
+                        <p className="text-[10px] text-[#0BB88C]">
+                          T{(item as any).tier || 2} ·{" "}
+                          {getTierShareCoins((item as any).tier || 2)} SC
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
+                {/* Offset summary */}
+                {(() => {
+                  const yourSC = swapOfferItem.reduce(
+                    (s, i) => s + getTierShareCoins((i as any).tier || 2),
+                    0,
+                  );
+                  const theirSC = getTierShareCoins((item as any).tier || 2);
+                  const result = calculateMultiSwap(yourSC, theirSC);
+                  return (
+                    <div
+                      className={`flex items-center gap-2 text-sm p-2 rounded ${
+                        result.isFair
+                          ? "text-[#0BB88C] bg-[#E6FBF5]"
+                          : "text-amber-700 bg-amber-50"
+                      }`}
+                    >
+                      <Coins className="h-4 w-4 flex-shrink-0" />
+                      <span>
+                        {result.isFair
+                          ? "Fair swap — no ShareCoin adjustment"
+                          : result.offsetDirection === "you_pay"
+                            ? `You pay ${result.offset} ShareCoins to balance the swap`
+                            : `You receive +${result.offset} ShareCoins`}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
-              {/* Offset summary */}
-              {(() => {
-                const yourSC = swapOfferItem.reduce((s, i) => s + getTierShareCoins((i as any).tier || 2), 0);
-                const theirSC = getTierShareCoins((item as any).tier || 2);
-                const result = calculateMultiSwap(yourSC, theirSC);
-                return (
-                  <div className={`flex items-center gap-2 text-sm p-2 rounded ${
-                    result.isFair ? "text-[#0BB88C] bg-[#E6FBF5]" : "text-amber-700 bg-amber-50"
-                  }`}>
-                    <Coins className="h-4 w-4 flex-shrink-0" />
-                    <span>
-                      {result.isFair
-                        ? "Fair swap — no ShareCoin adjustment"
-                        : result.offsetDirection === "you_pay"
-                        ? `You pay ${result.offset} ShareCoins to balance the swap`
-                        : `You receive +${result.offset} ShareCoins`}
-                    </span>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
+            )}
 
           {requestType === "GIFT" && (
             <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 space-y-2">
@@ -350,7 +388,8 @@ export function ItemRequestForm({
             <form
               onSubmit={form.handleSubmit((data) => {
                 if (requestType === "BORROW" && onInsufficientCoins) {
-                  const weeklyPrice = parseFloat((item as any).shareCoinPrice || "0") || 5;
+                  const weeklyPrice =
+                    parseFloat((item as any).shareCoinPrice || "0") || 5;
                   let borrowDays = 0;
                   if (data.startDate && data.endDate) {
                     const start = new Date(data.startDate);
@@ -450,8 +489,13 @@ export function ItemRequestForm({
                   }
 
                   const weeklyRate = Number((item as any).dollarsPrice) || 10;
-                  const pricing = rentalDays > 0 ? calculateRentalPrice(weeklyRate, rentalDays) : null;
-                  const discountLabel = pricing ? getDiscountLabel(pricing.weeks) : "";
+                  const pricing =
+                    rentalDays > 0
+                      ? calculateRentalPrice(weeklyRate, rentalDays)
+                      : null;
+                  const discountLabel = pricing
+                    ? getDiscountLabel(pricing.weeks)
+                    : "";
 
                   // Delivery cost
                   const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
@@ -469,7 +513,9 @@ export function ItemRequestForm({
                         <div className="space-y-1.5 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">
-                              Rental ({pricing.weeks} {pricing.weeks === 1 ? "week" : "weeks"} × ${weeklyRate}/wk)
+                              Rental ({pricing.weeks}{" "}
+                              {pricing.weeks === 1 ? "week" : "weeks"} × $
+                              {weeklyRate}/wk)
                             </span>
                             <span className="font-medium">
                               ${pricing.subtotal.toFixed(2)}
@@ -498,7 +544,9 @@ export function ItemRequestForm({
                           )}
                           <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5 mt-0.5">
                             <span>Rental total</span>
-                            <span className="text-teal-700">${(pricing.total + deliveryCost).toFixed(2)}</span>
+                            <span className="text-teal-700">
+                              ${(pricing.total + deliveryCost).toFixed(2)}
+                            </span>
                           </div>
 
                           <div className="border-t border-gray-200 pt-1.5 mt-0.5">
@@ -520,8 +568,12 @@ export function ItemRequestForm({
                         <div className="space-y-1 text-xs text-gray-500">
                           <p>Select dates to see cost breakdown</p>
                           <div className="flex gap-3 pt-1">
-                            <span className="text-teal-600 font-medium">2–3 wks: 10% off</span>
-                            <span className="text-teal-600 font-medium">4+ wks: 20% off</span>
+                            <span className="text-teal-600 font-medium">
+                              2–3 wks: 10% off
+                            </span>
+                            <span className="text-teal-600 font-medium">
+                              4+ wks: 20% off
+                            </span>
                           </div>
                         </div>
                       )}
@@ -537,7 +589,8 @@ export function ItemRequestForm({
                   const endDate = form.watch("endDate");
                   const deliveryMethod = form.watch("deliveryMethod");
 
-                  const weeklyPrice = parseFloat((item as any).shareCoinPrice || "0") || 5;
+                  const weeklyPrice =
+                    parseFloat((item as any).shareCoinPrice || "0") || 5;
 
                   let borrowDays = 0;
                   if (startDate && endDate) {
@@ -600,7 +653,8 @@ export function ItemRequestForm({
                             </span>
                           </div>
                           <p className="text-[10px] text-gray-400">
-                            {weeklyPrice} SC/week × {borrowDays} {borrowDays === 1 ? "day" : "days"} ÷ 7
+                            {weeklyPrice} SC/week × {borrowDays}{" "}
+                            {borrowDays === 1 ? "day" : "days"} ÷ 7
                           </p>
                           {deliveryCost > 0 && (
                             <div className="flex justify-between">
@@ -706,40 +760,57 @@ export function ItemRequestForm({
                             <button
                               type="button"
                               onClick={() => field.onChange("in_app")}
-                              className={`text-left border rounded-lg p-2.5 transition-colors ${
+                              className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
                                 depositValue === "in_app"
                                   ? "border-primary bg-primary text-primary-foreground"
                                   : "border-gray-200 hover:bg-gray-50"
                               }`}
                             >
                               <span className="flex items-start gap-1.5 font-medium text-sm">
-                                <Shield className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_app" ? "text-primary-foreground" : "text-gray-500"}`} />
-                                Handle Deposit In-app
+                                <Shield
+                                  className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_app" ? "text-primary-foreground" : "text-gray-500"}`}
+                                />
+                                Handle In-app
                               </span>
-                              <p className={`text-xs font-medium mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/80" : "text-teal-600"}`}>Recommended</p>
-                              <p className={`text-[10px] mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>Processing fee: ${processingFee}</p>
+                              <p
+                                className={`text-xs font-medium mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/80" : "text-teal-600"}`}
+                              >
+                                Recommended
+                              </p>
+                              <p
+                                className={`text-[10px] mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                              >
+                                Processing fee: ${processingFee}
+                              </p>
                             </button>
                             <button
                               type="button"
-                              onClick={() => !isCourier && field.onChange("in_person")}
-                              className={`text-left border rounded-lg p-2.5 transition-colors ${
+                              onClick={() =>
+                                !isCourier && field.onChange("in_person")
+                              }
+                              className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
                                 isCourier
                                   ? "opacity-50 cursor-not-allowed border-gray-200"
                                   : depositValue === "in_person"
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-gray-200 hover:bg-gray-50"
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-gray-200 hover:bg-gray-50"
                               }`}
                             >
                               <span className="flex items-start gap-1.5 font-medium text-sm">
-                                <MapPin className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_person" ? "text-primary-foreground" : "text-gray-500"}`} />
-                                Exchange Deposit In Person
+                                <MapPin
+                                  className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_person" ? "text-primary-foreground" : "text-gray-500"}`}
+                                />
+                                Exchange In Person
                               </span>
                             </button>
                           </div>
                         </FormControl>
                         {depositValue === "in_person" && (
                           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                            ⚠️ ShareSwap is not responsible for in-person deposits. You assume full responsibility for collection, return, and any disputes — no platform protection applies.
+                            ⚠️ ShareSwap is not responsible for in-person
+                            deposits. You assume full responsibility for
+                            collection, return, and any disputes — no platform
+                            protection applies.
                           </p>
                         )}
                         <FormMessage />
@@ -763,31 +834,39 @@ export function ItemRequestForm({
                         <button
                           type="button"
                           onClick={() => field.onChange("in_person")}
-                          className={`text-left border rounded-lg p-2.5 transition-colors ${
+                          className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
                             field.value === "in_person"
                               ? "border-primary bg-primary text-primary-foreground"
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
                         >
                           <span className="flex items-start gap-1.5 font-medium text-sm">
-                            <MapPin className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "in_person" ? "text-primary-foreground" : "text-gray-500"}`} />
-                            Exchange Item In Person
+                            <MapPin
+                              className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "in_person" ? "text-primary-foreground" : "text-gray-500"}`}
+                            />
+                            Exchange In Person
                           </span>
                         </button>
                         <button
                           type="button"
                           onClick={() => field.onChange("courier")}
-                          className={`text-left border rounded-lg p-2.5 transition-colors ${
+                          className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
                             field.value === "courier"
                               ? "border-primary bg-primary text-primary-foreground"
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
                         >
                           <span className="flex items-start gap-1.5 font-medium text-sm">
-                            <Truck className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "courier" ? "text-primary-foreground" : "text-blue-600"}`} />
+                            <Truck
+                              className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "courier" ? "text-primary-foreground" : "text-blue-600"}`}
+                            />
                             Uber Direct
                           </span>
-                          <p className={`text-xs font-medium mt-0.5 ${field.value === "courier" ? "text-primary-foreground/80" : "text-gray-500"}`}>+$15</p>
+                          <p
+                            className={`text-xs font-medium mt-0.5 ${field.value === "courier" ? "text-primary-foreground/80" : "text-gray-500"}`}
+                          >
+                            +$15
+                          </p>
                         </button>
                       </div>
                     </FormControl>

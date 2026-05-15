@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,6 @@ export function TrustDepositModal({
   const isRental = requestType === "RENT";
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, navigate] = useLocation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
   const [successData, setSuccessData] = useState<{ nextStep: string } | null>(null);
@@ -113,7 +111,11 @@ export function TrustDepositModal({
 
   const handleMessageLender = () => {
     onClose();
-    navigate(`/chat/${ownerId}`);
+    window.dispatchEvent(
+      new CustomEvent("open-chat-request", {
+        detail: { requestId: request.id },
+      })
+    );
   };
 
   const handleViewRequest = () => {

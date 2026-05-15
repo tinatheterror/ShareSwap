@@ -4905,12 +4905,16 @@ Respond with ONLY the category name, nothing else.`
       };
     }
 
-    // Log event in chat
+    // Log event in chat — snapshot original (pre-counter) dates so the chat card can show "Current → Proposed"
     await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
       deliveryMethod: updated.counterDeliveryMethod,
       depositMethod: updated.counterDepositMethod,
       startDate: updated.counterStartDate,
       endDate: updated.counterEndDate,
+      origDeliveryMethod: request.item_requests.deliveryMethod,
+      origDepositMethod: request.item_requests.depositMethod,
+      origStartDate: request.item_requests.startDate,
+      origEndDate: request.item_requests.endDate,
       proposedByRole: isOwner ? "owner" : "requester",
       ...swapEventMeta,
     });
@@ -5026,11 +5030,16 @@ Respond with ONLY the category name, nothing else.`
         };
       }
 
+      // Log event in chat — snapshot original (pre-counter) dates so the chat card can show "Current → Proposed"
       await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
         deliveryMethod: updated.counterDeliveryMethod,
         depositMethod: updated.counterDepositMethod,
         startDate: updated.counterStartDate,
         endDate: updated.counterEndDate,
+        origDeliveryMethod: request.item_requests.deliveryMethod,
+        origDepositMethod: request.item_requests.depositMethod,
+        origStartDate: request.item_requests.startDate,
+        origEndDate: request.item_requests.endDate,
         proposedByRole: isOwner ? "owner" : "requester",
         ...swapCounterBackMeta,
       });

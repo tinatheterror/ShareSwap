@@ -1781,10 +1781,16 @@ export function ChatWidget() {
                               const mDeposit = msg.metadata.depositMethod as string | undefined;
                               const mStart = msg.metadata.startDate as string | undefined;
                               const mEnd = msg.metadata.endDate as string | undefined;
-                              const origDelivery = relatedRequest?.deliveryMethod;
-                              const origDeposit = relatedRequest?.depositMethod;
-                              const origStart = relatedRequest?.startDate ? format(parseLocalDate(relatedRequest.startDate), "MMM d") : null;
-                              const origEnd = relatedRequest?.endDate ? format(parseLocalDate(relatedRequest.endDate), "MMM d") : null;
+                              // Use snapshotted pre-counter originals from metadata (added server-side).
+                              // Fall back to relatedRequest fields for events logged before this fix.
+                              const origDeliveryRaw = (msg.metadata.origDeliveryMethod as string | undefined) ?? relatedRequest?.deliveryMethod;
+                              const origDepositRaw  = (msg.metadata.origDepositMethod  as string | undefined) ?? relatedRequest?.depositMethod;
+                              const origStartRaw    = (msg.metadata.origStartDate  as string | undefined) ?? relatedRequest?.startDate;
+                              const origEndRaw      = (msg.metadata.origEndDate    as string | undefined) ?? relatedRequest?.endDate;
+                              const origDelivery = origDeliveryRaw;
+                              const origDeposit  = origDepositRaw;
+                              const origStart = origStartRaw ? format(parseLocalDate(origStartRaw), "MMM d") : null;
+                              const origEnd   = origEndRaw   ? format(parseLocalDate(origEndRaw),   "MMM d") : null;
                               const newStart = mStart ? format(parseLocalDate(mStart), "MMM d") : null;
                               const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;

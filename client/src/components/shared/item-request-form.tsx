@@ -104,6 +104,28 @@ export function ItemRequestForm({
     paymentVerified?: boolean;
   } | null;
 
+  // Fetch existing bookings so the date picker can warn about unavailable ranges
+  const needsDates = requestType === "BORROW" || requestType === "RENT";
+  const { data: bookedDates = [] } = useQuery<{ startDate: string; endDate: string }[]>({
+    queryKey: ["/api/items", item.id, "booked-dates"],
+    enabled: isOpen && needsDates,
+  });
+
+  // Returns true if [s, e] overlaps any active booking range
+  const overlapsBooking = (s: string, e: string) => {
+    const st = new Date(s).getTime();
+    const en = new Date(e).getTime();
+    return bookedDates.some((b) => {
+      const bs = new Date(b.startDate).getTime();
+      const be = new Date(b.endDate).getTime();
+      return st <= be && en >= bs;
+    });
+  };
+
+  // Format a date string as "May 15" style
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -184,6 +206,13 @@ export function ItemRequestForm({
         });
       } else if ((error as any).code === "FULL_VERIFICATION_REQUIRED") {
         showVerificationModal();
+      } else if ((error as any).code === "DATE_CONFLICT") {
+        toast({
+          title: "Dates unavailable",
+          description:
+            "Those dates overlap an existing booking. Please choose different dates.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Failed to send request",
@@ -394,12 +423,13 @@ export function ItemRequestForm({
                   if (data.startDate && data.endDate) {
                     const start = new Date(data.startDate);
                     const end = new Date(data.endDate);
+                    // end = return day, so usage days = end - start (no +1)
                     borrowDays = Math.max(
                       1,
                       Math.ceil(
                         (end.getTime() - start.getTime()) /
                           (1000 * 60 * 60 * 24),
-                      ) + 1,
+                      ),
                     );
                   }
                   const proratedCost =
@@ -422,50 +452,98 @@ export function ItemRequestForm({
               className="space-y-4 mt-4"
             >
               {/* Date Selection - Hide for SWAP and GIFT */}
-              {requestType !== "SWAP" && requestType !== "GIFT" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Start Date
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            min={new Date().toISOString().split("T")[0]}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+              {requestType !== "SWAP" && requestType !== "GIFT" && (() => {
+                const watchedStart = form.watch("startDate");
+                const watchedEnd = form.watch("endDate");
+                const hasOverlap =
+                  watchedStart && watchedEnd
+                    ? overlapsBooking(watchedStart, watchedEnd)
+                    : false;
+
+                return (
+                  <div className="space-y-2">
+                    {/* Booked-dates banner (shown before any selection too) */}
+                    {bookedDates.length > 0 && (
+                      <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                        <span className="mt-0.5 shrink-0">🔒</span>
+                        <div>
+                          <span className="font-semibold">Already booked: </span>
+                          {bookedDates.map((b, i) => (
+                            <span key={i}>
+                              {i > 0 && ", "}
+                              {fmtDate(b.startDate)}–{fmtDate(b.endDate)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Return Date</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            min={
-                              form.watch("startDate") ||
-                              new Date().toISOString().split("T")[0]
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="startDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              Start Date
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                                min={new Date().toISOString().split("T")[0]}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  // Clear overlap error when user re-picks
+                                  form.clearErrors("startDate");
+                                  form.clearErrors("endDate");
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="endDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Return Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                                min={
+                                  form.watch("startDate") ||
+                                  new Date().toISOString().split("T")[0]
+                                }
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  form.clearErrors("endDate");
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Overlap warning shown below the pickers */}
+                    {hasOverlap && (
+                      <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                        <span className="shrink-0">⛔</span>
+                        <span>
+                          These dates overlap an existing booking. Please choose
+                          dates outside the booked period{bookedDates.length > 1 ? "s" : ""}.
+                        </span>
+                      </div>
                     )}
-                  />
-                </div>
-              )}
+                  </div>
+                );
+              })()}
 
               {/* Rental Cost Breakdown - Only for RENT */}
               {requestType === "RENT" &&

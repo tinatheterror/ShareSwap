@@ -4641,9 +4641,20 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
+    // When accepting, promote any pending counter-proposed dates/methods into the main fields
+    const counterPromotionFields =
+      status === "ACCEPTED" && request.item_requests.counterStartDate
+        ? {
+            startDate:      request.item_requests.counterStartDate,
+            endDate:        request.item_requests.counterEndDate ?? request.item_requests.endDate,
+            deliveryMethod: request.item_requests.counterDeliveryMethod ?? request.item_requests.deliveryMethod,
+            depositMethod:  request.item_requests.counterDepositMethod ?? request.item_requests.depositMethod,
+          }
+        : {};
+
     const [updatedRequest] = await db
       .update(itemRequests)
-      .set({ status })
+      .set({ status, ...counterPromotionFields })
       .where(eq(itemRequests.id, requestId))
       .returning();
 
@@ -6589,11 +6600,14 @@ Respond with ONLY the category name, nothing else.`
       // If both parties have now confirmed, complete the handoff
       if (bothConfirmed) {
         // Charge ShareCoins from borrower (only for BORROW type)
+        // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
+        const effectiveStart1 = request.item_requests.counterStartDate || request.item_requests.startDate;
+        const effectiveEnd1   = request.item_requests.counterEndDate   || request.item_requests.endDate;
         const shareCoinAmount = request.item_requests.requestType === "BORROW"
           ? calcBorrowShareCoinCost(
               parseFloat(request.items.shareCoinPrice || "0"),
-              request.item_requests.startDate,
-              request.item_requests.endDate,
+              effectiveStart1,
+              effectiveEnd1,
             )
           : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
         
@@ -6811,18 +6825,21 @@ Respond with ONLY the category name, nothing else.`
           systemMsgs = [`🎁 Gift successfully handed over! Generosity makes the neighbourhood stronger.`];
         } else {
           // BORROW or RENT
+          // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
+          const effectiveStart2 = request.item_requests.counterStartDate || request.item_requests.startDate;
+          const effectiveEnd2   = request.item_requests.counterEndDate   || request.item_requests.endDate;
           const shareCoinAmount = isBorrow
             ? calcBorrowShareCoinCost(
                 parseFloat(request.items.shareCoinPrice || "0"),
-                request.item_requests.startDate,
-                request.item_requests.endDate,
+                effectiveStart2,
+                effectiveEnd2,
               )
             : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
-          const bookedStartMs = request.item_requests.startDate ? new Date(request.item_requests.startDate).getTime() : null;
-          const bookedEndDate = request.item_requests.endDate ? new Date(request.item_requests.endDate) : null;
+          const bookedStartMs = effectiveStart2 ? new Date(effectiveStart2).getTime() : null;
+          const bookedEndDate = effectiveEnd2 ? new Date(effectiveEnd2) : null;
           const isLateHandoff = bookedStartMs && now.getTime() > bookedStartMs;
           const isEarlyHandoff = bookedStartMs && now.getTime() < bookedStartMs;
-          const startFmt = request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
+          const startFmt = effectiveStart2 ? new Date(effectiveStart2).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
           const endFmt = bookedEndDate ? bookedEndDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : null;
           const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
 
@@ -7026,11 +7043,14 @@ Respond with ONLY the category name, nothing else.`
       const isGiftOrSwapPin = isGiftPin || isSwapPin;
 
       // For BORROW, charge/earn ShareCoins at handoff
+      // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
       if (requestType === "BORROW") {
+        const effectiveStart3 = request.item_requests.counterStartDate || request.item_requests.startDate;
+        const effectiveEnd3   = request.item_requests.counterEndDate   || request.item_requests.endDate;
         const shareCoinAmount = calcBorrowShareCoinCost(
           parseFloat(request.items.shareCoinPrice || "0"),
-          request.item_requests.startDate,
-          request.item_requests.endDate,
+          effectiveStart3,
+          effectiveEnd3,
         );
         if (shareCoinAmount > 0) {
           const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
@@ -7435,11 +7455,14 @@ Respond with ONLY the category name, nothing else.`
 
         // ── Case 1: One confirmed, other is silent (no denial) → auto-confirm ──
         if ((ownerConfirmed || borrowerConfirmed) && !ownerDenied && !borrowerDenied) {
+          // Use counter-proposed dates if present — they are the agreed-upon dates after negotiation
+          const effectiveStart4 = request.item_requests.counterStartDate || request.item_requests.startDate;
+          const effectiveEnd4   = request.item_requests.counterEndDate   || request.item_requests.endDate;
           const shareCoinAmount = request.item_requests.requestType === "BORROW"
           ? calcBorrowShareCoinCost(
               parseFloat(request.items.shareCoinPrice || "0"),
-              request.item_requests.startDate,
-              request.item_requests.endDate,
+              effectiveStart4,
+              effectiveEnd4,
             )
           : parseFloat(request.item_requests.shareCoinAmount || request.items.shareCoinPrice || "0");
 

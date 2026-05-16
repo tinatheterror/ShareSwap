@@ -179,7 +179,7 @@ export default function HomePage() {
               >
                 Take
               </Button>
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-muted-foreground whitespace-nowrap">
                 Browse the ShareChest to find what you need
               </p>
             </div>

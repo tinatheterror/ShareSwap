@@ -134,12 +134,12 @@ export default function HomePage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-8 md:py-8 flex items-center justify-center">
         <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 lg:gap-16 w-full">
-          <div className="mt-6 md:mt-0 min-w-0 text-center">
-            <h1 className="text-3xl font-bold tracking-tight mb-2 md:mb-8 text-center">
+          <div className="mt-6 md:mt-0 w-full min-w-0 text-center">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 md:mb-8 text-center">
               <div>This is your Community</div>
               <div>ShareChest</div>
             </h1>
-            <p className="text-lg text-muted-foreground font-semibold text-center">
+            <p className="text-base sm:text-lg text-muted-foreground font-semibold text-center">
               Share more, own less.
             </p>
           </div>

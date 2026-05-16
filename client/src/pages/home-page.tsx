@@ -132,10 +132,10 @@ export default function HomePage() {
         </div>
       )}
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-8 md:py-8 flex items-center justify-center overflow-hidden">
-        <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
-          <div className="flex-shrink-0 mt-6 md:mt-0">
-            <h1 className="text-3xl font-bold tracking-tight mb-2 md:mb-8 text-center">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-8 md:py-8 flex items-center justify-center overflow-x-hidden">
+        <div className="w-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+          <div className="w-full md:w-auto mt-6 md:mt-0 text-center">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 md:mb-8 text-center">
               <div>This is your Community</div>
               <div>ShareChest</div>
             </h1>
@@ -143,7 +143,7 @@ export default function HomePage() {
               Share more, own less.
             </p>
           </div>
-          <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-8 bg-background shadow-lg">
+          <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-6 sm:p-8 bg-background shadow-lg">
             <div
               data-tutorial="give"
               className="w-full flex flex-col items-center gap-3"

@@ -3477,47 +3477,6 @@ Respond with ONLY the category name, nothing else.`
     res.json(itemWithOwner);
   });
 
-  // ── Booked dates for an item ────────────────────────────────────────────────
-  // Returns active booking date ranges so the request form can block them.
-  // Active statuses: ACCEPTED, DEPOSIT_CONFIRMED, AWAITING_HANDOFF_CONFIRM,
-  //                  COURIER_PENDING, IN_PROGRESS
-  app.get("/api/items/:id/booked-dates", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-
-    const itemId = parseInt(req.params.id);
-    if (isNaN(itemId)) return res.status(400).json({ error: "Invalid item ID" });
-
-    const activeStatuses = [
-      "ACCEPTED",
-      "DEPOSIT_CONFIRMED",
-      "AWAITING_HANDOFF_CONFIRM",
-      "COURIER_PENDING",
-      "IN_PROGRESS",
-    ];
-
-    const bookings = await db
-      .select({
-        startDate: itemRequests.startDate,
-        endDate: itemRequests.endDate,
-      })
-      .from(itemRequests)
-      .where(
-        and(
-          eq(itemRequests.itemId, itemId),
-          inArray(itemRequests.status, activeStatuses),
-        ),
-      );
-
-    const ranges = bookings
-      .filter((b) => b.startDate && b.endDate)
-      .map((b) => ({
-        startDate: b.startDate as string,
-        endDate: b.endDate as string,
-      }));
-
-    res.json(ranges);
-  });
-
   // Item condition verification endpoints
   app.post(
     "/api/items/:itemId/verify-condition",
@@ -4391,43 +4350,6 @@ Respond with ONLY the category name, nothing else.`
       return res
         .status(400)
         .send("This item cannot be rented because it does not have a Replacement Value set.");
-    }
-
-    // Block requests whose dates overlap an active booking for this item
-    if ((requestType === "BORROW" || requestType === "RENT") && startDate && endDate) {
-      const activeStatuses = [
-        "ACCEPTED",
-        "DEPOSIT_CONFIRMED",
-        "AWAITING_HANDOFF_CONFIRM",
-        "COURIER_PENDING",
-        "IN_PROGRESS",
-      ];
-      const existingBookings = await db
-        .select({ startDate: itemRequests.startDate, endDate: itemRequests.endDate })
-        .from(itemRequests)
-        .where(
-          and(
-            eq(itemRequests.itemId, itemId),
-            inArray(itemRequests.status, activeStatuses),
-          ),
-        );
-
-      const reqStart = new Date(startDate).getTime();
-      const reqEnd = new Date(endDate).getTime();
-      const overlaps = existingBookings.some((b) => {
-        if (!b.startDate || !b.endDate) return false;
-        const bs = new Date(b.startDate).getTime();
-        const be = new Date(b.endDate).getTime();
-        return reqStart <= be && reqEnd >= bs;
-      });
-
-      if (overlaps) {
-        return res.status(409).json({
-          error:
-            "The selected dates overlap with an existing booking. Please choose different dates.",
-          code: "DATE_CONFLICT",
-        });
-      }
     }
 
     // Create the request
@@ -6572,9 +6494,8 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // ── ShareCoin borrow-cost helper ───────────────────────────────────────────
-  // end date = return day (not last usage day), so usage days = end - start (no +1)
-  // Formula: round( (weeklyPrice / 7) × days )
-  // e.g. 10 SC/week item borrowed start=Mon, return=Fri → 4 usage days → round(10/7 × 4) = 6 SC
+  // Formula: ceil( (weeklyPrice / 7) × days )
+  // e.g. 10 SC/week item borrowed 4 days → ceil(10/7 × 4) = ceil(5.71) = 6 SC
   function calcBorrowShareCoinCost(
     shareCoinPrice: number,
     startDate: Date | string | null | undefined,
@@ -6583,7 +6504,7 @@ Respond with ONLY the category name, nothing else.`
     if (!startDate || !endDate || shareCoinPrice <= 0) return Math.max(1, shareCoinPrice);
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
+    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000) + 1);
     return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
   }
 

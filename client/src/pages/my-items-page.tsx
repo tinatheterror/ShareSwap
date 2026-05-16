@@ -20,7 +20,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Trash2, Plus, Package, Coins, Sparkles, Pencil, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, Package, Coins, Sparkles, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectItem } from "@db/schema";
@@ -39,15 +39,14 @@ const TIER_SHARECOINS: Record<number, number> = {
   4: 40,
 };
 
-// ─── Grouped status system ───────────────────────────────────────────────────
+// ─── Flat status system ───────────────────────────────────────────────────────
 
-type FilterGroup = "all" | "available" | "unavailable" | "out_with_neighbour" | "passed_on";
+type StatusKey = "available" | "unavailable" | "reserved" | "lent_out" | "rented_out" | "gifted" | "swapped" | "in_dispute";
+type FilterGroup = "all" | StatusKey;
 
 interface InventoryStatus {
-  group: "available" | "unavailable" | "out_with_neighbour" | "passed_on";
-  substatus: "available" | "reserved" | "in_dispute" | "paused" | "lent_out" | "rented_out" | "gifted" | "swapped";
-  groupLabel: string;
-  substatusLabel: string;
+  status: StatusKey;
+  label: string;
   canDelete: boolean;
   deleteLabel: string;
 }
@@ -62,40 +61,40 @@ function getInventoryStatus(item: any): InventoryStatus {
     const t: string = req.requestType;
 
     if (s === "HANDOFF_DISPUTED" || s === "DISPUTED") {
-      return { group: "unavailable", substatus: "in_dispute", groupLabel: "Unavailable", substatusLabel: "In dispute", canDelete: false, deleteLabel: "" };
+      return { status: "in_dispute", label: "In Dispute",  canDelete: false, deleteLabel: "" };
     }
     if (ACTIVE_STATUSES.includes(s)) {
-      if (t === "RENT") return { group: "out_with_neighbour", substatus: "rented_out", groupLabel: "Out with a neighbour", substatusLabel: "Rented out", canDelete: false, deleteLabel: "" };
-      return { group: "out_with_neighbour", substatus: "lent_out", groupLabel: "Out with a neighbour", substatusLabel: "Lent out", canDelete: false, deleteLabel: "" };
+      if (t === "RENT") return { status: "rented_out", label: "Rented Out", canDelete: false, deleteLabel: "" };
+      return               { status: "lent_out",   label: "Lent Out",   canDelete: false, deleteLabel: "" };
     }
     if (s === "ACCEPTED" || s === "PENDING") {
-      return { group: "unavailable", substatus: "reserved", groupLabel: "Unavailable", substatusLabel: "Reserved", canDelete: false, deleteLabel: "" };
+      return { status: "reserved", label: "Reserved", canDelete: false, deleteLabel: "" };
     }
     if (s === "COMPLETED" || s === "COMPLETED_EARLY") {
-      if (t === "GIFT") return { group: "passed_on", substatus: "gifted", groupLabel: "Passed on", substatusLabel: "Gifted", canDelete: true, deleteLabel: "Remove from history" };
-      if (t === "SWAP") return { group: "passed_on", substatus: "swapped", groupLabel: "Passed on", substatusLabel: "Swapped", canDelete: true, deleteLabel: "Remove from history" };
+      if (t === "GIFT") return { status: "gifted",  label: "Gifted",  canDelete: true, deleteLabel: "Remove from history" };
+      if (t === "SWAP") return { status: "swapped", label: "Swapped", canDelete: true, deleteLabel: "Remove from history" };
     }
   }
 
   if (item.isAvailable) {
-    return { group: "available", substatus: "available", groupLabel: "Available", substatusLabel: "", canDelete: true, deleteLabel: "Remove item" };
+    return { status: "available",   label: "Available",   canDelete: true, deleteLabel: "Remove item" };
   }
-  return { group: "unavailable", substatus: "paused", groupLabel: "Unavailable", substatusLabel: "Paused", canDelete: true, deleteLabel: "Remove item" };
+  return   { status: "unavailable", label: "Unavailable", canDelete: true, deleteLabel: "Remove item" };
 }
 
-// ─── Badge colours per substatus ─────────────────────────────────────────────
+// ─── Badge colours per status ─────────────────────────────────────────────────
 
 function getStatusBadgeClasses(status: InventoryStatus): { outer: string; dot: string } {
-  switch (status.substatus) {
-    case "available":      return { outer: "bg-teal-600/90 text-white",      dot: "bg-teal-300" };
-    case "reserved":       return { outer: "bg-amber-500/90 text-white",     dot: "bg-amber-200" };
-    case "in_dispute":     return { outer: "bg-red-600/90 text-white",       dot: "bg-red-300" };
-    case "paused":         return { outer: "bg-gray-500/80 text-white",      dot: "bg-gray-300" };
-    case "lent_out":       return { outer: "bg-blue-600/90 text-white",      dot: "bg-blue-300" };
-    case "rented_out":     return { outer: "bg-indigo-600/90 text-white",    dot: "bg-indigo-300" };
-    case "gifted":         return { outer: "bg-purple-500/90 text-white",    dot: "bg-purple-200" };
-    case "swapped":        return { outer: "bg-violet-500/90 text-white",    dot: "bg-violet-200" };
-    default:               return { outer: "bg-gray-600/80 text-white",      dot: "bg-gray-300" };
+  switch (status.status) {
+    case "available":   return { outer: "bg-teal-600/90 text-white",   dot: "bg-teal-300" };
+    case "reserved":    return { outer: "bg-amber-500/90 text-white",  dot: "bg-amber-200" };
+    case "in_dispute":  return { outer: "bg-red-600/90 text-white",    dot: "bg-red-300" };
+    case "unavailable": return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
+    case "lent_out":    return { outer: "bg-blue-600/90 text-white",   dot: "bg-blue-300" };
+    case "rented_out":  return { outer: "bg-indigo-600/90 text-white", dot: "bg-indigo-300" };
+    case "gifted":      return { outer: "bg-purple-500/90 text-white", dot: "bg-purple-200" };
+    case "swapped":     return { outer: "bg-violet-500/90 text-white", dot: "bg-violet-200" };
+    default:            return { outer: "bg-gray-600/80 text-white",   dot: "bg-gray-300" };
   }
 }
 
@@ -123,7 +122,7 @@ export default function MyItemsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
       const status = itemToDelete ? getInventoryStatus(itemToDelete) : null;
       toast({
-        title: status?.substatus === "gifted" || status?.substatus === "swapped" ? "Removed from history" : "Item Removed",
+        title: status?.status === "gifted" || status?.status === "swapped" ? "Removed from history" : "Item Removed",
         description: "Your item has been removed from your inventory.",
       });
       setItemToDelete(null);
@@ -138,6 +137,21 @@ export default function MyItemsPage() {
     },
   });
 
+  const relistItemMutation = useMutation({
+    mutationFn: async (itemId: number) => {
+      const formData = new FormData();
+      formData.append("isAvailable", "true");
+      await apiRequest("PATCH", `/api/items/${itemId}`, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
+      toast({ title: "Listing renewed", description: "Your item is now available again." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Could not relist", description: error.message || "Please try again.", variant: "destructive" });
+    },
+  });
+
   useEffect(() => {
     if (!isLoading && items.length === 0 && filter === "all") {
       setShowNoItemsDialog(true);
@@ -148,23 +162,16 @@ export default function MyItemsPage() {
 
   const filteredItems = items.filter((item) => {
     if (filter === "all") return true;
-    const s = getInventoryStatus(item);
-    if (filter === "available")          return s.group === "available";
-    if (filter === "unavailable")        return s.group === "unavailable";
-    if (filter === "out_with_neighbour") return s.group === "out_with_neighbour";
-    if (filter === "passed_on")          return s.group === "passed_on";
-    return true;
+    return getInventoryStatus(item).status === filter;
   });
 
   // ── Filter counts ──────────────────────────────────────────────────────────
 
-  const counts = {
-    all:                items.length,
-    available:          items.filter((i) => getInventoryStatus(i).group === "available").length,
-    unavailable:        items.filter((i) => getInventoryStatus(i).group === "unavailable").length,
-    out_with_neighbour: items.filter((i) => getInventoryStatus(i).group === "out_with_neighbour").length,
-    passed_on:          items.filter((i) => getInventoryStatus(i).group === "passed_on").length,
-  };
+  const statusKeys: StatusKey[] = ["available", "unavailable", "reserved", "lent_out", "rented_out", "gifted", "swapped"];
+  const counts: Record<FilterGroup, number> = { all: items.length } as any;
+  for (const key of statusKeys) {
+    counts[key] = items.filter((i) => getInventoryStatus(i).status === key).length;
+  }
 
   const getItemCapabilities = (item: SelectItem) => {
     const caps = [];
@@ -195,7 +202,7 @@ export default function MyItemsPage() {
   // ── Deletion dialog content ────────────────────────────────────────────────
 
   const deleteStatus = itemToDelete ? getInventoryStatus(itemToDelete) : null;
-  const isPassedOn = deleteStatus?.substatus === "gifted" || deleteStatus?.substatus === "swapped";
+  const isPassedOn = deleteStatus?.status === "gifted" || deleteStatus?.status === "swapped";
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
@@ -212,20 +219,24 @@ export default function MyItemsPage() {
         <div className="flex flex-wrap gap-2 mb-6 items-center">
           {(
             [
-              { key: "all",                label: "All Items" },
-              { key: "available",          label: "Available" },
-              { key: "unavailable",        label: "Unavailable" },
-              { key: "out_with_neighbour", label: "Out with a Neighbour" },
-              { key: "passed_on",          label: "Passed On" },
+              { key: "all",        label: "All" },
+              { key: "available",  label: "Available" },
+              { key: "unavailable",label: "Unavailable" },
+              { key: "reserved",   label: "Reserved" },
+              { key: "lent_out",   label: "Lent Out" },
+              { key: "rented_out", label: "Rented Out" },
+              { key: "gifted",     label: "Gifted" },
+              { key: "swapped",    label: "Swapped" },
             ] as { key: FilterGroup; label: string }[]
-          ).map(({ key, label }) => (
+          ).filter(({ key }) => key === "all" || (counts[key] ?? 0) > 0)
+           .map(({ key, label }) => (
             <Button
               key={key}
               variant={filter === key ? "default" : "outline"}
               onClick={() => setFilter(key)}
               size="sm"
             >
-              {label} ({counts[key]})
+              {label} ({counts[key] ?? 0})
             </Button>
           ))}
           <div className="hidden sm:block flex-1" />
@@ -299,14 +310,9 @@ export default function MyItemsPage() {
                     </div>
 
                     {/* Status badge — top right */}
-                    <div className={`absolute top-2 right-2 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm flex flex-col items-end gap-0 ${badge.outer}`}>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                        <span>{status.groupLabel}</span>
-                      </div>
-                      {status.substatusLabel && (
-                        <span className="text-[10px] opacity-85 pl-3 italic">{status.substatusLabel}</span>
-                      )}
+                    <div className={`absolute top-2 right-2 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm flex items-center gap-1.5 ${badge.outer}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                      <span>{status.label}</span>
                     </div>
                   </div>
 
@@ -361,14 +367,31 @@ export default function MyItemsPage() {
                       </TooltipProvider>
                     )}
 
+                    {/* Renewal prompt for unavailable items */}
+                    {status.status === "unavailable" && (
+                      <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <span className="text-xs text-gray-500">Outside availability period</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50"
+                          disabled={relistItemMutation.isPending}
+                          onClick={(e) => { e.stopPropagation(); relistItemMutation.mutate(item.id); }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Relist
+                        </Button>
+                      </div>
+                    )}
+
                     {/* Undeletable notice */}
                     {!status.canDelete && (
                       <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
                         <AlertTriangle className="h-3 w-3" />
                         <span>
-                          {status.substatus === "in_dispute"
+                          {status.status === "in_dispute"
                             ? "Locked while in dispute"
-                            : status.group === "out_with_neighbour"
+                            : status.status === "lent_out" || status.status === "rented_out"
                             ? "Locked while out with a neighbour"
                             : "Locked — active request pending"}
                         </span>

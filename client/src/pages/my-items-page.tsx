@@ -163,10 +163,26 @@ export default function MyItemsPage() {
 
   // ── Filtering ──────────────────────────────────────────────────────────────
 
-  const filteredItems = items.filter((item) => {
-    if (filter === "all") return true;
-    return getInventoryStatus(item).status === filter;
-  });
+  const STATUS_ORDER: Record<StatusKey, number> = {
+    available:   0,
+    reserved:    1,
+    lent_out:    2,
+    rented_out:  3,
+    unavailable: 4,
+    in_dispute:  5,
+    gifted:      6,
+    swapped:     7,
+  };
+
+  const filteredItems = items
+    .filter((item) => {
+      if (filter === "all") return true;
+      return getInventoryStatus(item).status === filter;
+    })
+    .sort((a, b) => {
+      if (filter !== "all") return 0; // preserve server order within a single-status filter
+      return STATUS_ORDER[getInventoryStatus(a).status] - STATUS_ORDER[getInventoryStatus(b).status];
+    });
 
   // ── Filter counts ──────────────────────────────────────────────────────────
 

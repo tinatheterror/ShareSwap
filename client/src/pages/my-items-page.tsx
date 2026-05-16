@@ -41,7 +41,7 @@ const TIER_SHARECOINS: Record<number, number> = {
 
 // ─── Flat status system ───────────────────────────────────────────────────────
 
-type StatusKey = "available" | "unavailable" | "reserved" | "lent_out" | "rented_out" | "gifted" | "swapped" | "in_dispute";
+type StatusKey = "available" | "unavailable" | "reserved" | "lent_out" | "rented_out" | "gifted" | "swapped";
 type FilterGroup = "all" | StatusKey;
 
 interface InventoryStatus {
@@ -49,6 +49,7 @@ interface InventoryStatus {
   label: string;
   canDelete: boolean;
   deleteLabel: string;
+  isDisputed?: boolean;
 }
 
 const ACTIVE_STATUSES = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
@@ -65,7 +66,8 @@ function getInventoryStatus(item: any): InventoryStatus {
     const t: string = req.requestType;
 
     if (s === "HANDOFF_DISPUTED" || s === "DISPUTED") {
-      return { status: "in_dispute", label: "In Dispute",  canDelete: false, deleteLabel: "" };
+      if (t === "RENT") return { status: "rented_out", label: "Rented Out", canDelete: false, deleteLabel: "", isDisputed: true };
+      return                   { status: "lent_out",   label: "Lent Out",   canDelete: false, deleteLabel: "", isDisputed: true };
     }
     if (ACTIVE_STATUSES.includes(s)) {
       if (t === "RENT") return { status: "rented_out", label: "Rented Out", canDelete: false, deleteLabel: "" };
@@ -90,10 +92,10 @@ function getInventoryStatus(item: any): InventoryStatus {
 // ─── Badge colours per status ─────────────────────────────────────────────────
 
 function getStatusBadgeClasses(status: InventoryStatus): { outer: string; dot: string } {
+  if (status.isDisputed) return { outer: "bg-red-600/90 text-white", dot: "bg-red-300" };
   switch (status.status) {
     case "available":   return { outer: "bg-teal-600/90 text-white",   dot: "bg-teal-300" };
     case "reserved":    return { outer: "bg-amber-500/90 text-white",  dot: "bg-amber-200" };
-    case "in_dispute":  return { outer: "bg-red-600/90 text-white",    dot: "bg-red-300" };
     case "unavailable": return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
     case "lent_out":    return { outer: "bg-blue-600/90 text-white",   dot: "bg-blue-300" };
     case "rented_out":  return { outer: "bg-indigo-600/90 text-white", dot: "bg-indigo-300" };
@@ -169,9 +171,8 @@ export default function MyItemsPage() {
     lent_out:    2,
     rented_out:  3,
     unavailable: 4,
-    in_dispute:  5,
-    gifted:      6,
-    swapped:     7,
+    gifted:      5,
+    swapped:     6,
   };
 
   const filteredItems = items
@@ -413,8 +414,8 @@ export default function MyItemsPage() {
                       <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1">
                         <AlertTriangle className="h-3 w-3" />
                         <span>
-                          {status.status === "in_dispute"
-                            ? "Locked while in dispute"
+                          {status.isDisputed
+                            ? "Locked — dispute in progress"
                             : status.status === "lent_out" || status.status === "rented_out"
                             ? "Locked while out with a neighbour"
                             : "Locked — active request pending"}

@@ -95,9 +95,9 @@ function getStatusBadgeClasses(status: InventoryStatus): { outer: string; dot: s
     case "unavailable": return { outer: "bg-rose-800/90 text-white",   dot: "bg-rose-400" };
     case "lent_out":    return { outer: "bg-amber-500/90 text-white",  dot: "bg-amber-200" };
     case "rented_out":  return { outer: "bg-amber-600/90 text-white",  dot: "bg-amber-200" };
-    case "gifted":      return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
-    case "swapped":     return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
-    default:            return { outer: "bg-gray-600/80 text-white",   dot: "bg-gray-300" };
+    case "gifted":      return { outer: "bg-gray-600 text-white",      dot: "bg-gray-300" };
+    case "swapped":     return { outer: "bg-gray-600 text-white",      dot: "bg-gray-300" };
+    default:            return { outer: "bg-gray-600 text-white",      dot: "bg-gray-300" };
   }
 }
 

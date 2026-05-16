@@ -449,7 +449,7 @@ export function ItemRequestForm({
                     name="endDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>End Date</FormLabel>
+                        <FormLabel>Return Date</FormLabel>
                         <FormControl>
                           <Input
                             type="date"
@@ -596,12 +596,13 @@ export function ItemRequestForm({
                   if (startDate && endDate) {
                     const start = new Date(startDate);
                     const end = new Date(endDate);
+                    // end date = return day, so usage days = end - start (no +1)
                     borrowDays = Math.max(
                       1,
                       Math.ceil(
                         (end.getTime() - start.getTime()) /
                           (1000 * 60 * 60 * 24),
-                      ) + 1,
+                      ),
                     );
                   }
 

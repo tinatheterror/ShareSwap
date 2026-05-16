@@ -84,7 +84,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] flex flex-col pb-safe pt-safe">
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col pb-safe pt-safe overflow-x-hidden">
       <Navbar />
 
       {/* Email Verified Banner */}
@@ -132,9 +132,9 @@ export default function HomePage() {
         </div>
       )}
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-8 md:py-8 flex items-center justify-center">
-        <div className="w-full flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16">
-          <div className="flex-shrink-0 mt-6 md:mt-0 min-w-0">
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pt-0 pb-8 md:py-8 flex items-center justify-center">
+        <div className="w-full max-w-sm md:max-w-4xl flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
+          <div className="w-full md:w-auto md:flex-shrink-0 mt-6 md:mt-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 md:mb-8 text-center">
               <div>This is your Community</div>
               <div>ShareChest</div>
@@ -143,7 +143,7 @@ export default function HomePage() {
               Share more, own less.
             </p>
           </div>
-          <Card className="flex flex-col items-center justify-center gap-6 w-full max-w-sm p-8 bg-background shadow-lg">
+          <Card className="flex flex-col items-center justify-center gap-6 w-full md:max-w-sm p-6 sm:p-8 bg-background shadow-lg">
             <div
               data-tutorial="give"
               className="w-full flex flex-col items-center gap-3"

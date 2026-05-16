@@ -386,7 +386,7 @@ export function Navbar() {
         <div className="flex justify-between h-14 sm:h-16 items-center">
           <Link href="/">
             <div className="flex items-center cursor-pointer">
-              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-8 sm:h-12 w-auto scale-y-[0.85] sm:scale-y-100" />
+              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-8 sm:h-12 w-auto" />
             </div>
           </Link>
 

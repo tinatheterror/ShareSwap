@@ -384,9 +384,9 @@ export function Navbar() {
     <nav className="border-b bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14 sm:h-16 items-center">
-          <Link href="/">
+          <Link href="/" className="flex-shrink-0">
             <div className="flex items-center cursor-pointer">
-              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-10 w-auto" />
+              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-10 w-auto object-contain flex-shrink-0" />
             </div>
           </Link>
 

@@ -480,9 +480,9 @@ export default function ProfilePage() {
     }
 
     return (
-      <div className="min-h-screen bg-[#F3F4F6]">
+      <div className="min-h-screen bg-[#F3F4F6] overflow-x-hidden">
         <Navbar />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
           <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
             <CardHeader className="bg-transparent">
               <div className="flex items-start gap-4">
@@ -828,9 +828,9 @@ export default function ProfilePage() {
 
   // Show own profile if viewing logged-in user's profile
   return (
-    <div className="min-h-screen bg-[#F3F4F6]">
+    <div className="min-h-screen bg-[#F3F4F6] overflow-x-hidden">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Profile Information */}
           <div className="lg:col-span-2 space-y-6">

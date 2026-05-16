@@ -702,7 +702,7 @@ export default function BorrowPage() {
             </div>
 
             {/* Desktop: Grid layout */}
-            <div className="hidden lg:grid lg:grid-cols-4 gap-4">
+            <div className="hidden md:grid md:grid-cols-4 gap-4">
               {filteredGiftItems.slice(0, 4).map((item) => (
                 <Card
                   key={item.id}

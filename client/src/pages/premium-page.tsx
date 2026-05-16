@@ -209,7 +209,7 @@ export default function PremiumPage() {
             <CardTitle className="text-center">Why Go Premium?</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
                 <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Zap className="h-8 w-8 text-teal-600" />

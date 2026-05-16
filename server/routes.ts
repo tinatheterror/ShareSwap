@@ -3477,47 +3477,6 @@ Respond with ONLY the category name, nothing else.`
     res.json(itemWithOwner);
   });
 
-  // ── Booked dates for an item ────────────────────────────────────────────────
-  // Returns active booking date ranges so the request form can block them.
-  // Active statuses: ACCEPTED, DEPOSIT_CONFIRMED, AWAITING_HANDOFF_CONFIRM,
-  //                  COURIER_PENDING, IN_PROGRESS
-  app.get("/api/items/:id/booked-dates", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-
-    const itemId = parseInt(req.params.id);
-    if (isNaN(itemId)) return res.status(400).json({ error: "Invalid item ID" });
-
-    const activeStatuses = [
-      "ACCEPTED",
-      "DEPOSIT_CONFIRMED",
-      "AWAITING_HANDOFF_CONFIRM",
-      "COURIER_PENDING",
-      "IN_PROGRESS",
-    ];
-
-    const bookings = await db
-      .select({
-        startDate: itemRequests.startDate,
-        endDate: itemRequests.endDate,
-      })
-      .from(itemRequests)
-      .where(
-        and(
-          eq(itemRequests.itemId, itemId),
-          inArray(itemRequests.status, activeStatuses),
-        ),
-      );
-
-    const ranges = bookings
-      .filter((b) => b.startDate && b.endDate)
-      .map((b) => ({
-        startDate: b.startDate as string,
-        endDate: b.endDate as string,
-      }));
-
-    res.json(ranges);
-  });
-
   // Item condition verification endpoints
   app.post(
     "/api/items/:itemId/verify-condition",
@@ -4393,43 +4352,6 @@ Respond with ONLY the category name, nothing else.`
         .send("This item cannot be rented because it does not have a Replacement Value set.");
     }
 
-    // Block requests whose dates overlap an active booking for this item
-    if ((requestType === "BORROW" || requestType === "RENT") && startDate && endDate) {
-      const activeStatuses = [
-        "ACCEPTED",
-        "DEPOSIT_CONFIRMED",
-        "AWAITING_HANDOFF_CONFIRM",
-        "COURIER_PENDING",
-        "IN_PROGRESS",
-      ];
-      const existingBookings = await db
-        .select({ startDate: itemRequests.startDate, endDate: itemRequests.endDate })
-        .from(itemRequests)
-        .where(
-          and(
-            eq(itemRequests.itemId, itemId),
-            inArray(itemRequests.status, activeStatuses),
-          ),
-        );
-
-      const reqStart = new Date(startDate).getTime();
-      const reqEnd = new Date(endDate).getTime();
-      const overlaps = existingBookings.some((b) => {
-        if (!b.startDate || !b.endDate) return false;
-        const bs = new Date(b.startDate).getTime();
-        const be = new Date(b.endDate).getTime();
-        return reqStart <= be && reqEnd >= bs;
-      });
-
-      if (overlaps) {
-        return res.status(409).json({
-          error:
-            "The selected dates overlap with an existing booking. Please choose different dates.",
-          code: "DATE_CONFLICT",
-        });
-      }
-    }
-
     // Create the request
     const [request] = await db
       .insert(itemRequests)
@@ -5108,17 +5030,16 @@ Respond with ONLY the category name, nothing else.`
         };
       }
 
-      // Log event in chat — snapshot the PREVIOUS counter's proposed terms as "orig" so the
-      // chat card can show "Previous (pending counter) → New proposal"
+      // Log event in chat — snapshot original (pre-counter) dates so the chat card can show "Current → Proposed"
       await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
         deliveryMethod: updated.counterDeliveryMethod,
         depositMethod: updated.counterDepositMethod,
         startDate: updated.counterStartDate,
         endDate: updated.counterEndDate,
-        origDeliveryMethod: request.item_requests.counterDeliveryMethod ?? request.item_requests.deliveryMethod,
-        origDepositMethod: request.item_requests.counterDepositMethod ?? request.item_requests.depositMethod,
-        origStartDate: request.item_requests.counterStartDate ?? request.item_requests.startDate,
-        origEndDate: request.item_requests.counterEndDate ?? request.item_requests.endDate,
+        origDeliveryMethod: request.item_requests.deliveryMethod,
+        origDepositMethod: request.item_requests.depositMethod,
+        origStartDate: request.item_requests.startDate,
+        origEndDate: request.item_requests.endDate,
         proposedByRole: isOwner ? "owner" : "requester",
         ...swapCounterBackMeta,
       });
@@ -6572,9 +6493,8 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // ── ShareCoin borrow-cost helper ───────────────────────────────────────────
-  // end date = return day (not last usage day), so usage days = end - start (no +1)
-  // Formula: round( (weeklyPrice / 7) × days )
-  // e.g. 10 SC/week item borrowed start=Mon, return=Fri → 4 usage days → round(10/7 × 4) = 6 SC
+  // Formula: ceil( (weeklyPrice / 7) × days )
+  // e.g. 10 SC/week item borrowed 4 days → ceil(10/7 × 4) = ceil(5.71) = 6 SC
   function calcBorrowShareCoinCost(
     shareCoinPrice: number,
     startDate: Date | string | null | undefined,
@@ -6583,7 +6503,7 @@ Respond with ONLY the category name, nothing else.`
     if (!startDate || !endDate || shareCoinPrice <= 0) return Math.max(1, shareCoinPrice);
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
+    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000) + 1);
     return Math.max(1, Math.round((shareCoinPrice / 7) * borrowDays));
   }
 
@@ -6707,7 +6627,7 @@ Respond with ONLY the category name, nothing else.`
             .where(eq(users.id, request.item_requests.requesterId))
             .limit(1);
 
-          const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
+          const currentBalance = parseFloat(borrower?.shareCoins || "0");
           const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
 
           // Deduct ShareCoins from borrower (charge what they have, at most the full amount)
@@ -6732,7 +6652,7 @@ Respond with ONLY the category name, nothing else.`
               .where(eq(users.id, request.items.ownerId))
               .limit(1);
 
-            const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
+            const lenderBalance = parseFloat(lender?.shareCoins || "0");
             await db
               .update(users)
               .set({ shareCoins: (lenderBalance + charged).toString() })
@@ -7143,13 +7063,13 @@ Respond with ONLY the category name, nothing else.`
         );
         if (shareCoinAmount > 0) {
           const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId)).limit(1);
-          const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
+          const currentBalance = parseFloat(borrower?.shareCoins || "0");
           const charged = Math.min(shareCoinAmount, Math.max(currentBalance, 0));
           await db.update(users).set({ shareCoins: (currentBalance - charged).toString() }).where(eq(users.id, borrowerId));
           await db.insert(shareCoinsTransactions).values({ userId: borrowerId, amount: (-charged).toString(), description: `Borrowed: ${request.items.name}`, transactionType: "BORROW_CHARGE" });
           if (ownerId && charged > 0) {
             const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId)).limit(1);
-            const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
+            const lenderBalance = parseFloat(lender?.shareCoins || "0");
             await db.update(users).set({ shareCoins: (lenderBalance + charged).toString() }).where(eq(users.id, ownerId));
             await db.insert(shareCoinsTransactions).values({ userId: ownerId, amount: charged.toString(), description: `Lent: ${request.items.name}`, transactionType: "LEND_REWARD" });
 
@@ -7557,13 +7477,13 @@ Respond with ONLY the category name, nothing else.`
 
           if (shareCoinAmount > 0 && request.item_requests.requestType === "BORROW") {
             const [borrower] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, borrowerId2)).limit(1);
-            const currentBalance = Math.floor(parseFloat(borrower?.shareCoins || "0"));
+            const currentBalance = parseFloat(borrower?.shareCoins || "0");
             if (currentBalance >= shareCoinAmount) {
               await db.update(users).set({ shareCoins: (currentBalance - shareCoinAmount).toString() }).where(eq(users.id, borrowerId2));
               await db.insert(shareCoinsTransactions).values({ userId: borrowerId2, amount: (-shareCoinAmount).toString(), description: `Borrowed: ${request.items.name} (auto-confirmed)`, transactionType: "BORROW_CHARGE" });
               if (ownerId2) {
                 const [lender] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, ownerId2)).limit(1);
-                const lenderBalance = Math.floor(parseFloat(lender?.shareCoins || "0"));
+                const lenderBalance = parseFloat(lender?.shareCoins || "0");
                 await db.update(users).set({ shareCoins: (lenderBalance + shareCoinAmount).toString() }).where(eq(users.id, ownerId2));
                 await db.insert(shareCoinsTransactions).values({ userId: ownerId2, amount: shareCoinAmount.toString(), description: `Lent: ${request.items.name} (auto-confirmed)`, transactionType: "LEND_REWARD" });
               }

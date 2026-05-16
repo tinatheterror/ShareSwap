@@ -383,15 +383,15 @@ export function Navbar() {
     <EmailVerificationBanner />
     <nav className="border-b bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-14 sm:h-16 items-center">
-          <Link href="/">
+        <div className="flex justify-between h-14 sm:h-16 items-center gap-2 min-w-0">
+          <Link href="/" className="shrink-0">
             <div className="flex items-center cursor-pointer">
-              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-8 sm:h-12 w-auto scale-y-[0.85] sm:scale-y-100" />
+              <img src="/shareswap-full-logo.png" alt="ShareSwap" className="h-8 sm:h-10 w-auto" />
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <NavigationMenu className="hidden lg:flex">
+          <NavigationMenu className="hidden lg:flex min-w-0">
             <NavigationMenuList className="space-x-2">
               {user ? (
                 <>
@@ -509,7 +509,7 @@ export function Navbar() {
           </NavigationMenu>
 
           {/* Mobile Navigation */}
-          <div className="flex lg:hidden items-center gap-2">
+          <div className="flex lg:hidden items-center gap-1.5 shrink-0">
             {user && (
               <Sheet open={mobileWalletOpen} onOpenChange={setMobileWalletOpen}>
                 <SheetTrigger asChild>

@@ -903,49 +903,44 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
+                  <div className="flex flex-col gap-2 sm:flex-shrink-0">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 sm:w-full justify-center sm:justify-start"
+                      className="w-full justify-start"
                       onClick={isEditing ? handleCancelEdit : handleEditProfile}
                       disabled={updateProfileMutation.isPending}
                     >
                       {isEditing ? (
                         <>
-                          <X className="h-4 w-4 mr-1 sm:mr-2" />
-                          <span className="hidden sm:inline">Cancel</span>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
                         </>
                       ) : (
                         <>
-                          <Edit3 className="h-4 w-4 mr-1 sm:mr-2" />
-                          <span className="hidden sm:inline">Edit Profile</span>
-                          <span className="sm:hidden">Edit</span>
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Edit Profile
                         </>
                       )}
                     </Button>
-                    <Link href="/my-balance" className="flex-1 sm:w-full">
+                    <Link href="/my-balance" className="w-full">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full justify-center sm:justify-start"
+                        className="w-full justify-start"
                       >
-                        <Wallet className="h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">My Balance</span>
-                        <span className="sm:hidden">Balance</span>
+                        <Wallet className="h-4 w-4 mr-2" />
+                        My Balance
                       </Button>
                     </Link>
-                    <Link href="/settings" className="flex-1 sm:w-full">
+                    <Link href="/settings" className="w-full">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full justify-center sm:justify-start"
+                        className="w-full justify-start"
                       >
-                        <Settings className="h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">
-                          Account Settings
-                        </span>
-                        <span className="sm:hidden">Account</span>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Account Settings
                       </Button>
                     </Link>
                   </div>
@@ -1202,9 +1197,9 @@ export default function ProfilePage() {
             {/* Upgrade to Premium */}
             <div className="mt-6">
               <div className="text-center mb-4">
-                <h2 className="flex items-center justify-center gap-2 text-xl font-bold">
+                <h2 className="flex flex-wrap items-center justify-center gap-2 text-xl font-bold">
                   <Crown className="h-6 w-6 text-teal-600" />
-                  Upgrade to Premium
+                  <span>Upgrade to Premium</span>
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
                   Get priority access, lower fees, and exclusive features to

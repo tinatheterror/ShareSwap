@@ -21,7 +21,12 @@
     @apply border-border;
   }
 
-  html,
+  html {
+    background-color: var(--app-bg) !important;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+  }
+
   body,
   #root {
     background-color: var(--app-bg) !important;

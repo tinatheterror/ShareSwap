@@ -96,6 +96,23 @@ export function ItemRequestForm({
   const { data: userData } = useQuery({
     queryKey: ["/api/user"],
   });
+
+  // Fetch booked date windows for this item so we can block conflicting dates
+  const { data: bookedRanges = [] } = useQuery<{ startDate: string; endDate: string }[]>({
+    queryKey: ["/api/items", item.id, "booked-dates"],
+    queryFn: () => fetch(`/api/items/${item.id}/booked-dates`).then(r => r.json()),
+    enabled: isOpen && (requestType === "BORROW" || requestType === "RENT"),
+  });
+
+  // Returns true if [s1,e1) overlaps [s2,e2)
+  const datesOverlap = (s1: string, e1: string, s2: string, e2: string) =>
+    s1 < e2 && e1 > s2;
+
+  const watchedStart = form.watch("startDate");
+  const watchedEnd = form.watch("endDate");
+  const conflictingRange = (watchedStart && watchedEnd)
+    ? bookedRanges.find(r => datesOverlap(watchedStart, watchedEnd, r.startDate, r.endDate))
+    : null;
   const user = userData as {
     id?: number;
     username?: string;
@@ -399,7 +416,7 @@ export function ItemRequestForm({
                       Math.ceil(
                         (end.getTime() - start.getTime()) /
                           (1000 * 60 * 60 * 24),
-                      ) + 1,
+                      ),
                     );
                   }
                   const proratedCost =
@@ -464,6 +481,26 @@ export function ItemRequestForm({
                       </FormItem>
                     )}
                   />
+                </div>
+              )}
+
+              {/* Booked-dates conflict warning */}
+              {requestType !== "SWAP" && requestType !== "GIFT" && bookedRanges.length > 0 && (
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 space-y-1">
+                  <p className="font-semibold">Item is already booked during:</p>
+                  {bookedRanges.map((r, i) => {
+                    const fmt = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                    return (
+                      <p key={i} className="text-amber-700">
+                        {fmt(r.startDate)} – {fmt(r.endDate)}
+                      </p>
+                    );
+                  })}
+                  {conflictingRange && (
+                    <p className="font-semibold text-red-600 mt-1">
+                      ⚠ Your selected dates overlap with a booked period. Please choose different dates.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1072,6 +1109,7 @@ export function ItemRequestForm({
                   type="submit"
                   disabled={
                     createRequestMutation.isPending ||
+                    !!conflictingRange ||
                     (requestType === "BORROW" &&
                       hasValidReplacementValue(
                         (item as any).replacementValue,

@@ -3408,6 +3408,60 @@ Respond with ONLY the category name, nothing else.`
 
   // Enhanced delivery arrangements with security deposit options
   // Add GET route for single item (MUST come after specific routes)
+  // Returns active booking windows for an item so the request form can block those dates
+  app.get("/api/items/:itemId/booked-dates", async (req, res) => {
+    const itemId = parseInt(req.params.itemId);
+    if (isNaN(itemId)) return res.status(400).json({ error: "Invalid item ID" });
+
+    try {
+      const activeStatuses = [
+        "ACCEPTED",
+        "DEPOSIT_CONFIRMED",
+        "AWAITING_HANDOFF_CONFIRM",
+        "COURIER_PENDING",
+        "IN_PROGRESS",
+      ];
+
+      const bookings = await db
+        .select({
+          startDate: itemRequests.startDate,
+          endDate: itemRequests.endDate,
+          counterStartDate: itemRequests.counterStartDate,
+          counterEndDate: itemRequests.counterEndDate,
+          negotiationStatus: itemRequests.negotiationStatus,
+        })
+        .from(itemRequests)
+        .where(
+          and(
+            eq(itemRequests.itemId, itemId),
+            inArray(itemRequests.status, activeStatuses),
+          )
+        );
+
+      const result = bookings
+        .map((b) => {
+          // Use counter dates when a counter is pending, otherwise use committed dates
+          const start = b.negotiationStatus === "counter_proposed"
+            ? (b.counterStartDate ?? b.startDate)
+            : b.startDate;
+          const end = b.negotiationStatus === "counter_proposed"
+            ? (b.counterEndDate ?? b.endDate)
+            : b.endDate;
+          if (!start || !end) return null;
+          return {
+            startDate: start instanceof Date ? start.toISOString().split("T")[0] : String(start).split("T")[0],
+            endDate:   end   instanceof Date ? end.toISOString().split("T")[0]   : String(end).split("T")[0],
+          };
+        })
+        .filter(Boolean);
+
+      res.json(result);
+    } catch (err) {
+      console.error("Error fetching booked dates:", err);
+      res.status(500).json({ error: "Failed to fetch booked dates" });
+    }
+  });
+
   app.get("/api/items/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

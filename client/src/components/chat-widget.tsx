@@ -1386,7 +1386,7 @@ export function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className={isOpen ? "fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-auto sm:right-4 z-50" : "fixed bottom-4 right-4 z-50"}>
       {!isOpen ? (
         <Button
           onClick={() => setIsOpen(true)}
@@ -1401,7 +1401,7 @@ export function ChatWidget() {
           )}
         </Button>
       ) : (
-        <Card className="w-[380px] h-[600px] shadow-2xl flex flex-col">
+        <Card className="w-full sm:w-[380px] h-[92dvh] sm:h-[600px] shadow-2xl flex flex-col rounded-b-none sm:rounded-b-lg">
           {/* Header with main tabs */}
           <div className="border-b">
             <div className="flex items-center justify-between px-4 py-3">

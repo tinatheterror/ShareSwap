@@ -25,6 +25,7 @@
   body,
   #root {
     background-color: var(--app-bg) !important;
+    overflow-x: hidden;
   }
 
   body {

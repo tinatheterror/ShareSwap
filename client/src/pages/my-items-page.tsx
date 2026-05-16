@@ -53,6 +53,10 @@ interface InventoryStatus {
 
 const ACTIVE_STATUSES = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
 
+function isListingExpired(item: any): boolean {
+  return !!item.listingExpiresAt && new Date(item.listingExpiresAt) <= new Date();
+}
+
 function getInventoryStatus(item: any): InventoryStatus {
   const req = item.activeRequest;
 
@@ -76,7 +80,8 @@ function getInventoryStatus(item: any): InventoryStatus {
     }
   }
 
-  if (item.isAvailable) {
+  // An expired listing (listingExpiresAt in the past) is unavailable even if isAvailable=true
+  if (item.isAvailable && !isListingExpired(item)) {
     return { status: "available",   label: "Available",   canDelete: true, deleteLabel: "Remove item" };
   }
   return   { status: "unavailable", label: "Unavailable", canDelete: true, deleteLabel: "Remove item" };
@@ -139,13 +144,11 @@ export default function MyItemsPage() {
 
   const relistItemMutation = useMutation({
     mutationFn: async (itemId: number) => {
-      const formData = new FormData();
-      formData.append("isAvailable", "true");
-      await apiRequest("PATCH", `/api/items/${itemId}`, formData);
+      await apiRequest("POST", `/api/items/${itemId}/relist`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
-      toast({ title: "Listing renewed", description: "Your item is now available again." });
+      toast({ title: "Listing renewed", description: "Your item is now live for another 30 days." });
     },
     onError: (error: any) => {
       toast({ title: "Could not relist", description: error.message || "Please try again.", variant: "destructive" });
@@ -367,19 +370,24 @@ export default function MyItemsPage() {
                       </TooltipProvider>
                     )}
 
-                    {/* Renewal prompt for unavailable items */}
-                    {status.status === "unavailable" && (
-                      <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                        <span className="text-xs text-gray-500">Outside availability period</span>
+                    {/* Renewal prompt — only for expired listings */}
+                    {status.status === "unavailable" && isListingExpired(item) && (
+                      <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
+                        <div>
+                          <p className="text-xs font-medium text-amber-800">Listing expired</p>
+                          <p className="text-[10px] text-amber-600">
+                            {new Date(item.listingExpiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                        </div>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-6 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50"
+                          className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
                           disabled={relistItemMutation.isPending}
                           onClick={(e) => { e.stopPropagation(); relistItemMutation.mutate(item.id); }}
                         >
                           <RefreshCw className="h-3 w-3 mr-1" />
-                          Relist
+                          Renew (30 days)
                         </Button>
                       </div>
                     )}

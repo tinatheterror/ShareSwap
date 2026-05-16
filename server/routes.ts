@@ -2543,6 +2543,7 @@ Respond with ONLY the category name, nothing else.`
       wasSmartScanned: wasSmartScanned,
       swapDesiredItem: swapDesiredItem,
       swapNotifyOnMatch: swapNotifyOnMatch,
+      listingExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       ownerId: req.user.id,
     };
 
@@ -2945,8 +2946,14 @@ Respond with ONLY the category name, nothing else.`
     try {
       const { type } = req.query; // Add type filter (rent, borrow, swap, gift)
       
-      let whereConditions = [eq(items.isAvailable, true), eq(items.isDeleted, false)];
-      
+      const now = new Date();
+      let whereConditions = [
+        eq(items.isAvailable, true),
+        eq(items.isDeleted, false),
+        // Exclude expired listings (null = no expiry, for legacy items)
+        or(isNull(items.listingExpiresAt), gte(items.listingExpiresAt, now))!,
+      ];
+
       // Add type-specific filtering
       if (type === 'rent') {
         whereConditions.push(eq(items.isRentable, true));
@@ -3408,6 +3415,28 @@ Respond with ONLY the category name, nothing else.`
 
   // Enhanced delivery arrangements with security deposit options
   // Add GET route for single item (MUST come after specific routes)
+  // Renew a listing for another 30 days
+  app.post("/api/items/:itemId/relist", requireEmailVerified, csrfProtection, async (req: any, res) => {
+    const itemId = parseInt(req.params.itemId);
+    if (isNaN(itemId)) return res.status(400).json({ error: "Invalid item ID" });
+
+    try {
+      const [item] = await db.select({ ownerId: items.ownerId }).from(items).where(eq(items.id, itemId)).limit(1);
+      if (!item) return res.status(404).json({ error: "Item not found" });
+      if (item.ownerId !== req.user.id) return res.status(403).json({ error: "Not your item" });
+
+      const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      await db.update(items)
+        .set({ isAvailable: true, listingExpiresAt: newExpiry })
+        .where(eq(items.id, itemId));
+
+      res.json({ success: true, listingExpiresAt: newExpiry.toISOString() });
+    } catch (err) {
+      console.error("Error relisting item:", err);
+      res.status(500).json({ error: "Failed to relist item" });
+    }
+  });
+
   // Returns active booking windows for an item so the request form can block those dates
   app.get("/api/items/:itemId/booked-dates", async (req, res) => {
     const itemId = parseInt(req.params.itemId);

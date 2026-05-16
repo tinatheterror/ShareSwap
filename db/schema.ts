@@ -136,6 +136,7 @@ export const items = pgTable("items", {
   wasSmartScanned: boolean("was_smart_scanned").default(false),
   swapDesiredItem: text("swap_desired_item"),
   swapNotifyOnMatch: boolean("swap_notify_on_match").default(false),
+  listingExpiresAt: timestamp("listing_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   ownerCreatedIdx: index("items_owner_created_idx").on(table.ownerId, table.createdAt),

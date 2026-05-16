@@ -2947,8 +2947,23 @@ Respond with ONLY the category name, nothing else.`
       const { type } = req.query; // Add type filter (rent, borrow, swap, gift)
       
       const now = new Date();
+      // Items show in marketplace if:
+      //   a) owner has listing active (isAvailable=true), OR
+      //   b) item is currently out on an active borrow/rental (IN_PROGRESS etc.) —
+      //      neighbours can still request future date ranges; booked-dates handles conflict detection
+      const activeRequestStatuses = [
+        'IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED',
+        'COURIER_PENDING','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED',
+      ];
       let whereConditions = [
-        eq(items.isAvailable, true),
+        or(
+          eq(items.isAvailable, true),
+          sql`EXISTS (
+            SELECT 1 FROM item_requests ir
+            WHERE ir.item_id = ${items.id}
+            AND ir.status = ANY(ARRAY[${sql.raw(activeRequestStatuses.map(s => `'${s}'`).join(','))}])
+          )`
+        )!,
         eq(items.isDeleted, false),
         // Exclude expired listings (null = no expiry, for legacy items)
         or(isNull(items.listingExpiresAt), gte(items.listingExpiresAt, now))!,

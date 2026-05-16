@@ -73,6 +73,10 @@ function getInventoryStatus(item: any): InventoryStatus {
       if (t === "RENT") return { status: "rented_out", label: "Rented Out", canDelete: false, deleteLabel: "" };
       return               { status: "lent_out",   label: "Lent Out",   canDelete: false, deleteLabel: "" };
     }
+    // ACCEPTED or PENDING — item still physically with owner
+    if (s === "ACCEPTED" || s === "PENDING") {
+      return { status: "available", label: "Available", canDelete: false, deleteLabel: "" };
+    }
     if (s === "COMPLETED" || s === "COMPLETED_EARLY") {
       if (t === "GIFT") return { status: "gifted",  label: "Gifted",  canDelete: true, deleteLabel: "Remove from history" };
       if (t === "SWAP") return { status: "swapped", label: "Swapped", canDelete: true, deleteLabel: "Remove from history" };

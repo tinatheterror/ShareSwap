@@ -41,7 +41,7 @@ const TIER_SHARECOINS: Record<number, number> = {
 
 // ─── Flat status system ───────────────────────────────────────────────────────
 
-type StatusKey = "available" | "unavailable" | "reserved" | "lent_out" | "rented_out" | "gifted" | "swapped";
+type StatusKey = "available" | "unavailable" | "lent_out" | "rented_out" | "gifted" | "swapped";
 type FilterGroup = "all" | StatusKey;
 
 interface InventoryStatus {
@@ -73,9 +73,6 @@ function getInventoryStatus(item: any): InventoryStatus {
       if (t === "RENT") return { status: "rented_out", label: "Rented Out", canDelete: false, deleteLabel: "" };
       return               { status: "lent_out",   label: "Lent Out",   canDelete: false, deleteLabel: "" };
     }
-    if (s === "ACCEPTED" || s === "PENDING") {
-      return { status: "reserved", label: "Reserved", canDelete: false, deleteLabel: "" };
-    }
     if (s === "COMPLETED" || s === "COMPLETED_EARLY") {
       if (t === "GIFT") return { status: "gifted",  label: "Gifted",  canDelete: true, deleteLabel: "Remove from history" };
       if (t === "SWAP") return { status: "swapped", label: "Swapped", canDelete: true, deleteLabel: "Remove from history" };
@@ -95,7 +92,6 @@ function getStatusBadgeClasses(status: InventoryStatus): { outer: string; dot: s
   if (status.isDisputed) return { outer: "bg-red-600/90 text-white", dot: "bg-red-300" };
   switch (status.status) {
     case "available":   return { outer: "bg-teal-600/90 text-white",   dot: "bg-teal-300" };
-    case "reserved":    return { outer: "bg-amber-500/90 text-white",  dot: "bg-amber-200" };
     case "unavailable": return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
     case "lent_out":    return { outer: "bg-blue-600/90 text-white",   dot: "bg-blue-300" };
     case "rented_out":  return { outer: "bg-indigo-600/90 text-white", dot: "bg-indigo-300" };
@@ -167,12 +163,11 @@ export default function MyItemsPage() {
 
   const STATUS_ORDER: Record<StatusKey, number> = {
     available:   0,
-    reserved:    1,
-    lent_out:    2,
-    rented_out:  3,
-    unavailable: 4,
-    gifted:      5,
-    swapped:     6,
+    lent_out:    1,
+    rented_out:  2,
+    unavailable: 3,
+    gifted:      4,
+    swapped:     5,
   };
 
   const filteredItems = items
@@ -187,7 +182,7 @@ export default function MyItemsPage() {
 
   // ── Filter counts ──────────────────────────────────────────────────────────
 
-  const statusKeys: StatusKey[] = ["available", "unavailable", "reserved", "lent_out", "rented_out", "gifted", "swapped"];
+  const statusKeys: StatusKey[] = ["available", "unavailable", "lent_out", "rented_out", "gifted", "swapped"];
   const counts: Record<FilterGroup, number> = { all: items.length } as any;
   for (const key of statusKeys) {
     counts[key] = items.filter((i) => getInventoryStatus(i).status === key).length;
@@ -242,7 +237,6 @@ export default function MyItemsPage() {
               { key: "all",        label: "All" },
               { key: "available",  label: "Available" },
               { key: "unavailable",label: "Unavailable" },
-              { key: "reserved",   label: "Reserved" },
               { key: "lent_out",   label: "Lent Out" },
               { key: "rented_out", label: "Rented Out" },
               { key: "gifted",     label: "Gifted" },

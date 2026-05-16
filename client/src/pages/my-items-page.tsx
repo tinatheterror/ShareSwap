@@ -89,14 +89,14 @@ function getInventoryStatus(item: any): InventoryStatus {
 // ─── Badge colours per status ─────────────────────────────────────────────────
 
 function getStatusBadgeClasses(status: InventoryStatus): { outer: string; dot: string } {
-  if (status.isDisputed) return { outer: "bg-red-600/90 text-white", dot: "bg-red-300" };
+  if (status.isDisputed) return { outer: "bg-red-700/90 text-white", dot: "bg-red-300" };
   switch (status.status) {
     case "available":   return { outer: "bg-teal-600/90 text-white",   dot: "bg-teal-300" };
-    case "unavailable": return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
-    case "lent_out":    return { outer: "bg-blue-600/90 text-white",   dot: "bg-blue-300" };
-    case "rented_out":  return { outer: "bg-indigo-600/90 text-white", dot: "bg-indigo-300" };
-    case "gifted":      return { outer: "bg-purple-500/90 text-white", dot: "bg-purple-200" };
-    case "swapped":     return { outer: "bg-violet-500/90 text-white", dot: "bg-violet-200" };
+    case "unavailable": return { outer: "bg-rose-800/90 text-white",   dot: "bg-rose-400" };
+    case "lent_out":    return { outer: "bg-amber-500/90 text-white",  dot: "bg-amber-200" };
+    case "rented_out":  return { outer: "bg-amber-600/90 text-white",  dot: "bg-amber-200" };
+    case "gifted":      return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
+    case "swapped":     return { outer: "bg-gray-500/80 text-white",   dot: "bg-gray-300" };
     default:            return { outer: "bg-gray-600/80 text-white",   dot: "bg-gray-300" };
   }
 }

@@ -299,13 +299,13 @@ export default function MyItemsPage() {
                     </div>
 
                     {/* Status badge — top right */}
-                    <div className={`absolute top-2 right-2 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm flex flex-col items-end gap-0.5 ${badge.outer}`}>
+                    <div className={`absolute top-2 right-2 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm flex flex-col items-end gap-0 ${badge.outer}`}>
                       <div className="flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                         <span>{status.groupLabel}</span>
                       </div>
                       {status.substatusLabel && (
-                        <span className="text-[10px] opacity-85 pl-3">{status.substatusLabel}</span>
+                        <span className="text-[10px] opacity-85 pl-3 italic">{status.substatusLabel}</span>
                       )}
                     </div>
                   </div>

@@ -9,7 +9,7 @@ const TIER_SHARECOIN_VALUES: Record<number, number> = {
 };
 
 // Maximum allowed ShareCoin offset between the two sides of a swap
-export const MAX_SWAP_OFFSET = 50;
+export const MAX_SWAP_OFFSET = 20;
 
 export function getTierShareCoins(tier: number): number {
   return TIER_SHARECOIN_VALUES[tier] || 10;

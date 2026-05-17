@@ -51,6 +51,7 @@ export default function ItemDetailsPage() {
   const [showSwapSelector, setShowSwapSelector] = useState(false);
   const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem[] | null>(null);
   const [showGiftClaimModal, setShowGiftClaimModal] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [insufficientCoinsModal, setInsufficientCoinsModal] = useState<{
     required: number;
     context: "borrow" | "swap";
@@ -390,28 +391,31 @@ export default function ItemDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
               <div>
                 <div className="aspect-square bg-muted rounded-lg overflow-hidden">
-                  {item.photos[0] && (
+                  {item.photos[selectedPhotoIndex] && (
                     <img
-                      src={item.photos[0]}
+                      src={item.photos[selectedPhotoIndex]}
                       alt={item.name}
                       className="w-full h-full object-cover"
                     />
                   )}
                 </div>
-                <div className="grid grid-cols-4 gap-2 mt-2">
-                  {item.photos.slice(1).map((photo, i) => (
-                    <div
-                      key={i}
-                      className="aspect-square bg-muted rounded-lg overflow-hidden"
-                    >
-                      <img
-                        src={photo}
-                        alt={`${item.name} ${i + 2}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
+                {item.photos.length > 1 && (
+                  <div className="grid grid-cols-4 gap-2 mt-2">
+                    {item.photos.map((photo, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedPhotoIndex(i)}
+                        className={`aspect-square bg-muted rounded-lg overflow-hidden border-2 transition-colors ${i === selectedPhotoIndex ? "border-teal-500" : "border-transparent hover:border-teal-300"}`}
+                      >
+                        <img
+                          src={photo}
+                          alt={`${item.name} ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-6">

@@ -197,7 +197,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
                 {selectedItemIds.length === 0 && (
                   <div className="flex items-center gap-1.5 mt-3 text-[11px] text-muted-foreground">
                     <Info className="h-3 w-3 shrink-0" />
-                    <span>T1=5SC · T2=10SC · T3=20SC · T4=40SC · Difference settled with ShareCoins</span>
+                    <span>Differences are settled with ShareCoins</span>
                   </div>
                 )}
 

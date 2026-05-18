@@ -4745,8 +4745,27 @@ Respond with ONLY the category name, nothing else.`
       },
     }));
 
+    // Enrich SWAP requests with offered item details
+    const allOfferedIds = [...new Set(
+      requests.flatMap(r => r.requestType === "SWAP" ? (r.swapOfferedItemIds ?? []) : [])
+    )];
+    const offeredItemsMap = new Map<number, { id: number; name: string; photos: string[] }>();
+    if (allOfferedIds.length > 0) {
+      const offeredRows = await db
+        .select({ id: items.id, name: items.name, photos: items.photos })
+        .from(items)
+        .where(inArray(items.id, allOfferedIds));
+      for (const row of offeredRows) offeredItemsMap.set(row.id, row);
+    }
+    const enrichedRequests = requests.map(r => ({
+      ...r,
+      swapOfferedItems: r.requestType === "SWAP"
+        ? (r.swapOfferedItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
+        : [],
+    }));
+
     // Sort to prioritize verified requesters for pending requests (owner sees verified first)
-    const sortedRequests = requests.sort((a, b) => {
+    const sortedRequests = enrichedRequests.sort((a, b) => {
       // Pending requests with verified requesters should appear first
       if (a.status === 'PENDING' && b.status === 'PENDING') {
         const aVerified = a.requester.isVerified ? 1 : 0;

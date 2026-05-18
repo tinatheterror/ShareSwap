@@ -172,6 +172,7 @@ interface ItemRequest {
   counterEndDate: string | null;
   counterProposedBy: number | null;
   swapOfferedItemIds: number[] | null;
+  swapOfferedItems?: { id: number; name: string; photos: string[] }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
   counterNote: string | null;
@@ -1182,6 +1183,26 @@ export function ChatWidget() {
                   <span>You requested to {request.requestType.toLowerCase()}</span>
                 )}
               </div>
+              {/* Swap: show what the requester is offering */}
+              {request.requestType === "SWAP" && request.swapOfferedItems && request.swapOfferedItems.length > 0 && (
+                <div className="mt-1 mb-1">
+                  <p className="text-[10px] text-muted-foreground font-medium mb-1">
+                    {isOwner ? "Offering in return:" : "You're offering:"}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {request.swapOfferedItems.map(oi => (
+                      <div key={oi.id} className="flex items-center gap-1 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5">
+                        {oi.photos?.[0] ? (
+                          <img src={oi.photos[0]} alt={oi.name} className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                        ) : (
+                          <Package className="h-3.5 w-3.5 text-teal-400 flex-shrink-0" />
+                        )}
+                        <span className="text-[10px] text-teal-800 font-medium max-w-[100px] truncate">{oi.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {displayStart && displayEnd && (
                 <div className={`flex items-center gap-1 text-xs mb-0.5 ${dateChanged ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
                   <Clock className="h-3 w-3 shrink-0" />

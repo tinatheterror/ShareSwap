@@ -546,28 +546,38 @@ export default function ItemDetailsPage() {
                       </div>
                     </div>
                     {user ? (
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Button
-                          onClick={() => notifyMutation.mutate()}
-                          disabled={notifyMutation.isPending}
-                          className={`flex-1 ${isSubscribed ? "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300" : "bg-teal-600 hover:bg-teal-700 text-white"}`}
-                          variant={isSubscribed ? "outline" : "default"}
-                        >
-                          {isSubscribed ? (
-                            <><BellOff className="h-4 w-4 mr-2" />Remove Notification</>
-                          ) : (
-                            <><Bell className="h-4 w-4 mr-2" />Notify Me When Available</>
-                          )}
-                        </Button>
-                        <Button
-                          onClick={() => wishlistMutation.mutate()}
-                          disabled={wishlistMutation.isPending}
-                          variant="outline"
-                          className="flex-1 border-teal-300 text-teal-700 hover:bg-teal-50"
-                        >
-                          <BookmarkPlus className="h-4 w-4 mr-2" />
-                          Save to Wishlist
-                        </Button>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1 flex flex-col gap-0.5">
+                          <Button
+                            onClick={() => notifyMutation.mutate()}
+                            disabled={notifyMutation.isPending}
+                            className={`w-full ${isSubscribed ? "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300" : "bg-teal-600 hover:bg-teal-700 text-white"}`}
+                            variant={isSubscribed ? "outline" : "default"}
+                          >
+                            {isSubscribed ? (
+                              <><BellOff className="h-4 w-4 mr-2" />Remove Notification</>
+                            ) : (
+                              <><Bell className="h-4 w-4 mr-2" />Notify Me When Available</>
+                            )}
+                          </Button>
+                          <p className="text-[10px] text-muted-foreground text-center leading-tight px-1">
+                            One-time alert when <span className="font-medium">this item</span> is back
+                          </p>
+                        </div>
+                        <div className="flex-1 flex flex-col gap-0.5">
+                          <Button
+                            onClick={() => wishlistMutation.mutate()}
+                            disabled={wishlistMutation.isPending}
+                            variant="outline"
+                            className="w-full border-teal-300 text-teal-700 hover:bg-teal-50"
+                          >
+                            <BookmarkPlus className="h-4 w-4 mr-2" />
+                            Save to Wishlist
+                          </Button>
+                          <p className="text-[10px] text-muted-foreground text-center leading-tight px-1">
+                            Notified when <span className="font-medium">anything similar</span> is listed
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <Link href="/auth">

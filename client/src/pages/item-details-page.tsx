@@ -148,13 +148,17 @@ export default function ItemDetailsPage() {
 
   const wishlistMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/wishlists", { itemId: Number(itemId) });
+      return apiRequest("POST", "/api/wishlists", {
+        itemName: (item as any)?.name ?? "Item",
+        category: (item as any)?.category ?? undefined,
+        needType: "borrow",
+      });
     },
     onSuccess: () => {
-      toast({ title: "Added to wishlist", description: "Saved to your wishlist." });
+      toast({ title: "Added to wishlist", description: "We'll notify you when something similar is listed." });
     },
-    onError: () => {
-      toast({ title: "Already in wishlist", description: "This item is already saved.", variant: "destructive" });
+    onError: (err: any) => {
+      toast({ title: "Could not add to wishlist", description: err?.message || "Please try again.", variant: "destructive" });
     },
   });
 
@@ -572,7 +576,7 @@ export default function ItemDetailsPage() {
                             className="w-full border-teal-300 text-teal-700 hover:bg-teal-50"
                           >
                             <BookmarkPlus className="h-4 w-4 mr-2" />
-                            Save to Wishlist
+                            Add to Wishlist
                           </Button>
                           <p className="text-[10px] text-muted-foreground text-center leading-tight px-1">
                             Notified when <span className="font-medium">anything similar</span> is listed

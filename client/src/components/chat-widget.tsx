@@ -1249,7 +1249,7 @@ export function ChatWidget() {
               >
                 Accept
               </Button>
-              {!(request.requestType === "SWAP" && (request.counterRound ?? 0) >= 2) && (
+              {(request.counterRound ?? 0) < 2 && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -1268,6 +1268,11 @@ export function ChatWidget() {
               >
                 Decline
               </Button>
+              {(request.counterRound ?? 0) >= 2 && (
+                <p className="text-[10px] text-muted-foreground w-full mt-0.5">
+                  Counter-offer limit reached — please accept or decline.
+                </p>
+              )}
             </>
           )}
 
@@ -1782,12 +1787,9 @@ export function ChatWidget() {
                                 const ownerNames = (msg.metadata.swapOwnerItemNames as string[] | undefined) ?? [];
                                 const requesterNames = (msg.metadata.swapRequesterItemNames as string[] | undefined) ?? [];
                                 const cnote = msg.metadata.counterNote as string | undefined;
-                                const round = msg.metadata.counterRound as number | undefined;
                                 return (
                                   <div className="w-full pl-[70px] flex flex-col gap-1 mt-0.5">
-                                    {round !== undefined && (
-                                      <span className="text-[10px] text-muted-foreground font-medium">Counter {round} of 2</span>
-                                    )}
+                                    {false && null /* counter round badge removed */}
                                     {ownerNames.length > 0 && (
                                       <div className="text-[11px] text-amber-700 bg-amber-50 rounded-md px-2 py-1 border border-amber-100">
                                         <span className="font-semibold">Owner offers: </span>

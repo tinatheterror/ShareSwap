@@ -516,7 +516,7 @@ export default function ItemDetailsPage() {
                     <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                       <PackageX className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-medium text-amber-800 text-sm">Currently out with a neighbour</p>
+                        <p className="font-medium text-amber-800 text-sm whitespace-nowrap">Currently out with a neighbour</p>
                         <p className="text-xs text-amber-700">This item is unavailable right now. Get notified when it returns.</p>
                       </div>
                     </div>

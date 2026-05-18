@@ -148,11 +148,7 @@ export default function ItemDetailsPage() {
 
   const wishlistMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/wishlists", {
-        itemName: (item as any)?.name ?? "Item",
-        category: (item as any)?.category ?? undefined,
-        needType: "borrow",
-      });
+      return apiRequest("POST", "/api/wishlists/from-item", { itemId: Number(itemId) });
     },
     onSuccess: () => {
       toast({ title: "Added to wishlist", description: "We'll notify you when something similar is listed." });

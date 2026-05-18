@@ -3198,6 +3198,32 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Create wishlist from an existing item (looks up name/category server-side)
+  app.post("/api/wishlists/from-item", requireEmailVerified, csrfProtection, async (req: any, res) => {
+    try {
+      const { itemId } = req.body;
+      if (!itemId) return res.status(400).json({ error: "itemId is required" });
+
+      const [found] = await db.select().from(items).where(eq(items.id, Number(itemId))).limit(1);
+      if (!found) return res.status(404).json({ error: "Item not found" });
+
+      const [newWishlist] = await db
+        .insert(wishlists)
+        .values({
+          userId: req.user.id,
+          itemName: found.name,
+          category: found.category ?? undefined,
+          needType: "borrow",
+        })
+        .returning();
+
+      res.status(201).json(newWishlist);
+    } catch (error) {
+      console.error("Error creating wishlist from item:", error);
+      res.status(500).json({ error: "Failed to add to wishlist" });
+    }
+  });
+
   // Create wishlist item
   app.post("/api/wishlists", requireEmailVerified, async (req: any, res) => {
     try {

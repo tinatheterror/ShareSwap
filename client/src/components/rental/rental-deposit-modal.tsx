@@ -57,7 +57,6 @@ function PayAndConfirmForm({
   rentalSubtotal: number;
   discountPct: number;
   discountAmount: number;
-  weeks: number;
   depositAmount: number;
   processingFee: number;
   deliveryFee: number;
@@ -108,7 +107,7 @@ function PayAndConfirmForm({
         <div className="flex justify-between items-center px-4 py-2.5">
           <span className="text-gray-600 flex items-center gap-2">
             <DollarSign className="h-3.5 w-3.5 text-green-600" />
-            Rental ({weeks} {weeks === 1 ? "week" : "weeks"}, {days} day{days !== 1 ? "s" : ""})
+            Rental ({days} day{days !== 1 ? "s" : ""})
           </span>
           <span className="font-medium">${discountPct > 0 ? rentalSubtotal.toFixed(2) : rentalPrice.toFixed(2)}</span>
         </div>
@@ -116,7 +115,7 @@ function PayAndConfirmForm({
           <div className="flex justify-between items-center px-4 py-2.5">
             <span className="text-teal-700 flex items-center gap-1.5">
               <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">{discountPct}% OFF</span>
-              {getDiscountLabel(weeks)}
+              {getDiscountLabel(days)}
             </span>
             <span className="font-medium text-teal-700">−${discountAmount.toFixed(2)}</span>
           </div>
@@ -215,7 +214,6 @@ export function RentalDepositModal({
   const rentalSubtotal = pricing.subtotal;
   const discountPct = pricing.discountPct;
   const discountAmount = pricing.discountAmount;
-  const weeks = pricing.weeks;
 
   const depositAmount = depositCalc.deposit;
   const processingFee = Math.round((rentalPrice + depositAmount) * 0.03 * 100) / 100;
@@ -321,7 +319,6 @@ export function RentalDepositModal({
                 rentalSubtotal={rentalSubtotal}
                 discountPct={discountPct}
                 discountAmount={discountAmount}
-                weeks={weeks}
                 depositAmount={depositAmount}
                 processingFee={processingFee}
                 deliveryFee={deliveryFee}

@@ -134,37 +134,39 @@ export function getCategoryRateInfo(category: string): { percentage: number; des
 // --- Duration-based discount calculator (dollar rentals only) ---
 
 export interface RentalPriceResult {
-  weeks: number;
+  days: number;
   weeklyRate: number;
+  dailyRate: number;
   subtotal: number;
   discountPct: number;
   discountAmount: number;
   total: number;
 }
 
-export function getDiscountPct(weeks: number): number {
-  if (weeks >= 4) return 20;
-  if (weeks >= 2) return 10;
+export function getDiscountPct(days: number): number {
+  if (days >= 28) return 20;
+  if (days >= 14) return 10;
   return 0;
 }
 
-export function getDiscountLabel(weeks: number): string {
-  if (weeks >= 4) return "20% off — long-term";
-  if (weeks >= 2) return "10% off — multi-week";
+export function getDiscountLabel(days: number): string {
+  if (days >= 28) return "20% off — long-term";
+  if (days >= 14) return "10% off — multi-week";
   return "";
 }
 
 export function calculateRentalPrice(weeklyRate: number, rentalDays: number): RentalPriceResult {
-  const weeks = Math.max(1, Math.ceil(rentalDays / 7));
-  const discountPct = getDiscountPct(weeks);
-  const subtotal = weeklyRate * weeks;
+  const days = Math.max(1, rentalDays);
+  const dailyRate = weeklyRate / 7;
+  const subtotal = Math.round(dailyRate * days * 100) / 100;
+  const discountPct = getDiscountPct(days);
   const discountAmount = Math.round(subtotal * discountPct) / 100;
-  const total = subtotal - discountAmount;
-  return { weeks, weeklyRate, subtotal, discountPct, discountAmount, total };
+  const total = Math.round((subtotal - discountAmount) * 100) / 100;
+  return { days, weeklyRate, dailyRate, subtotal, discountPct, discountAmount, total };
 }
 
 export const DISCOUNT_TIERS = [
-  { label: "1 week", discountPct: 0 },
-  { label: "2–3 weeks", discountPct: 10 },
-  { label: "4+ weeks", discountPct: 20 },
+  { label: "Under 14 days", discountPct: 0 },
+  { label: "14–27 days", discountPct: 10 },
+  { label: "28+ days", discountPct: 20 },
 ];

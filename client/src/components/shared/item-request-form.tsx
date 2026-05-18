@@ -531,7 +531,7 @@ export function ItemRequestForm({
                       ? calculateRentalPrice(weeklyRate, rentalDays)
                       : null;
                   const discountLabel = pricing
-                    ? getDiscountLabel(pricing.weeks)
+                    ? getDiscountLabel(pricing.days)
                     : "";
 
                   // Delivery cost
@@ -550,9 +550,9 @@ export function ItemRequestForm({
                         <div className="space-y-1.5 text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">
-                              Rental ({pricing.weeks}{" "}
-                              {pricing.weeks === 1 ? "week" : "weeks"} × $
-                              {weeklyRate}/wk)
+                              Rental ({pricing.days}{" "}
+                              {pricing.days === 1 ? "day" : "days"} × $
+                              {pricing.dailyRate.toFixed(2)}/day)
                             </span>
                             <span className="font-medium">
                               ${pricing.subtotal.toFixed(2)}

@@ -327,10 +327,9 @@ export default function ItemDetailsPage() {
                     side="bottom"
                     className="p-0 border-0 bg-transparent shadow-none"
                   >
-                    <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C]">
-                      <Info className="h-3 w-3 inline mr-1" />
-                      Any tier combination is allowed — ShareCoins settle the
-                      value difference automatically.
+                    <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C] max-w-[260px] whitespace-normal break-words">
+                      <Info className="h-3 w-3 inline mr-1 shrink-0" />
+                      Any item combination is allowed — ShareCoins cover the difference in value.
                     </div>
                   </TooltipContent>
                 </Tooltip>

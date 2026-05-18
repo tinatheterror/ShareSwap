@@ -418,7 +418,7 @@ export function SwapCounterModal({
               {(ownerPanelItems.length > 0 || requesterPanelItems.length > 0) && (
                 <div className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
                   <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>Any tier combination is allowed — value difference is settled with ShareCoins. T1=5SC · T2=10SC · T3=20SC · T4=40SC · Max offset: {MAX_SWAP_OFFSET} SC</span>
+                  <span className="break-words">Any item combination is allowed — ShareCoins cover the difference in value. T1=5SC · T2=10SC · T3=20SC · T4=40SC · Max offset: {MAX_SWAP_OFFSET} SC</span>
                 </div>
               )}
 

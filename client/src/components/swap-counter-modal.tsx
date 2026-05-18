@@ -422,18 +422,6 @@ export function SwapCounterModal({
                 </div>
               )}
 
-              {/* Optional note */}
-              <div className="space-y-1.5">
-                <Label className="text-sm font-semibold">Message (optional)</Label>
-                <Textarea
-                  placeholder="Add a note about your counter offer…"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  className="resize-none text-sm"
-                  rows={2}
-                  maxLength={300}
-                />
-              </div>
             </div>
           </ScrollArea>
         )}

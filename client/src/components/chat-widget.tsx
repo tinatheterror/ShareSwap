@@ -1781,7 +1781,7 @@ export function ChatWidget() {
                               <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>
                             )}
 
-                            {et === "counter_proposed" && msg.metadata && (() => {
+                            {et === "counter_proposed" && msg.metadata && isLatestCounterEvent && relatedRequest?.negotiationStatus === "counter_proposed" && (() => {
                               const isSwapCounter = relatedRequest?.requestType === "SWAP";
                               if (isSwapCounter) {
                                 const ownerNames = (msg.metadata.swapOwnerItemNames as string[] | undefined) ?? [];

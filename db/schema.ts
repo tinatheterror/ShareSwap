@@ -1,4 +1,4 @@
-import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer, decimal, numeric, varchar, index, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -824,4 +824,17 @@ export const extensionRequests = pgTable("extension_requests", {
 
 export type InsertExtensionRequest = typeof extensionRequests.$inferInsert;
 export type SelectExtensionRequest = typeof extensionRequests.$inferSelect;
+
+export const itemAvailabilitySubscribers = pgTable("item_availability_subscribers", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull().references(() => items.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  notifiedAt: timestamp("notified_at"),
+}, (table) => ({
+  itemUserUniq: uniqueIndex("item_availability_subscribers_item_user_uniq").on(table.itemId, table.userId),
+}));
+
+export type InsertItemAvailabilitySubscriber = typeof itemAvailabilitySubscribers.$inferInsert;
+export type SelectItemAvailabilitySubscriber = typeof itemAvailabilitySubscribers.$inferSelect;
 

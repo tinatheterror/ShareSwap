@@ -8,7 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import {
   Coins,
@@ -19,6 +20,10 @@ import {
   Clock,
   Gift,
   Pencil,
+  Bell,
+  BellOff,
+  BookmarkPlus,
+  PackageX,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
@@ -103,9 +108,51 @@ export default function ItemDetailsPage() {
 
   const prioritizedContext = getReferrerContext();
 
+  const queryClient = useQueryClient();
+
   const { data: item } = useQuery<SelectItem>({
     queryKey: [`/api/items/${itemId}`],
     enabled: !!itemId,
+  });
+
+  const isCurrentlyOut = !!(item as any)?.isCurrentlyOut;
+
+  // Notify-me subscription
+  const { data: notifyData } = useQuery<{ subscribed: boolean }>({
+    queryKey: [`/api/items/${itemId}/notify-me`],
+    enabled: !!itemId && !!user && isCurrentlyOut,
+  });
+  const isSubscribed = notifyData?.subscribed ?? false;
+
+  const notifyMutation = useMutation({
+    mutationFn: async () => {
+      if (isSubscribed) {
+        return apiRequest("DELETE", `/api/items/${itemId}/notify-me`);
+      } else {
+        return apiRequest("POST", `/api/items/${itemId}/notify-me`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/items/${itemId}/notify-me`] });
+      toast({
+        title: isSubscribed ? "Notification removed" : "We'll notify you",
+        description: isSubscribed
+          ? "You won't be notified when this item returns."
+          : "You'll get a notification when this item becomes available again.",
+      });
+    },
+  });
+
+  const wishlistMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/wishlists", { itemId: Number(itemId) });
+    },
+    onSuccess: () => {
+      toast({ title: "Added to wishlist", description: "Saved to your wishlist." });
+    },
+    onError: () => {
+      toast({ title: "Already in wishlist", description: "This item is already saved.", variant: "destructive" });
+    },
   });
 
   // Fetch pending requests to check if user already has a pending request for this item
@@ -464,6 +511,48 @@ export default function ItemDetailsPage() {
                         </Button>
                       </Link>
                     </div>
+                  </div>
+                ) : isCurrentlyOut ? (
+                  <div className="pt-2 space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <PackageX className="h-5 w-5 text-amber-600 shrink-0" />
+                      <div>
+                        <p className="font-medium text-amber-800 text-sm">Currently out with a neighbour</p>
+                        <p className="text-xs text-amber-700">This item is unavailable right now. Get notified when it returns.</p>
+                      </div>
+                    </div>
+                    {user ? (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button
+                          onClick={() => notifyMutation.mutate()}
+                          disabled={notifyMutation.isPending}
+                          className={`flex-1 ${isSubscribed ? "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300" : "bg-teal-600 hover:bg-teal-700 text-white"}`}
+                          variant={isSubscribed ? "outline" : "default"}
+                        >
+                          {isSubscribed ? (
+                            <><BellOff className="h-4 w-4 mr-2" />Remove Notification</>
+                          ) : (
+                            <><Bell className="h-4 w-4 mr-2" />Notify Me When Available</>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => wishlistMutation.mutate()}
+                          disabled={wishlistMutation.isPending}
+                          variant="outline"
+                          className="flex-1 border-teal-300 text-teal-700 hover:bg-teal-50"
+                        >
+                          <BookmarkPlus className="h-4 w-4 mr-2" />
+                          Save to Wishlist
+                        </Button>
+                      </div>
+                    ) : (
+                      <Link href="/auth">
+                        <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white">
+                          <Bell className="h-4 w-4 mr-2" />
+                          Sign in to get notified
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 ) : item.isGift ? (
                   <div className="pt-2">

@@ -26,7 +26,7 @@ import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements, extensionRequests } from "@db/schema";
 import { reputationActivities, userReviews } from "@db/schema";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements } from "@db/schema";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers } from "@db/schema";
 import session from "express-session";
 import { sessionSettings, store } from "./auth";
 import { computeActiveStatus, computeActiveStatusFromDb, computeResponseTime } from "./user-stats";
@@ -36,6 +36,28 @@ import { recommendationEngine } from "./recommendation-engine";
 import { addSimplifiedRoutes } from "./simplified-routes";
 import { platformConfig, calculateCommission } from "./platform-config";
 import { AntiFarmingSystem } from "./anti-farming-system";
+
+// Notify all availability subscribers that an item is back
+async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
+  try {
+    const subs = await db.select({ userId: itemAvailabilitySubscribers.userId })
+      .from(itemAvailabilitySubscribers)
+      .where(eq(itemAvailabilitySubscribers.itemId, itemId));
+    if (subs.length === 0) return;
+    await db.insert(notifications).values(
+      subs.map(s => ({
+        userId: s.userId,
+        type: "item_available",
+        title: "Item now available",
+        message: `"${itemName}" is back and available to borrow or rent.`,
+        itemId,
+      }))
+    );
+    await db.delete(itemAvailabilitySubscribers).where(eq(itemAvailabilitySubscribers.itemId, itemId));
+  } catch (e) {
+    console.error("[notifyAvailabilitySubscribers] error:", e);
+  }
+}
 import { CooldownChecker } from "./cooldown-checker";
 import { csrfProtection, setCsrfToken } from "./csrf";
 import OpenAI from "openai";
@@ -2947,11 +2969,22 @@ Respond with ONLY the category name, nothing else.`
       const { type } = req.query; // Add type filter (rent, borrow, swap, gift)
       
       const now = new Date();
-      // Only show items that are genuinely available — isAvailable=false means
-      // the item is currently out on an active borrow/rental and cannot accept
-      // new requests, so it should not appear on the borrow/browse page.
+      // Show items that are available OR currently out with a neighbour (active handoff).
+      // Currently-out items appear with browsing allowed but requests disabled — users
+      // can subscribe to be notified when the item returns.
+      const activeHandoffStatuses = [
+        'IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED',
+        'COURIER_PENDING','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED',
+      ];
       let whereConditions = [
-        eq(items.isAvailable, true),
+        or(
+          eq(items.isAvailable, true),
+          sql`EXISTS (
+            SELECT 1 FROM item_requests ir
+            WHERE ir.item_id = ${items.id}
+            AND ir.status = ANY(ARRAY[${sql.raw(activeHandoffStatuses.map(s => `'${s}'`).join(','))}])
+          )`
+        )!,
         eq(items.isDeleted, false),
         // Exclude expired listings (null = no expiry, for legacy items)
         or(isNull(items.listingExpiresAt), gte(items.listingExpiresAt, now))!,
@@ -3560,7 +3593,46 @@ Respond with ONLY the category name, nothing else.`
       return res.status(404).send("Item not found");
     }
 
-    res.json(itemWithOwner);
+    // Attach isCurrentlyOut — true when item is physically with a neighbour
+    const activeHandoffSt = ['IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED','COURIER_PENDING','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED'];
+    const activeReq = await db.select({ id: itemRequests.id }).from(itemRequests)
+      .where(and(eq(itemRequests.itemId, itemId), sql`${itemRequests.status} = ANY(ARRAY[${sql.raw(activeHandoffSt.map(s=>`'${s}'`).join(','))}])`))
+      .limit(1);
+    const isCurrentlyOut = activeReq.length > 0;
+
+    res.json({ ...itemWithOwner, isCurrentlyOut });
+  });
+
+  // ── Availability notification subscriptions ────────────────────────────────
+
+  // Check if current user is subscribed
+  app.get("/api/items/:itemId/notify-me", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const itemId = parseInt(req.params.itemId);
+    const [sub] = await db.select({ id: itemAvailabilitySubscribers.id })
+      .from(itemAvailabilitySubscribers)
+      .where(and(eq(itemAvailabilitySubscribers.itemId, itemId), eq(itemAvailabilitySubscribers.userId, req.user.id)))
+      .limit(1);
+    res.json({ subscribed: !!sub });
+  });
+
+  // Subscribe
+  app.post("/api/items/:itemId/notify-me", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const itemId = parseInt(req.params.itemId);
+    await db.insert(itemAvailabilitySubscribers)
+      .values({ itemId, userId: req.user.id })
+      .onConflictDoNothing();
+    res.json({ subscribed: true });
+  });
+
+  // Unsubscribe
+  app.delete("/api/items/:itemId/notify-me", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const itemId = parseInt(req.params.itemId);
+    await db.delete(itemAvailabilitySubscribers)
+      .where(and(eq(itemAvailabilitySubscribers.itemId, itemId), eq(itemAvailabilitySubscribers.userId, req.user.id)));
+    res.json({ subscribed: false });
   });
 
   // Item condition verification endpoints
@@ -6490,6 +6562,7 @@ Respond with ONLY the category name, nothing else.`
         .update(items)
         .set({ isAvailable: true })
         .where(eq(items.id, request.items.id));
+      notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
 
       // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
       let penaltyResult = { applied: false, wasGracePass: false };
@@ -7908,6 +7981,7 @@ Respond with ONLY the category name, nothing else.`
         .update(items)
         .set({ isAvailable: true })
         .where(eq(items.id, request.items.id));
+      notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
 
       // Notify borrower that return has been confirmed and deposit released
       await db.insert(notifications).values({
@@ -10465,6 +10539,7 @@ Respond with ONLY the category name, nothing else.`
       if (action === "complete") {
         await db.update(itemRequests).set({ status: "COMPLETED" }).where(eq(itemRequests.id, requestId));
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.item_requests.itemId));
+        notifyAvailabilitySubscribers(request.item_requests.itemId, request.items.name).catch(() => {});
       } else if (action === "release_deposit") {
         const pi = request.item_requests.depositPaymentIntentId;
         if (pi) { try { await stripe.paymentIntents.cancel(pi); } catch (_) {} }
@@ -10474,6 +10549,7 @@ Respond with ONLY the category name, nothing else.`
         if (pi) { try { await stripe.paymentIntents.cancel(pi); } catch (_) {} }
         await db.update(itemRequests).set({ status: "DECLINED", depositStatus: request.item_requests.depositStatus === "held" ? "released" : request.item_requests.depositStatus ?? undefined }).where(eq(itemRequests.id, requestId));
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.item_requests.itemId));
+        notifyAvailabilitySubscribers(request.item_requests.itemId, request.items.name).catch(() => {});
       } else {
         return res.status(400).json({ message: "Unknown action" });
       }
@@ -10570,6 +10646,7 @@ Respond with ONLY the category name, nothing else.`
           depositReleasedAt: new Date(),
         }).where(eq(itemRequests.id, requestId));
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
+        notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
         // Notify both parties
         await db.insert(notifications).values([
           { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return of "${request.items.name}" — your deposit has been released.`, itemId: request.items.id, requestId },
@@ -10585,6 +10662,7 @@ Respond with ONLY the category name, nothing else.`
           depositStatus: "captured",
         }).where(eq(itemRequests.id, requestId));
         await db.update(items).set({ isAvailable: true }).where(eq(items.id, request.items.id));
+        notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
 
         // Credit the captured deposit into the owner's balance
         const depositAmt = parseFloat(request.item_requests.trustDepositAmount || "0");

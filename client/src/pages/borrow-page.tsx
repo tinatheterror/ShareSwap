@@ -892,6 +892,11 @@ export default function BorrowPage() {
                                     FREE
                                   </Badge>
                                 )}
+                                {!currentItem.isAvailable && !currentItem.isGift && (
+                                  <Badge className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] z-10">
+                                    Currently Out
+                                  </Badge>
+                                )}
                                 {currentItem.photos && currentItem.photos[0] ? (
                                   <img
                                     src={currentItem.photos[0]}
@@ -1094,6 +1099,11 @@ export default function BorrowPage() {
                         {item.isGift && (
                           <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-xs">
                             FREE
+                          </Badge>
+                        )}
+                        {!item.isAvailable && !item.isGift && (
+                          <Badge className="absolute top-2 left-2 bg-amber-500 text-white text-xs z-10">
+                            Currently Out
                           </Badge>
                         )}
                         {item.photos && item.photos[0] ? (

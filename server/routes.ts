@@ -3463,7 +3463,7 @@ Respond with ONLY the category name, nothing else.`
 
       const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       await db.update(items)
-        .set({ isAvailable: true, listingExpiresAt: newExpiry })
+        .set({ isAvailable: true, listingExpiresAt: newExpiry, updatedAt: new Date() })
         .where(eq(items.id, itemId));
 
       res.json({ success: true, listingExpiresAt: newExpiry.toISOString() });
@@ -3574,6 +3574,7 @@ Respond with ONLY the category name, nothing else.`
         tier: items.tier,
         swapDesiredItem: items.swapDesiredItem,
         swapNotifyOnMatch: items.swapNotifyOnMatch,
+        updatedAt: items.updatedAt,
         owner: {
           id: users.id,
           username: users.username,
@@ -3600,7 +3601,35 @@ Respond with ONLY the category name, nothing else.`
       .limit(1);
     const isCurrentlyOut = activeReq.length > 0;
 
-    res.json({ ...itemWithOwner, isCurrentlyOut });
+    // Cooldown check: did this user get declined on this item within the last 7 days,
+    // and has the listing NOT been updated since?
+    let isCooldownActive = false;
+    let cooldownExpiresAt: Date | null = null;
+    if (req.isAuthenticated() && (req as any).user?.id && (req as any).user.id !== itemWithOwner.ownerId) {
+      const cooldownWindow = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [recentDecline] = await db
+        .select({ id: itemRequests.id, createdAt: itemRequests.createdAt })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.itemId, itemId),
+          eq(itemRequests.requesterId, (req as any).user.id),
+          eq(itemRequests.status, "DECLINED"),
+          gte(itemRequests.createdAt, cooldownWindow)
+        ))
+        .orderBy(desc(itemRequests.createdAt))
+        .limit(1);
+
+      if (recentDecline) {
+        const itemUpdatedAt = itemWithOwner.updatedAt;
+        const wasReset = itemUpdatedAt && itemUpdatedAt > recentDecline.createdAt;
+        if (!wasReset) {
+          isCooldownActive = true;
+          cooldownExpiresAt = new Date(recentDecline.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+        }
+      }
+    }
+
+    res.json({ ...itemWithOwner, isCurrentlyOut, isCooldownActive, cooldownExpiresAt });
   });
 
   // ── Availability notification subscriptions ────────────────────────────────
@@ -4494,6 +4523,34 @@ Respond with ONLY the category name, nothing else.`
     // Prevent owners from requesting their own items
     if (item.ownerId === req.user.id) {
       return res.status(403).json({ error: "You cannot request your own item" });
+    }
+
+    // Cooldown check: block re-request if declined within 7 days and listing not updated since
+    {
+      const cooldownWindow = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [recentDecline] = await db
+        .select({ id: itemRequests.id, createdAt: itemRequests.createdAt })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.itemId, itemId),
+          eq(itemRequests.requesterId, req.user.id),
+          eq(itemRequests.status, "DECLINED"),
+          gte(itemRequests.createdAt, cooldownWindow)
+        ))
+        .orderBy(desc(itemRequests.createdAt))
+        .limit(1);
+
+      if (recentDecline) {
+        const wasReset = item.updatedAt && item.updatedAt > recentDecline.createdAt;
+        if (!wasReset) {
+          const expiresAt = new Date(recentDecline.createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+          return res.status(429).json({
+            error: "Your previous request was declined. Please wait before requesting again.",
+            code: "COOLDOWN_ACTIVE",
+            cooldownExpiresAt: expiresAt,
+          });
+        }
+      }
     }
 
     // Prevent borrowing if Replacement Value is missing
@@ -6579,7 +6636,7 @@ Respond with ONLY the category name, nothing else.`
       // Make item available again
       await db
         .update(items)
-        .set({ isAvailable: true })
+        .set({ isAvailable: true, updatedAt: new Date() })
         .where(eq(items.id, request.items.id));
       notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
 
@@ -7998,7 +8055,7 @@ Respond with ONLY the category name, nothing else.`
       // Mark item as available again
       await db
         .update(items)
-        .set({ isAvailable: true })
+        .set({ isAvailable: true, updatedAt: new Date() })
         .where(eq(items.id, request.items.id));
       notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
 

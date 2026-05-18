@@ -24,6 +24,7 @@ import {
   BellOff,
   BookmarkPlus,
   PackageX,
+  Ban,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
@@ -116,6 +117,8 @@ export default function ItemDetailsPage() {
   });
 
   const isCurrentlyOut = !!(item as any)?.isCurrentlyOut;
+  const isCooldownActive = !!(item as any)?.isCooldownActive;
+  const cooldownExpiresAt: string | null = (item as any)?.cooldownExpiresAt ?? null;
 
   // Notify-me subscription
   const { data: notifyData } = useQuery<{ subscribed: boolean }>({
@@ -510,6 +513,28 @@ export default function ItemDetailsPage() {
                         </Button>
                       </Link>
                     </div>
+                  </div>
+                ) : isCooldownActive ? (
+                  <div className="pt-2 space-y-3">
+                    <div className="flex items-start gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      <Ban className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-slate-700 text-xs">Request declined</p>
+                        <p className="text-xs text-slate-500">
+                          {cooldownExpiresAt
+                            ? `You can request this item again after ${new Date(cooldownExpiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}, or when the owner updates the listing.`
+                            : "You can request this item again once the owner updates the listing."}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      disabled
+                      className="w-full bg-slate-100 hover:bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                      variant="outline"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      Request declined
+                    </Button>
                   </div>
                 ) : isCurrentlyOut ? (
                   <div className="pt-2 space-y-3">

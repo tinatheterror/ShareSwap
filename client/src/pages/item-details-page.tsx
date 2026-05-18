@@ -561,7 +561,7 @@ export default function ItemDetailsPage() {
                             )}
                           </Button>
                           <p className="text-[10px] text-muted-foreground text-center leading-tight px-1">
-                            One-time alert when <span className="font-medium">this item</span> is back
+                            Alerted when <span className="font-medium">this specific item</span> is back
                           </p>
                         </div>
                         <div className="flex-1 flex flex-col gap-0.5">

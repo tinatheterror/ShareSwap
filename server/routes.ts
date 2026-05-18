@@ -6161,7 +6161,7 @@ Respond with ONLY the category name, nothing else.`
         paymentIntentId: paymentIntent.id,
         depositAmount,
         rentalAmount,
-        totalHoldAmount,
+        totalHoldAmount: totalChargeAmount,
       });
     } catch (error: any) {
       console.error("Error creating rental payment hold:", error);

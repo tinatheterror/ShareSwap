@@ -69,11 +69,11 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden">
           {/* Hero — target item */}
-          <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-6 text-white">
-            <div className="flex items-center gap-4">
-              <div className="w-20 h-20 bg-white/10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
+          <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-4 pr-10 text-white">
+            <div className="flex items-center gap-3">
+              <div className="w-16 h-16 bg-white/10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
                 {targetItem.photos?.[0] ? (
                   <img src={targetItem.photos[0]} alt={targetItem.name} className="w-full h-full object-cover" />
                 ) : (
@@ -83,7 +83,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-bold truncate">{targetItem.name}</h2>
+                <h2 className="text-base font-bold truncate">{targetItem.name}</h2>
                 <div className="flex items-center gap-1.5 mt-2 text-white/80 text-sm">
                   <span>Tier {targetTier} –</span>
                   <Coins className="h-3.5 w-3.5" />

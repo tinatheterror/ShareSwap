@@ -284,7 +284,7 @@ export default function MyItemsPage() {
             {filteredItems.map((item) => {
               const status = getInventoryStatus(item);
               const badge = getStatusBadgeClasses(status);
-              const isPassed = status.group === "passed_on";
+              const isPassed = status.status === "gifted" || status.status === "swapped";
 
               return (
                 <Card

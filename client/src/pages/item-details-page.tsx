@@ -504,29 +504,41 @@ export default function ItemDetailsPage() {
 
                 {isOwner ? (
                   <div className="space-y-4">
-                    {isCurrentlyOut && (
-                      <div className="flex items-start gap-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
-                        <PackageX className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-teal-800 text-xs">Your item is out with a neighbour</p>
-                          <p className="text-[10px] sm:text-xs text-teal-700 mt-0.5">Renew your listing now so it's ready to go when it returns.</p>
+                    {(item as any).isPassedOn ? (
+                      <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <PackageX className="h-5 w-5 text-gray-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-gray-600 text-xs">This item has been passed on</p>
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">It was gifted or swapped to a neighbour and is no longer editable.</p>
                         </div>
-                        <Link href={`/lend?edit=${item.id}`}>
-                          <Button size="sm" className="shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-xs">
-                            Renew listing
-                          </Button>
-                        </Link>
                       </div>
+                    ) : (
+                      <>
+                        {isCurrentlyOut && (
+                          <div className="flex items-start gap-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                            <PackageX className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-teal-800 text-xs">Your item is out with a neighbour</p>
+                              <p className="text-[10px] sm:text-xs text-teal-700 mt-0.5">Renew your listing now so it's ready to go when it returns.</p>
+                            </div>
+                            <Link href={`/lend?edit=${item.id}`}>
+                              <Button size="sm" className="shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-xs">
+                                Renew listing
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                        {getSharingOptions(true)}
+                        <div className="pt-1">
+                          <Link href={`/lend?edit=${item.id}`}>
+                            <Button className="w-full sm:w-auto" variant="outline">
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit your listing
+                            </Button>
+                          </Link>
+                        </div>
+                      </>
                     )}
-                    {getSharingOptions(true)}
-                    <div className="pt-1">
-                      <Link href={`/lend?edit=${item.id}`}>
-                        <Button className="w-full sm:w-auto" variant="outline">
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit your listing
-                        </Button>
-                      </Link>
-                    </div>
                   </div>
                 ) : isCooldownActive ? (
                   <div className="pt-2 space-y-3">

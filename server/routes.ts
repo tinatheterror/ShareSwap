@@ -3655,7 +3655,19 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    res.json({ ...itemWithOwner, isCurrentlyOut, isCooldownActive, cooldownExpiresAt });
+    // Check if item was permanently passed on via a completed GIFT or SWAP
+    const [passedOnReq] = await db
+      .select({ requestType: itemRequests.requestType })
+      .from(itemRequests)
+      .where(and(
+        eq(itemRequests.itemId, itemId),
+        inArray(itemRequests.status, ["COMPLETED", "COMPLETED_EARLY"]),
+        inArray(itemRequests.requestType, ["GIFT", "SWAP"]),
+      ))
+      .limit(1);
+    const isPassedOn = !!passedOnReq;
+
+    res.json({ ...itemWithOwner, isCurrentlyOut, isCooldownActive, cooldownExpiresAt, isPassedOn });
   });
 
   // ── Availability notification subscriptions ────────────────────────────────

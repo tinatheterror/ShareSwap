@@ -142,6 +142,12 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" })); // Limit request body size
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
+// Ensure search engines can index the app (overrides any environment-level noindex)
+app.use((_req, res, next) => {
+  res.setHeader("X-Robots-Tag", "index, follow");
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

@@ -97,6 +97,19 @@ export function ItemRequestForm({
     queryKey: ["/api/user"],
   });
 
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      message: "",
+      startDate: "",
+      endDate: "",
+      conditionConfirmed: false,
+      replacementValueAcknowledged: false,
+      deliveryMethod: "in_person",
+      depositMethod: "in_app",
+    },
+  });
+
   // Fetch booked date windows for this item so we can block conflicting dates
   const { data: bookedRanges = [] } = useQuery<{ startDate: string; endDate: string }[]>({
     queryKey: ["/api/items", item.id, "booked-dates"],
@@ -120,19 +133,6 @@ export function ItemRequestForm({
     idVerified?: boolean;
     paymentVerified?: boolean;
   } | null;
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      message: "",
-      startDate: "",
-      endDate: "",
-      conditionConfirmed: false,
-      replacementValueAcknowledged: false,
-      deliveryMethod: "in_person",
-      depositMethod: "in_app",
-    },
-  });
 
   // When the form opens with prefill data (e.g. after a withdrawn offer), apply it
   useEffect(() => {

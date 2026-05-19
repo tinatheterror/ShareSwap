@@ -504,6 +504,20 @@ export default function ItemDetailsPage() {
 
                 {isOwner ? (
                   <div className="space-y-4">
+                    {isCurrentlyOut && (
+                      <div className="flex items-start gap-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                        <PackageX className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-teal-800 text-xs">Your item is out with a neighbour</p>
+                          <p className="text-[10px] sm:text-xs text-teal-700 mt-0.5">Renew your listing now so it's ready to go when it returns.</p>
+                        </div>
+                        <Link href={`/lend?edit=${item.id}`}>
+                          <Button size="sm" className="shrink-0 bg-teal-600 hover:bg-teal-700 text-white text-xs">
+                            Renew listing
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
                     {getSharingOptions(true)}
                     <div className="pt-1">
                       <Link href={`/lend?edit=${item.id}`}>

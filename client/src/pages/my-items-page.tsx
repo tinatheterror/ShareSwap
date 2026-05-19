@@ -443,9 +443,9 @@ export default function MyItemsPage() {
                   <DialogDescription className="text-sm text-gray-600">
                     {isPassedOn ? (
                       <>
-                        This will hide{" "}
-                        <span className="font-medium">{itemToDelete?.name}</span>{" "}
-                        from your inventory history. All transaction records are preserved behind the scenes.
+                        This will remove{" "}
+                        <span className="font-medium">"{itemToDelete?.name}"</span>{" "}
+                        from your history view. Transaction records and reviews will still be preserved.
                       </>
                     ) : (
                       <>

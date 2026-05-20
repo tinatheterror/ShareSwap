@@ -89,13 +89,13 @@ export default function PremiumPage() {
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-3">
-            <Crown className="h-10 w-10 text-teal-600" />
+      <main className="max-w-7xl mx-auto px-4 py-6 md:py-12">
+        <div className="text-center mb-6 md:mb-12">
+          <h1 className="text-xl md:text-4xl font-bold mb-2 md:mb-4 flex items-center justify-center gap-2 md:gap-3">
+            <Crown className="h-6 w-6 md:h-10 md:w-10 text-teal-600" />
             Upgrade to Premium
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-sm md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Get priority access, lower fees, and exclusive features to maximize your sharing experience
           </p>
         </div>
@@ -124,7 +124,7 @@ export default function PremiumPage() {
 
         {/* Subscription Plans */}
         {!currentSubscription && (
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
+          <div className="grid md:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-12">
             {plans?.map((plan) => {
               const isPopular = plan.name.includes('Premium');
               const annualSavings = plan.annualPrice 
@@ -138,28 +138,28 @@ export default function PremiumPage() {
                 >
                   {isPopular && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-primary text-white px-4 py-1">
-                        <Star className="h-3 w-3 mr-1" />
+                      <Badge className="bg-primary text-white px-3 md:px-4 py-1 text-xs md:text-sm">
+                        <Star className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                         Most Popular
                       </Badge>
                     </div>
                   )}
                   
-                  <CardHeader className="text-center pb-4">
-                    <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
-                      <Crown className={`h-6 w-6 ${isPopular ? 'text-teal-600' : 'text-gray-400'}`} />
+                  <CardHeader className="text-center pb-2 md:pb-4 px-4 md:px-6 pt-4 md:pt-6">
+                    <CardTitle className="text-base md:text-2xl font-bold flex items-center justify-center gap-1.5 md:gap-2">
+                      <Crown className={`h-4 w-4 md:h-6 md:w-6 ${isPopular ? 'text-teal-600' : 'text-gray-400'}`} />
                       {plan.name}
                     </CardTitle>
-                    <p className="text-muted-foreground">{plan.description}</p>
+                    <p className="text-xs md:text-base text-muted-foreground">{plan.description}</p>
                     
-                    <div className="mt-4">
-                      <div className="text-4xl font-bold text-primary">
+                    <div className="mt-2 md:mt-4">
+                      <div className="text-2xl md:text-4xl font-bold text-primary">
                         ${plan.monthlyPrice}
-                        <span className="text-lg text-muted-foreground">/month</span>
+                        <span className="text-sm md:text-lg text-muted-foreground">/month</span>
                       </div>
                       {plan.annualPrice && (
-                        <div className="mt-2">
-                          <Badge variant="outline" className="bg-teal-50 text-teal-700">
+                        <div className="mt-1 md:mt-2">
+                          <Badge variant="outline" className="bg-teal-50 text-teal-700 text-xs md:text-sm">
                             Save ${annualSavings}/year with annual billing
                           </Badge>
                         </div>
@@ -167,21 +167,21 @@ export default function PremiumPage() {
                     </div>
                   </CardHeader>
 
-                  <CardContent>
-                    <div className="space-y-3 mb-6">
+                  <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
+                    <div className="space-y-2 md:space-y-3 mb-3 md:mb-6">
                       {plan.features.map((feature, index) => (
-                        <div key={index} className="flex items-start gap-3">
+                        <div key={index} className="flex items-start gap-2 md:gap-3">
                           {getFeatureIcon(feature)}
-                          <span className="text-sm">{feature}</span>
+                          <span className="text-xs md:text-sm">{feature}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2 md:space-y-3">
                       <Button
                         onClick={() => subscribeMutation.mutate(plan.id)}
                         disabled={subscribeMutation.isPending}
-                        className={`w-full ${isPopular ? 'bg-primary hover:bg-primary/90' : ''}`}
+                        className={`w-full text-xs md:text-sm h-8 md:h-10 ${isPopular ? 'bg-primary hover:bg-primary/90' : ''}`}
                         variant={isPopular ? 'default' : 'outline'}
                       >
                         {subscribeMutation.isPending ? 'Processing...' : `Upgrade to ${plan.name}`}
@@ -190,7 +190,7 @@ export default function PremiumPage() {
                       {plan.annualPrice && (
                         <Button
                           variant="ghost"
-                          className="w-full text-sm"
+                          className="w-full text-xs md:text-sm h-8 md:h-10"
                         >
                           Or pay ${plan.annualPrice} annually (2 months free!)
                         </Button>

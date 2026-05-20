@@ -6595,6 +6595,11 @@ Respond with ONLY the category name, nothing else.`
         requestId,
       });
 
+      await logRequestEvent(req.user.id, row.items.ownerId, requestId, "request_cancelled", {
+        cancelledByRole: "requester",
+        itemName: row.items.name,
+      });
+
       return res.json({
         success: true,
         request: updated,
@@ -6677,6 +6682,12 @@ Respond with ONLY the category name, nothing else.`
         .set({ isAvailable: true, updatedAt: new Date() })
         .where(eq(items.id, request.items.id));
       notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
+
+      const otherPartyId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
+      await logRequestEvent(req.user.id, otherPartyId, requestId, "request_cancelled", {
+        cancelledByRole: isOwner ? "owner" : "requester",
+        itemName: request.items.name,
+      });
 
       // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
       let penaltyResult = { applied: false, wasGracePass: false };

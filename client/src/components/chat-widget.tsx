@@ -1763,6 +1763,7 @@ export function ChatWidget() {
                       const eventLabel =
                         et === "request_accepted" ? `✅ ${actor} accepted the request` :
                         et === "request_declined" ? `❌ ${actor} declined the request` :
+                        et === "request_cancelled" ? `🚫 ${actor} cancelled the request` :
                         et === "terms_accepted" ? `✅ ${actor} accepted the new terms` :
                         et === "terms_declined" ? `❌ ${actor} declined the new terms` :
                         et === "handoff_confirmed" ? "🤝 Handoff confirmed" :

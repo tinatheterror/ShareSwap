@@ -917,14 +917,14 @@ export default function ProfilePage() {
                               <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
                             </div>
                             {/* Summary row */}
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-1 mb-1">
                               <div className="flex items-center gap-0.5">
                                 {Array.from({ length: 5 }).map((_, i) => (
-                                  <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                                  <Star key={i} className={`h-3 w-3 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
                                 ))}
                               </div>
-                              <span className="text-sm font-medium">{group.avgRating.toFixed(1)}</span>
-                              <span className="text-xs text-muted-foreground">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
+                              <span className="text-xs font-medium">{group.avgRating.toFixed(1)}</span>
+                              <span className="text-[11px] text-muted-foreground whitespace-nowrap">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
                             </div>
                             {/* Most recent comment preview */}
                             {mostRecent.comment && !isExpanded && (

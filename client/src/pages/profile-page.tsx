@@ -888,6 +888,7 @@ export default function ProfilePage() {
                   <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
                 </div>
               </Link>
+              {(isEditing || profile?.bio || profile?.email || profile?.location) && (
               <CardContent className="p-6">
                 {isEditing ? (
                   <div className="space-y-4">
@@ -1057,6 +1058,7 @@ export default function ProfilePage() {
                   </div>
                 )}
               </CardContent>
+              )}
             </Card>
 
             {/* My Balance + Account Settings — Mobile Only */}

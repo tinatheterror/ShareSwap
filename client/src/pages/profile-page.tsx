@@ -555,7 +555,7 @@ export default function ProfilePage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => navigate("/profile?edit=true")}
+                    onClick={() => { navigate("/profile"); setIsEditing(true); }}
                     className="justify-start"
                   >
                     <Edit3 className="h-4 w-4 mr-2" />
@@ -1321,7 +1321,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Account Statistics — Mobile Only (mirrors sidebar card) */}
-            <div className="lg:hidden mt-4">
+            <div className="lg:hidden mt-2">
               <Card style={{ backgroundColor: "#D4F7F1" }}>
                 <CardHeader className="py-3">
                   <CardTitle className="flex items-center gap-2 text-base">

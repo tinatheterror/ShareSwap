@@ -623,7 +623,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <CardTitle className="text-lg md:text-2xl text-slate-800 break-words min-w-0">
+                    <CardTitle className="text-base md:text-2xl text-slate-800 break-words min-w-0">
                       {(publicProfile as any).displayName ||
                         (publicProfile as any).handle ||
                         publicProfile.username.split("@")[0]}

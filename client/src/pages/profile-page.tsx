@@ -158,19 +158,6 @@ export default function ProfilePage() {
     }
   }, []);
 
-  // Pre-populate editForm when entering edit mode from own public profile view
-  useEffect(() => {
-    if (isEditing && isViewingOwnPublicProfile && publicProfile) {
-      setEditForm({
-        fullName: (publicProfile as any).fullName || "",
-        bio: (publicProfile as any).bio || "",
-        location: (publicProfile as any).location || "",
-        phone: (publicProfile as any).phone || "",
-        displayName: (publicProfile as any).displayName || "",
-      });
-    }
-  }, [isEditing, isViewingOwnPublicProfile]);
-
   // Extract username/handle from URL path
   const pathParts = location.split("/");
   const usernameFromUrl = pathParts[2]; // /profile/:username or /profile/:handle
@@ -215,6 +202,19 @@ export default function ProfilePage() {
     queryKey: ["/api/location-alerts"],
     enabled: !!isOwnProfile,
   });
+
+  // Pre-populate editForm when entering edit mode from own public profile view
+  useEffect(() => {
+    if (isEditing && isViewingOwnPublicProfile && publicProfile) {
+      setEditForm({
+        fullName: (publicProfile as any).fullName || "",
+        bio: (publicProfile as any).bio || "",
+        location: (publicProfile as any).location || "",
+        phone: (publicProfile as any).phone || "",
+        displayName: (publicProfile as any).displayName || "",
+      });
+    }
+  }, [isEditing, isViewingOwnPublicProfile]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {

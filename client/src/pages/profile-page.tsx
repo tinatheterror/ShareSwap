@@ -1173,7 +1173,7 @@ export default function ProfilePage() {
             <Card
               className={`lg:hidden mt-6 ${
                 profile?.isVerified
-                  ? "border-teal-200"
+                  ? "border-0"
                   : "border-amber-200 bg-amber-50"
               }`}
               style={profile?.isVerified ? { backgroundColor: "#D4F7F1" } : undefined}
@@ -1488,7 +1488,7 @@ export default function ProfilePage() {
               id="verification-status"
               className={`hidden lg:block ${
                 profile?.isVerified
-                  ? "border-teal-200"
+                  ? "border-0"
                   : "border-amber-200 bg-amber-50"
               }`}
               style={profile?.isVerified ? { backgroundColor: "#D4F7F1" } : undefined}

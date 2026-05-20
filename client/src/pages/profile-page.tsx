@@ -1319,6 +1319,57 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* Account Statistics — Mobile Only (mirrors sidebar card) */}
+            <div className="lg:hidden mt-4">
+              <Card style={{ backgroundColor: "#D4F7F1" }}>
+                <CardHeader className="py-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <TrendingUp className="h-4 w-4 text-teal-600" />
+                    Account Statistics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-slate-600">Level</span>
+                      </div>
+                      <span className="font-semibold text-teal-700">{currentLevel.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-slate-600">ShareCoins</span>
+                      </div>
+                      <span className="font-semibold text-teal-700">{Math.round(Number(profile?.shareCoins || 0))}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-slate-600">Completed Shares</span>
+                      </div>
+                      <span className="font-semibold text-teal-700">{profile?.completedShares || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Heart className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-slate-600">Items Borrowed</span>
+                      </div>
+                      <span className="font-semibold text-teal-700">{profile?.itemsBorrowed || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-slate-600">Rating</span>
+                      </div>
+                      <span className="font-semibold text-teal-700">{profile?.rating || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -1408,8 +1459,8 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Account Statistics */}
-            <Card style={{ backgroundColor: "#D4F7F1" }}>
+            {/* Account Statistics — Desktop Sidebar Only */}
+            <Card style={{ backgroundColor: "#D4F7F1" }} className="hidden lg:block">
               <CardHeader className="py-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <TrendingUp className="h-4 w-4 text-teal-600" />

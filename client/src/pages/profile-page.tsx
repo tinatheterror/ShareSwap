@@ -726,9 +726,9 @@ export default function ProfilePage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
             {userItems.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
+              <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0 md:snap-none">
                 {userItems.map((item) => (
-                  <div key={item.id} className="w-64 flex-shrink-0 md:w-auto h-full">
+                  <div key={item.id} className="w-[78vw] flex-shrink-0 snap-start md:w-auto h-full">
                     <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
                       <div className="p-2">
                         <div
@@ -854,13 +854,13 @@ export default function ProfilePage() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
             {userReviews.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
+              <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0 md:snap-none md:gap-4">
                 {groupReviews(userReviews).map((group) => {
                   const isExpanded = expandedReviewers.has(group.reviewer.id);
                   const mostRecent = group.reviews[0];
                   const displayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
                   return (
-                    <div key={group.reviewer.id} className="w-80 flex-shrink-0 md:w-auto">
+                    <div key={group.reviewer.id} className="w-[85vw] flex-shrink-0 snap-start md:w-auto">
                       <Card className="p-4" style={{ backgroundColor: "#D4F7F1" }}>
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">

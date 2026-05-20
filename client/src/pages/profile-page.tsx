@@ -1174,27 +1174,31 @@ export default function ProfilePage() {
               style={profile?.isVerified ? { backgroundColor: "#D4F7F1" } : undefined}
             >
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BadgeCheck
-                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
-                  />
-                  Verification Status
-                  {!profile?.isVerified && (
-                    <Badge
-                      variant="outline"
-                      className="ml-auto bg-amber-100 text-amber-700 border-amber-300"
-                    >
-                      Unverified
-                    </Badge>
-                  )}
-                  {profile?.isVerified && (
-                    <Badge
-                      variant="outline"
-                      className="ml-auto bg-green-100 text-green-700 border-green-300"
-                    >
-                      Verified
-                    </Badge>
-                  )}
+                <CardTitle className="text-lg">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <BadgeCheck
+                        className={`h-5 w-5 flex-shrink-0 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
+                      />
+                      <span>Verification Status</span>
+                    </div>
+                    {!profile?.isVerified && (
+                      <Badge
+                        variant="outline"
+                        className="flex-shrink-0 bg-amber-100 text-amber-700 border-amber-300"
+                      >
+                        Unverified
+                      </Badge>
+                    )}
+                    {profile?.isVerified && (
+                      <Badge
+                        variant="outline"
+                        className="flex-shrink-0 bg-green-100 text-green-700 border-green-300"
+                      >
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -1489,27 +1493,31 @@ export default function ProfilePage() {
               style={profile?.isVerified ? { backgroundColor: "#D4F7F1" } : undefined}
             >
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BadgeCheck
-                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
-                  />
-                  Verification Status
-                  {!profile?.isVerified && (
-                    <Badge
-                      variant="outline"
-                      className="ml-auto bg-amber-100 text-amber-700 border-amber-300"
-                    >
-                      Unverified
-                    </Badge>
-                  )}
-                  {profile?.isVerified && (
-                    <Badge
-                      variant="outline"
-                      className="ml-auto bg-green-100 text-green-700 border-green-300"
-                    >
-                      Verified
-                    </Badge>
-                  )}
+                <CardTitle className="text-lg">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <BadgeCheck
+                        className={`h-5 w-5 flex-shrink-0 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
+                      />
+                      <span>Verification Status</span>
+                    </div>
+                    {!profile?.isVerified && (
+                      <Badge
+                        variant="outline"
+                        className="flex-shrink-0 bg-amber-100 text-amber-700 border-amber-300"
+                      >
+                        Unverified
+                      </Badge>
+                    )}
+                    {profile?.isVerified && (
+                      <Badge
+                        variant="outline"
+                        className="flex-shrink-0 bg-green-100 text-green-700 border-green-300"
+                      >
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">

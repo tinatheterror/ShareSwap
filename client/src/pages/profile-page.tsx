@@ -1181,7 +1181,7 @@ export default function ProfilePage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <BadgeCheck
-                    className={`h-5 w-5 ${profile?.isVerified ? "text-teal-600" : "text-amber-600"}`}
+                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
                   />
                   Verification Status
                   {!profile?.isVerified && (
@@ -1195,7 +1195,7 @@ export default function ProfilePage() {
                   {profile?.isVerified && (
                     <Badge
                       variant="outline"
-                      className="ml-auto bg-teal-100 text-teal-700 border-teal-300"
+                      className="ml-auto bg-green-100 text-green-700 border-green-300"
                     >
                       Verified
                     </Badge>
@@ -1496,7 +1496,7 @@ export default function ProfilePage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <BadgeCheck
-                    className={`h-5 w-5 ${profile?.isVerified ? "text-teal-600" : "text-amber-600"}`}
+                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
                   />
                   Verification Status
                   {!profile?.isVerified && (
@@ -1510,7 +1510,7 @@ export default function ProfilePage() {
                   {profile?.isVerified && (
                     <Badge
                       variant="outline"
-                      className="ml-auto bg-teal-100 text-teal-700 border-teal-300"
+                      className="ml-auto bg-green-100 text-green-700 border-green-300"
                     >
                       Verified
                     </Badge>

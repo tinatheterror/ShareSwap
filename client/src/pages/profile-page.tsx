@@ -502,7 +502,7 @@ export default function ProfilePage() {
                     variant="outline"
                     size="sm"
                     onClick={() => { navigate("/profile"); setIsEditing(true); }}
-                    className="justify-start bg-white/80 hover:bg-white h-7 text-xs px-2"
+                    className="justify-start bg-white hover:bg-gray-50 h-7 text-xs px-2"
                   >
                     <Edit3 className="h-3 w-3 mr-1" />
                     Edit Profile
@@ -534,11 +534,14 @@ export default function ProfilePage() {
                     )}
                   </div>
                   {isViewingOwnPublicProfile && !(publicProfile as any).profilePhoto && (
-                    <div className="flex items-center gap-0.5 text-[10px] text-teal-700 font-medium whitespace-nowrap">
+                    <button
+                      onClick={() => { navigate("/profile"); setIsEditing(true); }}
+                      className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium whitespace-nowrap hover:text-amber-700"
+                    >
                       <span>+1</span>
-                      <Coins className="h-2.5 w-2.5 text-teal-600" />
+                      <Coins className="h-2.5 w-2.5 text-amber-500" />
                       <span>· Add photo</span>
-                    </div>
+                    </button>
                   )}
                 </div>
                 <div className="flex-1">

@@ -654,16 +654,16 @@ export default function ProfilePage() {
               </div>
 
               {/* Reviews + shares — full-width, centered in the banner */}
-              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Star className="h-5 w-5 text-yellow-400 flex-shrink-0" />
-                  <span className="whitespace-nowrap">
+              <div className="flex items-center justify-center gap-4 mt-5 mb-5 text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4 text-yellow-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap text-xs">
                     {publicProfile.averageRating.toFixed(1)} ({publicProfile.reviewCount} reviews)
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Package className="h-5 w-5 text-slate-500 flex-shrink-0" />
-                  <span className="whitespace-nowrap">
+                <div className="flex items-center gap-1">
+                  <Package className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                  <span className="whitespace-nowrap text-xs">
                     {(publicProfile as any).completedShares ?? 0} completed shares
                   </span>
                 </div>

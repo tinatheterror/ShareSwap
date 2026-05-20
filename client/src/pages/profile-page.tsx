@@ -623,7 +623,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <CardTitle className="text-base md:text-2xl text-slate-800 break-words min-w-0">
+                    <CardTitle className="text-lg md:text-2xl text-slate-800 break-words min-w-0">
                       {(publicProfile as any).displayName ||
                         (publicProfile as any).handle ||
                         publicProfile.username.split("@")[0]}
@@ -654,17 +654,19 @@ export default function ProfilePage() {
               </div>
 
               {/* Reviews + shares — full-width, centered in the banner */}
-              <div className="flex items-center justify-center gap-4 mt-5 mb-5 text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Star className="h-4 w-4 text-yellow-400 flex-shrink-0" />
-                  <span className="whitespace-nowrap text-xs">
-                    {publicProfile.averageRating.toFixed(1)} ({publicProfile.reviewCount} reviews)
+              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
+                <div className="flex items-start gap-1.5">
+                  <Star className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-px" />
+                  <span>
+                    {publicProfile.averageRating.toFixed(1)} (
+                    {publicProfile.reviewCount} reviews)
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Package className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                  <span className="whitespace-nowrap text-xs">
-                    {(publicProfile as any).completedShares ?? 0} completed shares
+                <div className="flex items-start gap-1.5">
+                  <Package className="h-5 w-5 text-slate-500 flex-shrink-0 mt-px" />
+                  <span>
+                    {(publicProfile as any).completedShares ?? 0} completed
+                    shares
                   </span>
                 </div>
               </div>

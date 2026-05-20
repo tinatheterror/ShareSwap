@@ -61,6 +61,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
@@ -107,6 +109,8 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [location] = useLocation();
   const [expandedReviewers, setExpandedReviewers] = useState<Set<number>>(new Set());
+  const [itemsCarouselIndex, setItemsCarouselIndex] = useState(0);
+  const [reviewsCarouselIndex, setReviewsCarouselIndex] = useState(0);
   const toggleReviewer = (reviewerId: number) =>
     setExpandedReviewers(prev => {
       const next = new Set(prev);
@@ -639,127 +643,134 @@ export default function ProfilePage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
             {displayItems.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
-                {displayItems.map((item) => (
-                  <div key={item.id} className="w-64 flex-shrink-0 md:w-auto h-full">
-                    <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
+              <>
+                {/* ── Mobile carousel ── */}
+                <div className="relative md:hidden">
+                  <div className="overflow-hidden rounded-xl">
+                    <div
+                      className="flex transition-transform duration-300 ease-in-out"
+                      style={{ transform: `translateX(-${itemsCarouselIndex * 100}%)` }}
+                    >
+                      {displayItems.map((item) => (
+                        <div key={item.id} className="w-full flex-shrink-0">
+                          <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
+                            <div className="p-2">
+                              <div
+                                className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
+                                style={{ aspectRatio: "1 / 0.9" }}
+                              >
+                                {item.isGift && <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">FREE</Badge>}
+                                {item.photos && item.photos[0] ? (
+                                  <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                                ) : (
+                                  <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
+                                    {item.isGift ? <Gift className="h-10 w-10 text-pink-400" /> : <Camera className="h-10 w-10 text-gray-400" />}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <CardContent className="px-3 pt-0 pb-2 flex flex-col flex-1">
+                              <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">{item.name}</h3>
+                              <div className="space-y-0 mb-1.5 flex-1">
+                                <p className="text-xs text-slate-700"><span className="font-medium">Condition:</span> {item.conditionRating}/10</p>
+                                {!item.isGift && (item.isLendable || item.isRentable) && (
+                                  <div className="flex items-center gap-1 text-xs text-slate-700">
+                                    <Coins className="h-3 w-3 text-teal-600" />
+                                    <span>{Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins</span>
+                                    {item.isRentable && (<><span className="text-slate-400">|</span><DollarSign className="h-3 w-3 text-teal-600" /><span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span></>)}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex gap-1 mt-auto">
+                                {item.isGift ? (
+                                  <Button size="sm" className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap" onClick={() => navigate(`/items/${item.id}`)}>
+                                    <Gift className="h-2.5 w-2.5 mr-0.5" />Claim Gift
+                                  </Button>
+                                ) : (
+                                  <>
+                                    {item.isLendable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><HandHeart className="h-2.5 w-2.5 mr-0.5" />Borrow It</Button>}
+                                    {item.isRentable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><DollarSign className="h-2.5 w-2.5 mr-0.5" />Rent It</Button>}
+                                    {item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />Swap It</Button>}
+                                    {!item.isLendable && !item.isRentable && !item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>View</Button>}
+                                  </>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Prev / Next */}
+                  {itemsCarouselIndex > 0 && (
+                    <button onClick={() => setItemsCarouselIndex(i => i - 1)} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
+                      <ChevronLeft className="h-4 w-4 text-gray-600" />
+                    </button>
+                  )}
+                  {itemsCarouselIndex < displayItems.length - 1 && (
+                    <button onClick={() => setItemsCarouselIndex(i => i + 1)} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
+                      <ChevronRight className="h-4 w-4 text-gray-600" />
+                    </button>
+                  )}
+                  {/* Dot indicators */}
+                  {displayItems.length > 1 && (
+                    <div className="flex justify-center gap-1.5 mt-3">
+                      {displayItems.map((_, i) => (
+                        <button key={i} onClick={() => setItemsCarouselIndex(i)} className={`rounded-full transition-all ${i === itemsCarouselIndex ? "w-4 h-2 bg-teal-500" : "w-2 h-2 bg-gray-300"}`} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Desktop grid ── */}
+                <div className="hidden md:grid md:grid-cols-3 md:gap-6">
+                  {displayItems.map((item) => (
+                    <Card key={item.id} className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
                       <div className="p-2">
-                        <div
-                          className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
-                          style={{ aspectRatio: "1 / 0.9" }}
-                        >
-                          {item.isGift && (
-                            <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">
-                              FREE
-                            </Badge>
-                          )}
+                        <div className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`} style={{ aspectRatio: "1 / 0.9" }}>
+                          {item.isGift && <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">FREE</Badge>}
                           {item.photos && item.photos[0] ? (
-                            <img
-                              src={item.photos[0]}
-                              alt={item.name}
-                              className="w-full h-full object-cover rounded-lg"
-                            />
+                            <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover rounded-lg" />
                           ) : (
                             <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
-                              {item.isGift
-                                ? <Gift className="h-10 w-10 text-pink-400" />
-                                : <Camera className="h-10 w-10 text-gray-400" />
-                              }
+                              {item.isGift ? <Gift className="h-10 w-10 text-pink-400" /> : <Camera className="h-10 w-10 text-gray-400" />}
                             </div>
                           )}
                         </div>
                       </div>
                       <CardContent className="px-3 pt-0 pb-2 flex flex-col flex-1">
-                        <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">
-                          {item.name}
-                        </h3>
+                        <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">{item.name}</h3>
                         <div className="space-y-0 mb-1.5 flex-1">
-                          <p className="text-xs text-slate-700">
-                            <span className="font-medium">Condition:</span> {item.conditionRating}/10
-                          </p>
+                          <p className="text-xs text-slate-700"><span className="font-medium">Condition:</span> {item.conditionRating}/10</p>
                           {!item.isGift && (item.isLendable || item.isRentable) && (
                             <div className="flex items-center gap-1 text-xs text-slate-700">
                               <Coins className="h-3 w-3 text-teal-600" />
-                              <span>
-                                {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins
-                              </span>
-                              {item.isRentable && (
-                                <>
-                                  <span className="text-slate-400">|</span>
-                                  <DollarSign className="h-3 w-3 text-teal-600" />
-                                  <span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span>
-                                </>
-                              )}
+                              <span>{Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins</span>
+                              {item.isRentable && (<><span className="text-slate-400">|</span><DollarSign className="h-3 w-3 text-teal-600" /><span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span></>)}
                             </div>
                           )}
                         </div>
                         <div className="flex gap-1 mt-auto">
                           {item.isGift ? (
-                            <Button
-                              size="sm"
-                              className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
-                              onClick={() => navigate(`/items/${item.id}`)}
-                            >
-                              <Gift className="h-2.5 w-2.5 mr-0.5" />
-                              Claim Gift
+                            <Button size="sm" className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap" onClick={() => navigate(`/items/${item.id}`)}>
+                              <Gift className="h-2.5 w-2.5 mr-0.5" />Claim Gift
                             </Button>
                           ) : (
                             <>
-                              {item.isLendable && (
-                                <Button
-                                  size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                  style={{ backgroundColor: "#0DCEA1" }}
-                                  onClick={() => navigate(`/items/${item.id}`)}
-                                >
-                                  <HandHeart className="h-2.5 w-2.5 mr-0.5" />
-                                  Borrow It
-                                </Button>
-                              )}
-                              {item.isRentable && (
-                                <Button
-                                  size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                  style={{ backgroundColor: "#0DCEA1" }}
-                                  onClick={() => navigate(`/items/${item.id}`)}
-                                >
-                                  <DollarSign className="h-2.5 w-2.5 mr-0.5" />
-                                  Rent It
-                                </Button>
-                              )}
-                              {item.isSwappable && (
-                                <Button
-                                  size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                  style={{ backgroundColor: "#0DCEA1" }}
-                                  onClick={() => navigate(`/items/${item.id}`)}
-                                >
-                                  <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
-                                  Swap It
-                                </Button>
-                              )}
-                              {!item.isLendable && !item.isRentable && !item.isSwappable && (
-                                <Button
-                                  size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
-                                  style={{ backgroundColor: "#0DCEA1" }}
-                                  onClick={() => navigate(`/items/${item.id}`)}
-                                >
-                                  View
-                                </Button>
-                              )}
+                              {item.isLendable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><HandHeart className="h-2.5 w-2.5 mr-0.5" />Borrow It</Button>}
+                              {item.isRentable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><DollarSign className="h-2.5 w-2.5 mr-0.5" />Rent It</Button>}
+                              {item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />Swap It</Button>}
+                              {!item.isLendable && !item.isRentable && !item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>View</Button>}
                             </>
                           )}
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             ) : (
-              <Card className="p-6 text-center text-muted-foreground">
-                No items shared yet
-              </Card>
+              <Card className="p-6 text-center text-muted-foreground">No items shared yet</Card>
             )}
           </div>
 
@@ -767,56 +778,45 @@ export default function ProfilePage() {
           <div>
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
             {displayReviews.length > 0 ? (
-              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
-                {groupReviews(displayReviews).map((group) => {
+              <>
+                {/* ── Mobile carousel ── */}
+                {(() => {
+                  const groups = groupReviews(displayReviews);
+                  const group = groups[reviewsCarouselIndex];
+                  if (!group) return null;
                   const isExpanded = expandedReviewers.has(group.reviewer.id);
                   const mostRecent = group.reviews[0];
-                  const displayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
+                  const rDisplayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
                   return (
-                    <div key={group.reviewer.id} className="w-80 flex-shrink-0 md:w-auto">
+                    <div className="relative md:hidden">
                       <Card className="p-4" style={{ backgroundColor: "#D4F7F1" }}>
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
                             {group.reviewer.profilePhoto ? (
                               <img src={group.reviewer.profilePhoto} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">
-                                {displayName.charAt(0).toUpperCase()}
-                              </div>
+                              <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">{rDisplayName.charAt(0).toUpperCase()}</div>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
-                                {displayName}
-                              </Link>
+                              <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">{rDisplayName}</Link>
                               <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
                             </div>
-                            {/* Summary row */}
                             <div className="flex items-center gap-2 mb-1">
                               <div className="flex items-center gap-0.5">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                  <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
-                                ))}
+                                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
                               </div>
                               <span className="text-sm font-medium">{group.avgRating.toFixed(1)}</span>
                               <span className="text-xs text-muted-foreground">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
                             </div>
-                            {/* Most recent comment preview */}
-                            {mostRecent.comment && !isExpanded && (
-                              <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>
-                            )}
-                            {/* Expanded: all individual reviews */}
+                            {mostRecent.comment && !isExpanded && <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>}
                             {isExpanded && (
                               <div className="mt-3 space-y-2 border-t border-teal-200 pt-3">
                                 {group.reviews.map((r: any) => (
                                   <div key={r.id} className="bg-white/60 rounded-lg p-2.5">
                                     <div className="flex items-center justify-between mb-1">
-                                      <div className="flex items-center gap-0.5">
-                                        {Array.from({ length: 5 }).map((_, i) => (
-                                          <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
-                                        ))}
-                                      </div>
+                                      <div className="flex items-center gap-0.5">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}</div>
                                       <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     {r.comment && <p className="text-xs text-muted-foreground italic">"{r.comment}"</p>}
@@ -824,26 +824,93 @@ export default function ProfilePage() {
                                 ))}
                               </div>
                             )}
-                            {/* Expand / collapse toggle */}
                             {group.reviews.length > 1 && (
-                              <button
-                                onClick={() => toggleReviewer(group.reviewer.id)}
-                                className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium"
-                              >
+                              <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium">
                                 {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide reviews</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
                               </button>
                             )}
                           </div>
                         </div>
                       </Card>
+                      {/* Prev / Next */}
+                      {reviewsCarouselIndex > 0 && (
+                        <button onClick={() => setReviewsCarouselIndex(i => i - 1)} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
+                          <ChevronLeft className="h-4 w-4 text-gray-600" />
+                        </button>
+                      )}
+                      {reviewsCarouselIndex < groups.length - 1 && (
+                        <button onClick={() => setReviewsCarouselIndex(i => i + 1)} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
+                          <ChevronRight className="h-4 w-4 text-gray-600" />
+                        </button>
+                      )}
+                      {/* Dot indicators */}
+                      {groups.length > 1 && (
+                        <div className="flex justify-center gap-1.5 mt-3">
+                          {groups.map((_, i) => (
+                            <button key={i} onClick={() => setReviewsCarouselIndex(i)} className={`rounded-full transition-all ${i === reviewsCarouselIndex ? "w-4 h-2 bg-teal-500" : "w-2 h-2 bg-gray-300"}`} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
-                })}
-              </div>
+                })()}
+
+                {/* ── Desktop column ── */}
+                <div className="hidden md:flex md:flex-col md:gap-4">
+                  {groupReviews(displayReviews).map((group) => {
+                    const isExpanded = expandedReviewers.has(group.reviewer.id);
+                    const mostRecent = group.reviews[0];
+                    const rDisplayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
+                    return (
+                      <Card key={group.reviewer.id} className="p-4" style={{ backgroundColor: "#D4F7F1" }}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                            {group.reviewer.profilePhoto ? (
+                              <img src={group.reviewer.profilePhoto} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">{rDisplayName.charAt(0).toUpperCase()}</div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">{rDisplayName}</Link>
+                              <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
+                            </div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-0.5">
+                                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
+                              </div>
+                              <span className="text-sm font-medium">{group.avgRating.toFixed(1)}</span>
+                              <span className="text-xs text-muted-foreground">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
+                            </div>
+                            {mostRecent.comment && !isExpanded && <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>}
+                            {isExpanded && (
+                              <div className="mt-3 space-y-2 border-t border-teal-200 pt-3">
+                                {group.reviews.map((r: any) => (
+                                  <div key={r.id} className="bg-white/60 rounded-lg p-2.5">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="flex items-center gap-0.5">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}</div>
+                                      <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    {r.comment && <p className="text-xs text-muted-foreground italic">"{r.comment}"</p>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {group.reviews.length > 1 && (
+                              <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium">
+                                {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide reviews</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </>
             ) : (
-              <Card className="p-6 text-center text-muted-foreground">
-                No reviews yet
-              </Card>
+              <Card className="p-6 text-center text-muted-foreground">No reviews yet</Card>
             )}
           </div>
 

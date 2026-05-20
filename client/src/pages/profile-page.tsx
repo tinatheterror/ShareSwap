@@ -810,6 +810,7 @@ export default function ProfilePage() {
                                   style={{ backgroundColor: "#0DCEA1" }}
                                   onClick={() => navigate(`/items/${item.id}`)}
                                 >
+                                  <HandHeart className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
                                   Borrow
                                 </Button>
                               )}
@@ -820,6 +821,7 @@ export default function ProfilePage() {
                                   style={{ backgroundColor: "#0DCEA1" }}
                                   onClick={() => navigate(`/items/${item.id}`)}
                                 >
+                                  <DollarSign className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
                                   Rent
                                 </Button>
                               )}
@@ -830,6 +832,7 @@ export default function ProfilePage() {
                                   style={{ backgroundColor: "#0DCEA1" }}
                                   onClick={() => navigate(`/items/${item.id}`)}
                                 >
+                                  <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
                                   Swap
                                 </Button>
                               )}

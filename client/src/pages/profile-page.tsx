@@ -730,120 +730,115 @@ export default function ProfilePage() {
                 {userItems.map((item) => (
                   <div key={item.id} className="w-[78vw] flex-shrink-0 snap-start md:w-auto h-full">
                     <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
-                      {/* Mobile: horizontal compact layout | Desktop: vertical layout */}
-                      <div className="flex md:flex-col h-full">
-                        {/* Image */}
-                        <div className="p-1.5 flex-shrink-0 md:p-2 md:w-full">
-                          <div
-                            className={`w-[72px] h-[72px] md:w-full rounded-lg flex items-center justify-center overflow-hidden relative flex-shrink-0 ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
-                            style={{ aspectRatio: undefined }}
-                          >
-                            <div className="hidden md:block absolute inset-0" style={{ paddingBottom: "90%" }} />
-                            {item.isGift && (
-                              <Badge className="absolute top-1 right-1 bg-pink-500 text-white text-[9px] px-1 py-0 md:top-2 md:right-2 md:text-[10px]">
-                                FREE
-                              </Badge>
-                            )}
-                            {item.photos && item.photos[0] ? (
-                              <img
-                                src={item.photos[0]}
-                                alt={item.name}
-                                className="w-full h-full object-cover rounded-lg"
-                              />
-                            ) : (
-                              <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
-                                {item.isGift
-                                  ? <Gift className="h-6 w-6 text-pink-400 md:h-10 md:w-10" />
-                                  : <Camera className="h-6 w-6 text-gray-400 md:h-10 md:w-10" />
-                                }
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {/* Content */}
-                        <div className="flex flex-col flex-1 px-2 py-1.5 min-w-0 md:px-3 md:pt-0 md:pb-2">
-                          <h3 className="font-bold text-[11px] md:text-sm leading-tight mb-0.5 truncate text-slate-800">
-                            {item.name}
-                          </h3>
-                          <div className="flex-1 space-y-0.5 mb-1">
-                            <p className="text-[10px] md:text-xs text-slate-600 leading-tight">
-                              Cond: {item.conditionRating}/10
-                            </p>
-                            {!item.isGift && (item.isLendable || item.isRentable) && (
-                              <div className="flex items-center gap-0.5 text-[10px] md:text-xs text-slate-700 flex-wrap">
-                                <Coins className="h-2.5 w-2.5 text-teal-600 flex-shrink-0" />
-                                <span className="leading-tight">
-                                  {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} SC
-                                </span>
-                                {item.isRentable && (
-                                  <>
-                                    <span className="text-slate-400">·</span>
-                                    <span className="leading-tight">${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-1 flex-wrap">
-                            {item.isGift ? (
-                              <Button
-                                size="sm"
-                                className="bg-pink-500 hover:bg-pink-600 text-white rounded-md text-[9px] h-5 px-1.5 whitespace-nowrap md:w-full md:h-6 md:text-[10px] md:rounded-lg"
-                                onClick={() => navigate(`/items/${item.id}`)}
-                              >
-                                <Gift className="h-2 w-2 mr-0.5" />
-                                Claim
-                              </Button>
-                            ) : (
-                              <>
-                                {item.isLendable && (
-                                  <Button
-                                    size="sm"
-                                    className="text-white rounded-md text-[9px] px-1.5 h-5 whitespace-nowrap md:h-6 md:text-[10px] md:rounded-lg"
-                                    style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() => navigate(`/items/${item.id}`)}
-                                  >
-                                    <HandHeart className="h-2 w-2 mr-0.5" />
-                                    Borrow
-                                  </Button>
-                                )}
-                                {item.isRentable && (
-                                  <Button
-                                    size="sm"
-                                    className="text-white rounded-md text-[9px] px-1.5 h-5 whitespace-nowrap md:h-6 md:text-[10px] md:rounded-lg"
-                                    style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() => navigate(`/items/${item.id}`)}
-                                  >
-                                    <DollarSign className="h-2 w-2 mr-0.5" />
-                                    Rent
-                                  </Button>
-                                )}
-                                {item.isSwappable && (
-                                  <Button
-                                    size="sm"
-                                    className="text-white rounded-md text-[9px] px-1.5 h-5 whitespace-nowrap md:h-6 md:text-[10px] md:rounded-lg"
-                                    style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() => navigate(`/items/${item.id}`)}
-                                  >
-                                    <ArrowLeftRight className="h-2 w-2 mr-0.5" />
-                                    Swap
-                                  </Button>
-                                )}
-                                {!item.isLendable && !item.isRentable && !item.isSwappable && (
-                                  <Button
-                                    size="sm"
-                                    className="text-white rounded-md text-[9px] px-1.5 h-5 whitespace-nowrap md:h-6 md:text-[10px] md:rounded-lg"
-                                    style={{ backgroundColor: "#0DCEA1" }}
-                                    onClick={() => navigate(`/items/${item.id}`)}
-                                  >
-                                    View
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                          </div>
+                      <div className="p-2">
+                        <div
+                          className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
+                          style={{ aspectRatio: "1 / 0.9" }}
+                        >
+                          {item.isGift && (
+                            <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">
+                              FREE
+                            </Badge>
+                          )}
+                          {item.photos && item.photos[0] ? (
+                            <img
+                              src={item.photos[0]}
+                              alt={item.name}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
+                              {item.isGift
+                                ? <Gift className="h-10 w-10 text-pink-400" />
+                                : <Camera className="h-10 w-10 text-gray-400" />
+                              }
+                            </div>
+                          )}
                         </div>
                       </div>
+                      <CardContent className="px-3 pt-0 pb-2 flex flex-col flex-1">
+                        <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">
+                          {item.name}
+                        </h3>
+                        <div className="space-y-0 mb-1.5 flex-1">
+                          <p className="text-xs text-slate-700">
+                            <span className="font-medium">Condition:</span> {item.conditionRating}/10
+                          </p>
+                          {!item.isGift && (item.isLendable || item.isRentable) && (
+                            <div className="flex items-center gap-1 text-xs text-slate-700">
+                              <Coins className="h-3 w-3 text-teal-600" />
+                              <span>
+                                {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins
+                              </span>
+                              {item.isRentable && (
+                                <>
+                                  <span className="text-slate-400">|</span>
+                                  <DollarSign className="h-3 w-3 text-teal-600" />
+                                  <span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-1 mt-auto">
+                          {item.isGift ? (
+                            <Button
+                              size="sm"
+                              className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
+                              onClick={() => navigate(`/items/${item.id}`)}
+                            >
+                              <Gift className="h-2.5 w-2.5 mr-0.5" />
+                              Claim Gift
+                            </Button>
+                          ) : (
+                            <>
+                              {item.isLendable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <HandHeart className="h-2.5 w-2.5 mr-0.5" />
+                                  Borrow It
+                                </Button>
+                              )}
+                              {item.isRentable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <DollarSign className="h-2.5 w-2.5 mr-0.5" />
+                                  Rent It
+                                </Button>
+                              )}
+                              {item.isSwappable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
+                                  Swap It
+                                </Button>
+                              )}
+                              {!item.isLendable && !item.isRentable && !item.isSwappable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  View
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </CardContent>
                     </Card>
                   </div>
                 ))}

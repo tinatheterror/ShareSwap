@@ -1053,15 +1053,6 @@ export default function ProfilePage() {
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-4 w-4 text-slate-500" />
-                        <span className="text-slate-600">
-                          Joined{" "}
-                          {profile?.joinedDate
-                            ? new Date(profile.joinedDate).toLocaleDateString()
-                            : "Recently"}
-                        </span>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -1415,26 +1406,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Community Connections */}
-            <Card style={{ backgroundColor: "#D4F7F1" }}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Community Connections
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-teal-600" />
-                  <div>
-                    <div className="text-2xl font-bold text-teal-700">
-                      {profile?.totalTransactions || 0}
-                    </div>
-                    <p className="text-sm text-slate-600">Total Transactions</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Account Statistics */}
             <Card style={{ backgroundColor: "#D4F7F1" }}>
               <CardHeader className="py-3">
@@ -1495,83 +1466,6 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Reviews — what neighbours say about you (grouped by reviewer) */}
-            <Card style={{ backgroundColor: "#D4F7F1" }}>
-              <CardHeader className="py-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <MessageSquare className="h-4 w-4 text-teal-600" />
-                  What Neighbours Say
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {ownReviews.length > 0 ? (
-                  <div className="space-y-3">
-                    {groupReviews(ownReviews).slice(0, 5).map((group) => {
-                      const isExpanded = expandedReviewers.has(group.reviewer.id);
-                      const mostRecent = group.reviews[0];
-                      const displayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
-                      return (
-                        <div key={group.reviewer.id} className="bg-white rounded-lg p-3 border border-teal-100">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-medium text-slate-700">{displayName}</span>
-                            <div className="flex items-center gap-1">
-                              <div className="flex items-center gap-0.5">
-                                {[...Array(5)].map((_: any, i: number) => (
-                                  <Star key={i} className={`h-3 w-3 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
-                                ))}
-                              </div>
-                              <span className="text-xs text-slate-500">{group.avgRating.toFixed(1)}</span>
-                            </div>
-                          </div>
-                          {group.reviews.length > 1 && (
-                            <p className="text-xs text-teal-600 mb-1">{group.reviews.length} transactions</p>
-                          )}
-                          {mostRecent.comment && !isExpanded && (
-                            <p className="text-xs text-slate-600 italic line-clamp-2">"{mostRecent.comment}"</p>
-                          )}
-                          {isExpanded && (
-                            <div className="mt-2 space-y-2 border-t border-teal-100 pt-2">
-                              {group.reviews.map((r: any) => (
-                                <div key={r.id} className="bg-teal-50/50 rounded p-2">
-                                  <div className="flex items-center justify-between mb-0.5">
-                                    <div className="flex items-center gap-0.5">
-                                      {[...Array(5)].map((_: any, i: number) => (
-                                        <Star key={i} className={`h-2.5 w-2.5 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
-                                      ))}
-                                    </div>
-                                    <span className="text-[10px] text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
-                                  </div>
-                                  {r.comment && <p className="text-xs text-slate-600 italic">"{r.comment}"</p>}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {group.reviews.length > 1 && (
-                            <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-1.5 flex items-center gap-0.5 text-[11px] text-teal-600 hover:text-teal-700 font-medium">
-                              {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
-                            </button>
-                          )}
-                          {group.reviews.length === 1 && (
-                            <p className="text-xs text-slate-400 mt-1">{new Date(mostRecent.createdAt).toLocaleDateString()}</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {groupReviews(ownReviews).length > 5 && (
-                      <p className="text-xs text-center text-teal-600 font-medium">
-                        +{groupReviews(ownReviews).length - 5} more reviewers on your Achievements page
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-3">
-                    <MessageSquare className="h-6 w-6 text-slate-300 mx-auto mb-1.5" />
-                    <p className="text-xs text-slate-500">No reviews yet. Complete transactions to receive feedback from neighbours!</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
 

@@ -158,6 +158,19 @@ export default function ProfilePage() {
     }
   }, []);
 
+  // Pre-populate editForm when entering edit mode from own public profile view
+  useEffect(() => {
+    if (isEditing && isViewingOwnPublicProfile && publicProfile) {
+      setEditForm({
+        fullName: (publicProfile as any).fullName || "",
+        bio: (publicProfile as any).bio || "",
+        location: (publicProfile as any).location || "",
+        phone: (publicProfile as any).phone || "",
+        displayName: (publicProfile as any).displayName || "",
+      });
+    }
+  }, [isEditing, isViewingOwnPublicProfile]);
+
   // Extract username/handle from URL path
   const pathParts = location.split("/");
   const usernameFromUrl = pathParts[2]; // /profile/:username or /profile/:handle
@@ -195,7 +208,7 @@ export default function ProfilePage() {
 
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/user-profile"],
-    enabled: !!isOwnProfile,
+    enabled: !!isOwnProfile || !!isViewingOwnPublicProfile,
   });
 
   const { data: locationAlerts = [] } = useQuery<LocationAlert[]>({
@@ -211,6 +224,9 @@ export default function ProfilePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      if (usernameFromUrl) {
+        queryClient.invalidateQueries({ queryKey: [`/api/users/username/${usernameFromUrl}`] });
+      }
       setIsEditing(false);
       toast({
         title: "Profile updated",
@@ -495,13 +511,70 @@ export default function ProfilePage() {
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
           <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
             <CardHeader className="bg-transparent relative">
+              {isEditing && isViewingOwnPublicProfile ? (
+                <div className="space-y-4 py-1">
+                  {/* Photo upload */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Profile Photo</label>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Avatar className="h-16 w-16 border-2 border-gray-200">
+                          <AvatarImage src={(user as any)?.profilePhoto} alt={(user as any).displayName || user?.username} />
+                          <AvatarFallback className="bg-teal-100 text-teal-600 text-xl font-medium">
+                            {((user as any).displayName || (user as any).handle || user?.username)?.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute -bottom-1 -right-1 p-1.5 bg-teal-500 rounded-full text-white hover:bg-teal-600 transition-colors shadow-md" disabled={profilePhotoMutation.isPending}>
+                          <Camera className="h-3.5 w-3.5" />
+                        </button>
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" onChange={handlePhotoUpload} className="hidden" />
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {profilePhotoMutation.isPending ? "Uploading..." : (user as any)?.profilePhoto ? "Click camera to change" : "Add a photo"}
+                        {!(user as any)?.hasUploadedProfilePhoto && (
+                          <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
+                            <Coins className="h-3 w-3" />
+                            <span>Earn 1 ShareCoin</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Display Name */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Display Name</label>
+                    <Input value={editForm.displayName} onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })} placeholder="e.g. Sarah M." maxLength={40} />
+                  </div>
+                  {/* Bio */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Bio</label>
+                    <Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} placeholder="Tell us about yourself..." rows={3} />
+                  </div>
+                  {/* Location */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Location</label>
+                    <Input value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} placeholder="Your city (e.g. Toronto)" />
+                  </div>
+                  {/* Buttons */}
+                  <div className="flex gap-3 pt-2">
+                    <Button onClick={handleSaveProfile} disabled={updateProfileMutation.isPending} style={{ backgroundColor: "#0DCEA1" }}>
+                      <Save className="h-4 w-4 mr-2" />
+                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
+                    <Button variant="outline" onClick={handleCancelEdit} disabled={updateProfileMutation.isPending}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+              <>
               {/* Edit Profile button — top-left corner */}
               {isViewingOwnPublicProfile && (
                 <div className="absolute top-3 left-4">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => { navigate("/profile"); setIsEditing(true); }}
+                    onClick={() => setIsEditing(true)}
                     className="justify-start bg-white hover:bg-gray-50 h-7 text-xs px-2"
                   >
                     <Edit3 className="h-3 w-3 mr-1" />
@@ -535,7 +608,7 @@ export default function ProfilePage() {
                   </div>
                   {isViewingOwnPublicProfile && !(publicProfile as any).profilePhoto && (
                     <button
-                      onClick={() => { navigate("/profile"); setIsEditing(true); }}
+                      onClick={() => setIsEditing(true)}
                       className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium whitespace-nowrap hover:text-amber-700"
                     >
                       <span>+1</span>
@@ -644,6 +717,8 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
+              </>
+              )}
             </CardHeader>
           </Card>
 

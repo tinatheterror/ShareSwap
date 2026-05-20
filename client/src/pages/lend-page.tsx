@@ -1810,34 +1810,28 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     {calculatedTier && (
                       <TooltipProvider>
                         <div
-                          className={`p-4 bg-white rounded-xl border border-gray-200 shadow-sm transition-all duration-500 ${
+                          className={`px-3 py-1.5 bg-white rounded-lg border border-gray-200 shadow-sm transition-all duration-500 ${
                             tierGlow ? "ring-1 ring-teal-300 ring-offset-1" : ""
                           }`}
                         >
-                          {/* Top row: tier badge only */}
-                          <div className="mb-2">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-sm font-semibold">
-                              {TIER_NAMES[calculatedTier]}
-                            </span>
+                          {/* Top row: tier badge */}
+                          <div className="inline-block bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-md mb-1">
+                            {TIER_NAMES[calculatedTier]}
                           </div>
 
-                          {/* Bottom: ShareCoin value + AI valued inline */}
+                          {/* Bottom: ShareCoin value + AI badge */}
                           {valuationResult && !isLoadingValuation ? (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Coins className="h-5 w-5 text-teal-600" />
-                              <span className="text-2xl font-bold text-gray-900 leading-none">
+                            <div className="flex items-center gap-1.5">
+                              <Coins className="h-3.5 w-3.5 text-teal-600" />
+                              <span className="text-sm font-bold text-gray-900 leading-none">
                                 {Math.round(Number(valuationResult.shareCoinsValue))}
                               </span>
-                              <span className="text-xs text-gray-500 font-medium">
-                                ShareCoins/week
-                              </span>
+                              <span className="text-xs text-gray-500">SC/week</span>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-0.5 cursor-help ml-1">
-                                    <Sparkles className="h-2.5 w-2.5 text-amber-400" />
-                                    <span className="text-[10px] text-amber-600 font-medium">
-                                      AI valued
-                                    </span>
+                                  <div className="flex items-center gap-0.5 cursor-help ml-0.5">
+                                    <Sparkles className="h-3 w-3 text-amber-400" />
+                                    <span className="text-xs text-amber-500 font-medium">AI</span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-xs">
@@ -1855,19 +1849,16 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           ) : (
                             <div className="flex items-center gap-1.5">
                               {isLoadingValuation && (
-                                <div className="h-4 w-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mr-1" />
+                                <div className="h-3.5 w-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mr-1" />
                               )}
-                              <Coins className="h-5 w-5 text-teal-600" />
-                              <span className="text-2xl font-bold text-gray-900 leading-none">
-                                {TIER_WEEKLY_BANDS[calculatedTier]?.display ||
-                                  "5"}
+                              <Coins className="h-3.5 w-3.5 text-teal-600" />
+                              <span className="text-sm font-bold text-gray-900 leading-none">
+                                {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"}
                               </span>
-                              <span className="text-xs text-gray-500 font-medium">
-                                ShareCoins/week
+                              <span className="text-xs text-gray-500">
+                                SC/week
                                 {isLoadingValuation && (
-                                  <span className="text-gray-400 ml-1">
-                                    (calculating…)
-                                  </span>
+                                  <span className="text-gray-400 ml-1">(calculating…)</span>
                                 )}
                               </span>
                             </div>

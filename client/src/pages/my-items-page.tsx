@@ -356,8 +356,8 @@ export default function MyItemsPage() {
                     {/* Tier Info */}
                     {(item as any).tier && (
                       <TooltipProvider>
-                        <div className="px-3 py-1.5 bg-white rounded-lg border border-gray-200 mb-2 flex items-center gap-2">
-                          <div className="inline-block bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-md shrink-0">
+                        <div className="px-3 py-1.5 bg-white rounded-lg border border-gray-200 mb-2">
+                          <div className="inline-block bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-md mb-1">
                             {TIER_NAMES[(item as any).tier] || `Tier ${(item as any).tier}`}
                           </div>
                           <div className="flex items-center gap-1.5">

@@ -780,7 +780,7 @@ export default function ProfilePage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex gap-1 mt-auto">
+                        <div className="flex flex-wrap gap-1 mt-auto">
                           {item.isGift ? (
                             <Button
                               size="sm"

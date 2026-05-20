@@ -78,8 +78,10 @@ interface UserProfile {
   joinedDate: string;
   shareCoins: number;
   completedShares: number;
-  itemsBorrowed: number;
-  rating: number;
+  averageRating?: number | null;
+  reviewCount?: number;
+  trustScore?: number;
+  onTimeReturnRate?: number | null;
   totalTransactions: number;
   isVerified: boolean;
   subscription?: string;
@@ -1500,17 +1502,30 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Heart className="h-4 w-4 text-teal-500" />
-                        <span className="text-sm text-slate-600">Items Borrowed</span>
-                      </div>
-                      <span className="font-semibold text-teal-700">{profile?.itemsBorrowed || 0}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
                         <Star className="h-4 w-4 text-teal-500" />
                         <span className="text-sm text-slate-600">Rating</span>
                       </div>
-                      <span className="font-semibold text-teal-700">{profile?.rating || 0}</span>
+                      <span className="font-semibold text-teal-700">
+                        {profile?.averageRating != null
+                          ? `${profile.averageRating.toFixed(1)} ★ · ${profile.reviewCount ?? 0} reviews`
+                          : `— · ${profile?.reviewCount ?? 0} reviews`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-slate-600">Trust Score</span>
+                      </div>
+                      <span className="font-semibold text-teal-700">{profile?.trustScore ?? 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-teal-500" />
+                        <span className="text-sm text-slate-600">On-time Returns</span>
+                      </div>
+                      <span className="font-semibold text-teal-700">
+                        {profile?.onTimeReturnRate != null ? `${profile.onTimeReturnRate}%` : "—"}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -1651,22 +1666,31 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Heart className="h-4 w-4 text-teal-500" />
-                      <span className="text-sm text-slate-600">
-                        Items Borrowed
-                      </span>
-                    </div>
-                    <span className="font-semibold text-teal-700">
-                      {profile?.itemsBorrowed || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
                       <Star className="h-4 w-4 text-teal-500" />
                       <span className="text-sm text-slate-600">Rating</span>
                     </div>
                     <span className="font-semibold text-teal-700">
-                      {profile?.rating || 0}
+                      {profile?.averageRating != null
+                        ? `${profile.averageRating.toFixed(1)} ★ · ${profile.reviewCount ?? 0} reviews`
+                        : `— · ${profile?.reviewCount ?? 0} reviews`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">Trust Score</span>
+                    </div>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.trustScore ?? 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">On-time Returns</span>
+                    </div>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.onTimeReturnRate != null ? `${profile.onTimeReturnRate}%` : "—"}
                     </span>
                   </div>
                 </div>

@@ -799,6 +799,7 @@ export default function ProfilePage() {
                               className="flex-1 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 px-1"
                               onClick={() => navigate(`/items/${item.id}`)}
                             >
+                              <Gift className="h-2.5 w-2.5 mr-0.5 flex-shrink-0" />
                               Claim Gift
                             </Button>
                           ) : (

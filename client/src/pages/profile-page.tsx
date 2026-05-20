@@ -61,8 +61,6 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
@@ -109,8 +107,6 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [location] = useLocation();
   const [expandedReviewers, setExpandedReviewers] = useState<Set<number>>(new Set());
-  const [itemsCarouselIndex, setItemsCarouselIndex] = useState(0);
-  const [reviewsCarouselIndex, setReviewsCarouselIndex] = useState(0);
   const toggleReviewer = (reviewerId: number) =>
     setExpandedReviewers(prev => {
       const next = new Set(prev);
@@ -163,21 +159,21 @@ export default function ProfilePage() {
         usernameFromUrl === (user as any).handle));
 
   // Fetch user profile by username if viewing another user's profile
-  const { data: otherProfile, isLoading: isLoadingPublicProfile } =
+  const { data: publicProfile, isLoading: isLoadingPublicProfile } =
     useQuery<any>({
       queryKey: [`/api/users/username/${usernameFromUrl}`],
       enabled: !!usernameFromUrl && !isOwnProfile,
     });
 
   // Fetch user's items if viewing another user's profile
-  const { data: otherItems = [] } = useQuery<SelectItem[]>({
+  const { data: userItems = [] } = useQuery<SelectItem[]>({
     queryKey: [`/api/users/username/${usernameFromUrl}/items`],
     enabled: !!usernameFromUrl && !isOwnProfile,
   });
 
   // Fetch reviews — for another user's profile use the URL username,
   // for own profile use the logged-in user's username.
-  const { data: otherReviews = [] } = useQuery<any[]>({
+  const { data: userReviews = [] } = useQuery<any[]>({
     queryKey: [`/api/users/username/${usernameFromUrl}/reviews`],
     enabled: !!usernameFromUrl && !isOwnProfile,
   });
@@ -195,16 +191,6 @@ export default function ProfilePage() {
   const { data: locationAlerts = [] } = useQuery<LocationAlert[]>({
     queryKey: ["/api/location-alerts"],
     enabled: !!isOwnProfile,
-  });
-
-  // Own public profile — same data shape as other users' profiles
-  const { data: ownPublicProfile, isLoading: isLoadingOwnPublicProfile } = useQuery<any>({
-    queryKey: [`/api/users/username/${user?.username}`],
-    enabled: !!isOwnProfile && !!user?.username,
-  });
-  const { data: ownPublicItems = [] } = useQuery<SelectItem[]>({
-    queryKey: [`/api/users/username/${user?.username}/items`],
-    enabled: !!isOwnProfile && !!user?.username,
   });
 
   const updateProfileMutation = useMutation({
@@ -443,12 +429,6 @@ export default function ProfilePage() {
   });
   const currentLevel = LEVELS[Math.max(0, currentLevelIndex)];
 
-  // Unified display data — own profile uses public-endpoint data (same shape as others)
-  const displayProfile = isOwnProfile ? ownPublicProfile : otherProfile;
-  const displayItems = isOwnProfile ? ownPublicItems : otherItems;
-  const displayReviews = isOwnProfile ? ownReviews : otherReviews;
-  const isLoadingDisplayProfile = isOwnProfile ? isLoadingOwnPublicProfile : isLoadingPublicProfile;
-
   if (!user) {
     return (
       <div className="min-h-screen bg-[#F3F4F6]">
@@ -465,34 +445,41 @@ export default function ProfilePage() {
   }
 
   // Show public profile if viewing another user
-  if (isLoadingDisplayProfile) {
-    return (
-      <div className="min-h-screen bg-[#F3F4F6]">
-        <Navbar />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <p className="text-lg text-muted-foreground">Loading profile...</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  if (!isOwnProfile) {
+    if (isLoadingPublicProfile) {
+      return (
+        <div className="min-h-screen bg-[#F3F4F6]">
+          <Navbar />
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <p className="text-lg text-muted-foreground">
+                Loading profile...
+              </p>
+            </div>
+          </main>
+        </div>
+      );
+    }
 
-  if (!isOwnProfile && !displayProfile) {
-    return (
-      <div className="min-h-screen bg-[#F3F4F6]">
-        <Navbar />
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-slate-800 mb-4">User not found</h1>
-            <p className="text-muted-foreground">The user @{usernameFromUrl} does not exist.</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+    if (!publicProfile) {
+      return (
+        <div className="min-h-screen bg-[#F3F4F6]">
+          <Navbar />
+          <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-slate-800 mb-4">
+                User not found
+              </h1>
+              <p className="text-muted-foreground">
+                The user @{usernameFromUrl} does not exist.
+              </p>
+            </div>
+          </main>
+        </div>
+      );
+    }
 
-  return (
+    return (
       <div className="min-h-screen bg-[#F3F4F6] overflow-x-hidden">
         <Navbar />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
@@ -500,20 +487,20 @@ export default function ProfilePage() {
             <CardHeader className="bg-transparent">
               <div className="flex items-start gap-4">
                 <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0">
-                  {(displayProfile as any).profilePhoto ? (
+                  {(publicProfile as any).profilePhoto ? (
                     <img
-                      src={(displayProfile as any).profilePhoto}
+                      src={(publicProfile as any).profilePhoto}
                       alt={
-                        (displayProfile as any).handle || displayProfile.username
+                        (publicProfile as any).handle || publicProfile.username
                       }
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white text-3xl font-bold">
                       {(
-                        (displayProfile as any).displayName ||
-                        (displayProfile as any).handle ||
-                        displayProfile.username
+                        (publicProfile as any).displayName ||
+                        (publicProfile as any).handle ||
+                        publicProfile.username
                       )
                         .charAt(0)
                         .toUpperCase()}
@@ -523,93 +510,79 @@ export default function ProfilePage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-0.5">
                     <CardTitle className="text-2xl text-slate-800">
-                      {(displayProfile as any).displayName ||
-                        (displayProfile as any).handle ||
-                        displayProfile.username.split("@")[0]}
+                      {(publicProfile as any).displayName ||
+                        (publicProfile as any).handle ||
+                        publicProfile.username.split("@")[0]}
                     </CardTitle>
                     <UserBadges
-                      isVerified={displayProfile.isVerified}
-                      reputationLevel={displayProfile.reputationLevel}
+                      isVerified={publicProfile.isVerified}
+                      reputationLevel={publicProfile.reputationLevel}
                       size="md"
                       showLabels
                     />
                   </div>
                   <p className="text-slate-500 text-sm mb-0.5">
                     @
-                    {(displayProfile as any).handle ||
-                      displayProfile.username.split("@")[0]}
+                    {(publicProfile as any).handle ||
+                      publicProfile.username.split("@")[0]}
                   </p>
-                  {(displayProfile as any).activeStatus && (
-                    <p className="text-[10px] text-slate-500 mb-0.5 leading-tight">
-                      {(displayProfile as any).activeStatus}
+                  {(publicProfile as any).activeStatus && (
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      {(publicProfile as any).activeStatus}
                     </p>
                   )}
-                  {(displayProfile as any).responseTime && (
-                    <p className="text-[10px] text-slate-500 mb-2 leading-tight">
-                      {(displayProfile as any).responseTime}
+                  {(publicProfile as any).responseTime && (
+                    <p className="text-xs text-slate-500 mb-2">
+                      {(publicProfile as any).responseTime}
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Edit Profile / Settings — own profile only */}
-              {isOwnProfile && (
-                <div className="flex gap-1.5 mt-3 flex-wrap">
-                  <Button size="sm" variant="outline" className="bg-white/80 hover:bg-white text-xs px-2 h-7" onClick={handleEditProfile}>
-                    <Edit3 className="h-3 w-3 mr-1" />
-                    Edit Profile
-                  </Button>
-                  <Link href="/settings">
-                    <Button size="sm" variant="outline" className="bg-white/80 hover:bg-white text-xs px-2 h-7">
-                      <Settings className="h-3 w-3 mr-1" />
-                      Settings
-                    </Button>
-                  </Link>
-                </div>
-              )}
-
               {/* Reviews + shares — full-width, centered in the banner */}
-              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-xs text-muted-foreground">
-                <div className="flex items-start gap-1">
-                  <Star className="h-3.5 w-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <span className="leading-tight whitespace-nowrap">
-                    {displayProfile.averageRating.toFixed(1)} ({displayProfile.reviewCount} reviews)
+              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Star className="h-5 w-5 text-yellow-400" />
+                  <span>
+                    {publicProfile.averageRating.toFixed(1)} (
+                    {publicProfile.reviewCount} reviews)
                   </span>
                 </div>
-                <div className="flex items-start gap-1">
-                  <Package className="h-3.5 w-3.5 text-slate-500 mt-0.5 flex-shrink-0" />
-                  <span className="leading-tight">
-                    {(displayProfile as any).completedShares ?? 0} completed shares
+                <div className="flex items-center gap-1.5">
+                  <Package className="h-5 w-5 text-slate-500" />
+                  <span>
+                    {(publicProfile as any).completedShares ?? 0} completed
+                    shares
                   </span>
                 </div>
               </div>
 
               {/* Trust stats — full-width row below avatar+info, left-aligned */}
               <div className="mt-5 space-y-1 text-xxs text-slate-500">
-                {(displayProfile as any).onTimeReturnRate != null && (
+                {(publicProfile as any).onTimeReturnRate != null && (
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
                     <span>
-                      {(displayProfile as any).onTimeReturnRate}% on-time returns
+                      {(publicProfile as any).onTimeReturnRate}% on-time returns
                     </span>
                   </div>
                 )}
-                {(displayProfile as any).replyRate != null && (
+                {(publicProfile as any).replyRate != null && (
                   <div className="flex items-center gap-1.5">
                     <MessageSquare className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
                     <span>
-                      {(displayProfile as any).replyRate}% of the time replies
+                      {(publicProfile as any).replyRate}% of the time replies
                     </span>
                   </div>
                 )}
                 <div className="mt-2 space-y-0.5 text-[10px] text-slate-400">
                   <div className="flex items-center gap-1">
                     <AlertTriangle
-                      className={`h-3 w-3 flex-shrink-0 ${((displayProfile as any).issuesCount ?? 0) === 0 ? "text-green-400" : "text-amber-400"}`}
+                      className={`h-3 w-3 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? "text-green-400" : "text-amber-400"}`}
                     />
                     <span>
                       {(() => {
-                        const n = (displayProfile as any).issuesCount ?? 0;
+                        const n = (publicProfile as any).issuesCount ?? 0;
                         return n === 0
                           ? "No issues reported"
                           : `${n} issue${n !== 1 ? "s" : ""} reported`;
@@ -618,14 +591,14 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Shield className="h-3 w-3 text-teal-400 flex-shrink-0" />
-                    <span>Trust Score: {(displayProfile as any).trustScore ?? 0}</span>
+                    <span>Trust Score: {(publicProfile as any).trustScore ?? 0}</span>
                   </div>
-                  {(displayProfile as any).createdAt && (
+                  {(publicProfile as any).createdAt && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3 flex-shrink-0" />
                       <span>
                         Member since{" "}
-                        {new Date((displayProfile as any).createdAt).toLocaleDateString("en-US", {
+                        {new Date((publicProfile as any).createdAt).toLocaleDateString("en-US", {
                           month: "short",
                           year: "numeric",
                         })}
@@ -640,254 +613,185 @@ export default function ProfilePage() {
           {/* Shared Items */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
-            {displayItems.length > 0 ? (
-              <>
-                {/* ── Mobile carousel ── */}
-                <div className="relative md:hidden">
-                  <div className="overflow-hidden rounded-xl">
-                    <div
-                      className="flex transition-transform duration-300 ease-in-out"
-                      style={{ transform: `translateX(-${itemsCarouselIndex * 100}%)` }}
-                    >
-                      {displayItems.map((item) => (
-                        <div key={item.id} className="w-full flex-shrink-0">
-                          <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
-                            <div className="p-2">
-                              <div
-                                className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
-                                style={{ aspectRatio: "1 / 0.9" }}
-                              >
-                                {item.isGift && <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">FREE</Badge>}
-                                {item.photos && item.photos[0] ? (
-                                  <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                                ) : (
-                                  <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
-                                    {item.isGift ? <Gift className="h-10 w-10 text-pink-400" /> : <Camera className="h-10 w-10 text-gray-400" />}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <CardContent className="px-3 pt-0 pb-2 flex flex-col flex-1">
-                              <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">{item.name}</h3>
-                              <div className="space-y-0 mb-1.5 flex-1">
-                                <p className="text-xs text-slate-700"><span className="font-medium">Condition:</span> {item.conditionRating}/10</p>
-                                {!item.isGift && (item.isLendable || item.isRentable) && (
-                                  <div className="flex items-center gap-1 text-xs text-slate-700">
-                                    <Coins className="h-3 w-3 text-teal-600" />
-                                    <span>{Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins</span>
-                                    {item.isRentable && (<><span className="text-slate-400">|</span><DollarSign className="h-3 w-3 text-teal-600" /><span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span></>)}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex gap-1 mt-auto">
-                                {item.isGift ? (
-                                  <Button size="sm" className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap" onClick={() => navigate(`/items/${item.id}`)}>
-                                    <Gift className="h-2.5 w-2.5 mr-0.5" />Claim Gift
-                                  </Button>
-                                ) : (
-                                  <>
-                                    {item.isLendable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><HandHeart className="h-2.5 w-2.5 mr-0.5" />Borrow It</Button>}
-                                    {item.isRentable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><DollarSign className="h-2.5 w-2.5 mr-0.5" />Rent It</Button>}
-                                    {item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />Swap It</Button>}
-                                    {!item.isLendable && !item.isRentable && !item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>View</Button>}
-                                  </>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Prev / Next */}
-                  {itemsCarouselIndex > 0 && (
-                    <button onClick={() => setItemsCarouselIndex(i => i - 1)} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
-                      <ChevronLeft className="h-4 w-4 text-gray-600" />
-                    </button>
-                  )}
-                  {itemsCarouselIndex < displayItems.length - 1 && (
-                    <button onClick={() => setItemsCarouselIndex(i => i + 1)} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
-                      <ChevronRight className="h-4 w-4 text-gray-600" />
-                    </button>
-                  )}
-                  {/* Dot indicators */}
-                  {displayItems.length > 1 && (
-                    <div className="flex justify-center gap-1.5 mt-3">
-                      {displayItems.map((_, i) => (
-                        <button key={i} onClick={() => setItemsCarouselIndex(i)} className={`rounded-full transition-all ${i === itemsCarouselIndex ? "w-4 h-2 bg-teal-500" : "w-2 h-2 bg-gray-300"}`} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Desktop grid ── */}
-                <div className="hidden md:grid md:grid-cols-3 md:gap-6">
-                  {displayItems.map((item) => (
-                    <Card key={item.id} className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
+            {userItems.length > 0 ? (
+              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
+                {userItems.map((item) => (
+                  <div key={item.id} className="w-64 flex-shrink-0 md:w-auto h-full">
+                    <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
                       <div className="p-2">
-                        <div className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`} style={{ aspectRatio: "1 / 0.9" }}>
-                          {item.isGift && <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">FREE</Badge>}
+                        <div
+                          className={`rounded-lg flex items-center justify-center overflow-hidden relative ${item.isGift ? "bg-pink-50" : "bg-gray-100"}`}
+                          style={{ aspectRatio: "1 / 0.9" }}
+                        >
+                          {item.isGift && (
+                            <Badge className="absolute top-2 right-2 bg-pink-500 text-white text-[10px]">
+                              FREE
+                            </Badge>
+                          )}
                           {item.photos && item.photos[0] ? (
-                            <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                            <img
+                              src={item.photos[0]}
+                              alt={item.name}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
                           ) : (
                             <div className={`w-full h-full flex items-center justify-center rounded-lg ${item.isGift ? "bg-pink-100" : "bg-gray-200"}`}>
-                              {item.isGift ? <Gift className="h-10 w-10 text-pink-400" /> : <Camera className="h-10 w-10 text-gray-400" />}
+                              {item.isGift
+                                ? <Gift className="h-10 w-10 text-pink-400" />
+                                : <Camera className="h-10 w-10 text-gray-400" />
+                              }
                             </div>
                           )}
                         </div>
                       </div>
                       <CardContent className="px-3 pt-0 pb-2 flex flex-col flex-1">
-                        <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">{item.name}</h3>
+                        <h3 className="font-bold text-sm mb-0.5 truncate text-slate-800">
+                          {item.name}
+                        </h3>
                         <div className="space-y-0 mb-1.5 flex-1">
-                          <p className="text-xs text-slate-700"><span className="font-medium">Condition:</span> {item.conditionRating}/10</p>
+                          <p className="text-xs text-slate-700">
+                            <span className="font-medium">Condition:</span> {item.conditionRating}/10
+                          </p>
                           {!item.isGift && (item.isLendable || item.isRentable) && (
                             <div className="flex items-center gap-1 text-xs text-slate-700">
                               <Coins className="h-3 w-3 text-teal-600" />
-                              <span>{Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins</span>
-                              {item.isRentable && (<><span className="text-slate-400">|</span><DollarSign className="h-3 w-3 text-teal-600" /><span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span></>)}
+                              <span>
+                                {Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5))} ShareCoins
+                              </span>
+                              {item.isRentable && (
+                                <>
+                                  <span className="text-slate-400">|</span>
+                                  <DollarSign className="h-3 w-3 text-teal-600" />
+                                  <span>${Number(item.dollarsPrice || 10).toFixed(0)}/wk</span>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
                         <div className="flex gap-1 mt-auto">
                           {item.isGift ? (
-                            <Button size="sm" className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap" onClick={() => navigate(`/items/${item.id}`)}>
-                              <Gift className="h-2.5 w-2.5 mr-0.5" />Claim Gift
+                            <Button
+                              size="sm"
+                              className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
+                              onClick={() => navigate(`/items/${item.id}`)}
+                            >
+                              <Gift className="h-2.5 w-2.5 mr-0.5" />
+                              Claim Gift
                             </Button>
                           ) : (
                             <>
-                              {item.isLendable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><HandHeart className="h-2.5 w-2.5 mr-0.5" />Borrow It</Button>}
-                              {item.isRentable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><DollarSign className="h-2.5 w-2.5 mr-0.5" />Rent It</Button>}
-                              {item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}><ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />Swap It</Button>}
-                              {!item.isLendable && !item.isRentable && !item.isSwappable && <Button size="sm" className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap" style={{ backgroundColor: "#0DCEA1" }} onClick={() => navigate(`/items/${item.id}`)}>View</Button>}
+                              {item.isLendable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <HandHeart className="h-2.5 w-2.5 mr-0.5" />
+                                  Borrow It
+                                </Button>
+                              )}
+                              {item.isRentable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <DollarSign className="h-2.5 w-2.5 mr-0.5" />
+                                  Rent It
+                                </Button>
+                              )}
+                              {item.isSwappable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
+                                  Swap It
+                                </Button>
+                              )}
+                              {!item.isLendable && !item.isRentable && !item.isSwappable && (
+                                <Button
+                                  size="sm"
+                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  style={{ backgroundColor: "#0DCEA1" }}
+                                  onClick={() => navigate(`/items/${item.id}`)}
+                                >
+                                  View
+                                </Button>
+                              )}
                             </>
                           )}
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
-              </>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <Card className="p-6 text-center text-muted-foreground">No items shared yet</Card>
+              <Card className="p-6 text-center text-muted-foreground">
+                No items shared yet
+              </Card>
             )}
           </div>
 
           {/* Reviews — grouped by reviewer */}
           <div>
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
-            {displayReviews.length > 0 ? (
-              <>
-                {/* ── Mobile carousel ── */}
-                {(() => {
-                  const groups = groupReviews(displayReviews);
-                  const group = groups[reviewsCarouselIndex];
-                  if (!group) return null;
+            {userReviews.length > 0 ? (
+              <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0">
+                {groupReviews(userReviews).map((group) => {
                   const isExpanded = expandedReviewers.has(group.reviewer.id);
                   const mostRecent = group.reviews[0];
-                  const rDisplayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
+                  const displayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
                   return (
-                    <div className="relative md:hidden">
+                    <div key={group.reviewer.id} className="w-80 flex-shrink-0 md:w-auto">
                       <Card className="p-4" style={{ backgroundColor: "#D4F7F1" }}>
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
                             {group.reviewer.profilePhoto ? (
                               <img src={group.reviewer.profilePhoto} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">{rDisplayName.charAt(0).toUpperCase()}</div>
+                              <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">
+                                {displayName.charAt(0).toUpperCase()}
+                              </div>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">{rDisplayName}</Link>
+                              <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">
+                                {displayName}
+                              </Link>
                               <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
                             </div>
-                            <div className="flex items-center gap-1 mb-1 flex-nowrap">
-                              <div className="flex items-center gap-0.5 flex-shrink-0">
-                                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
-                              </div>
-                              <span className="text-xs font-semibold flex-shrink-0">{group.avgRating.toFixed(1)}</span>
-                              <span className="text-[10px] text-muted-foreground flex-shrink-0">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
-                            </div>
-                            {mostRecent.comment && !isExpanded && <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>}
-                            {isExpanded && (
-                              <div className="mt-3 space-y-2 border-t border-teal-200 pt-3">
-                                {group.reviews.map((r: any) => (
-                                  <div key={r.id} className="bg-white/60 rounded-lg p-2.5">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <div className="flex items-center gap-0.5">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}</div>
-                                      <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
-                                    </div>
-                                    {r.comment && <p className="text-xs text-muted-foreground italic">"{r.comment}"</p>}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {group.reviews.length > 1 && (
-                              <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium">
-                                {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide reviews</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                      {/* Prev / Next */}
-                      {reviewsCarouselIndex > 0 && (
-                        <button onClick={() => setReviewsCarouselIndex(i => i - 1)} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
-                          <ChevronLeft className="h-4 w-4 text-gray-600" />
-                        </button>
-                      )}
-                      {reviewsCarouselIndex < groups.length - 1 && (
-                        <button onClick={() => setReviewsCarouselIndex(i => i + 1)} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 bg-white rounded-full shadow-md p-1.5 border border-gray-200">
-                          <ChevronRight className="h-4 w-4 text-gray-600" />
-                        </button>
-                      )}
-                      {/* Dot indicators */}
-                      {groups.length > 1 && (
-                        <div className="flex justify-center gap-1.5 mt-3">
-                          {groups.map((_, i) => (
-                            <button key={i} onClick={() => setReviewsCarouselIndex(i)} className={`rounded-full transition-all ${i === reviewsCarouselIndex ? "w-4 h-2 bg-teal-500" : "w-2 h-2 bg-gray-300"}`} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* ── Desktop column ── */}
-                <div className="hidden md:flex md:flex-col md:gap-4">
-                  {groupReviews(displayReviews).map((group) => {
-                    const isExpanded = expandedReviewers.has(group.reviewer.id);
-                    const mostRecent = group.reviews[0];
-                    const rDisplayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
-                    return (
-                      <Card key={group.reviewer.id} className="p-4" style={{ backgroundColor: "#D4F7F1" }}>
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                            {group.reviewer.profilePhoto ? (
-                              <img src={group.reviewer.profilePhoto} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white font-bold">{rDisplayName.charAt(0).toUpperCase()}</div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">{rDisplayName}</Link>
-                              <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
-                            </div>
+                            {/* Summary row */}
                             <div className="flex items-center gap-2 mb-1">
                               <div className="flex items-center gap-0.5">
-                                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                                ))}
                               </div>
                               <span className="text-sm font-medium">{group.avgRating.toFixed(1)}</span>
                               <span className="text-xs text-muted-foreground">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
                             </div>
-                            {mostRecent.comment && !isExpanded && <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>}
+                            {/* Most recent comment preview */}
+                            {mostRecent.comment && !isExpanded && (
+                              <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>
+                            )}
+                            {/* Expanded: all individual reviews */}
                             {isExpanded && (
                               <div className="mt-3 space-y-2 border-t border-teal-200 pt-3">
                                 {group.reviews.map((r: any) => (
                                   <div key={r.id} className="bg-white/60 rounded-lg p-2.5">
                                     <div className="flex items-center justify-between mb-1">
-                                      <div className="flex items-center gap-0.5">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}</div>
+                                      <div className="flex items-center gap-0.5">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                                        ))}
+                                      </div>
                                       <span className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     {r.comment && <p className="text-xs text-muted-foreground italic">"{r.comment}"</p>}
@@ -895,112 +799,892 @@ export default function ProfilePage() {
                                 ))}
                               </div>
                             )}
+                            {/* Expand / collapse toggle */}
                             {group.reviews.length > 1 && (
-                              <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium">
+                              <button
+                                onClick={() => toggleReviewer(group.reviewer.id)}
+                                className="mt-2 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium"
+                              >
                                 {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide reviews</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
                               </button>
                             )}
                           </div>
                         </div>
                       </Card>
-                    );
-                  })}
-                </div>
-              </>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
-              <Card className="p-6 text-center text-muted-foreground">No reviews yet</Card>
+              <Card className="p-6 text-center text-muted-foreground">
+                No reviews yet
+              </Card>
             )}
           </div>
-
-          {/* Edit Profile Dialog — own profile only */}
-          {isOwnProfile && (
-            <Dialog open={isEditing} onOpenChange={(open) => !open && handleCancelEdit()}>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Edit Profile</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <Avatar className="h-16 w-16 border-2 border-gray-200">
-                        <AvatarImage src={(user as any)?.profilePhoto} alt={(user as any).displayName || user.username} />
-                        <AvatarFallback className="bg-teal-100 text-teal-600 text-xl font-medium">
-                          {((user as any).displayName || user.username).charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-1 -right-1 p-1.5 bg-teal-500 rounded-full text-white hover:bg-teal-600 transition-colors shadow-md"
-                        disabled={profilePhotoMutation.isPending}
-                      >
-                        <Camera className="h-3.5 w-3.5" />
-                      </button>
-                      <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" onChange={handlePhotoUpload} className="hidden" />
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {profilePhotoMutation.isPending ? "Uploading..." : (user as any)?.profilePhoto ? "Click camera to change" : "Add a photo"}
-                      {!(user as any)?.hasUploadedProfilePhoto && (
-                        <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
-                          <Coins className="h-3 w-3" /><span>Earn 1 ShareCoin for a clear photo</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium mb-1.5 block">Display Name</Label>
-                    {(() => {
-                      const changedAt = (profile as any)?.displayNameChangedAt;
-                      const isLocked = !!changedAt && (Date.now() - new Date(changedAt).getTime()) < 30 * 24 * 60 * 60 * 1000;
-                      const nextAllowed = changedAt ? new Date(new Date(changedAt).getTime() + 30 * 24 * 60 * 60 * 1000) : null;
-                      return (
-                        <>
-                          <Input value={editForm.displayName} onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })} placeholder="e.g. Sarah M." maxLength={40} disabled={isLocked} />
-                          {isLocked && nextAllowed && <p className="text-xs text-muted-foreground mt-1">Can be changed again on {nextAllowed.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</p>}
-                        </>
-                      );
-                    })()}
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium mb-1.5 block">Bio</Label>
-                    <Textarea value={editForm.bio} onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })} placeholder="Tell us about yourself..." rows={3} />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium mb-1.5 block">Location</Label>
-                    <Input value={editForm.location} onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} placeholder="Your city (e.g. Toronto)" />
-                  </div>
-                </div>
-                <DialogFooter className="gap-2">
-                  <Button variant="outline" onClick={handleCancelEdit} disabled={updateProfileMutation.isPending}>Cancel</Button>
-                  <Button onClick={handleSaveProfile} disabled={updateProfileMutation.isPending} style={{ backgroundColor: "#0DCEA1" }}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-
-          {/* Photo Crop Dialog */}
-          <Dialog open={showCropDialog} onOpenChange={(open) => { if (!open) handleCropCancel(); setShowCropDialog(open); }}>
-            <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Crop Your Photo</DialogTitle></DialogHeader>
-              <div className="flex justify-center py-4">
-                {imageSrc && (
-                  <ReactCrop crop={crop} onChange={(_, percentCrop) => setCrop(percentCrop)} aspect={1} circularCrop>
-                    <img ref={imgRef} src={imageSrc} alt="Crop preview" onLoad={onImageLoad} style={{ maxHeight: "400px", maxWidth: "100%" }} />
-                  </ReactCrop>
-                )}
-              </div>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={handleCropCancel}>Cancel</Button>
-                <Button onClick={handleCropConfirm} disabled={profilePhotoMutation.isPending}>
-                  {profilePhotoMutation.isPending ? "Uploading..." : "Upload Photo"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </main>
       </div>
     );
+  }
+
+  // Show own profile if viewing logged-in user's profile
+  return (
+    <div className="min-h-screen bg-[#F3F4F6] overflow-x-hidden">
+      <Navbar />
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Profile Information */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Main Profile Card */}
+            <Card className="border-2 border-teal-100 overflow-hidden">
+              <CardHeader className="bg-[#D4F7F1]">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                      <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+                        <AvatarImage
+                          src={(user as any)?.profilePhoto}
+                          alt={
+                            (user as any).displayName ||
+                            (user as any).handle ||
+                            user.username
+                          }
+                        />
+                        <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
+                          {(
+                            (user as any).displayName ||
+                            (user as any).handle ||
+                            user.username
+                          )
+                            .charAt(0)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {!(user as any)?.profilePhoto && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center gap-0.5 text-[10px] text-amber-600 hover:text-amber-700 whitespace-nowrap"
+                        >
+                          <Coins className="h-2.5 w-2.5" />
+                          <span>+1</span>
+                          <span>· Add photo</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">
+                          {(user as any).displayName ||
+                            (user as any).handle ||
+                            user.username}
+                        </CardTitle>
+                        <UserBadges
+                          isVerified={profile?.isVerified || false}
+                          reputationLevel="Newcomer"
+                          size="sm"
+                        />
+                      </div>
+                      <p className="text-slate-600 text-sm sm:text-base truncate">
+                        @{(user as any).handle || user.username.split("@")[0]}
+                      </p>
+                      {(user as any).activeStatus && (
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {(user as any).activeStatus}
+                        </p>
+                      )}
+                      {(user as any).responseTime && (
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {(user as any).responseTime}
+                        </p>
+                      )}
+                      {profile?.subscription && (
+                        <Badge variant="secondary" className="mt-1">
+                          {profile.subscription}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={isEditing ? handleCancelEdit : handleEditProfile}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      {isEditing ? (
+                        <>
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </>
+                      ) : (
+                        <>
+                          <Edit3 className="h-4 w-4 mr-2" />
+                          Edit Profile
+                        </>
+                      )}
+                    </Button>
+                    <Link href="/my-balance" className="w-full">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start"
+                      >
+                        <Wallet className="h-4 w-4 mr-2" />
+                        My Balance
+                      </Button>
+                    </Link>
+                    <Link href="/settings" className="w-full">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start"
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Account Settings
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Profile Photo
+                      </label>
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <Avatar className="h-16 w-16 border-2 border-gray-200">
+                            <AvatarImage
+                              src={(user as any)?.profilePhoto}
+                              alt={
+                                (user as any).displayName ||
+                                (user as any).handle ||
+                                user.username
+                              }
+                            />
+                            <AvatarFallback className="bg-teal-100 text-teal-600 text-xl font-medium">
+                              {(
+                                (user as any).displayName ||
+                                (user as any).handle ||
+                                user.username
+                              )
+                                ?.charAt(0)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute -bottom-1 -right-1 p-1.5 bg-teal-500 rounded-full text-white hover:bg-teal-600 transition-colors shadow-md"
+                            disabled={profilePhotoMutation.isPending}
+                          >
+                            <Camera className="h-3.5 w-3.5" />
+                          </button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                          />
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {profilePhotoMutation.isPending
+                            ? "Uploading..."
+                            : (user as any)?.profilePhoto
+                              ? "Click camera to change"
+                              : "Add a photo"}
+                          {!(user as any)?.hasUploadedProfilePhoto && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-amber-600">
+                              <Coins className="h-3 w-3" />
+                              <span>Earn 1 ShareCoin</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Display Name
+                      </label>
+                      {(() => {
+                        const changedAt = (profile as any)?.displayNameChangedAt;
+                        const isLocked = !!changedAt && (Date.now() - new Date(changedAt).getTime()) < 30 * 24 * 60 * 60 * 1000;
+                        const nextAllowed = changedAt
+                          ? new Date(new Date(changedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
+                          : null;
+                        return (
+                          <>
+                            <Input
+                              value={editForm.displayName}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, displayName: e.target.value })
+                              }
+                              placeholder="e.g. Sarah M."
+                              maxLength={40}
+                              disabled={isLocked}
+                            />
+                            {isLocked && nextAllowed && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Can be changed again on {nextAllowed.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Bio
+                      </label>
+                      <Textarea
+                        value={editForm.bio}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, bio: e.target.value })
+                        }
+                        placeholder="Tell us about yourself..."
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Location
+                      </label>
+                      <Input
+                        value={editForm.location}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, location: e.target.value })
+                        }
+                        placeholder="Your city (e.g. Toronto)"
+                      />
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        onClick={handleSaveProfile}
+                        disabled={updateProfileMutation.isPending}
+                        className=""
+                        style={{ backgroundColor: "#0DCEA1" }}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        {updateProfileMutation.isPending
+                          ? "Saving..."
+                          : "Save Changes"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleCancelEdit}
+                        disabled={updateProfileMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {profile?.bio && (
+                      <div>
+                        <h4 className="font-medium text-slate-800 mb-2">
+                          About
+                        </h4>
+                        <p className="text-slate-600 leading-relaxed">
+                          {profile.bio}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {profile?.email && (
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Mail className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                          <span className="text-slate-600 text-sm truncate">
+                            {profile.email}
+                          </span>
+                        </div>
+                      )}
+                      {profile?.location && (
+                        <div className="flex items-center gap-3 min-w-0">
+                          <MapPin className="h-4 w-4 text-slate-500 flex-shrink-0" />
+                          <span className="text-slate-600 text-sm truncate">
+                            {profile.location}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-slate-500" />
+                        <span className="text-slate-600">
+                          Joined{" "}
+                          {profile?.joinedDate
+                            ? new Date(profile.joinedDate).toLocaleDateString()
+                            : "Recently"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Verification Status - Mobile Only (shown above Premium) */}
+            <Card
+              className={`lg:hidden mt-6 ${
+                profile?.isVerified
+                  ? "border-green-200 bg-green-50"
+                  : "border-orange-200 bg-orange-50"
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BadgeCheck
+                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-orange-600"}`}
+                  />
+                  Verification Status
+                  {!profile?.isVerified && (
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-orange-100 text-orange-700 border-orange-300"
+                    >
+                      Unverified
+                    </Badge>
+                  )}
+                  {profile?.isVerified && (
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-green-100 text-green-700 border-green-300"
+                    >
+                      Verified
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center gap-2">
+                  {(profile as any)?.paymentMethodLast4 ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/payment-methods" className="flex-1">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Payment Methods
+                    </Button>
+                  </Link>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(profile as any)?.idVerified ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/verification" className="flex-1">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
+                      <BadgeCheck className="h-4 w-4 mr-2" />
+                      Identity Verification
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Upgrade to Premium */}
+            <div className="mt-6">
+              <div className="text-center mb-4">
+                <h2 className="flex flex-wrap items-center justify-center gap-2 text-xl font-bold">
+                  <Crown className="h-6 w-6 text-teal-600" />
+                  <span>Upgrade to Premium</span>
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Get priority access, lower fees, and exclusive features to
+                  maximize your sharing experience
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ShareSwap Premium Card */}
+                <div className="relative border border-gray-200 rounded-lg p-4 bg-white">
+                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-teal-500 text-white text-xs px-3">
+                    Most Popular
+                  </Badge>
+                  <div className="text-center pt-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <Crown className="h-5 w-5 text-teal-600" />
+                      <span className="font-semibold text-lg">
+                        ShareSwap Premium
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Unlock priority access, lower fees, and exclusive features
+                    </p>
+                    <div className="mt-3">
+                      <span className="text-3xl font-bold text-teal-600">
+                        $9.99
+                      </span>
+                      <span className="text-sm text-gray-500">/month</span>
+                    </div>
+                    <p className="text-xs text-teal-600 mt-1">
+                      Save $19.89/year with annual billing
+                    </p>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-teal-600" />
+                      <span>Priority access to high-demand items</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-teal-600" />
+                      <span>50% reduction in transaction fees</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-teal-600" />
+                      <span>Early access to new features</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-teal-600" />
+                      <span>Premium customer support</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-teal-600" />
+                      <span>Advanced search filters</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-teal-600" />
+                      <span>Unlimited wishlist items</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-teal-600" />
+                      <span>Enhanced profile visibility</span>
+                    </div>
+                  </div>
+                  <Link href="/premium">
+                    <Button className="w-full mt-4 bg-teal-500 hover:bg-teal-600 text-white">
+                      Upgrade to ShareSwap Premium
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-center text-gray-500 mt-2">
+                    Or pay $99.99 annually (2 months free!)
+                  </p>
+                </div>
+
+                {/* ShareSwap Pro Card */}
+                <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                  <div className="text-center pt-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <Crown className="h-5 w-5 text-gray-600" />
+                      <span className="font-semibold text-lg">
+                        ShareSwap Pro
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Perfect for active community members
+                    </p>
+                    <div className="mt-3">
+                      <span className="text-3xl font-bold text-gray-700">
+                        $4.99
+                      </span>
+                      <span className="text-sm text-gray-500">/month</span>
+                    </div>
+                    <p className="text-xs text-teal-600 mt-1">
+                      Save $9.89/year with annual billing
+                    </p>
+                  </div>
+                  <div className="mt-4 space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 text-teal-600" />
+                      <span>25% reduction in transaction fees</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-teal-600" />
+                      <span>Advanced search filters</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-teal-600" />
+                      <span>Up to 20 wishlist items</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-teal-600" />
+                      <span>Priority customer support</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-teal-600" />
+                      <span>Extended borrowing periods</span>
+                    </div>
+                  </div>
+                  <Link href="/premium">
+                    <Button variant="outline" className="w-full mt-4">
+                      Upgrade to ShareSwap Pro
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-center text-gray-500 mt-2">
+                    Or pay $49.99 annually (2 months free!)
+                  </p>
+                </div>
+              </div>
+
+              {/* Why Go Premium? */}
+              <div className="mt-4 py-3 bg-gray-50 rounded-lg px-4">
+                <h3 className="text-lg font-bold text-center mb-3">
+                  Why Go Premium?
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
+                      <UserCheck className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <h4 className="font-semibold text-sm mb-1">
+                      Priority Access
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Get first dibs on the most popular items
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Percent className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <h4 className="font-semibold text-sm mb-1">Lower Fees</h4>
+                    <p className="text-xs text-gray-500">
+                      Reduced transaction fees on all your sharing activities
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-teal-100 rounded-full flex items-center justify-center">
+                      <Headphones className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <h4 className="font-semibold text-sm mb-1">
+                      Premium Support
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Get faster responses and dedicated support from our team
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Verification Checklist - Desktop Only (shown in sidebar) */}
+            <Card
+              id="verification-status"
+              className={`hidden lg:block ${
+                profile?.isVerified
+                  ? "border-green-200 bg-green-50"
+                  : "border-orange-200 bg-orange-50"
+              }`}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BadgeCheck
+                    className={`h-5 w-5 ${profile?.isVerified ? "text-green-600" : "text-orange-600"}`}
+                  />
+                  Verification Status
+                  {!profile?.isVerified && (
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-orange-100 text-orange-700 border-orange-300"
+                    >
+                      Unverified
+                    </Badge>
+                  )}
+                  {profile?.isVerified && (
+                    <Badge
+                      variant="outline"
+                      className="ml-auto bg-green-100 text-green-700 border-green-300"
+                    >
+                      Verified
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center gap-2">
+                  {(profile as any)?.paymentMethodLast4 ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/payment-methods" className="flex-1">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Payment Methods
+                    </Button>
+                  </Link>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(profile as any)?.idVerified ? (
+                    <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <X className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
+                  <Link href="/verification" className="flex-1">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start bg-white/80 hover:bg-white"
+                    >
+                      <BadgeCheck className="h-4 w-4 mr-2" />
+                      Identity Verification
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Community Connections */}
+            <Card style={{ backgroundColor: "#D4F7F1" }}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Community Connections
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-teal-600" />
+                  <div>
+                    <div className="text-2xl font-bold text-teal-700">
+                      {profile?.totalTransactions || 0}
+                    </div>
+                    <p className="text-sm text-slate-600">Total Transactions</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Account Statistics */}
+            <Card style={{ backgroundColor: "#D4F7F1" }}>
+              <CardHeader className="py-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="h-4 w-4 text-teal-600" />
+                  Account Statistics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">Level</span>
+                    </div>
+                    <span className="font-semibold text-teal-700">
+                      {currentLevel.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Coins className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">ShareCoins</span>
+                    </div>
+                    <span className="font-semibold text-teal-700">
+                      {Math.round(Number(profile?.shareCoins || 0))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">
+                        Completed Shares
+                      </span>
+                    </div>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.completedShares || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Heart className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">
+                        Items Borrowed
+                      </span>
+                    </div>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.itemsBorrowed || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-teal-500" />
+                      <span className="text-sm text-slate-600">Rating</span>
+                    </div>
+                    <span className="font-semibold text-teal-700">
+                      {profile?.rating || 0}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Reviews — what neighbours say about you (grouped by reviewer) */}
+            <Card style={{ backgroundColor: "#D4F7F1" }}>
+              <CardHeader className="py-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MessageSquare className="h-4 w-4 text-teal-600" />
+                  What Neighbours Say
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {ownReviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {groupReviews(ownReviews).slice(0, 5).map((group) => {
+                      const isExpanded = expandedReviewers.has(group.reviewer.id);
+                      const mostRecent = group.reviews[0];
+                      const displayName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
+                      return (
+                        <div key={group.reviewer.id} className="bg-white rounded-lg p-3 border border-teal-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-slate-700">{displayName}</span>
+                            <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-0.5">
+                                {[...Array(5)].map((_: any, i: number) => (
+                                  <Star key={i} className={`h-3 w-3 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
+                                ))}
+                              </div>
+                              <span className="text-xs text-slate-500">{group.avgRating.toFixed(1)}</span>
+                            </div>
+                          </div>
+                          {group.reviews.length > 1 && (
+                            <p className="text-xs text-teal-600 mb-1">{group.reviews.length} transactions</p>
+                          )}
+                          {mostRecent.comment && !isExpanded && (
+                            <p className="text-xs text-slate-600 italic line-clamp-2">"{mostRecent.comment}"</p>
+                          )}
+                          {isExpanded && (
+                            <div className="mt-2 space-y-2 border-t border-teal-100 pt-2">
+                              {group.reviews.map((r: any) => (
+                                <div key={r.id} className="bg-teal-50/50 rounded p-2">
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    <div className="flex items-center gap-0.5">
+                                      {[...Array(5)].map((_: any, i: number) => (
+                                        <Star key={i} className={`h-2.5 w-2.5 ${i < r.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
+                                      ))}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                  </div>
+                                  {r.comment && <p className="text-xs text-slate-600 italic">"{r.comment}"</p>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {group.reviews.length > 1 && (
+                            <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-1.5 flex items-center gap-0.5 text-[11px] text-teal-600 hover:text-teal-700 font-medium">
+                              {isExpanded ? <><ChevronUp className="h-3 w-3" /> Hide</> : <><ChevronDown className="h-3 w-3" /> View all {group.reviews.length} reviews</>}
+                            </button>
+                          )}
+                          {group.reviews.length === 1 && (
+                            <p className="text-xs text-slate-400 mt-1">{new Date(mostRecent.createdAt).toLocaleDateString()}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {groupReviews(ownReviews).length > 5 && (
+                      <p className="text-xs text-center text-teal-600 font-medium">
+                        +{groupReviews(ownReviews).length - 5} more reviewers on your Achievements page
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-3">
+                    <MessageSquare className="h-6 w-6 text-slate-300 mx-auto mb-1.5" />
+                    <p className="text-xs text-slate-500">No reviews yet. Complete transactions to receive feedback from neighbours!</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Location Alerts */}
+            {locationAlerts && locationAlerts.length > 0 && (
+              <Card style={{ backgroundColor: "#D4F7F1" }}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-teal-600" />
+                    Location Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {locationAlerts.slice(0, 3).map((alert) => (
+                      <div
+                        key={alert.id}
+                        className="flex items-center justify-between p-2 bg-teal-50 rounded"
+                      >
+                        <div>
+                          <div className="font-medium text-sm">
+                            {alert.keyword}
+                          </div>
+                          <div className="text-xs text-slate-600">
+                            {alert.location}
+                          </div>
+                        </div>
+                        <Badge
+                          variant={alert.isActive ? "default" : "secondary"}
+                        >
+                          {alert.isActive ? "Active" : "Paused"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Photo Crop Dialog */}
+        <Dialog
+          open={showCropDialog}
+          onOpenChange={(open) => {
+            if (!open) handleCropCancel();
+            setShowCropDialog(open);
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Crop Your Photo</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center py-4">
+              {imageSrc && (
+                <ReactCrop
+                  crop={crop}
+                  onChange={(_, percentCrop) => setCrop(percentCrop)}
+                  aspect={1}
+                  circularCrop
+                >
+                  <img
+                    ref={imgRef}
+                    src={imageSrc}
+                    alt="Crop preview"
+                    onLoad={onImageLoad}
+                    style={{ maxHeight: "400px", maxWidth: "100%" }}
+                  />
+                </ReactCrop>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={handleCropCancel}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCropConfirm}
+                disabled={profilePhotoMutation.isPending}
+              >
+                {profilePhotoMutation.isPending
+                  ? "Uploading..."
+                  : "Upload Photo"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </main>
+    </div>
+  );
 }

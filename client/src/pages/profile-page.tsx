@@ -141,6 +141,10 @@ export default function ProfilePage() {
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const itemsCarouselRef = useRef<HTMLDivElement>(null);
+  const reviewsCarouselRef = useRef<HTMLDivElement>(null);
+  const [activeItemIdx, setActiveItemIdx] = useState(0);
+  const [activeReviewIdx, setActiveReviewIdx] = useState(0);
 
   // Crop state
   const [showCropDialog, setShowCropDialog] = useState(false);
@@ -726,7 +730,15 @@ export default function ProfilePage() {
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Shared Items</h2>
             {userItems.length > 0 ? (
-              <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0 md:snap-none">
+              <div
+                ref={itemsCarouselRef}
+                onScroll={() => {
+                  const el = itemsCarouselRef.current;
+                  if (!el) return;
+                  const idx = Math.round(el.scrollLeft / (el.scrollWidth / userItems.length));
+                  setActiveItemIdx(Math.min(idx, userItems.length - 1));
+                }}
+                className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-3 md:gap-6 md:overflow-x-visible md:pb-0 md:mx-0 md:px-0 md:snap-none">
                 {userItems.map((item) => (
                   <div key={item.id} className="w-[78vw] flex-shrink-0 snap-start md:w-auto h-full">
                     <Card className={`hover:shadow-lg transition-shadow bg-white rounded-xl overflow-hidden h-full flex flex-col ${item.isGift ? "border-pink-100" : ""}`}>
@@ -844,13 +856,38 @@ export default function ProfilePage() {
                 No items shared yet
               </Card>
             )}
+            {/* Dot indicators — mobile only */}
+            {userItems.length > 1 && (
+              <div className="flex justify-center items-center gap-1.5 mt-3 md:hidden">
+                {userItems.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      const el = itemsCarouselRef.current;
+                      if (!el) return;
+                      el.scrollTo({ left: i * (el.scrollWidth / userItems.length), behavior: "smooth" });
+                    }}
+                    className={`h-2 rounded-full transition-all duration-300 ${i === activeItemIdx ? "w-4 bg-teal-500" : "w-2 bg-gray-300"}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Reviews — grouped by reviewer */}
           <div>
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
             {userReviews.length > 0 ? (
-              <div className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0 md:snap-none md:gap-4">
+              <div
+                ref={reviewsCarouselRef}
+                onScroll={() => {
+                  const el = reviewsCarouselRef.current;
+                  if (!el) return;
+                  const count = groupReviews(userReviews).length;
+                  const idx = Math.round(el.scrollLeft / (el.scrollWidth / count));
+                  setActiveReviewIdx(Math.min(idx, count - 1));
+                }}
+                className="flex gap-3 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:flex-col md:overflow-x-visible md:pb-0 md:mx-0 md:px-0 md:snap-none md:gap-4">
                 {groupReviews(userReviews).map((group) => {
                   const isExpanded = expandedReviewers.has(group.reviewer.id);
                   const mostRecent = group.reviews[0];
@@ -927,6 +964,23 @@ export default function ProfilePage() {
               <Card className="p-6 text-center text-muted-foreground">
                 No reviews yet
               </Card>
+            )}
+            {/* Dot indicators — mobile only */}
+            {groupReviews(userReviews).length > 1 && (
+              <div className="flex justify-center items-center gap-1.5 mt-3 md:hidden">
+                {groupReviews(userReviews).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      const el = reviewsCarouselRef.current;
+                      if (!el) return;
+                      const count = groupReviews(userReviews).length;
+                      el.scrollTo({ left: i * (el.scrollWidth / count), behavior: "smooth" });
+                    }}
+                    className={`h-2 rounded-full transition-all duration-300 ${i === activeReviewIdx ? "w-4 bg-teal-500" : "w-2 bg-gray-300"}`}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </main>

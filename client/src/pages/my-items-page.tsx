@@ -356,21 +356,21 @@ export default function MyItemsPage() {
                     {/* Tier Info */}
                     {(item as any).tier && (
                       <TooltipProvider>
-                        <div className="p-4 bg-white rounded-xl border border-gray-200 mb-2">
-                          <div className="inline-block bg-teal-50 text-teal-700 text-sm font-medium px-3 py-1 rounded-lg mb-2">
+                        <div className="px-3 py-1.5 bg-white rounded-lg border border-gray-200 mb-2 flex items-center gap-2">
+                          <div className="inline-block bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-md shrink-0">
                             {TIER_NAMES[(item as any).tier] || `Tier ${(item as any).tier}`}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Coins className="h-5 w-5 text-teal-600 shrink-0" />
-                            <span className="font-bold text-gray-900 text-lg leading-none">
+                          <div className="flex items-center gap-1.5">
+                            <Coins className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                            <span className="font-bold text-gray-900 text-sm leading-none">
                               {TIER_SHARECOINS[(item as any).tier] || 5}
                             </span>
-                            <span className="text-sm text-gray-600">ShareCoins/week</span>
+                            <span className="text-xs text-gray-500">SC/week</span>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1 cursor-help ml-1">
-                                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                                  <span className="text-xs text-amber-500 font-medium">AI valued</span>
+                                <div className="flex items-center gap-0.5 cursor-help ml-0.5">
+                                  <Sparkles className="h-3 w-3 text-amber-400" />
+                                  <span className="text-xs text-amber-500 font-medium">AI</span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-xs">

@@ -540,12 +540,12 @@ export default function ProfilePage() {
                       displayProfile.username.split("@")[0]}
                   </p>
                   {(displayProfile as any).activeStatus && (
-                    <p className="text-xs text-slate-500 mb-0.5">
+                    <p className="text-[10px] text-slate-500 mb-0.5 leading-tight">
                       {(displayProfile as any).activeStatus}
                     </p>
                   )}
                   {(displayProfile as any).responseTime && (
-                    <p className="text-xs text-slate-500 mb-2">
+                    <p className="text-[10px] text-slate-500 mb-2 leading-tight">
                       {(displayProfile as any).responseTime}
                     </p>
                   )}
@@ -569,19 +569,17 @@ export default function ProfilePage() {
               )}
 
               {/* Reviews + shares — full-width, centered in the banner */}
-              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Star className="h-5 w-5 text-yellow-400" />
-                  <span>
-                    {displayProfile.averageRating.toFixed(1)} (
-                    {displayProfile.reviewCount} reviews)
+              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-xs text-muted-foreground">
+                <div className="flex items-start gap-1">
+                  <Star className="h-3.5 w-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <span className="leading-tight">
+                    {displayProfile.averageRating.toFixed(1)} ({displayProfile.reviewCount} reviews)
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Package className="h-5 w-5 text-slate-500" />
-                  <span>
-                    {(displayProfile as any).completedShares ?? 0} completed
-                    shares
+                <div className="flex items-start gap-1">
+                  <Package className="h-3.5 w-3.5 text-slate-500 mt-0.5 flex-shrink-0" />
+                  <span className="leading-tight">
+                    {(displayProfile as any).completedShares ?? 0} completed shares
                   </span>
                 </div>
               </div>

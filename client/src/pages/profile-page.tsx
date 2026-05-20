@@ -780,14 +780,13 @@ export default function ProfilePage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-auto">
+                        <div className="flex gap-1 mt-auto">
                           {item.isGift ? (
                             <Button
                               size="sm"
-                              className="w-full bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 whitespace-nowrap"
+                              className="flex-1 bg-pink-500 hover:bg-pink-600 text-white rounded-lg text-[10px] h-6 px-1"
                               onClick={() => navigate(`/items/${item.id}`)}
                             >
-                              <Gift className="h-2.5 w-2.5 mr-0.5" />
                               Claim Gift
                             </Button>
                           ) : (
@@ -795,40 +794,37 @@ export default function ProfilePage() {
                               {item.isLendable && (
                                 <Button
                                   size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  className="flex-1 text-white rounded-lg text-[10px] px-1 h-6"
                                   style={{ backgroundColor: "#0DCEA1" }}
                                   onClick={() => navigate(`/items/${item.id}`)}
                                 >
-                                  <HandHeart className="h-2.5 w-2.5 mr-0.5" />
-                                  Borrow It
+                                  Borrow
                                 </Button>
                               )}
                               {item.isRentable && (
                                 <Button
                                   size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  className="flex-1 text-white rounded-lg text-[10px] px-1 h-6"
                                   style={{ backgroundColor: "#0DCEA1" }}
                                   onClick={() => navigate(`/items/${item.id}`)}
                                 >
-                                  <DollarSign className="h-2.5 w-2.5 mr-0.5" />
-                                  Rent It
+                                  Rent
                                 </Button>
                               )}
                               {item.isSwappable && (
                                 <Button
                                   size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  className="flex-1 text-white rounded-lg text-[10px] px-1 h-6"
                                   style={{ backgroundColor: "#0DCEA1" }}
                                   onClick={() => navigate(`/items/${item.id}`)}
                                 >
-                                  <ArrowLeftRight className="h-2.5 w-2.5 mr-0.5" />
-                                  Swap It
+                                  Swap
                                 </Button>
                               )}
                               {!item.isLendable && !item.isRentable && !item.isSwappable && (
                                 <Button
                                   size="sm"
-                                  className="text-white rounded-lg text-[10px] px-1.5 h-6 whitespace-nowrap"
+                                  className="flex-1 text-white rounded-lg text-[10px] px-1 h-6"
                                   style={{ backgroundColor: "#0DCEA1" }}
                                   onClick={() => navigate(`/items/${item.id}`)}
                                 >

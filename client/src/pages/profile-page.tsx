@@ -496,8 +496,6 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-[#F3F4F6] overflow-x-hidden">
         <Navbar />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
-          <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
           <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
             <CardHeader className="bg-transparent">
               <div className="flex items-start gap-4">
@@ -913,125 +911,6 @@ export default function ProfilePage() {
               <Card className="p-6 text-center text-muted-foreground">No reviews yet</Card>
             )}
           </div>
-
-          </div>{/* end lg:col-span-2 */}
-
-          {/* ── Sidebar ── */}
-          <div className="space-y-4">
-
-            {/* Verification Status — own profile only */}
-            {isOwnProfile && (
-              <Card className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-teal-600" />
-                    <h3 className="font-semibold text-sm">Verification Status</h3>
-                  </div>
-                  {(displayProfile as any).isVerified ? (
-                    <span className="text-[10px] bg-teal-100 text-teal-700 font-semibold px-2 py-0.5 rounded-full">Verified</span>
-                  ) : (
-                    <span className="text-[10px] bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Unverified</span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm p-2 bg-gray-50 rounded-lg">
-                    <Check className={`h-3.5 w-3.5 flex-shrink-0 ${(displayProfile as any).hasPaymentMethod ? "text-teal-500" : "text-gray-300"}`} />
-                    <CreditCard className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                    <span className="text-slate-700">Payment Methods</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm p-2 bg-gray-50 rounded-lg">
-                    <Check className={`h-3.5 w-3.5 flex-shrink-0 ${(displayProfile as any).isIdVerified ? "text-teal-500" : "text-gray-300"}`} />
-                    <BadgeCheck className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                    <span className="text-slate-700">Identity Verification</span>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* Community Connections */}
-            <Card className="p-4" style={{ backgroundColor: "#D4F7F1" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="h-4 w-4 text-teal-600" />
-                <h3 className="font-semibold text-sm">Community Connections</h3>
-              </div>
-              <div className="text-center py-1">
-                <p className="text-3xl font-bold text-teal-700">{(displayProfile as any).totalTransactions ?? 0}</p>
-                <p className="text-xs text-slate-500 mt-0.5">Total Transactions</p>
-              </div>
-            </Card>
-
-            {/* Account Statistics */}
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Award className="h-4 w-4 text-teal-600" />
-                <h3 className="font-semibold text-sm">Account Statistics</h3>
-              </div>
-              <div className="space-y-2 text-sm">
-                {(() => {
-                  const score = (displayProfile as any).trustScore ?? 0;
-                  const level = [...LEVELS].reverse().find(l => score >= l.minScore) ?? LEVELS[0];
-                  return (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-slate-600"><Crown className="h-3.5 w-3.5 text-amber-500" /><span>Level</span></div>
-                      <span className="font-semibold text-teal-600">{level.name}</span>
-                    </div>
-                  );
-                })()}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-600"><Coins className="h-3.5 w-3.5 text-teal-500" /><span>ShareCoins</span></div>
-                  <span className="font-semibold">{(displayProfile as any).shareCoins ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-600"><Package className="h-3.5 w-3.5 text-slate-400" /><span>Completed Shares</span></div>
-                  <span className="font-semibold">{(displayProfile as any).completedShares ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-600"><HandHeart className="h-3.5 w-3.5 text-teal-500" /><span>Items Borrowed</span></div>
-                  <span className="font-semibold">{(displayProfile as any).itemsBorrowed ?? 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-slate-600"><Star className="h-3.5 w-3.5 text-yellow-400" /><span>Rating</span></div>
-                  <span className="font-semibold">{displayProfile.averageRating > 0 ? displayProfile.averageRating.toFixed(1) : 0}</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* What Neighbours Say */}
-            {displayReviews.length > 0 && (
-              <Card className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <MessageSquare className="h-4 w-4 text-teal-600" />
-                  <h3 className="font-semibold text-sm">What Neighbours Say</h3>
-                </div>
-                <div className="space-y-3">
-                  {groupReviews(displayReviews).slice(0, 3).map((group) => {
-                    const rName = group.reviewer.displayName || group.reviewer.handle || group.reviewer.username.split("@")[0];
-                    const isExp = expandedReviewers.has(group.reviewer.id);
-                    return (
-                      <div key={group.reviewer.id} className="border-b border-gray-100 last:border-0 pb-3 last:pb-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="text-sm font-medium text-teal-600 hover:text-teal-700 truncate">{rName}</Link>
-                          <div className="flex items-center gap-0.5 flex-shrink-0 ml-2">
-                            {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
-                            <span className="text-xs font-medium ml-1">{group.avgRating.toFixed(1)}</span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-teal-600 mb-1">{group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</p>
-                        {group.reviews[0]?.comment && !isExp && <p className="text-xs text-slate-500 italic line-clamp-2">"{group.reviews[0].comment}"</p>}
-                        {group.reviews.length > 1 && (
-                          <button onClick={() => toggleReviewer(group.reviewer.id)} className="mt-1 text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-0.5">
-                            {isExp ? <><ChevronUp className="h-3 w-3" />Hide</> : <><ChevronDown className="h-3 w-3" />View all {group.reviews.length} reviews</>}
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            )}
-
-          </div>{/* end sidebar */}
-          </div>{/* end grid */}
 
           {/* Edit Profile Dialog — own profile only */}
           {isOwnProfile && (

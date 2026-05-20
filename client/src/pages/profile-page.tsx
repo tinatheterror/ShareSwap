@@ -564,12 +564,12 @@ export default function ProfilePage() {
                       publicProfile.username.split("@")[0]}
                   </p>
                   {(publicProfile as any).activeStatus && (
-                    <p className="text-xs text-slate-500 mb-0.5">
+                    <p className="text-[10px] text-slate-400 mb-0.5">
                       {(publicProfile as any).activeStatus}
                     </p>
                   )}
                   {(publicProfile as any).responseTime && (
-                    <p className="text-xs text-slate-500 mb-2">
+                    <p className="text-[10px] text-slate-400 mb-2">
                       {(publicProfile as any).responseTime}
                     </p>
                   )}
@@ -578,15 +578,15 @@ export default function ProfilePage() {
 
               {/* Reviews + shares — full-width, centered in the banner */}
               <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Star className="h-5 w-5 text-yellow-400" />
+                <div className="flex items-start gap-1.5">
+                  <Star className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-px" />
                   <span>
                     {publicProfile.averageRating.toFixed(1)} (
                     {publicProfile.reviewCount} reviews)
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Package className="h-5 w-5 text-slate-500" />
+                <div className="flex items-start gap-1.5">
+                  <Package className="h-5 w-5 text-slate-500 flex-shrink-0 mt-px" />
                   <span>
                     {(publicProfile as any).completedShares ?? 0} completed
                     shares

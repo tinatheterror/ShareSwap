@@ -494,26 +494,50 @@ export default function ProfilePage() {
         <Navbar />
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 overflow-x-hidden">
           <Card className="mb-6" style={{ backgroundColor: "#D4F7F1" }}>
-            <CardHeader className="bg-transparent">
-              <div className="flex items-start gap-4">
-                <div className="w-20 h-20 rounded-full overflow-hidden flex-shrink-0">
-                  {(publicProfile as any).profilePhoto ? (
-                    <img
-                      src={(publicProfile as any).profilePhoto}
-                      alt={
-                        (publicProfile as any).handle || publicProfile.username
-                      }
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white text-3xl font-bold">
-                      {(
-                        (publicProfile as any).displayName ||
-                        (publicProfile as any).handle ||
-                        publicProfile.username
-                      )
-                        .charAt(0)
-                        .toUpperCase()}
+            <CardHeader className="bg-transparent relative">
+              {/* Edit Profile button — top-left corner */}
+              {isViewingOwnPublicProfile && (
+                <div className="absolute top-3 left-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { navigate("/profile"); setIsEditing(true); }}
+                    className="justify-start bg-white/80 hover:bg-white h-7 text-xs px-2"
+                  >
+                    <Edit3 className="h-3 w-3 mr-1" />
+                    Edit Profile
+                  </Button>
+                </div>
+              )}
+
+              <div className={`flex items-start gap-4 ${isViewingOwnPublicProfile ? "mt-7" : ""}`}>
+                <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                  <div className="w-20 h-20 rounded-full overflow-hidden">
+                    {(publicProfile as any).profilePhoto ? (
+                      <img
+                        src={(publicProfile as any).profilePhoto}
+                        alt={
+                          (publicProfile as any).handle || publicProfile.username
+                        }
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-teal-600 flex items-center justify-center text-white text-3xl font-bold">
+                        {(
+                          (publicProfile as any).displayName ||
+                          (publicProfile as any).handle ||
+                          publicProfile.username
+                        )
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  {isViewingOwnPublicProfile && !(publicProfile as any).profilePhoto && (
+                    <div className="flex items-center gap-0.5 text-[10px] text-teal-700 font-medium whitespace-nowrap">
+                      <span>+1</span>
+                      <Coins className="h-2.5 w-2.5 text-teal-600" />
+                      <span>· Add photo</span>
                     </div>
                   )}
                 </div>
@@ -548,21 +572,6 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
-
-              {/* Edit Profile button — shown when viewing your own public profile */}
-              {isViewingOwnPublicProfile && (
-                <div className="mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { navigate("/profile"); setIsEditing(true); }}
-                    className="justify-start"
-                  >
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
-                </div>
-              )}
 
               {/* Reviews + shares — full-width, centered in the banner */}
               <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">

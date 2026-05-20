@@ -61,6 +61,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
 } from "lucide-react";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
@@ -149,14 +150,23 @@ export default function ProfilePage() {
 
   const [, navigate] = useLocation();
 
+  // Auto-enter edit mode when redirected from public profile with ?edit=true
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("edit=true")) {
+      setIsEditing(true);
+      window.history.replaceState(null, "", "/profile");
+    }
+  }, []);
+
   // Extract username/handle from URL path
   const pathParts = location.split("/");
   const usernameFromUrl = pathParts[2]; // /profile/:username or /profile/:handle
-  const isOwnProfile =
-    !usernameFromUrl ||
-    (user &&
-      (usernameFromUrl === user.username ||
-        usernameFromUrl === (user as any).handle));
+  const isOwnProfile = !usernameFromUrl;
+  const isViewingOwnPublicProfile =
+    !!usernameFromUrl &&
+    !!user &&
+    (usernameFromUrl === user.username ||
+      usernameFromUrl === (user as any).handle);
 
   // Fetch user profile by username if viewing another user's profile
   const { data: publicProfile, isLoading: isLoadingPublicProfile } =
@@ -539,6 +549,21 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* Edit Profile button — shown when viewing your own public profile */}
+              {isViewingOwnPublicProfile && (
+                <div className="mt-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/profile?edit=true")}
+                    className="justify-start"
+                  >
+                    <Edit3 className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                </div>
+              )}
+
               {/* Reviews + shares — full-width, centered in the banner */}
               <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
@@ -836,116 +861,33 @@ export default function ProfilePage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Main Profile Card */}
             <Card className="border-2 border-teal-100 overflow-hidden">
-              <CardHeader className="bg-[#D4F7F1]">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                      <Avatar className="h-16 w-16 border-2 border-white shadow-md">
-                        <AvatarImage
-                          src={(user as any)?.profilePhoto}
-                          alt={
-                            (user as any).displayName ||
-                            (user as any).handle ||
-                            user.username
-                          }
-                        />
-                        <AvatarFallback className="bg-teal-600 text-white text-2xl font-bold">
-                          {(
-                            (user as any).displayName ||
-                            (user as any).handle ||
-                            user.username
-                          )
-                            .charAt(0)
-                            .toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      {!(user as any)?.profilePhoto && (
-                        <button
-                          onClick={() => setIsEditing(true)}
-                          className="flex items-center gap-0.5 text-[10px] text-amber-600 hover:text-amber-700 whitespace-nowrap"
-                        >
-                          <Coins className="h-2.5 w-2.5" />
-                          <span>+1</span>
-                          <span>· Add photo</span>
-                        </button>
-                      )}
+              <Link href={`/profile/${(user as any).handle || user.username}`}>
+                <div className="flex items-center gap-3 p-4 bg-[#D4F7F1] hover:bg-[#C0EFE6] cursor-pointer transition-colors">
+                  <Avatar className="h-12 w-12 border-2 border-white shadow-md flex-shrink-0">
+                    <AvatarImage
+                      src={(user as any)?.profilePhoto}
+                      alt={(user as any).displayName || (user as any).handle || user.username}
+                    />
+                    <AvatarFallback className="bg-teal-600 text-white text-xl font-bold">
+                      {((user as any).displayName || (user as any).handle || user.username)
+                        .charAt(0)
+                        .toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-800 truncate">
+                        {(user as any).displayName || (user as any).handle || user.username}
+                      </span>
+                      <UserBadges isVerified={profile?.isVerified || false} size="sm" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <CardTitle className="text-xl sm:text-2xl text-slate-800 truncate">
-                          {(user as any).displayName ||
-                            (user as any).handle ||
-                            user.username}
-                        </CardTitle>
-                        <UserBadges
-                          isVerified={profile?.isVerified || false}
-                          reputationLevel="Newcomer"
-                          size="sm"
-                        />
-                      </div>
-                      <p className="text-slate-600 text-sm sm:text-base truncate">
-                        @{(user as any).handle || user.username.split("@")[0]}
-                      </p>
-                      {(user as any).activeStatus && (
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {(user as any).activeStatus}
-                        </p>
-                      )}
-                      {(user as any).responseTime && (
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {(user as any).responseTime}
-                        </p>
-                      )}
-                      {profile?.subscription && (
-                        <Badge variant="secondary" className="mt-1">
-                          {profile.subscription}
-                        </Badge>
-                      )}
-                    </div>
+                    <p className="text-sm text-slate-500 truncate">
+                      @{(user as any).handle || user.username.split("@")[0]}
+                    </p>
                   </div>
-                  <div className="flex flex-col gap-2 sm:flex-shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={isEditing ? handleCancelEdit : handleEditProfile}
-                      disabled={updateProfileMutation.isPending}
-                    >
-                      {isEditing ? (
-                        <>
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
-                        </>
-                      ) : (
-                        <>
-                          <Edit3 className="h-4 w-4 mr-2" />
-                          Edit Profile
-                        </>
-                      )}
-                    </Button>
-                    <Link href="/my-balance" className="w-full">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                      >
-                        <Wallet className="h-4 w-4 mr-2" />
-                        My Balance
-                      </Button>
-                    </Link>
-                    <Link href="/settings" className="w-full">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Account Settings
-                      </Button>
-                    </Link>
-                  </div>
+                  <ChevronRight className="h-5 w-5 text-slate-400 flex-shrink-0" />
                 </div>
-              </CardHeader>
+              </Link>
               <CardContent className="p-6">
                 {isEditing ? (
                   <div className="space-y-4">
@@ -1125,6 +1067,22 @@ export default function ProfilePage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* My Balance + Account Settings — Mobile Only */}
+            <div className="lg:hidden flex gap-2 mt-6">
+              <Link href="/my-balance" className="flex-1">
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Wallet className="h-4 w-4 mr-2" />
+                  My Balance
+                </Button>
+              </Link>
+              <Link href="/settings" className="flex-1">
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Account Settings
+                </Button>
+              </Link>
+            </div>
 
             {/* Verification Status - Mobile Only (shown above Premium) */}
             <Card
@@ -1372,6 +1330,22 @@ export default function ProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* My Balance + Account Settings — Desktop Sidebar */}
+            <div className="hidden lg:flex flex-col gap-2">
+              <Link href="/my-balance" className="w-full">
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Wallet className="h-4 w-4 mr-2" />
+                  My Balance
+                </Button>
+              </Link>
+              <Link href="/settings" className="w-full">
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Account Settings
+                </Button>
+              </Link>
+            </div>
+
             {/* Verification Checklist - Desktop Only (shown in sidebar) */}
             <Card
               id="verification-status"

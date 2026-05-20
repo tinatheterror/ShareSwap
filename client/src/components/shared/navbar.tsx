@@ -1,5 +1,4 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -131,31 +130,11 @@ function playNotificationSound() {
   } catch {}
 }
 
-const NOTIF_TITLES: Record<string, string> = {
-  item_request:               "New request",
-  request_accepted:           "Request accepted",
-  request_declined:           "Request declined",
-  request_cancelled:          "Request cancelled",
-  sharecoin_earned:           "ShareCoins earned",
-  trust_score_changed:        "Trust score updated",
-  return_reminder:            "Return reminder",
-  return_overdue:             "Return overdue ⚠️",
-  dispute_opened:             "Dispute opened",
-  dispute_resolved:           "Dispute resolved",
-  terms_counter_proposed:     "Counter-proposal received",
-  item_returned:              "Item returned",
-  payment_received:           "Payment received",
-  security_deposit_released:  "Deposit released",
-  milestone_achieved:         "Milestone reached 🎉",
-  badge_earned:               "New badge earned",
-  level_up:                   "Level up! 🎉",
-};
 
 function NotificationBell() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
-  const { toast } = useToast();
   const prevNotifIdsRef = useRef<Set<number>>(new Set());
   const initializedRef = useRef(false);
 
@@ -165,7 +144,7 @@ function NotificationBell() {
     refetchInterval: 30000,
   });
 
-  // Play a sound + show a toast when new notifications arrive.
+  // Play a sound when new notifications arrive.
   useEffect(() => {
     if (!allNotifications.length) return;
     const currentIds = new Set(allNotifications.map((n) => n.id));
@@ -180,13 +159,6 @@ function NotificationBell() {
     const newNotifs = allNotifications.filter((n) => !prevNotifIdsRef.current.has(n.id));
     if (newNotifs.length > 0) {
       playNotificationSound();
-      newNotifs.forEach((n) => {
-        toast({
-          title: NOTIF_TITLES[n.type] ?? "New notification",
-          description: n.message,
-          duration: 6000,
-        });
-      });
       if (newNotifs.some((n) => n.type === "sharecoin_earned")) {
         queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       }

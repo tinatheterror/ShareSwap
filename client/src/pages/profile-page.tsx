@@ -1175,7 +1175,7 @@ export default function ProfilePage() {
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <BadgeCheck
                         className={`h-5 w-5 flex-shrink-0 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}
@@ -1494,7 +1494,7 @@ export default function ProfilePage() {
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <BadgeCheck
                         className={`h-5 w-5 flex-shrink-0 ${profile?.isVerified ? "text-green-600" : "text-amber-600"}`}

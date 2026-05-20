@@ -572,7 +572,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-xs text-muted-foreground">
                 <div className="flex items-start gap-1">
                   <Star className="h-3.5 w-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <span className="leading-tight">
+                  <span className="leading-tight whitespace-nowrap">
                     {displayProfile.averageRating.toFixed(1)} ({displayProfile.reviewCount} reviews)
                   </span>
                 </div>

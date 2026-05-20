@@ -1069,7 +1069,7 @@ export default function ProfilePage() {
             </Card>
 
             {/* My Balance + Account Settings — Mobile Only */}
-            <div className="lg:hidden flex gap-2 mt-6">
+            <div className="lg:hidden flex flex-col gap-2 mt-6">
               <Link href="/my-balance" className="flex-1">
                 <Button variant="outline" size="sm" className="w-full justify-start">
                   <Wallet className="h-4 w-4 mr-2" />

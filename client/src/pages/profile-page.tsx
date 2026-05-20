@@ -573,7 +573,7 @@ export default function ProfilePage() {
                 <div className="flex items-start gap-1">
                   <Star className="h-3.5 w-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
                   <span className="leading-tight">
-                    {displayProfile.averageRating.toFixed(1)} ({displayProfile.reviewCount} reviews)
+                    {displayProfile.averageRating.toFixed(1)}<br />({displayProfile.reviewCount} reviews)
                   </span>
                 </div>
                 <div className="flex items-start gap-1">

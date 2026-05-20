@@ -554,14 +554,14 @@ export default function ProfilePage() {
 
               {/* Edit Profile / Settings — own profile only */}
               {isOwnProfile && (
-                <div className="flex gap-2 mt-3">
-                  <Button size="sm" variant="outline" className="bg-white/80 hover:bg-white" onClick={handleEditProfile}>
-                    <Edit3 className="h-3.5 w-3.5 mr-1.5" />
+                <div className="flex gap-1.5 mt-3 flex-wrap">
+                  <Button size="sm" variant="outline" className="bg-white/80 hover:bg-white text-xs px-2 h-7" onClick={handleEditProfile}>
+                    <Edit3 className="h-3 w-3 mr-1" />
                     Edit Profile
                   </Button>
                   <Link href="/settings">
-                    <Button size="sm" variant="outline" className="bg-white/80 hover:bg-white">
-                      <Settings className="h-3.5 w-3.5 mr-1.5" />
+                    <Button size="sm" variant="outline" className="bg-white/80 hover:bg-white text-xs px-2 h-7">
+                      <Settings className="h-3 w-3 mr-1" />
                       Settings
                     </Button>
                   </Link>
@@ -803,12 +803,12 @@ export default function ProfilePage() {
                               <Link href={`/profile/${group.reviewer.handle || group.reviewer.username}`} className="font-medium text-teal-600 hover:text-teal-700 cursor-pointer">{rDisplayName}</Link>
                               <UserBadges isVerified={group.reviewer.isVerified} reputationLevel={group.reviewer.reputationLevel} size="sm" />
                             </div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="flex items-center gap-0.5">
-                                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
+                            <div className="flex items-center gap-1 mb-1 flex-nowrap">
+                              <div className="flex items-center gap-0.5 flex-shrink-0">
+                                {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3 w-3 ${i < Math.round(group.avgRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}
                               </div>
-                              <span className="text-sm font-medium">{group.avgRating.toFixed(1)}</span>
-                              <span className="text-xs text-muted-foreground">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
+                              <span className="text-xs font-semibold flex-shrink-0">{group.avgRating.toFixed(1)}</span>
+                              <span className="text-[10px] text-muted-foreground flex-shrink-0">· {group.reviews.length} transaction{group.reviews.length !== 1 ? "s" : ""}</span>
                             </div>
                             {mostRecent.comment && !isExpanded && <p className="text-sm text-muted-foreground italic line-clamp-2">"{mostRecent.comment}"</p>}
                             {isExpanded && (

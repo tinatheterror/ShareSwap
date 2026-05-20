@@ -42,6 +42,9 @@ import {
   Star,
   DollarSign,
   ChevronRight,
+  Crown,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 import { Navbar } from "@/components/shared/navbar";
 
@@ -404,6 +407,80 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </section>
+
+        {/* ── Premium ── */}
+        <section className="mb-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2 px-1">Membership</h2>
+          {(user as any)?.isPremium ? (
+            <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Crown className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900">ShareSwap Premium</p>
+                      <p className="text-xs text-amber-600">Active subscription</p>
+                    </div>
+                  </div>
+                  <Badge className="bg-amber-100 text-amber-700 border-amber-200">Active</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {[
+                    { icon: <Zap className="h-3.5 w-3.5" />, label: "Unlimited SmartScans" },
+                    { icon: <Sparkles className="h-3.5 w-3.5" />, label: "AI value estimates" },
+                    { icon: <Star className="h-3.5 w-3.5" />, label: "Priority access" },
+                    { icon: <TrendingUp className="h-3.5 w-3.5" />, label: "Lower fees" },
+                  ].map(({ icon, label }) => (
+                    <div key={label} className="flex items-center gap-1.5 text-amber-700">
+                      {icon}
+                      <span className="text-xs">{label}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/premium">
+                  <Button variant="outline" size="sm" className="w-full border-amber-300 text-amber-700 hover:bg-amber-100 h-8 text-xs">
+                    Manage Subscription <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-teal-100 overflow-hidden">
+              <div className="h-1 w-full" style={{ background: `linear-gradient(to right, ${TEAL}, #0aab84)` }} />
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: `${TEAL}18` }}>
+                    <Crown className="h-5 w-5" style={{ color: TEAL }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Upgrade to Premium</p>
+                    <p className="text-xs text-gray-500">Unlock exclusive features & benefits</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[
+                    { icon: <Zap className="h-3.5 w-3.5" />, label: "Unlimited SmartScans" },
+                    { icon: <Sparkles className="h-3.5 w-3.5" />, label: "AI value estimates" },
+                    { icon: <Star className="h-3.5 w-3.5" />, label: "Priority item access" },
+                    { icon: <TrendingUp className="h-3.5 w-3.5" />, label: "Lower fees" },
+                  ].map(({ icon, label }) => (
+                    <div key={label} className="flex items-center gap-1.5 text-gray-600">
+                      <span style={{ color: TEAL }}>{icon}</span>
+                      <span className="text-xs">{label}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/premium">
+                  <Button size="sm" className="w-full h-8 text-xs text-white font-medium" style={{ backgroundColor: TEAL }}>
+                    View Premium Plans <ChevronRight className="h-3 w-3 ml-1" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
         </section>
 
         {/* ── Settings ── */}

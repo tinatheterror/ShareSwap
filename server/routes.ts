@@ -11256,13 +11256,17 @@ Respond with ONLY the category name, nothing else.`
 
     // Notify the reviewed user immediately
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-    await db.insert(notifications).values({
+    const [reviewNotif] = await db.insert(notifications).values({
       userId: reviewedUserId,
       type: "new_review_received",
       title: `New ${rating}-star review`,
       message: `${req.user.username} left you a ${rating}-star review ${stars}${comment ? `: "${comment.slice(0, 80)}${comment.length > 80 ? '…' : ''}"` : '.'}`,
       isRead: false,
-    });
+    }).returning();
+    const reviewedUserWs = connectedClients.get(reviewedUserId);
+    if (reviewedUserWs?.readyState === WebSocket.OPEN) {
+      reviewedUserWs.send(JSON.stringify({ type: "new_notification", notification: reviewNotif }));
+    }
 
     // --- Compute ALL points upfront so the notification and level-up check are accurate ---
 
@@ -11349,13 +11353,17 @@ Respond with ONLY the category name, nothing else.`
       if (reviewPoints > 0) breakdownParts.push(`${reviewPoints} from ${rating}-star rating`);
       if (feedbackTagPoints > 0) breakdownParts.push(`${feedbackTagPoints} from ${positiveTagsAwarded.length} positive tag${positiveTagsAwarded.length !== 1 ? 's' : ''}`);
 
-      await db.insert(notifications).values({
+      const [trustNotif] = await db.insert(notifications).values({
         userId: reviewedUserId,
         type: "trust_score_changed",
         title: "Trust score increased",
         message: `Your trust score went up by ${totalPoints} point${totalPoints !== 1 ? 's' : ''} (${breakdownParts.join(" + ")}) after ${req.user.username}'s review.`,
         isRead: false,
-      });
+      }).returning();
+      const trustWs = connectedClients.get(reviewedUserId);
+      if (trustWs?.readyState === WebSocket.OPEN) {
+        trustWs.send(JSON.stringify({ type: "new_notification", notification: trustNotif }));
+      }
 
       // Level-up check uses totalPoints so tags that push across a threshold are caught
       const LEVEL_THRESHOLDS = [

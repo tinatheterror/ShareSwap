@@ -412,6 +412,11 @@ export function ChatWidget() {
           type: "active",
         });
       }
+      if (data.type === "new_notification") {
+        // Immediately refresh the notification bell and list without waiting for the 30s poll
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread-count"] });
+      }
     },
     autoConnect: !!user,
   });

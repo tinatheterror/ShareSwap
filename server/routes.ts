@@ -7963,7 +7963,7 @@ Respond with ONLY the category name, nothing else.`
       // System message scoped to the request so it appears in the request's chat thread
       const ownerId_ret = request.items.ownerId!;
       const borrowerId_ret = request.item_requests.requesterId;
-      await db.insert(messages).values({
+      const [returnMsg] = await db.insert(messages).values({
         content: isEarlyReturn
           ? `📦 Early return initiated — awaiting your confirmation.`
           : `📦 Return initiated — awaiting your confirmation.`,
@@ -7971,7 +7971,14 @@ Respond with ONLY the category name, nothing else.`
         receiverId: ownerId_ret,
         messageType: "system",
         requestId: requestId,
-      });
+      }).returning();
+
+      // Push via WebSocket so the owner's client immediately invalidates /api/requests
+      // and shows the Confirm Return button without waiting for the 20s poll cycle.
+      const ownerWs = connectedClients.get(ownerId_ret);
+      if (ownerWs?.readyState === WebSocket.OPEN) {
+        ownerWs.send(JSON.stringify({ type: "new_message", message: returnMsg }));
+      }
 
       res.json({
         success: true,

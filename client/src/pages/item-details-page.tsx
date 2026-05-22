@@ -119,6 +119,10 @@ export default function ItemDetailsPage() {
   const isCurrentlyOut = !!(item as any)?.isCurrentlyOut;
   const isCooldownActive = !!(item as any)?.isCooldownActive;
   const cooldownExpiresAt: string | null = (item as any)?.cooldownExpiresAt ?? null;
+  const activeRequestEndDate: string | null = (item as any)?.activeRequestEndDate ?? null;
+  const expectedAvailability = activeRequestEndDate
+    ? new Date(activeRequestEndDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : null;
 
   // Notify-me subscription
   const { data: notifyData } = useQuery<{ subscribed: boolean }>({
@@ -568,7 +572,9 @@ export default function ItemDetailsPage() {
                       <PackageX className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-medium text-amber-800 text-xs whitespace-nowrap">Currently out with a neighbour</p>
-                        <p className="text-[10px] sm:text-xs text-amber-700">This item is unavailable right now. Get notified when it returns.</p>
+                        <p className="text-[10px] sm:text-xs text-amber-700">
+                          This item is unavailable right now.{expectedAvailability ? ` Expected back ${expectedAvailability}.` : ""} Get notified when it returns.
+                        </p>
                       </div>
                     </div>
                     {user ? (

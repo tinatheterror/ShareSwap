@@ -70,7 +70,7 @@ export function TrustDepositModal({
     if (!request.startDate || !request.endDate) return _rawSCPrice;
     const start = parseLocalDate(request.startDate);
     const end = parseLocalDate(request.endDate);
-    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000) + 1);
+    const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
     return Math.max(1, Math.ceil((_rawSCPrice / 7) * borrowDays));
   })();
   const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;

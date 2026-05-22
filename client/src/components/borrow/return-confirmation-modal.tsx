@@ -202,26 +202,16 @@ export function ReturnConfirmationModal({
               <RotateCcw className="h-5 w-5 text-blue-600" />
               {isEarlyReturn ? "Return Item Early" : "Return Item"}
             </DialogTitle>
-            <DialogDescription>
-              Initiate the return of{" "}
-              <span className="font-medium text-gray-900">{itemName}</span>
-            </DialogDescription>
           </DialogHeader>
 
           <div className="overflow-y-auto flex-1 -mx-1 px-1">
           <div className="space-y-4 py-4">
             {isEarlyReturn && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-amber-700 font-medium">
-                  <Clock className="h-4 w-4" />
-                  Early Return
-                </div>
-                <p className="text-sm text-amber-600 mt-1">
-                  {isRental
-                    ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                    : "You're returning this item before your borrow period ends. No penalty applies."}
-                </p>
-              </div>
+              <p className="text-sm text-gray-600">
+                {isRental
+                  ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
+                  : "You're returning this item before your borrow period ends. No penalty applies."}
+              </p>
             )}
 
             {depositMethod === "in_person" ? (
@@ -235,24 +225,22 @@ export function ReturnConfirmationModal({
                 </p>
               </div>
             ) : (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-blue-700 font-medium">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-blue-700 font-medium text-sm">
                   <Shield className="h-4 w-4" />
-                  Your deposit will be released after owner confirms
+                  Deposit
                 </div>
-                <p className="text-sm text-blue-600 mt-1">
-                  {`Once the owner confirms the item is returned in good condition, your $${depositAmount} deposit will be automatically released.`}
+                <p className="text-sm text-blue-600">
+                  {`Your $${depositAmount} deposit will be released once the owner confirms the item is returned in good condition.`}
                 </p>
               </div>
             )}
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                <p className="text-xs text-amber-700">
-                  Make sure you've returned the item to the owner before initiating the return process.
-                </p>
-              </div>
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700">
+                Only initiate the early return process after you've communicated and returned the item to the owner.
+              </p>
             </div>
           </div>
           </div>

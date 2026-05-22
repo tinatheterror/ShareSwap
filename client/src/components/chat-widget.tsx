@@ -1842,7 +1842,7 @@ export function ChatWidget() {
                               const deliveryLabel = (d?: string | null) => d === "courier" ? "Uber Direct" : "In Person";
                               const depositLabel = (d?: string | null) => d === "in_app" ? "Deposit In-app" : "Deposit In Person";
 
-                              const isBorrowCounter = relatedRequest?.requestType === "BORROW";
+                              const isBorrowCounter = (msg.metadata.requestType as string | undefined ?? relatedRequest?.requestType) === "BORROW";
 
                               return (
                                 <div className="w-full pl-[70px]">

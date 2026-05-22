@@ -5200,6 +5200,7 @@ Respond with ONLY the category name, nothing else.`
 
     // Log event in chat — snapshot original (pre-counter) dates so the chat card can show "Current → Proposed"
     await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
+      requestType: request.item_requests.requestType,
       deliveryMethod: updated.counterDeliveryMethod,
       depositMethod: updated.counterDepositMethod,
       startDate: updated.counterStartDate,
@@ -5324,6 +5325,7 @@ Respond with ONLY the category name, nothing else.`
       // Log event in chat — snapshot the PREVIOUS counter's proposed terms as "orig" so the
       // chat card can show "Previous (pending counter) → New proposal"
       await logRequestEvent(req.user.id, otherUserId, requestId, "counter_proposed", {
+        requestType: request.item_requests.requestType,
         deliveryMethod: updated.counterDeliveryMethod,
         depositMethod: updated.counterDepositMethod,
         startDate: updated.counterStartDate,

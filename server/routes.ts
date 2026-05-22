@@ -5144,21 +5144,18 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).json({ error: "No counter-proposal to respond to with your own counter" });
     }
 
-    // Enforce max 2 counter rounds for SWAP
-    if (isSwap) {
-      const currentRound = request.item_requests.counterRound ?? 0;
-      if (currentRound >= 2) {
-        return res.status(400).json({ error: "Maximum counter rounds (2) reached. Please accept or decline." });
-      }
+    // Enforce max 2 counter proposals for all request types
+    const currentRound = request.item_requests.counterRound ?? 0;
+    if (currentRound >= 2) {
+      return res.status(400).json({ error: "Maximum counter proposals (2) reached. Please accept or decline." });
     }
 
-    const newRound = (request.item_requests.counterRound ?? 0) + 1;
+    const newRound = currentRound + 1;
 
     const swapUpdateFields = isSwap ? {
       counterSwapOwnerItemIds: Array.isArray(swapOwnerItemIds) ? swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
       counterSwapRequesterItemIds: Array.isArray(swapRequesterItemIds) ? swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
       counterNote: counterNote ?? null,
-      counterRound: newRound,
     } : {};
 
     const [updated] = await db
@@ -5171,6 +5168,7 @@ Respond with ONLY the category name, nothing else.`
         counterEndDate: endDate ? new Date(endDate) : (request.item_requests.endDate ?? null),
         counterProposedAt: new Date(),
         counterProposedBy: req.user.id,
+        counterRound: newRound,
         ...swapUpdateFields,
       })
       .where(eq(itemRequests.id, requestId))
@@ -5276,20 +5274,17 @@ Respond with ONLY the category name, nothing else.`
 
     // Counter-back
     if (counter) {
-      // Enforce max 2 counter rounds for SWAP
-      if (isSwap) {
-        const currentRound = request.item_requests.counterRound ?? 0;
-        if (currentRound >= 2) {
-          return res.status(400).json({ error: "Maximum counter rounds (2) reached. Please accept or decline." });
-        }
+      // Enforce max 2 counter proposals for all request types
+      const currentRound = request.item_requests.counterRound ?? 0;
+      if (currentRound >= 2) {
+        return res.status(400).json({ error: "Maximum counter proposals (2) reached. Please accept or decline." });
       }
 
-      const newRound = (request.item_requests.counterRound ?? 0) + 1;
+      const newRound = currentRound + 1;
       const swapCounterFields = isSwap ? {
         counterSwapOwnerItemIds: Array.isArray(counter.swapOwnerItemIds) ? counter.swapOwnerItemIds.map(Number) : (request.item_requests.counterSwapOwnerItemIds ?? []),
         counterSwapRequesterItemIds: Array.isArray(counter.swapRequesterItemIds) ? counter.swapRequesterItemIds.map(Number) : (request.item_requests.counterSwapRequesterItemIds ?? []),
         counterNote: counter.counterNote ?? null,
-        counterRound: newRound,
       } : {};
 
       const [updated] = await db
@@ -5302,6 +5297,7 @@ Respond with ONLY the category name, nothing else.`
           counterEndDate: counter.endDate ? new Date(counter.endDate) : (request.item_requests.counterEndDate ?? null),
           counterProposedAt: new Date(),
           counterProposedBy: req.user.id,
+          counterRound: newRound,
           ...swapCounterFields,
         })
         .where(eq(itemRequests.id, requestId))

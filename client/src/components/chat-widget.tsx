@@ -1303,14 +1303,16 @@ export function ChatWidget() {
                   >
                     {acceptMutation.isPending ? "Accepting…" : "Accept"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
-                    onClick={() => openChatCounter(request, "owner")}
-                  >
-                    Counter
-                  </Button>
+                  {(request.counterRound ?? 0) < 2 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
+                      onClick={() => openChatCounter(request, "owner")}
+                    >
+                      Counter
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"

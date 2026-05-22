@@ -1761,9 +1761,14 @@ export function ChatWidget() {
                         relatedRequest.negotiationStatus === "counter_proposed";
                       const iAmOwner = relatedRequest && relatedRequest.item.ownerId === user.id;
 
-                      // Resolve actor name: "You" for current user, partner's display name otherwise
+                      // Resolve actor name: "You" for current user, partner's display name otherwise.
+                      // Use allConversations as immediate fallback while partnerProfile query loads.
                       const iActor = msg.senderId === user.id;
-                      const partnerName = formatDisplayName(partnerProfile?.displayName || partnerProfile?.username || "");
+                      const partnerFallback = allConversations.find(c => c.userId === selectedConversation);
+                      const partnerName = formatDisplayName(
+                        partnerProfile?.displayName || partnerProfile?.username ||
+                        (partnerFallback as any)?.displayName || (partnerFallback as any)?.username || ""
+                      );
                       const actor = iActor ? "You" : partnerName;
 
                       const eventLabel =
@@ -1788,7 +1793,7 @@ export function ChatWidget() {
                               <span className="text-xs text-muted-foreground font-semibold">{eventLabel}</span>
                             )}
 
-                            {et === "counter_proposed" && msg.metadata && isLatestCounterEvent && relatedRequest?.negotiationStatus === "counter_proposed" && (() => {
+                            {et === "counter_proposed" && msg.metadata && (() => {
                               const isSwapCounter = relatedRequest?.requestType === "SWAP";
                               if (isSwapCounter) {
                                 const ownerNames = (msg.metadata.swapOwnerItemNames as string[] | undefined) ?? [];

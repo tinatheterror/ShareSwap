@@ -509,6 +509,10 @@ export function ChatWidget() {
       const response = await apiRequest("PATCH", `/api/requests/${requestId}`, {
         status: "ACCEPTED",
       });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to accept request");
+      }
       return response.json();
     },
     onSuccess: () => {

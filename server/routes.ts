@@ -4896,6 +4896,28 @@ Respond with ONLY the category name, nothing else.`
       return res.status(404).send("Request not found");
     }
 
+    // Block acceptance if the item is currently physically out with another neighbour
+    if (status === "ACCEPTED") {
+      const physicallyOutStatuses = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "HANDOFF_DISPUTED", "DISPUTED"];
+      const [activeOut] = await db
+        .select({ id: itemRequests.id, status: itemRequests.status })
+        .from(itemRequests)
+        .where(
+          and(
+            eq(itemRequests.itemId, request.items.id),
+            ne(itemRequests.id, requestId),
+            sql`${itemRequests.status} = ANY(ARRAY[${sql.raw(physicallyOutStatuses.map(s => `'${s}'`).join(","))}])`
+          )
+        )
+        .limit(1);
+
+      if (activeOut) {
+        return res.status(409).json({
+          error: "This item is currently out with a neighbour. You can only accept new requests once it has been returned safely.",
+        });
+      }
+    }
+
     // Check for active cooldowns before accepting swaps
     if (status === "ACCEPTED" && request.item_requests.requestType === "SWAP") {
       const cooldownCheck = await CooldownChecker.checkSwapCooldown(

@@ -43,6 +43,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
+import { getTierShareCoins, calculateMultiSwap } from "@/lib/swap-calculator";
 import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { RentalDepositModal } from "@/components/rental/rental-deposit-modal";
@@ -172,7 +173,7 @@ interface ItemRequest {
   counterEndDate: string | null;
   counterProposedBy: number | null;
   swapOfferedItemIds: number[] | null;
-  swapOfferedItems?: { id: number; name: string; photos: string[] }[];
+  swapOfferedItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
   counterNote: string | null;
@@ -1198,7 +1199,7 @@ export function ChatWidget() {
                   <p className="text-[10px] text-muted-foreground font-medium mb-1">
                     {isOwner ? "Offering:" : "You're offering:"}
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {request.swapOfferedItems.map(oi => (
                       <div key={oi.id} className="flex items-center gap-1 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5">
                         {oi.photos?.[0] ? (
@@ -1209,6 +1210,20 @@ export function ChatWidget() {
                         <span className="text-[10px] text-teal-800 font-medium max-w-[100px] truncate">{oi.name}</span>
                       </div>
                     ))}
+                    {(() => {
+                      const offeredSC = request.swapOfferedItems.reduce((s, oi) => s + getTierShareCoins(oi.tier ?? 2), 0);
+                      const itemSC = getTierShareCoins(request.item.tier ?? 2);
+                      const result = isOwner
+                        ? calculateMultiSwap(itemSC, offeredSC)
+                        : calculateMultiSwap(offeredSC, itemSC);
+                      if (result.isFair) return null;
+                      const positive = result.offsetDirection === "you_receive";
+                      return (
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${positive ? "text-teal-700 bg-teal-50 border border-teal-200" : "text-amber-700 bg-amber-50 border border-amber-200"}`}>
+                          {positive ? "+" : "-"}{result.offset} ShareCoins
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

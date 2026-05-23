@@ -4846,10 +4846,10 @@ Respond with ONLY the category name, nothing else.`
     const allOfferedIds = [...new Set(
       requests.flatMap(r => r.requestType === "SWAP" ? (r.swapOfferedItemIds ?? []) : [])
     )];
-    const offeredItemsMap = new Map<number, { id: number; name: string; photos: string[] }>();
+    const offeredItemsMap = new Map<number, { id: number; name: string; photos: string[]; tier: number | null }>();
     if (allOfferedIds.length > 0) {
       const offeredRows = await db
-        .select({ id: items.id, name: items.name, photos: items.photos })
+        .select({ id: items.id, name: items.name, photos: items.photos, tier: items.tier })
         .from(items)
         .where(inArray(items.id, allOfferedIds));
       for (const row of offeredRows) offeredItemsMap.set(row.id, row);

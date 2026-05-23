@@ -1196,7 +1196,7 @@ export function ChatWidget() {
               {request.requestType === "SWAP" && request.swapOfferedItems && request.swapOfferedItems.length > 0 && (
                 <div className="mt-1 mb-1">
                   <p className="text-[10px] text-muted-foreground font-medium mb-1">
-                    {isOwner ? "Offering in return:" : "You're offering:"}
+                    {isOwner ? "Offering:" : "You're offering:"}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {request.swapOfferedItems.map(oi => (

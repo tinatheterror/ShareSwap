@@ -3622,11 +3622,12 @@ Respond with ONLY the category name, nothing else.`
 
     // Attach isCurrentlyOut — true when item is committed to a neighbour (ACCEPTED or physically out)
     const activeHandoffSt = ['ACCEPTED','IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED','COURIER_PENDING','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED'];
-    const activeReq = await db.select({ id: itemRequests.id, endDate: itemRequests.endDate }).from(itemRequests)
+    const activeReq = await db.select({ id: itemRequests.id, endDate: itemRequests.endDate, counterEndDate: itemRequests.counterEndDate, requestType: itemRequests.requestType }).from(itemRequests)
       .where(and(eq(itemRequests.itemId, itemId), sql`${itemRequests.status} = ANY(ARRAY[${sql.raw(activeHandoffSt.map(s=>`'${s}'`).join(','))}])`))
       .limit(1);
     const isCurrentlyOut = activeReq.length > 0;
-    const activeRequestEndDate: string | null = (activeReq[0]?.endDate as any) ?? null;
+    // Use counter-proposed end date if set (negotiated terms), falling back to original end date
+    const activeRequestEndDate: string | null = (activeReq[0]?.counterEndDate ?? activeReq[0]?.endDate as any) ?? null;
 
     // Cooldown check: did this user get declined on this item within the last 7 days,
     // and has the listing NOT been updated since?

@@ -1101,12 +1101,13 @@ export function ItemRequestForm({
                 )}
               />
 
-              <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={onClose}>
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-4">
+                <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
                   Cancel
                 </Button>
                 <Button
                   type="submit"
+                  className="w-full sm:w-auto"
                   disabled={
                     createRequestMutation.isPending ||
                     !!conflictingRange ||

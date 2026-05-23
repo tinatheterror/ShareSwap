@@ -11649,6 +11649,32 @@ Respond with ONLY the category name, nothing else.`
   });
 
 
+  // Get user earned achievements/badges by username
+  app.get("/api/users/username/:username/achievements", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const username = req.params.username;
+    let [targetUser] = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1);
+    if (!targetUser) {
+      [targetUser] = await db.select({ id: users.id }).from(users).where(eq(users.handle, username)).limit(1);
+    }
+    if (!targetUser) return res.status(404).json({ error: "User not found" });
+    const earned = await db
+      .select({
+        id: achievements.id,
+        name: achievements.name,
+        description: achievements.description,
+        badgeIcon: achievements.badgeIcon,
+        badgeColor: achievements.badgeColor,
+        category: achievements.category,
+        earnedAt: userAchievements.earnedAt,
+      })
+      .from(userAchievements)
+      .innerJoin(achievements, eq(userAchievements.achievementId, achievements.id))
+      .where(and(eq(userAchievements.userId, targetUser.id), eq(userAchievements.isCompleted, true)))
+      .orderBy(asc(userAchievements.earnedAt));
+    res.json(earned);
+  });
+
   app.get("/api/delivery-arrangements", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);

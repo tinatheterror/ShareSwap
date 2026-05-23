@@ -214,7 +214,7 @@ export function ItemRequestForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-[425px] bg-white max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="pr-6 text-sm sm:text-base leading-snug break-words">
               {requestType === "GIFT"

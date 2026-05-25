@@ -258,14 +258,6 @@ export function SwapCounterModal({
     staleTime: 30_000,
   });
 
-  const allItems = useMemo(() => [...myItems, ...partnerItems], [myItems, partnerItems]);
-
-  const ownerSC = getTotalSC(ownerItemIds, allItems);
-  const requesterSC = getTotalSC(requesterItemIds, allItems);
-  const valuation = calculateMultiSwap(ownerSC, requesterSC);
-  const bothSidesSelected = ownerItemIds.length > 0 && requesterItemIds.length > 0;
-  const isCompatible = bothSidesSelected && !valuation.exceedsMax;
-
   const ownerItem = request.item;
 
   const ownerPanelItems: SwapItem[] = useMemo(() => {
@@ -288,6 +280,36 @@ export function SwapCounterModal({
     if (isOwner) return partnerItems;
     return myItems;
   }, [isOwner, myItems, partnerItems]);
+
+  // Seed a lookup map with items we already know about synchronously
+  const knownItemsMap = useMemo(() => {
+    const map = new Map<number, SwapItem>();
+    map.set(request.item.id, { id: request.item.id, name: request.item.name, photos: request.item.photos, tier: request.item.tier, shareCoinPrice: request.item.shareCoinPrice, originalValue: request.item.originalValue, ownerId: request.item.ownerId });
+    (request.swapOfferedItems ?? []).forEach(oi => {
+      if (!map.has(oi.id)) {
+        map.set(oi.id, { id: oi.id, name: oi.name, photos: oi.photos, tier: oi.tier ?? 2, shareCoinPrice: String(getTierShareCoins(oi.tier ?? 2)), originalValue: "", ownerId: 0 });
+      }
+    });
+    return map;
+  }, [request]);
+
+  // Combined item pool: panel items (already seeded with known items) + knownItemsMap fallback
+  const allKnownItems = useMemo(() => {
+    const seen = new Set<number>();
+    const result: SwapItem[] = [];
+    for (const item of [...ownerPanelItems, ...requesterPanelItems, ...Array.from(knownItemsMap.values())]) {
+      if (!seen.has(item.id)) { seen.add(item.id); result.push(item); }
+    }
+    return result;
+  }, [ownerPanelItems, requesterPanelItems, knownItemsMap]);
+
+  const allItems = useMemo(() => [...myItems, ...partnerItems], [myItems, partnerItems]);
+
+  const ownerSC = getTotalSC(ownerItemIds, allKnownItems);
+  const requesterSC = getTotalSC(requesterItemIds, allKnownItems);
+  const valuation = calculateMultiSwap(ownerSC, requesterSC);
+  const bothSidesSelected = ownerItemIds.length > 0 && requesterItemIds.length > 0 && (ownerSC > 0 || requesterSC > 0);
+  const isCompatible = bothSidesSelected && !valuation.exceedsMax;
 
   const toggleOwnerItem = useCallback((id: number) => {
     setOwnerItemIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -319,38 +341,20 @@ export function SwapCounterModal({
     ? `You pay ${valuation.offset} SC`
     : `You receive +${valuation.offset} SC`;
 
-  // Seed a lookup map with items we already know about synchronously
-  const knownItemsMap = useMemo(() => {
-    const map = new Map<number, SwapItem>();
-    // Always know the listing item
-    map.set(request.item.id, { id: request.item.id, name: request.item.name, photos: request.item.photos, tier: request.item.tier, shareCoinPrice: request.item.shareCoinPrice, originalValue: request.item.originalValue, ownerId: request.item.ownerId });
-    // Also seed offered items if their tier is available
-    (request.swapOfferedItems ?? []).forEach(oi => {
-      if (!map.has(oi.id)) {
-        map.set(oi.id, { id: oi.id, name: oi.name, photos: oi.photos, tier: oi.tier ?? 2, shareCoinPrice: String(getTierShareCoins(oi.tier ?? 2)), originalValue: "", ownerId: 0 });
-      }
-    });
-    return map;
-  }, [request]);
+  // For visual comparison strip: use allKnownItems which is already seeded synchronously
+  const ownerSelectedItem = allKnownItems.find(i => ownerItemIds.includes(i.id)) ?? null;
+  const requesterSelectedItem = allKnownItems.find(i => requesterItemIds.includes(i.id)) ?? null;
 
-  // For visual comparison strip: first selected item on each side
-  // Fall back to knownItemsMap when async queries are still loading
-  const findItem = (id: number) => allItems.find((i) => i.id === id) ?? knownItemsMap.get(id) ?? null;
-  const ownerSelectedItem = ownerItemIds.map(findItem).find(Boolean) ?? null;
-  const requesterSelectedItem = requesterItemIds.map(findItem).find(Boolean) ?? null;
-
-  // For "Current swap" context: original items before any counter
-  // Use the enriched swapOfferedItems array (has name/photos without needing async lookup)
+  // For "Countering offer" header: use enriched swapOfferedItems for name (no async wait)
   const originalOwnerItem = request.item;
   const originalRequesterItemName =
     request.swapOfferedItems?.[0]?.name ??
-    (allItems.find((i) => i.id === request.swapOfferedItemIds?.[0])?.name) ??
+    allKnownItems.find(i => i.id === request.swapOfferedItemIds?.[0])?.name ??
     null;
-  const originalRequesterItem = allItems.find((i) => i.id === request.swapOfferedItemIds?.[0]) ?? (request.swapOfferedItems?.[0] ? findItem(request.swapOfferedItems[0].id) : null);
 
-  // Labels from each side's perspective
-  const myOwnerLabel = isOwner ? `${myLabel}'s item` : `${theirLabel}'s item`;
-  const myRequesterLabel = isOwner ? `${theirLabel}'s item` : `${myLabel}'s item`;
+  // Labels from each side's perspective using real names
+  const myOwnerLabel = isOwner ? "Your item" : `${theirLabel}'s item`;
+  const myRequesterLabel = isOwner ? `${theirLabel}'s item` : "Your item";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

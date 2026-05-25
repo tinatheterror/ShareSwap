@@ -1193,40 +1193,52 @@ export function ChatWidget() {
                   <span>You requested to {request.requestType.toLowerCase()}</span>
                 )}
               </div>
-              {/* Swap: show what the requester is offering */}
-              {request.requestType === "SWAP" && request.swapOfferedItems && request.swapOfferedItems.length > 0 && (
-                <div className="mt-1 mb-1">
-                  <p className="text-[10px] text-muted-foreground font-medium mb-1">
-                    {isOwner ? "Offering:" : "You're offering:"}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {request.swapOfferedItems.map(oi => (
-                      <div key={oi.id} className="flex items-center gap-1 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5">
-                        {oi.photos?.[0] ? (
-                          <img src={oi.photos[0]} alt={oi.name} className="w-5 h-5 rounded object-cover flex-shrink-0" />
-                        ) : (
-                          <Package className="h-3.5 w-3.5 text-teal-400 flex-shrink-0" />
-                        )}
-                        <span className="text-[10px] text-teal-800 font-medium max-w-[100px] truncate">{oi.name}</span>
-                      </div>
-                    ))}
-                    {(() => {
-                      const offeredSC = request.swapOfferedItems.reduce((s, oi) => s + getTierShareCoins(oi.tier ?? 2), 0);
-                      const itemSC = getTierShareCoins(request.item.tier ?? 2);
-                      const result = isOwner
-                        ? calculateMultiSwap(itemSC, offeredSC)
-                        : calculateMultiSwap(offeredSC, itemSC);
-                      if (result.isFair) return null;
-                      const positive = result.offsetDirection === "you_receive";
-                      return (
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${positive ? "text-teal-700 bg-teal-50 border border-teal-200" : "text-amber-700 bg-amber-50 border border-amber-200"}`}>
+              {/* Swap: 3-column layout — offered | arrows | requested */}
+              {request.requestType === "SWAP" && request.swapOfferedItems && request.swapOfferedItems.length > 0 && (() => {
+                const offeredSC = request.swapOfferedItems.reduce((s, oi) => s + getTierShareCoins(oi.tier ?? 2), 0);
+                const itemSC = getTierShareCoins(request.item.tier ?? 2);
+                const result = isOwner
+                  ? calculateMultiSwap(itemSC, offeredSC)
+                  : calculateMultiSwap(offeredSC, itemSC);
+                const positive = result.offsetDirection === "you_receive";
+                return (
+                  <div className="mt-2 mb-1 flex items-start gap-2">
+                    {/* Left: requester's offered items */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {request.swapOfferedItems.map(oi => (
+                        <div key={oi.id} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded px-1.5 py-1">
+                          {oi.photos?.[0] ? (
+                            <img src={oi.photos[0]} alt={oi.name} className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                          ) : (
+                            <Package className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                          )}
+                          <span className="text-[10px] text-amber-900 font-medium truncate">{oi.name}</span>
+                        </div>
+                      ))}
+                      {!result.isFair && (
+                        <div className={`text-[10px] font-semibold px-1.5 py-0.5 rounded text-center ${positive ? "text-teal-700 bg-teal-50 border border-teal-200" : "text-amber-700 bg-amber-50 border border-amber-300"}`}>
                           {positive ? "+" : "-"}{result.offset} ShareCoins
-                        </span>
-                      );
-                    })()}
+                        </div>
+                      )}
+                    </div>
+                    {/* Center: arrows */}
+                    <div className="flex-shrink-0 flex items-center justify-center mt-1.5">
+                      <ArrowLeftRight className="h-5 w-5 text-teal-500" />
+                    </div>
+                    {/* Right: owner's item */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 rounded px-1.5 py-1">
+                        {request.item.photos?.[0] ? (
+                          <img src={request.item.photos[0]} alt={request.item.name} className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                        ) : (
+                          <Package className="h-4 w-4 text-teal-400 flex-shrink-0" />
+                        )}
+                        <span className="text-[10px] text-teal-900 font-medium truncate">{request.item.name}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {displayStart && displayEnd && (
                 <div className={`flex items-center gap-1 text-xs mb-0.5 ${dateChanged ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
                   <Clock className="h-3 w-3 shrink-0" />
@@ -1261,13 +1273,13 @@ export function ChatWidget() {
         </button>
 
         {/* Action buttons */}
-        <div className="flex gap-1.5 flex-nowrap mt-2 pl-[58px]">
+        <div className="flex gap-2 flex-nowrap mt-3">
           {/* Counter received: inline Accept / Counter / Decline */}
           {iReceivedCounter && (
             <>
               <Button
                 size="sm"
-                className="flex-1 h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
+                className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
                 onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
                 disabled={respondToCounterMutation.isPending}
               >
@@ -1277,7 +1289,7 @@ export function ChatWidget() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
+                  className="flex-1 h-9 text-sm font-semibold border-amber-400 text-amber-700 hover:bg-amber-50"
                   onClick={() => openChatCounter(request, isOwner ? "owner" : "requester")}
                 >
                   Counter
@@ -1286,7 +1298,7 @@ export function ChatWidget() {
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 h-7 text-xs px-2"
+                className="flex-1 h-9 text-sm font-semibold"
                 onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: false })}
                 disabled={respondToCounterMutation.isPending}
               >
@@ -1304,7 +1316,7 @@ export function ChatWidget() {
               {isOwner && iTermsAccepted && (
                 <Button
                   size="sm"
-                  className="flex-1 h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
+                  className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
                   onClick={() => handleAcceptClick(request)}
                   disabled={acceptMutation.isPending}
                 >
@@ -1317,7 +1329,7 @@ export function ChatWidget() {
                 <>
                   <Button
                     size="sm"
-                    className="flex-1 h-7 text-xs px-2 bg-green-600"
+                    className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
                     onClick={() => handleAcceptClick(request)}
                     disabled={acceptMutation.isPending}
                   >
@@ -1327,7 +1339,7 @@ export function ChatWidget() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-1 h-7 text-xs px-2 border-amber-400 text-amber-700 hover:bg-amber-50"
+                      className="flex-1 h-9 text-sm font-semibold border-amber-400 text-amber-700 hover:bg-amber-50"
                       onClick={() => openChatCounter(request, "owner")}
                     >
                       Counter
@@ -1336,7 +1348,7 @@ export function ChatWidget() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 h-7 text-xs px-2"
+                    className="flex-1 h-9 text-sm font-semibold"
                     onClick={() => declineMutation.mutate(request.id)}
                     disabled={declineMutation.isPending}
                   >

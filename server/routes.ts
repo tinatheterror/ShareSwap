@@ -149,6 +149,61 @@ async function awardShareCoinsWithFirstTimeBonus(
   return { totalAwarded, isFirstTime };
 }
 
+// Server-side swap coin offset application
+// Mirrors the client-side getTierShareCoins / calculateMultiSwap logic
+function serverGetTierSC(tier: number | null | undefined): number {
+  const map: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
+  return map[tier ?? 2] ?? 10;
+}
+
+async function applySwapCoinOffset(
+  ownerId: number,
+  requesterId: number,
+  requestId: number,
+  itemId: number,                        // the listing item (owner's primary item)
+  swapOfferedItemIds: number[] | null,   // requester's original offered items
+  counterSwapOwnerItemIds: number[] | null,
+  counterSwapRequesterItemIds: number[] | null,
+  itemName: string,
+): Promise<void> {
+  // Determine effective item IDs for each side (counter takes priority)
+  const ownerItemIds = counterSwapOwnerItemIds?.length ? counterSwapOwnerItemIds : [itemId];
+  const requesterItemIds = counterSwapRequesterItemIds?.length ? counterSwapRequesterItemIds : (swapOfferedItemIds ?? []);
+
+  if (ownerItemIds.length === 0 || requesterItemIds.length === 0) return;
+
+  // Fetch tiers from DB
+  const allIds = [...new Set([...ownerItemIds, ...requesterItemIds])];
+  const itemRows = await db.select({ id: items.id, tier: items.tier }).from(items).where(inArray(items.id, allIds));
+  const tierMap = new Map<number, number | null>(itemRows.map(r => [r.id, r.tier]));
+
+  const ownerSC = ownerItemIds.reduce((s, id) => s + serverGetTierSC(tierMap.get(id)), 0);
+  const requesterSC = requesterItemIds.reduce((s, id) => s + serverGetTierSC(tierMap.get(id)), 0);
+  const offset = Math.abs(ownerSC - requesterSC);
+
+  if (offset === 0) return; // fair swap, nothing to transfer
+
+  // The side with fewer SC pays the offset to the other
+  const payerId   = ownerSC < requesterSC ? ownerId    : requesterId;
+  const receiverId = ownerSC < requesterSC ? requesterId : ownerId;
+
+  // Deduct from payer
+  await db.update(users).set({ shareCoins: sql`GREATEST(0, CAST(share_coins AS INTEGER) - ${offset})` }).where(eq(users.id, payerId));
+  await db.insert(shareCoinsTransactions).values({ userId: payerId, amount: (-offset).toString(), description: `Swap offset paid: ${itemName}`, transactionType: "SWAP_OFFSET_PAID" });
+
+  // Credit receiver
+  await db.update(users).set({ shareCoins: sql`CAST(share_coins AS INTEGER) + ${offset}` }).where(eq(users.id, receiverId));
+  await db.insert(shareCoinsTransactions).values({ userId: receiverId, amount: offset.toString(), description: `Swap offset received: ${itemName}`, transactionType: "SWAP_OFFSET_RECEIVED" });
+
+  // Notify both parties
+  await db.insert(notifications).values([
+    { userId: payerId,    type: "sharecoin_earned", title: `-${offset} ShareCoins`, message: `${offset} ShareCoins paid as swap offset for "${itemName}".`,    requestId, isRead: false },
+    { userId: receiverId, type: "sharecoin_earned", title: `+${offset} ShareCoins`, message: `${offset} ShareCoins received as swap offset for "${itemName}".`, requestId, isRead: false },
+  ]);
+
+  console.log(`✅ Swap offset: ${offset} SC from user ${payerId} to user ${receiverId} for swap on "${itemName}"`);
+}
+
 // Helper function to check and award referral bonus when a referred user completes their first transaction
 // Requirements: Transaction must be completed (not cancelled/disputed), different accounts AND different devices
 async function checkAndAwardReferralBonus(
@@ -7030,6 +7085,16 @@ Respond with ONLY the category name, nothing else.`
             const requesterResult = await awardShareCoinsWithFirstTimeBonus(requesterId2, 'SWAP', itemName2, 1);
             console.log(`✅ Awarded ShareCoins for swap at handoff: Owner=${ownerResult.totalAwarded}, Requester=${requesterResult.totalAwarded}`);
 
+            // Apply tier-based coin offset between the two parties
+            await applySwapCoinOffset(
+              ownerId2, requesterId2, requestId,
+              request.item_requests.itemId,
+              request.item_requests.swapOfferedItemIds as number[] | null,
+              request.item_requests.counterSwapOwnerItemIds as number[] | null,
+              request.item_requests.counterSwapRequesterItemIds as number[] | null,
+              itemName2,
+            );
+
             await awardSwapCompletionPoints(ownerId2, requesterId2, requestId, request.items.id, request.items.id);
             console.log(`✅ Awarded trust points for swap handoff completion`);
 
@@ -7818,6 +7883,17 @@ Respond with ONLY the category name, nothing else.`
             try {
               await awardShareCoinsWithFirstTimeBonus(ownerId2, 'SWAP', request.items.name, 1);
               await awardShareCoinsWithFirstTimeBonus(borrowerId2, 'SWAP', request.items.name, 1);
+
+              // Apply tier-based coin offset between the two parties
+              await applySwapCoinOffset(
+                ownerId2, borrowerId2, reqId,
+                request.item_requests.itemId,
+                request.item_requests.swapOfferedItemIds as number[] | null,
+                request.item_requests.counterSwapOwnerItemIds as number[] | null,
+                request.item_requests.counterSwapRequesterItemIds as number[] | null,
+                request.items.name,
+              );
+
               await awardSwapCompletionPoints(ownerId2, borrowerId2, reqId, request.items.id, request.items.id);
               await checkAndAwardReferralBonus(ownerId2, reqId, 'SWAP');
               await checkAndAwardReferralBonus(borrowerId2, reqId, 'SWAP');

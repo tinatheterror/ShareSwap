@@ -385,7 +385,7 @@ export default function MyItemsPage() {
                       </TooltipProvider>
                     )}
 
-                    {/* Renewal prompt — only for expired listings */}
+                    {/* Renewal prompt — expired listings */}
                     {status.status === "unavailable" && isListingExpired(item) && (
                       <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
                         <div>
@@ -403,6 +403,23 @@ export default function MyItemsPage() {
                         >
                           <RefreshCw className="h-3 w-3 mr-1" />
                           Renew (30 days)
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Re-list prompt — unavailable but not expired (e.g. returned from swap/borrow) */}
+                    {status.status === "unavailable" && !isListingExpired(item) && (
+                      <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-xs text-gray-500">Ready to share again?</p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
+                          disabled={relistItemMutation.isPending}
+                          onClick={(e) => { e.stopPropagation(); relistItemMutation.mutate(item.id); }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Make Available
                         </Button>
                       </div>
                     )}

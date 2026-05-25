@@ -367,7 +367,7 @@ export function SwapCounterModal({
           </DialogTitle>
           {/* Current swap context */}
           <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground/70">Current swap:</span>
+            <span className="font-medium text-foreground/70">Countering offer:</span>
             <span className="font-medium text-foreground truncate max-w-[120px]">{originalOwnerItem.name}</span>
             <ArrowLeftRight className="h-3 w-3 shrink-0" />
             <span className="font-medium text-foreground truncate max-w-[120px]">

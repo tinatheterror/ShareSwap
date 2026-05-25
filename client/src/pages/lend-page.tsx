@@ -1610,12 +1610,12 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       )}
                     </div>
                   )}
-                  {isEditMode &&
+                  {(isEditMode || isFromSwap) &&
                     existingPhotos.length > 0 &&
                     selectedPhotos.length === 0 && (
                       <div className="mt-4">
                         <p className="text-sm text-muted-foreground mb-2">
-                          Current photos:
+                          {isFromSwap ? "Photos from received item:" : "Current photos:"}
                         </p>
                         <div className="flex gap-2 overflow-x-auto pb-1">
                           {existingPhotos.map((photo, idx) => (
@@ -2598,12 +2598,12 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   )}
 
                   {/* Show existing photos when editing */}
-                  {isEditMode &&
+                  {(isEditMode || isFromSwap) &&
                     existingPhotos.length > 0 &&
                     selectedPhotos.length === 0 && (
                       <div className="mt-4">
                         <p className="text-sm text-muted-foreground mb-2">
-                          Current photos:
+                          {isFromSwap ? "Photos from received item:" : "Current photos:"}
                         </p>
                         <div className="flex gap-2 overflow-x-auto pb-1">
                           {existingPhotos.map((photo, idx) => (

@@ -4897,9 +4897,13 @@ Respond with ONLY the category name, nothing else.`
       },
     }));
 
-    // Enrich SWAP requests with offered item details
+    // Enrich SWAP requests with offered item details (original + counter items)
     const allOfferedIds = [...new Set(
-      requests.flatMap(r => r.requestType === "SWAP" ? (r.swapOfferedItemIds ?? []) : [])
+      requests.flatMap(r => r.requestType === "SWAP" ? [
+        ...(r.swapOfferedItemIds ?? []),
+        ...(r.counterSwapOwnerItemIds ?? []),
+        ...(r.counterSwapRequesterItemIds ?? []),
+      ] : [])
     )];
     const offeredItemsMap = new Map<number, { id: number; name: string; photos: string[]; tier: number | null }>();
     if (allOfferedIds.length > 0) {
@@ -4913,6 +4917,12 @@ Respond with ONLY the category name, nothing else.`
       ...r,
       swapOfferedItems: r.requestType === "SWAP"
         ? (r.swapOfferedItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
+        : [],
+      counterSwapOwnerItems: r.requestType === "SWAP"
+        ? (r.counterSwapOwnerItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
+        : [],
+      counterSwapRequesterItems: r.requestType === "SWAP"
+        ? (r.counterSwapRequesterItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
         : [],
     }));
 

@@ -176,6 +176,8 @@ interface ItemRequest {
   swapOfferedItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
+  counterSwapOwnerItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
+  counterSwapRequesterItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterNote: string | null;
   counterRound: number | null;
   item: {
@@ -1194,18 +1196,29 @@ export function ChatWidget() {
                 )}
               </div>
               {/* Swap: 3-column layout — offered | arrows | requested */}
-              {request.requestType === "SWAP" && request.swapOfferedItems && request.swapOfferedItems.length > 0 && (() => {
-                const offeredSC = request.swapOfferedItems.reduce((s, oi) => s + getTierShareCoins(oi.tier ?? 2), 0);
-                const itemSC = getTierShareCoins(request.item.tier ?? 2);
-                const result = isOwner
-                  ? calculateMultiSwap(itemSC, offeredSC)
-                  : calculateMultiSwap(offeredSC, itemSC);
+              {request.requestType === "SWAP" && (() => {
+                // Use counter items when a counter exists, otherwise originals
+                const hasCounter = (request.counterSwapOwnerItemIds?.length ?? 0) > 0 || (request.counterSwapRequesterItemIds?.length ?? 0) > 0;
+                // Left = requester side, Right = owner side
+                const leftItems: { id: number; name: string; photos: string[]; tier?: number | null }[] = hasCounter
+                  ? (request.counterSwapRequesterItems?.length ? request.counterSwapRequesterItems : (request.swapOfferedItems ?? []))
+                  : (request.swapOfferedItems ?? []);
+                const rightItems: { id: number; name: string; photos: string[]; tier?: number | null }[] = hasCounter && request.counterSwapOwnerItems?.length
+                  ? request.counterSwapOwnerItems
+                  : [{ id: request.item.id, name: request.item.name, photos: request.item.photos, tier: request.item.tier }];
+
+                if (leftItems.length === 0 && rightItems.length === 0) return null;
+
+                const leftSC = leftItems.reduce((s, oi) => s + getTierShareCoins(oi.tier ?? 2), 0);
+                const rightSC = rightItems.reduce((s, oi) => s + getTierShareCoins(oi.tier ?? 2), 0);
+                // From the requester's perspective: left=offered, right=receiving
+                const result = calculateMultiSwap(leftSC, rightSC);
                 const positive = result.offsetDirection === "you_receive";
                 return (
                   <div className="mt-2 mb-1 flex items-start gap-2">
-                    {/* Left: requester's offered items */}
+                    {/* Left: requester's items */}
                     <div className="flex-1 min-w-0 space-y-1">
-                      {request.swapOfferedItems.map(oi => (
+                      {leftItems.map(oi => (
                         <div key={oi.id} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded px-1.5 py-1">
                           {oi.photos?.[0] ? (
                             <img src={oi.photos[0]} alt={oi.name} className="w-6 h-6 rounded object-cover flex-shrink-0" />
@@ -1225,16 +1238,18 @@ export function ChatWidget() {
                     <div className="flex-shrink-0 flex items-center justify-center mt-1.5">
                       <ArrowLeftRight className="h-5 w-5 text-teal-500" />
                     </div>
-                    {/* Right: owner's item */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 rounded px-1.5 py-1">
-                        {request.item.photos?.[0] ? (
-                          <img src={request.item.photos[0]} alt={request.item.name} className="w-6 h-6 rounded object-cover flex-shrink-0" />
-                        ) : (
-                          <Package className="h-4 w-4 text-teal-400 flex-shrink-0" />
-                        )}
-                        <span className="text-[10px] text-teal-900 font-medium truncate">{request.item.name}</span>
-                      </div>
+                    {/* Right: owner's items */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      {rightItems.map(oi => (
+                        <div key={oi.id} className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 rounded px-1.5 py-1">
+                          {oi.photos?.[0] ? (
+                            <img src={oi.photos[0]} alt={oi.name} className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                          ) : (
+                            <Package className="h-4 w-4 text-teal-400 flex-shrink-0" />
+                          )}
+                          <span className="text-[10px] text-teal-900 font-medium truncate">{oi.name}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );

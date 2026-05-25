@@ -214,14 +214,17 @@ export function ItemRequestForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white max-h-[90vh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader>
-            <DialogTitle className="pr-6 text-sm sm:text-base leading-snug break-words">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white flex flex-col max-h-[92dvh] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b">
+            <DialogTitle className="pr-6 text-sm sm:text-base leading-snug line-clamp-2">
               {requestType === "GIFT"
                 ? `Request ${item.name} as a gift`
                 : `Request to ${requestType.toLowerCase()} ${item.name}`}
             </DialogTitle>
           </DialogHeader>
+
+          {/* Scrollable body — everything below the header */}
+          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4 space-y-4">
 
           {/* Verification warning for BORROW/RENT if user is not fully verified */}
           {(requestType === "BORROW" || requestType === "RENT") &&
@@ -878,12 +881,10 @@ export function ItemRequestForm({
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
                         >
-                          <span className="flex items-start gap-1.5 font-medium text-sm">
-                            <MapPin
-                              className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "in_person" ? "text-primary-foreground" : "text-gray-500"}`}
-                            />
-                            Exchange In Person
-                          </span>
+                          <MapPin
+                            className={`h-4 w-4 mb-1 ${field.value === "in_person" ? "text-primary-foreground" : "text-gray-500"}`}
+                          />
+                          <span className="font-medium text-xs leading-tight">Exchange In Person</span>
                         </button>
                         <button
                           type="button"
@@ -894,17 +895,11 @@ export function ItemRequestForm({
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
                         >
-                          <span className="flex items-start gap-1.5 font-medium text-sm">
-                            <Truck
-                              className={`h-4 w-4 flex-shrink-0 mt-px ${field.value === "courier" ? "text-primary-foreground" : "text-blue-600"}`}
-                            />
-                            Uber Direct
-                          </span>
-                          <p
-                            className={`text-xs font-medium mt-0.5 ${field.value === "courier" ? "text-primary-foreground/80" : "text-gray-500"}`}
-                          >
-                            +$15
-                          </p>
+                          <Truck
+                            className={`h-4 w-4 mb-1 ${field.value === "courier" ? "text-primary-foreground" : "text-blue-600"}`}
+                          />
+                          <span className="font-medium text-xs leading-tight">Uber Direct</span>
+                          <span className={`text-xs mt-0.5 ${field.value === "courier" ? "text-primary-foreground/80" : "text-gray-500"}`}>+$15</span>
                         </button>
                       </div>
                     </FormControl>
@@ -1123,6 +1118,8 @@ export function ItemRequestForm({
               </div>
             </form>
           </Form>
+
+          </div>{/* end scrollable body */}
         </DialogContent>
       </Dialog>
 

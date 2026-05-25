@@ -32,6 +32,7 @@ interface ItemRequest {
   requestType: string;
   status: string;
   swapOfferedItemIds: number[] | null;
+  swapOfferedItems?: { id: number; name: string; photos: string[]; tier?: number | null }[];
   counterSwapOwnerItemIds: number[] | null;
   counterSwapRequesterItemIds: number[] | null;
   counterNote: string | null;
@@ -46,6 +47,7 @@ interface ItemRequest {
     ownerId: number;
   };
   requester: { id: number; username: string; displayName: string | null };
+  owner?: { username: string | null; displayName: string | null };
 }
 
 interface SwapCounterModalProps {
@@ -208,6 +210,13 @@ export function SwapCounterModal({
   const partnerUserId = isOwner ? request.requester.id : request.item.ownerId;
   const isResponse = !isOwner;
 
+  // Derive human-readable names for each side
+  const requesterName = request.requester.displayName || request.requester.username || "Them";
+  const ownerName = request.owner?.displayName || request.owner?.username || "Owner";
+  const partnerName = isOwner ? requesterName : ownerName;
+  const myLabel = "You";
+  const theirLabel = partnerName;
+
   const currentRound = request.counterRound ?? 0;
   const maxRoundsReached = currentRound >= 2;
 
@@ -310,17 +319,33 @@ export function SwapCounterModal({
     ? `You pay ${valuation.offset} SC`
     : `You receive +${valuation.offset} SC`;
 
+  // Seed a lookup map with items we already know about synchronously
+  const knownItemsMap = useMemo(() => {
+    const map = new Map<number, SwapItem>();
+    // Always know the listing item
+    map.set(request.item.id, { id: request.item.id, name: request.item.name, photos: request.item.photos, tier: request.item.tier, shareCoinPrice: request.item.shareCoinPrice, originalValue: request.item.originalValue, ownerId: request.item.ownerId });
+    // Also seed offered items if their tier is available
+    (request.swapOfferedItems ?? []).forEach(oi => {
+      if (!map.has(oi.id)) {
+        map.set(oi.id, { id: oi.id, name: oi.name, photos: oi.photos, tier: oi.tier ?? 2, shareCoinPrice: String(getTierShareCoins(oi.tier ?? 2)), originalValue: "", ownerId: 0 });
+      }
+    });
+    return map;
+  }, [request]);
+
   // For visual comparison strip: first selected item on each side
-  const ownerSelectedItem = allItems.find((i) => ownerItemIds.includes(i.id)) ?? null;
-  const requesterSelectedItem = allItems.find((i) => requesterItemIds.includes(i.id)) ?? null;
+  // Fall back to knownItemsMap when async queries are still loading
+  const findItem = (id: number) => allItems.find((i) => i.id === id) ?? knownItemsMap.get(id) ?? null;
+  const ownerSelectedItem = ownerItemIds.map(findItem).find(Boolean) ?? null;
+  const requesterSelectedItem = requesterItemIds.map(findItem).find(Boolean) ?? null;
 
   // For "Current swap" context: original items before any counter
   const originalOwnerItem = request.item;
-  const originalRequesterItem = allItems.find((i) => i.id === request.swapOfferedItemIds?.[0]) ?? null;
+  const originalRequesterItem = allItems.find((i) => i.id === request.swapOfferedItemIds?.[0]) ?? (request.swapOfferedItems?.[0] ? findItem(request.swapOfferedItems[0].id) : null);
 
-  // Labels from current user's perspective
-  const myOwnerLabel = isOwner ? "Your item" : "Their item";
-  const myRequesterLabel = isOwner ? "Their item" : "Your item";
+  // Labels from each side's perspective
+  const myOwnerLabel = isOwner ? `${myLabel}'s item` : `${theirLabel}'s item`;
+  const myRequesterLabel = isOwner ? `${theirLabel}'s item` : `${myLabel}'s item`;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -391,7 +416,7 @@ export function SwapCounterModal({
               {/* Owner's items panel */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">
-                  {isOwner ? "Your items" : "Owner's items"}
+                  {isOwner ? "Your items" : `${theirLabel}'s items`}
                 </Label>
                 <ItemGrid
                   items={ownerPanelItems}
@@ -404,7 +429,7 @@ export function SwapCounterModal({
               {/* Requester's items panel */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">
-                  {isOwner ? "Their items" : "Your items"}
+                  {isOwner ? `${theirLabel}'s items` : "Your items"}
                 </Label>
                 <ItemGrid
                   items={requesterPanelItems}

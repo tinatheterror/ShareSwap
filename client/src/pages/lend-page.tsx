@@ -2959,14 +2959,14 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             if (!open) setEditingPhotoIdx(null);
           }}
         >
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
+          <DialogContent className="max-w-lg flex flex-col max-h-[92dvh] p-0 gap-0">
+            <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
               <DialogTitle>Edit Photo</DialogTitle>
               <DialogDescription>
                 Rotate or drag to crop your photo, then save.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 space-y-4 py-2">
               <div className="flex justify-center gap-2">
                 <Button
                   type="button"
@@ -2989,7 +2989,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   Rotate Right
                 </Button>
               </div>
-              <div className="flex justify-center min-h-40 items-center">
+              <div className="flex justify-center min-h-32 items-center">
                 {isApplyingRotation ? (
                   <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
                 ) : editPhotoSrc ? (
@@ -3002,7 +3002,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       ref={editImgRef}
                       src={editPhotoSrc}
                       alt="Edit"
-                      className="max-h-80 max-w-full object-contain"
+                      className="max-h-[45dvh] max-w-full object-contain"
                     />
                   </ReactCrop>
                 ) : null}
@@ -3011,7 +3011,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                 Drag to select a crop area, or save with just rotation applied.
               </p>
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 px-6 py-4 border-t shrink-0">
               <Button
                 type="button"
                 variant="outline"

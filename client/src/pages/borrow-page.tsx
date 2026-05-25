@@ -61,48 +61,51 @@ const ITEM_CATEGORIES = [
   "Hobbies & Collectibles",
   "Home & Kitchen",
   "Tools & Equipment",
+  "Other",
 ] as const;
+
+const NAMED_CATEGORIES = ITEM_CATEGORIES.filter((c) => c !== "Other");
 
 const inferCategory = (itemName: string): string => {
   const name = itemName.toLowerCase();
 
   if (
-    /baby|bassinet|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier|pram|playpen|highchair|bouncer/i.test(
+    /baby|bassinet|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier|pram|playpen|highchair|bouncer|nursery|onesie|sleepsuit|nappy/i.test(
       name,
     )
   ) {
     return "Baby & Kids";
   }
   if (
-    /clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|accessory|jewelry|watch/i.test(
+    /clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|accessory|jewelry|watch|crewneck|sweater|hoodie|tee|jeans|denim|leggings|bikini|swimsuit|skirt|blouse|cardigan|vest|beanie|sneaker|sandal|bra|top|bottom|romper|jumpsuit|suit|blazer|tie|socks|gloves|mittens|belt|sunglasses|glasses|cap|toque|parka|fleece|polo|shorts|tracksuit|activewear|sportswear|yoga|gym|alo|lululemon|nike|adidas/i.test(
       name,
     )
   ) {
     return "Clothing & Accessories";
   }
   if (
-    /phone|tablet|laptop|computer|camera|tv|television|speaker|headphone|charger|electronic|gaming|console|monitor/i.test(
+    /phone|tablet|laptop|computer|camera|tv|television|speaker|headphone|charger|electronic|gaming|console|monitor|keyboard|mouse|printer|projector|drone|smartwatch|earbuds|airpods|gopro|playstation|xbox|nintendo|ipad|iphone|android|router|modem/i.test(
       name,
     )
   ) {
     return "Electronics";
   }
   if (
-    /camping|tent|bike|bicycle|golf|sports|game|book|guitar|instrument|hobby|collect|fishing|kayak|ski|snowboard/i.test(
+    /camping|tent|bike|bicycle|golf|sports|game|book|guitar|instrument|hobby|collect|fishing|kayak|ski|snowboard|surfboard|skateboard|scooter|rollerblade|yoga mat|dumbbell|weight|exercise|fitness|treadmill|elliptical|rowing|badminton|tennis|racket|hockey|football|soccer|baseball|basketball|volleyball|frisbee|puzzle|board game|lego|craft|sewing|knitting/i.test(
       name,
     )
   ) {
     return "Hobbies & Collectibles";
   }
   if (
-    /kitchen|blender|mixer|pot|pan|plate|utensil|furniture|chair|table|lamp|decor|vacuum|appliance|oven|microwave|fridge|toaster|coffee/i.test(
+    /kitchen|blender|mixer|pot|pan|plate|utensil|furniture|chair|table|lamp|decor|vacuum|appliance|oven|microwave|fridge|toaster|coffee|couch|sofa|mattress|bed|shelf|bookcase|wardrobe|dresser|curtain|rug|pillow|duvet|towel|fan|heater|air purifier|humidifier|dehumidifier|instant pot|air fryer|waffle|rice cooker|slow cooker|juicer|kettle|dishware|cutlery/i.test(
       name,
     )
   ) {
     return "Home & Kitchen";
   }
   if (
-    /drill|saw|hammer|tool|wrench|screwdriver|mower|lawn|garden|ladder|equipment|pressure washer|generator|chainsaw/i.test(
+    /drill|saw|hammer|tool|wrench|screwdriver|mower|lawn|garden|ladder|equipment|pressure washer|generator|chainsaw|sander|grinder|level|measuring|tape measure|shovel|rake|hoe|wheelbarrow|hose|sprinkler|hedge trimmer|leaf blower|snow blower/i.test(
       name,
     )
   ) {
@@ -432,6 +435,10 @@ export default function BorrowPage() {
     (acc, category) => {
       const categoryItems = filteredItems.filter((item) => {
         const itemCategory = (item as any).category || inferCategory(item.name);
+        if (category === "Other") {
+          // Catch-all: items whose resolved category isn't one of the named categories
+          return !NAMED_CATEGORIES.includes(itemCategory as any);
+        }
         return itemCategory === category;
       });
       // Sort: items with photos first

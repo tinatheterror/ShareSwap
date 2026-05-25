@@ -69,22 +69,22 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden flex flex-col max-h-[92dvh]">
           {/* Hero — target item */}
-          <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-4 pr-10 text-white">
+          <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-4 pr-12 text-white shrink-0">
             <div className="flex items-center gap-3">
-              <div className="w-16 h-16 bg-white/10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
+              <div className="w-14 h-14 bg-white/10 rounded-xl overflow-hidden flex-shrink-0 shadow-lg">
                 {targetItem.photos?.[0] ? (
                   <img src={targetItem.photos[0]} alt={targetItem.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <Camera className="h-8 w-8 text-white/50" />
+                    <Camera className="h-7 w-7 text-white/50" />
                   </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold truncate">{targetItem.name}</h2>
-                <div className="flex items-center gap-1.5 mt-2 text-white/80 text-sm">
+                <h2 className="text-sm font-bold leading-snug line-clamp-2">{targetItem.name}</h2>
+                <div className="flex items-center gap-1.5 mt-1.5 text-white/80 text-sm">
                   <span>Tier {targetTier} –</span>
                   <Coins className="h-3.5 w-3.5" />
                   <span>{targetSC} SC</span>
@@ -93,8 +93,8 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
             </div>
           </div>
 
-          {/* Content */}
-          <div className="p-5 bg-white">
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto p-5 bg-white">
             <h3 className="text-sm font-medium text-gray-500 mb-3">
               Select one or more of your items to trade
             </h3>
@@ -114,8 +114,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
               </div>
             ) : (
               <>
-                <div className="space-y-2 max-h-[260px] overflow-y-auto">
-                  {/* Swappable items */}
+                <div className="space-y-2">
                   {swappableItems.map((item) => {
                     const tier = (item as any).tier || 2;
                     const sc = getTierShareCoins(tier);
@@ -156,7 +155,6 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
                       </div>
                     );
                   })}
-
                 </div>
 
                 {/* Fairness summary */}
@@ -200,32 +198,36 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
                     <span>Differences are settled with ShareCoins</span>
                   </div>
                 )}
-
-                {/* Action buttons */}
-                <div className="flex gap-2 pt-4 mt-3 border-t">
-                  <Button variant="outline" className="flex-1" onClick={onClose}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1 bg-[#0DCEA1] hover:bg-[#0BB88C]"
-                    disabled={!canSubmit}
-                    onClick={handleConfirmSelection}
-                  >
-                    <ArrowLeftRight className="h-4 w-4 mr-2" />
-                    Swap
-                  </Button>
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full mt-2"
-                  onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add an item
-                </Button>
               </>
             )}
           </div>
+
+          {/* Pinned action buttons */}
+          {swappableItems.length > 0 && (
+            <div className="shrink-0 border-t bg-white px-5 py-4 space-y-2">
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-[#0DCEA1] hover:bg-[#0BB88C]"
+                  disabled={!canSubmit}
+                  onClick={handleConfirmSelection}
+                >
+                  <ArrowLeftRight className="h-4 w-4 mr-2" />
+                  Swap
+                </Button>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => (window.location.href = `/lend?swapReturnTo=/items/${targetItem.id}`)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add an item
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

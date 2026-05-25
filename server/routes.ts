@@ -5184,16 +5184,22 @@ Respond with ONLY the category name, nothing else.`
         ...(updated.counterSwapOwnerItemIds ?? []),
         ...(updated.counterSwapRequesterItemIds ?? []),
       ].filter(Boolean);
-      const swapItemNames: Record<number, string> = {};
+      const swapItemData: Record<number, { name: string; photos: string[]; tier: number | null }> = {};
       if (allSwapIds.length > 0) {
-        const swapItems = await db.select({ id: items.id, name: items.name }).from(items).where(inArray(items.id, allSwapIds));
-        for (const si of swapItems) swapItemNames[si.id] = si.name;
+        const swapItems = await db.select({ id: items.id, name: items.name, photos: items.photos, tier: items.tier }).from(items).where(inArray(items.id, allSwapIds));
+        for (const si of swapItems) swapItemData[si.id] = { name: si.name, photos: si.photos ?? [], tier: si.tier };
       }
+      const ownerIds = updated.counterSwapOwnerItemIds ?? [];
+      const requesterIds = updated.counterSwapRequesterItemIds ?? [];
       swapEventMeta = {
-        swapOwnerItemIds: updated.counterSwapOwnerItemIds,
-        swapRequesterItemIds: updated.counterSwapRequesterItemIds,
-        swapOwnerItemNames: (updated.counterSwapOwnerItemIds ?? []).map(id => swapItemNames[id] ?? `Item #${id}`),
-        swapRequesterItemNames: (updated.counterSwapRequesterItemIds ?? []).map(id => swapItemNames[id] ?? `Item #${id}`),
+        swapOwnerItemIds: ownerIds,
+        swapRequesterItemIds: requesterIds,
+        swapOwnerItemNames: ownerIds.map(id => swapItemData[id]?.name ?? `Item #${id}`),
+        swapRequesterItemNames: requesterIds.map(id => swapItemData[id]?.name ?? `Item #${id}`),
+        swapOwnerItemPhotos: ownerIds.map(id => swapItemData[id]?.photos?.[0] ?? null),
+        swapRequesterItemPhotos: requesterIds.map(id => swapItemData[id]?.photos?.[0] ?? null),
+        swapOwnerItemTiers: ownerIds.map(id => swapItemData[id]?.tier ?? 2),
+        swapRequesterItemTiers: requesterIds.map(id => swapItemData[id]?.tier ?? 2),
         counterNote: updated.counterNote,
         counterRound: updated.counterRound,
       };

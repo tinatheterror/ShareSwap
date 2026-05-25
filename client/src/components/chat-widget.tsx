@@ -2811,7 +2811,7 @@ export function ChatWidget() {
                 Add received item to your inventory?
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
-                We'll draft a listing with the item details pre-filled. Review and edit everything before publishing.
+                We'll draft a listing with the item details. Review and edit everything before publishing.
               </p>
               <div className="flex gap-2">
                 <Button

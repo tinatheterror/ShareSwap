@@ -340,7 +340,12 @@ export function SwapCounterModal({
   const requesterSelectedItem = requesterItemIds.map(findItem).find(Boolean) ?? null;
 
   // For "Current swap" context: original items before any counter
+  // Use the enriched swapOfferedItems array (has name/photos without needing async lookup)
   const originalOwnerItem = request.item;
+  const originalRequesterItemName =
+    request.swapOfferedItems?.[0]?.name ??
+    (allItems.find((i) => i.id === request.swapOfferedItemIds?.[0])?.name) ??
+    null;
   const originalRequesterItem = allItems.find((i) => i.id === request.swapOfferedItemIds?.[0]) ?? (request.swapOfferedItems?.[0] ? findItem(request.swapOfferedItems[0].id) : null);
 
   // Labels from each side's perspective
@@ -366,7 +371,7 @@ export function SwapCounterModal({
             <span className="font-medium text-foreground truncate max-w-[120px]">{originalOwnerItem.name}</span>
             <ArrowLeftRight className="h-3 w-3 shrink-0" />
             <span className="font-medium text-foreground truncate max-w-[120px]">
-              {originalRequesterItem ? originalRequesterItem.name : `${theirLabel}'s item`}
+              {originalRequesterItemName ?? `${theirLabel}'s item`}
             </span>
           </div>
         </DialogHeader>

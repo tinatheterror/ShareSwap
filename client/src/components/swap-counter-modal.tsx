@@ -366,7 +366,7 @@ export function SwapCounterModal({
             <span className="font-medium text-foreground truncate max-w-[120px]">{originalOwnerItem.name}</span>
             <ArrowLeftRight className="h-3 w-3 shrink-0" />
             <span className="font-medium text-foreground truncate max-w-[120px]">
-              {originalRequesterItem ? originalRequesterItem.name : "their item"}
+              {originalRequesterItem ? originalRequesterItem.name : `${theirLabel}'s item`}
             </span>
           </div>
         </DialogHeader>

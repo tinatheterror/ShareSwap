@@ -1321,7 +1321,7 @@ export function ChatWidget() {
               </Button>
               {(request.counterRound ?? 0) >= 2 && (
                 <p className="text-[10px] text-muted-foreground w-full mt-0.5">
-                  Counter-offer limit reached — please accept or decline.
+                  Counter-offer limit reached
                 </p>
               )}
             </>

@@ -2835,7 +2835,7 @@ export function ChatWidget() {
             </div>
             <div className="p-5">
               <h4 className="font-semibold text-gray-900 mb-1">
-                Add received item to your inventory?
+                Add item to your inventory?
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
                 We'll draft a listing with the item details. Review and edit everything before publishing.

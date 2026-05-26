@@ -39,7 +39,10 @@ class CsrfTokenManager {
   private getTokenFromCookie(): string | null {
     const cookies = document.cookie.split(';');
     for (const cookie of cookies) {
-      const [name, value] = cookie.trim().split('=');
+      const eqIdx = cookie.indexOf('=');
+      if (eqIdx === -1) continue;
+      const name = cookie.slice(0, eqIdx).trim();
+      const value = cookie.slice(eqIdx + 1).trim();
       if (name === 'x-csrf-token') {
         return decodeURIComponent(value);
       }

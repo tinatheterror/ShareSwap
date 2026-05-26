@@ -236,7 +236,7 @@ export function ReturnConfirmationModal({
               </div>
             )}
 
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
               <p className="text-xs text-amber-700">
                 Only initiate the early return process after you've communicated and returned the item to the owner.

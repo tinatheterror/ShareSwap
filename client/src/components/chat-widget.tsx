@@ -1917,7 +1917,7 @@ export function ChatWidget() {
                               const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;
                               const deliveryChanged = !!mDelivery && !!origDelivery && mDelivery !== origDelivery;
-                              const depositChanged = !!mDeposit && !!origDeposit && mDeposit !== origDeposit;
+                              const depositChanged = !!mDeposit && mDeposit !== (origDeposit ?? "in_person");
                               const deliveryLabel = (d?: string | null) => d === "courier" ? "Uber Direct" : "In Person";
                               const depositLabel = (d?: string | null) => d === "in_app" ? "Deposit In-app" : "Deposit In Person";
 
@@ -1943,10 +1943,10 @@ export function ChatWidget() {
                                           {deliveryLabel(origDelivery)}
                                         </span>
                                       )}
-                                      {origDeposit && isBorrowCounter && (
+                                      {((origDeposit || mDeposit) && isBorrowCounter) && (
                                         <span className="flex items-center gap-1">
                                           <Shield className="h-3 w-3 shrink-0" />
-                                          {depositLabel(origDeposit)}
+                                          {depositLabel(origDeposit ?? "in_person")}
                                         </span>
                                       )}
                                     </div>

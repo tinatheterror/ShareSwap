@@ -332,7 +332,7 @@ async function checkAndAwardReferralBonus(
       userId: referral.referrerId,
       type: "referral_joined",
       title: "Your referral paid off!",
-      message: `A friend you referred just completed their first ${transactionType?.toLowerCase() || 'transaction'} on ShareSwap. You've been rewarded ${rewardAmount} ShareCoins!`,
+      message: `Your referral completed their first ${transactionType?.toLowerCase() || 'transaction'}. You earned ${rewardAmount} ShareCoins!`,
       isRead: false,
     });
 
@@ -1054,7 +1054,7 @@ export function registerRoutes(app: Express): Server {
           userId,
           type: "milestone_achieved",
           title: "Identity verified",
-          message: "Your ID is now verified. You've unlocked higher trust and more features.",
+          message: "ID verified. Higher trust and more features unlocked.",
           isRead: false,
         },
       ]);
@@ -1062,7 +1062,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json({ 
         success: true, 
-        message: "Verification approved! You received a trust score boost and 5 ShareCoins.",
+        message: "Verified! Trust score boost and 5 ShareCoins awarded.",
         trustBoost: VERIFICATION_TRUST_BOOST,
         shareCoinsAwarded: VERIFICATION_SHARECOIN_REWARD
       });
@@ -1312,7 +1312,7 @@ export function registerRoutes(app: Express): Server {
             userId,
             type: "milestone_achieved",
             title: "Identity verified",
-            message: "Your ID is now verified. You've unlocked higher trust and more features.",
+            message: "ID verified. Higher trust and more features unlocked.",
             isRead: false,
           },
         ]);
@@ -1321,7 +1321,7 @@ export function registerRoutes(app: Express): Server {
         res.json({
           success: true,
           status: "approved",
-          message: "Identity verified! You received a trust score boost and 5 ShareCoins.",
+          message: "Verified! Trust score boost and 5 ShareCoins awarded.",
         });
       } else if (personaStatus === "completed") {
         await db
@@ -1753,7 +1753,7 @@ Respond with ONLY valid JSON in this exact format:
         if (scansUsed >= 3) {
           return res.status(403).json({ 
             error: "SmartScan limit reached",
-            message: "You've used all 3 free SmartScans this month. Upgrade to Premium for unlimited scans or upload items manually.",
+            message: "SmartScan limit reached. Upgrade to Premium for unlimited scans.",
           });
         }
       }
@@ -5294,7 +5294,7 @@ Respond with ONLY the category name, nothing else.`
       userId: otherUserId,
       type: "terms_counter_proposed",
       title: _cpTitle1,
-      message: `${_cpRole1} proposed new ${isSwap ? "swap" : "terms"} for your ${_cpType1} request. Review and respond.`,
+      message: `New ${isSwap ? "swap" : "terms"} proposed for your ${_cpType1}. Review and respond.`,
       itemId: request.items.id,
       requestId,
     });
@@ -5418,7 +5418,7 @@ Respond with ONLY the category name, nothing else.`
         userId: otherUserId,
         type: "terms_counter_proposed",
         title: _cpTitle2,
-        message: `${_cpRole2} proposed new terms for your ${_cpType2} request. Review and respond.`,
+        message: `New terms proposed for your ${_cpType2}. Review and respond.`,
         itemId: request.items.id,
         requestId,
       });
@@ -5735,7 +5735,7 @@ Respond with ONLY the category name, nothing else.`
           userId: giverId,
           type: "gift_completed",
           title: "Gift completed! 🎁",
-          message: `"${request.items.name}" successfully handed over. First-time gift bonus: +1 SC.`,
+          message: `"${request.items.name}" gifted. First-time bonus: +1 SC.`,
           itemId: request.items.id,
           requestId: requestId,
         },
@@ -5743,7 +5743,7 @@ Respond with ONLY the category name, nothing else.`
           userId: receiverId,
           type: "gift_completed",
           title: "Gift received! 🎁",
-          message: `"${request.items.name}" is yours — enjoy! Thanks for being part of the ShareSwap community.`,
+          message: `"${request.items.name}" is yours — enjoy!`,
           itemId: request.items.id,
           requestId: requestId,
         },
@@ -6222,7 +6222,7 @@ Respond with ONLY the category name, nothing else.`
 
       res.json({
         success: true,
-        message: "Payout request submitted. Funds will be transferred to your bank account within 2-3 business days.",
+        message: "Payout requested. Funds transfer within 2–3 business days.",
         payout: {
           id: payoutRecord.id,
           amount: requestedAmount,
@@ -7133,8 +7133,8 @@ Respond with ONLY the category name, nothing else.`
           type: "handoff_pending",
           title: "Handoff Confirmation Needed",
           message: isOwner 
-            ? `Owner has confirmed handoff for "${request.items.name}". Please confirm you received the item.`
-            : `Borrower has confirmed receiving "${request.items.name}". Please confirm the handoff.`,
+            ? `Owner confirmed handoff for "${request.items.name}". Please confirm receipt.`
+            : `Borrower confirmed receipt of "${request.items.name}". Please confirm.`,
           itemId: request.items.id,
           requestId: requestId,
         });
@@ -7668,8 +7668,8 @@ Respond with ONLY the category name, nothing else.`
           requestId,
         });
         await db.insert(notifications).values([
-          { userId: ownerId, type: "handoff_dispute", title: "Handoff dispute", message: `Disagreement on "${request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "handoff_dispute", title: "Handoff dispute", message: `Disagreement on "${request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "handoff_dispute", title: "Handoff dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "handoff_dispute", title: "Handoff dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // One denied, other hasn't acted yet — log it
@@ -8067,8 +8067,8 @@ Respond with ONLY the category name, nothing else.`
         type: "return_initiated",
         title: isEarlyReturn ? "Early return initiated" : "Return initiated",
         message: isEarlyReturn
-          ? `${(req.user as any).displayName || req.user.username} is returning "${request.items.name}" early. Open the chat to confirm receipt.`
-          : `${(req.user as any).displayName || req.user.username} has returned "${request.items.name}". Open the chat to confirm receipt.`,
+          ? `"${request.items.name}" is being returned early. Confirm receipt in chat.`
+          : `"${request.items.name}" has been returned. Confirm receipt in chat.`,
         itemId: request.items.id,
         requestId,
         isRead: false,
@@ -8200,7 +8200,7 @@ Respond with ONLY the category name, nothing else.`
           success: true,
           request: disputed,
           disputeOpened: true,
-          message: "Dispute opened. The deposit is held pending review. We'll contact both parties to resolve this.",
+          message: "Dispute opened. Deposit held pending review.",
         });
       }
 

@@ -104,21 +104,6 @@ const LEVELS = [
   { name: "ShareSwap Champion", minScore: 500, icon: "🏆" },
 ];
 
-const BADGE_TITLE_MAP: Record<string, string> = {
-  first_transaction: "First Share",
-  five_transactions: "Community Sharer",
-  ten_transactions: "Power Sharer",
-  verified_member: "Verified Member",
-  five_borrows: "Active Borrower",
-  first_referral: "Community Builder",
-  three_in_week: "Weekly Warrior",
-  five_reviews_received: "Highly Rated",
-  first_lend: "First Lend",
-  five_lends: "Generous Lender",
-  first_swap: "First Swap",
-  five_swaps: "Swap Star",
-  first_rent: "First Rental",
-};
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -212,16 +197,6 @@ export default function ProfilePage() {
 
   const { data: ownReviews = [] } = useQuery<any[]>({
     queryKey: [`/api/users/username/${user?.username}/reviews`],
-    enabled: !!isOwnProfile && !!user?.username,
-  });
-
-  const { data: publicAchievements = [] } = useQuery<any[]>({
-    queryKey: [`/api/users/username/${usernameFromUrl}/achievements`],
-    enabled: !!usernameFromUrl && !isOwnProfile,
-  });
-
-  const { data: ownAchievements = [] } = useQuery<any[]>({
-    queryKey: [`/api/users/username/${user?.username}/achievements`],
     enabled: !!isOwnProfile && !!user?.username,
   });
 
@@ -1016,51 +991,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Milestones */}
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold mb-4">Milestones</h2>
-            <div className="space-y-2">
-              {LEVELS.map((level, i) => {
-                const score = (publicProfile as any).reputationScore ?? 0;
-                const reached = score >= level.minScore;
-                const nextLevel = LEVELS[i + 1];
-                const isCurrent = reached && (!nextLevel || score < nextLevel.minScore);
-                return (
-                  <div key={level.name} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${reached ? "bg-teal-50 border-teal-200" : "bg-gray-50 border-gray-100 opacity-60"} ${isCurrent ? "ring-2 ring-teal-400" : ""}`}>
-                    <span className="text-xl">{level.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-semibold text-sm ${reached ? "text-teal-800" : "text-gray-400"}`}>{level.name}</span>
-                        {isCurrent && <span className="text-[10px] bg-teal-500 text-white px-1.5 py-0.5 rounded-full font-medium leading-none">Current</span>}
-                      </div>
-                      <span className="text-xs text-gray-400">{level.minScore}+ pts</span>
-                    </div>
-                    {reached && <Check className="h-4 w-4 text-teal-500 flex-shrink-0" />}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Badges */}
-          <div className="mt-8 mb-2">
-            <h2 className="text-2xl font-bold mb-4">Badges</h2>
-            {publicAchievements.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {publicAchievements.map((badge: any) => (
-                  <div key={badge.id} className="flex items-start gap-2.5 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
-                    <span className="text-2xl flex-shrink-0">{badge.badgeIcon}</span>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm text-slate-800 leading-tight">{BADGE_TITLE_MAP[badge.name] || badge.name.replace(/_/g, " ")}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{badge.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-6 text-center text-muted-foreground text-sm">No badges earned yet</Card>
-            )}
-          </div>
         </main>
       </div>
     );
@@ -1604,50 +1534,6 @@ export default function ProfilePage() {
               </Card>
             </div>
 
-            {/* Milestones */}
-            <div className="mt-2">
-              <h2 className="text-xl font-bold mb-3">Milestones</h2>
-              <div className="space-y-2">
-                {LEVELS.map((level, i) => {
-                  const reached = reputationScore >= level.minScore;
-                  const nextLevel = LEVELS[i + 1];
-                  const isCurrent = reached && (!nextLevel || reputationScore < nextLevel.minScore);
-                  return (
-                    <div key={level.name} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${reached ? "bg-teal-50 border-teal-200" : "bg-gray-50 border-gray-100 opacity-60"} ${isCurrent ? "ring-2 ring-teal-400" : ""}`}>
-                      <span className="text-xl">{level.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold text-sm ${reached ? "text-teal-800" : "text-gray-400"}`}>{level.name}</span>
-                          {isCurrent && <span className="text-[10px] bg-teal-500 text-white px-1.5 py-0.5 rounded-full font-medium leading-none">Current</span>}
-                        </div>
-                        <span className="text-xs text-gray-400">{level.minScore}+ pts</span>
-                      </div>
-                      {reached && <Check className="h-4 w-4 text-teal-500 flex-shrink-0" />}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Badges */}
-            <div className="mt-2">
-              <h2 className="text-xl font-bold mb-3">Badges</h2>
-              {ownAchievements.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {ownAchievements.map((badge: any) => (
-                    <div key={badge.id} className="flex items-start gap-2.5 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
-                      <span className="text-2xl flex-shrink-0">{badge.badgeIcon}</span>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm text-slate-800 leading-tight">{BADGE_TITLE_MAP[badge.name] || badge.name.replace(/_/g, " ")}</p>
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{badge.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <Card className="p-5 text-center text-muted-foreground text-sm">Complete your first transaction to earn badges!</Card>
-              )}
-            </div>
           </div>
 
           {/* Sidebar */}

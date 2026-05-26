@@ -7517,6 +7517,27 @@ Respond with ONLY the category name, nothing else.`
           content: `🔄 Swap confirmed via PIN — items successfully exchanged!`,
           senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId,
         });
+
+        // Award ShareCoins and apply tier-based offset for SWAP (PIN path)
+        try {
+          await awardShareCoinsWithFirstTimeBonus(ownerId, 'SWAP', request.items.name, 1);
+          await awardShareCoinsWithFirstTimeBonus(borrowerId, 'SWAP', request.items.name, 1);
+          await applySwapCoinOffset(
+            ownerId, borrowerId, requestId,
+            request.item_requests.itemId,
+            request.item_requests.swapOfferedItemIds as number[] | null,
+            request.item_requests.counterSwapOwnerItemIds as number[] | null,
+            request.item_requests.counterSwapRequesterItemIds as number[] | null,
+            request.items.name,
+          );
+          await awardSwapCompletionPoints(ownerId, borrowerId, requestId, request.items.id, request.items.id);
+          await checkAndAwardReferralBonus(ownerId, requestId, 'SWAP');
+          await checkAndAwardReferralBonus(borrowerId, requestId, 'SWAP');
+          await checkAndAwardAchievements(ownerId);
+          await checkAndAwardAchievements(borrowerId);
+        } catch (swapPinRewardError) {
+          console.error("Error awarding swap rewards at PIN handoff:", swapPinRewardError);
+        }
       } else {
         const periodType = requestType === "RENT" ? "rental" : "borrow";
         await db.insert(messages).values({ content: `🤝 Handoff confirmed via PIN — ${periodType} period has started`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });

@@ -109,14 +109,20 @@ function ItemCard({
   selected,
   onToggle,
   disabled,
+  variant = "mine",
 }: {
   item: SwapItem;
   selected: boolean;
   onToggle: (id: number) => void;
   disabled: boolean;
+  variant?: "mine" | "theirs";
 }) {
   const photo = item.photos?.[0];
   const sc = getTierShareCoins(item.tier ?? 1);
+  const selectedCls = variant === "mine"
+    ? "border-amber-400 bg-amber-50 shadow-md"
+    : "border-teal-400 bg-teal-50 shadow-md";
+  const checkCls = variant === "mine" ? "text-amber-500" : "text-teal-500";
 
   return (
     <button
@@ -124,7 +130,7 @@ function ItemCard({
       disabled={disabled && !selected}
       className={`relative rounded-xl border-2 text-left transition-all w-full overflow-hidden
         ${selected
-          ? "border-primary bg-primary/5 shadow-md"
+          ? selectedCls
           : disabled
           ? "border-muted opacity-40 cursor-not-allowed"
           : "border-border hover:border-primary/50 hover:shadow-sm cursor-pointer"
@@ -139,8 +145,8 @@ function ItemCard({
           </div>
         )}
       </div>
-      <div className="p-2">
-        <p className="text-xs font-semibold truncate leading-tight">{item.name}</p>
+      <div className="p-1.5">
+        <p className="text-[11px] font-semibold truncate leading-tight">{item.name}</p>
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
           <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">T{item.tier ?? 1}</Badge>
           <span className="text-[10px] text-muted-foreground font-medium">{sc} SC</span>
@@ -148,7 +154,7 @@ function ItemCard({
       </div>
       <div className="absolute top-1.5 right-1.5">
         {selected ? (
-          <CheckCircle2 className="h-5 w-5 text-primary drop-shadow" />
+          <CheckCircle2 className={`h-4 w-4 drop-shadow ${checkCls}`} />
         ) : (
           <Circle className="h-4 w-4 text-white/80 drop-shadow" />
         )}
@@ -162,17 +168,19 @@ function ItemGrid({
   selected,
   onToggle,
   isLoading,
+  variant = "mine",
 }: {
   items: SwapItem[];
   selected: number[];
   onToggle: (id: number) => void;
   isLoading: boolean;
+  variant?: "mine" | "theirs";
 }) {
   return (
     <div className="min-h-[100px]">
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 px-1">
-          {[1, 2, 3, 4].map((n) => (
+        <div className="grid grid-cols-3 gap-2 px-1">
+          {[1, 2, 3].map((n) => (
             <div key={n} className="rounded-xl border bg-muted/40 aspect-[4/3] animate-pulse" />
           ))}
         </div>
@@ -182,7 +190,7 @@ function ItemGrid({
           <span className="italic text-xs">No swappable items available</span>
         </div>
       ) : (
-        <div className={`grid gap-2 px-1 ${items.length === 1 ? "grid-cols-1 max-w-[160px] mx-auto" : "grid-cols-2 sm:grid-cols-3"}`}>
+        <div className="grid grid-cols-3 gap-2 px-1">
           {items.map((item) => (
             <ItemCard
               key={item.id}
@@ -190,6 +198,7 @@ function ItemGrid({
               selected={selected.includes(item.id)}
               onToggle={onToggle}
               disabled={false}
+              variant={variant}
             />
           ))}
         </div>
@@ -432,6 +441,7 @@ export function SwapCounterModal({
                   selected={ownerItemIds}
                   onToggle={toggleOwnerItem}
                   isLoading={isOwner ? myLoading : partnerLoading}
+                  variant={isOwner ? "mine" : "theirs"}
                 />
               </div>
 
@@ -445,6 +455,7 @@ export function SwapCounterModal({
                   selected={requesterItemIds}
                   onToggle={toggleRequesterItem}
                   isLoading={isOwner ? partnerLoading : myLoading}
+                  variant={isOwner ? "theirs" : "mine"}
                 />
               </div>
 

@@ -573,7 +573,7 @@ export default function ItemDetailsPage() {
                       <div>
                         <p className="font-medium text-amber-800 text-xs whitespace-nowrap">Currently out with a neighbour</p>
                         <p className="text-[10px] sm:text-xs text-amber-700">
-                          This item is unavailable right now.{expectedAvailability ? ` Expected back ${expectedAvailability}.` : ""} Get notified when it returns.
+                          {expectedAvailability ? `This item is expected back ${expectedAvailability}.` : "This item is currently unavailable."} Get notified when it returns.
                         </p>
                       </div>
                     </div>

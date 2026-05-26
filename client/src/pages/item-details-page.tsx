@@ -573,7 +573,7 @@ export default function ItemDetailsPage() {
                       <div>
                         <p className="font-medium text-amber-800 text-xs whitespace-nowrap">Currently out with a neighbour</p>
                         <p className="text-[10px] sm:text-xs text-amber-700">
-                          {expectedAvailability ? `This item is expected back ${expectedAvailability}.` : "This item is currently unavailable."} Get notified when it returns.
+                          {expectedAvailability ? `This item is expected back ${expectedAvailability}.` : "This item is currently unavailable."}
                         </p>
                       </div>
                     </div>
@@ -592,6 +592,11 @@ export default function ItemDetailsPage() {
                               <><Bell className="h-4 w-4 mr-2" />Notify Me When Available</>
                             )}
                           </Button>
+                          {!isSubscribed && (
+                            <p className="text-[10px] text-muted-foreground text-center leading-tight px-1">
+                              Notified when it returns
+                            </p>
+                          )}
                         </div>
                         <div className="flex-1 flex flex-col gap-0.5">
                           <Button

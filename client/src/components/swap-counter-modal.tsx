@@ -335,10 +335,10 @@ export function SwapCounterModal({
   const statusColor = !bothSidesSelected
     ? "text-muted-foreground"
     : valuation.exceedsMax
-    ? "text-red-500"
+    ? "text-red-600"
     : valuation.isFair
-    ? "text-emerald-500"
-    : "text-amber-500";
+    ? "text-green-600"
+    : "text-yellow-600";
 
   const statusMsg = !bothSidesSelected
     ? "Select items on both sides"
@@ -420,9 +420,9 @@ export function SwapCounterModal({
                   }`}>
                     <span>{ownerSC} SC total</span>
                     {valuation.isFair ? (
-                      <span className="text-emerald-500">Fair swap</span>
+                      <span className="text-green-600">Fair swap</span>
                     ) : (
-                      <span className={valuation.exceedsMax ? "text-red-500" : "text-amber-500"}>
+                      <span className={valuation.exceedsMax ? "text-red-600" : "text-yellow-600"}>
                         {valuation.offset} SC offset
                       </span>
                     )}

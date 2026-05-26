@@ -299,11 +299,6 @@ export function ReturnConfirmationModal({
             <CheckCircle2 className="h-5 w-5 text-green-600" />
             {isEarlyReturn ? "Confirm Early Return" : "Confirm Item Return"}
           </DialogTitle>
-          <DialogDescription>
-            {" "}
-            <span className="font-medium text-gray-900">{itemName}</span> has
-            been returned early
-          </DialogDescription>
         </DialogHeader>
 
         <div className="overflow-y-auto flex-1 -mx-1 px-1">
@@ -317,7 +312,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-blue-600 mt-1">
                 {isRental
                   ? "You keep the full rental amount — no refund for unused days."
-                  : "Borrower's deposit will be released immediately."}
+                  : "No ShareCoins deducted for early return. Borrower's deposit will be released immediately."}
               </p>
             </div>
           )}

@@ -2178,14 +2178,18 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                           : depositCalc.deposit}
                                       </div>
                                     </div>
-                                    <div className="mt-2 pt-2 border-t border-emerald-100">
+                                    <div className="mt-2 pt-2 border-t border-emerald-100 space-y-1">
                                       <div className="flex justify-between text-xs">
-                                        <span className="text-gray-600">
-                                          Platform fee:
-                                        </span>
-                                        <span className="font-medium text-emerald-600">
-                                          0% for 2026
-                                        </span>
+                                        <span className="text-gray-600">Platform fee</span>
+                                        <span className="font-medium text-emerald-600">0% for 2026</span>
+                                      </div>
+                                      <div className="flex justify-between text-xs">
+                                        <span className="text-gray-600">Multi-week (14–27 days)</span>
+                                        <span className="font-medium text-teal-600">10% off</span>
+                                      </div>
+                                      <div className="flex justify-between text-xs">
+                                        <span className="text-gray-600">Monthly rate (28+ days)</span>
+                                        <span className="font-medium text-teal-600">20% off</span>
                                       </div>
                                     </div>
                                   </>

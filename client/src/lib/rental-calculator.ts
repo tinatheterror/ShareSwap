@@ -150,7 +150,7 @@ export function getDiscountPct(days: number): number {
 }
 
 export function getDiscountLabel(days: number): string {
-  if (days >= 28) return "20% off — long-term";
+  if (days >= 28) return "20% off — monthly rate";
   if (days >= 14) return "10% off — multi-week";
   return "";
 }
@@ -167,6 +167,6 @@ export function calculateRentalPrice(weeklyRate: number, rentalDays: number): Re
 
 export const DISCOUNT_TIERS = [
   { label: "Under 14 days", discountPct: 0 },
-  { label: "14–27 days", discountPct: 10 },
-  { label: "28+ days", discountPct: 20 },
+  { label: "14–27 days (multi-week)", discountPct: 10 },
+  { label: "28+ days (monthly rate)", discountPct: 20 },
 ];

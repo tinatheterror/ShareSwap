@@ -48,7 +48,7 @@ async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
       subs.map(s => ({
         userId: s.userId,
         type: "item_available",
-        title: "Item now available",
+        title: "Item Now Available",
         message: `"${itemName}" is back and available to borrow or rent.`,
         itemId,
       }))
@@ -140,7 +140,7 @@ async function awardShareCoinsWithFirstTimeBonus(
     await db.insert(notifications).values({
       userId,
       type: "sharecoin_earned",
-      title: `+1 ShareCoin earned`,
+      title: `+1 ShareCoin Earned`,
       message: `You earned 1 ShareCoin for your ${actionLabels[actionType] || 'first action'} on ShareSwap!`,
       isRead: false,
     });
@@ -331,7 +331,7 @@ async function checkAndAwardReferralBonus(
     await db.insert(notifications).values({
       userId: referral.referrerId,
       type: "referral_joined",
-      title: "Your referral paid off!",
+      title: "Your Referral Paid Off!",
       message: `Your referral completed their first ${transactionType?.toLowerCase() || 'transaction'}. You earned ${rewardAmount} ShareCoins!`,
       isRead: false,
     });
@@ -465,7 +465,7 @@ async function checkAndAwardAchievements(userId: number) {
       await db.insert(notifications).values({
         userId,
         type: "badge_earned",
-        title: `🏅 Badge unlocked: ${def.title}`,
+        title: `🏅 Badge Unlocked: ${def.title}`,
         message: `${def.description} +1 ShareCoin awarded!`,
         link: "/achievements",
         isRead: false,
@@ -1039,14 +1039,14 @@ export function registerRoutes(app: Express): Server {
         {
           userId,
           type: "sharecoin_earned",
-          title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins earned`,
+          title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins Earned`,
           message: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing identity verification.`,
           isRead: false,
         },
         {
           userId,
           type: "trust_score_changed",
-          title: `Trust score +${VERIFICATION_TRUST_BOOST}`,
+          title: `Trust Score +${VERIFICATION_TRUST_BOOST}`,
           message: "ID verification approved",
           isRead: false,
         },
@@ -1290,14 +1290,14 @@ export function registerRoutes(app: Express): Server {
           {
             userId,
             type: "sharecoin_earned",
-            title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins earned`,
+            title: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins Earned`,
             message: `+${VERIFICATION_SHARECOIN_REWARD} ShareCoins for completing identity verification.`,
             isRead: false,
           },
           {
             userId,
             type: "trust_score_changed",
-            title: `Trust score +${VERIFICATION_TRUST_BOOST}`,
+            title: `Trust Score +${VERIFICATION_TRUST_BOOST}`,
             message: "ID verification approved",
             isRead: false,
           },
@@ -1332,7 +1332,7 @@ export function registerRoutes(app: Express): Server {
         await db.insert(notifications).values({
           userId,
           type: "verification_failed",
-          title: "Verification failed",
+          title: "Verification Failed",
           message: "Verification unsuccessful. Check your documents and try again.",
           isRead: false,
         });
@@ -1612,7 +1612,7 @@ Respond with ONLY valid JSON in this exact format:
         await db.insert(notifications).values({
           userId,
           type: "sharecoin_earned",
-          title: "+1 ShareCoin earned",
+          title: "+1 ShareCoin Earned",
           message: "You earned 1 ShareCoin for adding a profile photo.",
           isRead: false,
         });
@@ -2708,7 +2708,7 @@ Respond with ONLY the category name, nothing else.`
             await db.insert(notifications).values({
               userId: existingItem.ownerId!,
               type: "swap_match",
-              title: "New swap match",
+              title: "New Swap Match",
               message: `"${item.name}" matches what you're looking to trade for`,
               itemId: item.id,
               isRead: false,
@@ -3424,7 +3424,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: wishlistOwnerId,
         type: "wishlist_match",
-        title: "New match for your wishlist",
+        title: "New Match For Your Wishlist",
         message: `"${item.name}" listed by ${listerName}`,
         itemId: itemId,
         isRead: false,
@@ -4692,7 +4692,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: item.ownerId,
         type: "item_request",
-        title: `New ${requestTypeLabel} request`,
+        title: `New ${requestTypeLabel} Request`,
         message: `${requesterName} wants to ${requestType === "GIFT" ? "claim gift" : requestType.toLowerCase()} "${item.name}"`,
         itemId: item.id,
         requestId: request.id,
@@ -5258,7 +5258,7 @@ Respond with ONLY the category name, nothing else.`
 
     // Notify other party
     const _cpItemName1 = request.items.name;
-    const _cpTitle1 = `New terms for "${_cpItemName1.length > 22 ? _cpItemName1.slice(0, 22) + "…" : _cpItemName1}"`;
+    const _cpTitle1 = `New Terms For "${_cpItemName1.length > 22 ? _cpItemName1.slice(0, 22) + "…" : _cpItemName1}"`;
     const _cpRole1 = isOwner ? "Owner" : "Requester";
     const _cpType1 = request.item_requests.requestType?.toLowerCase() || "request";
     await db.insert(notifications).values({
@@ -5382,7 +5382,7 @@ Respond with ONLY the category name, nothing else.`
       });
 
       const _cpItemName2 = request.items.name;
-      const _cpTitle2 = `New terms for "${_cpItemName2.length > 22 ? _cpItemName2.slice(0, 22) + "…" : _cpItemName2}"`;
+      const _cpTitle2 = `New Terms For "${_cpItemName2.length > 22 ? _cpItemName2.slice(0, 22) + "…" : _cpItemName2}"`;
       const _cpRole2 = isOwner ? "Owner" : "Requester";
       const _cpType2 = request.item_requests.requestType?.toLowerCase() || "request";
       await db.insert(notifications).values({
@@ -5462,7 +5462,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: otherUserId,
         type: ownerIsAccepting ? "request_accepted" : "terms_accepted",
-        title: ownerIsAccepting ? "Request accepted" : "Terms accepted",
+        title: ownerIsAccepting ? "Request Accepted" : "Terms Accepted",
         message: ownerIsAccepting
           ? inPersonBorrowDeposit
             ? `"${request.items.name}" — meet up and exchange the deposit in person.`
@@ -5507,7 +5507,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: otherUserId,
         type: "terms_declined",
-        title: "Terms declined",
+        title: "Terms Declined",
         message: "The other party declined. The request has been cancelled.",
         itemId: request.items.id,
         requestId,
@@ -5682,7 +5682,7 @@ Respond with ONLY the category name, nothing else.`
           await db.insert(notifications).values({
             userId: giverId,
             type: "trust_score_changed",
-            title: "Trust score +10",
+            title: "Trust Score +10",
             message: "Gift completed +10",
             itemId: request.items.id,
             requestId,
@@ -5714,7 +5714,7 @@ Respond with ONLY the category name, nothing else.`
         {
           userId: giverId,
           type: "gift_completed",
-          title: "Gift completed! 🎁",
+          title: "Gift Completed! 🎁",
           message: giftBonusResult.isFirstTime
             ? `"${request.items.name}" successfully handed over. First-time gift bonus: +1 SC.`
             : `"${request.items.name}" successfully handed over.`,
@@ -5724,7 +5724,7 @@ Respond with ONLY the category name, nothing else.`
         {
           userId: receiverId,
           type: "gift_completed",
-          title: "Gift received! 🎁",
+          title: "Gift Received! 🎁",
           message: `"${request.items.name}" is yours — enjoy!`,
           itemId: request.items.id,
           requestId: requestId,
@@ -5759,7 +5759,7 @@ Respond with ONLY the category name, nothing else.`
     await db.insert(notifications).values({
       userId: otherPartyId,
       type: "gift_handoff_pending",
-      title: role === "giver" ? "Giver confirmed handoff" : "Receiver confirmed receipt",
+      title: role === "giver" ? "Giver Confirmed Handoff" : "Receiver Confirmed Receipt",
       message: `Please confirm the gift handoff for "${request.items.name}"`,
       itemId: request.items.id,
       requestId: requestId,
@@ -6575,7 +6575,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: row.items.ownerId,
         type: "request_withdrawn" as any,
-        title: "Offer withdrawn",
+        title: "Offer Withdrawn",
         message: `${req.user.username} withdrew their offer for "${row.items.name}".`,
         itemId: row.items.id,
         requestId,
@@ -6976,7 +6976,7 @@ Respond with ONLY the category name, nothing else.`
             await db.insert(notifications).values({
               userId: request.items.ownerId,
               type: "sharecoin_earned",
-              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} earned`,
+              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} Earned`,
               message: `You earned ${charged} ShareCoin${charged !== 1 ? "s" : ""} for lending "${request.items.name}"`,
               requestId,
               itemId: request.items.id,
@@ -7033,8 +7033,8 @@ Respond with ONLY the category name, nothing else.`
             await awardSwapCompletionPoints(ownerId2, requesterId2, requestId, request.items.id, request.items.id);
             console.log(`✅ Awarded trust points for swap handoff completion`);
             await db.insert(notifications).values([
-              { userId: ownerId2, type: "trust_score_changed", title: "Trust score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
-              { userId: requesterId2, type: "trust_score_changed", title: "Trust score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
+              { userId: ownerId2, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
+              { userId: requesterId2, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
             ]);
 
             await checkAndAwardReferralBonus(ownerId2, requestId, 'SWAP');
@@ -7330,7 +7330,7 @@ Respond with ONLY the category name, nothing else.`
             await db.insert(notifications).values({
               userId: ownerId,
               type: "sharecoin_earned",
-              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} earned`,
+              title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} Earned`,
               message: `You earned ${charged} ShareCoin${charged !== 1 ? "s" : ""} for lending "${request.items.name}"`,
               requestId,
               itemId: request.items.id,
@@ -7413,8 +7413,8 @@ Respond with ONLY the category name, nothing else.`
         ? `Swap of "${request.items.name}" confirmed via code.`
         : `Receipt of "${request.items.name}" via code. ${requestType === "RENT" ? "Rental" : "Borrow"} period started.`;
       await db.insert(notifications).values([
-        { userId: ownerId, type: "handoff_confirmed", title: "Handoff confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
-        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
+        { userId: ownerId, type: "handoff_confirmed", title: "Handoff Confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
+        { userId: borrowerId, type: "handoff_confirmed", title: "Handoff Confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
       ]);
 
       res.json({ success: true, confirmed: true, message: isGiftPin ? "Gift confirmed via PIN!" : isSwapPin ? "Swap confirmed via PIN!" : "Handoff confirmed via PIN!" });
@@ -7469,8 +7469,8 @@ Respond with ONLY the category name, nothing else.`
         const borrowerId3 = request.item_requests.requesterId;
         await db.insert(messages).values({ content: `🔴 A dispute has been opened on this exchange. Both parties have 24 hours to submit evidence.`, senderId: ownerId3, receiverId: borrowerId3, messageType: "system", requestId });
         await db.insert(notifications).values([
-          { userId: ownerId3, type: "handoff_disputed", title: "Exchange disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
-          { userId: borrowerId3, type: "handoff_disputed", title: "Exchange disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
+          { userId: ownerId3, type: "handoff_disputed", title: "Exchange Disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
+          { userId: borrowerId3, type: "handoff_disputed", title: "Exchange Disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
         ]);
         return res.json({ success: true, disputeTriggered: true });
       }
@@ -7529,8 +7529,8 @@ Respond with ONLY the category name, nothing else.`
           requestId,
         });
         await db.insert(notifications).values([
-          { userId: ownerId, type: "handoff_dispute", title: "Handoff dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "handoff_dispute", title: "Handoff dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "handoff_dispute", title: "Handoff Dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "handoff_dispute", title: "Handoff Dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // One denied, other hasn't acted yet — log it
@@ -7725,8 +7725,8 @@ Respond with ONLY the category name, nothing else.`
           });
 
           await db.insert(notifications).values([
-            { userId: ownerId2, type: "handoff_flagged", title: "Exchange flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
-            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: ownerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
           ]);
 
           flaggedCount++;
@@ -7798,8 +7798,8 @@ Respond with ONLY the category name, nothing else.`
 
           const confirmingParty = ownerConfirmed ? "owner" : "borrower";
           await db.insert(notifications).values([
-            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
-            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange auto-confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
+            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
+            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
           ]);
 
           autoAdvancedCount++;
@@ -10484,8 +10484,8 @@ Respond with ONLY the category name, nothing else.`
           false // hadDispute - completed rentals are dispute-free
         );
         await db.insert(notifications).values([
-          { userId: renterId, type: "trust_score_changed", title: "Trust score +20", message: "Rental completed +20", itemId: rental.items.id, requestId, isRead: false },
-          ...(ownerId ? [{ userId: ownerId, type: "trust_score_changed", title: "Trust score +20", message: "Rental completed +20", itemId: rental.items.id, requestId, isRead: false }] : []),
+          { userId: renterId, type: "trust_score_changed", title: "Trust Score +20", message: "Rental completed +20", itemId: rental.items.id, requestId, isRead: false },
+          ...(ownerId ? [{ userId: ownerId, type: "trust_score_changed", title: "Trust Score +20", message: "Rental completed +20", itemId: rental.items.id, requestId, isRead: false }] : []),
         ]);
       } catch (trustError) {
         console.error("Error awarding rental trust points:", trustError);
@@ -10927,8 +10927,8 @@ Respond with ONLY the category name, nothing else.`
         notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
         // Notify both parties
         await db.insert(notifications).values([
-          { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return of "${request.items.name}" — your deposit has been released.`, itemId: request.items.id, requestId },
-          { userId: ownerId, type: "dispute_resolved", title: "Dispute resolved", message: `Admin reviewed the return dispute for "${request.items.name}". The deposit was released to the borrower.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Admin reviewed the return of "${request.items.name}" — your deposit has been released.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Admin reviewed the return dispute for "${request.items.name}". The deposit was released to the borrower.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // Capture deposit in favour of owner (damage confirmed)
@@ -10966,8 +10966,8 @@ Respond with ONLY the category name, nothing else.`
         }
 
         await db.insert(notifications).values([
-          { userId: ownerId, type: "dispute_resolved", title: "Dispute resolved in your favour", message: `Damage confirmed for "${request.items.name}". Deposit has been added to your balance. View it in your profile.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "dispute_resolved", title: "Dispute resolved", message: `Damage was confirmed for "${request.items.name}". Your deposit has been charged.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved In Your Favour", message: `Damage confirmed for "${request.items.name}". Deposit has been added to your balance. View it in your profile.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Damage was confirmed for "${request.items.name}". Your deposit has been charged.`, itemId: request.items.id, requestId },
         ]);
       }
 

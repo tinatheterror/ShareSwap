@@ -155,7 +155,7 @@ function PayAndConfirmForm({
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
         <span>
           The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is refunded when you return the item in good condition.
-          The <span className="font-medium">${rentalPrice.toFixed(2)} rental</span> is released to the owner after handoff.
+          The <span className="font-medium">${rentalPrice.toFixed(2)} rental{discountPct > 0 ? " (after discount)" : ""}</span> is released to the owner after handoff.
         </span>
       </div>
 

@@ -733,6 +733,19 @@ export function ChatWidget() {
     onError: () => { toast({ title: "Error", description: "Could not request early handoff", variant: "destructive" }); },
   });
 
+  const initiateReturnMutation = useMutation({
+    mutationFn: async (requestId: number) => {
+      const res = await apiRequest("POST", `/api/requests/${requestId}/return`, {});
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/messages"] });
+      toast({ title: "Return confirmed", description: "Waiting for the owner to confirm the item has been received." });
+    },
+    onError: () => { toast({ title: "Error", description: "Could not confirm return", variant: "destructive" }); },
+  });
+
   const handleAddSwapItemToInventory = () => {
     if (!swapInventoryItem) return;
     sessionStorage.setItem(
@@ -2226,11 +2239,19 @@ export function ChatWidget() {
                     const wasAutoAdvanced = (pr as any).handoffAutoAdvanced;
                     return (
                       <div className="px-3 py-2 border-t border-blue-100 bg-blue-50 space-y-1">
-                        <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
-                          onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Return item
+                        <Button
+                          className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
+                          disabled={initiateReturnMutation.isPending}
+                          onClick={() => initiateReturnMutation.mutate(pr.id)}
+                        >
+                          {initiateReturnMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirming…</> : <><RotateCcw className="h-4 w-4 mr-2" />Confirm return</>}
                         </Button>
+                        <button
+                          className="text-xs text-muted-foreground hover:text-blue-600 w-full text-center py-0.5 transition-colors"
+                          onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}
+                        >
+                          View deposit & return info
+                        </button>
                         {wasAutoAdvanced && !showAutoReport && (
                           <button
                             onClick={() => setShowAutoReport(true)}

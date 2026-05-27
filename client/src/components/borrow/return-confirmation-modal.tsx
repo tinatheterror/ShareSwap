@@ -246,44 +246,26 @@ export function ReturnConfirmationModal({
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button
-              variant="outline"
-              disabled={isProcessing}
-              className="flex-1"
-              onClick={() => {
-                onClose();
-                if (isEarlyReturn) {
+            {isEarlyReturn && (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  onClose();
                   window.dispatchEvent(
                     new CustomEvent("open-chat-request", { detail: { requestId } })
                   );
-                }
-              }}
-            >
-              {isEarlyReturn ? (
-                <>
-                  <MessageSquare className="h-4 w-4 mr-1.5" />
-                  Message Owner
-                </>
-              ) : (
-                "Cancel"
-              )}
-            </Button>
+                }}
+              >
+                <MessageSquare className="h-4 w-4 mr-1.5" />
+                Message Owner
+              </Button>
+            )}
             <Button
-              onClick={() => initiateReturnMutation.mutate()}
-              disabled={isProcessing}
               className="flex-1 bg-blue-600 hover:bg-blue-700"
+              onClick={onClose}
             >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Initiating...
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  {isEarlyReturn ? "Return Early" : "Initiate Return"}
-                </>
-              )}
+              Got it
             </Button>
           </div>
         </DialogContent>

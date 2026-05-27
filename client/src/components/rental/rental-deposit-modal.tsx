@@ -40,6 +40,123 @@ interface RentalDepositModalProps {
   onSuccess: (nextStep: string) => void;
 }
 
+interface FormProps {
+  clientSecret: string;
+  onSuccess: (paymentIntentId: string) => void;
+  onCancel: () => void;
+  rentalPrice: number;
+  rentalSubtotal: number;
+  discountPct: number;
+  discountAmount: number;
+  depositAmount: number;
+  processingFee: number;
+  deliveryFee: number;
+  days: number;
+}
+
+// Form shown when user has a saved card on file — no card input needed
+function SavedCardConfirmForm(props: FormProps) {
+  const stripe = useStripe();
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { clientSecret, onSuccess, onCancel, rentalPrice, depositAmount, processingFee, deliveryFee, rentalSubtotal, discountPct, discountAmount, days } = props;
+  const totalDueNow = rentalPrice + depositAmount + processingFee + deliveryFee;
+
+  const handleConfirm = async () => {
+    if (!stripe) return;
+    setIsProcessing(true);
+    try {
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret);
+      if (error) {
+        toast({ title: "Payment Failed", description: error.message, variant: "destructive" });
+        setIsProcessing(false);
+      } else if (paymentIntent && (paymentIntent.status === "succeeded" || paymentIntent.status === "requires_capture")) {
+        onSuccess(paymentIntent.id);
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Payment processing failed", variant: "destructive" });
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <BreakdownRows rentalPrice={rentalPrice} rentalSubtotal={rentalSubtotal} discountPct={discountPct} discountAmount={discountAmount} depositAmount={depositAmount} processingFee={processingFee} deliveryFee={deliveryFee} days={days} />
+      <div className="flex items-center gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
+        <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+        <span>
+          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is refunded when you return the item in good condition.
+          The <span className="font-medium">${rentalPrice.toFixed(2)} rental</span> is released to owner after the item is picked up.
+        </span>
+      </div>
+      <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2.5 flex items-center gap-2 text-sm text-gray-700">
+        <CreditCard className="h-4 w-4 text-gray-500" />
+        <span>Charging card on file</span>
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">Cancel</Button>
+        <Button onClick={handleConfirm} disabled={isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+          {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : <><CreditCard className="h-4 w-4 mr-2" />Pay ${totalDueNow.toFixed(2)}</>}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Shared breakdown rows used by both form variants
+function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmount, depositAmount, processingFee, deliveryFee, days }: {
+  rentalPrice: number; rentalSubtotal: number; discountPct: number; discountAmount: number;
+  depositAmount: number; processingFee: number; deliveryFee: number; days: number;
+}) {
+  const totalDueNow = rentalPrice + depositAmount + processingFee + deliveryFee;
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 divide-y divide-gray-200 text-sm">
+      <div className="flex justify-between items-center px-4 py-2.5">
+        <span className="text-gray-600 flex items-center gap-2">
+          <DollarSign className="h-3.5 w-3.5 text-green-600" />
+          Rental ({days} day{days !== 1 ? "s" : ""})
+        </span>
+        <span className="font-medium">${discountPct > 0 ? rentalSubtotal.toFixed(2) : rentalPrice.toFixed(2)}</span>
+      </div>
+      {discountPct > 0 && (
+        <div className="flex justify-between items-center px-4 py-2.5">
+          <span className="text-teal-700 flex items-center gap-1.5">
+            <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">{discountPct}% OFF</span>
+            {getDiscountLabel(days)}
+          </span>
+          <span className="font-medium text-teal-700">−${discountAmount.toFixed(2)}</span>
+        </div>
+      )}
+      <div className="flex justify-between items-center px-4 py-2.5">
+        <span className="text-gray-600 flex items-center gap-2">
+          <Shield className="h-3.5 w-3.5 text-blue-600" />
+          Security deposit
+          <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">REFUNDABLE</span>
+        </span>
+        <span className="font-medium">${depositAmount.toFixed(2)}</span>
+      </div>
+      {deliveryFee > 0 && (
+        <div className="flex justify-between items-center px-4 py-2.5">
+          <span className="text-gray-600 flex items-center gap-2">
+            <Truck className="h-3.5 w-3.5 text-orange-500" />
+            Courier delivery
+          </span>
+          <span className="font-medium">${deliveryFee.toFixed(2)}</span>
+        </div>
+      )}
+      <div className="flex justify-between items-center px-4 py-2.5">
+        <span className="text-gray-500 text-xs">Processing fee (3%)</span>
+        <span className="text-gray-500 text-xs">${processingFee.toFixed(2)}</span>
+      </div>
+      <div className="flex justify-between items-center px-4 py-3 bg-white rounded-b-lg">
+        <span className="font-semibold text-gray-900">Total due today</span>
+        <span className="font-bold text-lg text-gray-900">${totalDueNow.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
+// Full form shown when no saved card — user enters card details
 function PayAndConfirmForm({
   clientSecret,
   onSuccess,
@@ -52,19 +169,7 @@ function PayAndConfirmForm({
   processingFee,
   deliveryFee,
   days,
-}: {
-  clientSecret: string;
-  onSuccess: (paymentIntentId: string) => void;
-  onCancel: () => void;
-  rentalPrice: number;
-  rentalSubtotal: number;
-  discountPct: number;
-  discountAmount: number;
-  depositAmount: number;
-  processingFee: number;
-  deliveryFee: number;
-  days: number;
-}) {
+}: FormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -105,52 +210,7 @@ function PayAndConfirmForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Breakdown */}
-      <div className="rounded-lg border border-gray-200 bg-gray-50 divide-y divide-gray-200 text-sm">
-        <div className="flex justify-between items-center px-4 py-2.5">
-          <span className="text-gray-600 flex items-center gap-2">
-            <DollarSign className="h-3.5 w-3.5 text-green-600" />
-            Rental ({days} day{days !== 1 ? "s" : ""})
-          </span>
-          <span className="font-medium">${discountPct > 0 ? rentalSubtotal.toFixed(2) : rentalPrice.toFixed(2)}</span>
-        </div>
-        {discountPct > 0 && (
-          <div className="flex justify-between items-center px-4 py-2.5">
-            <span className="text-teal-700 flex items-center gap-1.5">
-              <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">{discountPct}% OFF</span>
-              {getDiscountLabel(days)}
-            </span>
-            <span className="font-medium text-teal-700">−${discountAmount.toFixed(2)}</span>
-          </div>
-        )}
-        <div className="flex justify-between items-center px-4 py-2.5">
-          <span className="text-gray-600 flex items-center gap-2">
-            <Shield className="h-3.5 w-3.5 text-blue-600" />
-            Security deposit
-            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">REFUNDABLE</span>
-          </span>
-          <span className="font-medium">${depositAmount.toFixed(2)}</span>
-        </div>
-        {deliveryFee > 0 && (
-          <div className="flex justify-between items-center px-4 py-2.5">
-            <span className="text-gray-600 flex items-center gap-2">
-              <Truck className="h-3.5 w-3.5 text-orange-500" />
-              Courier delivery
-            </span>
-            <span className="font-medium">${deliveryFee.toFixed(2)}</span>
-          </div>
-        )}
-        <div className="flex justify-between items-center px-4 py-2.5">
-          <span className="text-gray-500 text-xs">Processing fee (3%)</span>
-          <span className="text-gray-500 text-xs">${processingFee.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between items-center px-4 py-3 bg-white rounded-b-lg">
-          <span className="font-semibold text-gray-900">Total due today</span>
-          <span className="font-bold text-lg text-gray-900">${totalDueNow.toFixed(2)}</span>
-        </div>
-      </div>
-
-      {/* Deposit info note */}
+      <BreakdownRows rentalPrice={rentalPrice} rentalSubtotal={rentalSubtotal} discountPct={discountPct} discountAmount={discountAmount} depositAmount={depositAmount} processingFee={processingFee} deliveryFee={deliveryFee} days={days} />
       <div className="flex gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
         <span>
@@ -158,30 +218,11 @@ function PayAndConfirmForm({
           The <span className="font-medium">${rentalPrice.toFixed(2)} rental</span> is released to owner after the item is picked up.
         </span>
       </div>
-
-      {/* Stripe payment form */}
       <PaymentElement />
-
       <div className="flex gap-2 pt-1">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={!stripe || isProcessing}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processing…
-            </>
-          ) : (
-            <>
-              <CreditCard className="h-4 w-4 mr-2" />
-              Pay & Confirm Booking
-            </>
-          )}
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">Cancel</Button>
+        <Button type="submit" disabled={!stripe || isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+          {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : <><CreditCard className="h-4 w-4 mr-2" />Pay & Confirm Booking</>}
         </Button>
       </div>
     </form>
@@ -199,6 +240,7 @@ export function RentalDepositModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [hasSavedCard, setHasSavedCard] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
   const itemValue = item.replacementValue || 100;
@@ -237,6 +279,7 @@ export function RentalDepositModal({
     onSuccess: (data) => {
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
+        setHasSavedCard(!!data.hasSavedCard);
         setInitError(null);
       }
     },
@@ -281,6 +324,7 @@ export function RentalDepositModal({
 
   const handleClose = () => {
     setClientSecret(null);
+    setHasSavedCard(false);
     setInitError(null);
     onClose();
   };
@@ -314,19 +358,35 @@ export function RentalDepositModal({
             </div>
           ) : clientSecret ? (
             <Elements stripe={stripePromise} options={{ clientSecret }}>
-              <PayAndConfirmForm
-                clientSecret={clientSecret}
-                onSuccess={(paymentIntentId) => confirmPaymentMutation.mutate(paymentIntentId)}
-                onCancel={handleClose}
-                rentalPrice={rentalPrice}
-                rentalSubtotal={rentalSubtotal}
-                discountPct={discountPct}
-                discountAmount={discountAmount}
-                depositAmount={depositAmount}
-                processingFee={processingFee}
-                deliveryFee={deliveryFee}
-                days={days}
-              />
+              {hasSavedCard ? (
+                <SavedCardConfirmForm
+                  clientSecret={clientSecret}
+                  onSuccess={(paymentIntentId) => confirmPaymentMutation.mutate(paymentIntentId)}
+                  onCancel={handleClose}
+                  rentalPrice={rentalPrice}
+                  rentalSubtotal={rentalSubtotal}
+                  discountPct={discountPct}
+                  discountAmount={discountAmount}
+                  depositAmount={depositAmount}
+                  processingFee={processingFee}
+                  deliveryFee={deliveryFee}
+                  days={days}
+                />
+              ) : (
+                <PayAndConfirmForm
+                  clientSecret={clientSecret}
+                  onSuccess={(paymentIntentId) => confirmPaymentMutation.mutate(paymentIntentId)}
+                  onCancel={handleClose}
+                  rentalPrice={rentalPrice}
+                  rentalSubtotal={rentalSubtotal}
+                  discountPct={discountPct}
+                  discountAmount={discountAmount}
+                  depositAmount={depositAmount}
+                  processingFee={processingFee}
+                  deliveryFee={deliveryFee}
+                  days={days}
+                />
+              )}
             </Elements>
           ) : null}
         </div>

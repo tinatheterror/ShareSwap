@@ -6269,7 +6269,16 @@ Respond with ONLY the category name, nothing else.`
       // Rental is transferred to owner after handoff; deposit is refunded on safe return.
       const totalChargeAmount = (rentalAmount || 0) + depositAmount + (processingFee || 0) + (courierFee || 0);
 
-      const paymentIntent = await stripe.paymentIntents.create({
+      // Look up user's saved payment method from verification
+      const [userRecord] = await db
+        .select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      const hasSavedCard = !!(userRecord?.stripeCustomerId && userRecord?.stripePaymentMethodId);
+
+      const paymentIntentParams: any = {
         amount: Math.round(totalChargeAmount * 100),
         currency: "usd",
         capture_method: "automatic",
@@ -6282,11 +6291,20 @@ Respond with ONLY the category name, nothing else.`
           processingFee: (processingFee || 0).toString(),
           platformFee: (platformFee || 0).toString(),
         },
-      });
+      };
+
+      // Attach saved card — user won't need to enter card details
+      if (hasSavedCard) {
+        paymentIntentParams.customer = userRecord.stripeCustomerId;
+        paymentIntentParams.payment_method = userRecord.stripePaymentMethodId;
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
       res.json({
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
+        hasSavedCard,
         depositAmount,
         rentalAmount,
         totalHoldAmount: totalChargeAmount,

@@ -474,8 +474,12 @@ export function ChatWidget() {
       const isOwner     = req.item.ownerId === user.id;
       const isRequester = req.requesterId === user.id;
       const isBothSides = req.requestType === "SWAP" || req.requestType === "GIFT";
-      // Owner is always prompted; requester is prompted only for SWAP / GIFT
-      if ((isOwner || (isRequester && isBothSides)) && !showReviewPrompt) {
+      // For BORROW/RENT the owner already rated condition in the confirm-return modal — skip the review popup for them.
+      // For SWAP/GIFT there's no condition step so both sides get the review prompt.
+      const shouldPrompt = isBothSides
+        ? isOwner || isRequester
+        : isRequester; // borrower/renter gets the prompt; lender/owner does not
+      if (shouldPrompt && !showReviewPrompt) {
         setReviewForRequest(req);
         setShowReviewPrompt(true);
         // For SWAP requester: offer to add the received item to inventory

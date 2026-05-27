@@ -1046,15 +1046,8 @@ export function registerRoutes(app: Express): Server {
         {
           userId,
           type: "trust_score_changed",
-          title: "Trust score increased",
-          message: `+${VERIFICATION_TRUST_BOOST} points for completing identity verification.`,
-          isRead: false,
-        },
-        {
-          userId,
-          type: "milestone_achieved",
-          title: "Identity verified",
-          message: "ID verified. Higher trust and more features unlocked.",
+          title: `Trust score +${VERIFICATION_TRUST_BOOST}`,
+          message: "ID verification approved",
           isRead: false,
         },
       ]);
@@ -1304,15 +1297,8 @@ export function registerRoutes(app: Express): Server {
           {
             userId,
             type: "trust_score_changed",
-            title: "Trust score increased",
-            message: `+${VERIFICATION_TRUST_BOOST} points for completing identity verification.`,
-            isRead: false,
-          },
-          {
-            userId,
-            type: "milestone_achieved",
-            title: "Identity verified",
-            message: "ID verified. Higher trust and more features unlocked.",
+            title: `Trust score +${VERIFICATION_TRUST_BOOST}`,
+            message: "ID verification approved",
             isRead: false,
           },
         ]);
@@ -5708,6 +5694,15 @@ Respond with ONLY the category name, nothing else.`
         } else {
           await awardGiftingPoints(giverId, receiverId, requestId, request.items.id);
           console.log(`✅ Awarded trust points for completed gift`);
+          await db.insert(notifications).values({
+            userId: giverId,
+            type: "trust_score_changed",
+            title: "Trust score +10",
+            message: "Gift completed +10",
+            itemId: request.items.id,
+            requestId,
+            isRead: false,
+          });
         }
       } catch (trustError) {
         console.error("Error awarding gift trust points:", trustError);
@@ -7107,6 +7102,10 @@ Respond with ONLY the category name, nothing else.`
 
             await awardSwapCompletionPoints(ownerId2, requesterId2, requestId, request.items.id, request.items.id);
             console.log(`✅ Awarded trust points for swap handoff completion`);
+            await db.insert(notifications).values([
+              { userId: ownerId2, type: "trust_score_changed", title: "Trust score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
+              { userId: requesterId2, type: "trust_score_changed", title: "Trust score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
+            ]);
 
             await checkAndAwardReferralBonus(ownerId2, requestId, 'SWAP');
             await checkAndAwardReferralBonus(requesterId2, requestId, 'SWAP');
@@ -8293,6 +8292,41 @@ Respond with ONLY the category name, nothing else.`
           conditionRating || 5,
           wasOnTime
         );
+
+        // Send trust score notifications
+        const condRating = conditionRating || 5;
+        let borrowerPts: number;
+        let borrowerMsg: string;
+        if (condRating >= 4 && wasOnTime) {
+          borrowerPts = 40; borrowerMsg = "Perfect borrow return +40";
+        } else if (condRating >= 3 && wasOnTime) {
+          borrowerPts = 25; borrowerMsg = "Good borrow return +25";
+        } else if (condRating >= 3) {
+          borrowerPts = 10; borrowerMsg = "Late borrow return +10";
+        } else {
+          borrowerPts = -45; borrowerMsg = "Damage confirmed −45";
+        }
+        const lenderPts = 20;
+        await db.insert(notifications).values([
+          {
+            userId: request.item_requests.requesterId,
+            type: "trust_score_changed",
+            title: borrowerPts > 0 ? `Trust score +${borrowerPts}` : `Trust score −${Math.abs(borrowerPts)}`,
+            message: borrowerMsg,
+            itemId: request.items.id,
+            requestId,
+            isRead: false,
+          },
+          {
+            userId: request.items.ownerId!,
+            type: "trust_score_changed",
+            title: `Trust score +${lenderPts}`,
+            message: `Lending completed +${lenderPts}`,
+            itemId: request.items.id,
+            requestId,
+            isRead: false,
+          },
+        ]);
         
         // Apply late return penalty if applicable (with grace pass for first-time offenders)
         // Only penalize if borrower didn't notify about the delay in advance
@@ -10476,6 +10510,10 @@ Respond with ONLY the category name, nothing else.`
           rental.items.id,
           false // hadDispute - completed rentals are dispute-free
         );
+        await db.insert(notifications).values([
+          { userId: renterId, type: "trust_score_changed", title: "Trust score +20", message: "Rental completed +20", itemId: rental.items.id, requestId, isRead: false },
+          ...(ownerId ? [{ userId: ownerId, type: "trust_score_changed", title: "Trust score +20", message: "Rental completed +20", itemId: rental.items.id, requestId, isRead: false }] : []),
+        ]);
       } catch (trustError) {
         console.error("Error awarding rental trust points:", trustError);
       }
@@ -11351,8 +11389,12 @@ Respond with ONLY the category name, nothing else.`
       return res.status(400).send("You have already reviewed this transaction");
     }
 
-    // Validate feedback tags
-    const validTags = ["reliable", "on_time", "as_described", "great_communication", "well_cared", "late_return", "issue_reported"];
+    // Validate feedback tags — all recognized tag types
+    const validTags = [
+      "reliable", "on_time", "as_described", "great_communication", "well_cared",
+      "late_return", "issue_reported", "no_show", "item_not_described",
+      "generous_giver", "picked_up_promptly", "item_as_described", "fair_exchange",
+    ];
     const cleanedTags = feedbackTags?.filter((tag: string) => validTags.includes(tag)) || [];
 
     // Create the review
@@ -11368,33 +11410,22 @@ Respond with ONLY the category name, nothing else.`
       })
       .returning();
 
-    // Notify the reviewed user immediately
-    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-    const [reviewNotif] = await db.insert(notifications).values({
-      userId: reviewedUserId,
-      type: "new_review_received",
-      title: `New ${rating}-star review`,
-      message: `${req.user.username} left you a ${rating}-star review ${stars}${comment ? `: "${comment.slice(0, 80)}${comment.length > 80 ? '…' : ''}"` : '.'}`,
-      isRead: false,
-    }).returning();
-    const reviewedUserWs = connectedClients.get(reviewedUserId);
-    if (reviewedUserWs?.readyState === WebSocket.OPEN) {
-      reviewedUserWs.send(JSON.stringify({ type: "new_notification", notification: reviewNotif }));
-    }
-
     // --- Compute ALL points upfront so the notification and level-up check are accurate ---
 
-    // Base points from star rating (0 for ≤3 stars, 10 for 4 stars, 20 for 5 stars)
-    const reviewPoints = Math.max(rating - 3, 0) * 10;
+    // Base points from star rating: 3★=0, 4★=+3, 5★=+5
+    const reviewPoints = rating === 5 ? 5 : rating === 4 ? 3 : 0;
 
-    // Positive feedback tag points (+12 each for reliable / on_time / as_described)
-    const POSITIVE_TAG_POINTS: Record<string, number> = {
-      reliable: 12, on_time: 12, as_described: 12,
-    };
+    // Positive feedback tag points (+1 each for reliable / on_time / as_described)
+    const POSITIVE_TAG_POINTS: Record<string, number> = { reliable: 1, on_time: 1, as_described: 1 };
     const positiveTagsAwarded = cleanedTags.filter(t => t in POSITIVE_TAG_POINTS);
     const feedbackTagPoints = positiveTagsAwarded.reduce((sum, t) => sum + POSITIVE_TAG_POINTS[t], 0);
 
-    const totalPoints = reviewPoints + feedbackTagPoints;
+    // Negative tag deduction: -1 per negative tag selected
+    const NEGATIVE_TAG_KEYS = ["late_return", "issue_reported", "no_show", "item_not_described"];
+    const negativeTagsSelected = cleanedTags.filter(t => NEGATIVE_TAG_KEYS.includes(t));
+    const negativeTagDeduction = negativeTagsSelected.length * -1;
+
+    const totalPoints = reviewPoints + feedbackTagPoints + negativeTagDeduction;
 
     // Read current score/level BEFORE any update
     const [reviewedUserBefore] = await db
@@ -11407,7 +11438,8 @@ Respond with ONLY the category name, nothing else.`
 
     // Anti-farming: trust points from reviews are awarded at most once per reviewer→reviewed
     // pair per 90-day rolling window. The review itself is still saved and visible.
-    if (totalPoints > 0) {
+    const positiveTotal = reviewPoints + feedbackTagPoints;
+    if (positiveTotal > 0) {
       const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
       const [priorPairReview] = await db
         .select({ id: userReviews.id })
@@ -11427,8 +11459,7 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    if (totalPoints > 0) {
-      // Log reputation activities (one per source)
+    if (totalPoints !== 0) {
       if (reviewPoints > 0) {
         await db.insert(reputationActivities).values({
           userId: reviewedUserId,
@@ -11446,40 +11477,29 @@ Respond with ONLY the category name, nothing else.`
           description: `Positive feedback tags: ${positiveTagsAwarded.join(", ")}`,
         });
       }
+      if (negativeTagDeduction < 0) {
+        await db.insert(reputationActivities).values({
+          userId: reviewedUserId,
+          activityType: "low_review_two_star" as any,
+          points: negativeTagDeduction,
+          description: `Negative feedback tags: ${negativeTagsSelected.join(", ")}`,
+        });
+      }
 
-      // Apply ALL points in one DB update (includes reputationLevel recalculation)
       await db
         .update(users)
         .set({
-          reputationScore: sql`reputation_score + ${totalPoints}`,
+          reputationScore: sql`GREATEST(0, reputation_score + ${totalPoints})`,
           reputationLevel: sql`CASE
-            WHEN reputation_score + ${totalPoints} >= 500 THEN 'ShareSwap Champion'
-            WHEN reputation_score + ${totalPoints} >= 300 THEN 'Community Pillar'
-            WHEN reputation_score + ${totalPoints} >= 150 THEN 'Trusted Member'
-            WHEN reputation_score + ${totalPoints} >= 50  THEN 'Neighbour'
+            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 500 THEN 'ShareSwap Champion'
+            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 300 THEN 'Community Pillar'
+            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 150 THEN 'Trusted Member'
+            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 50  THEN 'Neighbour'
             ELSE 'Newcomer'
           END`,
         })
         .where(eq(users.id, reviewedUserId));
 
-      // Build a transparent breakdown for the notification message
-      const breakdownParts: string[] = [];
-      if (reviewPoints > 0) breakdownParts.push(`${reviewPoints} from ${rating}-star rating`);
-      if (feedbackTagPoints > 0) breakdownParts.push(`${feedbackTagPoints} from ${positiveTagsAwarded.length} positive tag${positiveTagsAwarded.length !== 1 ? 's' : ''}`);
-
-      const [trustNotif] = await db.insert(notifications).values({
-        userId: reviewedUserId,
-        type: "trust_score_changed",
-        title: "Trust score increased",
-        message: `Your trust score went up by ${totalPoints} point${totalPoints !== 1 ? 's' : ''} (${breakdownParts.join(" + ")}) after ${req.user.username}'s review.`,
-        isRead: false,
-      }).returning();
-      const trustWs = connectedClients.get(reviewedUserId);
-      if (trustWs?.readyState === WebSocket.OPEN) {
-        trustWs.send(JSON.stringify({ type: "new_notification", notification: trustNotif }));
-      }
-
-      // Level-up check uses totalPoints so tags that push across a threshold are caught
       const LEVEL_THRESHOLDS = [
         { name: 'Newcomer',           minScore: 0,   coinsReward: 0 },
         { name: 'Neighbour',          minScore: 50,  coinsReward: 5 },
@@ -11489,10 +11509,8 @@ Respond with ONLY the category name, nothing else.`
       ];
       const getLevelForScore = (s: number) =>
         [...LEVEL_THRESHOLDS].reverse().find(l => s >= l.minScore) ?? LEVEL_THRESHOLDS[0];
-
       const oldLevelDef = getLevelForScore(oldScore);
-      const newLevelDef = getLevelForScore(oldScore + totalPoints);
-
+      const newLevelDef = getLevelForScore(Math.max(0, oldScore + totalPoints));
       if (newLevelDef.name !== oldLevelDef.name) {
         if (newLevelDef.coinsReward > 0) {
           await db.update(users)
@@ -11521,16 +11539,42 @@ Respond with ONLY the category name, nothing else.`
           link: "/achievements",
           isRead: false,
         });
-        console.log(`🎉 Level up: user ${reviewedUserId} reached ${newLevelDef.name} (score ${oldScore} → ${oldScore + totalPoints})`);
+        console.log(`🎉 Level up: user ${reviewedUserId} reached ${newLevelDef.name} (score ${oldScore} → ${Math.max(0, oldScore + totalPoints)})`);
       }
     }
 
-    // awardFeedbackPoints is no longer called here — points are fully handled above.
-    // (It still exists for other callers such as the handoff confirmation route.)
+    // Build single combined notification: review + trust score impact
+    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    const breakdownParts: string[] = [];
+    if (reviewPoints > 0) breakdownParts.push(`${rating}★ review +${reviewPoints}`);
+    positiveTagsAwarded.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} +1`));
+    negativeTagsSelected.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} −1`));
+
+    const trustTitle = totalPoints > 0
+      ? `Trust score +${totalPoints}`
+      : totalPoints < 0
+        ? `Trust score −${Math.abs(totalPoints)}`
+        : `New ${rating}-star review`;
+
+    const reviewLine = comment
+      ? `${req.user.username} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
+      : `${req.user.username} left you a ${rating}-star review ${stars}`;
+    const breakdownLine = breakdownParts.length > 0 ? `\n${breakdownParts.join(', ')}` : '';
+
+    const [reviewNotif] = await db.insert(notifications).values({
+      userId: reviewedUserId,
+      type: totalPoints !== 0 ? "trust_score_changed" : "new_review_received",
+      title: trustTitle,
+      message: `${reviewLine}${breakdownLine}`,
+      isRead: false,
+    }).returning();
+    const reviewedUserWs = connectedClients.get(reviewedUserId);
+    if (reviewedUserWs?.readyState === WebSocket.OPEN) {
+      reviewedUserWs.send(JSON.stringify({ type: "new_notification", notification: reviewNotif }));
+    }
 
     // --- Low-review trust penalty (1 or 2 stars + negative tags required) ---
-    const NEGATIVE_REVIEW_TAGS = ["late_return", "issue_reported"];
-    const selectedNegativeTags = cleanedTags.filter((t: string) => NEGATIVE_REVIEW_TAGS.includes(t));
+    const selectedNegativeTags = cleanedTags.filter((t: string) => ["late_return", "issue_reported"].includes(t));
     if ((rating === 1 || rating === 2) && selectedNegativeTags.length > 0) {
       try {
         const penaltyResult = await applyLowReviewPenalty(
@@ -11540,23 +11584,9 @@ Respond with ONLY the category name, nothing else.`
           selectedNegativeTags,
         );
         if (penaltyResult.wasGracePass) {
-          await db.insert(notifications).values({
-            userId: reviewedUserId,
-            type: "trust_score_changed",
-            title: "Trust score notice ⚠️",
-            message: `You received a ${rating}-star review with concerns raised. This is your first notice — no points deducted. A repeat will reduce your trust score.`,
-            isRead: false,
-          });
           console.log(`⚠️ Grace pass issued to user ${reviewedUserId} for ${rating}-star review with tags: ${selectedNegativeTags.join(", ")}`);
         } else if (penaltyResult.applied) {
           const deduction = rating === 1 ? 10 : 5;
-          await db.insert(notifications).values({
-            userId: reviewedUserId,
-            type: "trust_score_changed",
-            title: "Trust score reduced ⚠️",
-            message: `Your trust score dropped by ${deduction} points after a ${rating}-star review citing: ${selectedNegativeTags.join(", ")}. Consistent positive exchanges will rebuild it.`,
-            isRead: false,
-          });
           console.log(`🚨 Low-review penalty applied to user ${reviewedUserId}: ${rating}-star, tags: ${selectedNegativeTags.join(", ")}, deduction: -${deduction}`);
         }
       } catch (penaltyErr) {
@@ -11564,7 +11594,7 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    console.log(`✅ Review processed: ${reviewPoints} base + ${feedbackTagPoints} tag pts = ${totalPoints} total for user ${reviewedUserId}`);
+    console.log(`✅ Review processed: ${reviewPoints} stars + ${feedbackTagPoints} pos tags + ${negativeTagDeduction} neg tags = ${totalPoints} total for user ${reviewedUserId}`);
 
     res.status(201).json(review);
   });

@@ -4759,10 +4759,6 @@ Respond with ONLY the category name, nothing else.`
         actualHandoffAt: itemRequests.actualHandoffAt,
         actualReturnAt: itemRequests.actualReturnAt,
         handoffDelayAdjustmentStatus: itemRequests.handoffDelayAdjustmentStatus,
-        // Early handoff (RENT)
-        earlyHandoffRequestedByOwner: itemRequests.earlyHandoffRequestedByOwner,
-        earlyHandoffRequestedByRenter: itemRequests.earlyHandoffRequestedByRenter,
-        earlyHandoffApprovedAt: itemRequests.earlyHandoffApprovedAt,
         proposedAdjustedEndDate: itemRequests.proposedAdjustedEndDate,
         ownerConfirmedReturn: itemRequests.ownerConfirmedReturn,
         borrowerConfirmedReturn: itemRequests.borrowerConfirmedReturn,
@@ -7260,7 +7256,6 @@ Respond with ONLY the category name, nothing else.`
           const bookedStartMs = effectiveStart2 ? new Date(effectiveStart2).getTime() : null;
           const bookedEndDate = effectiveEnd2 ? new Date(effectiveEnd2) : null;
           const isLateHandoff = bookedStartMs && now.getTime() > bookedStartMs;
-          const isEarlyHandoff = bookedStartMs && now.getTime() < bookedStartMs;
           const startFmt = effectiveStart2 ? new Date(effectiveStart2).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : null;
           const endFmt = bookedEndDate ? bookedEndDate.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }) : null;
           const handoffFmt = now.toLocaleDateString("en-CA", { month: "short", day: "numeric" });
@@ -7275,7 +7270,6 @@ Respond with ONLY the category name, nothing else.`
             `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
             startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
             isLateHandoff && isBorrow ? `⚠️ Handoff was late — borrower can request a return date adjustment from their requests page.` : null,
-            isEarlyHandoff && isBorrow ? `⏰ Early handoff — ShareCoins and return date are based on the original booked period (${startFmt} – ${endFmt}).` : null,
             isRent && request.item_requests.depositMethod !== "in_person" ? `🔒 Security deposit is now held until the item is returned` : null,
           ].filter(Boolean) as string[];
         }
@@ -7334,72 +7328,6 @@ Respond with ONLY the category name, nothing else.`
       return res.json({ pin: expired ? null : pin, pinExpiresAt, pinUsed, expired: !!expired });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch PIN" });
-    }
-  });
-
-  // Request early handoff (RENT only) — either party can request; PIN unlocks when both agree
-  app.post("/api/requests/:requestId/request-early-handoff", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    try {
-      const requestId = parseInt(req.params.requestId);
-
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) return res.status(404).json({ error: "Request not found" });
-      if (request.item_requests.requestType !== "RENT") return res.status(400).json({ error: "Early handoff only applies to rental requests" });
-      if (request.item_requests.status !== "DEPOSIT_CONFIRMED" && request.item_requests.status !== "COURIER_PENDING") {
-        return res.status(400).json({ error: "Request is not in the right state for early handoff" });
-      }
-
-      const isOwner = request.items.ownerId === req.user.id;
-      const isRenter = request.item_requests.requesterId === req.user.id;
-      if (!isOwner && !isRenter) return res.status(403).json({ error: "Unauthorized" });
-
-      const alreadyApproved = (request.item_requests as any).earlyHandoffApprovedAt;
-      if (alreadyApproved) return res.json({ approved: true, message: "Early handoff already approved" });
-
-      const now = new Date();
-      const ownerAlready = (request.item_requests as any).earlyHandoffRequestedByOwner ?? false;
-      const renterAlready = (request.item_requests as any).earlyHandoffRequestedByRenter ?? false;
-
-      const updateData: Record<string, unknown> = {};
-      if (isOwner) updateData.earlyHandoffRequestedByOwner = true;
-      if (isRenter) updateData.earlyHandoffRequestedByRenter = true;
-
-      const bothAgreed = (isOwner && renterAlready) || (isRenter && ownerAlready);
-      if (bothAgreed) updateData.earlyHandoffApprovedAt = now;
-
-      await db.update(itemRequests).set(updateData as any).where(eq(itemRequests.id, requestId));
-
-      // System message to the chat
-      const msgContent = bothAgreed
-        ? `⚡ Both parties agreed to an early handoff — PIN is now active`
-        : isOwner
-          ? `⚡ Owner requested an early handoff before ${request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : "the start date"} — waiting for renter to agree`
-          : `⚡ Renter requested an early handoff before ${request.item_requests.startDate ? new Date(request.item_requests.startDate).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : "the start date"} — waiting for owner to agree`;
-
-      await db.insert(messages).values({
-        senderId: req.user.id,
-        receiverId: isOwner ? request.item_requests.requesterId : request.items.ownerId,
-        content: msgContent,
-        requestId,
-        messageType: "system",
-      });
-
-      return res.json({
-        approved: bothAgreed,
-        ownerRequested: isOwner ? true : ownerAlready,
-        renterRequested: isRenter ? true : renterAlready,
-        message: bothAgreed ? "Early handoff approved — PIN is now active" : "Request recorded — waiting for the other party to agree",
-      });
-    } catch (error) {
-      console.error("request-early-handoff error:", error);
-      res.status(500).json({ error: "Failed to process early handoff request" });
     }
   });
 

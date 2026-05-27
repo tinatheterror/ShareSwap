@@ -5658,7 +5658,7 @@ Respond with ONLY the category name, nothing else.`
       const receiverId = request.item_requests.requesterId;
 
       // Award first-time bonus to giver only (no recurring reward; receiver gets nothing)
-      await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 0);
+      const giftBonusResult = await awardShareCoinsWithFirstTimeBonus(giverId, 'GIFT', request.items.name, 0);
 
       // Update trust scores — with anti-farming guards
       try {
@@ -5730,7 +5730,9 @@ Respond with ONLY the category name, nothing else.`
           userId: giverId,
           type: "gift_completed",
           title: "Gift completed! 🎁",
-          message: `"${request.items.name}" gifted. First-time bonus: +1 SC.`,
+          message: giftBonusResult.isFirstTime
+            ? `"${request.items.name}" successfully handed over. First-time gift bonus: +1 SC.`
+            : `"${request.items.name}" successfully handed over.`,
           itemId: request.items.id,
           requestId: requestId,
         },

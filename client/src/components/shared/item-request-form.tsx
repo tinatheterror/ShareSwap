@@ -589,6 +589,17 @@ export function ItemRequestForm({
                             </span>
                           </div>
 
+                          <div className="border-t border-gray-200 pt-1.5 mt-0.5 space-y-1.5">
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>Platform fee</span>
+                              <span className="text-emerald-600 font-medium">0% for 2026</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>Processing fee (3%)</span>
+                              <span>${(pricing.total * 0.03).toFixed(2)}</span>
+                            </div>
+                          </div>
+
                           <div className="border-t border-gray-200 pt-1.5 mt-0.5">
                             <div className="flex justify-between">
                               <span className="text-gray-600 flex items-center gap-1">
@@ -603,16 +614,21 @@ export function ItemRequestForm({
                               Held securely, auto-refunded on return
                             </p>
                           </div>
+
+                          <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5 mt-0.5">
+                            <span>Total due today</span>
+                            <span>${(pricing.total + deliveryCost + pricing.total * 0.03 + deposit).toFixed(2)}</span>
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-1 text-xs text-gray-500">
                           <p>Select dates to see cost breakdown</p>
                           <div className="flex gap-3 pt-1">
                             <span className="text-teal-600 font-medium">
-                              2–3 wks: 10% off
+                              14–27 days: 10% off
                             </span>
                             <span className="text-teal-600 font-medium">
-                              4+ wks: 20% off
+                              28+ days: 20% off
                             </span>
                           </div>
                         </div>

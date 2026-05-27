@@ -2856,7 +2856,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Block deletion for items with active/ongoing transactions
       const BLOCKED_STATUSES = [
-        "PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING",
+        "PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED",
         "AWAITING_HANDOFF_CONFIRM", "HANDOFF_CONFIRMED", "IN_PROGRESS",
         "HANDOFF_DISPUTED", "DISPUTED"
       ];
@@ -2870,7 +2870,7 @@ Respond with ONLY the category name, nothing else.`
       if (blockingRequests.length > 0) {
         const s = blockingRequests[0].status;
         const isDispute = s === 'HANDOFF_DISPUTED' || s === 'DISPUTED';
-        const isActive = ['IN_PROGRESS', 'HANDOFF_CONFIRMED', 'DEPOSIT_CONFIRMED', 'COURIER_PENDING', 'AWAITING_HANDOFF_CONFIRM'].includes(s);
+        const isActive = ['IN_PROGRESS', 'HANDOFF_CONFIRMED', 'DEPOSIT_CONFIRMED', 'AWAITING_HANDOFF_CONFIRM'].includes(s);
         const msg = isDispute
           ? "This item is in a dispute and cannot be removed until resolved."
           : isActive
@@ -3015,7 +3015,7 @@ Respond with ONLY the category name, nothing else.`
       // can subscribe to be notified when the item returns.
       const activeHandoffStatuses = [
         'ACCEPTED','IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED',
-        'COURIER_PENDING','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED',
+        'AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED',
       ];
       let whereConditions = [
         or(
@@ -3101,7 +3101,7 @@ Respond with ONLY the category name, nothing else.`
       const STATUS_PRIORITY: Record<string, number> = {
         HANDOFF_DISPUTED: 10, DISPUTED: 9,
         IN_PROGRESS: 8, HANDOFF_CONFIRMED: 7,
-        DEPOSIT_CONFIRMED: 6, COURIER_PENDING: 5, AWAITING_HANDOFF_CONFIRM: 4,
+        DEPOSIT_CONFIRMED: 6, AWAITING_HANDOFF_CONFIRM: 4,
         ACCEPTED: 3, PENDING: 2,
         COMPLETED_EARLY: 1, COMPLETED: 0,
       };
@@ -3550,7 +3550,6 @@ Respond with ONLY the category name, nothing else.`
         "ACCEPTED",
         "DEPOSIT_CONFIRMED",
         "AWAITING_HANDOFF_CONFIRM",
-        "COURIER_PENDING",
         "IN_PROGRESS",
       ];
 
@@ -3662,7 +3661,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Attach isCurrentlyOut — true when item is committed to a neighbour (ACCEPTED or physically out)
-    const activeHandoffSt = ['ACCEPTED','IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED','COURIER_PENDING','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED'];
+    const activeHandoffSt = ['ACCEPTED','IN_PROGRESS','HANDOFF_CONFIRMED','DEPOSIT_CONFIRMED','AWAITING_HANDOFF_CONFIRM','HANDOFF_DISPUTED','DISPUTED'];
     const activeReq = await db.select({ id: itemRequests.id, endDate: itemRequests.endDate, counterEndDate: itemRequests.counterEndDate, requestType: itemRequests.requestType }).from(itemRequests)
       .where(and(eq(itemRequests.itemId, itemId), sql`${itemRequests.status} = ANY(ARRAY[${sql.raw(activeHandoffSt.map(s=>`'${s}'`).join(','))}])`))
       .limit(1);
@@ -4571,7 +4570,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Validate deliveryMethod
-    const validDeliveryMethods = ["in_person", "courier"];
+    const validDeliveryMethods = ["in_person"];
     const validatedDeliveryMethod = validDeliveryMethods.includes(deliveryMethod) 
       ? deliveryMethod 
       : "in_person";
@@ -4725,17 +4724,12 @@ Respond with ONLY the category name, nothing else.`
         depositMethod: itemRequests.depositMethod,
         deliveryConfirmed: itemRequests.deliveryConfirmed,
         deliveryConfirmedAt: itemRequests.deliveryConfirmedAt,
-        courierBookedBy: itemRequests.courierBookedBy,
-        courierIssue: itemRequests.courierIssue,
-        courierIssueNote: itemRequests.courierIssueNote,
         // Trust deposit fields
         trustDepositAmount: itemRequests.trustDepositAmount,
         trustDepositBaseAmount: itemRequests.trustDepositBaseAmount,
         trustDiscountPercentage: itemRequests.trustDiscountPercentage,
         shareCoinAmount: itemRequests.shareCoinAmount,
         depositStatus: itemRequests.depositStatus,
-        courierAddress: itemRequests.courierAddress,
-        courierPickupWindow: itemRequests.courierPickupWindow,
         // Negotiation / counter-proposal
         negotiationStatus: itemRequests.negotiationStatus,
         counterDeliveryMethod: itemRequests.counterDeliveryMethod,
@@ -4813,16 +4807,11 @@ Respond with ONLY the category name, nothing else.`
       depositMethod: r.depositMethod,
       deliveryConfirmed: r.deliveryConfirmed,
       deliveryConfirmedAt: r.deliveryConfirmedAt,
-      courierBookedBy: r.courierBookedBy,
-      courierIssue: r.courierIssue,
-      courierIssueNote: r.courierIssueNote,
       trustDepositAmount: r.trustDepositAmount,
       trustDepositBaseAmount: r.trustDepositBaseAmount,
       trustDiscountPercentage: r.trustDiscountPercentage,
       shareCoinAmount: r.shareCoinAmount,
       depositStatus: r.depositStatus,
-      courierAddress: r.courierAddress,
-      courierPickupWindow: r.courierPickupWindow,
       negotiationStatus: r.negotiationStatus,
       counterDeliveryMethod: r.counterDeliveryMethod,
       counterDepositMethod: r.counterDepositMethod,
@@ -5442,7 +5431,7 @@ Respond with ONLY the category name, nothing else.`
         try {
           await db.insert(deliveryArrangements).values({
             requestId,
-            deliveryType: finalDeliveryMethod === "courier" ? "UBER_DIRECT" : "SELF_ARRANGE",
+            deliveryType: "SELF_ARRANGE",
             deliveryMethod: finalDeliveryMethod,
             depositMethod: finalDepositMethod,
             securityDeposit: request.items.replacementValue?.toString() || "50",
@@ -6240,7 +6229,7 @@ Respond with ONLY the category name, nothing else.`
     }
 
     try {
-      const { requestId, depositAmount, rentalAmount, processingFee, platformFee, courierFee } = req.body;
+      const { requestId, depositAmount, rentalAmount, processingFee, platformFee } = req.body;
 
       if (!requestId || !depositAmount || depositAmount <= 0) {
         return res.status(400).json({ error: "Invalid request parameters" });
@@ -6263,7 +6252,7 @@ Respond with ONLY the category name, nothing else.`
 
       // Collect full rental + deposit + fees in one charge.
       // Rental is transferred to owner after handoff; deposit is refunded on safe return.
-      const totalChargeAmount = (rentalAmount || 0) + depositAmount + (processingFee || 0) + (courierFee || 0);
+      const totalChargeAmount = (rentalAmount || 0) + depositAmount + (processingFee || 0);
 
       // Look up user's saved payment method from verification
       const [userRecord] = await db
@@ -6425,12 +6414,10 @@ Respond with ONLY the category name, nothing else.`
         console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
       }
 
-      const nextStep = request.item_requests.deliveryMethod === "courier" ? "book_courier" : "await_handoff";
-
       res.json({
         success: true,
         request: updated,
-        nextStep,
+        nextStep: "await_handoff",
         message: "Rental deposit authorized successfully. Payment secured.",
       });
     } catch (error: any) {
@@ -6552,116 +6539,11 @@ Respond with ONLY the category name, nothing else.`
       res.json({
         success: true,
         request: updated,
-        nextStep: request.item_requests.deliveryMethod === "courier" ? "book_courier" : "await_handoff",
+        nextStep: "await_handoff",
       });
     } catch (error: any) {
       console.error("Error processing deposit payment:", error);
       res.status(500).json({ error: "Failed to process deposit payment" });
-    }
-  });
-
-  // Book courier (step 2 if courier was selected)
-  app.post("/api/requests/:requestId/book-courier", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      const { address, pickupWindow } = req.body;
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .innerJoin(items, eq(items.id, itemRequests.itemId))
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      // Must be the requester (borrower is responsible for courier)
-      if (request.item_requests.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Deposit must be confirmed first (CRITICAL: never book courier if deposit failed)
-      if (request.item_requests.status !== "DEPOSIT_CONFIRMED") {
-        return res.status(400).json({ error: "Deposit must be confirmed before booking courier" });
-      }
-
-      // Generate a simulated courier booking ID (in production, this would call Uber Direct API)
-      const courierBookingId = `COURIER-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
-
-      // Update request with courier info
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "COURIER_PENDING",
-          courierAddress: address,
-          courierPickupWindow: pickupWindow,
-          courierBookingId: courierBookingId,
-          courierBookedAt: new Date(),
-          courierStatus: "booked",
-          courierBookedBy: "requester",
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      res.json({
-        success: true,
-        request: updated,
-        courierBookingId,
-        message: "Courier booked successfully. Awaiting pickup.",
-      });
-    } catch (error: any) {
-      console.error("Error booking courier:", error);
-      res.status(500).json({ error: "Failed to book courier" });
-    }
-  });
-
-  // Cancel courier booking (transaction pauses, nothing breaks)
-  app.post("/api/requests/:requestId/cancel-courier", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const requestId = parseInt(req.params.requestId);
-      
-      const [request] = await db
-        .select()
-        .from(itemRequests)
-        .where(eq(itemRequests.id, requestId))
-        .limit(1);
-
-      if (!request) {
-        return res.status(404).json({ error: "Request not found" });
-      }
-
-      if (request.requesterId !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      // Update status back to deposit confirmed (paused state)
-      const [updated] = await db
-        .update(itemRequests)
-        .set({
-          status: "DEPOSIT_CONFIRMED",
-          courierStatus: "cancelled",
-        })
-        .where(eq(itemRequests.id, requestId))
-        .returning();
-
-      res.json({
-        success: true,
-        request: updated,
-        message: "Courier booking cancelled. You can rebook anytime.",
-      });
-    } catch (error: any) {
-      console.error("Error cancelling courier:", error);
-      res.status(500).json({ error: "Failed to cancel courier" });
     }
   });
 
@@ -6751,7 +6633,7 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Can only cancel if pre-handoff
-      const cancelableStatuses = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
+      const cancelableStatuses = ["PENDING", "ACCEPTED", "DEPOSIT_CONFIRMED", "HANDOFF_CONFIRMED"];
       if (!cancelableStatuses.includes(request.item_requests.status)) {
         return res.status(400).json({ 
           error: "Cannot cancel request in current status",
@@ -6894,7 +6776,7 @@ Respond with ONLY the category name, nothing else.`
       }
 
       // Only apply no-show penalty to valid statuses
-      const noShowStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "HANDOFF_CONFIRMED"];
+      const noShowStatuses = ["DEPOSIT_CONFIRMED", "HANDOFF_CONFIRMED"];
       if (!noShowStatuses.includes(request.item_requests.status)) {
         return res.status(400).json({ 
           error: "Cannot report no-show in current status",
@@ -6958,14 +6840,14 @@ Respond with ONLY the category name, nothing else.`
         return res.status(403).json({ error: "Unauthorized" });
       }
 
-      // Validate status (must be DEPOSIT_CONFIRMED, COURIER_PENDING, or AWAITING_HANDOFF_CONFIRM)
+      // Validate status (must be DEPOSIT_CONFIRMED or AWAITING_HANDOFF_CONFIRM)
       // SWAP requests and BORROW+in_person-deposit requests skip the in-app deposit step so they
       // may arrive here from ACCEPTED directly (legacy rows before auto-advance was introduced).
       const isSwapRequest = request.item_requests.requestType === "SWAP";
       const isInPersonBorrowDeposit =
         request.item_requests.requestType === "BORROW" &&
         request.item_requests.depositMethod === "in_person";
-      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
+      const validStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM"];
       const acceptedStatusOk = (isSwapRequest || isInPersonBorrowDeposit) && request.item_requests.status === "ACCEPTED";
       if (!validStatuses.includes(request.item_requests.status) && !acceptedStatusOk) {
         return res.status(400).json({ error: "Request is not ready for handoff" });
@@ -7379,7 +7261,7 @@ Respond with ONLY the category name, nothing else.`
 
       const requestType = request.item_requests.requestType;
       const isNoDepositType = requestType === "GIFT" || requestType === "SWAP";
-      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
+      const validStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM"];
       // GIFT and SWAP skip the deposit step — they stay at ACCEPTED until handoff
       if (!validStatuses.includes(request.item_requests.status) && !(isNoDepositType && request.item_requests.status === "ACCEPTED")) {
         return res.status(400).json({ error: "Handoff already completed or not ready" });
@@ -7560,7 +7442,7 @@ Respond with ONLY the category name, nothing else.`
       const isRequester = request.item_requests.requesterId === req.user.id;
       if (!isOwner && !isRequester) return res.status(403).json({ error: "Unauthorized" });
 
-      const validStatuses = ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS"];
+      const validStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS"];
       if (!validStatuses.includes(request.item_requests.status)) {
         return res.status(400).json({ error: "Request is not in a handoff state" });
       }
@@ -8700,6 +8582,122 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Handoff-time delivery quote (sender-only, no transaction status change)
+  app.post("/api/uber/handoff-quote", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { requestId, pickupAddress, dropoffAddress } = req.body;
+    if (!requestId || !pickupAddress || !dropoffAddress) {
+      return res.status(400).json({ error: "requestId, pickupAddress and dropoffAddress are required" });
+    }
+    // Verify the caller is the item owner for this request
+    const [request] = await db
+      .select({ ownerId: items.ownerId })
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+    if (request.ownerId !== (req.user as any).id) return res.status(403).json({ error: "Only the item owner can book a delivery" });
+
+    if (!uberDirect.isConfigured()) {
+      // Return a simulated quote in dev/staging
+      return res.json({ fee: 12.00, eta: "~30 min", quoteId: `sim_${Date.now()}` });
+    }
+    try {
+      const quote = await uberDirect.getDeliveryQuote({ pickupAddress, dropoffAddress });
+      const platformFee = 2.00;
+      res.json({ fee: (quote.fee || 10) + platformFee, eta: quote.eta || "~30 min", quoteId: quote.id || `q_${Date.now()}` });
+    } catch (err: any) {
+      console.error("[Uber Direct] Handoff quote error:", err.message);
+      res.status(502).json({ error: err.message });
+    }
+  });
+
+  // Book handoff delivery (sender-only, charges Stripe saved card, no status change)
+  app.post("/api/uber/book-handoff-delivery", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { requestId, pickupAddress, dropoffAddress, quoteId } = req.body;
+    if (!requestId || !pickupAddress || !dropoffAddress) {
+      return res.status(400).json({ error: "requestId, pickupAddress and dropoffAddress are required" });
+    }
+    const userId = (req.user as any).id;
+
+    // Verify caller is item owner
+    const [reqRow] = await db
+      .select({ ownerId: items.ownerId, itemName: items.name, requesterId: itemRequests.requesterId })
+      .from(itemRequests)
+      .innerJoin(items, eq(items.id, itemRequests.itemId))
+      .where(eq(itemRequests.id, requestId))
+      .limit(1);
+    if (!reqRow) return res.status(404).json({ error: "Request not found" });
+    if (reqRow.ownerId !== userId) return res.status(403).json({ error: "Only the item owner can book a delivery" });
+
+    if (!uberDirect.isConfigured()) {
+      // Simulated booking in dev/staging — just return a fake tracking URL
+      const trackingUrl = `https://track.uber.com/sim/${Date.now()}`;
+      await db.insert(deliveryArrangements).values({
+        requestId,
+        deliveryType: "uber_direct",
+        status: "CONFIRMED",
+        uberTrackingUrl: trackingUrl,
+      }).onConflictDoUpdate({
+        target: deliveryArrangements.requestId,
+        set: { uberTrackingUrl: trackingUrl, status: "CONFIRMED" },
+      });
+      return res.json({ trackingUrl });
+    }
+
+    try {
+      const [ownerProfile] = await db
+        .select({ stripeCustomerId: users.stripeCustomerId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const delivery = await uberDirect.createDelivery({
+        quoteId,
+        pickupAddress,
+        dropoffAddress,
+        itemDescription: reqRow.itemName,
+        itemReference: `req-${requestId}`,
+      });
+
+      const platformFee = 2.00;
+      // Charge the owner's saved Stripe card for the platform margin
+      if (ownerProfile?.stripeCustomerId) {
+        const stripe = (await import("stripe")).default(process.env.STRIPE_SECRET_KEY!);
+        const paymentMethods = await stripe.paymentMethods.list({ customer: ownerProfile.stripeCustomerId, type: "card" });
+        if (paymentMethods.data.length > 0) {
+          await stripe.paymentIntents.create({
+            amount: Math.round(platformFee * 100),
+            currency: "usd",
+            customer: ownerProfile.stripeCustomerId,
+            payment_method: paymentMethods.data[0].id,
+            confirm: true,
+            off_session: true,
+            description: `ShareSwap delivery commission — request #${requestId}`,
+          });
+        }
+      }
+
+      await db.insert(deliveryArrangements).values({
+        requestId,
+        deliveryType: "uber_direct",
+        uberDeliveryId: delivery.id,
+        uberTrackingUrl: delivery.trackingUrl,
+        status: "CONFIRMED",
+      }).onConflictDoUpdate({
+        target: deliveryArrangements.requestId,
+        set: { uberDeliveryId: delivery.id, uberTrackingUrl: delivery.trackingUrl, status: "CONFIRMED" },
+      });
+
+      res.json({ trackingUrl: delivery.trackingUrl });
+    } catch (err: any) {
+      console.error("[Uber Direct] Book handoff delivery error:", err.message);
+      res.status(502).json({ error: err.message });
+    }
+  });
+
   // Get live delivery status
   app.get("/api/uber/delivery/:deliveryId", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -8881,11 +8879,6 @@ Respond with ONLY the category name, nothing else.`
           // Rental
           rentalAmount: itemRequests.rentalAmount,
           rentalProcessingFee: itemRequests.rentalProcessingFee,
-          // Courier
-          courierBookedAt: itemRequests.courierBookedAt,
-          deliveryConfirmedAt: itemRequests.deliveryConfirmedAt,
-          courierIssue: itemRequests.courierIssue,
-          courierIssueNote: itemRequests.courierIssueNote,
           // Handoff
           confirmationMethod: itemRequests.confirmationMethod,
           handoffConfirmedAt: itemRequests.handoffConfirmedAt,
@@ -10199,7 +10192,7 @@ Respond with ONLY the category name, nothing else.`
             ),
             sql`${itemRequests.status} IN (
               'ACCEPTED','DEPOSIT_PENDING','DEPOSIT_CONFIRMED',
-              'COURIER_PENDING','HANDOFF_CONFIRMED','IN_PROGRESS'
+              'HANDOFF_CONFIRMED','IN_PROGRESS'
             )`
           )
         );
@@ -11091,150 +11084,13 @@ Respond with ONLY the category name, nothing else.`
       isRead: false,
     });
 
-    const depositMessage = request.item_requests.deliveryMethod === "courier" 
-      ? "Delivery confirmed. Trust-deposit is now active."
-      : "Handoff confirmed. Trust-deposit is active.";
+    const depositMessage = "Handoff confirmed. Trust-deposit is active.";
 
     res.json({ 
       success: true, 
       message: depositMessage,
       request: updated 
     });
-  });
-
-  // Report courier issue (item lost/damaged during courier delivery)
-  app.post("/api/requests/:requestId/courier-issue", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    const requestId = parseInt(req.params.requestId);
-    const { issueNote } = req.body;
-
-    // Get the request
-    const [request] = await db
-      .select()
-      .from(itemRequests)
-      .innerJoin(items, eq(items.id, itemRequests.itemId))
-      .where(eq(itemRequests.id, requestId))
-      .limit(1);
-
-    if (!request) {
-      return res.status(404).send("Request not found");
-    }
-
-    // Only courier deliveries can have courier issues
-    if (request.item_requests.deliveryMethod !== "courier") {
-      return res.status(400).send("Courier issues only apply to courier deliveries");
-    }
-
-    // Request must be accepted first
-    if (request.item_requests.status !== "ACCEPTED") {
-      return res.status(400).send("Request must be accepted to report courier issues");
-    }
-
-    // Courier booking info should be present for proper responsibility assignment
-    if (!request.item_requests.courierBookedBy) {
-      return res.status(400).send("Courier booking information must be recorded before reporting issues");
-    }
-
-    // Prevent duplicate issue reports
-    if (request.item_requests.courierIssue) {
-      return res.status(400).send("A courier issue has already been reported for this request");
-    }
-
-    // Either party can report a courier issue
-    const isOwner = request.items.ownerId === req.user.id;
-    const isRequester = request.item_requests.requesterId === req.user.id;
-    
-    if (!isOwner && !isRequester) {
-      return res.status(403).send("Only parties involved in this transaction can report issues");
-    }
-
-    // Update courier issue status - this voids any trust-deposit charges
-    // When courierIssue is true, trust-deposit should not be activated or charged
-    const [updated] = await db
-      .update(itemRequests)
-      .set({ 
-        courierIssue: true,
-        courierIssueNote: issueNote || "Item lost or damaged during courier delivery",
-        // Clear delivery confirmation since delivery didn't complete successfully
-        deliveryConfirmed: false,
-        deliveryConfirmedAt: null
-      })
-      .where(eq(itemRequests.id, requestId))
-      .returning();
-
-    // Notify both parties
-    const notifyUserId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
-    const courierBooker = request.item_requests.courierBookedBy;
-    const bookerLabel = courierBooker === 'requester' ? 'borrower/renter' : 'owner';
-    
-    if (notifyUserId) {
-      await db.insert(notifications).values({
-        userId: notifyUserId,
-        type: "courier_issue",
-        title: "Courier issue reported",
-        message: `"${request.items.name}" — delivery issue reported. No trust-deposit will be charged.`,
-        itemId: request.items.id,
-        requestId: requestId,
-        isRead: false,
-      });
-    }
-
-    res.json({ 
-      success: true, 
-      message: `Courier issue reported. Trust-deposit will NOT be charged. The ${bookerLabel} who booked the courier is responsible for resolving this with the delivery service.`,
-      request: updated,
-      responsibleParty: courierBooker
-    });
-  });
-
-  // Update who booked the courier
-  app.patch("/api/requests/:requestId/courier-booker", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    const requestId = parseInt(req.params.requestId);
-    const { bookedBy } = req.body; // 'requester' | 'owner'
-
-    if (!['requester', 'owner'].includes(bookedBy)) {
-      return res.status(400).send("bookedBy must be 'requester' or 'owner'");
-    }
-
-    // Get the request
-    const [request] = await db
-      .select()
-      .from(itemRequests)
-      .innerJoin(items, eq(items.id, itemRequests.itemId))
-      .where(eq(itemRequests.id, requestId))
-      .limit(1);
-
-    if (!request) {
-      return res.status(404).send("Request not found");
-    }
-
-    // Only allow if user is involved in the transaction
-    const isOwner = request.items.ownerId === req.user.id;
-    const isRequester = request.item_requests.requesterId === req.user.id;
-    
-    if (!isOwner && !isRequester) {
-      return res.status(403).send("Not authorized");
-    }
-
-    // Only courier deliveries need this
-    if (request.item_requests.deliveryMethod !== "courier") {
-      return res.status(400).send("Only courier deliveries track who booked");
-    }
-
-    const [updated] = await db
-      .update(itemRequests)
-      .set({ courierBookedBy: bookedBy })
-      .where(eq(itemRequests.id, requestId))
-      .returning();
-
-    res.json({ success: true, request: updated });
   });
 
   // Create delivery arrangement
@@ -11247,8 +11103,7 @@ Respond with ONLY the category name, nothing else.`
     const { deliveryType, deliveryAddress, deliveryDate, securityDeposit } =
       req.body;
 
-    // Calculate delivery fee for courier service (Uber Direct = $15)
-    const deliveryFee = deliveryType === "IN_APP_SERVICE" || deliveryType === "courier" ? "15.00" : "0.00";
+    const deliveryFee = "0.00";
 
     const [arrangement] = await db
       .insert(deliveryArrangements)

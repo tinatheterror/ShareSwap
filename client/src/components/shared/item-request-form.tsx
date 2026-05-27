@@ -58,7 +58,7 @@ const formSchema = z.object({
   endDate: z.string().optional(),
   conditionConfirmed: z.boolean().optional(),
   replacementValueAcknowledged: z.boolean().optional(),
-  deliveryMethod: z.enum(["in_person", "courier"]).default("in_person"),
+  deliveryMethod: z.enum(["in_person"]).default("in_person"),
   depositMethod: z.enum(["in_app", "in_person"]).default("in_app"),
 });
 
@@ -140,10 +140,7 @@ export function ItemRequestForm({
     if (isOpen && prefill) {
       if (prefill.startDate) form.setValue("startDate", prefill.startDate);
       if (prefill.endDate) form.setValue("endDate", prefill.endDate);
-      if (
-        prefill.deliveryMethod === "in_person" ||
-        prefill.deliveryMethod === "courier"
-      )
+      if (prefill.deliveryMethod === "in_person")
         form.setValue("deliveryMethod", prefill.deliveryMethod);
       if (
         prefill.depositMethod === "in_app" ||
@@ -538,9 +535,6 @@ export function ItemRequestForm({
                     ? getDiscountLabel(pricing.days)
                     : "";
 
-                  // Delivery cost
-                  const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
-
                   // Deposit (from item's securityDeposit field)
                   const deposit = Number((item as any).securityDeposit) || 25;
 
@@ -576,22 +570,13 @@ export function ItemRequestForm({
                             </span>
                             <span className="font-medium">${deposit.toFixed(2)}</span>
                           </div>
-                          {deliveryCost > 0 && (
-                            <div className="flex justify-between items-center px-4 py-2.5">
-                              <span className="text-gray-600 flex items-center gap-2">
-                                <Truck className="h-3.5 w-3.5 text-orange-500" />
-                                Courier delivery
-                              </span>
-                              <span className="font-medium">${deliveryCost.toFixed(2)}</span>
-                            </div>
-                          )}
                           <div className="flex justify-between items-center px-4 py-2.5">
                             <span className="text-gray-500 text-xs">Processing fee (3%)</span>
                             <span className="text-gray-500 text-xs">${(pricing.total * 0.03).toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between items-center px-4 py-3 bg-white rounded-b-lg">
                             <span className="font-semibold text-gray-900">Total due today</span>
-                            <span className="font-bold text-lg text-gray-900">${(pricing.total + deliveryCost + pricing.total * 0.03 + deposit).toFixed(2)}</span>
+                            <span className="font-bold text-lg text-gray-900">${(pricing.total + pricing.total * 0.03 + deposit).toFixed(2)}</span>
                           </div>
                         </div>
                       ) : (
@@ -638,9 +623,6 @@ export function ItemRequestForm({
                       ? Math.max(1, Math.ceil((weeklyPrice / 7) * borrowDays))
                       : weeklyPrice;
 
-                  // Delivery cost for courier
-                  const deliveryCost = deliveryMethod === "courier" ? 15 : 0;
-
                   // Calculate trust-based deposit
                   const itemTier = (item as any).tier || 2;
                   const itemOriginalValue =
@@ -683,17 +665,6 @@ export function ItemRequestForm({
                             {weeklyPrice} SC/week × {borrowDays}{" "}
                             {borrowDays === 1 ? "day" : "days"} ÷ 7
                           </p>
-                          {deliveryCost > 0 && (
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">
-                                Courier delivery
-                              </span>
-                              <span className="font-medium">
-                                ${deliveryCost}
-                              </span>
-                            </div>
-                          )}
-
                           {hasDeposit && (
                             <div className="border-t border-gray-200 pt-1.5 mt-1.5">
                               <div className="flex justify-between">
@@ -750,13 +721,6 @@ export function ItemRequestForm({
                   control={form.control}
                   name="depositMethod"
                   render={({ field }) => {
-                    const isCourier =
-                      form.watch("deliveryMethod") === "courier";
-                    // Auto-lock to in_app when courier is selected
-                    if (isCourier && field.value !== "in_app") {
-                      field.onChange("in_app");
-                    }
-
                     // Calculate deposit for processing fee display
                     const itemTierForDeposit = (item as any).tier || 2;
                     const itemOriginalValueForDeposit =
@@ -776,7 +740,7 @@ export function ItemRequestForm({
                       depositCalcForFee.finalDeposit * 0.03
                     ).toFixed(2);
 
-                    const depositValue = isCourier ? "in_app" : field.value;
+                    const depositValue = field.value;
                     return (
                       <FormItem className="space-y-3">
                         <FormLabel className="flex items-center gap-2">
@@ -872,28 +836,8 @@ export function ItemRequestForm({
                           />
                           <span className="font-medium text-xs leading-tight">Exchange In Person</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => field.onChange("courier")}
-                          className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
-                            field.value === "courier"
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          <Truck
-                            className={`h-4 w-4 mb-1 ${field.value === "courier" ? "text-primary-foreground" : "text-blue-600"}`}
-                          />
-                          <span className="font-medium text-xs leading-tight">Uber Direct</span>
-                          <span className={`text-xs mt-0.5 ${field.value === "courier" ? "text-primary-foreground/80" : "text-gray-500"}`}>+$15</span>
-                        </button>
                       </div>
                     </FormControl>
-                    {form.watch("deliveryMethod") === "courier" && (
-                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        ⚠️ ShareSwap is not responsible for courier issues (lost/damaged in transit). You assume full responsibility for delivery — no platform protection applies until successful delivery confirmation.
-                      </p>
-                    )}
                     <FormMessage />
                   </FormItem>
                 )}

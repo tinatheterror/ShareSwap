@@ -18,7 +18,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { formatDisplayName } from "@/lib/utils";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
-import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
 import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
@@ -44,8 +43,6 @@ interface ItemRequest {
   trustDiscountPercentage: number | null;
   shareCoinAmount: string | null;
   depositStatus: string | null;
-  courierAddress: string | null;
-  courierPickupWindow: string | null;
   negotiationStatus: string | null;
   counterDeliveryMethod: string | null;
   counterDepositMethod: string | null;
@@ -179,7 +176,6 @@ export default function RequestsPage() {
   const [pendingDeliveryData, setPendingDeliveryData] = useState<any>(null);
   
   const [showTrustDepositModal, setShowTrustDepositModal] = useState(false);
-  const [showCourierModal, setShowCourierModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ItemRequest | null>(null);
@@ -940,21 +936,8 @@ export default function RequestsPage() {
                               </Button>
                             )}
 
-                            {request.status === "DEPOSIT_CONFIRMED" && request.deliveryMethod === "courier" && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowCourierModal(true);
-                                }}
-                                className="bg-orange-600 hover:bg-orange-700"
-                              >
-                                <Truck className="h-4 w-4 mr-1" />
-                                Book Courier
-                              </Button>
-                            )}
 
-                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
+                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
                               <>
                                 {/* Show waiting status if borrower already confirmed */}
                                 {request.status === "AWAITING_HANDOFF_CONFIRM" && request.borrowerConfirmedHandoff && (
@@ -1125,7 +1108,7 @@ export default function RequestsPage() {
         </div>
 
         {/* Active Transactions as Owner */}
-        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status)).length > 0 && (
+        {requests.filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status)).length > 0 && (
           <div className="mt-8">
             <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
               <Package className="h-6 w-6 text-teal-600" />
@@ -1133,7 +1116,7 @@ export default function RequestsPage() {
             </h2>
             <div className="space-y-4">
               {requests
-                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status))
+                .filter(r => r.item.ownerId === user?.id && ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "IN_PROGRESS", "RETURN_REQUESTED", "DISPUTED"].includes(r.status))
                 .map((request) => (
                   <Card key={request.id} className="bg-white border-2 border-teal-200">
                     <CardContent className="p-6">
@@ -1164,7 +1147,7 @@ export default function RequestsPage() {
                           </div>
 
                           <div className="flex gap-2 mt-3">
-                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "COURIER_PENDING" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
+                            {(request.status === "DEPOSIT_CONFIRMED" || request.status === "AWAITING_HANDOFF_CONFIRM") && (
                               <>
                                 {/* Show waiting status if owner already confirmed */}
                                 {request.status === "AWAITING_HANDOFF_CONFIRM" && request.ownerConfirmedHandoff && (
@@ -1443,44 +1426,13 @@ export default function RequestsPage() {
           }}
           ownerId={selectedRequest.item.ownerId}
           trustScore={Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100))}
-          courierFee={selectedRequest.deliveryMethod === "courier" ? 8.99 : 0}
-          onSuccess={(nextStep) => {
-            setShowTrustDepositModal(false);
-            if (nextStep === "book_courier") {
-              setShowCourierModal(true);
-            } else {
-              setSelectedRequest(null);
-              toast({
-                title: "Ready for handoff!",
-                description: "Coordinate with the owner to pick up your item.",
-              });
-            }
-          }}
-        />
-      )}
-
-      {/* Courier Booking Modal - After deposit confirmed */}
-      {selectedRequest && showCourierModal && (
-        <CourierBookingModal
-          isOpen={showCourierModal}
-          onClose={() => {
-            setShowCourierModal(false);
-            setSelectedRequest(null);
-          }}
-          requestId={selectedRequest.id}
-          itemName={selectedRequest.item.name}
-          defaultAddress={selectedRequest.courierAddress || ""}
           onSuccess={() => {
-            setShowCourierModal(false);
+            setShowTrustDepositModal(false);
             setSelectedRequest(null);
             toast({
-              title: "Courier booked!",
-              description: "You'll receive updates when the courier picks up your item.",
+              title: "Ready for handoff!",
+              description: "Coordinate with the owner to pick up your item.",
             });
-          }}
-          onCancel={() => {
-            setShowCourierModal(false);
-            setSelectedRequest(null);
           }}
         />
       )}

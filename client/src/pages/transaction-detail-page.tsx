@@ -52,10 +52,7 @@ interface TransactionDetail {
   depositReleasedAt: string | null;
   rentalAmount: string | null;
   rentalProcessingFee: string | null;
-  courierBookedAt: string | null;
   deliveryConfirmedAt: string | null;
-  courierIssue: boolean;
-  courierIssueNote: string | null;
   confirmationMethod: string | null;
   handoffConfirmedAt: string | null;
   borrowPeriodStartedAt: string | null;
@@ -113,7 +110,6 @@ function statusLabel(status: string): string {
     ACCEPTED: "Accepted",
     DEPOSIT_PENDING: "Deposit Pending",
     DEPOSIT_CONFIRMED: "Deposit Confirmed",
-    COURIER_PENDING: "Courier Pending",
     HANDOFF_CONFIRMED: "Handoff Confirmed",
     IN_PROGRESS: "In Progress",
     RETURN_REQUESTED: "Return Requested",
@@ -196,14 +192,6 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
       metadata: tx.trustDepositAmount
         ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} held`
         : undefined,
-    });
-  }
-  if (tx.courierBookedAt) {
-    events.push({
-      label: "Courier booked",
-      timestamp: tx.courierBookedAt,
-      icon: <Truck className="h-4 w-4 text-white" />,
-      iconBg: "bg-teal-400",
     });
   }
   if (tx.deliveryConfirmedAt) {

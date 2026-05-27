@@ -52,7 +52,7 @@ interface InventoryStatus {
   isDisputed?: boolean;
 }
 
-const ACTIVE_STATUSES = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "DEPOSIT_CONFIRMED", "COURIER_PENDING", "AWAITING_HANDOFF_CONFIRM"];
+const ACTIVE_STATUSES = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM"];
 
 function isListingExpired(item: any): boolean {
   return !!item.listingExpiresAt && new Date(item.listingExpiresAt) <= new Date();

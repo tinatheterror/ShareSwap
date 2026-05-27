@@ -35,7 +35,6 @@ interface TrustDepositModalProps {
   };
   ownerId: number;
   trustScore: number;
-  courierFee?: number;
   onSuccess: (nextStep: string) => void;
 }
 
@@ -47,7 +46,6 @@ export function TrustDepositModal({
   item,
   ownerId,
   trustScore,
-  courierFee = 0,
   onSuccess,
 }: TrustDepositModalProps) {
   const isRental = requestType === "RENT";
@@ -73,8 +71,7 @@ export function TrustDepositModal({
     const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
     return Math.max(1, Math.ceil((_rawSCPrice / 7) * borrowDays));
   })();
-  const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;
-  const totalDue = depositCalc.finalDeposit + deliveryFee;
+  const totalDue = depositCalc.finalDeposit;
 
   const payDepositMutation = useMutation({
     mutationFn: async () => {

@@ -44,15 +44,14 @@ import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { getTierShareCoins, calculateMultiSwap } from "@/lib/swap-calculator";
-import { DeliveryDepositModal } from "@/components/delivery-deposit-modal";
 import { TrustDepositModal } from "@/components/borrow/trust-deposit-modal";
 import { RentalDepositModal } from "@/components/rental/rental-deposit-modal";
-import { CourierBookingModal } from "@/components/borrow/courier-booking-modal";
 import { HandoffConfirmationModal } from "@/components/borrow/handoff-confirmation-modal";
 import { ReturnConfirmationModal } from "@/components/borrow/return-confirmation-modal";
 import { PostReturnReviewModal } from "@/components/borrow/post-return-review-modal";
 import { CelebrationAnimation } from "@/components/celebration-animation";
 import { SwapCounterModal } from "@/components/swap-counter-modal";
+import { CourierHandoffModal } from "@/components/courier-handoff-modal";
 import {
   Elements,
   PaymentElement,
@@ -158,8 +157,6 @@ interface ItemRequest {
   trustDiscountPercentage: number | null;
   shareCoinAmount: string | null;
   depositStatus: string | null;
-  courierAddress: string | null;
-  courierPickupWindow: string | null;
   ownerConfirmedHandoff: boolean | null;
   borrowerConfirmedHandoff: boolean | null;
   returnDisputeTriggered: boolean | null;
@@ -308,7 +305,6 @@ export function ChatWidget() {
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
     null,
   );
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [depositClientSecret, setDepositClientSecret] = useState<string | null>(
     null,
@@ -316,7 +312,7 @@ export function ChatWidget() {
   const [pendingDeliveryData, setPendingDeliveryData] = useState<any>(null);
   const [showTrustDepositModal, setShowTrustDepositModal] = useState(false);
   const [showRentalDepositModal, setShowRentalDepositModal] = useState(false);
-  const [showCourierModal, setShowCourierModal] = useState(false);
+  const [showCourierHandoffModal, setShowCourierHandoffModal] = useState(false);
   const [showHandoffModal, setShowHandoffModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
@@ -981,46 +977,6 @@ export function ChatWidget() {
     acceptMutation.mutate(request.id);
   };
 
-  const handleDeliveryDepositComplete = async (selections: any) => {
-    setShowDeliveryModal(false);
-    if (!selectedRequestId) return;
-
-    const request = requests.find((r) => r.id === selectedRequestId);
-    if (!request) return;
-
-    const itemValue = request.item.replacementValue || 50;
-
-    if (selections.depositMethod === "shareswap_deposit") {
-      try {
-        const response = await apiRequest(
-          "POST",
-          "/api/stripe/create-deposit-hold",
-          {
-            depositAmount: itemValue,
-            requestId: selectedRequestId,
-          },
-        );
-        const data = await response.json();
-
-        if (data.clientSecret) {
-          setPendingDeliveryData({
-            ...selections,
-            requestId: selectedRequestId,
-          });
-          setDepositClientSecret(data.clientSecret);
-        }
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to create deposit hold",
-          variant: "destructive",
-        });
-      }
-    } else {
-      await finalizeAcceptance(selectedRequestId, selections, null);
-    }
-  };
-
   const handleDepositPaymentSuccess = async (paymentIntentId: string) => {
     if (!pendingDeliveryData || !selectedRequestId) return;
     await finalizeAcceptance(
@@ -1395,22 +1351,6 @@ export function ChatWidget() {
               {/* Borrower actions (ShareCoins) */}
               {isBorrower && request.requestType === "BORROW" && (
                 <>
-
-                  {request.status === "DEPOSIT_CONFIRMED" &&
-                    request.deliveryMethod === "courier" && (
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs bg-orange-600 hover:bg-orange-700"
-                        onClick={() => {
-                          setSelectedRequest(request);
-                          setShowCourierModal(true);
-                        }}
-                      >
-                        <Truck className="h-3 w-3 mr-1" />
-                        Book Courier
-                      </Button>
-                    )}
-
                   {request.status === "RETURN_REQUESTED" && (
                     <Badge
                       variant="secondary"
@@ -1425,21 +1365,6 @@ export function ChatWidget() {
               {/* Renter actions (Cash payment) */}
               {isBorrower && request.requestType === "RENT" && (
                 <>
-                  {request.status === "DEPOSIT_CONFIRMED" &&
-                    request.deliveryMethod === "courier" && (
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs bg-orange-600 hover:bg-orange-700"
-                        onClick={() => {
-                          setSelectedRequest(request);
-                          setShowCourierModal(true);
-                        }}
-                      >
-                        <Truck className="h-3 w-3 mr-1" />
-                        Book Courier
-                      </Button>
-                    )}
-
                   {request.status === "RETURN_REQUESTED" && (
                     <Badge
                       variant="secondary"
@@ -1452,7 +1377,7 @@ export function ChatWidget() {
               )}
 
               {/* Borrower: discreet cancel for post-accept pre-handoff */}
-              {isBorrower && ["ACCEPTED", "DEPOSIT_CONFIRMED", "COURIER_PENDING"].includes(request.status) && (
+              {isBorrower && ["ACCEPTED", "DEPOSIT_CONFIRMED"].includes(request.status) && (
                 <button
                   className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
                   onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
@@ -2114,7 +2039,7 @@ export function ChatWidget() {
                   }
 
                   if (
-                    (pr.status === "DEPOSIT_CONFIRMED" || pr.status === "COURIER_PENDING") ||
+                    pr.status === "DEPOSIT_CONFIRMED" ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.borrowerConfirmedHandoff) ||
                     (pr.status === "ACCEPTED" && pr.requestType === "SWAP") ||
                     // Legacy: BORROW + in_person deposit stuck at ACCEPTED before auto-advance existed
@@ -2247,7 +2172,6 @@ export function ChatWidget() {
 
                   if (
                     pr.status === "DEPOSIT_CONFIRMED" ||
-                    pr.status === "COURIER_PENDING" ||
                     (pr.status === "AWAITING_HANDOFF_CONFIRM" && !pr.ownerConfirmedHandoff) ||
                     (pr.status === "ACCEPTED" && pr.requestType === "SWAP") ||
                     // Legacy: BORROW + in_person deposit stuck at ACCEPTED before auto-advance existed
@@ -2326,6 +2250,21 @@ export function ChatWidget() {
                         {isOwnerInPersonDeposit && (
                           <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before sharing your code</p>
                         )}
+                        {/* Optional delivery card for owner */}
+                        <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Truck className="h-4 w-4 text-teal-600 shrink-0" />
+                            <span className="text-sm font-semibold text-teal-800">Can't meet up? Book a delivery</span>
+                          </div>
+                          <p className="text-xs text-teal-700">Use Uber Direct to send the item to the borrower. Costs ~$10–$20 — platform earns a small commission.</p>
+                          <Button
+                            size="sm"
+                            className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs h-8"
+                            onClick={() => { setSelectedRequest(pr); setShowCourierHandoffModal(true); }}
+                          >
+                            Get a delivery quote
+                          </Button>
+                        </div>
                       </div>
                     );
                   }
@@ -2478,17 +2417,6 @@ export function ChatWidget() {
       )}
 
       {/* Modals */}
-      {selectedRequestId && (
-        <DeliveryDepositModal
-          isOpen={showDeliveryModal}
-          onClose={() => {
-            setShowDeliveryModal(false);
-            setSelectedRequestId(null);
-          }}
-          onComplete={handleDeliveryDepositComplete}
-          itemValue={requests.find((r) => r.id === selectedRequestId)?.item.replacementValue || 50}
-        />
-      )}
 
       {depositClientSecret && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
@@ -2550,18 +2478,13 @@ export function ChatWidget() {
           }}
           ownerId={selectedRequest.item.ownerId}
           trustScore={Math.min(100, Math.round(((user as any)?.reputationScore || 0) / 500 * 100))}
-          courierFee={selectedRequest.deliveryMethod === "courier" ? 8.99 : 0}
-          onSuccess={(nextStep) => {
+          onSuccess={() => {
             setShowTrustDepositModal(false);
-            if (nextStep === "book_courier") {
-              setShowCourierModal(true);
-            } else {
-              setSelectedRequest(null);
-              toast({
-                title: "Ready for handoff!",
-                description: "Coordinate with the owner to pick up your item.",
-              });
-            }
+            setSelectedRequest(null);
+            toast({
+              title: "Ready for handoff!",
+              description: "Coordinate with the owner to pick up your item.",
+            });
           }}
         />
       )}
@@ -2589,48 +2512,17 @@ export function ChatWidget() {
             dollarsPrice: (selectedRequest.item as any).dollarsPrice,
             photos: selectedRequest.item.photos,
           }}
-          courierFee={selectedRequest.deliveryMethod === "courier" ? 8.99 : 0}
-          onSuccess={(nextStep) => {
+          onSuccess={() => {
             setShowRentalDepositModal(false);
-            if (nextStep === "book_courier") {
-              setShowCourierModal(true);
-            } else {
-              setSelectedRequest(null);
-              toast({
-                title: "Rental deposit secured!",
-                description:
-                  "Coordinate with the owner to pick up your rental.",
-              });
-            }
+            setSelectedRequest(null);
+            toast({
+              title: "Rental deposit secured!",
+              description: "Coordinate with the owner to pick up your rental.",
+            });
           }}
         />
       )}
 
-      {selectedRequest && showCourierModal && (
-        <CourierBookingModal
-          isOpen={showCourierModal}
-          onClose={() => {
-            setShowCourierModal(false);
-            setSelectedRequest(null);
-          }}
-          requestId={selectedRequest.id}
-          itemName={selectedRequest.item.name}
-          defaultAddress={selectedRequest.courierAddress || ""}
-          onSuccess={() => {
-            setShowCourierModal(false);
-            setSelectedRequest(null);
-            toast({
-              title: "Courier booked!",
-              description:
-                "You'll receive updates when the courier picks up your item.",
-            });
-          }}
-          onCancel={() => {
-            setShowCourierModal(false);
-            setSelectedRequest(null);
-          }}
-        />
-      )}
 
       {selectedRequest && showHandoffModal && (
         <HandoffConfirmationModal
@@ -2649,9 +2541,7 @@ export function ChatWidget() {
           }
           requestType={selectedRequest.requestType as "BORROW" | "RENT" | "GIFT" | "SWAP"}
           deliveryMethod={
-            (selectedRequest.deliveryMethod === "courier"
-              ? "courier"
-              : "in_person") as "in_person" | "courier"
+            (selectedRequest.deliveryMethod as "in_person" | "courier") || "in_person"
           }
           otherPartyConfirmed={
             selectedRequest.requesterId === user?.id
@@ -2662,6 +2552,22 @@ export function ChatWidget() {
           pinUsed={(selectedRequest as any).pinUsed}
           onSuccess={() => {
             setShowHandoffModal(false);
+            setSelectedRequest(null);
+          }}
+        />
+      )}
+
+      {selectedRequest && showCourierHandoffModal && (
+        <CourierHandoffModal
+          isOpen={showCourierHandoffModal}
+          onClose={() => {
+            setShowCourierHandoffModal(false);
+            setSelectedRequest(null);
+          }}
+          requestId={selectedRequest.id}
+          itemName={selectedRequest.item.name}
+          onSuccess={() => {
+            setShowCourierHandoffModal(false);
             setSelectedRequest(null);
           }}
         />
@@ -2838,10 +2744,6 @@ export function ChatWidget() {
                   <RadioGroupItem value="in_person" id="cc-delivery-pickup" />
                   <Label htmlFor="cc-delivery-pickup" className="font-normal cursor-pointer">Exchange Item In Person</Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="courier" id="cc-delivery-courier" />
-                  <Label htmlFor="cc-delivery-courier" className="font-normal cursor-pointer">Uber Direct</Label>
-                </div>
               </RadioGroup>
             </div>
             {(chatCounterRequest?.requestType === "BORROW" || chatCounterRequest?.requestType === "RENT") && (
@@ -2887,7 +2789,7 @@ export function ChatWidget() {
             <DialogTitle>Cancel this booking?</DialogTitle>
             <DialogDescription>
               {cancelConfirmRequest?.status === "ACCEPTED" && "The owner has already accepted your request."}
-              {(cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" || cancelConfirmRequest?.status === "COURIER_PENDING") && "Your deposit will be refunded automatically."}
+              {cancelConfirmRequest?.status === "DEPOSIT_CONFIRMED" && "Your deposit will be refunded automatically."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 sm:justify-end">

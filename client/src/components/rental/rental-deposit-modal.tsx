@@ -36,7 +36,6 @@ interface RentalDepositModalProps {
     dollarsPrice?: string;
     photos: string[];
   };
-  courierFee?: number;
   onSuccess: (nextStep: string) => void;
 }
 
@@ -234,7 +233,6 @@ export function RentalDepositModal({
   onClose,
   request,
   item,
-  courierFee = 0,
   onSuccess,
 }: RentalDepositModalProps) {
   const { toast } = useToast();
@@ -262,7 +260,6 @@ export function RentalDepositModal({
 
   const depositAmount = depositCalc.deposit;
   const processingFee = Math.round((rentalPrice + depositAmount) * 0.03 * 100) / 100;
-  const deliveryFee = request.deliveryMethod === "courier" ? courierFee : 0;
 
   const createPaymentHoldMutation = useMutation({
     mutationFn: async () => {
@@ -272,7 +269,6 @@ export function RentalDepositModal({
         rentalAmount: rentalPrice,
         processingFee,
         platformFee: 0,
-        courierFee: deliveryFee,
       });
       return response.json();
     },
@@ -305,7 +301,7 @@ export function RentalDepositModal({
         description: "Your rental and deposit have been secured.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
-      onSuccess(data.nextStep || (request.deliveryMethod === "courier" ? "book_courier" : "await_handoff"));
+      onSuccess(data.nextStep || "await_handoff");
     },
     onError: (error: any) => {
       toast({

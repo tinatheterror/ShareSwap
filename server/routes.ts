@@ -6787,6 +6787,33 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(items.id, request.items.id));
       notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
 
+      // Void any held rental payout for this request and reverse the owner's pending balance
+      if (request.item_requests.requestType === "RENT") {
+        const [heldPayout] = await db
+          .select({ id: rentalPayouts.id, netAmount: rentalPayouts.netAmount, userId: rentalPayouts.userId })
+          .from(rentalPayouts)
+          .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, "held")))
+          .limit(1);
+
+        if (heldPayout) {
+          await db
+            .update(rentalPayouts)
+            .set({ status: "cancelled" })
+            .where(eq(rentalPayouts.id, heldPayout.id));
+
+          const reverseAmount = parseFloat(heldPayout.netAmount || "0");
+          if (reverseAmount > 0) {
+            await db
+              .update(users)
+              .set({
+                pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${reverseAmount})`,
+              })
+              .where(eq(users.id, heldPayout.userId));
+          }
+          console.log(`Cancelled rental payout of $${reverseAmount.toFixed(2)} for request ${requestId}`);
+        }
+      }
+
       const otherPartyId = isOwner ? request.item_requests.requesterId : request.items.ownerId;
       await logRequestEvent(req.user.id, otherPartyId, requestId, "request_cancelled", {
         cancelledByRole: isOwner ? "owner" : "requester",

@@ -5258,14 +5258,13 @@ Respond with ONLY the category name, nothing else.`
 
     // Notify other party
     const _cpItemName1 = request.items.name;
-    const _cpTitle1 = `New Terms For "${_cpItemName1.length > 22 ? _cpItemName1.slice(0, 22) + "…" : _cpItemName1}"`;
-    const _cpRole1 = isOwner ? "Owner" : "Requester";
     const _cpType1 = request.item_requests.requestType?.toLowerCase() || "request";
+    const _cpItemShort1 = _cpItemName1.length > 30 ? _cpItemName1.slice(0, 30) + "…" : _cpItemName1;
     await db.insert(notifications).values({
       userId: otherUserId,
       type: "terms_counter_proposed",
-      title: _cpTitle1,
-      message: `New ${isSwap ? "swap" : "terms"} proposed for your ${_cpType1}. Review and respond.`,
+      title: "New Terms Proposed",
+      message: `New terms for ${isSwap ? "swap" : _cpType1} request on "${_cpItemShort1}"`,
       itemId: request.items.id,
       requestId,
     });
@@ -5382,14 +5381,13 @@ Respond with ONLY the category name, nothing else.`
       });
 
       const _cpItemName2 = request.items.name;
-      const _cpTitle2 = `New Terms For "${_cpItemName2.length > 22 ? _cpItemName2.slice(0, 22) + "…" : _cpItemName2}"`;
-      const _cpRole2 = isOwner ? "Owner" : "Requester";
       const _cpType2 = request.item_requests.requestType?.toLowerCase() || "request";
+      const _cpItemShort2 = _cpItemName2.length > 30 ? _cpItemName2.slice(0, 30) + "…" : _cpItemName2;
       await db.insert(notifications).values({
         userId: otherUserId,
         type: "terms_counter_proposed",
-        title: _cpTitle2,
-        message: `New terms proposed for your ${_cpType2}. Review and respond.`,
+        title: "New Terms Proposed",
+        message: `New terms for ${isSwap ? "swap" : _cpType2} request on "${_cpItemShort2}"`,
         itemId: request.items.id,
         requestId,
       });

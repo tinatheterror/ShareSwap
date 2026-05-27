@@ -49,7 +49,7 @@ async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
         userId: s.userId,
         type: "item_available",
         title: "Item Now Available",
-        message: `"${itemName}" is back and available to borrow or rent.`,
+        message: `"${itemName.length > 22 ? itemName.slice(0, 22) + "…" : itemName}" is now available to borrow or rent.`,
         itemId,
       }))
     );
@@ -197,8 +197,8 @@ async function applySwapCoinOffset(
 
   // Notify both parties
   await db.insert(notifications).values([
-    { userId: payerId,    type: "sharecoin_earned", title: `-${offset} ShareCoins`, message: `${offset} ShareCoins paid as swap offset for "${itemName}".`,    requestId, isRead: false },
-    { userId: receiverId, type: "sharecoin_earned", title: `+${offset} ShareCoins`, message: `${offset} ShareCoins received as swap offset for "${itemName}".`, requestId, isRead: false },
+    { userId: payerId,    type: "sharecoin_earned", title: `-${offset} ShareCoins`, message: `-${offset} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`,    requestId, isRead: false },
+    { userId: receiverId, type: "sharecoin_earned", title: `+${offset} ShareCoins`, message: `+${offset} SC swap offset for "${itemName.length > 20 ? itemName.slice(0, 20) + "…" : itemName}".`, requestId, isRead: false },
   ]);
 
   console.log(`✅ Swap offset: ${offset} SC from user ${payerId} to user ${receiverId} for swap on "${itemName}"`);
@@ -2709,7 +2709,7 @@ Respond with ONLY the category name, nothing else.`
               userId: existingItem.ownerId!,
               type: "swap_match",
               title: "New Swap Match",
-              message: `"${item.name}" matches what you're looking to trade for`,
+              message: `"${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}" matches your swap request.`,
               itemId: item.id,
               isRead: false,
             });
@@ -3425,7 +3425,7 @@ Respond with ONLY the category name, nothing else.`
         userId: wishlistOwnerId,
         type: "wishlist_match",
         title: "New Match For Your Wishlist",
-        message: `"${item.name}" listed by ${listerName}`,
+        message: `"${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}" listed by ${listerName}`,
         itemId: itemId,
         isRead: false,
       });
@@ -4693,7 +4693,7 @@ Respond with ONLY the category name, nothing else.`
         userId: item.ownerId,
         type: "item_request",
         title: `New ${requestTypeLabel} Request`,
-        message: `${requesterName} wants to ${requestType === "GIFT" ? "claim gift" : requestType.toLowerCase()} "${item.name}"`,
+        message: `${requesterName} wants to ${requestType === "GIFT" ? "claim gift" : requestType.toLowerCase()} "${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}"`,
         itemId: item.id,
         requestId: request.id,
         isRead: false,
@@ -5714,8 +5714,8 @@ Respond with ONLY the category name, nothing else.`
           type: "gift_completed",
           title: "Gift Completed! 🎁",
           message: giftBonusResult.isFirstTime
-            ? `"${request.items.name}" successfully handed over. First-time gift bonus: +1 SC.`
-            : `"${request.items.name}" successfully handed over.`,
+            ? `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" gifted — first-time bonus: +1 SC.`
+            : `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" gifted successfully.`,
           itemId: request.items.id,
           requestId: requestId,
         },
@@ -5723,7 +5723,7 @@ Respond with ONLY the category name, nothing else.`
           userId: receiverId,
           type: "gift_completed",
           title: "Gift Received! 🎁",
-          message: `"${request.items.name}" is yours — enjoy!`,
+          message: `"${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}" is yours — enjoy!`,
           itemId: request.items.id,
           requestId: requestId,
         },
@@ -5758,7 +5758,7 @@ Respond with ONLY the category name, nothing else.`
       userId: otherPartyId,
       type: "gift_handoff_pending",
       title: role === "giver" ? "Giver Confirmed Handoff" : "Receiver Confirmed Receipt",
-      message: `Please confirm the gift handoff for "${request.items.name}"`,
+      message: `Confirm gift handoff for "${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}".`,
       itemId: request.items.id,
       requestId: requestId,
     });
@@ -6975,7 +6975,7 @@ Respond with ONLY the category name, nothing else.`
               userId: request.items.ownerId,
               type: "sharecoin_earned",
               title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} Earned`,
-              message: `You earned ${charged} ShareCoin${charged !== 1 ? "s" : ""} for lending "${request.items.name}"`,
+              message: `+${charged} SC earned for lending "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}".`,
               requestId,
               itemId: request.items.id,
               isRead: false,
@@ -7081,12 +7081,13 @@ Respond with ONLY the category name, nothing else.`
           requestId,
         });
         // Notify both parties
+        const _hdn = (s: string) => s.length > 20 ? s.slice(0, 20) + "…" : s;
         await db.insert(notifications).values([
           {
             userId: ownerId,
             type: "handoff_dispute",
             title: "Handoff Dispute Opened",
-            message: `There's a disagreement about the handoff for "${request.items.name}". Please submit proof within 24 hours.`,
+            message: `Handoff disagreement on "${_hdn(request.items.name)}". Submit proof within 24 hours.`,
             itemId: request.items.id,
             requestId,
           },
@@ -7094,7 +7095,7 @@ Respond with ONLY the category name, nothing else.`
             userId: borrowerId,
             type: "handoff_dispute",
             title: "Handoff Dispute Opened",
-            message: `There's a disagreement about the handoff for "${request.items.name}". Please submit proof within 24 hours.`,
+            message: `Handoff disagreement on "${_hdn(request.items.name)}". Submit proof within 24 hours.`,
             itemId: request.items.id,
             requestId,
           },
@@ -7329,7 +7330,7 @@ Respond with ONLY the category name, nothing else.`
               userId: ownerId,
               type: "sharecoin_earned",
               title: `+${charged} ShareCoin${charged !== 1 ? "s" : ""} Earned`,
-              message: `You earned ${charged} ShareCoin${charged !== 1 ? "s" : ""} for lending "${request.items.name}"`,
+              message: `+${charged} SC earned for lending "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}".`,
               requestId,
               itemId: request.items.id,
               isRead: false,
@@ -7405,11 +7406,12 @@ Respond with ONLY the category name, nothing else.`
         }
       }
 
+      const _hn = (s: string) => s.length > 20 ? s.slice(0, 20) + "…" : s;
       const _handoffMsg = isGiftPin
-        ? `Gift of "${request.items.name}" confirmed via code.`
+        ? `Gifted "${_hn(request.items.name)}" — handoff confirmed via code.`
         : isSwapPin
-        ? `Swap of "${request.items.name}" confirmed via code.`
-        : `Receipt of "${request.items.name}" via code. ${requestType === "RENT" ? "Rental" : "Borrow"} period started.`;
+        ? `Swapped "${_hn(request.items.name)}" — handoff confirmed via code.`
+        : `Received "${_hn(request.items.name)}" via code. ${requestType === "RENT" ? "Rental" : "Borrow"} period started.`;
       await db.insert(notifications).values([
         { userId: ownerId, type: "handoff_confirmed", title: "Handoff Confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
         { userId: borrowerId, type: "handoff_confirmed", title: "Handoff Confirmed", message: _handoffMsg, itemId: request.items.id, requestId },
@@ -7467,8 +7469,8 @@ Respond with ONLY the category name, nothing else.`
         const borrowerId3 = request.item_requests.requesterId;
         await db.insert(messages).values({ content: `🔴 A dispute has been opened on this exchange. Both parties have 24 hours to submit evidence.`, senderId: ownerId3, receiverId: borrowerId3, messageType: "system", requestId });
         await db.insert(notifications).values([
-          { userId: ownerId3, type: "handoff_disputed", title: "Exchange Disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
-          { userId: borrowerId3, type: "handoff_disputed", title: "Exchange Disputed", message: `Dispute opened on "${request.items.name}".`, itemId: request.items.id, requestId },
+          { userId: ownerId3, type: "handoff_disputed", title: "Exchange Disputed", message: `Dispute opened on "${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}".`, itemId: request.items.id, requestId },
+          { userId: borrowerId3, type: "handoff_disputed", title: "Exchange Disputed", message: `Dispute opened on "${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}".`, itemId: request.items.id, requestId },
         ]);
         return res.json({ success: true, disputeTriggered: true });
       }
@@ -7527,8 +7529,8 @@ Respond with ONLY the category name, nothing else.`
           requestId,
         });
         await db.insert(notifications).values([
-          { userId: ownerId, type: "handoff_dispute", title: "Handoff Dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "handoff_dispute", title: "Handoff Dispute", message: `Dispute on "${request.items.name}". Submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "handoff_dispute", title: "Handoff Dispute", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "handoff_dispute", title: "Handoff Dispute", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — submit proof within 24 hrs.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // One denied, other hasn't acted yet — log it
@@ -7723,8 +7725,8 @@ Respond with ONLY the category name, nothing else.`
           });
 
           await db.insert(notifications).values([
-            { userId: ownerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
-            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: ownerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
+            { userId: borrowerId2, type: "handoff_flagged", title: "Exchange Flagged", message: `"${request.items.name.length > 22 ? request.items.name.slice(0, 22) + "…" : request.items.name}" flagged for admin review.`, itemId: request.items.id, requestId: reqId },
           ]);
 
           flaggedCount++;
@@ -7796,8 +7798,8 @@ Respond with ONLY the category name, nothing else.`
 
           const confirmingParty = ownerConfirmed ? "owner" : "borrower";
           await db.insert(notifications).values([
-            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
-            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
+            { userId: borrowerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId },
+            ...(ownerId2 ? [{ userId: ownerId2, type: "handoff_auto_advanced", title: "Exchange Auto-Confirmed", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" auto-confirmed — no response received.`, itemId: request.items.id, requestId: reqId }] : []),
           ]);
 
           autoAdvancedCount++;
@@ -8039,8 +8041,8 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(notifications).values({
           userId: request.item_requests.requesterId,
           type: "dispute_opened",
-          title: "Dispute opened",
-          message: `"${request.items.name}" — deposit on hold pending review.`,
+          title: "Dispute Opened",
+          message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — deposit held pending dispute review.`,
           link: `/requests`,
         });
 
@@ -8071,8 +8073,8 @@ Respond with ONLY the category name, nothing else.`
           await db.insert(notifications).values({
             userId: request.item_requests.requesterId,
             type: "security_deposit_released",
-            title: "Deposit released",
-            message: `Your deposit for "${request.items.name}" is on its way back (5–10 business days).`,
+            title: "Deposit Released",
+            message: `Deposit for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" released — arrives in 5–10 business days.`,
             itemId: request.items.id,
             requestId,
             isRead: false,
@@ -8113,8 +8115,8 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: request.item_requests.requesterId,
         type: "return_confirmed",
-        title: "Return confirmed",
-        message: `"${request.items.name}" received and confirmed. Your security deposit has been released.`,
+        title: "Return Confirmed",
+        message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner. Security deposit released.`,
         itemId: request.items.id,
         requestId,
         isRead: false,
@@ -8278,8 +8280,8 @@ Respond with ONLY the category name, nothing else.`
               await db.insert(notifications).values({
                 userId: request.items.ownerId,
                 type: "payment_received",
-                title: "Rental payment ready",
-                message: `$${existingNetAmount.toFixed(2)} from "${request.items.name}" is ready to withdraw.`,
+                title: "Rental Payment Ready",
+                message: `$${existingNetAmount.toFixed(2)} earned from "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — ready to withdraw.`,
                 itemId: request.items.id,
                 requestId,
                 isRead: false,
@@ -8321,8 +8323,8 @@ Respond with ONLY the category name, nothing else.`
               await db.insert(notifications).values({
                 userId: request.items.ownerId,
                 type: "payment_received",
-                title: "Rental payment ready",
-                message: `$${netAmount.toFixed(2)} from "${request.items.name}" is ready to withdraw.`,
+                title: "Rental Payment Ready",
+                message: `$${netAmount.toFixed(2)} earned from "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — ready to withdraw.`,
                 itemId: request.items.id,
                 requestId,
                 isRead: false,
@@ -8403,8 +8405,8 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: request.items.ownerId!,
         type: "date_adjustment_requested",
-        title: "Return date adjustment requested",
-        message: `Borrower of "${request.items.name}" is requesting a return date adjustment to ${newEnd.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })} due to late handoff.`,
+        title: "Return Date Adjustment Requested",
+        message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" borrower requests return extension to ${newEnd.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}.`,
         itemId: request.items.id,
         requestId,
         isRead: false,
@@ -8455,8 +8457,8 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(notifications).values({
           userId: request.item_requests.requesterId,
           type: "date_adjustment_approved",
-          title: "Return date adjustment approved",
-          message: `Your return date for "${request.items.name}" has been updated to ${new Date(proposedEnd).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}.`,
+          title: "Return Date Adjustment Approved",
+          message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" return date updated to ${new Date(proposedEnd).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}.`,
           itemId: request.items.id,
           requestId,
           isRead: false,
@@ -8479,8 +8481,8 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(notifications).values({
           userId: request.item_requests.requesterId,
           type: "date_adjustment_declined",
-          title: "Return date adjustment declined",
-          message: `The owner of "${request.items.name}" has declined your return date adjustment request. The original return date stands.`,
+          title: "Return Date Adjustment Declined",
+          message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" date adjustment declined. Original return date stands.`,
           itemId: request.items.id,
           requestId,
           isRead: false,
@@ -9032,8 +9034,8 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(notifications).values({
         userId: borrow.ownerId,
         type: "extension_requested",
-        title: "Short extension requested",
-        message: `${(req.user as any).displayName || req.user.username} is requesting +${addDays} day${addDays > 1 ? "s" : ""} to return "${borrow.itemName}" (new date: ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}).`,
+        title: "Short Extension Requested",
+        message: `${((req.user as any).displayName || req.user.username).slice(0, 15)} wants +${addDays}d for "${borrow.itemName.length > 18 ? borrow.itemName.slice(0, 18) + "…" : borrow.itemName}" (due ${newEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}).`,
         requestId,
         isRead: false,
       });
@@ -10925,8 +10927,8 @@ Respond with ONLY the category name, nothing else.`
         notifyAvailabilitySubscribers(request.items.id, request.items.name).catch(() => {});
         // Notify both parties
         await db.insert(notifications).values([
-          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Admin reviewed the return of "${request.items.name}" — your deposit has been released.`, itemId: request.items.id, requestId },
-          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Admin reviewed the return dispute for "${request.items.name}". The deposit was released to the borrower.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" return reviewed. Deposit released to you.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved", message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" return reviewed. Deposit released to borrower.`, itemId: request.items.id, requestId },
         ]);
       } else {
         // Capture deposit in favour of owner (damage confirmed)
@@ -10964,8 +10966,8 @@ Respond with ONLY the category name, nothing else.`
         }
 
         await db.insert(notifications).values([
-          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved In Your Favour", message: `Damage confirmed for "${request.items.name}". Deposit has been added to your balance. View it in your profile.`, itemId: request.items.id, requestId },
-          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Damage was confirmed for "${request.items.name}". Your deposit has been charged.`, itemId: request.items.id, requestId },
+          { userId: ownerId, type: "dispute_resolved", title: "Dispute Resolved In Your Favour", message: `Damage confirmed for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}". Deposit added to your balance.`, itemId: request.items.id, requestId },
+          { userId: borrowerId, type: "dispute_resolved", title: "Dispute Resolved", message: `Damage confirmed for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}". Your deposit has been charged.`, itemId: request.items.id, requestId },
         ]);
       }
 
@@ -11075,8 +11077,8 @@ Respond with ONLY the category name, nothing else.`
     await db.insert(notifications).values({
       userId: request.items.ownerId!,
       type: "delivery_confirmed",
-      title: "Delivery confirmed",
-      message: `"${request.items.name}" received successfully.`,
+      title: "Delivery Confirmed",
+      message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" delivered successfully.`,
       itemId: request.items.id,
       requestId: requestId,
       isRead: false,

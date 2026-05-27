@@ -7043,6 +7043,38 @@ Respond with ONLY the category name, nothing else.`
             console.error("Error awarding swap rewards at handoff:", swapRewardError);
           }
         }
+
+        // For RENT: release rental earnings to owner at handoff (not at return)
+        if (request.item_requests.requestType === 'RENT' && request.item_requests.rentalAmount) {
+          try {
+            const _rentAmt = parseFloat(request.item_requests.rentalAmount);
+            const _processingFee = _rentAmt * 0.03;
+            const _netAmt = _rentAmt - _processingFee;
+            const _ownerId = request.items.ownerId!;
+            const _sn = (s: string) => s.length > 20 ? s.slice(0, 20) + "…" : s;
+            const [_existingPayout] = await db
+              .select().from(rentalPayouts)
+              .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, 'held')))
+              .limit(1);
+            if (_existingPayout) {
+              await db.update(rentalPayouts).set({ status: 'released', releasedAt: new Date() }).where(eq(rentalPayouts.id, _existingPayout.id));
+              const _en = parseFloat(_existingPayout.netAmount || "0");
+              await db.update(users).set({
+                pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${_en})`,
+                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_en}`,
+              }).where(eq(users.id, _ownerId));
+              await db.insert(notifications).values({ userId: _ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_en.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
+              console.log(`[Handoff] Released rental earnings $${_en.toFixed(2)} to owner ${_ownerId}`);
+            } else {
+              await db.insert(rentalPayouts).values({ userId: _ownerId, requestId, amount: _rentAmt.toString(), rentalAmount: _rentAmt.toString(), platformFee: "0", processingFee: _processingFee.toFixed(2), netAmount: _netAmt.toFixed(2), status: 'released', stripePaymentIntentId: request.item_requests.depositPaymentIntentId, releasedAt: new Date() });
+              await db.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_netAmt.toFixed(2)}` }).where(eq(users.id, _ownerId));
+              await db.insert(notifications).values({ userId: _ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_netAmt.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
+              console.log(`[Handoff] Released rental earnings $${_netAmt.toFixed(2)} to owner ${_ownerId} (fallback)`);
+            }
+          } catch (rentalPayoutErr) {
+            console.error("Error releasing rental payment at handoff:", rentalPayoutErr);
+          }
+        }
       }
 
       // Update the request
@@ -7403,6 +7435,36 @@ Respond with ONLY the category name, nothing else.`
         await db.insert(messages).values({ content: `🤝 Handoff confirmed via PIN — ${periodType} period has started`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
         if (request.item_requests.depositMethod !== "in_person") {
           await db.insert(messages).values({ content: "🔒 Security deposit is now held until the item is returned", senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
+        }
+        // For RENT: release rental earnings to owner at handoff (not at return)
+        if (requestType === 'RENT' && request.item_requests.rentalAmount) {
+          try {
+            const _rentAmt = parseFloat(request.item_requests.rentalAmount);
+            const _processingFee = _rentAmt * 0.03;
+            const _netAmt = _rentAmt - _processingFee;
+            const _sn = (s: string) => s.length > 20 ? s.slice(0, 20) + "…" : s;
+            const [_existingPayout] = await db
+              .select().from(rentalPayouts)
+              .where(and(eq(rentalPayouts.requestId, requestId), eq(rentalPayouts.status, 'held')))
+              .limit(1);
+            if (_existingPayout) {
+              await db.update(rentalPayouts).set({ status: 'released', releasedAt: new Date() }).where(eq(rentalPayouts.id, _existingPayout.id));
+              const _en = parseFloat(_existingPayout.netAmount || "0");
+              await db.update(users).set({
+                pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${_en})`,
+                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_en}`,
+              }).where(eq(users.id, ownerId));
+              await db.insert(notifications).values({ userId: ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_en.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
+              console.log(`[PIN Handoff] Released rental earnings $${_en.toFixed(2)} to owner ${ownerId}`);
+            } else {
+              await db.insert(rentalPayouts).values({ userId: ownerId, requestId, amount: _rentAmt.toString(), rentalAmount: _rentAmt.toString(), platformFee: "0", processingFee: _processingFee.toFixed(2), netAmount: _netAmt.toFixed(2), status: 'released', stripePaymentIntentId: request.item_requests.depositPaymentIntentId, releasedAt: new Date() });
+              await db.update(users).set({ rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${_netAmt.toFixed(2)}` }).where(eq(users.id, ownerId));
+              await db.insert(notifications).values({ userId: ownerId, type: "payment_received", title: "Rental Payment Ready", message: `$${_netAmt.toFixed(2)} earned from "${_sn(request.items.name)}" — ready to withdraw.`, itemId: request.items.id, requestId, isRead: false });
+              console.log(`[PIN Handoff] Released rental earnings $${_netAmt.toFixed(2)} to owner ${ownerId} (fallback)`);
+            }
+          } catch (rentalPayoutErr) {
+            console.error("Error releasing rental payment at PIN handoff:", rentalPayoutErr);
+          }
         }
       }
 
@@ -8229,133 +8291,14 @@ Respond with ONLY the category name, nothing else.`
       await checkAndAwardAchievements(request.item_requests.requesterId);
       if (request.items.ownerId) await checkAndAwardAchievements(request.items.ownerId);
 
-      // For RENT transactions, release rental earnings from pending to available balance
-      let rentalEarnings = null;
-      if (request.item_requests.requestType === 'RENT' && request.item_requests.rentalAmount) {
-        try {
-          const rentalAmount = parseFloat(request.item_requests.rentalAmount);
-          const platformFee = 0; // 0% platform fee for 2025
-          const processingFee = rentalAmount * 0.03; // 3% payment processing fee
-          const netAmount = rentalAmount - platformFee - processingFee;
-          
-          // Update existing held payout record to released
-          const [existingPayout] = await db
-            .select()
-            .from(rentalPayouts)
-            .where(and(
-              eq(rentalPayouts.requestId, requestId),
-              eq(rentalPayouts.status, 'held')
-            ))
-            .limit(1);
-          
-          if (existingPayout) {
-            // Update held payout to released
-            await db
-              .update(rentalPayouts)
-              .set({
-                status: 'released',
-                releasedAt: new Date(),
-              })
-              .where(eq(rentalPayouts.id, existingPayout.id));
-            
-            // Move from pending to available balance
-            const existingNetAmount = parseFloat(existingPayout.netAmount || "0");
-            await db
-              .update(users)
-              .set({
-                pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${existingNetAmount})`,
-                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${existingNetAmount}`,
-              })
-              .where(eq(users.id, request.items.ownerId!));
-            
-            rentalEarnings = {
-              rentalAmount,
-              platformFee,
-              processingFee,
-              netAmount: existingNetAmount,
-            };
-
-            // Notify owner their rental payment is available
-            if (request.items.ownerId) {
-              await db.insert(notifications).values({
-                userId: request.items.ownerId,
-                type: "payment_received",
-                title: "Rental Payment Ready",
-                message: `$${existingNetAmount.toFixed(2)} earned from "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — ready to withdraw.`,
-                itemId: request.items.id,
-                requestId,
-                isRead: false,
-              });
-            }
-            
-            console.log(`Released rental earnings of $${existingNetAmount.toFixed(2)} from pending to available for owner ${request.items.ownerId}`);
-          } else {
-            // Fallback: create new released record if no held record exists
-            await db.insert(rentalPayouts).values({
-              userId: request.items.ownerId!,
-              requestId: requestId,
-              amount: rentalAmount.toString(),
-              rentalAmount: rentalAmount.toString(),
-              platformFee: platformFee.toString(),
-              processingFee: processingFee.toFixed(2),
-              netAmount: netAmount.toFixed(2),
-              status: 'released',
-              stripePaymentIntentId: request.item_requests.depositPaymentIntentId,
-              releasedAt: new Date(),
-            });
-            
-            await db
-              .update(users)
-              .set({
-                rentalBalance: sql`COALESCE(${users.rentalBalance}, 0) + ${netAmount.toFixed(2)}`,
-              })
-              .where(eq(users.id, request.items.ownerId!));
-            
-            rentalEarnings = {
-              rentalAmount,
-              platformFee,
-              processingFee,
-              netAmount,
-            };
-            
-            // Notify owner their rental payment is available (fallback path)
-            if (request.items.ownerId) {
-              await db.insert(notifications).values({
-                userId: request.items.ownerId,
-                type: "payment_received",
-                title: "Rental Payment Ready",
-                message: `$${netAmount.toFixed(2)} earned from "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" — ready to withdraw.`,
-                itemId: request.items.id,
-                requestId,
-                isRead: false,
-              });
-            }
-            console.log(`Released rental earnings of $${netAmount.toFixed(2)} to owner ${request.items.ownerId} (fallback)`);
-          }
-        } catch (payoutError) {
-          console.error("Error processing rental payout:", payoutError);
-          // Don't fail the return if payout fails - log and continue
-        }
-      }
-
-      let message: string;
-      if (isEarlyReturn && isRental) {
-        message = "Item returned early. Rental period completed.";
-      } else if (isEarlyReturn) {
-        message = "Item returned early. Deposit released.";
-      } else if (isRental) {
-        message = "Return confirmed! Deposit released and rental earnings added to your balance.";
-      } else {
-        message = "Return confirmed! Deposit has been released.";
-      }
+      const returnMessage = isEarlyReturn ? "Item returned early. Deposit released." : "Return confirmed! Deposit released.";
 
       res.json({
         success: true,
         request: updated,
         depositReleased: true,
         isEarlyReturn,
-        rentalEarnings,
-        message,
+        message: returnMessage,
       });
     } catch (error: any) {
       console.error("Error confirming return:", error);

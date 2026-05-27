@@ -6778,27 +6778,32 @@ Respond with ONLY the category name, nothing else.`
       });
 
       // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
+      // Exception: giver cancelling their own gift is not penalised (they're doing a favour)
+      const isGiftGiverCancelling = request.item_requests.requestType === "GIFT" && isOwner;
       let penaltyResult = { applied: false, wasGracePass: false };
-      try {
-        penaltyResult = await applyCancellationPenalty(
-          req.user.id,
-          requestId,
-          request.items.id
-        );
-      } catch (penaltyError) {
-        console.error("Error applying cancellation penalty:", penaltyError);
-        // Don't fail the cancellation if penalty fails
+      if (!isGiftGiverCancelling) {
+        try {
+          penaltyResult = await applyCancellationPenalty(
+            req.user.id,
+            requestId,
+            request.items.id
+          );
+        } catch (penaltyError) {
+          console.error("Error applying cancellation penalty:", penaltyError);
+        }
       }
 
       res.json({
         success: true,
         request: updated,
         depositReleased: !!request.item_requests.depositPaymentIntentId,
-        message: penaltyResult.wasGracePass 
-          ? "Request cancelled. This is your first cancellation - no penalty applied, but future cancellations will affect your trust score."
-          : penaltyResult.applied 
-            ? "Request cancelled. A trust score penalty has been applied."
-            : "Request cancelled successfully.",
+        message: isGiftGiverCancelling
+          ? "Gift cancelled. Your item is available again."
+          : penaltyResult.wasGracePass 
+            ? "Request cancelled. This is your first cancellation - no penalty applied, but future cancellations will affect your trust score."
+            : penaltyResult.applied 
+              ? "Request cancelled. A trust score penalty has been applied."
+              : "Request cancelled successfully.",
       });
     } catch (error: any) {
       console.error("Error cancelling request:", error);

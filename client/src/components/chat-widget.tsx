@@ -1372,6 +1372,17 @@ export function ChatWidget() {
                 </>
               )}
 
+              {/* Giver: cancel an accepted gift (e.g. receiver never showed up) */}
+              {isOwner && request.requestType === "GIFT" && request.status === "ACCEPTED" && (
+                <button
+                  className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setCancelConfirmRequest(request); }}
+                  disabled={cancelMutation.isPending}
+                >
+                  Cancel gift
+                </button>
+              )}
+
               {/* Borrower: waiting for owner to confirm after terms agreed */}
               {isBorrower && iTermsAccepted && (
                 <p className="text-[10px] text-green-700 italic">Waiting for owner to confirm…</p>

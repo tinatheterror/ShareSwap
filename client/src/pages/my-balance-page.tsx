@@ -185,7 +185,7 @@ export default function MyBalancePage() {
         {/* Balance card */}
         <Card className="mb-4">
           <CardContent className="py-6">
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-teal-50 rounded-xl">
                 <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Available</p>
                 <p className="text-3xl font-bold text-[#0BB88C]">${available.toFixed(2)}</p>
@@ -197,76 +197,73 @@ export default function MyBalancePage() {
               </div>
             </div>
 
-            <Separator className="mb-4" />
-
-            {/* Payout button */}
-            <Dialog open={isPayoutOpen} onOpenChange={setIsPayoutOpen}>
-              <DialogTrigger asChild>
+            {/* Cash Out button — only visible when bank is connected and balance ≥ $10 */}
+            {canCashOut && (
+              <>
+                <Separator className="my-4" />
                 <Button
                   className="w-full bg-[#0BB88C] hover:bg-[#099e77] text-white"
-                  disabled={!canCashOut}
+                  onClick={() => setIsPayoutOpen(true)}
                 >
                   <ArrowDownCircle className="h-4 w-4 mr-2" />
-                  {!isConnected || !detailsSubmitted
-                    ? "Set Up Bank Account to Cash Out"
-                    : !payoutsEnabled
-                    ? "Payout Account Pending Verification"
-                    : available < 10
-                    ? "Minimum $10 to cash out"
-                    : `Cash Out $${available.toFixed(2)}`}
+                  Cash Out ${available.toFixed(2)}
                 </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <ArrowDownCircle className="h-5 w-5 text-[#0BB88C]" />
-                    Cash Out to Bank
-                  </DialogTitle>
-                  <DialogDescription>Transfer earnings to your connected bank account</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Amount to withdraw</label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        value={payoutAmount}
-                        onChange={(e) => setPayoutAmount(e.target.value)}
-                        className="pl-8"
-                        min="10"
-                        max={available}
-                        step="0.01"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Available: ${available.toFixed(2)} · Minimum: $10.00</p>
-                  </div>
-                  <Button variant="link" className="p-0 h-auto text-sm text-[#0BB88C]" onClick={() => setPayoutAmount(available.toFixed(2))}>
-                    Withdraw full balance
-                  </Button>
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <AlertTitle className="text-blue-800">Processing Time</AlertTitle>
-                    <AlertDescription className="text-blue-700 text-sm">
-                      Funds arrive in your bank account within 2–5 business days.
-                    </AlertDescription>
-                  </Alert>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsPayoutOpen(false)}>Cancel</Button>
-                  <Button
-                    onClick={handlePayout}
-                    disabled={payoutMutation.isPending || !payoutAmount}
-                    className="bg-[#0BB88C] hover:bg-[#099e77] text-white"
-                  >
-                    {payoutMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</> : "Send to Bank"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              </>
+            )}
           </CardContent>
         </Card>
+
+        {/* Cash Out dialog (rendered at top level so it isn't clipped by Card) */}
+        <Dialog open={isPayoutOpen} onOpenChange={setIsPayoutOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ArrowDownCircle className="h-5 w-5 text-[#0BB88C]" />
+                Cash Out to Bank
+              </DialogTitle>
+              <DialogDescription>Transfer earnings to your connected bank account</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Amount to withdraw</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={payoutAmount}
+                    onChange={(e) => setPayoutAmount(e.target.value)}
+                    className="pl-8"
+                    min="10"
+                    max={available}
+                    step="0.01"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Available: ${available.toFixed(2)} · Minimum: $10.00</p>
+              </div>
+              <Button variant="link" className="p-0 h-auto text-sm text-[#0BB88C]" onClick={() => setPayoutAmount(available.toFixed(2))}>
+                Withdraw full balance
+              </Button>
+              <Alert className="bg-blue-50 border-blue-200">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800">Processing Time</AlertTitle>
+                <AlertDescription className="text-blue-700 text-sm">
+                  Funds arrive in your bank account within 2–5 business days.
+                </AlertDescription>
+              </Alert>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsPayoutOpen(false)}>Cancel</Button>
+              <Button
+                onClick={handlePayout}
+                disabled={payoutMutation.isPending || !payoutAmount}
+                className="bg-[#0BB88C] hover:bg-[#099e77] text-white"
+              >
+                {payoutMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</> : "Send to Bank"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Payout account / Connect section */}
         <Card className="mb-4">

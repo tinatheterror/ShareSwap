@@ -94,7 +94,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
           </div>
 
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto p-5 bg-white">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 bg-white min-w-0">
             <h3 className="text-sm font-medium text-gray-500 mb-3">
               Select one or more of your items to trade
             </h3>

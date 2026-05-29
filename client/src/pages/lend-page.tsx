@@ -402,13 +402,21 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       img.src = src;
     });
 
+  const defaultCrop = (): Crop => ({
+    unit: "%",
+    x: 5,
+    y: 5,
+    width: 90,
+    height: 90,
+  });
+
   const openPhotoEditor = (idx: number) => {
     const src = photoPreviewUrls[idx];
     setEditingPhotoIdx(idx);
     setEditOriginalSrc(src);
     setEditPhotoSrc(src);
     setEditRotation(0);
-    setEditCrop(undefined);
+    setEditCrop(defaultCrop());
     setEditCompletedCrop(null);
   };
 
@@ -418,7 +426,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     setIsApplyingRotation(true);
     const rotated = await applyRotationToImage(editOriginalSrc, next);
     setEditPhotoSrc(rotated);
-    setEditCrop(undefined);
+    setEditCrop(defaultCrop());
     setEditCompletedCrop(null);
     setIsApplyingRotation(false);
   };
@@ -3010,7 +3018,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                 ) : null}
               </div>
               <p className="text-xs text-center text-muted-foreground">
-                Drag to select a crop area, or save with just rotation applied.
+                Drag the crop box to reposition or resize it, then save.
               </p>
             </div>
             <div className="flex gap-3 px-6 py-4 border-t shrink-0">

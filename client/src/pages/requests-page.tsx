@@ -184,7 +184,6 @@ export default function RequestsPage() {
   const [showCounterProposalModal, setShowCounterProposalModal] = useState(false);
   const [counterProposalRequest, setCounterProposalRequest] = useState<ItemRequest | null>(null);
   const [counterProposalRole, setCounterProposalRole] = useState<"owner" | "requester">("owner");
-  const [proposedDeliveryMethod, setProposedDeliveryMethod] = useState<string>("in_person");
   const [proposedDepositMethod, setProposedDepositMethod] = useState<string>("in_app");
   const [proposedStartDate, setProposedStartDate] = useState<string>("");
   const [proposedEndDate, setProposedEndDate] = useState<string>("");
@@ -524,11 +523,9 @@ export default function RequestsPage() {
     setCounterProposalRequest(request);
     setCounterProposalRole(role);
     // Pre-fill with current counter terms (if responding to a counter) or requester's original terms
-    const src = role === "requester" && request.counterDeliveryMethod ? request : request;
-    setProposedDeliveryMethod(src.counterDeliveryMethod || src.deliveryMethod || "in_person");
-    setProposedDepositMethod(src.counterDepositMethod || src.depositMethod || "in_app");
-    const sd = src.counterStartDate || src.startDate;
-    const ed = src.counterEndDate || src.endDate;
+    setProposedDepositMethod(request.counterDepositMethod || request.depositMethod || "in_app");
+    const sd = request.counterStartDate || request.startDate;
+    const ed = request.counterEndDate || request.endDate;
     setProposedStartDate(sd ? sd.split("T")[0] : "");
     setProposedEndDate(ed ? ed.split("T")[0] : "");
     setShowCounterProposalModal(true);
@@ -538,7 +535,7 @@ export default function RequestsPage() {
     if (counterProposalRequest) {
       counterProposalMutation.mutate({
         requestId: counterProposalRequest.id,
-        deliveryMethod: proposedDeliveryMethod,
+        deliveryMethod: "in_person",
         depositMethod: proposedDepositMethod,
         startDate: proposedStartDate || undefined,
         endDate: proposedEndDate || undefined,
@@ -1686,11 +1683,6 @@ export default function RequestsPage() {
                       : counterProposalRequest?.depositMethod) === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-xs">
-                  Delivery: {(counterProposalRole === "requester"
-                    ? counterProposalRequest?.counterDeliveryMethod
-                    : counterProposalRequest?.deliveryMethod) === "courier" ? "Uber" : "Pick up"}
-                </Badge>
                 {(() => {
                   const sd = counterProposalRole === "requester"
                     ? counterProposalRequest?.counterStartDate
@@ -1723,21 +1715,6 @@ export default function RequestsPage() {
                 </RadioGroup>
               </div>
             )}
-
-            {/* Delivery method */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Your Delivery Preference</Label>
-              <RadioGroup value={proposedDeliveryMethod} onValueChange={setProposedDeliveryMethod}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="in_person" id="cp-delivery-pickup" />
-                  <Label htmlFor="cp-delivery-pickup" className="font-normal cursor-pointer">Pick up in person</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="courier" id="cp-delivery-courier" />
-                  <Label htmlFor="cp-delivery-courier" className="font-normal cursor-pointer">Uber delivery</Label>
-                </div>
-              </RadioGroup>
-            </div>
 
             {/* Date range - BORROW or RENT */}
             {(counterProposalRequest?.requestType === "BORROW" || counterProposalRequest?.requestType === "RENT") && (

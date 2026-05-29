@@ -339,7 +339,6 @@ export function ChatWidget() {
   const [showChatCounterModal, setShowChatCounterModal] = useState(false);
   const [chatCounterRequest, setChatCounterRequest] = useState<ItemRequest | null>(null);
   const [chatCounterRole, setChatCounterRole] = useState<"owner" | "requester">("requester");
-  const [chatProposedDelivery, setChatProposedDelivery] = useState("in_person");
   const [chatProposedDeposit, setChatProposedDeposit] = useState("in_app");
   const [chatProposedStart, setChatProposedStart] = useState("");
   const [chatProposedEnd, setChatProposedEnd] = useState("");
@@ -2718,7 +2717,7 @@ export function ChatWidget() {
               Propose New Terms
             </DialogTitle>
             <DialogDescription>
-              Suggest changes to delivery, deposit, or dates. The other party can accept, decline, or counter again.
+              Suggest changes to deposit or dates. The other party can accept, decline, or counter again.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 py-4">
@@ -2737,15 +2736,6 @@ export function ChatWidget() {
                 </RadioGroup>
               </div>
             )}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Delivery Preference</Label>
-              <RadioGroup value={chatProposedDelivery} onValueChange={setChatProposedDelivery}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="in_person" id="cc-delivery-pickup" />
-                  <Label htmlFor="cc-delivery-pickup" className="font-normal cursor-pointer">Exchange Item In Person</Label>
-                </div>
-              </RadioGroup>
-            </div>
             {(chatCounterRequest?.requestType === "BORROW" || chatCounterRequest?.requestType === "RENT") && (
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Date Range</Label>
@@ -2767,7 +2757,7 @@ export function ChatWidget() {
             <Button
               onClick={() => chatCounterRequest && chatCounterMutation.mutate({
                 requestId: chatCounterRequest.id,
-                deliveryMethod: chatProposedDelivery,
+                deliveryMethod: "in_person",
                 depositMethod: chatProposedDeposit,
                 startDate: chatProposedStart || undefined,
                 endDate: chatProposedEnd || undefined,

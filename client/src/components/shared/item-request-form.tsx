@@ -776,15 +776,11 @@ export function ItemRequestForm({
                             </button>
                             <button
                               type="button"
-                              onClick={() =>
-                                !isCourier && field.onChange("in_person")
-                              }
+                              onClick={() => field.onChange("in_person")}
                               className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
-                                isCourier
-                                  ? "opacity-50 cursor-not-allowed border-gray-200"
-                                  : depositValue === "in_person"
-                                    ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-gray-200 hover:bg-gray-50"
+                                depositValue === "in_person"
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-gray-200 hover:bg-gray-50"
                               }`}
                             >
                               <span className="flex items-start gap-1.5 font-medium text-sm">

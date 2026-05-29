@@ -551,6 +551,28 @@ const stripe = {
       },
     },
   },
+  accounts: {
+    create: async (...args: Parameters<Stripe['accounts']['create']>) => {
+      const s = await getStripe();
+      return s.accounts.create(...args);
+    },
+    retrieve: async (...args: Parameters<Stripe['accounts']['retrieve']>) => {
+      const s = await getStripe();
+      return s.accounts.retrieve(...args);
+    },
+  },
+  accountLinks: {
+    create: async (...args: Parameters<Stripe['accountLinks']['create']>) => {
+      const s = await getStripe();
+      return s.accountLinks.create(...args);
+    },
+  },
+  transfers: {
+    create: async (...args: Parameters<Stripe['transfers']['create']>) => {
+      const s = await getStripe();
+      return s.transfers.create(...args);
+    },
+  },
 };
 
 // Type extension for Passport.js session data
@@ -6176,18 +6198,21 @@ Respond with ONLY the category name, nothing else.`
         });
       }
 
-      // For now, simulate payout request (Stripe Connect integration needed for real payouts)
-      // In production, this would create a Stripe Transfer to the connected account
-      
-      // Deduct from balance and create payout record
+      // Create real Stripe transfer to connected account
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(requestedAmount * 100), // cents
+        currency: 'cad',
+        destination: user.stripeConnectedAccountId,
+        description: `ShareSwap payout ${new Date().toISOString().split('T')[0]}`,
+      });
+
+      // Deduct from balance
       await db
         .update(users)
-        .set({
-          rentalBalance: sql`${users.rentalBalance} - ${requestedAmount}`,
-        })
+        .set({ rentalBalance: sql`${users.rentalBalance} - ${requestedAmount}` })
         .where(eq(users.id, req.user.id));
 
-      // Create a payout tracking record (null requestId for manual cash-out)
+      // Create payout tracking record
       const [payoutRecord] = await db.insert(rentalPayouts).values({
         userId: req.user.id,
         requestId: null,
@@ -6196,23 +6221,107 @@ Respond with ONLY the category name, nothing else.`
         platformFee: "0",
         processingFee: "0",
         netAmount: requestedAmount.toString(),
-        status: 'pending_payout',
+        status: 'paid_out',
         paidOutAt: new Date(),
       }).returning();
 
+      // Notify owner
+      await db.insert(notifications).values({
+        userId: req.user.id,
+        type: "payment_received",
+        title: "Payout Sent",
+        message: `$${requestedAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
+        isRead: false,
+      });
+
       res.json({
         success: true,
-        message: "Payout requested. Funds transfer within 2–3 business days.",
+        message: `$${requestedAmount.toFixed(2)} payout initiated. Funds arrive in 2–5 business days.`,
         payout: {
           id: payoutRecord.id,
           amount: requestedAmount,
-          status: 'pending_payout',
-          estimatedArrival: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+          status: 'paid_out',
+          stripeTransferId: transfer.id,
+          estimatedArrival: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
         },
       });
     } catch (error: any) {
       console.error("Error processing payout:", error);
       res.status(500).json({ error: "Failed to process payout" });
+    }
+  });
+
+  // ── Stripe Connect Express ────────────────────────────────────────────────────
+
+  // Create/retrieve a Connect Express account and return the hosted onboarding URL
+  app.post("/api/stripe/connect/onboard", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [user] = await db
+        .select({ stripeConnectedAccountId: users.stripeConnectedAccountId, email: users.username, displayName: users.displayName })
+        .from(users).where(eq(users.id, req.user.id)).limit(1);
+
+      let accountId = user?.stripeConnectedAccountId;
+
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: 'express',
+          country: 'CA',
+          email: user?.email || undefined,
+          capabilities: { transfers: { requested: true } },
+          business_type: 'individual',
+          settings: { payouts: { schedule: { interval: 'manual' } } },
+        });
+        accountId = account.id;
+        await db.update(users).set({ stripeConnectedAccountId: accountId }).where(eq(users.id, req.user.id));
+      }
+
+      const origin = `${req.protocol}://${req.get('host')}`;
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${origin}/my-balance?reconnect=true`,
+        return_url: `${origin}/my-balance?connected=true`,
+        type: 'account_onboarding',
+      });
+
+      res.json({ url: accountLink.url });
+    } catch (error: any) {
+      console.error("Error creating Stripe Connect onboarding link:", error);
+      res.status(500).json({ error: "Failed to start payout setup: " + error.message });
+    }
+  });
+
+  // Check Stripe Connect account status
+  app.get("/api/stripe/connect/status", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [user] = await db
+        .select({ stripeConnectedAccountId: users.stripeConnectedAccountId })
+        .from(users).where(eq(users.id, req.user.id)).limit(1);
+
+      if (!user?.stripeConnectedAccountId) {
+        return res.json({ connected: false, payoutsEnabled: false, detailsSubmitted: false });
+      }
+
+      try {
+        const account = await stripe.accounts.retrieve(user.stripeConnectedAccountId);
+        res.json({
+          connected: true,
+          payoutsEnabled: account.payouts_enabled,
+          chargesEnabled: account.charges_enabled,
+          detailsSubmitted: account.details_submitted,
+          accountId: account.id,
+        });
+      } catch (stripeErr: any) {
+        if (stripeErr?.code === 'resource_missing') {
+          await db.update(users).set({ stripeConnectedAccountId: null }).where(eq(users.id, req.user.id));
+          return res.json({ connected: false, payoutsEnabled: false, detailsSubmitted: false });
+        }
+        throw stripeErr;
+      }
+    } catch (error: any) {
+      console.error("Error fetching Stripe Connect status:", error);
+      res.status(500).json({ error: "Failed to fetch payout account status" });
     }
   });
 

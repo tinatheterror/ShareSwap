@@ -193,10 +193,11 @@ export default function MyItemsPage() {
   }
 
   const getItemCapabilities = (item: SelectItem) => {
-    const caps = [];
-    if (item.isLendable) caps.push("Borrow");
-    if (item.isRentable) caps.push("Rent");
-    if (item.isSwappable) caps.push("Swap");
+    const caps: { label: string; gift?: boolean }[] = [];
+    if (item.isLendable) caps.push({ label: "Borrow" });
+    if (item.isRentable) caps.push({ label: "Rent" });
+    if (item.isSwappable) caps.push({ label: "Swap" });
+    if (item.isGift) caps.push({ label: "Gift", gift: true });
     return caps;
   };
 
@@ -341,7 +342,13 @@ export default function MyItemsPage() {
                     {/* Capabilities */}
                     <div className="flex flex-wrap gap-1 mb-3">
                       {getItemCapabilities(item).map((cap) => (
-                        <Badge key={cap} variant="outline" className="text-xs">{cap}</Badge>
+                        <Badge
+                          key={cap.label}
+                          variant="outline"
+                          className={`text-xs ${cap.gift ? "border-pink-300 text-pink-600 bg-pink-50" : ""}`}
+                        >
+                          {cap.label}
+                        </Badge>
                       ))}
                     </div>
 

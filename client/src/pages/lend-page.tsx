@@ -2961,14 +2961,14 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             if (!open) setEditingPhotoIdx(null);
           }}
         >
-          <DialogContent className="max-w-lg flex flex-col max-h-[92dvh] p-0 gap-0">
+          <DialogContent className="max-w-lg flex flex-col max-h-[92dvh] p-0 gap-0 overflow-hidden">
             <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
               <DialogTitle>Edit Photo</DialogTitle>
               <DialogDescription>
                 Rotate or drag to crop your photo, then save.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 overflow-y-auto px-6 space-y-4 py-2">
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 space-y-4 py-2">
               <div className="flex justify-center gap-2">
                 <Button
                   type="button"
@@ -2991,7 +2991,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   Rotate Right
                 </Button>
               </div>
-              <div className="flex justify-center min-h-32 items-center">
+              <div className="flex justify-center min-h-24 items-center">
                 {isApplyingRotation ? (
                   <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
                 ) : editPhotoSrc ? (
@@ -3004,7 +3004,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                       ref={editImgRef}
                       src={editPhotoSrc}
                       alt="Edit"
-                      className="max-h-[45dvh] max-w-full object-contain"
+                      className="max-h-[38dvh] max-w-full object-contain"
                     />
                   </ReactCrop>
                 ) : null}

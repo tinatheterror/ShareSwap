@@ -658,10 +658,6 @@ export default function RequestsPage() {
                                 Deposit: {request.depositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                               </Badge>
                             )}
-                            <Badge variant="secondary" className="text-xs">
-                              <Truck className="h-3 w-3 mr-1" />
-                              Delivery: {request.deliveryMethod === "courier" ? "Uber" : "Pick up"}
-                            </Badge>
                           </div>
                         )}
 
@@ -678,9 +674,6 @@ export default function RequestsPage() {
                                   Proposed: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                 </Badge>
                               )}
-                              <Badge variant="outline" className="text-xs">
-                                {request.counterDeliveryMethod === "courier" ? "Uber" : "Pick up"} delivery
-                              </Badge>
                             </div>
                           </div>
                         )}
@@ -822,10 +815,6 @@ export default function RequestsPage() {
                                   Deposit: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                                 </Badge>
                               )}
-                              <Badge variant="secondary" className="text-xs">
-                                <Truck className="h-3 w-3 mr-1" />
-                                Delivery: {request.counterDeliveryMethod === "courier" ? "Uber" : "Pick up"}
-                              </Badge>
                               {request.counterStartDate && request.counterEndDate && (
                                 <Badge variant="secondary" className="text-xs">
                                   <Clock className="h-3 w-3 mr-1" />

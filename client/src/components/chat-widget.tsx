@@ -1070,9 +1070,6 @@ export function ChatWidget() {
 
     // Show the most recent counter terms when one is pending; otherwise show base request terms.
     // After acceptance the counter dates are promoted into startDate/endDate so those remain correct.
-    const displayDelivery = iCounterPending
-      ? (request.counterDeliveryMethod ?? request.deliveryMethod)
-      : request.deliveryMethod;
     const displayDeposit = iCounterPending
       ? (request.counterDepositMethod ?? request.depositMethod)
       : request.depositMethod;
@@ -1085,7 +1082,6 @@ export function ChatWidget() {
 
     // No field-level highlighting in the card — counter diff is shown in the chat event
     const dateChanged = false;
-    const deliveryChanged = false;
     const depositChanged = false;
 
     return (
@@ -1208,23 +1204,17 @@ export function ChatWidget() {
                   <span>{format(parseLocalDate(displayStart), "MMM d")} – {format(parseLocalDate(displayEnd), "MMM d")}</span>
                 </div>
               )}
-              {/* Delivery & deposit — below the date */}
-              <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-0.5">
-                <span className={`flex items-start gap-1 ${deliveryChanged ? "text-amber-600 font-medium" : ""}`}>
-                  {displayDelivery === "courier"
-                    ? <Truck className="h-3 w-3 shrink-0 mt-px text-blue-600" />
-                    : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
-                  {displayDelivery === "courier" ? "Uber Direct" : "Exchange Item In Person"}
-                </span>
-                {request.requestType !== "GIFT" && request.requestType !== "RENT" && request.requestType !== "SWAP" && (
+              {/* Deposit — below the date */}
+              {request.requestType !== "GIFT" && request.requestType !== "RENT" && request.requestType !== "SWAP" && (
+                <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-0.5">
                   <span className={`flex items-start gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
                     {displayDeposit === "in_app"
                       ? <Shield className="h-3 w-3 shrink-0 mt-px text-gray-500" />
                       : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
                     {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
               {iSentCounter && (
                 <p className="text-[10px] text-amber-700 mt-0.5 italic">Waiting for their response…</p>
               )}
@@ -1844,9 +1834,7 @@ export function ChatWidget() {
                               const newStart = mStart ? format(parseLocalDate(mStart), "MMM d") : null;
                               const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;
-                              const deliveryChanged = !!mDelivery && !!origDelivery && mDelivery !== origDelivery;
-                              const depositChanged = !!mDeposit && mDeposit !== (origDeposit ?? "in_person");
-                              const deliveryLabel = (d?: string | null) => d === "courier" ? "Uber Direct" : "In Person";
+                              const depositChanged = !!mDeposit && mDeposit !== (origDeposit ?? "in_app");
                               const depositLabel = (d?: string | null) => d === "in_app" ? "Deposit In-app" : "Deposit In Person";
 
                               const isBorrowCounter = (msg.metadata.requestType as string | undefined ?? relatedRequest?.requestType) === "BORROW";
@@ -1861,14 +1849,6 @@ export function ChatWidget() {
                                         <span className="flex items-center gap-1">
                                           <Clock className="h-3 w-3 shrink-0" />
                                           {origStart} – {origEnd}
-                                        </span>
-                                      )}
-                                      {origDelivery && (
-                                        <span className="flex items-center gap-1">
-                                          {origDelivery === "courier"
-                                            ? <Truck className="h-3 w-3 shrink-0" />
-                                            : <MapPin className="h-3 w-3 shrink-0" />}
-                                          {deliveryLabel(origDelivery)}
                                         </span>
                                       )}
                                       {((origDeposit || mDeposit) && isBorrowCounter) && (
@@ -1887,14 +1867,6 @@ export function ChatWidget() {
                                         <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
                                           <Clock className="h-3 w-3 shrink-0" />
                                           {newStart} – {newEnd}
-                                        </span>
-                                      )}
-                                      {mDelivery && (
-                                        <span className={`flex items-center gap-1 ${deliveryChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
-                                          {mDelivery === "courier"
-                                            ? <Truck className="h-3 w-3 shrink-0" />
-                                            : <MapPin className="h-3 w-3 shrink-0" />}
-                                          {deliveryLabel(mDelivery)}
                                         </span>
                                       )}
                                       {mDeposit && isBorrowCounter && (

@@ -545,46 +545,59 @@ export function ItemRequestForm({
                       </div>
 
                       {pricing ? (
-                        <div className="rounded-lg border border-gray-200 bg-gray-50 divide-y divide-gray-200 text-sm -mx-1">
-                          <div className="flex justify-between items-center px-4 py-2.5">
-                            <span className="text-gray-600 flex items-center gap-2">
-                              <DollarSign className="h-3.5 w-3.5 text-green-600" />
-                              Rental ({pricing.days} {pricing.days === 1 ? "day" : "days"})
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">
+                              Rental ({pricing.days}{" "}
+                              {pricing.days === 1 ? "day" : "days"} × $
+                              {pricing.dailyRate.toFixed(2)}/day)
                             </span>
-                            <span className="font-medium">${(pricing.discountPct > 0 ? pricing.subtotal : pricing.total).toFixed(2)}</span>
+                            <span className="font-medium">
+                              ${pricing.subtotal.toFixed(2)}
+                            </span>
                           </div>
                           {pricing.discountPct > 0 && (
-                            <div className="flex justify-between items-center px-4 py-2.5">
-                              <span className="text-teal-700 flex items-center gap-1.5">
-                                <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">{pricing.discountPct}% OFF</span>
+                            <div className="flex justify-between text-teal-700">
+                              <span className="flex items-center gap-1">
+                                <Tag className="h-3 w-3" />
                                 {discountLabel}
                               </span>
-                              <span className="font-medium text-teal-700">−${pricing.discountAmount.toFixed(2)}</span>
+                              <span className="font-medium">
+                                −${pricing.discountAmount.toFixed(2)}
+                              </span>
                             </div>
                           )}
-                          <div className="flex justify-between items-center px-4 py-2.5">
-                            <span className="text-gray-600 flex items-center gap-2">
-                              <Shield className="h-3.5 w-3.5 text-blue-600" />
-                              Security deposit
-                              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">REFUNDABLE</span>
+                          <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5 mt-0.5">
+                            <span>Rental total</span>
+                            <span className="text-teal-700">
+                              ${pricing.total.toFixed(2)}
                             </span>
-                            <span className="font-medium">${deposit.toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between items-center px-4 py-2.5">
-                            <span className="text-gray-500 text-xs">Processing fee (3%)</span>
-                            <span className="text-gray-500 text-xs">${(pricing.total * 0.03).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between items-center px-4 py-3 bg-white rounded-b-lg">
-                            <span className="font-semibold text-gray-900">Total due today</span>
-                            <span className="font-bold text-lg text-gray-900">${(pricing.total + pricing.total * 0.03 + deposit).toFixed(2)}</span>
+                          <div className="border-t border-gray-200 pt-1.5 mt-0.5">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600 flex items-center gap-1">
+                                <Shield className="h-3 w-3" />
+                                Security deposit
+                              </span>
+                              <span className="font-medium">
+                                ${deposit.toFixed(2)}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              Held securely, auto-refunded on return
+                            </p>
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-1 text-xs text-gray-500">
                           <p>Select dates to see cost breakdown</p>
                           <div className="flex gap-3 pt-1">
-                            <span className="text-teal-600 font-medium">14–27 days: 10% off</span>
-                            <span className="text-teal-600 font-medium">28+ days: 20% off</span>
+                            <span className="text-teal-600 font-medium">
+                              2–3 wks: 10% off
+                            </span>
+                            <span className="text-teal-600 font-medium">
+                              4+ wks: 20% off
+                            </span>
                           </div>
                         </div>
                       )}

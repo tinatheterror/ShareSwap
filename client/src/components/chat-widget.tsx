@@ -37,6 +37,7 @@ import {
   KeyRound,
   Zap,
   Coins,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -750,7 +751,6 @@ export function ChatWidget() {
     const dep = request.counterDepositMethod || request.depositMethod || "in_app";
     const sd = request.counterStartDate || request.startDate;
     const ed = request.counterEndDate || request.endDate;
-    setChatProposedDelivery(d);
     setChatProposedDeposit(dep);
     setChatProposedStart(sd ? sd.split("T")[0] : "");
     setChatProposedEnd(ed ? ed.split("T")[0] : "");

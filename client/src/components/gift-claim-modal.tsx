@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Form,
   FormControl,
@@ -21,13 +20,12 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Gift, MapPin, Truck, Sparkles } from "lucide-react";
+import { Gift, Sparkles } from "lucide-react";
 import * as z from "zod";
 import type { SelectItem } from "@db/schema";
 
 const giftClaimSchema = z.object({
   message: z.string().min(1, "Please include a message to the giver"),
-  deliveryMethod: z.enum(["in_person", "courier"]).default("in_person"),
 });
 
 type Props = {
@@ -44,7 +42,6 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
     resolver: zodResolver(giftClaimSchema),
     defaultValues: {
       message: "",
-      deliveryMethod: "in_person",
     },
   });
 
@@ -53,7 +50,7 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
       const res = await apiRequest("POST", `/api/items/${item.id}/request`, {
         message: data.message,
         requestType: "GIFT",
-        deliveryMethod: data.deliveryMethod,
+        deliveryMethod: "in_person",
         depositMethod: "in_app",
       });
       if (!res.ok) {
@@ -165,65 +162,6 @@ export function GiftClaimModal({ item, isOpen, onClose }: Props) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="deliveryMethod"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="flex items-center gap-2">
-                    <Truck className="h-4 w-4" />
-                    How would you like to receive this item?
-                  </FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="grid grid-cols-2 gap-2"
-                    >
-                      <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                        <RadioGroupItem
-                          value="in_person"
-                          id="gift_pickup"
-                          className="mt-0.5"
-                        />
-                        <div className="flex-1">
-                          <label
-                            htmlFor="gift_pickup"
-                            className="flex items-start gap-1.5 cursor-pointer font-medium text-sm"
-                          >
-                            <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
-                            Exchange Item In Person
-                          </label>
-                          <p className="text-xs text-gray-500 font-medium mt-0.5">
-                            Direct exchange
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start space-x-2 border rounded-lg p-2.5 cursor-pointer hover:bg-gray-50">
-                        <RadioGroupItem
-                          value="courier"
-                          id="gift_courier"
-                          className="mt-0.5"
-                        />
-                        <div className="flex-1">
-                          <label
-                            htmlFor="gift_courier"
-                            className="flex items-center gap-1.5 cursor-pointer font-medium text-sm"
-                          >
-                            <Truck className="h-4 w-4 text-blue-600" />
-                            Uber Direct
-                          </label>
-                          <p className="text-xs text-gray-500 font-medium mt-0.5">
-                            +$15
-                          </p>
-                        </div>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="flex gap-3">
               <Button

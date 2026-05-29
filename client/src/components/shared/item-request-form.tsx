@@ -807,37 +807,6 @@ export function ItemRequestForm({
                 />
               )}
 
-              {/* Delivery Method Selection */}
-              <FormField
-                control={form.control}
-                name="deliveryMethod"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel className="flex items-center gap-2">
-                      How would you like to receive this item?
-                    </FormLabel>
-                    <FormControl>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => field.onChange("in_person")}
-                          className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
-                            field.value === "in_person"
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-gray-200 hover:bg-gray-50"
-                          }`}
-                        >
-                          <MapPin
-                            className={`h-4 w-4 mb-1 ${field.value === "in_person" ? "text-primary-foreground" : "text-gray-500"}`}
-                          />
-                          <span className="font-medium text-xs leading-tight">Exchange In Person</span>
-                        </button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               {/* Non-Return Charge Acknowledgment - Only for BORROW */}
               {requestType === "BORROW" &&

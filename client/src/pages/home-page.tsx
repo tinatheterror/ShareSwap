@@ -229,7 +229,7 @@ export default function HomePage() {
               <div>
                 <p className="font-semibold text-gray-900">Import a listing</p>
                 <p className="text-xs text-muted-foreground">
-                  From Facebook Marketplace or Craigslist
+                  Upload screenshots — AI fills in the details
                 </p>
               </div>
             </button>

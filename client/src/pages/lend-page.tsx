@@ -481,8 +481,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       0.92,
     );
   };
-  const [importUrl, setImportUrl] = useState<string>("");
-  const [isImporting, setIsImporting] = useState(false);
   const [showWishlistFulfillmentPopup, setShowWishlistFulfillmentPopup] =
     useState(false);
   const [showMatchConfirmation, setShowMatchConfirmation] = useState(false);

@@ -74,17 +74,28 @@ export default function MyBalancePage() {
     }
   }, [justConnected, needsReconnect]);
 
+  const [connectNotEnabled, setConnectNotEnabled] = useState(false);
+
   const onboardMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/stripe/connect/onboard", {});
       const data = await res.json();
+      if (!res.ok) {
+        const err = new Error(data.message || data.error || "Failed");
+        (err as any).code = data.error;
+        throw err;
+      }
       return data as { url: string };
     },
     onSuccess: (data) => {
       window.location.href = data.url;
     },
     onError: (error: any) => {
-      toast({ title: "Setup Failed", description: error.message || "Could not start bank account setup.", variant: "destructive" });
+      if (error.code === "CONNECT_NOT_ENABLED") {
+        setConnectNotEnabled(true);
+      } else {
+        toast({ title: "Setup Failed", description: error.message || "Could not start bank account setup.", variant: "destructive" });
+      }
     },
   });
 
@@ -269,25 +280,61 @@ export default function MyBalancePage() {
           <CardContent className="py-2 pb-4">
             {!isConnected || !detailsSubmitted ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800">No bank account connected</p>
-                    <p className="text-xs text-amber-700">Connect your bank to cash out your rental earnings.</p>
+                {connectNotEnabled ? (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">Stripe Connect Setup Required</p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          To enable owner payouts, a Stripe admin must activate Connect on the platform account.
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href="https://dashboard.stripe.com/connect"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Open Stripe Connect Dashboard →
+                    </a>
+                    <p className="text-xs text-blue-600">After enabling, come back and click Connect Bank Account.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs mt-1"
+                      onClick={() => { setConnectNotEnabled(false); onboardMutation.mutate(); }}
+                      disabled={onboardMutation.isPending}
+                    >
+                      {onboardMutation.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Try Again
+                    </Button>
                   </div>
-                </div>
-                <Button
-                  onClick={() => onboardMutation.mutate()}
-                  disabled={onboardMutation.isPending}
-                  className="w-full bg-[#0BB88C] hover:bg-[#099e77] text-white"
-                >
-                  {onboardMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirecting to Stripe...</>
-                  ) : (
-                    <><ExternalLink className="h-4 w-4 mr-2" />Connect Bank Account</>
-                  )}
-                </Button>
-                <p className="text-xs text-center text-gray-400">Powered by Stripe · Bank-level security · Takes ~2 minutes</p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">No bank account connected</p>
+                        <p className="text-xs text-amber-700">Connect your bank to cash out your rental earnings.</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => onboardMutation.mutate()}
+                      disabled={onboardMutation.isPending}
+                      className="w-full bg-[#0BB88C] hover:bg-[#099e77] text-white"
+                    >
+                      {onboardMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Redirecting to Stripe...</>
+                      ) : (
+                        <><ExternalLink className="h-4 w-4 mr-2" />Connect Bank Account</>
+                      )}
+                    </Button>
+                    <p className="text-xs text-center text-gray-400">Powered by Stripe · Bank-level security · Takes ~2 minutes</p>
+                  </>
+                )}
               </div>
             ) : payoutsEnabled ? (
               <div className="space-y-3">

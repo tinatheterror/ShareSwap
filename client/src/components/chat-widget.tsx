@@ -2221,8 +2221,8 @@ export function ChatWidget() {
                         {isOwnerInPersonDeposit && (
                           <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before sharing your code</p>
                         )}
-                        {/* Optional delivery card for owner */}
-                        <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 space-y-2">
+                        {/* Optional delivery card for owner — BORROW and RENT only */}
+                        {(pr.requestType === "BORROW" || pr.requestType === "RENT") && <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 space-y-2">
                           <div className="flex items-center gap-2">
                             <Truck className="h-4 w-4 text-teal-600 shrink-0" />
                             <span className="text-sm font-semibold text-teal-800">Can't meet up? Book a delivery</span>
@@ -2235,7 +2235,7 @@ export function ChatWidget() {
                           >
                             Get a delivery quote
                           </Button>
-                        </div>
+                        </div>}
                       </div>
                     );
                   }

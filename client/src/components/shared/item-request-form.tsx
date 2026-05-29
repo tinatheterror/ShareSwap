@@ -645,47 +645,71 @@ export function ItemRequestForm({
 
                   return (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                      <div className="text-gray-700 font-medium text-sm">Cost Breakdown</div>
+                      <div className="text-gray-700 font-medium text-sm">
+                        Cost Breakdown
+                      </div>
 
                       {borrowDays > 0 ? (
-                        <div className="rounded-lg border border-gray-200 bg-gray-50 divide-y divide-gray-200 text-sm -mx-1">
-                          <div className="flex justify-between items-center px-4 py-2.5">
-                            <span className="text-gray-600 flex items-center gap-2">
-                              <Coins className="h-3.5 w-3.5 text-teal-600" />
-                              ShareCoins ({borrowDays} {borrowDays === 1 ? "day" : "days"})
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 flex items-center gap-1">
+                              <Coins className="h-3 w-3 text-teal-600" />
+                              ShareCoins ({borrowDays}{" "}
+                              {borrowDays === 1 ? "day" : "days"})
                             </span>
-                            <span className="font-medium">{proratedCost} SC</span>
+                            <span className="font-medium">
+                              {proratedCost} SC
+                            </span>
                           </div>
+                          <p className="text-[10px] text-gray-400">
+                            {weeklyPrice} SC/week × {borrowDays}{" "}
+                            {borrowDays === 1 ? "day" : "days"} ÷ 7
+                          </p>
                           {hasDeposit && (
-                            <div className="flex justify-between items-center px-4 py-2.5">
-                              <span className="text-gray-600 flex items-center gap-2">
-                                <Shield className="h-3.5 w-3.5 text-blue-600" />
-                                Trust deposit
-                                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">REFUNDABLE</span>
-                                {depositCalc.discountPercentage > 0 && (
-                                  <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">
-                                    {depositCalc.discountPercentage}% OFF
+                            <div className="border-t border-gray-200 pt-1.5 mt-1.5">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600 flex items-center gap-1">
+                                  <Shield className="h-3 w-3" />
+                                  Trust-deposit
+                                </span>
+                                {depositCalc.discountPercentage > 0 ? (
+                                  <span className="font-medium flex items-center gap-1.5">
+                                    <span className="relative text-gray-400">
+                                      <span className="absolute inset-0 flex items-center">
+                                        <span className="w-full h-[1px] bg-gray-400"></span>
+                                      </span>
+                                      ${depositCalc.baseDeposit}
+                                    </span>
+                                    <span className="text-teal-600">
+                                      ${depositCalc.finalDeposit}
+                                    </span>
+                                  </span>
+                                ) : (
+                                  <span className="font-medium">
+                                    ${depositCalc.finalDeposit}
                                   </span>
                                 )}
-                              </span>
-                              <span className="font-medium">${depositCalc.finalDeposit}</span>
+                              </div>
+                              {depositCalc.discountPercentage > 0 && (
+                                <p className="text-[10px] text-teal-600 mt-0.5">
+                                  {depositCalc.discountPercentage}% discount
+                                  from your trust score
+                                </p>
+                              )}
+                              <p className="text-[10px] text-gray-400 mt-0.5">
+                                Held securely, auto-refunded on return
+                              </p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Processing fee: $
+                                {(depositCalc.finalDeposit * 0.03).toFixed(2)}
+                              </p>
                             </div>
                           )}
-                          {hasDeposit && (
-                            <div className="flex justify-between items-center px-4 py-2.5">
-                              <span className="text-gray-500 text-xs">Processing fee (3%)</span>
-                              <span className="text-gray-500 text-xs">${(depositCalc.finalDeposit * 0.03).toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-center px-4 py-3 bg-white rounded-b-lg">
-                            <span className="font-semibold text-gray-900">Total due today</span>
-                            <span className="font-bold text-lg text-gray-900">
-                              {proratedCost} SC{hasDeposit ? ` + $${(depositCalc.finalDeposit + depositCalc.finalDeposit * 0.03).toFixed(2)}` : ""}
-                            </span>
-                          </div>
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-500">Select dates to see cost breakdown</p>
+                        <p className="text-xs text-gray-500">
+                          Select dates to see cost breakdown
+                        </p>
                       )}
                     </div>
                   );

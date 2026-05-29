@@ -260,6 +260,7 @@ export function RentalDepositModal({
 
   const depositAmount = depositCalc.deposit;
   const processingFee = Math.round((rentalPrice + depositAmount) * 0.03 * 100) / 100;
+  const deliveryFee = 0;
 
   const createPaymentHoldMutation = useMutation({
     mutationFn: async () => {

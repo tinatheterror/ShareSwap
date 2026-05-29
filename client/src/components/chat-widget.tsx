@@ -2227,7 +2227,7 @@ export function ChatWidget() {
                             <Truck className="h-4 w-4 text-teal-600 shrink-0" />
                             <span className="text-sm font-semibold text-teal-800">Can't meet up? Book a delivery</span>
                           </div>
-                          <p className="text-xs text-teal-700">Use Uber Direct to send the item to the borrower. Costs ~$10–$20 — platform earns a small commission.</p>
+                          <p className="text-xs text-teal-700">Use Uber Direct to send the item to the {pr.requestType === "RENT" ? "renter" : "borrower"}. Costs ~$10–$20 — platform earns a small commission.</p>
                           <Button
                             size="sm"
                             className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs h-8"

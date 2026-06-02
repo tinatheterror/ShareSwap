@@ -90,7 +90,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
             Book a delivery
           </DialogTitle>
           <DialogDescription className="text-teal-700">
-            Send <span className="font-medium">{itemName}</span> via Uber Direct. You'll be charged via your saved payment method.
+            Send <span className="font-medium">{itemName}</span> with Uber Direct. The delivery fee will be charged to your saved payment method.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +146,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
                 <span>Estimated pickup: {quote.eta}</span>
               </div>
               <p className="text-xs text-gray-500">
-                Includes a $2.00 platform booking fee. Your card will be charged immediately upon booking.
+                Your card will be charged when the delivery is booked.
               </p>
             </div>
             <div className="flex gap-2">

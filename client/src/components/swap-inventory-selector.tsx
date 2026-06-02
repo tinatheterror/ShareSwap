@@ -175,7 +175,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
                       {valuation.exceedsMax
                         ? <AlertTriangle className="h-3 w-3 shrink-0" />
                         : <Info className="h-3 w-3 shrink-0" />}
-                      <span>
+                      <span className={valuation.exceedsMax ? "text-[10px] opacity-80" : ""}>
                         {valuation.isFair
                           ? "Fair swap — no ShareCoin adjustment"
                           : valuation.offsetDirection === "you_pay"
@@ -184,10 +184,10 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onSelectIte
                           ? `You receive +${valuation.offset} SC`
                           : valuation.message}
                       </span>
+                      {valuation.exceedsMax && (
+                        <span className="text-[10px] opacity-80">· Maximum allowed offset is {MAX_SWAP_OFFSET} SC</span>
+                      )}
                     </div>
-                    {valuation.exceedsMax && (
-                      <p className="mt-1 text-[10px] opacity-80">Maximum allowed offset is {MAX_SWAP_OFFSET} SC</p>
-                    )}
                   </div>
                 )}
 

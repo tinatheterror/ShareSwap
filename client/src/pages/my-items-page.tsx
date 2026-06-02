@@ -20,7 +20,16 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
-import { Trash2, Plus, Package, Coins, Sparkles, Pencil, AlertTriangle, RefreshCw } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  Package,
+  Coins,
+  Sparkles,
+  Pencil,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectItem } from "@db/schema";
@@ -41,7 +50,13 @@ const TIER_SHARECOINS: Record<number, number> = {
 
 // ─── Flat status system ───────────────────────────────────────────────────────
 
-type StatusKey = "available" | "unavailable" | "lent_out" | "rented_out" | "gifted" | "swapped";
+type StatusKey =
+  | "available"
+  | "unavailable"
+  | "lent_out"
+  | "rented_out"
+  | "gifted"
+  | "swapped";
 type FilterGroup = "all" | StatusKey;
 
 interface InventoryStatus {
@@ -52,10 +67,17 @@ interface InventoryStatus {
   isDisputed?: boolean;
 }
 
-const ACTIVE_STATUSES = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM"];
+const ACTIVE_STATUSES = [
+  "IN_PROGRESS",
+  "HANDOFF_CONFIRMED",
+  "DEPOSIT_CONFIRMED",
+  "AWAITING_HANDOFF_CONFIRM",
+];
 
 function isListingExpired(item: any): boolean {
-  return !!item.listingExpiresAt && new Date(item.listingExpiresAt) <= new Date();
+  return (
+    !!item.listingExpiresAt && new Date(item.listingExpiresAt) <= new Date()
+  );
 }
 
 function getInventoryStatus(item: any): InventoryStatus {
@@ -66,42 +88,104 @@ function getInventoryStatus(item: any): InventoryStatus {
     const t: string = req.requestType;
 
     if (s === "HANDOFF_DISPUTED" || s === "DISPUTED") {
-      if (t === "RENT") return { status: "rented_out", label: "Rented Out", canDelete: false, deleteLabel: "", isDisputed: true };
-      return                   { status: "lent_out",   label: "Lent Out",   canDelete: false, deleteLabel: "", isDisputed: true };
+      if (t === "RENT")
+        return {
+          status: "rented_out",
+          label: "Rented Out",
+          canDelete: false,
+          deleteLabel: "",
+          isDisputed: true,
+        };
+      return {
+        status: "lent_out",
+        label: "Lent Out",
+        canDelete: false,
+        deleteLabel: "",
+        isDisputed: true,
+      };
     }
     if (ACTIVE_STATUSES.includes(s)) {
-      if (t === "RENT") return { status: "rented_out", label: "Rented Out", canDelete: false, deleteLabel: "" };
-      return               { status: "lent_out",   label: "Lent Out",   canDelete: false, deleteLabel: "" };
+      if (t === "RENT")
+        return {
+          status: "rented_out",
+          label: "Rented Out",
+          canDelete: false,
+          deleteLabel: "",
+        };
+      return {
+        status: "lent_out",
+        label: "Lent Out",
+        canDelete: false,
+        deleteLabel: "",
+      };
     }
     // ACCEPTED or PENDING — item still physically with owner
     if (s === "ACCEPTED" || s === "PENDING") {
-      return { status: "available", label: "Available", canDelete: false, deleteLabel: "" };
+      return {
+        status: "available",
+        label: "Available",
+        canDelete: false,
+        deleteLabel: "",
+      };
     }
     if (s === "COMPLETED" || s === "COMPLETED_EARLY") {
-      if (t === "GIFT") return { status: "gifted",  label: "Gifted",  canDelete: true, deleteLabel: "Remove from history" };
-      if (t === "SWAP") return { status: "swapped", label: "Swapped", canDelete: true, deleteLabel: "Remove from history" };
+      if (t === "GIFT")
+        return {
+          status: "gifted",
+          label: "Gifted",
+          canDelete: true,
+          deleteLabel: "Remove from history",
+        };
+      if (t === "SWAP")
+        return {
+          status: "swapped",
+          label: "Swapped",
+          canDelete: true,
+          deleteLabel: "Remove from history",
+        };
     }
   }
 
   // An expired listing (listingExpiresAt in the past) is unavailable even if isAvailable=true
   if (item.isAvailable && !isListingExpired(item)) {
-    return { status: "available",   label: "Available",   canDelete: true, deleteLabel: "Remove item" };
+    return {
+      status: "available",
+      label: "Available",
+      canDelete: true,
+      deleteLabel: "Remove item",
+    };
   }
-  return   { status: "unavailable", label: "Unavailable", canDelete: true, deleteLabel: "Remove item" };
+  return {
+    status: "unavailable",
+    label: "Unavailable",
+    canDelete: true,
+    deleteLabel: "Remove item",
+  };
 }
 
 // ─── Badge colours per status ─────────────────────────────────────────────────
 
-function getStatusBadgeClasses(status: InventoryStatus): { outer: string; dot: string } {
-  if (status.isDisputed) return { outer: "bg-red-700/90 text-white", dot: "bg-red-300" };
+function getStatusBadgeClasses(status: InventoryStatus): {
+  outer: string;
+  dot: string;
+} {
+  if (status.isDisputed)
+    return { outer: "bg-red-700/90 text-white", dot: "bg-red-300" };
   switch (status.status) {
-    case "available":   return { outer: "bg-green-600/90 text-white",   dot: "bg-green-300" };
-    case "unavailable": return { outer: "bg-rose-800/90 text-white",   dot: "bg-rose-400" };
-    case "lent_out":    return { outer: "bg-amber-500/90 text-white",  dot: "bg-amber-200" };
-    case "rented_out":  return { outer: "bg-amber-600/90 text-white",  dot: "bg-amber-200" };
-    case "gifted":      return { outer: "bg-gray-600 text-white",      dot: "bg-gray-300" };
-    case "swapped":     return { outer: "bg-gray-600 text-white",      dot: "bg-gray-300" };
-    default:            return { outer: "bg-gray-600 text-white",      dot: "bg-gray-300" };
+    case "available":
+      return { outer: "bg-green-700/80 text-white", dot: "bg-green-400" };
+    case "unavailable":
+      return { outer: "bg-rose-800/90 text-white", dot: "bg-rose-400" };
+    case "lent_out":
+      return { outer: "bg-amber-500/90 text-white", dot: "bg-amber-200" };
+    case "rented_out":
+      return { outer: "bg-amber-600/90 text-white", dot: "bg-amber-200" };
+    case "gifted":
+      return { outer: "bg-gray-600 text-white", dot: "bg-gray-300" };
+    case "swapped":
+      return { outer: "bg-gray-600 text-white", dot: "bg-gray-300" };
+    default:
+      return { outer: "bg-gray-600 text-white", dot: "bg-gray-300" };
   }
 }
 
@@ -114,9 +198,13 @@ export default function MyItemsPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterGroup>("all");
   const [showNoItemsDialog, setShowNoItemsDialog] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<(SelectItem & { activeRequest?: any }) | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<
+    (SelectItem & { activeRequest?: any }) | null
+  >(null);
 
-  const { data: items = [], isLoading } = useQuery<(SelectItem & { activeRequest?: any })[]>({
+  const { data: items = [], isLoading } = useQuery<
+    (SelectItem & { activeRequest?: any })[]
+  >({
     queryKey: ["/api/my-items"],
     enabled: !!user,
   });
@@ -129,7 +217,10 @@ export default function MyItemsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
       const status = itemToDelete ? getInventoryStatus(itemToDelete) : null;
       toast({
-        title: status?.status === "gifted" || status?.status === "swapped" ? "Removed from history" : "Item Removed",
+        title:
+          status?.status === "gifted" || status?.status === "swapped"
+            ? "Removed from history"
+            : "Item Removed",
         description: "Your item has been removed from your inventory.",
       });
       setItemToDelete(null);
@@ -137,7 +228,8 @@ export default function MyItemsPage() {
     onError: (error: any) => {
       toast({
         title: "Cannot remove item",
-        description: error.message || "Could not remove the item. Please try again.",
+        description:
+          error.message || "Could not remove the item. Please try again.",
         variant: "destructive",
       });
       setItemToDelete(null);
@@ -150,10 +242,17 @@ export default function MyItemsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
-      toast({ title: "Listing renewed", description: "Your item is now live for another 30 days." });
+      toast({
+        title: "Listing renewed",
+        description: "Your item is now live for another 30 days.",
+      });
     },
     onError: (error: any) => {
-      toast({ title: "Could not relist", description: error.message || "Please try again.", variant: "destructive" });
+      toast({
+        title: "Could not relist",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -166,12 +265,12 @@ export default function MyItemsPage() {
   // ── Filtering ──────────────────────────────────────────────────────────────
 
   const STATUS_ORDER: Record<StatusKey, number> = {
-    available:   0,
-    lent_out:    1,
-    rented_out:  2,
+    available: 0,
+    lent_out: 1,
+    rented_out: 2,
     unavailable: 3,
-    gifted:      4,
-    swapped:     5,
+    gifted: 4,
+    swapped: 5,
   };
 
   const filteredItems = items
@@ -181,15 +280,27 @@ export default function MyItemsPage() {
     })
     .sort((a, b) => {
       if (filter !== "all") return 0; // preserve server order within a single-status filter
-      return STATUS_ORDER[getInventoryStatus(a).status] - STATUS_ORDER[getInventoryStatus(b).status];
+      return (
+        STATUS_ORDER[getInventoryStatus(a).status] -
+        STATUS_ORDER[getInventoryStatus(b).status]
+      );
     });
 
   // ── Filter counts ──────────────────────────────────────────────────────────
 
-  const statusKeys: StatusKey[] = ["available", "unavailable", "lent_out", "rented_out", "gifted", "swapped"];
+  const statusKeys: StatusKey[] = [
+    "available",
+    "unavailable",
+    "lent_out",
+    "rented_out",
+    "gifted",
+    "swapped",
+  ];
   const counts: Record<FilterGroup, number> = { all: items.length } as any;
   for (const key of statusKeys) {
-    counts[key] = items.filter((i) => getInventoryStatus(i).status === key).length;
+    counts[key] = items.filter(
+      (i) => getInventoryStatus(i).status === key,
+    ).length;
   }
 
   const getItemCapabilities = (item: SelectItem) => {
@@ -222,7 +333,8 @@ export default function MyItemsPage() {
   // ── Deletion dialog content ────────────────────────────────────────────────
 
   const deleteStatus = itemToDelete ? getInventoryStatus(itemToDelete) : null;
-  const isPassedOn = deleteStatus?.status === "gifted" || deleteStatus?.status === "swapped";
+  const isPassedOn =
+    deleteStatus?.status === "gifted" || deleteStatus?.status === "swapped";
 
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
@@ -231,7 +343,7 @@ export default function MyItemsPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2 flex items-center justify-center gap-2">
             <Package className="h-8 w-8 text-primary" />
-            My ShareChest
+            My Shared Items
           </h1>
         </div>
 
@@ -239,25 +351,26 @@ export default function MyItemsPage() {
         <div className="flex flex-wrap gap-2 mb-6 items-center">
           {(
             [
-              { key: "all",        label: "All" },
-              { key: "available",  label: "Available" },
-              { key: "unavailable",label: "Unavailable" },
-              { key: "lent_out",   label: "Lent Out" },
+              { key: "all", label: "All" },
+              { key: "available", label: "Available" },
+              { key: "unavailable", label: "Unavailable" },
+              { key: "lent_out", label: "Lent Out" },
               { key: "rented_out", label: "Rented Out" },
-              { key: "gifted",     label: "Gifted" },
-              { key: "swapped",    label: "Swapped" },
+              { key: "gifted", label: "Gifted" },
+              { key: "swapped", label: "Swapped" },
             ] as { key: FilterGroup; label: string }[]
-          ).filter(({ key }) => key === "all" || (counts[key] ?? 0) > 0)
-           .map(({ key, label }) => (
-            <Button
-              key={key}
-              variant={filter === key ? "default" : "outline"}
-              onClick={() => setFilter(key)}
-              size="sm"
-            >
-              {label} ({counts[key] ?? 0})
-            </Button>
-          ))}
+          )
+            .filter(({ key }) => key === "all" || (counts[key] ?? 0) > 0)
+            .map(({ key, label }) => (
+              <Button
+                key={key}
+                variant={filter === key ? "default" : "outline"}
+                onClick={() => setFilter(key)}
+                size="sm"
+              >
+                {label} ({counts[key] ?? 0})
+              </Button>
+            ))}
           <div className="hidden sm:block flex-1" />
           <Link href="/lend" className="ml-auto sm:ml-0">
             <Button size="sm">
@@ -272,7 +385,9 @@ export default function MyItemsPage() {
           <div className="text-center py-12">
             <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              {filter === "all" ? "No items yet" : `No ${filter.replace(/_/g, " ")} items`}
+              {filter === "all"
+                ? "No items yet"
+                : `No ${filter.replace(/_/g, " ")} items`}
             </h3>
             <p className="text-gray-500">
               {filter === "all"
@@ -285,7 +400,8 @@ export default function MyItemsPage() {
             {filteredItems.map((item) => {
               const status = getInventoryStatus(item);
               const badge = getStatusBadgeClasses(status);
-              const isPassed = status.status === "gifted" || status.status === "swapped";
+              const isPassed =
+                status.status === "gifted" || status.status === "swapped";
 
               return (
                 <Card
@@ -311,7 +427,10 @@ export default function MyItemsPage() {
                       {!isPassed && (
                         <button
                           className="h-7 w-7 flex items-center justify-center rounded-md bg-white/90 hover:bg-white shadow-sm text-gray-500 hover:text-teal-600 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/lend?edit=${item.id}`); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/lend?edit=${item.id}`);
+                          }}
                           title="Edit item"
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -320,7 +439,10 @@ export default function MyItemsPage() {
                       {status.canDelete && (
                         <button
                           className="h-7 w-7 flex items-center justify-center rounded-md bg-white/90 hover:bg-white shadow-sm text-gray-500 hover:text-red-500 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); setItemToDelete(item); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setItemToDelete(item);
+                          }}
                           title={status.deleteLabel}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -329,20 +451,30 @@ export default function MyItemsPage() {
                     </div>
 
                     {/* Status badge — top right */}
-                    <div className={`absolute top-2 right-2 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm flex items-center gap-1.5 ${badge.outer}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                    <div
+                      className={`absolute top-2 right-2 rounded-lg px-2.5 py-1 text-xs font-medium shadow-sm flex items-center gap-1.5 ${badge.outer}`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}
+                      />
                       <span>{status.label}</span>
                     </div>
                   </div>
 
                   <CardContent className="p-4">
                     <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{item.description}</p>
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {item.description}
+                    </p>
 
                     {/* Capabilities */}
                     <div className="flex flex-wrap gap-1 mb-3">
                       {getItemCapabilities(item).map((cap) => (
-                        <Badge key={cap.label} variant="outline" className="text-xs">
+                        <Badge
+                          key={cap.label}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {cap.label}
                         </Badge>
                       ))}
@@ -350,9 +482,12 @@ export default function MyItemsPage() {
 
                     {/* Condition */}
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm text-muted-foreground">Condition:</span>
+                      <span className="text-sm text-muted-foreground">
+                        Condition:
+                      </span>
                       <Badge variant="secondary" className="text-xs">
-                        {(item as any).condition || `${item.conditionRating}/10`}
+                        {(item as any).condition ||
+                          `${item.conditionRating}/10`}
                       </Badge>
                     </div>
 
@@ -361,25 +496,34 @@ export default function MyItemsPage() {
                       <TooltipProvider>
                         <div className="px-3 py-1.5 bg-white rounded-lg border border-gray-200 mb-2">
                           <div className="inline-block bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-md mb-1">
-                            {TIER_NAMES[(item as any).tier] || `Tier ${(item as any).tier}`}
+                            {TIER_NAMES[(item as any).tier] ||
+                              `Tier ${(item as any).tier}`}
                           </div>
                           <div className="flex items-center gap-1.5">
                             <Coins className="h-3.5 w-3.5 text-teal-600 shrink-0" />
                             <span className="font-bold text-gray-900 text-sm leading-none">
                               {TIER_SHARECOINS[(item as any).tier] || 5}
                             </span>
-                            <span className="text-xs text-gray-500">SC/week</span>
+                            <span className="text-xs text-gray-500">
+                              SC/week
+                            </span>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="flex items-center gap-0.5 cursor-help ml-0.5">
                                   <Sparkles className="h-3 w-3 text-amber-400" />
-                                  <span className="text-xs text-amber-500 font-medium">AI</span>
+                                  <span className="text-xs text-amber-500 font-medium">
+                                    AI
+                                  </span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-xs">
-                                <p className="text-sm font-medium mb-1">AI-Powered Valuation</p>
+                                <p className="text-sm font-medium mb-1">
+                                  AI-Powered Valuation
+                                </p>
                                 <p className="text-xs">
-                                  AI analyzes condition, brand quality, category demand, and seasonal factors to determine the exact rate.
+                                  AI analyzes condition, brand quality, category
+                                  demand, and seasonal factors to determine the
+                                  exact rate.
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -389,43 +533,61 @@ export default function MyItemsPage() {
                     )}
 
                     {/* Renewal prompt — expired listings */}
-                    {status.status === "unavailable" && isListingExpired(item) && (
-                      <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
-                        <div>
-                          <p className="text-xs font-medium text-amber-800">Listing expired</p>
-                          <p className="text-[10px] text-amber-600">
-                            {new Date(item.listingExpiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                          </p>
+                    {status.status === "unavailable" &&
+                      isListingExpired(item) && (
+                        <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
+                          <div>
+                            <p className="text-xs font-medium text-amber-800">
+                              Listing expired
+                            </p>
+                            <p className="text-[10px] text-amber-600">
+                              {new Date(
+                                item.listingExpiresAt,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
+                            disabled={relistItemMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              relistItemMutation.mutate(item.id);
+                            }}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Renew (30 days)
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
-                          disabled={relistItemMutation.isPending}
-                          onClick={(e) => { e.stopPropagation(); relistItemMutation.mutate(item.id); }}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Renew (30 days)
-                        </Button>
-                      </div>
-                    )}
+                      )}
 
                     {/* Re-list prompt — unavailable but not expired (e.g. returned from swap/borrow) */}
-                    {status.status === "unavailable" && !isListingExpired(item) && (
-                      <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                        <p className="text-xs text-gray-500">Ready to share again?</p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
-                          disabled={relistItemMutation.isPending}
-                          onClick={(e) => { e.stopPropagation(); relistItemMutation.mutate(item.id); }}
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Make Available
-                        </Button>
-                      </div>
-                    )}
+                    {status.status === "unavailable" &&
+                      !isListingExpired(item) && (
+                        <div className="flex items-center justify-between gap-2 mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                          <p className="text-xs text-gray-500">
+                            Ready to share again?
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
+                            disabled={relistItemMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              relistItemMutation.mutate(item.id);
+                            }}
+                          >
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Make Available
+                          </Button>
+                        </div>
+                      )}
 
                     {/* Undeletable notice */}
                     {!status.canDelete && (
@@ -434,9 +596,10 @@ export default function MyItemsPage() {
                         <span>
                           {status.isDisputed
                             ? "Locked — dispute in progress"
-                            : status.status === "lent_out" || status.status === "rented_out"
-                            ? "Locked while out with a neighbour"
-                            : "Locked — active request pending"}
+                            : status.status === "lent_out" ||
+                                status.status === "rented_out"
+                              ? "Locked while out with a neighbour"
+                              : "Locked — active request pending"}
                         </span>
                       </div>
                     )}
@@ -464,13 +627,18 @@ export default function MyItemsPage() {
                     {isPassedOn ? (
                       <>
                         This will remove{" "}
-                        <span className="font-medium">"{itemToDelete?.name}"</span>{" "}
-                        from your history view. Transaction records and reviews will still be preserved.
+                        <span className="font-medium">
+                          "{itemToDelete?.name}"
+                        </span>{" "}
+                        from your history view. Transaction records and reviews
+                        will still be preserved.
                       </>
                     ) : (
                       <>
                         Are you sure you want to remove{" "}
-                        <span className="font-medium">{itemToDelete?.name}</span>{" "}
+                        <span className="font-medium">
+                          {itemToDelete?.name}
+                        </span>{" "}
                         from circulation? Transaction history is preserved.
                       </>
                     )}
@@ -479,11 +647,17 @@ export default function MyItemsPage() {
               </div>
             </DialogHeader>
             <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-              <Button variant="outline" onClick={() => setItemToDelete(null)} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => setItemToDelete(null)}
+                className="flex-1"
+              >
                 Cancel
               </Button>
               <Button
-                onClick={() => itemToDelete && deleteItemMutation.mutate(itemToDelete.id)}
+                onClick={() =>
+                  itemToDelete && deleteItemMutation.mutate(itemToDelete.id)
+                }
                 disabled={deleteItemMutation.isPending}
                 className="flex-1 text-white"
                 style={{ backgroundColor: "#0DCEA1" }}
@@ -491,8 +665,8 @@ export default function MyItemsPage() {
                 {deleteItemMutation.isPending
                   ? "Removing..."
                   : isPassedOn
-                  ? "Yes, Remove from History"
-                  : "Yes, Remove Item"}
+                    ? "Yes, Remove from History"
+                    : "Yes, Remove Item"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -509,17 +683,25 @@ export default function MyItemsPage() {
                     Your ShareChest is empty
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-600">
-                    You haven't shared anything yet. Add your first item to start sharing with your neighbours.
+                    You haven't shared anything yet. Add your first item to
+                    start sharing with your neighbours.
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
             <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
-              <Button variant="outline" onClick={() => setShowNoItemsDialog(false)} className="flex-1">
+              <Button
+                variant="outline"
+                onClick={() => setShowNoItemsDialog(false)}
+                className="flex-1"
+              >
                 Browse Anyway
               </Button>
               <Button
-                onClick={() => { setShowNoItemsDialog(false); navigate("/lend"); }}
+                onClick={() => {
+                  setShowNoItemsDialog(false);
+                  navigate("/lend");
+                }}
                 className="flex-1"
                 style={{ backgroundColor: "#0DCEA1" }}
               >

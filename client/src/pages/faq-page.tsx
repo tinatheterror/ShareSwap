@@ -398,7 +398,7 @@ export default function FAQPage() {
                 <p className="text-gray-700 text-sm mb-4">
                   Trade items with neighbours — no cash, no deposits. Any tier
                   can swap with any other tier. Bundle multiple items on your
-                  side to match value. Differences are settled with ShareCoins
+                  side to match value. Value differences are settled with ShareCoins
                   (max 20 SC offset).
                 </p>
 

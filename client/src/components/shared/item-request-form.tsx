@@ -593,10 +593,10 @@ export function ItemRequestForm({
                           <p>Select dates to see cost breakdown</p>
                           <div className="flex gap-3 pt-1">
                             <span className="text-teal-600 font-medium">
-                              2–3 wks: 10% off
+                              multi-week: 10% off
                             </span>
                             <span className="text-teal-600 font-medium">
-                              4+ wks: 20% off
+                              monthly: 20% off
                             </span>
                           </div>
                         </div>

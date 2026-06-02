@@ -54,6 +54,7 @@ import { CelebrationAnimation } from "@/components/celebration-animation";
 import { SwapCounterModal } from "@/components/swap-counter-modal";
 import { CourierHandoffModal } from "@/components/courier-handoff-modal";
 import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
+import { SiUber } from "react-icons/si";
 import {
   Elements,
   PaymentElement,
@@ -2244,21 +2245,18 @@ export function ChatWidget() {
                         {isOwnerInPersonDeposit && (
                           <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before sharing your code</p>
                         )}
-                        {/* Optional delivery card for owner — BORROW and RENT only */}
-                        {(pr.requestType === "BORROW" || pr.requestType === "RENT") && <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Truck className="h-4 w-4 text-teal-600 shrink-0" />
-                            <span className="text-sm font-semibold text-teal-800">Can't meet up? Book a delivery</span>
-                          </div>
-                          <p className="text-xs text-teal-700">Use Uber Direct to send the item to the {pr.requestType === "RENT" ? "renter" : "borrower"}. Costs ~$10–$20 — platform earns a small commission.</p>
+                        {/* Optional delivery button for owner — BORROW and RENT only */}
+                        {(pr.requestType === "BORROW" || pr.requestType === "RENT") && (
                           <Button
                             size="sm"
-                            className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs h-8"
+                            variant="outline"
+                            className="w-full h-9 border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-medium gap-2"
                             onClick={() => { setSelectedRequest(pr); setShowCourierHandoffModal(true); }}
                           >
-                            Get a delivery quote
+                            <SiUber className="h-3.5 w-3.5 shrink-0" />
+                            Can't meet up? Book a delivery
                           </Button>
-                        </div>}
+                        )}
                       </div>
                     );
                   }

@@ -2093,19 +2093,11 @@ export function ChatWidget() {
                     const wasAutoAdvanced = (pr as any).handoffAutoAdvanced;
                     return (
                       <div className="px-3 py-2 border-t border-blue-100 bg-blue-50 space-y-1">
-                        <Button
-                          className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
-                          disabled={initiateReturnMutation.isPending}
-                          onClick={() => initiateReturnMutation.mutate(pr.id)}
-                        >
-                          {initiateReturnMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Confirming…</> : <><RotateCcw className="h-4 w-4 mr-2" />Confirm return</>}
+                        <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
+                          onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Return item
                         </Button>
-                        <button
-                          className="text-xs text-muted-foreground hover:text-blue-600 w-full text-center py-0.5 transition-colors"
-                          onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}
-                        >
-                          View deposit & return info
-                        </button>
                         {wasAutoAdvanced && !showAutoReport && (
                           <button
                             onClick={() => setShowAutoReport(true)}

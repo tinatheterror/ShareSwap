@@ -61,10 +61,7 @@ const ITEM_CATEGORIES = [
   "Hobbies & Collectibles",
   "Home & Kitchen",
   "Tools & Equipment",
-  "Other",
 ] as const;
-
-const NAMED_CATEGORIES = ITEM_CATEGORIES.filter((c) => c !== "Other");
 
 const inferCategory = (itemName: string): string => {
   const name = itemName.toLowerCase();
@@ -112,7 +109,7 @@ const inferCategory = (itemName: string): string => {
     return "Tools & Equipment";
   }
 
-  return "Other";
+  return "Home & Kitchen";
 };
 
 export default function BorrowPage() {
@@ -435,10 +432,6 @@ export default function BorrowPage() {
     (acc, category) => {
       const categoryItems = filteredItems.filter((item) => {
         const itemCategory = (item as any).category || inferCategory(item.name);
-        if (category === "Other") {
-          // Catch-all: items whose resolved category isn't one of the named categories
-          return !NAMED_CATEGORIES.includes(itemCategory as any);
-        }
         return itemCategory === category;
       });
       // Sort: items with photos first

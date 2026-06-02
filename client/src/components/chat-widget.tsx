@@ -466,7 +466,9 @@ export function ChatWidget() {
     const prev = prevReqStatusesRef.current;
     for (const req of requests) {
       const was = prev[req.id];
-      if (!was || was === "COMPLETED" || req.status !== "COMPLETED") continue;
+      const isNowDone = req.status === "COMPLETED" || req.status === "COMPLETED_EARLY";
+      const wasDone = was === "COMPLETED" || was === "COMPLETED_EARLY";
+      if (!was || wasDone || !isNowDone) continue;
       const isOwner     = req.item.ownerId === user.id;
       const isRequester = req.requesterId === user.id;
       const isBothSides = req.requestType === "SWAP" || req.requestType === "GIFT";

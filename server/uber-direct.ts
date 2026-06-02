@@ -1,5 +1,6 @@
 const UBER_BASE_URL = 'https://api.uber.com';
 const UBER_AUTH_URL = 'https://login.uber.com/oauth/v2/token';
+const FETCH_TIMEOUT_MS = 10_000;
 
 interface TokenCache {
   token: string;
@@ -7,6 +8,17 @@ interface TokenCache {
 }
 
 let cachedToken: TokenCache | null = null;
+
+function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal })
+    .catch((err) => {
+      if (err.name === 'AbortError') throw new Error('upstream request timeout');
+      throw err;
+    })
+    .finally(() => clearTimeout(timer));
+}
 
 async function getAccessToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt - 60_000) {
@@ -27,7 +39,7 @@ async function getAccessToken(): Promise<string> {
     scope: 'eats.deliveries',
   });
 
-  const res = await fetch(UBER_AUTH_URL, {
+  const res = await fetchWithTimeout(UBER_AUTH_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -75,7 +87,7 @@ export async function getDeliveryQuote(params: {
 
   const token = await getAccessToken();
 
-  const res = await fetch(`${UBER_BASE_URL}/v1/customers/${customerId}/delivery_quotes`, {
+  const res = await fetchWithTimeout(`${UBER_BASE_URL}/v1/customers/${customerId}/delivery_quotes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -116,12 +128,12 @@ export interface CreatedDelivery {
 
 export async function createDelivery(params: {
   quoteId: string;
-  pickupName: string;
+  pickupName?: string;
   pickupAddress: string;
-  pickupPhone: string;
-  dropoffName: string;
+  pickupPhone?: string;
+  dropoffName?: string;
   dropoffAddress: string;
-  dropoffPhone: string;
+  dropoffPhone?: string;
   itemDescription: string;
   itemReference: string;
 }): Promise<CreatedDelivery> {
@@ -130,7 +142,7 @@ export async function createDelivery(params: {
 
   const token = await getAccessToken();
 
-  const res = await fetch(`${UBER_BASE_URL}/v1/customers/${customerId}/deliveries`, {
+  const res = await fetchWithTimeout(`${UBER_BASE_URL}/v1/customers/${customerId}/deliveries`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -141,12 +153,12 @@ export async function createDelivery(params: {
       pickup: {
         name: params.pickupName,
         address: params.pickupAddress,
-        phone_number: params.pickupPhone,
+        phone_number: params.pickupPhone || '+10000000000',
       },
       dropoff: {
         name: params.dropoffName,
         address: params.dropoffAddress,
-        phone_number: params.dropoffPhone,
+        phone_number: params.dropoffPhone || '+10000000000',
       },
       manifest: {
         reference: params.itemReference,
@@ -177,7 +189,7 @@ export async function getDeliveryStatus(deliveryId: string): Promise<any> {
 
   const token = await getAccessToken();
 
-  const res = await fetch(`${UBER_BASE_URL}/v1/customers/${customerId}/deliveries/${deliveryId}`, {
+  const res = await fetchWithTimeout(`${UBER_BASE_URL}/v1/customers/${customerId}/deliveries/${deliveryId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 

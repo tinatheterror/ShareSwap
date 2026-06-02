@@ -6423,6 +6423,25 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Request must be accepted before paying deposit" });
       }
 
+      // For BORROW requests, verify the requester has enough ShareCoins
+      if (request.item_requests.requestType === "BORROW" && shareCoinAmount) {
+        const [requester] = await db
+          .select({ shareCoins: users.shareCoins })
+          .from(users)
+          .where(eq(users.id, req.user.id))
+          .limit(1);
+        const balance = parseFloat(requester?.shareCoins ?? "0");
+        const required = parseFloat(shareCoinAmount);
+        if (balance < required) {
+          return res.status(400).json({
+            error: "insufficient_sharecoins",
+            message: `You need ${required} ShareCoins but only have ${Math.floor(balance)}.`,
+            required,
+            balance: Math.floor(balance),
+          });
+        }
+      }
+
       // Update request with deposit info
       const [updated] = await db
         .update(itemRequests)

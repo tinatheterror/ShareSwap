@@ -53,6 +53,7 @@ import { PostReturnReviewModal } from "@/components/borrow/post-return-review-mo
 import { CelebrationAnimation } from "@/components/celebration-animation";
 import { SwapCounterModal } from "@/components/swap-counter-modal";
 import { CourierHandoffModal } from "@/components/courier-handoff-modal";
+import { InsufficientShareCoinsModal } from "@/components/borrow/insufficient-sharecoins-modal";
 import {
   Elements,
   PaymentElement,
@@ -343,6 +344,10 @@ export function ChatWidget() {
   const [chatProposedDeposit, setChatProposedDeposit] = useState("in_app");
   const [chatProposedStart, setChatProposedStart] = useState("");
   const [chatProposedEnd, setChatProposedEnd] = useState("");
+
+  // Insufficient ShareCoins gate (for deposit step after counter-proposal)
+  const [showInsufficientCoinsModal, setShowInsufficientCoinsModal] = useState(false);
+  const [insufficientCoinsRequired, setInsufficientCoinsRequired] = useState(0);
 
   // Swap counter modal state
   const [showSwapCounterModal, setShowSwapCounterModal] = useState(false);
@@ -2001,7 +2006,25 @@ export function ChatWidget() {
                     return (
                       <div className="px-3 py-2 border-t border-teal-100 bg-teal-50">
                         <Button className="w-full h-10 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-xl"
-                          onClick={() => { setSelectedRequest(pr); setShowTrustDepositModal(true); }}>
+                          onClick={() => {
+                            // Check ShareCoin balance against the (possibly counter-proposed) date range
+                            const rawSC = parseFloat(pr.item.shareCoinPrice || "0") || 5;
+                            const coinCost = (() => {
+                              if (!pr.startDate || !pr.endDate) return rawSC;
+                              const s = new Date(pr.startDate.split("T")[0]);
+                              const e = new Date(pr.endDate.split("T")[0]);
+                              const days = Math.max(1, Math.ceil((e.getTime() - s.getTime()) / 86_400_000));
+                              return Math.max(1, Math.ceil((rawSC / 7) * days));
+                            })();
+                            const balance = Number((user as any)?.shareCoins ?? 0);
+                            if (balance < coinCost) {
+                              setInsufficientCoinsRequired(coinCost);
+                              setShowInsufficientCoinsModal(true);
+                              return;
+                            }
+                            setSelectedRequest(pr);
+                            setShowTrustDepositModal(true);
+                          }}>
                           <Shield className="h-4 w-4 mr-2" />
                           Pay ${dc.finalDeposit} deposit
                         </Button>
@@ -2422,6 +2445,14 @@ export function ChatWidget() {
         }}
         onSchedule={handleScheduleClick}
         message="Request accepted! Setting up exchange..."
+      />
+
+      <InsufficientShareCoinsModal
+        isOpen={showInsufficientCoinsModal}
+        onClose={() => setShowInsufficientCoinsModal(false)}
+        currentBalance={Number((user as any)?.shareCoins ?? 0)}
+        required={insufficientCoinsRequired}
+        context="borrow"
       />
 
       {selectedRequest && showTrustDepositModal && (

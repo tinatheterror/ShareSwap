@@ -95,7 +95,7 @@ function getInventoryStatus(item: any): InventoryStatus {
 function getStatusBadgeClasses(status: InventoryStatus): { outer: string; dot: string } {
   if (status.isDisputed) return { outer: "bg-red-700/90 text-white", dot: "bg-red-300" };
   switch (status.status) {
-    case "available":   return { outer: "bg-teal-600/90 text-white",   dot: "bg-teal-300" };
+    case "available":   return { outer: "bg-green-600/90 text-white",   dot: "bg-green-300" };
     case "unavailable": return { outer: "bg-rose-800/90 text-white",   dot: "bg-rose-400" };
     case "lent_out":    return { outer: "bg-amber-500/90 text-white",  dot: "bg-amber-200" };
     case "rented_out":  return { outer: "bg-amber-600/90 text-white",  dot: "bg-amber-200" };

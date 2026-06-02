@@ -30,7 +30,6 @@ import {
   Inbox,
   RefreshCw,
   CreditCard,
-  MapPin,
   Star,
   BadgeCheck,
   Circle,
@@ -1212,17 +1211,6 @@ export function ChatWidget() {
                   <span>{format(parseLocalDate(displayStart), "MMM d")} – {format(parseLocalDate(displayEnd), "MMM d")}</span>
                 </div>
               )}
-              {/* Deposit — below the date */}
-              {request.requestType !== "GIFT" && request.requestType !== "RENT" && request.requestType !== "SWAP" && (
-                <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-0.5">
-                  <span className={`flex items-start gap-1 ${depositChanged ? "text-amber-600 font-medium" : ""}`}>
-                    {displayDeposit === "in_app"
-                      ? <Shield className="h-3 w-3 shrink-0 mt-px text-gray-500" />
-                      : <MapPin className="h-3 w-3 shrink-0 mt-px text-gray-500" />}
-                    {displayDeposit === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
-                  </span>
-                </div>
-              )}
               {iSentCounter && (
                 <p className="text-[10px] text-amber-700 mt-0.5 italic">Waiting for their response…</p>
               )}
@@ -1825,27 +1813,15 @@ export function ChatWidget() {
                                   </div>
                                 );
                               }
-                              const mDelivery = msg.metadata.deliveryMethod as string | undefined;
-                              const mDeposit = msg.metadata.depositMethod as string | undefined;
                               const mStart = msg.metadata.startDate as string | undefined;
                               const mEnd = msg.metadata.endDate as string | undefined;
-                              // Use snapshotted pre-counter originals from metadata (added server-side).
-                              // Fall back to relatedRequest fields for events logged before this fix.
-                              const origDeliveryRaw = (msg.metadata.origDeliveryMethod as string | undefined) ?? relatedRequest?.deliveryMethod;
-                              const origDepositRaw  = (msg.metadata.origDepositMethod  as string | undefined) ?? relatedRequest?.depositMethod;
-                              const origStartRaw    = (msg.metadata.origStartDate  as string | undefined) ?? relatedRequest?.startDate;
-                              const origEndRaw      = (msg.metadata.origEndDate    as string | undefined) ?? relatedRequest?.endDate;
-                              const origDelivery = origDeliveryRaw;
-                              const origDeposit  = origDepositRaw;
+                              const origStartRaw = (msg.metadata.origStartDate as string | undefined) ?? relatedRequest?.startDate;
+                              const origEndRaw   = (msg.metadata.origEndDate   as string | undefined) ?? relatedRequest?.endDate;
                               const origStart = origStartRaw ? format(parseLocalDate(origStartRaw), "MMM d") : null;
                               const origEnd   = origEndRaw   ? format(parseLocalDate(origEndRaw),   "MMM d") : null;
                               const newStart = mStart ? format(parseLocalDate(mStart), "MMM d") : null;
                               const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;
-                              const depositChanged = !!mDeposit && mDeposit !== (origDeposit ?? "in_app");
-                              const depositLabel = (d?: string | null) => d === "in_app" ? "Deposit In-app" : "Deposit In Person";
-
-                              const isBorrowCounter = (msg.metadata.requestType as string | undefined ?? relatedRequest?.requestType) === "BORROW";
 
                               return (
                                 <div className="w-full pl-[70px]">
@@ -1859,12 +1835,6 @@ export function ChatWidget() {
                                           {origStart} – {origEnd}
                                         </span>
                                       )}
-                                      {((origDeposit || mDeposit) && isBorrowCounter) && (
-                                        <span className="flex items-center gap-1">
-                                          <Shield className="h-3 w-3 shrink-0" />
-                                          {depositLabel(origDeposit ?? "in_person")}
-                                        </span>
-                                      )}
                                     </div>
                                     {/* Arrow */}
                                     <div className="flex items-center text-gray-400 font-bold text-base px-1">→</div>
@@ -1875,12 +1845,6 @@ export function ChatWidget() {
                                         <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
                                           <Clock className="h-3 w-3 shrink-0" />
                                           {newStart} – {newEnd}
-                                        </span>
-                                      )}
-                                      {mDeposit && isBorrowCounter && (
-                                        <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
-                                          <Shield className="h-3 w-3 shrink-0" />
-                                          {depositLabel(mDeposit)}
                                         </span>
                                       )}
                                     </div>

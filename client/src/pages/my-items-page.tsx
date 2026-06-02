@@ -342,11 +342,7 @@ export default function MyItemsPage() {
                     {/* Capabilities */}
                     <div className="flex flex-wrap gap-1 mb-3">
                       {getItemCapabilities(item).map((cap) => (
-                        <Badge
-                          key={cap.label}
-                          variant="outline"
-                          className={`text-xs ${cap.gift ? "border-pink-300 text-pink-600 bg-pink-50" : ""}`}
-                        >
+                        <Badge key={cap.label} variant="outline" className="text-xs">
                           {cap.label}
                         </Badge>
                       ))}

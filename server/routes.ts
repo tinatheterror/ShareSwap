@@ -1027,7 +1027,7 @@ export function registerRoutes(app: Express): Server {
         .set({
           isVerified: hasPaymentMethod, // Only verified if both ID and payment method exist
           verifiedAt: hasPaymentMethod ? new Date() : null,
-          reputationScore: sql`COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST}`,
+          reputationScore: sql`LEAST(500, COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST})`,
         })
         .where(eq(users.id, userId));
 
@@ -1280,7 +1280,7 @@ export function registerRoutes(app: Express): Server {
             isVerified: hasPaymentMethod,
             verifiedAt: hasPaymentMethod ? new Date() : null,
             fullName: fullName || undefined,
-            reputationScore: sql`COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST}`,
+            reputationScore: sql`LEAST(500, COALESCE(reputation_score, 0) + ${VERIFICATION_TRUST_BOOST})`,
           })
           .where(eq(users.id, userId));
 
@@ -11192,12 +11192,12 @@ Respond with ONLY the category name, nothing else.`
       await db
         .update(users)
         .set({
-          reputationScore: sql`GREATEST(0, reputation_score + ${totalPoints})`,
+          reputationScore: sql`LEAST(500, GREATEST(0, reputation_score + ${totalPoints}))`,
           reputationLevel: sql`CASE
-            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 500 THEN 'ShareSwap Champion'
-            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 300 THEN 'Community Pillar'
-            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 150 THEN 'Trusted Member'
-            WHEN GREATEST(0, reputation_score + ${totalPoints}) >= 50  THEN 'Neighbour'
+            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 500 THEN 'ShareSwap Champion'
+            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 300 THEN 'Community Pillar'
+            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 150 THEN 'Trusted Member'
+            WHEN LEAST(500, GREATEST(0, reputation_score + ${totalPoints})) >= 50  THEN 'Neighbour'
             ELSE 'Newcomer'
           END`,
         })

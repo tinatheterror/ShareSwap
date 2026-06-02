@@ -2710,7 +2710,7 @@ export function ChatWidget() {
               Propose New Terms
             </DialogTitle>
             <DialogDescription>
-              Suggest changes to deposit or dates. The other party can accept, decline, or counter again.
+              Suggest changes to dates. The other party can accept, decline, or counter again.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-5 py-4">

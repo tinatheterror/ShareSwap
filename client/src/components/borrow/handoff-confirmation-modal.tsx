@@ -354,7 +354,7 @@ export function HandoffConfirmationModal({
 
           {view === "pin" && !verifyPinMutation.isPending && (
             <p className="text-xs text-center text-muted-foreground">
-              Enter the code after you've checked the item and received it.
+              Enter the code after you've checked and received the item.
             </p>
           )}
 

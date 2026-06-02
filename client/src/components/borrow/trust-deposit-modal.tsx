@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Lock, Loader2, MessageCircle, FileText, Coins } from "lucide-react";
+import { Lock, Loader2, MessageCircle, Coins } from "lucide-react";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
 import { format } from "date-fns";
 
@@ -62,7 +62,6 @@ export function TrustDepositModal({
   );
 
   // Duration-based cost: ceil( (weeklyPrice / 7) × days )
-  // e.g. 10 SC/week × 4 days → ceil(10/7 × 4) = ceil(5.71) = 6 SC
   const _rawSCPrice = parseFloat(item.shareCoinPrice || "0") || 5;
   const shareCoinAmount = (() => {
     if (!request.startDate || !request.endDate) return _rawSCPrice;
@@ -71,7 +70,10 @@ export function TrustDepositModal({
     const borrowDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
     return Math.max(1, Math.ceil((_rawSCPrice / 7) * borrowDays));
   })();
-  const totalDue = depositCalc.finalDeposit;
+
+  const depositAmount = depositCalc.finalDeposit;
+  const processingFee = Math.round(depositAmount * 0.03 * 100) / 100;
+  const totalDue = depositAmount + processingFee;
 
   const payDepositMutation = useMutation({
     mutationFn: async () => {
@@ -80,7 +82,9 @@ export function TrustDepositModal({
         "POST",
         `/api/requests/${request.id}/pay-deposit`,
         {
-          depositAmount: depositCalc.finalDeposit,
+          depositAmount,
+          processingFee,
+          totalAmount: totalDue,
           baseDepositAmount: depositCalc.baseDeposit,
           discountPercentage: depositCalc.discountPercentage,
           trustScore,
@@ -142,11 +146,20 @@ export function TrustDepositModal({
             )}
 
             <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1">
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">${totalDue.toFixed(2)}</span> deposit charged to your card
-              </p>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Deposit</span>
+                <span>${depositAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Processing fee (3%)</span>
+                <span>${processingFee.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold text-gray-800 pt-1 border-t border-gray-200">
+                <span>Total charged</span>
+                <span>${totalDue.toFixed(2)}</span>
+              </div>
               <p className="text-sm text-gray-400">•••• 4242</p>
-              <p className="text-xs text-gray-400 whitespace-nowrap italic">Held securely and refunded after safe return</p>
+              <p className="text-xs text-gray-400 italic">Deposit held securely and refunded after safe return</p>
             </div>
 
             <div className="text-left mb-6">
@@ -178,22 +191,34 @@ export function TrustDepositModal({
         ) : (
           /* ── Payment screen ── */
           <div className="flex flex-col px-7 pt-8 pb-7">
-            <div className="text-center mb-8">
+            <div className="text-center mb-6">
               <p className="text-xs font-semibold uppercase tracking-widest text-teal-500 mb-1">
                 {isRental ? "Confirm your rental" : "Confirm your borrow"}
               </p>
               <p className="text-lg font-bold text-gray-900">{item.name}</p>
             </div>
 
-            <div className="text-center mb-8">
-              <p className="text-6xl font-bold tracking-tight text-gray-900 mb-2">
+            <div className="text-center mb-4">
+              <p className="text-6xl font-bold tracking-tight text-gray-900 mb-1">
                 ${totalDue.toFixed(2)}
               </p>
-              <p className="text-sm text-gray-500">Fully refundable deposit</p>
+              <p className="text-sm text-gray-500">Total due now</p>
+            </div>
+
+            {/* Breakdown */}
+            <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Refundable deposit</span>
+                <span>${depositAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-gray-400">
+                <span>Processing fee (3%)</span>
+                <span>${processingFee.toFixed(2)}</span>
+              </div>
             </div>
 
             {!isRental && (
-              <p className="text-center text-xs text-gray-400 mb-6 flex items-center justify-center gap-1">
+              <p className="text-center text-xs text-gray-400 mb-4 flex items-center justify-center gap-1">
                 <Coins className="h-3 w-3 flex-shrink-0 text-yellow-500" />
                 {Math.round(shareCoinAmount)} ShareCoins charged at pickup
               </p>
@@ -210,7 +235,7 @@ export function TrustDepositModal({
                   Processing
                 </>
               ) : (
-                `Pay $${totalDue.toFixed(2)} deposit`
+                `Pay $${totalDue.toFixed(2)}`
               )}
             </Button>
 

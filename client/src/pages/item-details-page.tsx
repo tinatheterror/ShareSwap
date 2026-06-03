@@ -56,6 +56,7 @@ export default function ItemDetailsPage() {
   const [requestType, setRequestType] = useState<RequestType | null>(null);
   const [showSwapSelector, setShowSwapSelector] = useState(false);
   const [selectedSwapItem, setSelectedSwapItem] = useState<SelectItem[] | null>(null);
+  const [selectedSwapOwnerExtraItems, setSelectedSwapOwnerExtraItems] = useState<SelectItem[]>([]);
   const [showGiftClaimModal, setShowGiftClaimModal] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [insufficientCoinsModal, setInsufficientCoinsModal] = useState<{
@@ -160,6 +161,13 @@ export default function ItemDetailsPage() {
     onError: (err: any) => {
       toast({ title: "Could not add to wishlist", description: err?.message || "Please try again.", variant: "destructive" });
     },
+  });
+
+  const { data: ownerSwapItems = [] } = useQuery<{ id: number }[]>({
+    queryKey: ["/api/swap-eligible-items", "owner-count", (item as any)?.ownerId],
+    queryFn: () => fetch(`/api/swap-eligible-items?partnerId=${(item as any)?.ownerId}`).then(r => r.json()),
+    enabled: !!(item?.isSwappable && user && (item as any)?.ownerId !== user?.id),
+    staleTime: 60000,
   });
 
   // Fetch pending requests to check if user already has a pending request for this item
@@ -367,6 +375,11 @@ export default function ItemDetailsPage() {
             </Button>
           ))}
         </div>
+        {ownerSwapItems.length > 1 && !ownerView && (
+          <p className="text-xs text-muted-foreground">
+            {ownerSwapItems.length} swap items available from this owner
+          </p>
+        )}
       </div>
     ) : null;
 
@@ -664,19 +677,23 @@ export default function ItemDetailsPage() {
             onClose={() => {
               setRequestType(null);
               setSelectedSwapItem(null as any);
+              setSelectedSwapOwnerExtraItems([]);
               setPrefill(null);
             }}
             swapOfferItem={selectedSwapItem}
+            swapRequestedExtraItems={selectedSwapOwnerExtraItems}
             prefill={prefill}
           />
         )}
 
         <SwapInventorySelector
           targetItem={item}
+          ownerId={(item as any).ownerId}
           isOpen={showSwapSelector}
           onClose={() => setShowSwapSelector(false)}
-          onSelectItem={(selectedItems) => {
-            setSelectedSwapItem(selectedItems);
+          onSelectItem={(requesterItems, ownerExtraItems) => {
+            setSelectedSwapItem(requesterItems);
+            setSelectedSwapOwnerExtraItems(ownerExtraItems);
             setShowSwapSelector(false);
             setRequestType("SWAP");
           }}

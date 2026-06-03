@@ -386,6 +386,7 @@ export const itemRequests = pgTable("item_requests", {
 
   // Swap item tracking
   swapOfferedItemIds: integer("swap_offered_item_ids").array().default([]),  // requester's offered items (initial)
+  swapRequestedItemIds: integer("swap_requested_item_ids").array().default([]),  // owner's extra items requested by requester in initial swap
   counterSwapOwnerItemIds: integer("counter_swap_owner_item_ids").array().default([]), // owner's items in counter
   counterSwapRequesterItemIds: integer("counter_swap_requester_item_ids").array().default([]), // requester's items in counter
   counterNote: text("counter_note"),    // optional note with counter offer

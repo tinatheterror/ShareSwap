@@ -4367,7 +4367,7 @@ Respond with ONLY the category name, nothing else.`
   // Create item request
   app.post("/api/items/:itemId/request", requireEmailVerified, async (req: any, res) => {
     const itemId = parseInt(req.params.itemId);
-    const { requestType, message, startDate, endDate, deliveryMethod, swapOfferedItemIds } = req.body;
+    const { requestType, message, startDate, endDate, deliveryMethod, swapOfferedItemIds, swapRequestedItemIds } = req.body;
 
     // BORROW and RENT require full verification (email + ID + payment)
     if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
@@ -4475,6 +4475,9 @@ Respond with ONLY the category name, nothing else.`
         ...(requestType === "SWAP" && Array.isArray(swapOfferedItemIds) && swapOfferedItemIds.length > 0
           ? { swapOfferedItemIds: swapOfferedItemIds.map(Number) }
           : {}),
+        ...(requestType === "SWAP" && Array.isArray(swapRequestedItemIds) && swapRequestedItemIds.length > 0
+          ? { swapRequestedItemIds: swapRequestedItemIds.map(Number) }
+          : {}),
       })
       .returning();
 
@@ -4554,6 +4557,7 @@ Respond with ONLY the category name, nothing else.`
         termsDeclinedAt: itemRequests.termsDeclinedAt,
         // Swap item tracking
         swapOfferedItemIds: itemRequests.swapOfferedItemIds,
+        swapRequestedItemIds: itemRequests.swapRequestedItemIds,
         counterSwapOwnerItemIds: itemRequests.counterSwapOwnerItemIds,
         counterSwapRequesterItemIds: itemRequests.counterSwapRequesterItemIds,
         counterNote: itemRequests.counterNote,
@@ -4634,6 +4638,7 @@ Respond with ONLY the category name, nothing else.`
       termsAcceptedAt: r.termsAcceptedAt,
       termsDeclinedAt: r.termsDeclinedAt,
       swapOfferedItemIds: r.swapOfferedItemIds,
+      swapRequestedItemIds: r.swapRequestedItemIds,
       counterSwapOwnerItemIds: r.counterSwapOwnerItemIds,
       counterSwapRequesterItemIds: r.counterSwapRequesterItemIds,
       counterNote: r.counterNote,
@@ -4684,6 +4689,7 @@ Respond with ONLY the category name, nothing else.`
     const allOfferedIds = [...new Set(
       requests.flatMap(r => r.requestType === "SWAP" ? [
         ...(r.swapOfferedItemIds ?? []),
+        ...(r.swapRequestedItemIds ?? []),
         ...(r.counterSwapOwnerItemIds ?? []),
         ...(r.counterSwapRequesterItemIds ?? []),
       ] : [])
@@ -4700,6 +4706,9 @@ Respond with ONLY the category name, nothing else.`
       ...r,
       swapOfferedItems: r.requestType === "SWAP"
         ? (r.swapOfferedItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
+        : [],
+      swapRequestedItems: r.requestType === "SWAP"
+        ? (r.swapRequestedItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)
         : [],
       counterSwapOwnerItems: r.requestType === "SWAP"
         ? (r.counterSwapOwnerItemIds ?? []).map(id => offeredItemsMap.get(id)).filter(Boolean)

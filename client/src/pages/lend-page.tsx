@@ -185,6 +185,7 @@ const calculateShareCoinsForDays = (
 const baseFormSchema = z
   .object({
     name: z.string().min(1, "Name is required"),
+    brand: z.string().optional(),
     description: z.string().min(10, "Please provide a detailed description"),
     itemType: z.string().min(1, "Item type is required"),
     condition: z.string().min(1, "Condition is required"),
@@ -817,11 +818,21 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     condition: string;
     category: string;
     brand?: string;
+    model?: string;
     originalPrice: string;
   }) => {
     if (data.title) form.setValue("name", data.title);
     if (data.brand) form.setValue("brand", data.brand);
-    if (data.description) form.setValue("description", data.description);
+    if (data.description) {
+      // If a model was detected, prepend "Brand Model — " to the description
+      if (data.model) {
+        const prefix = data.brand ? `${data.brand} ${data.model}` : data.model;
+        const descWithModel = `${prefix} — ${data.description}`;
+        form.setValue("description", descWithModel);
+      } else {
+        form.setValue("description", data.description);
+      }
+    }
     if (data.condition) {
       const ratingMap: Record<string, number> = {
         "New / Like New": 10,

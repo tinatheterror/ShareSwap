@@ -1947,20 +1947,21 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
 
 STRICT TITLE RULE — FOLLOW EXACTLY:
 "title" must be 2–4 words. It is the plain noun phrase for what the object IS. No adjectives, no descriptors, no marketing words.
-BAD: "Modern baby stroller with adjustable canopy" → GOOD: "baby stroller"
+If you recognize the specific product model name (e.g. UPPAbaby Cruz, Bugaboo Cameleon, iPhone 15, MacBook Pro), include the model name in the title INSTEAD of a generic adjective.
+BAD: "Modern baby stroller with adjustable canopy" → GOOD: "Cruz stroller"
 BAD: "Elegant floral table centerpiece arrangement" → GOOD: "floral centerpiece"
 BAD: "High-performance cordless drill set" → GOOD: "cordless drill"
 BAD: "Beautiful vintage wooden coffee table" → GOOD: "coffee table"
-BAD: "Lightweight foldable travel umbrella" → GOOD: "travel umbrella"
-Rule: 2–4 words max, noun only, no adjectives, lowercase.
+Rule: 2–4 words max, no generic adjectives (modern/elegant/high-performance etc.), lowercase.
 
 {
-  "title": "2–4 word noun phrase only. See STRICT TITLE RULE above.",
+  "title": "2–4 word noun phrase. Include model name if recognized (e.g. 'Cruz stroller', 'Vista stroller', 'iPhone 15 Pro'). See STRICT TITLE RULE above.",
   "description": "Honest practical description highlighting key features and any visible wear, 50-200 characters",
   "condition": "One of exactly: New / Like New, Good, Fair, Well Loved — assess visible wear, fading, pilling, or damage. If item looks clean and lightly used choose Good. If clearly worn or faded choose Fair. Never return empty.",
   "category": "One of exactly: Baby & Kids, Clothing & Accessories, Electronics, Hobbies & Collectibles, Home & Kitchen, Tools & Equipment",
-  "brand": "Brand name if visible on the item or recognizable from its design (e.g. UPPAbaby, Bugaboo, Britax, Apple, Sony, IKEA). Empty string if unknown.",
-  "originalPrice": "Your best-estimate original retail price as a plain number string e.g. '79.99'. Use typical retail prices for the item type and any visible brand — for generic clothing estimate $40-80, branded $80-200, designer $200+. Never return empty string, always give your best guess."
+  "brand": "Manufacturer brand name if visible or recognizable from the item's design (e.g. UPPAbaby, Bugaboo, Britax, Graco, Apple, Samsung, Sony, IKEA, Dyson). Empty string if unknown.",
+  "model": "Specific product model name if recognizable (e.g. Cruz, Vista, Ridge, Minu for UPPAbaby; Cameleon, Fox for Bugaboo; iPhone 15 Pro, MacBook Air for Apple). Empty string if unknown.",
+  "originalPrice": "Your best-estimate original retail price as a plain number string e.g. '799.99'. Use typical retail prices for the item type and brand — UPPAbaby Cruz ~$800, generic baby stroller ~$100-300. Never return empty string, always give your best guess."
 }
 
 Be accurate and practical. Always populate every field — never leave condition or originalPrice blank. Return ONLY the JSON, no other text.`,
@@ -1996,6 +1997,7 @@ Be accurate and practical. Always populate every field — never leave condition
         condition: data.condition || "",
         category: data.category || "",
         brand: data.brand || "",
+        model: data.model || "",
         originalPrice: data.originalPrice || "",
       });
     } catch (error) {

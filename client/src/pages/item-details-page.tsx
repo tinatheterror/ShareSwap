@@ -375,11 +375,6 @@ export default function ItemDetailsPage() {
             </Button>
           ))}
         </div>
-        {ownerSwapItems.length > 1 && !ownerView && (
-          <p className="text-xs text-muted-foreground">
-            {ownerSwapItems.length} swap items available from this owner
-          </p>
-        )}
       </div>
     ) : null;
 

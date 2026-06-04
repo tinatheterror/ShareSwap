@@ -229,7 +229,7 @@ export default function HomePage() {
               <div>
                 <p className="font-semibold text-gray-900">Import a listing</p>
                 <p className="text-xs text-muted-foreground">
-                  Upload screenshots — AI fills in the details
+                  Turn screenshots into a listing in seconds
                 </p>
               </div>
             </button>

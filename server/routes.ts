@@ -1809,7 +1809,7 @@ Respond with ONLY valid JSON in this exact format:
 Analyze these images and extract the following information in JSON format:
 
 {
-  "name": "Short, descriptive name of the item (max 50 chars)",
+  "name": "Simple 2-4 word name for the item. No adjectives, no brand puffery, no marketing words. Just the core object type, e.g. 'table centerpiece', 'place cards', 'folding chair', 'drill set'. Max 40 chars.",
   "description": "Detailed description including notable features, condition details, and any visible wear or damage (100-300 chars)",
   "category": "One of: Electronics, Tools, Sports, Home & Garden, Books & Media, Clothing, Toys & Games, Kitchen, Outdoor, Other",
   "brand": "Brand name if visible, otherwise 'Unknown'",
@@ -2000,7 +2000,7 @@ Be accurate and practical. Always populate every field — never leave condition
                 type: 'text',
                 text: `Analyze ${files.length > 1 ? 'these marketplace listing screenshots' : 'this marketplace listing screenshot'} and extract every visible detail. Return ONLY valid JSON with EXACTLY these fields:
 {
-  "name": "item name, max 60 chars",
+  "name": "Simple 2-4 word name for the item. No adjectives, no marketing words, no brand puffery. Just the core object type, e.g. 'table centerpiece', 'place cards', 'folding chair'. Max 40 chars.",
   "description": "full description from the listing, cleaned up",
   "price": <number or null>,
   "condition": "New / Like New" or "Good" or "Fair" or "Well Loved",

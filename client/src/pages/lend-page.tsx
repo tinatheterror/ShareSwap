@@ -821,7 +821,13 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     model?: string;
     originalPrice: string;
   }) => {
-    if (data.title) form.setValue("name", data.title);
+    if (data.title) {
+      // Prepend brand to name if detected so user sees e.g. "uppababy vista stroller"
+      const nameWithBrand = data.brand
+        ? `${data.brand} ${data.title}`.split(/\s+/).slice(0, 5).join(" ").toLowerCase()
+        : data.title;
+      form.setValue("name", nameWithBrand);
+    }
     if (data.brand) form.setValue("brand", data.brand);
     if (data.description) {
       // If a model was detected, prepend "Brand Model — " to the description

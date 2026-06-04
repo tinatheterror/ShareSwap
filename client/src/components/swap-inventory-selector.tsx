@@ -137,7 +137,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
                   {swappableItems.map((item) => {
                     const tier = (item as any).tier || 2;
                     const sc = getTierShareCoins(tier);
@@ -145,12 +145,12 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                     return (
                       <div
                         key={item.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg transition-all border cursor-pointer ${
+                        className={`rounded-lg transition-all border cursor-pointer overflow-hidden ${
                           isSelected ? "border-[#0DCEA1] bg-[#E6FBF5]" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
                         }`}
                         onClick={() => toggleItem(item.id)}
                       >
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
+                        <div className="relative aspect-square bg-gray-100">
                           {item.photos?.[0] ? (
                             <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
                           ) : (
@@ -160,16 +160,16 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                           )}
                           {isSelected && (
                             <div className="absolute inset-0 bg-[#0DCEA1]/30 flex items-center justify-center">
-                              <Check className="h-4 w-4 text-white" />
+                              <Check className="h-5 w-5 text-white drop-shadow" />
                             </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">{item.name}</p>
-                          <div className="flex items-center flex-wrap gap-1 text-xs text-gray-500 mt-0.5">
-                            <span>Tier {tier}</span>
+                        <div className="p-1.5">
+                          <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>
+                          <div className="flex items-center gap-0.5 text-[9px] text-gray-500 mt-0.5">
+                            <span>T{tier}</span>
                             <span className="text-gray-300">·</span>
-                            <Coins className="h-3 w-3" />
+                            <Coins className="h-2.5 w-2.5" />
                             <span>{sc} SC</span>
                           </div>
                         </div>
@@ -188,7 +188,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                   <span className="text-[11px] text-gray-400">{ownerExtraItems.length} available</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground mb-2">Select additional items you'd like alongside the primary item.</p>
-                <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
                   {previewOwnerItems.map((item) => {
                     const tier = (item as any).tier || 2;
                     const sc = getTierShareCoins(tier);
@@ -196,12 +196,12 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                     return (
                       <div
                         key={item.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg transition-all border cursor-pointer ${
+                        className={`rounded-lg transition-all border cursor-pointer overflow-hidden ${
                           isSelected ? "border-amber-400 bg-amber-50" : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
                         }`}
                         onClick={() => toggleOwnerItem(item.id)}
                       >
-                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
+                        <div className="relative aspect-square bg-gray-100">
                           {item.photos?.[0] ? (
                             <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
                           ) : (
@@ -211,16 +211,16 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                           )}
                           {isSelected && (
                             <div className="absolute inset-0 bg-amber-400/30 flex items-center justify-center">
-                              <Check className="h-4 w-4 text-amber-700" />
+                              <Check className="h-5 w-5 text-amber-700 drop-shadow" />
                             </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">{item.name}</p>
-                          <div className="flex items-center flex-wrap gap-1 text-xs text-gray-500 mt-0.5">
-                            <span>Tier {tier}</span>
+                        <div className="p-1.5">
+                          <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>
+                          <div className="flex items-center gap-0.5 text-[9px] text-gray-500 mt-0.5">
+                            <span>T{tier}</span>
                             <span className="text-gray-300">·</span>
-                            <Coins className="h-3 w-3" />
+                            <Coins className="h-2.5 w-2.5" />
                             <span>{sc} SC</span>
                           </div>
                         </div>

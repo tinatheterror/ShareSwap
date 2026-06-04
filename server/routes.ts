@@ -1806,10 +1806,19 @@ Respond with ONLY valid JSON in this exact format:
                 type: "text",
                 text: `You are an expert at identifying and analyzing items from photos for a peer-to-peer sharing marketplace. Pay special attention to LUXURY BRANDS (Chanel, Louis Vuitton, Hermès, Gucci, Prada, Rolex, Cartier, Dior, Balenciaga, etc.) - these items often have market values in the thousands or tens of thousands of dollars.
 
+STRICT NAME RULE — READ THIS FIRST:
+The "name" field must be 2–4 words maximum. It is a plain noun phrase identifying what the object IS. Strip ALL adjectives, adverbs, descriptors, and qualifiers.
+BAD: "Modern baby stroller with adjustable canopy" → GOOD: "baby stroller"
+BAD: "Elegant floral table centerpiece arrangement" → GOOD: "floral centerpiece"
+BAD: "Elegant place cards with cursive names" → GOOD: "place cards"
+BAD: "High-performance cordless drill set" → GOOD: "cordless drill"
+BAD: "Beautiful vintage wooden coffee table" → GOOD: "coffee table"
+Rule: noun only, no adjectives, max 4 words, lowercase.
+
 Analyze these images and extract the following information in JSON format:
 
 {
-  "name": "Simple 2-4 word name for the item. No adjectives, no brand puffery, no marketing words. Just the core object type, e.g. 'table centerpiece', 'place cards', 'folding chair', 'drill set'. Max 40 chars.",
+  "name": "2–4 word noun phrase ONLY. No adjectives. See STRICT NAME RULE above.",
   "description": "Detailed description including notable features, condition details, and any visible wear or damage (100-300 chars)",
   "category": "One of: Electronics, Tools, Sports, Home & Garden, Books & Media, Clothing, Toys & Games, Kitchen, Outdoor, Other",
   "brand": "Brand name if visible, otherwise 'Unknown'",
@@ -1859,10 +1868,19 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
           .where(eq(users.id, req.user.id));
       }
 
+      // Strip adjectives / prepositional phrases from AI-generated name
+      const rawName: string = (analysisData.name || "").trim();
+      const cleanedName = rawName
+        .replace(/\s+(with|for|of|and|featuring|including)\s+.*/i, "") // drop "with X", "for Y" etc.
+        .split(/\s+/)
+        .slice(0, 4)
+        .join(" ")
+        .toLowerCase() || "item";
+
       res.json({
         success: true,
         analysis: {
-          name: analysisData.name || "Unidentified Item",
+          name: cleanedName || "Unidentified Item",
           description: analysisData.description || "AI analysis completed.",
           category: analysisData.category || "Other",
           brand: analysisData.brand || "Unknown",
@@ -1999,8 +2017,17 @@ Be accurate and practical. Always populate every field — never leave condition
               {
                 type: 'text',
                 text: `Analyze ${files.length > 1 ? 'these marketplace listing screenshots' : 'this marketplace listing screenshot'} and extract every visible detail. Return ONLY valid JSON with EXACTLY these fields:
+
+STRICT NAME RULE — READ THIS FIRST:
+The "name" field must be 2–4 words maximum. Plain noun phrase only — what the object IS. No adjectives, no descriptors, no qualifiers.
+BAD: "Modern baby stroller with adjustable canopy" → GOOD: "baby stroller"
+BAD: "Elegant floral table centerpiece arrangement" → GOOD: "floral centerpiece"
+BAD: "High-performance cordless drill set" → GOOD: "cordless drill"
+BAD: "Beautiful vintage wooden coffee table" → GOOD: "coffee table"
+Rule: noun only, no adjectives, max 4 words, lowercase.
+
 {
-  "name": "Simple 2-4 word name for the item. No adjectives, no marketing words, no brand puffery. Just the core object type, e.g. 'table centerpiece', 'place cards', 'folding chair'. Max 40 chars.",
+  "name": "2–4 word noun phrase ONLY. No adjectives. See STRICT NAME RULE above.",
   "description": "full description from the listing, cleaned up",
   "price": <number or null>,
   "condition": "New / Like New" or "Good" or "Fair" or "Well Loved",
@@ -2067,8 +2094,16 @@ Return only the JSON object, no other text.`
         Math.min(1, Math.max(0, parseFloat(String(rawScores[i] ?? 0.5)) || 0.5))
       );
 
+      const rawExtractedName: string = (extracted.name || "").trim();
+      const cleanedExtractedName = rawExtractedName
+        .replace(/\s+(with|for|of|and|featuring|including)\s+.*/i, "")
+        .split(/\s+/)
+        .slice(0, 4)
+        .join(" ")
+        .toLowerCase() || "imported item";
+
       return res.json({
-        name: (extracted.name || 'Imported Item').substring(0, 60),
+        name: cleanedExtractedName || 'imported item',
         description: extracted.description || '',
         price: extracted.price ? parseFloat(String(extracted.price)) : null,
         condition: validConditions.includes(extracted.condition) ? extracted.condition : 'Good',

@@ -1943,10 +1943,19 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
           content: [
             {
               type: "text",
-              text: `You are helping list an item on a peer-to-peer sharing marketplace. Analyze the uploaded photos and return ONLY a JSON object:
+              text: `You are helping list an item on a peer-to-peer sharing marketplace. Analyze the uploaded photos and return ONLY a JSON object.
+
+STRICT TITLE RULE — FOLLOW EXACTLY:
+"title" must be 2–4 words. It is the plain noun phrase for what the object IS. No adjectives, no descriptors, no marketing words.
+BAD: "Modern baby stroller with adjustable canopy" → GOOD: "baby stroller"
+BAD: "Elegant floral table centerpiece arrangement" → GOOD: "floral centerpiece"
+BAD: "High-performance cordless drill set" → GOOD: "cordless drill"
+BAD: "Beautiful vintage wooden coffee table" → GOOD: "coffee table"
+BAD: "Lightweight foldable travel umbrella" → GOOD: "travel umbrella"
+Rule: 2–4 words max, noun only, no adjectives, lowercase.
 
 {
-  "title": "Concise marketplace-friendly title, max 60 characters",
+  "title": "2–4 word noun phrase only. See STRICT TITLE RULE above.",
   "description": "Honest practical description highlighting key features and any visible wear, 50-200 characters",
   "condition": "One of exactly: New / Like New, Good, Fair, Well Loved — assess visible wear, fading, pilling, or damage. If item looks clean and lightly used choose Good. If clearly worn or faded choose Fair. Never return empty.",
   "category": "One of exactly: Baby & Kids, Clothing & Accessories, Electronics, Hobbies & Collectibles, Home & Kitchen, Tools & Equipment",
@@ -1970,8 +1979,18 @@ Be accurate and practical. Always populate every field — never leave condition
 
       const data = JSON.parse(jsonMatch[0]);
 
+      const rawTitle: string = (data.title || "").trim();
+      console.log('[ai-generate] raw AI title:', rawTitle);
+      const cleanedTitle = rawTitle
+        .replace(/\s+(with|for|of|and|featuring|including)\s+.*/i, "")
+        .split(/\s+/)
+        .slice(0, 4)
+        .join(" ")
+        .toLowerCase() || "";
+      console.log('[ai-generate] cleaned title:', cleanedTitle);
+
       res.json({
-        title: data.title || "",
+        title: cleanedTitle || data.title || "",
         description: data.description || "",
         condition: data.condition || "",
         category: data.category || "",
@@ -2095,12 +2114,14 @@ Return only the JSON object, no other text.`
       );
 
       const rawExtractedName: string = (extracted.name || "").trim();
+      console.log('[import-from-screenshot] raw AI name:', rawExtractedName);
       const cleanedExtractedName = rawExtractedName
         .replace(/\s+(with|for|of|and|featuring|including)\s+.*/i, "")
         .split(/\s+/)
         .slice(0, 4)
         .join(" ")
         .toLowerCase() || "imported item";
+      console.log('[import-from-screenshot] cleaned name:', cleanedExtractedName);
 
       return res.json({
         name: cleanedExtractedName || 'imported item',

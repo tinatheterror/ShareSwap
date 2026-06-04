@@ -1959,6 +1959,7 @@ Rule: 2–4 words max, noun only, no adjectives, lowercase.
   "description": "Honest practical description highlighting key features and any visible wear, 50-200 characters",
   "condition": "One of exactly: New / Like New, Good, Fair, Well Loved — assess visible wear, fading, pilling, or damage. If item looks clean and lightly used choose Good. If clearly worn or faded choose Fair. Never return empty.",
   "category": "One of exactly: Baby & Kids, Clothing & Accessories, Electronics, Hobbies & Collectibles, Home & Kitchen, Tools & Equipment",
+  "brand": "Brand name if visible on the item or recognizable from its design (e.g. UPPAbaby, Bugaboo, Britax, Apple, Sony, IKEA). Empty string if unknown.",
   "originalPrice": "Your best-estimate original retail price as a plain number string e.g. '79.99'. Use typical retail prices for the item type and any visible brand — for generic clothing estimate $40-80, branded $80-200, designer $200+. Never return empty string, always give your best guess."
 }
 
@@ -1994,6 +1995,7 @@ Be accurate and practical. Always populate every field — never leave condition
         description: data.description || "",
         condition: data.condition || "",
         category: data.category || "",
+        brand: data.brand || "",
         originalPrice: data.originalPrice || "",
       });
     } catch (error) {

@@ -816,9 +816,11 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     description: string;
     condition: string;
     category: string;
+    brand?: string;
     originalPrice: string;
   }) => {
     if (data.title) form.setValue("name", data.title);
+    if (data.brand) form.setValue("brand", data.brand);
     if (data.description) form.setValue("description", data.description);
     if (data.condition) {
       const ratingMap: Record<string, number> = {

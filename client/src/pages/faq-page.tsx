@@ -164,7 +164,7 @@ export default function FAQPage() {
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
-                  Built on Local Trust
+                  Local Trust
                 </p>
                 <p className="text-[11px] text-gray-500 leading-tight">
                   Verified profiles and fair systems.
@@ -265,7 +265,8 @@ export default function FAQPage() {
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Use <span className="font-bold">ShareCoins</span> to borrow
-                  from neighbours. The cost to borrow depends on each item's ShareCoin value and the duration you borrow for.
+                  from neighbours. The cost to borrow depends on each item's
+                  ShareCoin value and the duration you borrow for.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -395,7 +396,10 @@ export default function FAQPage() {
                   How Swapping Works
                 </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  Trade items with neighbours — no cash, no deposits. Any item can swap with any other item. Bundle multiple items on your side to match value. Value differences are settled with ShareCoins (max 20 ShareCoins offset).
+                  Trade items with neighbours — no cash, no deposits. Any item
+                  can swap with any other item. Bundle multiple items on your
+                  side to match value. Value differences are settled with
+                  ShareCoins (max 20 ShareCoins offset).
                 </p>
 
                 <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 mb-4">
@@ -404,20 +408,40 @@ export default function FAQPage() {
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>5</span></div>
-                      <p className="text-xs font-medium text-gray-700 mt-0.5">Budget Friendly</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                        <Coins className="h-4 w-4" />
+                        <span>5</span>
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 mt-0.5">
+                        Budget Friendly
+                      </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>10</span></div>
-                      <p className="text-xs font-medium text-gray-700 mt-0.5">Everyday Item</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                        <Coins className="h-4 w-4" />
+                        <span>10</span>
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 mt-0.5">
+                        Everyday Item
+                      </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>20</span></div>
-                      <p className="text-xs font-medium text-gray-700 mt-0.5">Premium Item</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                        <Coins className="h-4 w-4" />
+                        <span>20</span>
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 mt-0.5">
+                        Premium Item
+                      </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>40</span></div>
-                      <p className="text-xs font-medium text-gray-700 mt-0.5">High Value</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                        <Coins className="h-4 w-4" />
+                        <span>40</span>
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 mt-0.5">
+                        High Value
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -430,29 +454,48 @@ export default function FAQPage() {
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Any item can swap with any item</p>
-                        <p className="text-xs text-gray-500">No restrictions — mix and match freely.</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Any item can swap with any item
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          No restrictions — mix and match freely.
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-500 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Bundle multiple items</p>
-                        <p className="text-xs text-gray-500">Offer more than one item on your side to better match the other side's value.</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Bundle multiple items
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Offer more than one item on your side to better match
+                          the other side's value.
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Value difference up to 20 ShareCoins</p>
-                        <p className="text-xs text-gray-500">The side with lower total value tops up with ShareCoins to balance the swap.</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Value difference up to 20 ShareCoins
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          The side with lower total value tops up with
+                          ShareCoins to balance the swap.
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Offset over 20 ShareCoins not allowed</p>
-                        <p className="text-xs text-gray-500">If the gap is too large, add more items to your offer to bring it within range.</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Offset over 20 ShareCoins not allowed
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          If the gap is too large, add more items to your offer
+                          to bring it within range.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -490,42 +533,73 @@ export default function FAQPage() {
               encourage sharing and help build community reputation.
             </p>
 
-            <p className="text-sm font-semibold text-gray-800">How ShareCoin values are assigned</p>
+            <p className="text-sm font-semibold text-gray-800">
+              How ShareCoin values are assigned
+            </p>
             <p className="text-gray-700 text-sm">
-              Every item gets a <span className="font-bold">ShareCoin value</span> based on its estimated worth and condition — set automatically from your photos and details.
+              Every item gets a{" "}
+              <span className="font-bold">ShareCoin value</span> based on its
+              estimated worth and condition — set automatically from your photos
+              and details.
             </p>
 
             <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
-              <p className="text-[#0DCEA1] font-medium text-sm mb-3">ShareCoin Values by Item Worth</p>
+              <p className="text-[#0DCEA1] font-medium text-sm mb-3">
+                ShareCoin Values by Item Worth
+              </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>5</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">Budget Friendly</p>
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                    <Coins className="h-4 w-4" />
+                    <span>5</span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">
+                    Budget Friendly
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>10</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">Everyday Item</p>
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                    <Coins className="h-4 w-4" />
+                    <span>10</span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">
+                    Everyday Item
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>20</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">Premium Item</p>
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                    <Coins className="h-4 w-4" />
+                    <span>20</span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">
+                    Premium Item
+                  </p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>40</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">High Value</p>
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg">
+                    <Coins className="h-4 w-4" />
+                    <span>40</span>
+                  </div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">
+                    High Value
+                  </p>
                 </div>
               </div>
             </div>
 
             <div>
-              <p className="font-medium text-gray-800 text-sm mb-2">Your item's value determines:</p>
+              <p className="font-medium text-gray-800 text-sm mb-2">
+                Your item's value determines:
+              </p>
               <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
                 <li>How many ShareCoins it costs to borrow</li>
-                <li>Swap fairness — ShareCoins cover any difference in value between swapped items</li>
+                <li>
+                  Swap fairness — ShareCoins cover any difference in value
+                  between swapped items
+                </li>
                 <li>Trust-deposit amount for borrowing</li>
               </ul>
             </div>
-
           </CardContent>
         </Card>
 
@@ -571,9 +645,7 @@ export default function FAQPage() {
                       <p className="text-xs font-medium text-gray-700">
                         Swap Differences
                       </p>
-                      <p className="text-[10px] text-gray-500">
-                        Value offset
-                      </p>
+                      <p className="text-[10px] text-gray-500">Value offset</p>
                     </div>
                   </div>
                 </div>

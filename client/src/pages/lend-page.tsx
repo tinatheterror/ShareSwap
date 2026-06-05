@@ -1852,46 +1852,60 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         >
                           {/* ShareCoin value + AI badge */}
                           {valuationResult && !isLoadingValuation ? (
-                            <div className="flex items-center gap-1.5">
-                              <Coins className="h-3.5 w-3.5 text-teal-600" />
-                              <span className="text-sm font-bold text-gray-900 leading-none">
-                                {Math.round(Number(valuationResult.shareCoinsValue))}
-                              </span>
-                              <span className="text-xs text-gray-500">ShareCoins/week</span>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-0.5 cursor-help ml-0.5">
-                                    <Sparkles className="h-3 w-3 text-amber-400" />
-                                    <span className="text-xs text-amber-500 font-medium">AI</span>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                  <p className="text-sm font-medium mb-1">
-                                    AI-Powered Valuation
-                                  </p>
-                                  <p className="text-xs">
-                                    AI analyzes condition, brand quality,
-                                    category demand, and seasonal factors to
-                                    determine the exact rate.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <Coins className="h-3.5 w-3.5 text-teal-600" />
+                                <span className="text-sm font-bold text-gray-900 leading-none">
+                                  {Math.round(Number(valuationResult.shareCoinsValue))}
+                                </span>
+                                <span className="text-xs text-gray-500">ShareCoins/week</span>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-0.5 cursor-help ml-0.5">
+                                      <Sparkles className="h-3 w-3 text-amber-400" />
+                                      <span className="text-xs text-amber-500 font-medium">AI</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p className="text-sm font-medium mb-1">
+                                      AI-Powered Valuation
+                                    </p>
+                                    <p className="text-xs">
+                                      AI analyzes condition, brand quality,
+                                      category demand, and seasonal factors to
+                                      determine the exact rate.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                              {calculatedTier && TIER_SUBTITLES[calculatedTier] && (
+                                <span className="text-[10px] text-teal-600 font-medium leading-none">
+                                  {TIER_SUBTITLES[calculatedTier]}
+                                </span>
+                              )}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5">
-                              {isLoadingValuation && (
-                                <div className="h-3.5 w-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mr-1" />
-                              )}
-                              <Coins className="h-3.5 w-3.5 text-teal-600" />
-                              <span className="text-sm font-bold text-gray-900 leading-none">
-                                {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                ShareCoins/week
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5">
                                 {isLoadingValuation && (
-                                  <span className="text-gray-400 ml-1">(calculating…)</span>
+                                  <div className="h-3.5 w-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mr-1" />
                                 )}
-                              </span>
+                                <Coins className="h-3.5 w-3.5 text-teal-600" />
+                                <span className="text-sm font-bold text-gray-900 leading-none">
+                                  {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  ShareCoins/week
+                                  {isLoadingValuation && (
+                                    <span className="text-gray-400 ml-1">(calculating…)</span>
+                                  )}
+                                </span>
+                              </div>
+                              {calculatedTier && TIER_SUBTITLES[calculatedTier] && (
+                                <span className="text-[10px] text-teal-600 font-medium leading-none">
+                                  {TIER_SUBTITLES[calculatedTier]}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>

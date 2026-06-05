@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeftRight, Camera, Check, ChevronDown, ChevronUp, Coins, Package, Plus, AlertTriangle, Info } from "lucide-react";
+import { ArrowLeftRight, Camera, Check, ChevronDown, ChevronUp, Coins, ExternalLink, Package, Plus, AlertTriangle, Info } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { getTierShareCoins, calculateMultiSwap, MAX_SWAP_OFFSET } from "@/lib/swap-calculator";
 import { useAuth } from "@/hooks/use-auth";
@@ -196,6 +196,15 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                       <div className="absolute inset-0 bg-amber-400/30 flex items-center justify-center">
                         <Check className="h-5 w-5 text-amber-700 drop-shadow" />
                       </div>
+                      <a
+                        href={`/items/${targetItem.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute top-1 right-1 bg-white/80 rounded-full p-0.5 hover:bg-white"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <ExternalLink className="h-2.5 w-2.5 text-gray-600" />
+                      </a>
                     </div>
                     <div className="p-1.5">
                       <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{targetItem.name}</p>
@@ -230,6 +239,15 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                               <Check className="h-5 w-5 text-amber-700 drop-shadow" />
                             </div>
                           )}
+                          <a
+                            href={`/items/${item.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute top-1 right-1 bg-white/80 rounded-full p-0.5 hover:bg-white"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-2.5 w-2.5 text-gray-600" />
+                          </a>
                         </div>
                         <div className="p-1.5">
                           <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>

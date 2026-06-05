@@ -30,12 +30,13 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
     staleTime: 0,
   });
 
-  const { data: ownerItems = [] } = useQuery<SelectItem[]>({
+  const { data: ownerItemsRaw } = useQuery<SelectItem[]>({
     queryKey: ["/api/swap-eligible-items", "owner", ownerId],
     queryFn: () => fetch(`/api/swap-eligible-items?partnerId=${ownerId}`).then(r => r.json()),
     enabled: isOpen && !!ownerId,
     staleTime: 0,
   });
+  const ownerItems: SelectItem[] = Array.isArray(ownerItemsRaw) ? ownerItemsRaw : [];
 
   const targetTier = (targetItem as any).tier || 2;
   const targetSC = getTierShareCoins(targetTier);

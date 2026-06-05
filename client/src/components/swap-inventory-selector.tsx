@@ -106,7 +106,6 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-bold leading-snug line-clamp-2">{targetItem.name}</h2>
                 <div className="flex items-center gap-1.5 mt-1.5 text-white/80 text-sm">
-                  <span>Tier {targetTier} –</span>
                   <Coins className="h-3.5 w-3.5" />
                   <span>{targetSC} SC</span>
                 </div>
@@ -167,8 +166,6 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                         <div className="p-1.5">
                           <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>
                           <div className="flex items-center gap-0.5 text-[9px] text-gray-500 mt-0.5">
-                            <span>T{tier}</span>
-                            <span className="text-gray-300">·</span>
                             <Coins className="h-2.5 w-2.5" />
                             <span>{sc} SC</span>
                           </div>
@@ -218,8 +215,6 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                         <div className="p-1.5">
                           <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>
                           <div className="flex items-center gap-0.5 text-[9px] text-gray-500 mt-0.5">
-                            <span>T{tier}</span>
-                            <span className="text-gray-300">·</span>
                             <Coins className="h-2.5 w-2.5" />
                             <span>{sc} SC</span>
                           </div>

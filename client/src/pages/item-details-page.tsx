@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
-import { getSwapTierLabel } from "@/lib/swap-calculator";
+import { getSwapTierLabel, getTierShareCoins } from "@/lib/swap-calculator";
 import {
   formatReplacementValue,
   hasValidReplacementValue,
@@ -334,7 +334,7 @@ export default function ItemDetailsPage() {
                         variant="outline"
                         className="border-teal-700 text-teal-700 cursor-help"
                       >
-                        {getSwapTierLabel(itemTier) + " " + "Item"}
+                        {getTierShareCoins(itemTier)} SC
                       </Badge>
                     </button>
                   </TooltipTrigger>

@@ -1839,12 +1839,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                             tierGlow ? "ring-1 ring-teal-300 ring-offset-1" : ""
                           }`}
                         >
-                          {/* Top row: tier badge */}
-                          <div className="inline-block bg-teal-50 text-teal-700 text-xs font-medium px-2 py-0.5 rounded-md mb-1">
-                            {TIER_NAMES[calculatedTier]}
-                          </div>
-
-                          {/* Bottom: ShareCoin value + AI badge */}
+                          {/* ShareCoin value + AI badge */}
                           {valuationResult && !isLoadingValuation ? (
                             <div className="flex items-center gap-1.5">
                               <Coins className="h-3.5 w-3.5 text-teal-600" />
@@ -2242,7 +2237,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <div className="text-sm font-semibold text-gray-800 cursor-help flex items-center gap-1">
-                                            Tier {calculatedTier} Item
+                                            {getTierShareCoins(calculatedTier)} SC swap value
                                             <Info className="h-3 w-3 text-gray-400" />
                                           </div>
                                         </TooltipTrigger>

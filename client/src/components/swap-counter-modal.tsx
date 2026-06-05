@@ -90,7 +90,6 @@ function SelectedItemPreview({ item, label }: { item: SwapItem | null; label: st
             )}
           </div>
           <p className="text-xs font-semibold text-center leading-tight line-clamp-2 w-full px-1">{item.name}</p>
-          <span className="text-[10px] text-muted-foreground">Tier {item.tier ?? 1}</span>
         </>
       ) : (
         <>
@@ -148,7 +147,6 @@ function ItemCard({
       <div className="p-1.5">
         <p className="text-[11px] font-semibold truncate leading-tight">{item.name}</p>
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">T{item.tier ?? 1}</Badge>
           <span className="text-[10px] text-muted-foreground font-medium">{sc} SC</span>
         </div>
       </div>

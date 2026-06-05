@@ -22,6 +22,7 @@ import { uploadToStorage } from "./storage";
 import path from "path";
 import * as express from "express";
 import { itemConditionVerifications } from "@db/schema";
+import { matchCatalog } from "./lib/baby-catalog";
 import { sponsoredGames, gameSessions } from "@db/schema";
 import { communityChallenges, challengeParticipants } from "@db/schema";
 import { itemRequests, deliveryArrangements, extensionRequests } from "@db/schema";
@@ -1991,6 +1992,9 @@ Be accurate and practical. Always populate every field — never leave condition
         .toLowerCase() || "";
       console.log('[ai-generate] cleaned title:', cleanedTitle);
 
+      const catalogMatch = matchCatalog(data.brand || "", data.model || "");
+      console.log('[ai-generate] catalog match:', catalogMatch);
+
       res.json({
         title: cleanedTitle || data.title || "",
         description: data.description || "",
@@ -1999,6 +2003,9 @@ Be accurate and practical. Always populate every field — never leave condition
         brand: data.brand || "",
         model: data.model || "",
         originalPrice: data.originalPrice || "",
+        catalogMatch: catalogMatch && !catalogMatch.brandOnly && catalogMatch.confidence >= 0.65
+          ? catalogMatch
+          : null,
       });
     } catch (error) {
       console.error("AI generate listing error:", error);

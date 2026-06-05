@@ -367,6 +367,20 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const [isFromImport, setIsFromImport] = useState(false);
   const [isFromSwap, setIsFromSwap] = useState(false);
 
+  // Catalog match confirmation state
+  const [catalogMatch, setCatalogMatch] = useState<{
+    brand: string;
+    model: string;
+    category: string;
+    msrp: number;
+    confidence: number;
+    displayName: string;
+  } | null>(null);
+  const [catalogMatchDismissed, setCatalogMatchDismissed] = useState(false);
+  const [catalogEditMode, setCatalogEditMode] = useState(false);
+  const [catalogEditBrand, setCatalogEditBrand] = useState("");
+  const [catalogEditModel, setCatalogEditModel] = useState("");
+
   // Photo editor state
   const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
   const [editOriginalSrc, setEditOriginalSrc] = useState<string>("");
@@ -892,9 +906,39 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     form.setValue("originalValue", "");
   };
 
+  const applyCatalogMatch = (
+    match: { brand: string; model: string; category: string; msrp: number },
+    edited = false,
+  ) => {
+    const effectiveBrand = edited ? catalogEditBrand : match.brand;
+    const effectiveModel = edited ? catalogEditModel : match.model;
+    if (effectiveBrand) form.setValue("brand", effectiveBrand);
+    if (effectiveBrand || effectiveModel) {
+      const currentName = form.getValues("name");
+      const parts = [effectiveBrand, effectiveModel].filter(Boolean).join(" ");
+      const baseTitle = currentName
+        .replace(/^[\w-]+ [\w-]+ /i, "")
+        .split(/\s+/)
+        .slice(0, 3)
+        .join(" ");
+      const newName = `${parts} ${baseTitle}`.trim().split(/\s+/).slice(0, 5).join(" ").toLowerCase();
+      form.setValue("name", newName);
+    }
+    if (match.msrp > 0) {
+      const mapped = mapOriginalPrice(String(match.msrp));
+      if (mapped) form.setValue("originalValue", mapped);
+    }
+    setCatalogMatchDismissed(true);
+    setCatalogMatch(null);
+    setCatalogEditMode(false);
+  };
+
   const handleAiAutofill = async () => {
     if (selectedPhotos.length === 0) return;
     setIsAiGenerating(true);
+    setCatalogMatch(null);
+    setCatalogMatchDismissed(false);
+    setCatalogEditMode(false);
     try {
       const dataUrls = await getPhotoDataUrls();
       const response = await apiRequest("POST", "/api/listings/ai-generate", {
@@ -903,9 +947,16 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       const aiData = await response.json();
       if (!response.ok) throw new Error(aiData.error || "Failed");
       applyAiData(aiData);
+      if (aiData.catalogMatch) {
+        setCatalogMatch(aiData.catalogMatch);
+        setCatalogEditBrand(aiData.catalogMatch.brand);
+        setCatalogEditModel(aiData.catalogMatch.model);
+      }
       toast({
         title: "Listing details generated",
-        description: "Review and edit before publishing.",
+        description: aiData.catalogMatch
+          ? "We found a product match — confirm below."
+          : "Review and edit before publishing.",
       });
     } catch (err) {
       console.error("ShareSmart Scan error:", err);
@@ -1670,6 +1721,117 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
             <div className="lg:col-start-2 lg:col-span-2">
               <Card>
                 <CardContent className="pt-6 space-y-6">
+                  {/* Catalog Match Confirmation Banner */}
+                  <AnimatePresence>
+                    {catalogMatch && !catalogMatchDismissed && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.25 }}
+                        className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Sparkles className="h-4 w-4 text-teal-600 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-teal-700 font-medium uppercase tracking-wide mb-0.5">Product match found</p>
+                              {catalogEditMode ? (
+                                <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                                  <Input
+                                    value={catalogEditBrand}
+                                    onChange={(e) => setCatalogEditBrand(e.target.value)}
+                                    placeholder="Brand"
+                                    className="h-8 text-sm w-full sm:w-36 bg-white"
+                                  />
+                                  <Input
+                                    value={catalogEditModel}
+                                    onChange={(e) => setCatalogEditModel(e.target.value)}
+                                    placeholder="Model"
+                                    className="h-8 text-sm w-full sm:w-44 bg-white"
+                                  />
+                                </div>
+                              ) : (
+                                <p className="text-sm font-semibold text-teal-900 truncate">
+                                  {catalogMatch.displayName}
+                                </p>
+                              )}
+                              {catalogMatch.msrp > 0 && (
+                                <p className="text-xs text-teal-700 mt-0.5">
+                                  Retail price: <span className="font-medium">${catalogMatch.msrp.toLocaleString()}</span>
+                                  {" · "}
+                                  <span className="opacity-75">{Math.round(catalogMatch.confidence * 100)}% match</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => { setCatalogMatchDismissed(true); setCatalogMatch(null); setCatalogEditMode(false); }}
+                            className="shrink-0 text-teal-500 hover:text-teal-700 transition-colors mt-0.5"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {catalogEditMode ? (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 px-4 bg-teal-600 hover:bg-teal-700 text-white text-xs"
+                                onClick={() => applyCatalogMatch(catalogMatch, true)}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Save
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-3 text-xs border-teal-300 text-teal-700"
+                                onClick={() => { setCatalogEditMode(false); setCatalogEditBrand(catalogMatch.brand); setCatalogEditModel(catalogMatch.model); }}
+                              >
+                                Cancel
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 px-4 bg-teal-600 hover:bg-teal-700 text-white text-xs"
+                                onClick={() => applyCatalogMatch(catalogMatch)}
+                              >
+                                <Check className="h-3 w-3 mr-1" />
+                                Accept
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-3 text-xs border-teal-300 text-teal-700 hover:bg-teal-100"
+                                onClick={() => { setCatalogEditMode(true); }}
+                              >
+                                <Pencil className="h-3 w-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-3 text-xs text-teal-600 hover:text-teal-800 hover:bg-teal-100"
+                                onClick={() => { setCatalogMatchDismissed(true); setCatalogMatch(null); }}
+                              >
+                                Not this product
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* Question 1: Item Name with Item Type inline */}
                   <div className="space-y-4">
                     <h3 className="font-medium">I'm Sharing my</h3>

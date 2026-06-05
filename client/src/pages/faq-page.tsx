@@ -1472,7 +1472,7 @@ export default function FAQPage() {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="privacy-earnings">
-                <AccordionTrigger className="text-sm">
+                <AccordionTrigger className="text-sm text-left">
                   How do I get my rental earnings paid out?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600 space-y-3">

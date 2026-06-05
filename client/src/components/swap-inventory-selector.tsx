@@ -108,7 +108,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                 <h2 className="text-sm font-bold leading-snug line-clamp-2">{targetItem.name}</h2>
                 <div className="flex items-center gap-1.5 mt-1.5 text-white/80 text-sm">
                   <Coins className="h-3.5 w-3.5" />
-                  <span>{targetSC} SC</span>
+                  <span>{targetSC} ShareCoins</span>
                 </div>
               </div>
             </div>

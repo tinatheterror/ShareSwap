@@ -912,7 +912,7 @@ export default function FAQPage() {
               </p>
               <AccordionItem value="tier-1">
                 <AccordionTrigger className="text-sm">
-                  Who assigns the ShareCoin value?
+                  Who assigns the item ShareCoin value?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <p className="mb-2">
@@ -932,7 +932,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="tier-2">
                 <AccordionTrigger className="text-sm">
-                  Can I change the ShareCoin value?
+                  Can I change the item ShareCoin value?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   No. That's <span className="font-semibold">locked</span> to

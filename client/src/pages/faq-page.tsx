@@ -405,19 +405,19 @@ export default function FAQPage() {
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-[#0DCEA1] font-bold text-lg">5 SC</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>5</span></div>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">Budget Friendly</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-[#0DCEA1] font-bold text-lg">10 SC</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>10</span></div>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">Everyday Item</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-[#0DCEA1] font-bold text-lg">20 SC</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>20</span></div>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">Premium Item</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                      <p className="text-[#0DCEA1] font-bold text-lg">40 SC</p>
+                      <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>40</span></div>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">High Value</p>
                     </div>
                   </div>

@@ -518,14 +518,6 @@ export default function FAQPage() {
               </div>
             </div>
 
-            <div>
-              <p className="font-medium text-gray-800 text-sm mb-2">Your item's value determines:</p>
-              <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                <li>How many ShareCoins it costs to borrow</li>
-                <li>Swap fairness — ShareCoins cover any difference in value between swapped items</li>
-                <li>Trust-deposit amount for borrowing</li>
-              </ul>
-            </div>
           </CardContent>
         </Card>
 

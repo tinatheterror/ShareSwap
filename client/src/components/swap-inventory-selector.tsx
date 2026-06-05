@@ -287,12 +287,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                 <div className="flex items-center justify-between mb-1.5 font-medium">
                   <span>Your offer: {yourSC} SC</span>
                   <ArrowLeftRight className="h-3 w-3 mx-1" />
-                  <span>
-                    Their offer: {theirSC} SC
-                    {selectedOwnerItemIds.length > 0 && (
-                      <span className="opacity-70 font-normal"> (+{ownerExtraSC} extras)</span>
-                    )}
-                  </span>
+                  <span>Their offer: {theirSC} SC</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {valuation.exceedsMax

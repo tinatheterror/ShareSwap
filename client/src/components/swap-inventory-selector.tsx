@@ -277,19 +277,27 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
 
             {/* Fairness summary */}
             {(selectedItemIds.length > 0 || selectedOwnerItemIds.length > 0) && (
-              <div className={`rounded-lg px-3 py-2.5 text-xs border ${
+              <div className={`rounded-lg px-3 py-3 text-xs border ${
                 valuation.exceedsMax
                   ? "bg-red-50 border-red-200 text-red-700"
                   : valuation.isFair
                   ? "bg-green-50 border-green-200 text-green-700"
                   : "bg-amber-50 border-amber-200 text-amber-700"
               }`}>
-                <div className="flex items-center justify-between mb-1.5 font-medium">
-                  <span>Your offer: {yourSC} SC</span>
-                  <ArrowLeftRight className="h-3 w-3 mx-1" />
-                  <span>Their offer: {theirSC} SC</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex-1 flex flex-col items-center">
+                    <span className="text-[10px] opacity-70 mb-0.5">Your offer</span>
+                    <span className="text-2xl font-bold leading-none">{yourSC}</span>
+                    <span className="text-[10px] mt-0.5">ShareCoin</span>
+                  </div>
+                  <ArrowLeftRight className="h-4 w-4 mx-2 opacity-60 shrink-0" />
+                  <div className="flex-1 flex flex-col items-center">
+                    <span className="text-[10px] opacity-70 mb-0.5">Their offer</span>
+                    <span className="text-2xl font-bold leading-none">{theirSC}</span>
+                    <span className="text-[10px] mt-0.5">ShareCoin</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 border-t border-current/10 pt-2">
                   {valuation.exceedsMax
                     ? <AlertTriangle className="h-3 w-3 shrink-0" />
                     : <Info className="h-3 w-3 shrink-0" />}
@@ -297,13 +305,13 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                     {valuation.isFair
                       ? "Fair swap — no ShareCoin adjustment"
                       : valuation.offsetDirection === "you_pay"
-                      ? `You pay ${valuation.offset} SC to balance`
+                      ? `You pay ${valuation.offset} ShareCoins to balance`
                       : valuation.offsetDirection === "you_receive"
-                      ? `You receive +${valuation.offset} SC`
+                      ? `You receive +${valuation.offset} ShareCoins`
                       : valuation.message}
                   </span>
                   {valuation.exceedsMax && (
-                    <span className="text-[10px] opacity-80">· Maximum allowed offset is {MAX_SWAP_OFFSET} SC</span>
+                    <span className="text-[10px] opacity-80">· Maximum allowed offset is {MAX_SWAP_OFFSET} ShareCoins</span>
                   )}
                 </div>
               </div>

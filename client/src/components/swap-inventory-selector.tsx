@@ -181,7 +181,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                 <div className="flex items-center justify-between mb-0.5">
                   <h3 className="text-sm font-medium text-gray-500">Their Swap Items</h3>
                 </div>
-                <p className="text-[11px] text-muted-foreground mb-2">Select additional items you'd like alongside the primary item.</p>
+                <p className="text-[11px] text-muted-foreground mb-2">Select additional items you'd like</p>
                 <div className="grid grid-cols-3 gap-2">
                   {/* Target item — always pre-selected, non-removable */}
                   <div className="rounded-lg border border-amber-400 bg-amber-50 overflow-hidden cursor-default">

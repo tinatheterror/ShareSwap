@@ -1853,6 +1853,11 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                           {/* ShareCoin value + AI badge */}
                           {valuationResult && !isLoadingValuation ? (
                             <div className="flex flex-col gap-0.5">
+                              {calculatedTier && TIER_SUBTITLES[calculatedTier] && (
+                                <span className="text-[10px] text-teal-600 font-medium leading-none">
+                                  {TIER_SUBTITLES[calculatedTier]}
+                                </span>
+                              )}
                               <div className="flex items-center gap-1.5">
                                 <Coins className="h-3.5 w-3.5 text-teal-600" />
                                 <span className="text-sm font-bold text-gray-900 leading-none">
@@ -1878,14 +1883,14 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                   </TooltipContent>
                                 </Tooltip>
                               </div>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-0.5">
                               {calculatedTier && TIER_SUBTITLES[calculatedTier] && (
                                 <span className="text-[10px] text-teal-600 font-medium leading-none">
                                   {TIER_SUBTITLES[calculatedTier]}
                                 </span>
                               )}
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-1.5">
                                 {isLoadingValuation && (
                                   <div className="h-3.5 w-3.5 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mr-1" />
@@ -1901,11 +1906,6 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                   )}
                                 </span>
                               </div>
-                              {calculatedTier && TIER_SUBTITLES[calculatedTier] && (
-                                <span className="text-[10px] text-teal-600 font-medium leading-none">
-                                  {TIER_SUBTITLES[calculatedTier]}
-                                </span>
-                              )}
                             </div>
                           )}
                         </div>

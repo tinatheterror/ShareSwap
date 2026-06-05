@@ -115,7 +115,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
           </div>
 
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 bg-white min-w-0 space-y-5">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden pt-2 px-5 pb-5 bg-white min-w-0 space-y-5">
 
             {/* YOUR ITEMS */}
             <div>

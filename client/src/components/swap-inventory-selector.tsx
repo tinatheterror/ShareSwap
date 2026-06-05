@@ -303,7 +303,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                     : <Info className="h-3 w-3 shrink-0" />}
                   <span className={valuation.exceedsMax ? "text-[10px] opacity-80" : ""}>
                     {valuation.isFair
-                      ? "Fair swap — no ShareCoin adjustment"
+                      ? "Fair swap"
                       : valuation.offsetDirection === "you_pay"
                       ? `You pay ${valuation.offset} ShareCoins to balance`
                       : valuation.offsetDirection === "you_receive"

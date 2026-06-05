@@ -1857,7 +1857,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                               <span className="text-sm font-bold text-gray-900 leading-none">
                                 {Math.round(Number(valuationResult.shareCoinsValue))}
                               </span>
-                              <span className="text-xs text-gray-500">SC/week</span>
+                              <span className="text-xs text-gray-500">ShareCoins/week</span>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div className="flex items-center gap-0.5 cursor-help ml-0.5">

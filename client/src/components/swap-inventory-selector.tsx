@@ -167,7 +167,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                           <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>
                           <div className="flex items-center gap-0.5 text-[9px] text-gray-500 mt-0.5">
                             <Coins className="h-2.5 w-2.5" />
-                            <span>{sc} SC</span>
+                            <span>{sc} ShareCoins</span>
                           </div>
                         </div>
                       </div>
@@ -216,7 +216,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                           <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>
                           <div className="flex items-center gap-0.5 text-[9px] text-gray-500 mt-0.5">
                             <Coins className="h-2.5 w-2.5" />
-                            <span>{sc} SC</span>
+                            <span>{sc} ShareCoins</span>
                           </div>
                         </div>
                       </div>

@@ -1081,7 +1081,7 @@ export default function FAQPage() {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="deposit-2b">
-                <AccordionTrigger className="text-sm">
+                <AccordionTrigger className="text-sm text-left">
                   Deposits don't increase for longer durations
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
@@ -1165,7 +1165,7 @@ export default function FAQPage() {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="deposit-6">
-                <AccordionTrigger className="text-sm">
+                <AccordionTrigger className="text-sm text-left">
                   What happens when the item is returned?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">

@@ -906,13 +906,13 @@ export default function FAQPage() {
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Tiers & Pricing Questions */}
+              {/* Value & Pricing Questions */}
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2">
-                Tiers & Pricing
+                Value & Pricing
               </p>
               <AccordionItem value="tier-1">
                 <AccordionTrigger className="text-sm">
-                  Who assigns the item Tiers?
+                  Who assigns the ShareCoin value?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   <p className="mb-2">
@@ -932,7 +932,7 @@ export default function FAQPage() {
               </AccordionItem>
               <AccordionItem value="tier-2">
                 <AccordionTrigger className="text-sm">
-                  Can I change Tier or value?
+                  Can I change the ShareCoin value?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-600">
                   No. That's <span className="font-semibold">locked</span> to
@@ -949,7 +949,7 @@ export default function FAQPage() {
                   <ul className="list-disc list-inside space-y-1 text-sm">
                     <li>Verify the item</li>
                     <li>Estimate value</li>
-                    <li>Place it in the right Tier</li>
+                    <li>Assign the right ShareCoin value</li>
                     <li>Calculate fair rates</li>
                   </ul>
                   <p className="mt-2 text-sm italic">

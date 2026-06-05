@@ -482,7 +482,7 @@ export default function FAQPage() {
               What are ShareCoins?
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <p className="text-gray-700 text-sm">
               ShareCoins are our{" "}
               <span className="font-bold">community currency</span>. They help
@@ -490,6 +490,41 @@ export default function FAQPage() {
               <span className="font-bold">reward lending</span>, but also
               encourage sharing and help build community reputation.
             </p>
+
+            <p className="text-gray-700 text-sm">
+              Every item gets a <span className="font-bold">ShareCoin value</span> based on its estimated worth and condition — set automatically from your photos and details.
+            </p>
+
+            <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
+              <p className="text-[#0DCEA1] font-medium text-sm mb-3">ShareCoin Values by Item Worth</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>5</span></div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">Budget Friendly</p>
+                </div>
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>10</span></div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">Everyday Item</p>
+                </div>
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>20</span></div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">Premium Item</p>
+                </div>
+                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
+                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>40</span></div>
+                  <p className="text-xs font-medium text-gray-700 mt-0.5">High Value</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-medium text-gray-800 text-sm mb-2">Your item's value determines:</p>
+              <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                <li>How many ShareCoins it costs to borrow</li>
+                <li>Swap fairness — ShareCoins cover any difference in value between swapped items</li>
+                <li>Trust-deposit amount for borrowing</li>
+              </ul>
+            </div>
           </CardContent>
         </Card>
 
@@ -699,56 +734,6 @@ export default function FAQPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* How are ShareCoin values assigned? */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Coins className="h-5 w-5 text-[#0DCEA1]" />
-              How are ShareCoin values assigned?
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-700 text-sm mb-4">
-              Every item gets a <span className="font-bold">ShareCoin (SC) value</span> based on its estimated worth and condition. The app uses your photos and details to set the right value automatically.
-            </p>
-
-            <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4">
-              <p className="text-[#0DCEA1] font-medium text-sm mb-3">
-                ShareCoin Values by Item Worth
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>5</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">Budget Friendly</p>
-                </div>
-                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>10</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">Everyday Item</p>
-                </div>
-                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>20</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">Premium Item</p>
-                </div>
-                <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
-                  <div className="flex items-center justify-center gap-1 text-[#0DCEA1] font-bold text-lg"><Coins className="h-4 w-4" /><span>40</span></div>
-                  <p className="text-xs font-medium text-gray-700 mt-0.5">High Value</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <p className="font-medium text-gray-800 text-sm mb-2">
-                Your item's SC value determines:
-              </p>
-              <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-                <li>How many ShareCoins it costs to borrow</li>
-                <li>Swap fairness — ShareCoins cover any difference in value between swapped items</li>
-                <li>Trust-deposit amount for borrowing</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Trust & Safety */}
         <Card className="mb-6">

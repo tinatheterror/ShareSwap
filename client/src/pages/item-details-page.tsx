@@ -29,6 +29,13 @@ import {
 import type { SelectItem } from "@db/schema";
 import { UserBadges } from "@/components/user-badges";
 import { getSwapTierLabel, getTierShareCoins } from "@/lib/swap-calculator";
+
+const TIER_SUBTITLES: Record<number, string> = {
+  1: "Budget Friendly",
+  2: "Everyday Item",
+  3: "Premium Item",
+  4: "High Value Item",
+};
 import {
   formatReplacementValue,
   hasValidReplacementValue,
@@ -334,7 +341,7 @@ export default function ItemDetailsPage() {
                         variant="outline"
                         className="border-teal-700 text-teal-700 cursor-help"
                       >
-                        {getTierShareCoins(itemTier)} ShareCoin Item
+                        {TIER_SUBTITLES[itemTier] || "Item"}: {getTierShareCoins(itemTier)} ShareCoins
                       </Badge>
                     </button>
                   </TooltipTrigger>

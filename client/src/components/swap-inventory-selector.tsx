@@ -149,7 +149,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                         }`}
                         onClick={() => toggleItem(item.id)}
                       >
-                        <div className="relative aspect-square bg-gray-100">
+                        <div className="relative aspect-[5/4] bg-gray-100">
                           {item.photos?.[0] ? (
                             <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
                           ) : (
@@ -198,7 +198,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                         }`}
                         onClick={() => toggleOwnerItem(item.id)}
                       >
-                        <div className="relative aspect-square bg-gray-100">
+                        <div className="relative aspect-[5/4] bg-gray-100">
                           {item.photos?.[0] ? (
                             <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
                           ) : (

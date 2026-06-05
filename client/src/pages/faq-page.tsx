@@ -143,7 +143,7 @@ export default function FAQPage() {
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700 mb-1">
-                  Turn Unused Items Into Value
+                  Turn Items Into Value
                 </p>
                 <p className="text-[11px] text-gray-500 leading-tight">
                   Your idle items can help others.

@@ -407,22 +407,18 @@ export default function FAQPage() {
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-[#0DCEA1] font-bold text-lg">5 SC</p>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">Budget Friendly</p>
-                      <p className="text-xs text-gray-400">Under $50</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-[#0DCEA1] font-bold text-lg">10 SC</p>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">Everyday Item</p>
-                      <p className="text-xs text-gray-400">$50–$199</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-[#0DCEA1] font-bold text-lg">20 SC</p>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">Premium Item</p>
-                      <p className="text-xs text-gray-400">$200–$499</p>
                     </div>
                     <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                       <p className="text-[#0DCEA1] font-bold text-lg">40 SC</p>
                       <p className="text-xs font-medium text-gray-700 mt-0.5">High Value</p>
-                      <p className="text-xs text-gray-400">$500–$2,000</p>
                     </div>
                   </div>
                 </div>
@@ -725,22 +721,18 @@ export default function FAQPage() {
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-[#0DCEA1] font-bold text-lg">5 SC</p>
                   <p className="text-xs font-medium text-gray-700 mt-0.5">Budget Friendly</p>
-                  <p className="text-xs text-gray-400">Under $50</p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-[#0DCEA1] font-bold text-lg">10 SC</p>
                   <p className="text-xs font-medium text-gray-700 mt-0.5">Everyday Item</p>
-                  <p className="text-xs text-gray-400">$50–$199</p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-[#0DCEA1] font-bold text-lg">20 SC</p>
                   <p className="text-xs font-medium text-gray-700 mt-0.5">Premium Item</p>
-                  <p className="text-xs text-gray-400">$200–$499</p>
                 </div>
                 <div className="bg-white rounded-lg p-2 sm:p-3 text-center border border-gray-100">
                   <p className="text-[#0DCEA1] font-bold text-lg">40 SC</p>
                   <p className="text-xs font-medium text-gray-700 mt-0.5">High Value</p>
-                  <p className="text-xs text-gray-400">$500–$2,000</p>
                 </div>
               </div>
             </div>

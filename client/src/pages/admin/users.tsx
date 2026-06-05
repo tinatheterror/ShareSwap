@@ -132,7 +132,7 @@ export default function AdminUsersPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">{u.email || "No email"}</p>
                     <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Star className="h-3 w-3" />{u.reputationScore ?? 0} rep</span>
-                      <span className="flex items-center gap-1"><Coins className="h-3 w-3" />{parseFloat(u.shareCoins || "0").toFixed(0)} SC</span>
+                      <span className="flex items-center gap-1"><Coins className="h-3 w-3" />{parseFloat(u.shareCoins || "0").toFixed(0)} ShareCoins</span>
                       <span>Joined {format(new Date(u.createdAt), "MMM d, yyyy")}</span>
                       {u.lastActiveAt && <span>Active {format(new Date(u.lastActiveAt), "MMM d, yyyy")}</span>}
                     </div>

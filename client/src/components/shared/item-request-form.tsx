@@ -319,7 +319,7 @@ export function ItemRequestForm({
                             <p className="text-[10px] text-[#0BB88C]">
                               T{(offerItem as any).tier || 2} ·{" "}
                               {getTierShareCoins((offerItem as any).tier || 2)}{" "}
-                              SC
+                              ShareCoins
                             </p>
                           </div>
                         </div>
@@ -352,7 +352,7 @@ export function ItemRequestForm({
                         </p>
                         <p className="text-[10px] text-[#0BB88C]">
                           T{(item as any).tier || 2} ·{" "}
-                          {getTierShareCoins((item as any).tier || 2)} SC
+                          {getTierShareCoins((item as any).tier || 2)} ShareCoins
                         </p>
                       </div>
                     </div>
@@ -672,11 +672,11 @@ export function ItemRequestForm({
                               {borrowDays === 1 ? "day" : "days"})
                             </span>
                             <span className="font-medium">
-                              {proratedCost} SC
+                              {proratedCost} ShareCoins
                             </span>
                           </div>
                           <p className="text-[10px] text-gray-400">
-                            {weeklyPrice} SC/week × {borrowDays}{" "}
+                            {weeklyPrice} ShareCoins/week × {borrowDays}{" "}
                             {borrowDays === 1 ? "day" : "days"} ÷ 7
                           </p>
                           {hasDeposit && (

@@ -1887,7 +1887,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                 {TIER_WEEKLY_BANDS[calculatedTier]?.display || "5"}
                               </span>
                               <span className="text-xs text-gray-500">
-                                SC/week
+                                ShareCoins/week
                                 {isLoadingValuation && (
                                   <span className="text-gray-400 ml-1">(calculating…)</span>
                                 )}
@@ -2248,7 +2248,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <div className="text-sm font-semibold text-gray-800 cursor-help flex items-center gap-1">
-                                            {getTierShareCoins(calculatedTier)} SC swap value
+                                            {getTierShareCoins(calculatedTier)} ShareCoins swap value
                                             <Info className="h-3 w-3 text-gray-400" />
                                           </div>
                                         </TooltipTrigger>

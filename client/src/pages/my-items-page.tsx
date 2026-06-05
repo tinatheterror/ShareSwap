@@ -501,7 +501,7 @@ export default function MyItemsPage() {
                               {TIER_SHARECOINS[(item as any).tier] || 5}
                             </span>
                             <span className="text-xs text-gray-500">
-                              SC/week
+                              ShareCoins/week
                             </span>
                             <Tooltip>
                               <TooltipTrigger asChild>

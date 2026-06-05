@@ -72,7 +72,7 @@ export function InsufficientShareCoinsModal({
             </p>
             <p className="text-sm text-muted-foreground">
               Your balance:{" "}
-              <span className="font-semibold text-gray-700">{currentBalance} SC</span>
+              <span className="font-semibold text-gray-700">{currentBalance} ShareCoins</span>
             </p>
           </div>
 

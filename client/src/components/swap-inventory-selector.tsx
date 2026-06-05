@@ -315,7 +315,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
               </div>
             )}
 
-            {/* SC scale hint */}
+            {/* ShareCoin scale hint */}
             {selectedItemIds.length === 0 && selectedOwnerItemIds.length === 0 && (
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <Info className="h-3 w-3 shrink-0" />

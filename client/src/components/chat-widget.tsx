@@ -1792,14 +1792,14 @@ export function ChatWidget() {
                                       {/* Coin offset on owner side if owner pays */}
                                       {!swapResult.isFair && swapResult.offsetDirection === "you_pay" && (
                                         <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 flex-shrink-0">
-                                          +{swapResult.offset} SC
+                                          +{swapResult.offset} ShareCoins
                                         </span>
                                       )}
                                       <ArrowLeftRight className="h-4 w-4 text-primary flex-shrink-0" />
                                       {/* Coin offset on requester side if requester pays */}
                                       {!swapResult.isFair && swapResult.offsetDirection === "you_receive" && (
                                         <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 flex-shrink-0">
-                                          +{swapResult.offset} SC
+                                          +{swapResult.offset} ShareCoins
                                         </span>
                                       )}
                                       {/* Requester side */}

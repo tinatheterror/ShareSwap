@@ -395,7 +395,7 @@ export default function FAQPage() {
                   How Swapping Works
                 </h3>
                 <p className="text-gray-700 text-sm mb-4">
-                  Trade items with neighbours — no cash, no deposits. Any item can swap with any other item. Bundle multiple items on your side to match value. Value differences are settled with ShareCoins (max 20 SC offset).
+                  Trade items with neighbours — no cash, no deposits. Any item can swap with any other item. Bundle multiple items on your side to match value. Value differences are settled with ShareCoins (max 20 ShareCoins offset).
                 </p>
 
                 <div className="bg-gradient-to-br from-[#E6FBF5] to-[#D0F5EB] rounded-xl p-4 mb-4">
@@ -444,14 +444,14 @@ export default function FAQPage() {
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-yellow-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Value difference up to 20 SC</p>
+                        <p className="text-sm font-medium text-gray-700">Value difference up to 20 ShareCoins</p>
                         <p className="text-xs text-gray-500">The side with lower total value tops up with ShareCoins to balance the swap.</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-400 mt-1 flex-shrink-0"></div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Offset over 20 SC not allowed</p>
+                        <p className="text-sm font-medium text-gray-700">Offset over 20 ShareCoins not allowed</p>
                         <p className="text-xs text-gray-500">If the gap is too large, add more items to your offer to bring it within range.</p>
                       </div>
                     </div>

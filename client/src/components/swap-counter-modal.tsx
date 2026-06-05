@@ -147,7 +147,7 @@ function ItemCard({
       <div className="p-1.5">
         <p className="text-[11px] font-semibold truncate leading-tight">{item.name}</p>
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          <span className="text-[10px] text-muted-foreground font-medium">{sc} SC</span>
+          <span className="text-[10px] text-muted-foreground font-medium">{sc} ShareCoins</span>
         </div>
       </div>
       <div className="absolute top-1.5 right-1.5">
@@ -341,12 +341,12 @@ export function SwapCounterModal({
   const statusMsg = !bothSidesSelected
     ? "Select items on both sides"
     : valuation.exceedsMax
-    ? `Offset ${valuation.offset} SC — max ${MAX_SWAP_OFFSET} SC`
+    ? `Offset ${valuation.offset} ShareCoins — max ${MAX_SWAP_OFFSET} ShareCoins`
     : valuation.isFair
     ? "Fair swap"
     : valuation.offsetDirection === "you_pay"
-    ? `You pay ${valuation.offset} SC`
-    : `You receive +${valuation.offset} SC`;
+    ? `You pay ${valuation.offset} ShareCoins`
+    : `You receive +${valuation.offset} ShareCoins`;
 
   // For visual comparison strip: use allKnownItems which is already seeded synchronously
   const ownerSelectedItem = allKnownItems.find(i => ownerItemIds.includes(i.id)) ?? null;
@@ -411,20 +411,20 @@ export function SwapCounterModal({
                   </div>
                   <SelectedItemPreview item={requesterSelectedItem} label={myRequesterLabel} />
                 </div>
-                {/* SC totals summary */}
+                {/* ShareCoin totals summary */}
                 {bothSidesSelected && (
                   <div className={`flex items-center justify-between text-[10px] font-medium px-1 pt-2 border-t ${
                     valuation.exceedsMax ? "text-red-500" : "text-muted-foreground"
                   }`}>
-                    <span>{ownerSC} SC total</span>
+                    <span>{ownerSC} ShareCoins</span>
                     {valuation.isFair ? (
                       <span className="text-green-600">Fair swap</span>
                     ) : (
                       <span className={valuation.exceedsMax ? "text-red-600" : "text-yellow-600"}>
-                        {valuation.offset} SC offset
+                        {valuation.offset} ShareCoins offset
                       </span>
                     )}
-                    <span>{requesterSC} SC total</span>
+                    <span>{requesterSC} ShareCoins</span>
                   </div>
                 )}
               </div>
@@ -461,7 +461,7 @@ export function SwapCounterModal({
               {(ownerPanelItems.length > 0 || requesterPanelItems.length > 0) && (
                 <div className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
                   <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span className="break-words">Any item combination is allowed — ShareCoins cover the difference in value. T1=5SC · T2=10SC · T3=20SC · T4=40SC · Max offset: {MAX_SWAP_OFFSET} SC</span>
+                  <span className="break-words">Any item combination is allowed — ShareCoins cover the difference in value. T1=5 · T2=10 · T3=20 · T4=40 ShareCoins · Max offset: {MAX_SWAP_OFFSET} ShareCoins</span>
                 </div>
               )}
 

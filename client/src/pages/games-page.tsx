@@ -198,7 +198,7 @@ export default function GamesPage() {
                           </div>
                           <Badge variant="secondary" className="bg-teal-100 text-teal-800">
                             <Coins className="h-3 w-3 mr-1" />
-                            {game.rewardAmount} SC
+                            {game.rewardAmount} ShareCoins
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">
@@ -264,7 +264,7 @@ export default function GamesPage() {
                       <span>{new Date(session.startedAt).toLocaleDateString()}</span>
                       {session.rewardAmount && (
                         <span className="text-teal-600 font-medium">
-                          +{session.rewardAmount} SC
+                          +{session.rewardAmount} ShareCoins
                         </span>
                       )}
                     </div>

@@ -704,7 +704,7 @@ export default function FAQPage() {
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Package className="h-5 w-5 text-[#0DCEA1]" />
+              <Coins className="h-5 w-5 text-[#0DCEA1]" />
               How are ShareCoin values assigned?
             </CardTitle>
           </CardHeader>

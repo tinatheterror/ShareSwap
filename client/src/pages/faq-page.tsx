@@ -491,6 +491,7 @@ export default function FAQPage() {
               encourage sharing and help build community reputation.
             </p>
 
+            <p className="text-sm font-semibold text-gray-800">How values are assigned</p>
             <p className="text-gray-700 text-sm">
               Every item gets a <span className="font-bold">ShareCoin value</span> based on its estimated worth and condition — set automatically from your photos and details.
             </p>

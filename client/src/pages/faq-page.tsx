@@ -745,7 +745,6 @@ export default function FAQPage() {
                 <li>How many ShareCoins it costs to borrow</li>
                 <li>Swap fairness — ShareCoins cover any difference in value between swapped items</li>
                 <li>Trust-deposit amount for borrowing</li>
-                <li>Suggested starting point for rental security deposits (owners can adjust)</li>
               </ul>
             </div>
           </CardContent>

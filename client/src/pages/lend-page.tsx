@@ -836,11 +836,16 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
     originalPrice: string;
   }) => {
     if (data.title) {
-      // Prepend brand to name if detected so user sees e.g. "uppababy vista stroller"
-      const nameWithBrand = data.brand
-        ? `${data.brand} ${data.title}`.split(/\s+/).slice(0, 5).join(" ").toLowerCase()
-        : data.title;
-      form.setValue("name", nameWithBrand);
+      // Prepend brand to name only if the title doesn't already start with it
+      let nameWithBrand = data.title;
+      if (data.brand) {
+        const titleLower = data.title.toLowerCase();
+        const brandLower = data.brand.toLowerCase();
+        if (!titleLower.startsWith(brandLower)) {
+          nameWithBrand = `${data.brand} ${data.title}`;
+        }
+      }
+      form.setValue("name", nameWithBrand.split(/\s+/).slice(0, 5).join(" ").toLowerCase());
     }
     if (data.brand) form.setValue("brand", data.brand);
     if (data.description) {

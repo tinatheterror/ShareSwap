@@ -178,7 +178,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
             {/* OWNER'S OTHER ITEMS */}
             {ownerExtraItems.length > 0 && (
               <div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-0.5">
                   <h3 className="text-sm font-medium text-gray-500">Their Swap Items</h3>
                 </div>
                 <p className="text-[11px] text-muted-foreground mb-2">Select additional items you'd like alongside the primary item.</p>

@@ -923,7 +923,7 @@ export default function FAQPage() {
                     <li>Brand</li>
                     <li>Category</li>
                     <li>Condition</li>
-                    <li>Original price you enter when listing</li>
+                    <li>Original price</li>
                   </ul>
                   <p className="mt-2 text-sm italic">
                     You don't have to calculate anything.

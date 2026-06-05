@@ -1056,7 +1056,7 @@ export default function BorrowPage() {
                       {/* Dot indicators */}
                       {categoryItems.length > 1 && (
                         <div className="flex justify-center gap-1.5 mt-3">
-                          {categoryItems.slice(0, 8).map((_, index) => (
+                          {categoryItems.map((_, index) => (
                             <button
                               key={index}
                               onClick={() =>
@@ -1072,11 +1072,6 @@ export default function BorrowPage() {
                               }`}
                             />
                           ))}
-                          {categoryItems.length > 8 && (
-                            <span className="text-xs text-gray-400 ml-1">
-                              +{categoryItems.length - 8}
-                            </span>
-                          )}
                         </div>
                       )}
                     </div>

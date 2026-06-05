@@ -334,7 +334,7 @@ export default function ItemDetailsPage() {
                         variant="outline"
                         className="border-teal-700 text-teal-700 cursor-help"
                       >
-                        {getTierShareCoins(itemTier)} SC
+                        {getTierShareCoins(itemTier)} ShareCoin Item
                       </Badge>
                     </button>
                   </TooltipTrigger>

@@ -2266,14 +2266,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                             <Info className="h-3 w-3 text-gray-400" />
                                           </div>
                                         </TooltipTrigger>
-                                        <TooltipContent
-                                          side="top"
-                                          className="p-0 border-0 bg-transparent shadow-none"
-                                        >
-                                          <div className="bg-[#E6FBF5] border border-[#0DCEA1]/30 rounded-md p-2 text-xs text-[#0BB88C] max-w-[260px] whitespace-normal break-words">
-                                            <Info className="h-3 w-3 inline mr-1 shrink-0" />
-                                            Any item combination is allowed — ShareCoins cover the difference in value.
-                                          </div>
+                                        <TooltipContent side="top" className="max-w-xs">
+                                          <p className="text-xs">Any item combination is allowed — ShareCoins cover the difference in value.</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>

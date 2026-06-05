@@ -282,7 +282,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                   ? "bg-red-50 border-red-200 text-red-700"
                   : valuation.isFair
                   ? "bg-green-50 border-green-200 text-green-700"
-                  : "bg-yellow-100 border-yellow-400 text-gray-800"
+                  : "bg-yellow-50 border-yellow-300 text-yellow-800"
               }`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex-1 flex flex-col items-center">

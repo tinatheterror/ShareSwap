@@ -184,7 +184,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                 <p className="text-[11px] text-muted-foreground mb-2">Select additional items you'd like alongside the primary item.</p>
                 <div className="grid grid-cols-3 gap-2">
                   {/* Target item — always pre-selected, non-removable */}
-                  <div className="rounded-lg border border-[#0DCEA1] bg-[#E6FBF5] overflow-hidden cursor-default">
+                  <div className="rounded-lg border border-amber-400 bg-amber-50 overflow-hidden cursor-default">
                     <div className="relative aspect-[5/4] bg-gray-100">
                       {targetItem.photos?.[0] ? (
                         <img src={targetItem.photos[0]} alt={targetItem.name} className="w-full h-full object-cover" />
@@ -193,8 +193,8 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                           <Camera className="h-4 w-4 text-gray-400" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-[#0DCEA1]/30 flex items-center justify-center">
-                        <Check className="h-5 w-5 text-white drop-shadow" />
+                      <div className="absolute inset-0 bg-amber-400/30 flex items-center justify-center">
+                        <Check className="h-5 w-5 text-amber-700 drop-shadow" />
                       </div>
                     </div>
                     <div className="p-1.5">

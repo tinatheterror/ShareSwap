@@ -341,7 +341,11 @@ export default function ItemDetailsPage() {
                         variant="outline"
                         className="border-teal-700 text-teal-700 cursor-help"
                       >
-                        {TIER_SUBTITLES[itemTier] || "Item"}: {getTierShareCoins(itemTier)} ShareCoins
+                        <span className="flex items-center gap-1">
+                          {TIER_SUBTITLES[itemTier] || "Item"}:
+                          <Coins className="h-3 w-3" />
+                          {getTierShareCoins(itemTier)}
+                        </span>
                       </Badge>
                     </button>
                   </TooltipTrigger>

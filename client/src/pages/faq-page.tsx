@@ -265,8 +265,7 @@ export default function FAQPage() {
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Use <span className="font-bold">ShareCoins</span> to borrow
-                  from neighbours. Each item's ShareCoin price is based on its
-                  value and how long you borrow it.
+                  from neighbours. The cost to borrow depends on each item's ShareCoin value and the duration you borrow for.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

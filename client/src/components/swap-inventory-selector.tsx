@@ -119,7 +119,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
 
             {/* YOUR ITEMS */}
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Select your items to offer</h3>
+              <h3 className="text-sm font-medium text-gray-500 mb-3">Your Swap Items</h3>
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0DCEA1]" />
@@ -179,7 +179,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
             {ownerExtraItems.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-500">+{ownerExtraItems.length} more swap items from this owner</h3>
+                  <h3 className="text-sm font-medium text-gray-500">Their Swap Items</h3>
                 </div>
                 <p className="text-[11px] text-muted-foreground mb-2">Select additional items you'd like alongside the primary item.</p>
                 <div className="grid grid-cols-3 gap-2">

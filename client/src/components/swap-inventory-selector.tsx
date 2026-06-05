@@ -110,9 +110,6 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                   <Coins className="h-3.5 w-3.5" />
                   <span>{targetSC} SC</span>
                 </div>
-                {ownerExtraItems.length > 0 && (
-                  <p className="text-white/65 text-[11px] mt-0.5">+{ownerExtraItems.length} more swap items from this owner</p>
-                )}
               </div>
             </div>
           </div>

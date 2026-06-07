@@ -585,7 +585,7 @@ export default function ItemDetailsPage() {
                       </div>
                     </div>
                     {user ? (
-                      <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex flex-col gap-3">
                         <div className="flex-1 flex flex-col gap-0.5">
                           <Button
                             onClick={() => notifyMutation.mutate()}

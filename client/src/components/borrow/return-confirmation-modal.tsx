@@ -210,7 +210,7 @@ export function ReturnConfirmationModal({
               <p className="text-sm text-gray-600">
                 {isRental
                   ? "You're returning this item before your rental period ends. No refund will be issued for unused days."
-                  : "You're returning this item before your borrow period ends. No penalty applies."}
+                  : "You're returning this item before your borrow period ends. No penalty applies. No refund in ShareCoins."}
               </p>
             )}
 

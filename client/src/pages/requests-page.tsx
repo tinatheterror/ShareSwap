@@ -1654,7 +1654,7 @@ export default function RequestsPage() {
               Propose New Terms
             </DialogTitle>
             <DialogDescription>
-              Suggest changes to deposit handling, or dates. The other party can accept, decline, or counter again.
+              Suggest changes to dates or deposit handling. The other party can accept, decline, or counter again.
             </DialogDescription>
           </DialogHeader>
 

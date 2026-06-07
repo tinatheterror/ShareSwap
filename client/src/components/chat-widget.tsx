@@ -2227,7 +2227,7 @@ export function ChatWidget() {
                             className="w-full h-9 border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-medium gap-2"
                             onClick={() => { setSelectedRequest(pr); setShowCourierHandoffModal(true); }}
                           >
-                            <SiUber className="h-3.5 w-3.5 shrink-0" />
+                            <Truck className="h-3.5 w-3.5 shrink-0" />
                             Can't meet up? Book a delivery
                           </Button>
                         )}

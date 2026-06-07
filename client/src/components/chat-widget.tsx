@@ -2059,6 +2059,17 @@ export function ChatWidget() {
                         {!isInPersonDeposit && !pinExpired && !pinUsed && (
                           <p className="text-xs text-center text-muted-foreground">Ask the owner for the 4-digit handoff code when you meet</p>
                         )}
+                        {(pr.requestType === "BORROW" || pr.requestType === "RENT") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full h-9 border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-medium gap-2"
+                            onClick={() => { setSelectedRequest(pr); setShowCourierHandoffModal(true); }}
+                          >
+                            <Truck className="h-3.5 w-3.5 shrink-0" />
+                            Can't meet up? Book a delivery
+                          </Button>
+                        )}
                       </div>
                     );
                   }
@@ -2218,18 +2229,6 @@ export function ChatWidget() {
                         </button>
                         {isOwnerInPersonDeposit && (
                           <p className="text-xs text-center text-amber-700 font-medium">💵 Remember to collect the security deposit in person before sharing your code</p>
-                        )}
-                        {/* Optional delivery button for owner — BORROW and RENT only */}
-                        {(pr.requestType === "BORROW" || pr.requestType === "RENT") && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full h-9 border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-medium gap-2"
-                            onClick={() => { setSelectedRequest(pr); setShowCourierHandoffModal(true); }}
-                          >
-                            <Truck className="h-3.5 w-3.5 shrink-0" />
-                            Can't meet up? Book a delivery
-                          </Button>
                         )}
                       </div>
                     );

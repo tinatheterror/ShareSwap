@@ -1822,6 +1822,10 @@ export function ChatWidget() {
                               const newStart = mStart ? format(parseLocalDate(mStart), "MMM d") : null;
                               const newEnd = mEnd ? format(parseLocalDate(mEnd), "MMM d") : null;
                               const dateChanged = newStart !== origStart || newEnd !== origEnd;
+                              const origDeposit = msg.metadata.origDepositMethod as string | undefined;
+                              const newDeposit = msg.metadata.depositMethod as string | undefined;
+                              const depositChanged = origDeposit !== newDeposit;
+                              const depositLabel = (m?: string) => m === "in_app" ? "Handle In-app" : m === "in_person" ? "Exchange In Person" : null;
 
                               return (
                                 <div className="w-full pl-[70px]">
@@ -1835,6 +1839,12 @@ export function ChatWidget() {
                                           {origStart} – {origEnd}
                                         </span>
                                       )}
+                                      {depositLabel(origDeposit) && (
+                                        <span className="flex items-center gap-1">
+                                          <Shield className="h-3 w-3 shrink-0" />
+                                          {depositLabel(origDeposit)}
+                                        </span>
+                                      )}
                                     </div>
                                     {/* Arrow */}
                                     <div className="flex items-center text-gray-400 font-bold text-base px-1">→</div>
@@ -1845,6 +1855,12 @@ export function ChatWidget() {
                                         <span className={`flex items-center gap-1 ${dateChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
                                           <Clock className="h-3 w-3 shrink-0" />
                                           {newStart} – {newEnd}
+                                        </span>
+                                      )}
+                                      {depositLabel(newDeposit) && (
+                                        <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
+                                          <Shield className="h-3 w-3 shrink-0" />
+                                          {depositLabel(newDeposit)}
                                         </span>
                                       )}
                                     </div>

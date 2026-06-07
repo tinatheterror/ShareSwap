@@ -12,7 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle2, Circle, ArrowLeftRight, AlertTriangle, Info, Package } from "lucide-react";
+import {
+  ArrowLeftRight,
+  AlertTriangle,
+  Info,
+  Package,
+  Camera,
+  Check,
+  Coins,
+} from "lucide-react";
 import { getTierShareCoins, calculateMultiSwap, MAX_SWAP_OFFSET } from "@/lib/swap-calculator";
 
 interface SwapItem {
@@ -72,92 +80,60 @@ function getTotalSC(itemIds: number[], allItems: SwapItem[]): number {
   }, 0);
 }
 
-
-function SelectedItemPreview({ item, label }: { item: SwapItem | null; label: string }) {
-  const photo = item?.photos?.[0];
-  return (
-    <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{label}</span>
-      {item ? (
-        <>
-          <div className="w-14 h-14 rounded-lg overflow-hidden border-2 border-primary shadow-sm">
-            {photo ? (
-              <img src={photo} alt={item.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-muted">
-                <Package className="h-5 w-5 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-          <p className="text-xs font-semibold text-center leading-tight line-clamp-2 w-full px-1">{item.name}</p>
-        </>
-      ) : (
-        <>
-          <div className="w-14 h-14 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center bg-muted/30">
-            <Package className="h-5 w-5 text-muted-foreground/30" />
-          </div>
-          <p className="text-[10px] text-muted-foreground italic">None selected</p>
-        </>
-      )}
-    </div>
-  );
-}
-
 function ItemCard({
   item,
   selected,
   onToggle,
-  disabled,
   variant = "mine",
 }: {
   item: SwapItem;
   selected: boolean;
   onToggle: (id: number) => void;
-  disabled: boolean;
   variant?: "mine" | "theirs";
 }) {
-  const photo = item.photos?.[0];
   const sc = getTierShareCoins(item.tier ?? 1);
-  const selectedCls = variant === "mine"
-    ? "border-amber-400 bg-amber-50 shadow-md"
-    : "border-teal-400 bg-teal-50 shadow-md";
-  const checkCls = variant === "mine" ? "text-amber-500" : "text-teal-500";
+  const photo = item.photos?.[0];
+
+  const selectedCls =
+    variant === "mine"
+      ? "border-[#0DCEA1] bg-[#E6FBF5]"
+      : "border-amber-400 bg-amber-50";
+  const overlayCls =
+    variant === "mine" ? "bg-[#0DCEA1]/30" : "bg-amber-400/30";
+  const checkCls =
+    variant === "mine" ? "text-white" : "text-amber-700";
 
   return (
-    <button
-      onClick={() => !disabled && onToggle(item.id)}
-      disabled={disabled && !selected}
-      className={`relative rounded-xl border-2 text-left transition-all w-full overflow-hidden
-        ${selected
+    <div
+      className={`rounded-lg transition-all border cursor-pointer overflow-hidden ${
+        selected
           ? selectedCls
-          : disabled
-          ? "border-muted opacity-40 cursor-not-allowed"
-          : "border-border hover:border-primary/50 hover:shadow-sm cursor-pointer"
-        }`}
+          : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
+      }`}
+      onClick={() => onToggle(item.id)}
     >
-      <div className="aspect-[4/3] overflow-hidden bg-muted">
+      <div className="relative aspect-[5/4] bg-gray-100">
         {photo ? (
           <img src={photo} alt={item.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-            No photo
+          <div className="w-full h-full flex items-center justify-center">
+            <Camera className="h-4 w-4 text-gray-400" />
+          </div>
+        )}
+        {selected && (
+          <div className={`absolute inset-0 flex items-center justify-center ${overlayCls}`}>
+            <Check className={`h-5 w-5 drop-shadow ${checkCls}`} />
           </div>
         )}
       </div>
       <div className="p-1.5">
-        <p className="text-[11px] font-semibold truncate leading-tight">{item.name}</p>
-        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          <span className="text-[10px] text-muted-foreground font-medium">{sc} ShareCoins</span>
+        <p className="font-medium text-gray-900 text-[10px] leading-tight line-clamp-2">{item.name}</p>
+        <div className="flex items-center gap-0.5 text-[9px] text-gray-500 mt-0.5">
+          <Coins className="h-2.5 w-2.5" />
+          <span>{sc} ShareCoins</span>
         </div>
       </div>
-      <div className="absolute top-1.5 right-1.5">
-        {selected ? (
-          <CheckCircle2 className={`h-4 w-4 drop-shadow ${checkCls}`} />
-        ) : (
-          <Circle className="h-4 w-4 text-white/80 drop-shadow" />
-        )}
-      </div>
-    </button>
+    </div>
   );
 }
 
@@ -174,33 +150,34 @@ function ItemGrid({
   isLoading: boolean;
   variant?: "mine" | "theirs";
 }) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-3 gap-2">
+        {[1, 2, 3].map((n) => (
+          <div key={n} className="rounded-lg border bg-muted/40 aspect-[5/4] animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-sm text-muted-foreground">
+        <Package className="h-6 w-6 text-muted-foreground/30" />
+        <span className="italic text-xs">No swappable items available</span>
+      </div>
+    );
+  }
   return (
-    <div className="min-h-[100px]">
-      {isLoading ? (
-        <div className="grid grid-cols-3 gap-2 px-1">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="rounded-xl border bg-muted/40 aspect-[4/3] animate-pulse" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-20 gap-1.5 text-sm text-muted-foreground">
-          <Package className="h-6 w-6 text-muted-foreground/30" />
-          <span className="italic text-xs">No swappable items available</span>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-2 px-1">
-          {items.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              selected={selected.includes(item.id)}
-              onToggle={onToggle}
-              disabled={false}
-              variant={variant}
-            />
-          ))}
-        </div>
-      )}
+    <div className="grid grid-cols-3 gap-2">
+      {items.map((item) => (
+        <ItemCard
+          key={item.id}
+          item={item}
+          selected={selected.includes(item.id)}
+          onToggle={onToggle}
+          variant={variant}
+        />
+      ))}
     </div>
   );
 }
@@ -217,12 +194,9 @@ export function SwapCounterModal({
   const partnerUserId = isOwner ? request.requester.id : request.item.ownerId;
   const isResponse = !isOwner;
 
-  // Derive human-readable names for each side
   const requesterName = request.requester.displayName || request.requester.username || "Them";
   const ownerName = request.owner?.displayName || request.owner?.username || "Owner";
   const partnerName = isOwner ? requesterName : ownerName;
-  const myLabel = "You";
-  const theirLabel = partnerName;
 
   const currentRound = request.counterRound ?? 0;
   const maxRoundsReached = currentRound >= 2;
@@ -288,7 +262,6 @@ export function SwapCounterModal({
     return myItems;
   }, [isOwner, myItems, partnerItems]);
 
-  // Seed a lookup map with items we already know about synchronously
   const knownItemsMap = useMemo(() => {
     const map = new Map<number, SwapItem>();
     map.set(request.item.id, { id: request.item.id, name: request.item.name, photos: request.item.photos, tier: request.item.tier, shareCoinPrice: request.item.shareCoinPrice, originalValue: request.item.originalValue, ownerId: request.item.ownerId });
@@ -300,7 +273,6 @@ export function SwapCounterModal({
     return map;
   }, [request]);
 
-  // Combined item pool: panel items (already seeded with known items) + knownItemsMap fallback
   const allKnownItems = useMemo(() => {
     const seen = new Set<number>();
     const result: SwapItem[] = [];
@@ -310,11 +282,14 @@ export function SwapCounterModal({
     return result;
   }, [ownerPanelItems, requesterPanelItems, knownItemsMap]);
 
-  const allItems = useMemo(() => [...myItems, ...partnerItems], [myItems, partnerItems]);
-
   const ownerSC = getTotalSC(ownerItemIds, allKnownItems);
   const requesterSC = getTotalSC(requesterItemIds, allKnownItems);
-  const valuation = calculateMultiSwap(ownerSC, requesterSC);
+
+  // Always compute valuation from the current user's perspective
+  const mySC = isOwner ? ownerSC : requesterSC;
+  const theirSC = isOwner ? requesterSC : ownerSC;
+  const valuation = calculateMultiSwap(mySC, theirSC);
+
   const bothSidesSelected = ownerItemIds.length > 0 && requesterItemIds.length > 0 && (ownerSC > 0 || requesterSC > 0);
   const isCompatible = bothSidesSelected && !valuation.exceedsMax;
 
@@ -330,62 +305,42 @@ export function SwapCounterModal({
     onSubmit({ swapOwnerItemIds: ownerItemIds, swapRequesterItemIds: requesterItemIds, counterNote: note.trim(), isResponse });
   };
 
-  const statusColor = !bothSidesSelected
-    ? "text-muted-foreground"
-    : valuation.exceedsMax
-    ? "text-red-600"
-    : valuation.isFair
-    ? "text-green-600"
-    : "text-yellow-600";
+  // From user's perspective: my items / their items
+  const myPanelItems = isOwner ? ownerPanelItems : requesterPanelItems;
+  const theirPanelItems = isOwner ? requesterPanelItems : ownerPanelItems;
+  const mySelectedIds = isOwner ? ownerItemIds : requesterItemIds;
+  const theirSelectedIds = isOwner ? requesterItemIds : ownerItemIds;
+  const myToggle = isOwner ? toggleOwnerItem : toggleRequesterItem;
+  const theirToggle = isOwner ? toggleRequesterItem : toggleOwnerItem;
 
-  const statusMsg = !bothSidesSelected
-    ? "Select items on both sides"
-    : valuation.exceedsMax
-    ? `Offset ${valuation.offset} ShareCoins — max ${MAX_SWAP_OFFSET} ShareCoins`
-    : valuation.isFair
-    ? "Fair swap"
-    : valuation.offsetDirection === "you_pay"
-    ? `You pay ${valuation.offset} ShareCoins`
-    : `You receive +${valuation.offset} ShareCoins`;
-
-  // For visual comparison strip: use allKnownItems which is already seeded synchronously
-  const ownerSelectedItem = allKnownItems.find(i => ownerItemIds.includes(i.id)) ?? null;
-  const requesterSelectedItem = allKnownItems.find(i => requesterItemIds.includes(i.id)) ?? null;
-
-  // For "Countering offer" header: use enriched swapOfferedItems for name (no async wait)
-  const originalOwnerItem = request.item;
+  // Context header: countering X ⇌ Y
+  const originalOwnerItemName = request.item.name;
   const originalRequesterItemName =
     request.swapOfferedItems?.[0]?.name ??
     allKnownItems.find(i => i.id === request.swapOfferedItemIds?.[0])?.name ??
     null;
 
-  // Labels from each side's perspective using real names
-  const myOwnerLabel = isOwner ? "Your item" : `${theirLabel}'s item`;
-  const myRequesterLabel = isOwner ? `${theirLabel}'s item` : "Your item";
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl w-full max-h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <ArrowLeftRight className="h-4 w-4 text-primary" />
-            Counter Swap Offer
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:max-w-[500px] p-0 overflow-hidden flex flex-col max-h-[92dvh]">
+
+        {/* Gradient hero header */}
+        <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] px-4 pt-4 pb-3 pr-12 text-white shrink-0">
+          <div className="flex items-center gap-2 mb-1">
+            <ArrowLeftRight className="h-4 w-4 text-white/80" />
+            <h2 className="text-sm font-bold">Counter Swap Offer</h2>
             {currentRound > 0 && (
-              <Badge variant="outline" className="text-[10px] ml-1">
+              <Badge className="text-[10px] bg-white/20 text-white border-white/30 ml-auto">
                 Round {currentRound + 1} / 3
               </Badge>
             )}
-          </DialogTitle>
-          {/* Current swap context */}
-          <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground/70">Countering offer:</span>
-            <span className="font-medium text-foreground truncate max-w-[120px]">{originalOwnerItem.name}</span>
-            <ArrowLeftRight className="h-3 w-3 shrink-0" />
-            <span className="font-medium text-foreground truncate max-w-[120px]">
-              {originalRequesterItemName ?? `${theirLabel}'s item`}
-            </span>
           </div>
-        </DialogHeader>
+          <div className="flex items-center gap-1.5 text-white/70 text-[11px]">
+            <span className="truncate max-w-[130px]">{originalOwnerItemName}</span>
+            <ArrowLeftRight className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate max-w-[130px]">{originalRequesterItemName ?? `${partnerName}'s item`}</span>
+          </div>
+        </div>
 
         {maxRoundsReached ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
@@ -397,92 +352,115 @@ export function SwapCounterModal({
           </div>
         ) : (
           <ScrollArea className="flex-1 overflow-y-auto">
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-5">
 
-              {/* Visual comparison strip */}
-              <div className="rounded-xl border bg-muted/20 px-4 py-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <SelectedItemPreview item={ownerSelectedItem} label={myOwnerLabel} />
-                  <div className="flex flex-col items-center gap-1 flex-shrink-0 px-1">
-                    <ArrowLeftRight className={`h-5 w-5 ${statusColor}`} />
-                    <span className={`text-[10px] font-medium text-center max-w-[90px] leading-tight ${statusColor}`}>
-                      {statusMsg}
+              {/* My items */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-3">Your Swap Items</h3>
+                <ItemGrid
+                  items={myPanelItems}
+                  selected={mySelectedIds}
+                  onToggle={myToggle}
+                  isLoading={myLoading}
+                  variant="mine"
+                />
+              </div>
+
+              {/* Their items */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">{partnerName}'s Swap Items</h3>
+                <p className="text-[11px] text-muted-foreground mb-2">Pre-selected from their current offer</p>
+                <ItemGrid
+                  items={theirPanelItems}
+                  selected={theirSelectedIds}
+                  onToggle={theirToggle}
+                  isLoading={isOwner ? partnerLoading : myLoading}
+                  variant="theirs"
+                />
+              </div>
+
+              {/* Fairness summary — matches SwapInventorySelector style */}
+              {bothSidesSelected && (
+                <div className={`rounded-lg px-3 py-3 text-xs border ${
+                  valuation.exceedsMax
+                    ? "bg-red-50 border-red-200 text-red-700"
+                    : valuation.isFair
+                    ? "bg-green-50 border-green-200 text-green-700"
+                    : "bg-yellow-50 border-yellow-300 text-yellow-800"
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex-1 flex flex-col items-center">
+                      <span className="text-[10px] opacity-70 mb-0.5">Your offer</span>
+                      <span className="text-2xl font-bold leading-none">{mySC}</span>
+                      <span className="text-[10px] mt-0.5">ShareCoins</span>
+                    </div>
+                    <ArrowLeftRight className="h-4 w-4 mx-2 opacity-60 shrink-0" />
+                    <div className="flex-1 flex flex-col items-center">
+                      <span className="text-[10px] opacity-70 mb-0.5">Their offer</span>
+                      <span className="text-2xl font-bold leading-none">{theirSC}</span>
+                      <span className="text-[10px] mt-0.5">ShareCoins</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-1 border-t border-current/10 pt-2 w-full">
+                    {valuation.exceedsMax
+                      ? <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                      : <Info className="h-3 w-3 shrink-0 mt-0.5" />}
+                    <span className="text-[10px] leading-snug">
+                      {valuation.isFair
+                        ? "Fair swap"
+                        : valuation.offsetDirection === "you_pay"
+                        ? (valuation.exceedsMax ? `Swap offset is ${valuation.offset} ShareCoins` : `You pay ${valuation.offset} ShareCoins to balance`)
+                        : valuation.offsetDirection === "you_receive"
+                        ? (valuation.exceedsMax ? `Swap offset is ${valuation.offset} ShareCoins` : `You receive +${valuation.offset} ShareCoins`)
+                        : valuation.message}
+                      {valuation.exceedsMax && ` — Maximum allowed offset is ${MAX_SWAP_OFFSET} ShareCoins`}
                     </span>
                   </div>
-                  <SelectedItemPreview item={requesterSelectedItem} label={myRequesterLabel} />
-                </div>
-                {/* ShareCoin totals summary */}
-                {bothSidesSelected && (
-                  <div className={`flex items-center justify-between text-[10px] font-medium px-1 pt-2 border-t ${
-                    valuation.exceedsMax ? "text-red-500" : "text-muted-foreground"
-                  }`}>
-                    <span>{ownerSC} ShareCoins</span>
-                    {valuation.isFair ? (
-                      <span className="text-green-600">Fair swap</span>
-                    ) : (
-                      <span className={valuation.exceedsMax ? "text-red-600" : "text-yellow-600"}>
-                        {valuation.offset} ShareCoins offset
-                      </span>
-                    )}
-                    <span>{requesterSC} ShareCoins</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Owner's items panel */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  {isOwner ? "Your items" : `${theirLabel}'s items`}
-                </Label>
-                <ItemGrid
-                  items={ownerPanelItems}
-                  selected={ownerItemIds}
-                  onToggle={toggleOwnerItem}
-                  isLoading={isOwner ? myLoading : partnerLoading}
-                  variant={isOwner ? "mine" : "theirs"}
-                />
-              </div>
-
-              {/* Requester's items panel */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">
-                  {isOwner ? `${theirLabel}'s items` : "Your items"}
-                </Label>
-                <ItemGrid
-                  items={requesterPanelItems}
-                  selected={requesterItemIds}
-                  onToggle={toggleRequesterItem}
-                  isLoading={isOwner ? partnerLoading : myLoading}
-                  variant={isOwner ? "theirs" : "mine"}
-                />
-              </div>
-
-              {/* Value hint */}
-              {(ownerPanelItems.length > 0 || requesterPanelItems.length > 0) && (
-                <div className="flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
-                  <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span className="break-words">Any item combination is allowed — ShareCoins cover the difference in value. T1=5 · T2=10 · T3=20 · T4=40 ShareCoins · Max offset: {MAX_SWAP_OFFSET} ShareCoins</span>
                 </div>
               )}
+
+              {!bothSidesSelected && (
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Info className="h-3 w-3 shrink-0" />
+                  <span>T1=5 · T2=10 · T3=20 · T4=40 ShareCoins · Max offset: {MAX_SWAP_OFFSET} ShareCoins</span>
+                </div>
+              )}
+
+              {/* Optional note */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Add a note (optional)</Label>
+                <Textarea
+                  placeholder="Explain your counter offer…"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
+                  className="text-sm resize-none"
+                  maxLength={300}
+                />
+              </div>
 
             </div>
           </ScrollArea>
         )}
 
-        <DialogFooter className="px-5 py-4 border-t shrink-0 gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isPending}>
-            Cancel
-          </Button>
-          {!maxRoundsReached && (
-            <Button
-              onClick={handleSubmit}
-              disabled={isPending || !isCompatible}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
-            >
-              {isPending ? "Sending…" : "Send Counter"}
+        <div className="shrink-0 border-t bg-white px-5 py-4 space-y-2">
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={onClose} disabled={isPending}>
+              Cancel
             </Button>
-          )}
-        </DialogFooter>
+            {!maxRoundsReached && (
+              <Button
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={handleSubmit}
+                disabled={isPending || !isCompatible}
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-2" />
+                {isPending ? "Sending…" : "Send Counter"}
+              </Button>
+            )}
+          </div>
+        </div>
+
       </DialogContent>
     </Dialog>
   );

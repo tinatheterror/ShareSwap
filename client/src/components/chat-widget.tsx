@@ -2089,7 +2089,7 @@ export function ChatWidget() {
                         <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
                           <RotateCcw className="h-4 w-4 mr-2" />
-                          Return item
+                          Early Return
                         </Button>
                         {wasAutoAdvanced && !showAutoReport && (
                           <button

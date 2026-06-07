@@ -2084,12 +2084,15 @@ export function ChatWidget() {
 
                   if (pr.status === "IN_PROGRESS") {
                     const wasAutoAdvanced = (pr as any).handoffAutoAdvanced;
+                    const today = new Date(); today.setHours(0, 0, 0, 0);
+                    const dueDate = pr.endDate ? parseLocalDate(pr.endDate) : null;
+                    const isEarlyReturn = dueDate ? today < dueDate : false;
                     return (
                       <div className="px-3 py-2 border-t border-blue-100 bg-blue-50 space-y-1">
                         <Button className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl"
                           onClick={() => { setSelectedRequest(pr); setShowReturnModal(true); }}>
                           <RotateCcw className="h-4 w-4 mr-2" />
-                          Early Return
+                          {isEarlyReturn ? "Early Return" : "Return item"}
                         </Button>
                         {wasAutoAdvanced && !showAutoReport && (
                           <button

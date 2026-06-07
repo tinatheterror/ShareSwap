@@ -263,9 +263,15 @@ export function ReturnConfirmationModal({
             )}
             <Button
               className="flex-1 bg-blue-600 hover:bg-blue-700"
-              onClick={onClose}
+              disabled={isProcessing || initiateReturnMutation.isPending}
+              onClick={() => initiateReturnMutation.mutate()}
             >
-              Got it
+              {initiateReturnMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RotateCcw className="h-4 w-4 mr-2" />
+              )}
+              Initiate Early Return
             </Button>
           </div>
         </DialogContent>

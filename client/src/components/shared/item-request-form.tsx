@@ -803,6 +803,16 @@ export function ItemRequestForm({
                                 />
                                 Exchange In Person
                               </span>
+                              <p
+                                className={`text-xs font-medium mt-0.5 ${depositValue === "in_person" ? "text-primary-foreground/80" : "text-gray-600"}`}
+                              >
+                                Do it yourself
+                              </p>
+                              <p
+                                className={`text-[10px] mt-0.5 ${depositValue === "in_person" ? "text-primary-foreground/70" : "text-muted-foreground"}`}
+                              >
+                                No processing fee
+                              </p>
                             </button>
                           </div>
                         </FormControl>

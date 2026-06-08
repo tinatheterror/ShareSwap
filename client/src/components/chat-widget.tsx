@@ -2674,7 +2674,7 @@ export function ChatWidget() {
                 Add item to your inventory?
               </h4>
               <p className="text-sm text-muted-foreground mb-4">
-                We'll draft a listing with the item details. Review and edit everything before publishing.
+                Review and edit item details before publishing.
               </p>
               <div className="flex gap-2">
                 <Button

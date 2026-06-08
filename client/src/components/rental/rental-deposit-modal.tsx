@@ -89,14 +89,17 @@ function SavedCardConfirmForm(props: FormProps) {
           The <span className="font-medium">${rentalPrice.toFixed(2)} rental</span> is released to owner after the item is picked up.
         </span>
       </div>
-      <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2.5 flex items-center gap-2 text-sm text-gray-700">
-        <CreditCard className="h-4 w-4 text-gray-500" />
-        <span>Charging card on file</span>
-      </div>
       <div className="flex gap-2 pt-1">
         <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing} className="flex-1">Cancel</Button>
-        <Button onClick={handleConfirm} disabled={isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-          {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</> : <><CreditCard className="h-4 w-4 mr-2" />Pay ${totalDueNow.toFixed(2)}</>}
+        <Button onClick={handleConfirm} disabled={isProcessing} className="flex-1 bg-green-600 hover:bg-green-700 text-white flex-col h-auto py-2">
+          {isProcessing ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
+          ) : (
+            <>
+              <span className="flex items-center gap-1.5"><CreditCard className="h-4 w-4" />Pay ${totalDueNow.toFixed(2)}</span>
+              <span className="text-[10px] opacity-75 font-normal">Charging card on file</span>
+            </>
+          )}
         </Button>
       </div>
     </div>

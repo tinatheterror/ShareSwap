@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { DollarSign, Shield, Truck, Loader2, CreditCard, Info, RefreshCw } from "lucide-react";
+import { Tag, Shield, Truck, Loader2, CreditCard, Info, RefreshCw } from "lucide-react";
 import { calculateRentalDeposit, calculateRentalRate, calculateRentalPrice, getDiscountLabel } from "@/lib/rental-calculator";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { getStripePromise } from "@/lib/stripe-client";
@@ -107,49 +107,69 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
   rentalPrice: number; rentalSubtotal: number; discountPct: number; discountAmount: number;
   depositAmount: number; processingFee: number; deliveryFee: number; days: number;
 }) {
+  const dailyRate = days > 0 ? rentalSubtotal / days : 0;
+  const discountLabel = getDiscountLabel(days);
   const totalDueNow = rentalPrice + depositAmount + processingFee + deliveryFee;
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 divide-y divide-gray-200 text-sm">
-      <div className="flex justify-between items-center px-4 py-2.5">
-        <span className="text-gray-600 flex items-center gap-2">
-          <DollarSign className="h-3.5 w-3.5 text-green-600" />
-          Rental ({days} day{days !== 1 ? "s" : ""})
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1.5 text-sm">
+      {/* Rental line with daily rate */}
+      <div className="flex justify-between">
+        <span className="text-gray-600">
+          Rental ({days} day{days !== 1 ? "s" : ""} × ${dailyRate.toFixed(2)}/day)
         </span>
-        <span className="font-medium">${discountPct > 0 ? rentalSubtotal.toFixed(2) : rentalPrice.toFixed(2)}</span>
+        <span className="font-medium">${rentalSubtotal.toFixed(2)}</span>
       </div>
+
+      {/* Discount */}
       {discountPct > 0 && (
-        <div className="flex justify-between items-center px-4 py-2.5">
-          <span className="text-teal-700 flex items-center gap-1.5">
-            <span className="text-[10px] bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded font-medium">{discountPct}% OFF</span>
-            {getDiscountLabel(days)}
+        <div className="flex justify-between text-teal-700">
+          <span className="flex items-center gap-1">
+            <Tag className="h-3 w-3" />
+            {discountLabel}
           </span>
-          <span className="font-medium text-teal-700">−${discountAmount.toFixed(2)}</span>
+          <span className="font-medium">−${discountAmount.toFixed(2)}</span>
         </div>
       )}
-      <div className="flex justify-between items-center px-4 py-2.5">
-        <span className="text-gray-600 flex items-center gap-2">
-          <Shield className="h-3.5 w-3.5 text-blue-600" />
-          Security deposit
-          <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">REFUNDABLE</span>
-        </span>
-        <span className="font-medium">${depositAmount.toFixed(2)}</span>
+
+      {/* Rental total */}
+      <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5 mt-0.5">
+        <span>Rental total</span>
+        <span className="text-teal-700">${rentalPrice.toFixed(2)}</span>
       </div>
+
+      {/* Processing fee */}
+      <div className="flex justify-between text-gray-500 text-xs">
+        <span>Processing fee (3%)</span>
+        <span>${processingFee.toFixed(2)}</span>
+      </div>
+
+      {/* Delivery fee */}
       {deliveryFee > 0 && (
-        <div className="flex justify-between items-center px-4 py-2.5">
-          <span className="text-gray-600 flex items-center gap-2">
-            <Truck className="h-3.5 w-3.5 text-orange-500" />
+        <div className="flex justify-between border-t border-gray-200 pt-1.5 mt-0.5">
+          <span className="text-gray-600 flex items-center gap-1">
+            <Truck className="h-3 w-3 text-orange-500" />
             Courier delivery
           </span>
           <span className="font-medium">${deliveryFee.toFixed(2)}</span>
         </div>
       )}
-      <div className="flex justify-between items-center px-4 py-2.5">
-        <span className="text-gray-500 text-xs">Processing fee (3%)</span>
-        <span className="text-gray-500 text-xs">${processingFee.toFixed(2)}</span>
+
+      {/* Security deposit */}
+      <div className="border-t border-gray-200 pt-1.5 mt-0.5">
+        <div className="flex justify-between">
+          <span className="text-gray-600 flex items-center gap-1">
+            <Shield className="h-3 w-3" />
+            Security deposit
+          </span>
+          <span className="font-medium">${depositAmount.toFixed(2)}</span>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-0.5">Held securely, auto-refunded on return</p>
       </div>
-      <div className="flex justify-between items-center px-4 py-3 bg-white rounded-b-lg">
-        <span className="font-semibold text-gray-900">Total due today</span>
-        <span className="font-bold text-lg text-gray-900">${totalDueNow.toFixed(2)}</span>
+
+      {/* Total */}
+      <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5 mt-0.5">
+        <span className="text-gray-900">Total due today</span>
+        <span className="text-gray-900 text-base font-bold">${totalDueNow.toFixed(2)}</span>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,15 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
   const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
   const [insufficientRequired, setInsufficientRequired] = useState(0);
   const { user } = useAuth();
+
+  // Reset selections every time the dialog opens so stale state never carries over
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedItemIds([]);
+      setSelectedOwnerItemIds([]);
+      setShowAllOwnerItems(false);
+    }
+  }, [isOpen]);
 
   const { data: myItems = [], isLoading } = useQuery<SelectItem[]>({
     queryKey: ["/api/my-items"],

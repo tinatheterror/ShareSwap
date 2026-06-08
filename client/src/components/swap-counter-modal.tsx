@@ -422,7 +422,7 @@ export function SwapCounterModal({
               {!bothSidesSelected && (
                 <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                   <Info className="h-3 w-3 shrink-0" />
-                  <span>T1=5 · T2=10 · T3=20 · T4=40 ShareCoins · Max offset: {MAX_SWAP_OFFSET} ShareCoins</span>
+                  <span>Any item combination is allowed — ShareCoins cover the difference in value. Max offset: {MAX_SWAP_OFFSET} ShareCoins</span>
                 </div>
               )}
 

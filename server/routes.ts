@@ -1970,7 +1970,7 @@ Be accurate and practical. Always populate every field — never leave condition
             ...imageContents,
           ],
         }],
-        max_tokens: 400,
+        max_tokens: 600,
         temperature: 0.2,
       });
 

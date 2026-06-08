@@ -786,41 +786,42 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   }, [isEditMode]);
 
   // Resize and compress a File to a JPEG data URL (max 1024px, 80% quality)
-  const compressPhoto = (file: File): Promise<string> => {
-    const TIMEOUT_MS = 15000;
-    const compress = new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = reject;
-      reader.onload = () => {
-        const rawDataUrl = reader.result as string;
-        const img = new Image();
-        img.onerror = () => resolve(rawDataUrl); // fall back to raw on decode error
-        img.onload = () => {
-          try {
-            const MAX = 1024;
-            let { width, height } = img;
-            if (width > MAX || height > MAX) {
-              if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
-              else { width = Math.round((width * MAX) / height); height = MAX; }
-            }
-            const canvas = document.createElement("canvas");
-            canvas.width = width;
-            canvas.height = height;
-            canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL("image/jpeg", 0.8));
-          } catch {
-            resolve(rawDataUrl); // fall back to raw on canvas error
-          }
-        };
-        img.src = rawDataUrl;
+  const compressPhoto = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        // Fall back: read as data URL directly
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
       };
-      reader.readAsDataURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        try {
+          const MAX = 1024;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+            else { width = Math.round((width * MAX) / height); height = MAX; }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        } catch {
+          // Canvas failed (e.g. tainted) — fall back to full FileReader
+          const reader = new FileReader();
+          reader.onerror = reject;
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        }
+      };
+      img.src = objectUrl;
     });
-    const timeout = new Promise<string>((_, reject) =>
-      setTimeout(() => reject(new Error("Photo compression timed out")), TIMEOUT_MS)
-    );
-    return Promise.race([compress, timeout]);
-  };
 
   // Convert files to compressed base64 for AI valuation / autofill
   const getPhotoDataUrls = async (): Promise<string[]> => {

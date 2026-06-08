@@ -377,7 +377,7 @@ export function ItemRequestForm({
                   return (
                     <div
                       className={`flex items-center gap-2 text-xs p-2 rounded ${
-                        result.offsetDirection === "you_pay" ? "text-amber-700" : "text-[#0BB88C]"
+                        result.offsetDirection === "you_pay" ? "text-amber-700" : "text-green-600"
                       }`}
                     >
                       <Coins className="h-4 w-4 flex-shrink-0" />

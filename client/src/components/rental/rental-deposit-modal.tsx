@@ -34,6 +34,7 @@ interface RentalDepositModalProps {
     category: string;
     replacementValue: number;
     dollarsPrice?: string;
+    securityDeposit?: number | string;
     photos: string[];
   };
   onSuccess: (nextStep: string) => void;
@@ -264,6 +265,8 @@ export function RentalDepositModal({
   const itemValue = item.replacementValue || 100;
   const depositCalc = calculateRentalDeposit(itemValue, item.tier || 2);
   const rentalCalc = calculateRentalRate(itemValue, item.category || "Home & Kitchen");
+  // Use lender's set deposit if available, fall back to tier-formula default
+  const lenderDeposit = item.securityDeposit ? Number(item.securityDeposit) : null;
 
   const days = request.startDate && request.endDate
     ? Math.ceil((new Date(request.endDate).getTime() - new Date(request.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
@@ -278,7 +281,7 @@ export function RentalDepositModal({
   const discountPct = pricing.discountPct;
   const discountAmount = pricing.discountAmount;
 
-  const depositAmount = depositCalc.deposit;
+  const depositAmount = lenderDeposit && lenderDeposit > 0 ? lenderDeposit : depositCalc.deposit;
   const processingFee = Math.round((rentalPrice + depositAmount) * 0.03 * 100) / 100;
   const deliveryFee = 0;
 

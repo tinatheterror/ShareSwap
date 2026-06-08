@@ -2521,6 +2521,7 @@ export function ChatWidget() {
               (selectedRequest.item as any).category || "Home & Kitchen",
             replacementValue: selectedRequest.item.replacementValue || 100,
             dollarsPrice: (selectedRequest.item as any).dollarsPrice,
+            securityDeposit: (selectedRequest.item as any).securityDeposit,
             photos: selectedRequest.item.photos,
           }}
           onSuccess={() => {

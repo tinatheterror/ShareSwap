@@ -4667,6 +4667,7 @@ Respond with ONLY the category name, nothing else.`
         itemOwnerId: items.ownerId,
         itemDollarsPrice: items.dollarsPrice,
         itemCategory: items.category,
+        itemSecurityDeposit: items.securityDeposit,
         reqId: users.id,
         reqUsername: users.username,
         reqHandle: users.handle,
@@ -4748,6 +4749,7 @@ Respond with ONLY the category name, nothing else.`
         ownerId: r.itemOwnerId,
         dollarsPrice: r.itemDollarsPrice,
         category: r.itemCategory,
+        securityDeposit: r.itemSecurityDeposit,
       },
       requester: {
         id: r.reqId,

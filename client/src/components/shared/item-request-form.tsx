@@ -86,6 +86,7 @@ export function ItemRequestForm({
   isOpen,
   onClose,
   swapOfferItem,
+  swapRequestedExtraItems,
   onInsufficientCoins,
   prefill,
 }: Props) {
@@ -170,6 +171,7 @@ export function ItemRequestForm({
         requestType,
         swapOfferItemId: swapOfferItem?.[0]?.id,
         swapOfferedItemIds: swapOfferItem?.map((i) => i.id) ?? [],
+        swapRequestedItemIds: swapRequestedExtraItems?.map((i) => i.id) ?? [],
         deliveryMethod: data.deliveryMethod,
         depositMethod: data.depositMethod,
       });
@@ -331,28 +333,32 @@ export function ItemRequestForm({
                     <div className="text-xs text-[#0DCEA1] mb-1.5">
                       For their:
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                        {item.photos?.[0] ? (
-                          <img
-                            src={item.photos[0]}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Camera className="h-3 w-3 text-gray-400" />
+                    <div className="space-y-1.5">
+                      {[item, ...(swapRequestedExtraItems ?? [])].map((theirItem) => (
+                        <div key={theirItem.id} className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                            {theirItem.photos?.[0] ? (
+                              <img
+                                src={theirItem.photos[0]}
+                                alt={theirItem.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Camera className="h-3 w-3 text-gray-400" />
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-gray-900 truncate">
-                          {item.name}
-                        </p>
-                        <p className="text-[10px] text-[#0BB88C]">
-                          {getTierShareCoins((item as any).tier || 2)} ShareCoins
-                        </p>
-                      </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-900 truncate">
+                              {theirItem.name}
+                            </p>
+                            <p className="text-[10px] text-[#0BB88C]">
+                              {getTierShareCoins((theirItem as any).tier || 2)} ShareCoins
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -362,7 +368,10 @@ export function ItemRequestForm({
                     (s, i) => s + getTierShareCoins((i as any).tier || 2),
                     0,
                   );
-                  const theirSC = getTierShareCoins((item as any).tier || 2);
+                  const theirSC = [item, ...(swapRequestedExtraItems ?? [])].reduce(
+                    (s, i) => s + getTierShareCoins((i as any).tier || 2),
+                    0,
+                  );
                   const result = calculateMultiSwap(yourSC, theirSC);
                   return (
                     <div

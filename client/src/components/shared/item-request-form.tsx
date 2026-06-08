@@ -981,7 +981,7 @@ export function ItemRequestForm({
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="text-sm font-normal cursor-pointer">
-                          I confirm this item matches the condition stated.
+                          I confirm {(swapOfferItem?.length ?? 0) > 1 ? "these items match" : "this item matches"} the condition stated.
                         </FormLabel>
                       </div>
                     </FormItem>

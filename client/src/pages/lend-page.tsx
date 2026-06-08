@@ -3021,8 +3021,8 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                 Rotate or drag to crop your photo, then save.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 overflow-y-auto min-h-0 px-6 space-y-4 py-2">
-              <div className="flex justify-center gap-2">
+            <div className="flex-1 min-h-0 flex flex-col px-6 py-2 gap-3 overflow-hidden">
+              <div className="flex justify-center gap-2 shrink-0">
                 <Button
                   type="button"
                   variant="outline"
@@ -3044,7 +3044,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                   Rotate Right
                 </Button>
               </div>
-              <div className="flex justify-center min-h-24 items-center">
+              <div className="flex-1 min-h-0 flex justify-center items-center overflow-hidden">
                 {isApplyingRotation ? (
                   <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
                 ) : editPhotoSrc ? (
@@ -3052,17 +3052,18 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                     crop={editCrop}
                     onChange={(c) => setEditCrop(c)}
                     onComplete={(c) => setEditCompletedCrop(c)}
+                    style={{ maxHeight: "100%", display: "flex", alignItems: "center" }}
                   >
                     <img
                       ref={editImgRef}
                       src={editPhotoSrc}
                       alt="Edit"
-                      className="max-h-[38dvh] max-w-full object-contain"
+                      style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain" }}
                     />
                   </ReactCrop>
                 ) : null}
               </div>
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-xs text-center text-muted-foreground shrink-0">
                 Drag the crop box to reposition or resize it, then save.
               </p>
             </div>

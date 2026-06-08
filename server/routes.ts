@@ -11233,6 +11233,7 @@ Respond with ONLY the category name, nothing else.`
     // Anti-farming: trust points from reviews are awarded at most once per reviewer→reviewed
     // pair per 90-day rolling window. The review itself is still saved and visible.
     const positiveTotal = reviewPoints + feedbackTagPoints;
+    let pairCapHit = false;
     if (positiveTotal > 0) {
       const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
       const [priorPairReview] = await db
@@ -11249,11 +11250,11 @@ Respond with ONLY the category name, nothing else.`
         .limit(1);
       if (priorPairReview) {
         console.log(`⚠️ Review trust points skipped — reviewer ${req.user.id} already awarded points to ${reviewedUserId} within 90 days (pair cap).`);
-        return res.json({ success: true, review, pointsAwarded: 0 });
+        pairCapHit = true;
       }
     }
 
-    if (totalPoints !== 0) {
+    if (totalPoints !== 0 && !pairCapHit) {
       if (reviewPoints > 0) {
         await db.insert(reputationActivities).values({
           userId: reviewedUserId,
@@ -11344,20 +11345,21 @@ Respond with ONLY the category name, nothing else.`
     positiveTagsAwarded.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} +1`));
     negativeTagsSelected.forEach(t => breakdownParts.push(`${t.replace(/_/g, ' ')} −1`));
 
-    const trustTitle = totalPoints > 0
-      ? `Trust score +${totalPoints}`
-      : totalPoints < 0
-        ? `Trust score −${Math.abs(totalPoints)}`
+    const effectivePoints = pairCapHit ? 0 : totalPoints;
+    const trustTitle = effectivePoints > 0
+      ? `Trust score +${effectivePoints}`
+      : effectivePoints < 0
+        ? `Trust score −${Math.abs(effectivePoints)}`
         : `New ${rating}-star review`;
 
     const reviewLine = comment
       ? `${req.user.username} ${stars}: "${comment.slice(0, 60)}${comment.length > 60 ? '…' : ''}"`
       : `${req.user.username} left you a ${rating}-star review ${stars}`;
-    const breakdownLine = breakdownParts.length > 0 ? `\n${breakdownParts.join(', ')}` : '';
+    const breakdownLine = !pairCapHit && breakdownParts.length > 0 ? `\n${breakdownParts.join(', ')}` : '';
 
     const [reviewNotif] = await db.insert(notifications).values({
       userId: reviewedUserId,
-      type: totalPoints !== 0 ? "trust_score_changed" : "new_review_received",
+      type: effectivePoints !== 0 ? "trust_score_changed" : "new_review_received",
       title: trustTitle,
       message: `${reviewLine}${breakdownLine}`,
       isRead: false,

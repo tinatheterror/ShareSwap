@@ -149,6 +149,7 @@ export default function ItemDetailsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/items/${itemId}/notify-me`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/items/my-subscriptions"] });
       toast({
         title: isSubscribed ? "Notification removed" : "We'll notify you",
         description: isSubscribed

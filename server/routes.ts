@@ -3594,6 +3594,16 @@ Respond with ONLY the category name, nothing else.`
 
   // ── Availability notification subscriptions ────────────────────────────────
 
+  // Get all item IDs the current user is subscribed to (bulk)
+  app.get("/api/items/my-subscriptions", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.json({ itemIds: [] });
+    const rows = await db
+      .select({ itemId: itemAvailabilitySubscribers.itemId })
+      .from(itemAvailabilitySubscribers)
+      .where(eq(itemAvailabilitySubscribers.userId, req.user.id));
+    res.json({ itemIds: rows.map(r => r.itemId) });
+  });
+
   // Check if current user is subscribed
   app.get("/api/items/:itemId/notify-me", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

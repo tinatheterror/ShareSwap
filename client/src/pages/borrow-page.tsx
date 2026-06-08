@@ -148,6 +148,13 @@ export default function BorrowPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Fetch item IDs the user has "notify me" subscriptions for
+  const { data: subscriptionsData } = useQuery<{ itemIds: number[] }>({
+    queryKey: ["/api/items/my-subscriptions"],
+    enabled: !!user,
+  });
+  const subscribedItemIds = new Set(subscriptionsData?.itemIds ?? []);
+
   // Load saved location preferences from user profile
   useEffect(() => {
     if (!userPostalCode) {
@@ -892,7 +899,7 @@ export default function BorrowPage() {
                                     FREE
                                   </Badge>
                                 )}
-                                {!currentItem.isAvailable && !currentItem.isGift && (
+                                {!currentItem.isAvailable && !currentItem.isGift && subscribedItemIds.has(currentItem.id) && (
                                   <Badge className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] z-10">
                                     Currently Out
                                   </Badge>
@@ -1096,7 +1103,7 @@ export default function BorrowPage() {
                             FREE
                           </Badge>
                         )}
-                        {!item.isAvailable && !item.isGift && (
+                        {!item.isAvailable && !item.isGift && subscribedItemIds.has(item.id) && (
                           <Badge className="absolute top-2 left-2 bg-amber-500 text-white text-xs z-10">
                             Currently Out
                           </Badge>

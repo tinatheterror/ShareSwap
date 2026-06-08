@@ -374,7 +374,7 @@ export function ItemRequestForm({
                     0,
                   );
                   const result = calculateMultiSwap(yourSC, theirSC);
-                  return (
+                  return result.isFair ? null : (
                     <div
                       className={`flex items-center gap-2 text-xs p-2 rounded ${
                         result.offsetDirection === "you_pay" ? "text-amber-700" : "text-green-600"
@@ -382,11 +382,9 @@ export function ItemRequestForm({
                     >
                       <Coins className="h-4 w-4 flex-shrink-0" />
                       <span>
-                        {result.isFair
-                          ? "Fair swap — no ShareCoin adjustment"
-                          : result.offsetDirection === "you_pay"
-                            ? `You pay ${result.offset} ShareCoins to balance the swap`
-                            : `You receive +${result.offset} ShareCoins`}
+                        {result.offsetDirection === "you_pay"
+                          ? `You pay ${result.offset} ShareCoins to balance the swap`
+                          : `You receive +${result.offset} ShareCoins`}
                       </span>
                     </div>
                   );

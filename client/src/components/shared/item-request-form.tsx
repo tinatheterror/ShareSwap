@@ -378,7 +378,9 @@ export function ItemRequestForm({
                       className={`flex items-center gap-2 text-sm p-2 rounded ${
                         result.isFair
                           ? "text-[#0BB88C] bg-[#E6FBF5]"
-                          : "text-amber-700 bg-amber-50"
+                          : result.offsetDirection === "you_pay"
+                            ? "text-amber-700 bg-amber-50"
+                            : "text-[#0BB88C]"
                       }`}
                     >
                       <Coins className="h-4 w-4 flex-shrink-0" />

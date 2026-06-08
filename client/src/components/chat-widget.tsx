@@ -1771,51 +1771,59 @@ export function ChatWidget() {
                                 const ownerTiers = (msg.metadata.swapOwnerItemTiers as number[] | undefined) ?? [];
                                 const requesterTiers = (msg.metadata.swapRequesterItemTiers as number[] | undefined) ?? [];
                                 const cnote = msg.metadata.counterNote as string | undefined;
-                                // Compute coin offset
+                                // Compute coin offset (requester-first, same as main swap card)
                                 const ownerSC = ownerTiers.reduce((s, t) => s + getTierShareCoins(t), 0);
                                 const requesterSC = requesterTiers.reduce((s, t) => s + getTierShareCoins(t), 0);
-                                const swapResult = calculateMultiSwap(ownerSC, requesterSC);
-                                const ItemPhotoBox = ({ name, photo }: { name: string; photo?: string | null }) => (
-                                  <div className="flex flex-col items-center gap-0.5">
-                                    <div className="w-12 h-12 rounded-lg border-2 border-border overflow-hidden bg-muted flex-shrink-0">
-                                      {photo ? (
-                                        <img src={photo} alt={name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                          <Package className="h-4 w-4 text-muted-foreground/40" />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <span className="text-[9px] text-muted-foreground max-w-[52px] truncate text-center leading-tight">{name}</span>
-                                  </div>
-                                );
+                                const swapResult = calculateMultiSwap(requesterSC, ownerSC);
+                                const ownerPays = swapResult.offsetDirection === "you_receive"; // requester receives = owner pays
                                 return (
-                                  <div className="w-full pl-[70px] mt-0.5">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      {/* Owner side */}
-                                      <div className="flex items-center gap-1">
-                                        {ownerNames.map((n, i) => <ItemPhotoBox key={i} name={n} photo={ownerPhotos[i]} />)}
+                                  <div className="w-full pl-[70px] mt-1">
+                                    <div className="flex items-start gap-2">
+                                      {/* Left: requester's items (amber) */}
+                                      <div className="flex-1 min-w-0 space-y-1">
+                                        {requesterNames.map((n, i) => (
+                                          <div key={i} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded px-1.5 py-1">
+                                            {requesterPhotos[i] ? (
+                                              <img src={requesterPhotos[i]!} alt={n} className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                                            ) : (
+                                              <Package className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                                            )}
+                                            <span className="text-[10px] text-amber-900 font-medium truncate">{n}</span>
+                                          </div>
+                                        ))}
+                                        {/* Requester pays — badge on left */}
+                                        {!swapResult.isFair && !ownerPays && (
+                                          <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-amber-700 bg-amber-50 border border-amber-300">
+                                            {swapResult.offset} ShareCoins
+                                          </div>
+                                        )}
                                       </div>
-                                      {/* Coin offset on owner side if owner pays */}
-                                      {!swapResult.isFair && swapResult.offsetDirection === "you_pay" && (
-                                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 flex-shrink-0">
-                                          +{swapResult.offset} ShareCoins
-                                        </span>
-                                      )}
-                                      <ArrowLeftRight className="h-4 w-4 text-primary flex-shrink-0" />
-                                      {/* Coin offset on requester side if requester pays */}
-                                      {!swapResult.isFair && swapResult.offsetDirection === "you_receive" && (
-                                        <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 flex-shrink-0">
-                                          +{swapResult.offset} ShareCoins
-                                        </span>
-                                      )}
-                                      {/* Requester side */}
-                                      <div className="flex items-center gap-1">
-                                        {requesterNames.map((n, i) => <ItemPhotoBox key={i} name={n} photo={requesterPhotos[i]} />)}
+                                      {/* Center: arrows */}
+                                      <div className="flex-shrink-0 flex items-center justify-center mt-1.5">
+                                        <ArrowLeftRight className="h-4 w-4 text-teal-500" />
+                                      </div>
+                                      {/* Right: owner's items (teal) */}
+                                      <div className="flex-1 min-w-0 space-y-1">
+                                        {ownerNames.map((n, i) => (
+                                          <div key={i} className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 rounded px-1.5 py-1">
+                                            {ownerPhotos[i] ? (
+                                              <img src={ownerPhotos[i]!} alt={n} className="w-6 h-6 rounded object-cover flex-shrink-0" />
+                                            ) : (
+                                              <Package className="h-4 w-4 text-teal-400 flex-shrink-0" />
+                                            )}
+                                            <span className="text-[10px] text-teal-900 font-medium truncate">{n}</span>
+                                          </div>
+                                        ))}
+                                        {/* Owner pays — badge on right */}
+                                        {!swapResult.isFair && ownerPays && (
+                                          <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-teal-700 bg-teal-50 border border-teal-200">
+                                            {swapResult.offset} ShareCoins
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                     {cnote && (
-                                      <p className="text-[11px] text-muted-foreground italic mt-1">"{cnote}"</p>
+                                      <p className="text-[11px] text-muted-foreground italic mt-1.5">"{cnote}"</p>
                                     )}
                                   </div>
                                 );

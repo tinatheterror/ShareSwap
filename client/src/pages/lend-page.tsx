@@ -746,6 +746,18 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
       }
       if (data.description) form.setValue("description", data.description);
       if (data.originalValue) form.setValue("originalValue", data.originalValue);
+      if (data.condition) {
+        const conditionMap: Record<string, string> = {
+          "Like New": "New / Like New",
+          "New": "New / Like New",
+          "New / Like New": "New / Like New",
+          "Good": "Good",
+          "Fair": "Fair",
+          "Well Loved": "Well Loved",
+        };
+        const mapped = conditionMap[data.condition] || data.condition;
+        form.setValue("condition", mapped);
+      }
       if (Array.isArray(data.photos) && data.photos.length > 0) {
         setExistingPhotos(data.photos);
       }

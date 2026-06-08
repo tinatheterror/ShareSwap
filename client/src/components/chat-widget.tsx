@@ -739,6 +739,7 @@ export function ChatWidget() {
         name: swapInventoryItem.name,
         description: swapInventoryItem.description || "",
         originalValue: swapInventoryItem.originalValue || "",
+        condition: swapInventoryItem.condition || "",
         photos: swapInventoryItem.photos || [],
       }),
     );

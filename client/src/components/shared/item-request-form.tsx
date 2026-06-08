@@ -318,7 +318,7 @@ export function ItemRequestForm({
                             <p className="text-xs font-medium text-gray-900 truncate">
                               {offerItem.name}
                             </p>
-                            <p className="text-[10px] text-[#0BB88C] flex items-center gap-0.5">
+                            <p className="text-xs text-[#0BB88C] flex items-center gap-0.5">
                               <Coins className="h-3 w-3" />
                               {getTierShareCoins((offerItem as any).tier || 2)}
                             </p>
@@ -353,7 +353,7 @@ export function ItemRequestForm({
                             <p className="text-xs font-medium text-gray-900 truncate">
                               {theirItem.name}
                             </p>
-                            <p className="text-[10px] text-[#0BB88C] flex items-center gap-0.5">
+                            <p className="text-xs text-[#0BB88C] flex items-center gap-0.5">
                               <Coins className="h-3 w-3" />
                               {getTierShareCoins((theirItem as any).tier || 2)}
                             </p>
@@ -376,7 +376,7 @@ export function ItemRequestForm({
                   const result = calculateMultiSwap(yourSC, theirSC);
                   return (
                     <div
-                      className={`flex items-center gap-2 text-sm p-2 rounded ${
+                      className={`flex items-center gap-2 text-xs p-2 rounded ${
                         result.offsetDirection === "you_pay" ? "text-amber-700" : "text-[#0BB88C]"
                       }`}
                     >

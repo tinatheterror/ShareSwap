@@ -2906,6 +2906,7 @@ Respond with ONLY the category name, nothing else.`
           )`
         )!,
         eq(items.isDeleted, false),
+        eq(items.isSwapped, false),
         // Exclude expired listings (null = no expiry, for legacy items)
         or(isNull(items.listingExpiresAt), gte(items.listingExpiresAt, now))!,
       ];

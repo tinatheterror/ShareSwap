@@ -379,7 +379,7 @@ export function ItemRequestForm({
                         result.isFair
                           ? "text-[#0BB88C] bg-[#E6FBF5]"
                           : result.offsetDirection === "you_pay"
-                            ? "text-amber-700 bg-amber-50"
+                            ? "text-amber-700"
                             : "text-[#0BB88C]"
                       }`}
                     >

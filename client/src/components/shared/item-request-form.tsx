@@ -578,6 +578,10 @@ export function ItemRequestForm({
                               ${pricing.total.toFixed(2)}
                             </span>
                           </div>
+                          <div className="flex justify-between text-gray-500 text-xs">
+                            <span>Processing fee (3%)</span>
+                            <span>${(pricing.total * 0.03).toFixed(2)}</span>
+                          </div>
                           <div className="border-t border-gray-200 pt-1.5 mt-0.5">
                             <div className="flex justify-between">
                               <span className="text-gray-600 flex items-center gap-1">

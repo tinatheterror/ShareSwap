@@ -317,7 +317,6 @@ export function ItemRequestForm({
                               {offerItem.name}
                             </p>
                             <p className="text-[10px] text-[#0BB88C]">
-                              T{(offerItem as any).tier || 2} ·{" "}
                               {getTierShareCoins((offerItem as any).tier || 2)}{" "}
                               ShareCoins
                             </p>
@@ -351,7 +350,6 @@ export function ItemRequestForm({
                           {item.name}
                         </p>
                         <p className="text-[10px] text-[#0BB88C]">
-                          T{(item as any).tier || 2} ·{" "}
                           {getTierShareCoins((item as any).tier || 2)} ShareCoins
                         </p>
                       </div>

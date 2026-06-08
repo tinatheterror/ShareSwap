@@ -81,6 +81,16 @@ function isListingExpired(item: any): boolean {
 }
 
 function getInventoryStatus(item: any): InventoryStatus {
+  // Items that were given away in a swap — check this first
+  if (item.isSwapped) {
+    return {
+      status: "swapped",
+      label: "Swapped",
+      canDelete: true,
+      deleteLabel: "Remove from history",
+    };
+  }
+
   const req = item.activeRequest;
 
   if (req) {

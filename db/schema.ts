@@ -131,6 +131,7 @@ export const items = pgTable("items", {
   estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
   replacementValue: integer("replacement_value"),
   isAvailable: boolean("is_available").default(true),
+  isSwapped: boolean("is_swapped").default(false),
   isDeleted: boolean("is_deleted").default(false),
   isConditionVerified: boolean("is_condition_verified").default(false),
   wasSmartScanned: boolean("was_smart_scanned").default(false),

@@ -7007,15 +7007,17 @@ Respond with ONLY the category name, nothing else.`
           .set({ isAvailable: false })
           .where(eq(items.id, request.items.id));
 
-        // For swaps: also mark all offered/counter items from both sides as unavailable
+        // For swaps: also mark all offered/counter items from both sides as swapped + unavailable
         if (isSwapRequest) {
+          // Mark the primary item as swapped too
+          await db.update(items).set({ isSwapped: true }).where(eq(items.id, request.items.id));
           const offeredIds: number[] = [
             ...((request.item_requests.swapOfferedItemIds as number[] | null) ?? []),
             ...((request.item_requests.counterSwapOwnerItemIds as number[] | null) ?? []),
             ...((request.item_requests.counterSwapRequesterItemIds as number[] | null) ?? []),
           ].filter((id) => typeof id === "number");
           if (offeredIds.length > 0) {
-            await db.update(items).set({ isAvailable: false }).where(inArray(items.id, offeredIds));
+            await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, offeredIds));
           }
         }
 
@@ -7845,15 +7847,16 @@ Respond with ONLY the category name, nothing else.`
 
           await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 
-          // For swaps: also mark offered/counter items from both sides as unavailable
+          // For swaps: also mark offered/counter items from both sides as swapped + unavailable
           if (isAutoSwap) {
+            await db.update(items).set({ isSwapped: true }).where(eq(items.id, request.items.id));
             const autoOfferedIds: number[] = [
               ...((request.item_requests.swapOfferedItemIds as number[] | null) ?? []),
               ...((request.item_requests.counterSwapOwnerItemIds as number[] | null) ?? []),
               ...((request.item_requests.counterSwapRequesterItemIds as number[] | null) ?? []),
             ].filter((id) => typeof id === "number");
             if (autoOfferedIds.length > 0) {
-              await db.update(items).set({ isAvailable: false }).where(inArray(items.id, autoOfferedIds));
+              await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, autoOfferedIds));
             }
           }
 

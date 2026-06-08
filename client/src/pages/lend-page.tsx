@@ -1249,7 +1249,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
   const createItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       // Require at least 1 photo
-      if (selectedPhotos.length === 0) {
+      if (selectedPhotos.length === 0 && existingPhotos.length === 0) {
         throw new Error("Please upload at least one photo of your item");
       }
 

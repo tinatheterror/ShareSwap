@@ -315,7 +315,7 @@ export function ItemRequestForm({
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-medium text-gray-900 truncate">
+                            <p className="text-[11px] font-medium text-gray-900 truncate">
                               {offerItem.name}
                             </p>
                             <p className="text-xs text-[#0BB88C] flex items-center gap-0.5">
@@ -350,7 +350,7 @@ export function ItemRequestForm({
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-medium text-gray-900 truncate">
+                            <p className="text-[11px] font-medium text-gray-900 truncate">
                               {theirItem.name}
                             </p>
                             <p className="text-xs text-[#0BB88C] flex items-center gap-0.5">

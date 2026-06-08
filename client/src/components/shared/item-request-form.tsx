@@ -318,9 +318,9 @@ export function ItemRequestForm({
                             <p className="text-xs font-medium text-gray-900 truncate">
                               {offerItem.name}
                             </p>
-                            <p className="text-[10px] text-[#0BB88C]">
-                              {getTierShareCoins((offerItem as any).tier || 2)}{" "}
-                              ShareCoins
+                            <p className="text-[10px] text-[#0BB88C] flex items-center gap-0.5">
+                              <Coins className="h-3 w-3" />
+                              {getTierShareCoins((offerItem as any).tier || 2)}
                             </p>
                           </div>
                         </div>
@@ -353,8 +353,9 @@ export function ItemRequestForm({
                             <p className="text-xs font-medium text-gray-900 truncate">
                               {theirItem.name}
                             </p>
-                            <p className="text-[10px] text-[#0BB88C]">
-                              {getTierShareCoins((theirItem as any).tier || 2)} ShareCoins
+                            <p className="text-[10px] text-[#0BB88C] flex items-center gap-0.5">
+                              <Coins className="h-3 w-3" />
+                              {getTierShareCoins((theirItem as any).tier || 2)}
                             </p>
                           </div>
                         </div>

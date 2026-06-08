@@ -1515,9 +1515,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
           <div className="mb-4 flex items-start gap-3 bg-teal-50 border border-teal-200 rounded-lg p-3 text-sm text-teal-800">
             <Package className="h-4 w-4 mt-0.5 shrink-0 text-teal-600" />
             <div>
-              <p className="font-medium">Draft listing from your swap</p>
+              <p className="font-medium">Listing from your swap</p>
               <p className="text-xs text-teal-700/80 mt-0.5">
-                Details are pre-filled from the item you received — condition, category, and photos may need updating. Edit anything before publishing.
+                Details are pre-filled from the item you received. Review and update before publishing.
               </p>
             </div>
           </div>

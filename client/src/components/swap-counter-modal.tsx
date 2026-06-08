@@ -368,7 +368,7 @@ export function SwapCounterModal({
 
               {/* Their items */}
               <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">{partnerName}'s Swap Items</h3>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Their Swap Items</h3>
                 <p className="text-[11px] text-muted-foreground mb-2">Pre-selected from their current offer</p>
                 <ItemGrid
                   items={theirPanelItems}

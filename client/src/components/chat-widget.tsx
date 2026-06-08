@@ -548,6 +548,7 @@ export function ChatWidget() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      qc.invalidateQueries({ queryKey: ["/api/items"] });
       toast({
         title: "Request Declined",
         description: "You've declined this request",
@@ -619,6 +620,7 @@ export function ChatWidget() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+      qc.invalidateQueries({ queryKey: ["/api/items"] });
       setCancelConfirmRequest(null);
       toast({ title: "Request cancelled", description: "The booking has been cancelled." });
     },

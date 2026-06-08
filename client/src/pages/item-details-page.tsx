@@ -178,8 +178,10 @@ export default function ItemDetailsPage() {
   });
 
   // Fetch pending requests to check if user already has a pending request for this item
+  // refetchOnMount: "always" ensures stale cache never causes stuck "Request Pending" buttons
   const { data: requests } = useQuery<ItemRequest[]>({
     queryKey: ["/api/requests"],
+    refetchOnMount: "always",
   });
 
   // Check if user has pending requests for this item

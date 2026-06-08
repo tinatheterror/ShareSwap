@@ -1179,9 +1179,10 @@ export function ChatWidget() {
                           <span className="text-[10px] text-amber-900 font-medium truncate">{oi.name}</span>
                         </div>
                       ))}
-                      {!result.isFair && (
-                        <div className={`text-[10px] font-semibold px-1.5 py-0.5 rounded text-center ${positive ? "text-teal-700 bg-teal-50 border border-teal-200" : "text-amber-700 bg-amber-50 border border-amber-300"}`}>
-                          {positive ? "+" : "-"}{result.offset} ShareCoins
+                      {/* Requester pays — badge on left */}
+                      {!result.isFair && !positive && (
+                        <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-amber-700 bg-amber-50 border border-amber-300">
+                          {result.offset} ShareCoins
                         </div>
                       )}
                     </div>
@@ -1201,6 +1202,12 @@ export function ChatWidget() {
                           <span className="text-[10px] text-teal-900 font-medium truncate">{oi.name}</span>
                         </div>
                       ))}
+                      {/* Owner pays — badge on right */}
+                      {!result.isFair && positive && (
+                        <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-teal-700 bg-teal-50 border border-teal-200">
+                          {result.offset} ShareCoins
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

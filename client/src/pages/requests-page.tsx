@@ -722,8 +722,8 @@ export default function RequestsPage() {
                                   Accept
                                 </Button>
                               )}
-                              {/* Only show Counter if no counter-proposal is pending */}
-                              {request.negotiationStatus !== "counter_proposed" && request.negotiationStatus !== "terms_accepted" && (
+                              {/* Only show Counter if no counter-proposal is pending and not a gift */}
+                              {request.negotiationStatus !== "counter_proposed" && request.negotiationStatus !== "terms_accepted" && request.requestType !== "GIFT" && (
                                 <Button
                                   size="sm"
                                   variant="outline"

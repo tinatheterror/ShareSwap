@@ -1244,7 +1244,7 @@ export function ChatWidget() {
               >
                 Accept
               </Button>
-              {(request.counterRound ?? 0) < 2 && (
+              {(request.counterRound ?? 0) < 2 && request.requestType !== "GIFT" && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -1294,7 +1294,7 @@ export function ChatWidget() {
                   >
                     {acceptMutation.isPending ? "Accepting…" : "Accept"}
                   </Button>
-                  {(request.counterRound ?? 0) < 2 && (
+                  {(request.counterRound ?? 0) < 2 && request.requestType !== "GIFT" && (
                     <Button
                       size="sm"
                       variant="outline"

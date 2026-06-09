@@ -590,7 +590,7 @@ export default function MyItemsPage() {
                             }}
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
-                            Make Available
+                            Relist Item
                           </Button>
                         </div>
                       )}

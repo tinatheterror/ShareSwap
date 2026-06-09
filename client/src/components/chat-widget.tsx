@@ -1635,7 +1635,9 @@ export function ChatWidget() {
                       </span>
                     )}
                     {(() => {
-                      const selectedInboxItem = inboxItems.find(item => item.partnerId === selectedConversation);
+                      const selectedInboxItem = activeConversationRequestId
+                        ? inboxItems.find(item => item.requestId === activeConversationRequestId)
+                        : inboxItems.find(item => item.partnerId === selectedConversation);
                       const activeLabel = getActiveStatus(partnerProfile?.lastActiveAt ?? null)?.label || null;
                       const responseTime = selectedInboxItem?.partnerResponseTime || null;
                       if (!activeLabel && !responseTime) return null;
@@ -1948,10 +1950,12 @@ export function ChatWidget() {
 
               {/* Sticky CTA — context-aware for both borrower and owner */}
               {(() => {
-                const pr = requests.find((r) =>
-                  (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
-                  (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
-                );
+                const pr = activeConversationRequestId
+                  ? requests.find((r) => r.id === activeConversationRequestId)
+                  : requests.find((r) =>
+                      (r.item.ownerId === user?.id && r.requesterId === selectedConversation) ||
+                      (r.requesterId === user?.id && r.item.ownerId === selectedConversation)
+                    );
                 if (!pr) return null;
 
                 const isBorrower = pr.requesterId === user?.id;

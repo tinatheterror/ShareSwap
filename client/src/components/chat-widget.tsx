@@ -2594,11 +2594,7 @@ export function ChatWidget() {
           }}
           requestId={selectedRequest.id}
           itemName={selectedRequest.item.name}
-          depositAmount={
-            selectedRequest.requestType === "RENT"
-              ? parseFloat((selectedRequest.item as any).securityDeposit || "0")
-              : parseFloat(selectedRequest.trustDepositAmount || "20")
-          }
+          depositAmount={parseFloat(selectedRequest.trustDepositAmount || "20")}
           userRole={
             selectedRequest.requesterId === user?.id ? "borrower" : "owner"
           }

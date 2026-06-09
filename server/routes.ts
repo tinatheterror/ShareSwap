@@ -11418,9 +11418,9 @@ Respond with ONLY the category name, nothing else.`
 
     const effectivePoints = pairCapHit ? 0 : totalPoints;
     const trustTitle = effectivePoints > 0
-      ? `Trust score +${effectivePoints}`
+      ? `New ${rating}-star review (+${effectivePoints} trust)`
       : effectivePoints < 0
-        ? `Trust score −${Math.abs(effectivePoints)}`
+        ? `New ${rating}-star review (${effectivePoints} trust)`
         : `New ${rating}-star review`;
 
     const reviewLine = comment
@@ -11430,7 +11430,7 @@ Respond with ONLY the category name, nothing else.`
 
     const [reviewNotif] = await db.insert(notifications).values({
       userId: reviewedUserId,
-      type: effectivePoints !== 0 ? "trust_score_changed" : "new_review_received",
+      type: "new_review_received",
       title: trustTitle,
       message: `${reviewLine}${breakdownLine}`,
       isRead: false,

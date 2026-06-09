@@ -4992,6 +4992,37 @@ Respond with ONLY the category name, nothing else.`
       // Future real-money billing will be wired here when the 2026 free period ends.
     }
 
+    // Notify the requester that their request was accepted or declined
+    if (status === "ACCEPTED" || status === "DECLINED") {
+      try {
+        const requestType = request.item_requests.requestType;
+        const itemName = request.items.name;
+        const itemShort = itemName.length > 28 ? itemName.slice(0, 28) + "…" : itemName;
+        const isGift = requestType === "GIFT";
+        const notifTitle = status === "ACCEPTED"
+          ? (isGift ? "Gift Accepted! 🎁" : "Request Accepted")
+          : "Request Declined";
+        const actionWord = isGift ? "gift claim" : requestType.toLowerCase() + " request";
+        const notifMessage = status === "ACCEPTED"
+          ? `Your ${actionWord} for "${itemShort}" was accepted`
+          : `Your ${actionWord} for "${itemShort}" was declined`;
+        await db.insert(notifications).values({
+          userId: request.item_requests.requesterId,
+          type: status === "ACCEPTED" ? "request_accepted" : "request_declined",
+          title: notifTitle,
+          message: notifMessage,
+          itemId: request.items.id,
+          requestId,
+          isRead: false,
+        });
+        // Push via WebSocket so the requester's client refreshes immediately
+        const requesterWs = connectedClients.get(request.item_requests.requesterId);
+        if (requesterWs?.readyState === WebSocket.OPEN) {
+          requesterWs.send(JSON.stringify({ type: "notification", requestId }));
+        }
+      } catch (_) {}
+    }
+
     res.json(updatedRequest);
   });
 

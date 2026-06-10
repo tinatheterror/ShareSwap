@@ -530,11 +530,23 @@ export function ChatWidget() {
       setShowCelebration(true);
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to accept request",
-        variant: "destructive",
-      });
+      if (error?.code === "INSUFFICIENT_SHARECOINS") {
+        const required = error.required ?? 0;
+        const isRequesterPayer = error.payerIsRequester;
+        toast({
+          title: "Not Enough ShareCoins",
+          description: isRequesterPayer
+            ? `This swap can't proceed — the requester needs ${required} SC to cover the value difference but doesn't have enough.`
+            : `You need ${required} SC to complete this swap but don't have enough. Earn more ShareCoins first.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to accept request",
+          variant: "destructive",
+        });
+      }
     },
   });
 

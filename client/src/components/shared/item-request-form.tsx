@@ -202,6 +202,14 @@ export function ItemRequestForm({
         });
       } else if ((error as any).code === "FULL_VERIFICATION_REQUIRED") {
         showVerificationModal();
+      } else if ((error as any).code === "INSUFFICIENT_SHARECOINS") {
+        const required = (error as any).required ?? 0;
+        const available = (error as any).available ?? 0;
+        toast({
+          title: "Not Enough ShareCoins",
+          description: `You need ${required} SC to cover the value difference but only have ${available}. Earn more ShareCoins by lending, swapping, or completing your profile.`,
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Failed to send request",

@@ -63,6 +63,7 @@ export function getNotificationRoute(n: SelectNotification): { type: "chat"; req
     return { type: "url", url: "/achievements" };
   }
   if (n.type === "sharecoin_earned") return { type: "url", url: "/wallet" };
+  if (n.type === "new_review_received") return { type: "url", url: "/profile#reviews" };
   if (n.type === "dispute_resolved" || n.type === "security_deposit_released" || n.type === "payment_received") {
     return { type: "url", url: "/my-balance" };
   }

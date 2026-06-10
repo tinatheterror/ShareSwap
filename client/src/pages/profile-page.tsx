@@ -165,6 +165,16 @@ export default function ProfilePage() {
     }
   }, []);
 
+  // Scroll to #reviews anchor (e.g. from review notification)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#reviews") return;
+    const el = document.getElementById("reviews");
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    }
+  }, [location]);
+
   // Extract username/handle from URL path
   const pathParts = location.split("/");
   const usernameFromUrl = pathParts[2]; // /profile/:username or /profile/:handle
@@ -882,7 +892,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Reviews — grouped by reviewer */}
-          <div>
+          <div id="reviews">
             <h2 className="text-2xl font-bold mb-4">Reviews</h2>
             {userReviews.length > 0 ? (
               <div

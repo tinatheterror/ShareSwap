@@ -384,7 +384,7 @@ export function ItemRequestForm({
                       <span>
                         {result.offsetDirection === "you_pay"
                           ? `You pay ${result.offset} ShareCoins to balance the swap`
-                          : `You receive +${result.offset} ShareCoins`}
+                          : `You receive ${result.offset} ShareCoins`}
                       </span>
                     </div>
                   );

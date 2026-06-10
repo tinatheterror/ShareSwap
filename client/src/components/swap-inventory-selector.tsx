@@ -316,7 +316,7 @@ export function SwapInventorySelector({ targetItem, ownerId, isOpen, onClose, on
                       : valuation.offsetDirection === "you_pay"
                       ? (valuation.exceedsMax ? `Swap offset is ${valuation.offset} ShareCoins` : `You pay ${valuation.offset} ShareCoins to balance`)
                       : valuation.offsetDirection === "you_receive"
-                      ? (valuation.exceedsMax ? `Swap offset is ${valuation.offset} ShareCoins` : `You receive +${valuation.offset} ShareCoins`)
+                      ? (valuation.exceedsMax ? `Swap offset is ${valuation.offset} ShareCoins` : `You receive ${valuation.offset} ShareCoins`)
                       : valuation.message}
                     {valuation.exceedsMax && ` — Maximum allowed offset is ${MAX_SWAP_OFFSET} ShareCoins`}
                   </span>

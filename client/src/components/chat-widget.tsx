@@ -1194,18 +1194,12 @@ export function ChatWidget() {
                           <span className="text-[10px] text-amber-900 font-medium truncate">{oi.name}</span>
                         </div>
                       ))}
-                      {/* Requester pays — badge on left */}
-                      {!result.isFair && !positive && (
-                        <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-amber-700 bg-amber-50 border border-amber-300">
-                          {result.offset} ShareCoins
-                        </div>
-                      )}
                     </div>
                     {/* Center: arrows */}
                     <div className="flex-shrink-0 flex items-center justify-center mt-1.5">
                       <ArrowLeftRight className="h-5 w-5 text-teal-500" />
                     </div>
-                    {/* Right: owner's items */}
+                    {/* Right: owner's items — offset badge always here */}
                     <div className="flex-1 min-w-0 space-y-1">
                       {rightItems.map(oi => (
                         <div key={oi.id} className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 rounded px-1.5 py-1">
@@ -1217,9 +1211,8 @@ export function ChatWidget() {
                           <span className="text-[10px] text-teal-900 font-medium truncate">{oi.name}</span>
                         </div>
                       ))}
-                      {/* Owner pays — badge on right */}
-                      {!result.isFair && positive && (
-                        <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-teal-700 bg-teal-50 border border-teal-200">
+                      {!result.isFair && (
+                        <div className={`text-[10px] font-semibold px-1.5 py-0.5 rounded text-center ${positive ? "text-teal-700 bg-teal-50 border border-teal-200" : "text-amber-700 bg-amber-50 border border-amber-300"}`}>
                           {result.offset} ShareCoins
                         </div>
                       )}
@@ -1808,18 +1801,12 @@ export function ChatWidget() {
                                             <span className="text-[10px] text-amber-900 font-medium truncate">{n}</span>
                                           </div>
                                         ))}
-                                        {/* Requester pays — badge on left */}
-                                        {!swapResult.isFair && !ownerPays && (
-                                          <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-amber-700 bg-amber-50 border border-amber-300">
-                                            {swapResult.offset} ShareCoins
-                                          </div>
-                                        )}
                                       </div>
                                       {/* Center: arrows */}
                                       <div className="flex-shrink-0 flex items-center justify-center mt-1.5">
                                         <ArrowLeftRight className="h-4 w-4 text-teal-500" />
                                       </div>
-                                      {/* Right: owner's items (teal) */}
+                                      {/* Right: owner's items (teal) — offset badge always here */}
                                       <div className="flex-1 min-w-0 space-y-1">
                                         {ownerNames.map((n, i) => (
                                           <div key={i} className="flex items-center gap-1.5 bg-teal-50 border border-teal-200 rounded px-1.5 py-1">
@@ -1831,9 +1818,8 @@ export function ChatWidget() {
                                             <span className="text-[10px] text-teal-900 font-medium truncate">{n}</span>
                                           </div>
                                         ))}
-                                        {/* Owner pays — badge on right */}
-                                        {!swapResult.isFair && ownerPays && (
-                                          <div className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-center text-teal-700 bg-teal-50 border border-teal-200">
+                                        {!swapResult.isFair && (
+                                          <div className={`text-[10px] font-semibold px-1.5 py-0.5 rounded text-center ${ownerPays ? "text-teal-700 bg-teal-50 border border-teal-200" : "text-amber-700 bg-amber-50 border border-amber-300"}`}>
                                             {swapResult.offset} ShareCoins
                                           </div>
                                         )}

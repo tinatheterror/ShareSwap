@@ -2081,7 +2081,7 @@ export function ChatWidget() {
                         {!isInPersonDeposit && !pinExpired && !pinUsed && (
                           <p className="text-xs text-center text-muted-foreground">Ask the owner for the 4-digit handoff code when you meet</p>
                         )}
-                        {(pr.requestType === "BORROW" || pr.requestType === "RENT") && (
+                        {(pr.requestType === "BORROW" || pr.requestType === "RENT") && !isOwner && (
                           <Button
                             size="sm"
                             variant="outline"

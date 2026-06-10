@@ -90,7 +90,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
             Book a delivery
           </DialogTitle>
           <DialogDescription className="text-teal-700">
-            Send <span className="font-medium">{itemName}</span> with Uber Direct. The delivery fee will be charged to your saved payment method.
+            Arrange delivery of <span className="font-medium">{itemName}</span> via Uber Direct. The delivery fee will be charged to your saved payment method.
           </DialogDescription>
         </DialogHeader>
 
@@ -99,7 +99,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
             <div className="space-y-1.5">
               <Label className="text-sm font-medium flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-teal-600" />
-                Pickup address (your location)
+                Pickup address (owner's location)
               </Label>
               <Input
                 placeholder="123 Main St, City, State"
@@ -110,7 +110,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
             <div className="space-y-1.5">
               <Label className="text-sm font-medium flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                Drop-off address (borrower's location)
+                Drop-off address (your location)
               </Label>
               <Input
                 placeholder="456 Oak Ave, City, State"
@@ -170,7 +170,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
             <div>
               <p className="font-semibold text-teal-800 text-lg">Delivery booked!</p>
               <p className="text-sm text-gray-600 mt-1">
-                A courier is on their way. The borrower will receive the item and enter the handoff PIN when it arrives.
+                A courier is on their way to pick up the item. Enter the handoff PIN when it arrives at your door.
               </p>
             </div>
             {trackingUrl && (

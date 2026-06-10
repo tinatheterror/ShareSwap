@@ -8615,15 +8615,15 @@ Respond with ONLY the category name, nothing else.`
     if (!requestId || !pickupAddress || !dropoffAddress) {
       return res.status(400).json({ error: "requestId, pickupAddress and dropoffAddress are required" });
     }
-    // Verify the caller is the item owner for this request
+    // Verify the caller is the borrower/requester for this request
     const [request] = await db
-      .select({ ownerId: items.ownerId })
+      .select({ requesterId: itemRequests.requesterId })
       .from(itemRequests)
       .innerJoin(items, eq(items.id, itemRequests.itemId))
       .where(eq(itemRequests.id, requestId))
       .limit(1);
     if (!request) return res.status(404).json({ error: "Request not found" });
-    if (request.ownerId !== (req.user as any).id) return res.status(403).json({ error: "Only the item owner can book a delivery" });
+    if (request.requesterId !== (req.user as any).id) return res.status(403).json({ error: "Only the borrower can book a delivery" });
 
     if (!uberDirect.isConfigured()) {
       // Return a simulated quote in dev/staging
@@ -8648,7 +8648,7 @@ Respond with ONLY the category name, nothing else.`
     }
     const userId = (req.user as any).id;
 
-    // Verify caller is item owner
+    // Verify caller is the borrower/requester for this request
     const [reqRow] = await db
       .select({ ownerId: items.ownerId, itemName: items.name, requesterId: itemRequests.requesterId })
       .from(itemRequests)
@@ -8656,7 +8656,7 @@ Respond with ONLY the category name, nothing else.`
       .where(eq(itemRequests.id, requestId))
       .limit(1);
     if (!reqRow) return res.status(404).json({ error: "Request not found" });
-    if (reqRow.ownerId !== userId) return res.status(403).json({ error: "Only the item owner can book a delivery" });
+    if (reqRow.requesterId !== userId) return res.status(403).json({ error: "Only the borrower can book a delivery" });
 
     if (!uberDirect.isConfigured()) {
       // Simulated booking in dev/staging — just return a fake tracking URL

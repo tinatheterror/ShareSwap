@@ -2077,14 +2077,9 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                 );
                                 return (
                                   <div className="mt-2 pt-2 border-t border-teal-100">
-                                    <div className="text-xs font-medium text-gray-700">
-                                      Trust-Based Deposit:
-                                    </div>
-                                    <div className="flex items-center gap-1 mt-0.5">
-                                      <span className="text-gray-500">$</span>
-                                      <span className="text-sm font-semibold text-gray-800">
-                                        {Math.round(depositCalc.baseDeposit)}
-                                      </span>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs font-medium text-gray-700">Trust Deposit:</span>
+                                      <span className="text-xs font-semibold text-gray-800">${Math.round(depositCalc.baseDeposit)}</span>
                                     </div>
                                     <div className="text-[10px] text-gray-400 mt-0.5">
                                       Deposit varies by borrower's trust score

@@ -3608,6 +3608,35 @@ Respond with ONLY the category name, nothing else.`
     res.json({ itemIds: rows.map(r => r.itemId) });
   });
 
+  // Get full item data for all subscribed items (regardless of availability)
+  // Used on browse page to show "Currently Out" badges for watched items
+  app.get("/api/items/my-subscribed-items", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.json([]);
+    const rows = await db
+      .select({
+        id: items.id,
+        name: items.name,
+        photos: items.photos,
+        isAvailable: items.isAvailable,
+        isGift: items.isGift,
+        city: items.city,
+        conditionRating: items.conditionRating,
+        isLendable: items.isLendable,
+        isSwappable: items.isSwappable,
+        isRentable: items.isRentable,
+      })
+      .from(itemAvailabilitySubscribers)
+      .innerJoin(items, eq(items.id, itemAvailabilitySubscribers.itemId))
+      .where(
+        and(
+          eq(itemAvailabilitySubscribers.userId, req.user.id),
+          eq(items.isAvailable, false),
+          eq(items.isDeleted, false),
+        )
+      );
+    res.json(rows);
+  });
+
   // Check if current user is subscribed
   app.get("/api/items/:itemId/notify-me", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

@@ -23,6 +23,7 @@ import {
   Heart,
   BadgeCheck,
   LayoutGrid,
+  Bell,
 } from "lucide-react";
 import type { SelectItem } from "@db/schema";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -154,6 +155,12 @@ export default function BorrowPage() {
     enabled: !!user,
   });
   const subscribedItemIds = new Set(subscriptionsData?.itemIds ?? []);
+
+  // Fetch full item data for subscribed-but-unavailable items (Currently Out)
+  const { data: subscribedOutItems = [] } = useQuery<{ id: number; name: string; photos: string[] | null; isAvailable: boolean; isGift: boolean; city: string | null; conditionRating: number | null }[]>({
+    queryKey: ["/api/items/my-subscribed-items"],
+    enabled: !!user,
+  });
 
   // Load saved location preferences from user profile
   useEffect(() => {
@@ -586,6 +593,63 @@ export default function BorrowPage() {
         {!searchQuery && (
           <div className="mb-8">
             <SeasonalRecommendations limit={6} />
+          </div>
+        )}
+
+        {/* Coming Back Soon — subscribed items currently out on loan */}
+        {!searchQuery && subscribedOutItems.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg">
+                <Bell className="h-4 w-4 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Coming Back Soon
+              </h3>
+              <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+                {subscribedOutItems.length} watching
+              </Badge>
+              <div className="flex-1 h-px bg-gradient-to-r from-amber-200 to-transparent"></div>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Items you're watching — we'll notify you the moment they're available again.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {subscribedOutItems.map((item) => (
+                <Link key={item.id} href={`/items/${item.id}`}>
+                  <Card className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow border-amber-200 bg-amber-50/30">
+                    <div className="relative aspect-square bg-gray-100">
+                      {item.photos && item.photos[0] ? (
+                        <img
+                          src={item.photos[0]}
+                          alt={item.name}
+                          className="w-full h-full object-cover opacity-60 grayscale"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                          <Camera className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Badge className="bg-amber-500 text-white text-xs font-semibold shadow">
+                          Currently Out
+                        </Badge>
+                      </div>
+                      <div className="absolute top-2 right-2 bg-white/90 rounded-full p-1">
+                        <Bell className="h-3 w-3 text-amber-600" />
+                      </div>
+                    </div>
+                    <CardContent className="p-2">
+                      <p className="text-xs font-medium text-gray-700 truncate">{item.name}</p>
+                      {item.city && (
+                        <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                          <MapPin className="h-2.5 w-2.5" />
+                          {item.city}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
 

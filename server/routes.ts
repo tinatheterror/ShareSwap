@@ -2193,7 +2193,7 @@ Return only the JSON object, no other text.`
             
 Available categories:
 - Baby & Kids (strollers, cribs, toys, baby clothes, car seats, playpens, etc.)
-- Clothing & Accessories (adult clothing, shoes, bags, jewelry, hats, scarves, etc.)
+- Clothing & Accessories (adult clothing, shoes, bags, jewelry, hats, scarves, hair accessories, hair clips, sunglasses, watches, belts, etc.)
 - Electronics (phones, laptops, cameras, TVs, speakers, headphones, gaming, etc.)
 - Hobbies & Collectibles (board games, musical instruments, sports cards, vinyl records, art supplies, craft kits, puzzles, figurines, etc.)
 - Home & Kitchen (furniture, appliances, cookware, decor, bedding, storage, etc.)

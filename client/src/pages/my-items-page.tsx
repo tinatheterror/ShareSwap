@@ -211,6 +211,10 @@ export default function MyItemsPage() {
   const [itemToDelete, setItemToDelete] = useState<
     (SelectItem & { activeRequest?: any }) | null
   >(null);
+  const [relistItem, setRelistItem] = useState<(SelectItem & { activeRequest?: any }) | null>(null);
+  const [relistOption, setRelistOption] = useState<"indefinitely" | "1month" | "3months" | "6months" | "1year" | "custom">("indefinitely");
+  const [relistCustomFrom, setRelistCustomFrom] = useState("");
+  const [relistCustomTo, setRelistCustomTo] = useState("");
 
   const { data: items = [], isLoading } = useQuery<
     (SelectItem & { activeRequest?: any })[]
@@ -247,14 +251,15 @@ export default function MyItemsPage() {
   });
 
   const relistItemMutation = useMutation({
-    mutationFn: async (itemId: number) => {
-      await apiRequest("POST", `/api/items/${itemId}/relist`);
+    mutationFn: async ({ itemId, availableToDate }: { itemId: number; availableToDate?: string }) => {
+      await apiRequest("POST", `/api/items/${itemId}/relist`, { availableToDate });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
+      setRelistItem(null);
       toast({
-        title: "Listing renewed",
-        description: "Your item is now live for another 30 days.",
+        title: "Item relisted",
+        description: "Your item is now live and available to neighbours.",
       });
     },
     onError: (error: any) => {
@@ -265,6 +270,25 @@ export default function MyItemsPage() {
       });
     },
   });
+
+  function openRelistDialog(item: SelectItem & { activeRequest?: any }) {
+    setRelistOption("indefinitely");
+    setRelistCustomFrom("");
+    setRelistCustomTo("");
+    setRelistItem(item);
+  }
+
+  function getRelistExpiry(): string | undefined {
+    const today = new Date();
+    if (relistOption === "indefinitely") return undefined;
+    if (relistOption === "custom") return relistCustomTo || undefined;
+    const end = new Date(today);
+    if (relistOption === "1month") end.setMonth(end.getMonth() + 1);
+    else if (relistOption === "3months") end.setMonth(end.getMonth() + 3);
+    else if (relistOption === "6months") end.setMonth(end.getMonth() + 6);
+    else if (relistOption === "1year") end.setFullYear(end.getFullYear() + 1);
+    return end.toISOString().split("T")[0];
+  }
 
   useEffect(() => {
     if (!isLoading && items.length === 0 && filter === "all") {
@@ -560,14 +584,13 @@ export default function MyItemsPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
-                            disabled={relistItemMutation.isPending}
                             onClick={(e) => {
                               e.stopPropagation();
-                              relistItemMutation.mutate(item.id);
+                              openRelistDialog(item);
                             }}
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
-                            Renew (30 days)
+                            Relist Item
                           </Button>
                         </div>
                       )}
@@ -583,10 +606,9 @@ export default function MyItemsPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
-                            disabled={relistItemMutation.isPending}
                             onClick={(e) => {
                               e.stopPropagation();
-                              relistItemMutation.mutate(item.id);
+                              openRelistDialog(item);
                             }}
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
@@ -673,6 +695,85 @@ export default function MyItemsPage() {
                   : isPassedOn
                     ? "Yes, Remove from History"
                     : "Yes, Remove Item"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Relist Availability Period Dialog */}
+        <Dialog open={!!relistItem} onOpenChange={(open) => { if (!open) setRelistItem(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Relist Item</DialogTitle>
+              <DialogDescription>
+                Choose how long to make <strong>{relistItem?.name}</strong> available.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <h3 className="font-medium text-sm">Availability Period</h3>
+              <div className="flex flex-wrap gap-2">
+                {(["indefinitely", "1month", "3months", "6months", "1year"] as const).map((opt) => (
+                  <Button
+                    key={opt}
+                    type="button"
+                    variant={relistOption === opt ? "default" : "outline"}
+                    size="sm"
+                    className="flex-1"
+                    style={relistOption === opt ? { backgroundColor: "#0DCEA1", borderColor: "#0DCEA1" } : {}}
+                    onClick={() => setRelistOption(opt)}
+                  >
+                    {opt === "indefinitely" ? "Indefinitely" : opt === "1month" ? "1 month" : opt === "3months" ? "3 months" : opt === "6months" ? "6 months" : "1 year"}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant={relistOption === "custom" ? "default" : "ghost"}
+                size="sm"
+                className="w-full text-muted-foreground text-xs"
+                style={relistOption === "custom" ? { backgroundColor: "#0DCEA1", borderColor: "#0DCEA1" } : {}}
+                onClick={() => setRelistOption("custom")}
+              >
+                Custom dates
+              </Button>
+              {relistOption === "custom" && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700">Available From</label>
+                    <input
+                      type="date"
+                      className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={relistCustomFrom}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) => setRelistCustomFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700">Available Until</label>
+                    <input
+                      type="date"
+                      className="w-full border rounded px-2 py-1.5 text-sm"
+                      value={relistCustomTo}
+                      min={relistCustomFrom || new Date().toISOString().split("T")[0]}
+                      onChange={(e) => setRelistCustomTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setRelistItem(null)}>Cancel</Button>
+              <Button
+                disabled={relistItemMutation.isPending || (relistOption === "custom" && !relistCustomTo)}
+                style={{ backgroundColor: "#0DCEA1", borderColor: "#0DCEA1" }}
+                onClick={() => {
+                  if (!relistItem) return;
+                  relistItemMutation.mutate({ itemId: relistItem.id, availableToDate: getRelistExpiry() });
+                }}
+              >
+                {relistItemMutation.isPending ? "Relisting…" : "Relist Item"}
               </Button>
             </DialogFooter>
           </DialogContent>

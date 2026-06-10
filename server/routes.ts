@@ -3408,7 +3408,11 @@ Respond with ONLY the category name, nothing else.`
       if (!item) return res.status(404).json({ error: "Item not found" });
       if (item.ownerId !== req.user.id) return res.status(403).json({ error: "Not your item" });
 
-      const newExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      const { availableToDate } = req.body as { availableToDate?: string };
+      const newExpiry = availableToDate
+        ? new Date(availableToDate)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
       await db.update(items)
         .set({ isAvailable: true, listingExpiresAt: newExpiry, updatedAt: new Date() })
         .where(eq(items.id, itemId));

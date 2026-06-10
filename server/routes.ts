@@ -4576,32 +4576,6 @@ Respond with ONLY the category name, nothing else.`
         .send("This item cannot be rented because it does not have a Replacement Value set.");
     }
 
-    // For SWAP requests: block if the requester can't cover their coin offset
-    if (requestType === "SWAP") {
-      const offeredIds: number[] = Array.isArray(swapOfferedItemIds) ? swapOfferedItemIds.map(Number) : [];
-      if (offeredIds.length > 0) {
-        const allSwapIds = [...new Set([item.id, ...offeredIds])];
-        const swapItemRows = await db.select({ id: items.id, tier: items.tier }).from(items).where(inArray(items.id, allSwapIds));
-        const swapTierMap = new Map(swapItemRows.map(r => [r.id, r.tier]));
-        const ownerSC = serverGetTierSC(swapTierMap.get(item.id));
-        const requesterSC = offeredIds.reduce((s: number, id: number) => s + serverGetTierSC(swapTierMap.get(id)), 0);
-        const swapOffset = Math.abs(ownerSC - requesterSC);
-        // Only block if the requester would owe coins (their items are valued lower)
-        if (swapOffset > 0 && requesterSC < ownerSC) {
-          const [requesterRow] = await db.select({ shareCoins: users.shareCoins }).from(users).where(eq(users.id, req.user.id)).limit(1);
-          const requesterBalance = parseInt(requesterRow?.shareCoins?.toString() ?? "0");
-          if (requesterBalance < swapOffset) {
-            return res.status(402).json({
-              error: `You need ${swapOffset} ShareCoins to make this swap (your item is valued ${swapOffset} SC lower), but you only have ${requesterBalance}. Earn more ShareCoins first.`,
-              code: "INSUFFICIENT_SHARECOINS",
-              required: swapOffset,
-              available: requesterBalance,
-            });
-          }
-        }
-      }
-    }
-
     // Create the request
     const [request] = await db
       .insert(itemRequests)

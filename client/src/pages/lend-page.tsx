@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
@@ -2283,10 +2284,15 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                                     <TooltipProvider delayDuration={0}>
                                       <Tooltip>
                                         <TooltipTrigger asChild>
-                                          <div className="text-sm font-semibold text-gray-800 cursor-help flex items-center gap-1">
-                                            {getTierShareCoins(calculatedTier)} ShareCoins swap value
-                                            <Info className="h-3 w-3 text-gray-400" />
-                                          </div>
+                                          <button className="focus:outline-none">
+                                            <Badge variant="outline" className="border-teal-700 text-teal-700 cursor-help">
+                                              <span className="flex items-center gap-1">
+                                                {TIER_SUBTITLES[calculatedTier] || "Item"}:
+                                                <Coins className="h-3 w-3" />
+                                                {getTierShareCoins(calculatedTier)}
+                                              </span>
+                                            </Badge>
+                                          </button>
                                         </TooltipTrigger>
                                         <TooltipContent side="top" className="max-w-xs">
                                           <p className="text-xs">Any item combination is allowed — ShareCoins cover the difference in value.</p>

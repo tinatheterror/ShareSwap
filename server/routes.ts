@@ -4449,7 +4449,7 @@ Respond with ONLY the category name, nothing else.`
   // Create item request
   app.post("/api/items/:itemId/request", requireEmailVerified, async (req: any, res) => {
     const itemId = parseInt(req.params.itemId);
-    const { requestType, message, startDate, endDate, deliveryMethod, swapOfferedItemIds, swapRequestedItemIds } = req.body;
+    const { requestType, message, startDate, endDate, deliveryMethod, depositMethod, swapOfferedItemIds, swapRequestedItemIds } = req.body;
 
     // BORROW and RENT require full verification (email + ID + payment)
     if ((requestType === "BORROW" || requestType === "RENT") && req.verificationLevel.level !== 'fully_verified') {
@@ -4468,6 +4468,12 @@ Respond with ONLY the category name, nothing else.`
     const validatedDeliveryMethod = validDeliveryMethods.includes(deliveryMethod) 
       ? deliveryMethod 
       : "in_person";
+
+    // Validate depositMethod
+    const validDepositMethods = ["in_app", "in_person"];
+    const validatedDepositMethod = validDepositMethods.includes(depositMethod)
+      ? depositMethod
+      : "in_app";
 
     // Check if item exists and is available
     const [item] = await db
@@ -4553,6 +4559,7 @@ Respond with ONLY the category name, nothing else.`
         endDate: endDate ? new Date(endDate) : null,
         status: "PENDING",
         deliveryMethod: validatedDeliveryMethod,
+        depositMethod: validatedDepositMethod,
         deliveryConfirmed: false,
         ...(requestType === "SWAP" && Array.isArray(swapOfferedItemIds) && swapOfferedItemIds.length > 0
           ? { swapOfferedItemIds: swapOfferedItemIds.map(Number) }

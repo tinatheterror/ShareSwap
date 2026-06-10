@@ -1954,7 +1954,10 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
 
                   {/* Sharing options */}
                   <div className="space-y-3 border-t pt-4">
-                    <h3 className="font-medium">Neighbours can</h3>
+                    <div>
+                      <h3 className="font-medium">Neighbours can</h3>
+                      <p className="text-sm text-gray-400 mt-0.5 sm:hidden">Select one or more options</p>
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <Button
                         type="button"
@@ -2027,7 +2030,7 @@ export default function LendPage({ isModal, onClose }: LendPageProps = {}) {
                         </span>
                       </Button>
                     </div>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-gray-400 hidden sm:block">
                       Select one or more options
                     </p>
                     {form.formState.errors.isLendable && (

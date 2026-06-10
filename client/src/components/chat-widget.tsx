@@ -1845,7 +1845,7 @@ export function ChatWidget() {
                               const origDeposit = msg.metadata.origDepositMethod as string | undefined;
                               const newDeposit = msg.metadata.depositMethod as string | undefined;
                               const depositChanged = origDeposit !== newDeposit;
-                              const depositLabel = (m?: string) => m === "in_app" ? "Handle In-app" : m === "in_person" ? "Exchange In Person" : null;
+                              const depositLabel = (m?: string | null) => m === "in_person" ? "Exchange In Person" : "Handle In-app";
 
                               return (
                                 <div className="w-full pl-[70px]">

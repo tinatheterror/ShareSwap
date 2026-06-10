@@ -211,6 +211,8 @@ export default function MyItemsPage() {
   const [itemToDelete, setItemToDelete] = useState<
     (SelectItem & { activeRequest?: any }) | null
   >(null);
+  const [relistItemId, setRelistItemId] = useState<number | null>(null);
+  const [relistDays, setRelistDays] = useState<number>(30);
 
   const { data: items = [], isLoading } = useQuery<
     (SelectItem & { activeRequest?: any })[]
@@ -247,14 +249,15 @@ export default function MyItemsPage() {
   });
 
   const relistItemMutation = useMutation({
-    mutationFn: async (itemId: number) => {
-      await apiRequest("POST", `/api/items/${itemId}/relist`);
+    mutationFn: async ({ itemId, days }: { itemId: number; days: number }) => {
+      await apiRequest("POST", `/api/items/${itemId}/relist`, { days });
     },
-    onSuccess: () => {
+    onSuccess: (_, { days }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/my-items"] });
+      setRelistItemId(null);
       toast({
         title: "Listing renewed",
-        description: "Your item is now live for another 30 days.",
+        description: `Your item is now live for ${days} days.`,
       });
     },
     onError: (error: any) => {
@@ -560,14 +563,14 @@ export default function MyItemsPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
-                            disabled={relistItemMutation.isPending}
                             onClick={(e) => {
                               e.stopPropagation();
-                              relistItemMutation.mutate(item.id);
+                              setRelistDays(30);
+                              setRelistItemId(item.id);
                             }}
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
-                            Renew (30 days)
+                            Renew Listing
                           </Button>
                         </div>
                       )}
@@ -583,10 +586,10 @@ export default function MyItemsPage() {
                             size="sm"
                             variant="outline"
                             className="h-7 text-xs px-2 border-teal-400 text-teal-700 hover:bg-teal-50 shrink-0"
-                            disabled={relistItemMutation.isPending}
                             onClick={(e) => {
                               e.stopPropagation();
-                              relistItemMutation.mutate(item.id);
+                              setRelistDays(30);
+                              setRelistItemId(item.id);
                             }}
                           >
                             <RefreshCw className="h-3 w-3 mr-1" />
@@ -673,6 +676,58 @@ export default function MyItemsPage() {
                   : isPassedOn
                     ? "Yes, Remove from History"
                     : "Yes, Remove Item"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Relist Period Selector Dialog */}
+        <Dialog open={relistItemId !== null} onOpenChange={(open) => { if (!open) setRelistItemId(null); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 text-teal-600" />
+                How long would you like to list it for?
+              </DialogTitle>
+              <DialogDescription>
+                Choose an availability window for your listing.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-2 py-2">
+              {[
+                { label: "7 days", days: 7 },
+                { label: "14 days", days: 14 },
+                { label: "30 days", days: 30 },
+                { label: "60 days", days: 60 },
+                { label: "90 days", days: 90 },
+                { label: "6 months", days: 180 },
+              ].map(({ label, days }) => (
+                <button
+                  key={days}
+                  onClick={() => setRelistDays(days)}
+                  className={`rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
+                    relistDays === days
+                      ? "border-teal-500 bg-teal-50 text-teal-700"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-teal-300 hover:bg-teal-50/50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-2">
+              <Button variant="outline" onClick={() => setRelistItemId(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                disabled={relistItemMutation.isPending}
+                onClick={() => {
+                  if (relistItemId !== null) relistItemMutation.mutate({ itemId: relistItemId, days: relistDays });
+                }}
+                className="flex-1 text-white"
+                style={{ backgroundColor: "#0DCEA1" }}
+              >
+                {relistItemMutation.isPending ? "Listing…" : "Confirm"}
               </Button>
             </DialogFooter>
           </DialogContent>

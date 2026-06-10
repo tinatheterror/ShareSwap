@@ -106,6 +106,23 @@ interface TrustActivityMetadata {
   [key: string]: any;
 }
 
+/**
+ * Soft diminishing returns on positive trust point awards:
+ *   score  0–299  → full points (100%)
+ *   score 300–449 → 50% of points
+ *   score 450+    → 25% of points
+ *
+ * Penalties (negative points) are never scaled — they always apply in full.
+ * Minimum scaled positive award is 1 point so no action ever gives 0 when it
+ * should give something.
+ */
+function scaleTrustPoints(currentScore: number, points: number): number {
+  if (points <= 0) return points; // never scale penalties
+  if (currentScore >= 450) return Math.max(1, Math.round(points * 0.25));
+  if (currentScore >= 300) return Math.max(1, Math.round(points * 0.50));
+  return points;
+}
+
 export async function awardTrustPoints(
   userId: number,
   activityType: TrustActivityType,
@@ -122,7 +139,8 @@ export async function awardTrustPoints(
   }
 
   const currentScore = user.reputationScore || 0;
-  const newScore = Math.max(TRUST_SCORE_FLOOR, currentScore + points);
+  const scaledPoints = scaleTrustPoints(currentScore, points);
+  const newScore = Math.max(TRUST_SCORE_FLOOR, currentScore + scaledPoints);
 
   const description = buildActivityDescription(activityType, metadata);
 
@@ -135,14 +153,14 @@ export async function awardTrustPoints(
     await tx.insert(reputationActivities).values({
       userId,
       activityType,
-      points,
+      points: scaledPoints,
       description,
       itemId: metadata.itemId,
       createdAt: new Date(),
     });
   });
 
-  return { newScore, pointsAwarded: points };
+  return { newScore, pointsAwarded: scaledPoints };
 }
 
 function buildActivityDescription(

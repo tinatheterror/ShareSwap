@@ -1702,6 +1702,11 @@ export default function RequestsPage() {
                     <Label htmlFor="cp-deposit-inperson" className="font-normal cursor-pointer">In-person (cash at handoff)</Label>
                   </div>
                 </RadioGroup>
+                {proposedDepositMethod === "in_person" && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    ⚠️ ShareSwap is not responsible for in-person deposits. You assume full responsibility for collection, return, and any disputes — no platform protection applies.
+                  </p>
+                )}
               </div>
             )}
 

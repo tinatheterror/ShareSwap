@@ -2751,6 +2751,11 @@ export function ChatWidget() {
                     <Label htmlFor="cc-deposit-inperson" className="font-normal cursor-pointer">Exchange Deposit In Person</Label>
                   </div>
                 </RadioGroup>
+                {chatProposedDeposit === "in_person" && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    ⚠️ ShareSwap is not responsible for in-person deposits. You assume full responsibility for collection, return, and any disputes — no platform protection applies.
+                  </p>
+                )}
               </div>
             )}
             {(chatCounterRequest?.requestType === "BORROW" || chatCounterRequest?.requestType === "RENT") && (

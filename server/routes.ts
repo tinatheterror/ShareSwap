@@ -7538,6 +7538,19 @@ Respond with ONLY the category name, nothing else.`
 
       await db.update(items).set({ isAvailable: false }).where(eq(items.id, request.items.id));
 
+      // For swaps via PIN: mark primary item and all offered/counter items as swapped + unavailable
+      if (isSwapPin) {
+        await db.update(items).set({ isSwapped: true }).where(eq(items.id, request.items.id));
+        const swapOfferedIds: number[] = [
+          ...((request.item_requests.swapOfferedItemIds as number[] | null) ?? []),
+          ...((request.item_requests.counterSwapOwnerItemIds as number[] | null) ?? []),
+          ...((request.item_requests.counterSwapRequesterItemIds as number[] | null) ?? []),
+        ].filter((id) => typeof id === "number");
+        if (swapOfferedIds.length > 0) {
+          await db.update(items).set({ isAvailable: false, isSwapped: true }).where(inArray(items.id, swapOfferedIds));
+        }
+      }
+
       // System messages
       if (isGiftPin) {
         await db.insert(messages).values({

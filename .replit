@@ -76,3 +76,7 @@ defaultBucketID = "replit-objstore-cb3aab52-ac42-40ef-9d04-b5fbb6285151"
 [userenv.shared]
 VITE_USERJOT_PROJECT_ID = "cmlfkklda161o0ilgvmmecwhh"
 CUSTOM_DOMAIN = "shareswap.app"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 20000

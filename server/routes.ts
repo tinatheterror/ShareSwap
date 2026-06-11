@@ -2316,6 +2316,9 @@ Respond with ONLY the category name, nothing else.`
       if (wasSmartScanned && req.body.smartScanPhotos) {
         // Use SmartScan photos (already uploaded to object storage)
         photoUrls = JSON.parse(req.body.smartScanPhotos);
+      } else if (req.body.existingPhotos) {
+        // Re-use existing photo URLs (e.g. swap-prefill from received item)
+        photoUrls = JSON.parse(req.body.existingPhotos);
       } else {
         // Upload photos to object storage for persistence
         const files = req.files as Express.Multer.File[];

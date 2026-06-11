@@ -320,9 +320,7 @@ export function ChatWidget() {
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
   const [reviewForRequest, setReviewForRequest] = useState<ItemRequest | null>(null);
   const [showSwapInventoryPrompt, setShowSwapInventoryPrompt] = useState(false);
-  const [swapInventoryItem, setSwapInventoryItem] = useState<ItemRequest["item"] | null>(null);
-  const [showSwapOwnerInventoryPrompt, setShowSwapOwnerInventoryPrompt] = useState(false);
-  const [swapOwnerReceivedItems, setSwapOwnerReceivedItems] = useState<{ id: number; name: string; photos: string[]; tier?: number | null }[]>([]);
+  const [swapOwnerReceivedItems, setSwapOwnerReceivedItems] = useState<{ id: number; name: string; photos: string[]; tier?: number | null; description?: string; originalValue?: string; condition?: string }[]>([]);
   const [showProofInput, setShowProofInput] = useState(false);
   const [proofText, setProofText] = useState("");
   const [showAutoReport, setShowAutoReport] = useState(false);
@@ -481,17 +479,32 @@ export function ChatWidget() {
       if (shouldPrompt && !showReviewPrompt) {
         setReviewForRequest(req);
         setShowReviewPrompt(true);
-        // For SWAP requester: offer to add the received item (owner's item) to inventory
-        if (req.requestType === "SWAP" && isRequester) {
-          setSwapInventoryItem(req.item);
-          setShowSwapInventoryPrompt(true);
-        }
-        // For SWAP owner: offer to add all received items (requester's offered items) to inventory
-        if (req.requestType === "SWAP" && isOwner) {
-          const receivedItems = (req.counterSwapRequesterItems?.length ? req.counterSwapRequesterItems : req.swapOfferedItems) ?? [];
+        // For SWAP: offer to add received items to inventory (both sides)
+        if (req.requestType === "SWAP") {
+          let receivedItems: { id: number; name: string; photos: string[]; tier?: number | null; description?: string; originalValue?: string; condition?: string }[] = [];
+          if (isRequester) {
+            // Requester receives the owner's item(s): counterSwapOwnerItems if counter, else the listing item
+            const counterItems = (req as any).counterSwapOwnerItems;
+            if (counterItems?.length) {
+              receivedItems = counterItems;
+            } else {
+              receivedItems = [{
+                id: req.item.id,
+                name: req.item.name,
+                photos: req.item.photos || [],
+                tier: (req.item as any).tier,
+                description: req.item.description || "",
+                originalValue: req.item.originalValue || "",
+                condition: req.item.condition || "",
+              }];
+            }
+          } else if (isOwner) {
+            // Owner receives the requester's offered items: counterSwapRequesterItems if counter, else swapOfferedItems
+            receivedItems = ((req.counterSwapRequesterItems?.length ? req.counterSwapRequesterItems : req.swapOfferedItems) ?? []) as typeof receivedItems;
+          }
           if (receivedItems.length > 0) {
-            setSwapOwnerReceivedItems(receivedItems as { id: number; name: string; photos: string[]; tier?: number | null }[]);
-            setShowSwapOwnerInventoryPrompt(true);
+            setSwapOwnerReceivedItems(receivedItems);
+            setShowSwapInventoryPrompt(true);
           }
         }
         break;
@@ -753,21 +766,6 @@ export function ChatWidget() {
     onError: () => { toast({ title: "Error", description: "Could not confirm return", variant: "destructive" }); },
   });
 
-  const handleAddSwapItemToInventory = () => {
-    if (!swapInventoryItem) return;
-    sessionStorage.setItem(
-      "shareswap_swap_prefill",
-      JSON.stringify({
-        name: swapInventoryItem.name,
-        description: swapInventoryItem.description || "",
-        originalValue: swapInventoryItem.originalValue || "",
-        condition: swapInventoryItem.condition || "",
-        photos: swapInventoryItem.photos || [],
-      }),
-    );
-    setShowSwapInventoryPrompt(false);
-    navigate("/lend");
-  };
 
   const openChatCounter = (request: ItemRequest, role: "owner" | "requester") => {
     // SWAP requests get a dedicated item-picker modal
@@ -2653,69 +2651,11 @@ export function ChatWidget() {
         );
       })()}
 
-      {/* Swap received-item inventory prompt */}
-      {swapInventoryItem && (
+      {/* Swap received-items inventory prompt (both owner and requester) */}
+      {swapOwnerReceivedItems.length > 0 && (
         <Dialog
           open={showSwapInventoryPrompt}
           onOpenChange={(open) => { if (!open) setShowSwapInventoryPrompt(false); }}
-        >
-          <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[400px] p-0 overflow-hidden">
-            <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-5 text-white">
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-16 bg-white/10 rounded-xl overflow-hidden flex-shrink-0">
-                  {swapInventoryItem.photos?.[0] ? (
-                    <img
-                      src={swapInventoryItem.photos[0]}
-                      alt={swapInventoryItem.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Package className="h-8 w-8 text-white/50 m-4" />
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-white/70 font-medium uppercase tracking-wide mb-0.5">
-                    Swap complete
-                  </p>
-                  <h3 className="font-bold text-base leading-tight truncate">
-                    {swapInventoryItem.name}
-                  </h3>
-                </div>
-              </div>
-            </div>
-            <div className="p-5">
-              <h4 className="font-semibold text-gray-900 mb-1">
-                Add item to your inventory?
-              </h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                Review and edit item details before publishing.
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowSwapInventoryPrompt(false)}
-                >
-                  Maybe Later
-                </Button>
-                <Button
-                  className="flex-1 bg-[#0DCEA1] hover:bg-[#0BB88C]"
-                  onClick={handleAddSwapItemToInventory}
-                >
-                  <Package className="h-4 w-4 mr-2" />
-                  Add to Inventory
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Swap owner received-items inventory prompt */}
-      {swapOwnerReceivedItems.length > 0 && (
-        <Dialog
-          open={showSwapOwnerInventoryPrompt}
-          onOpenChange={(open) => { if (!open) setShowSwapOwnerInventoryPrompt(false); }}
         >
           <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[420px] p-0 overflow-hidden">
             <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-5 text-white">
@@ -2751,8 +2691,11 @@ export function ChatWidget() {
                         sessionStorage.setItem("shareswap_swap_prefill", JSON.stringify({
                           name: item.name,
                           photos: item.photos || [],
+                          description: item.description || "",
+                          originalValue: item.originalValue || "",
+                          condition: item.condition || "",
                         }));
-                        setShowSwapOwnerInventoryPrompt(false);
+                        setShowSwapInventoryPrompt(false);
                         navigate("/lend");
                       }}
                     >
@@ -2764,7 +2707,7 @@ export function ChatWidget() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => setShowSwapOwnerInventoryPrompt(false)}
+                onClick={() => setShowSwapInventoryPrompt(false)}
               >
                 Maybe Later
               </Button>

@@ -1865,7 +1865,7 @@ export function ChatWidget() {
                                           {origStart} – {origEnd}
                                         </span>
                                       )}
-                                      {depositLabel(origDeposit) && (
+                                      {relatedRequest?.requestType !== "RENT" && depositLabel(origDeposit) && (
                                         <span className="flex items-center gap-1">
                                           <Shield className="h-3 w-3 shrink-0" />
                                           {depositLabel(origDeposit)}
@@ -1883,7 +1883,7 @@ export function ChatWidget() {
                                           {newStart} – {newEnd}
                                         </span>
                                       )}
-                                      {depositLabel(newDeposit) && (
+                                      {relatedRequest?.requestType !== "RENT" && depositLabel(newDeposit) && (
                                         <span className={`flex items-center gap-1 ${depositChanged ? "text-amber-600 font-semibold" : "text-muted-foreground"}`}>
                                           <Shield className="h-3 w-3 shrink-0" />
                                           {depositLabel(newDeposit)}

@@ -1531,7 +1531,7 @@ export function registerRoutes(app: Express): Server {
           });
 
           const response = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-5",
             messages: [
               {
                 role: "system",
@@ -1798,7 +1798,7 @@ Respond with ONLY valid JSON in this exact format:
 
       // Call GPT-4 Vision API
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [
           {
             role: "user",
@@ -1938,7 +1938,7 @@ IMPORTANT: For luxury designer items, do NOT undervalue. A genuine Chanel purse 
       }));
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: [{
           role: "user",
           content: [
@@ -2038,7 +2038,7 @@ Be accurate and practical. Always populate every field — never leave condition
       }));
 
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: 'gpt-5',
         messages: [
           {
             role: 'user',

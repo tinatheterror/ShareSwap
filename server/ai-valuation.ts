@@ -233,7 +233,7 @@ Based on these factors${hasPhotos ? " and the photo analysis" : ""}, calculate t
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [
         {
           role: "system",

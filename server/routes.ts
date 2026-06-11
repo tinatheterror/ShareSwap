@@ -7560,6 +7560,10 @@ Respond with ONLY the category name, nothing else.`
             request.items.name,
           );
           await awardSwapCompletionPoints(ownerId, borrowerId, requestId, request.items.id, request.items.id);
+          await db.insert(notifications).values([
+            { userId: ownerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
+            { userId: borrowerId, type: "trust_score_changed", title: "Trust Score +20", message: "Swap completed +20", itemId: request.items.id, requestId, isRead: false },
+          ]);
           await checkAndAwardReferralBonus(ownerId, requestId, 'SWAP');
           await checkAndAwardReferralBonus(borrowerId, requestId, 'SWAP');
           await checkAndAwardAchievements(ownerId);

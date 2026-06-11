@@ -321,6 +321,8 @@ export function ChatWidget() {
   const [reviewForRequest, setReviewForRequest] = useState<ItemRequest | null>(null);
   const [showSwapInventoryPrompt, setShowSwapInventoryPrompt] = useState(false);
   const [swapInventoryItem, setSwapInventoryItem] = useState<ItemRequest["item"] | null>(null);
+  const [showSwapOwnerInventoryPrompt, setShowSwapOwnerInventoryPrompt] = useState(false);
+  const [swapOwnerReceivedItems, setSwapOwnerReceivedItems] = useState<{ id: number; name: string; photos: string[]; tier?: number | null }[]>([]);
   const [showProofInput, setShowProofInput] = useState(false);
   const [proofText, setProofText] = useState("");
   const [showAutoReport, setShowAutoReport] = useState(false);
@@ -479,10 +481,18 @@ export function ChatWidget() {
       if (shouldPrompt && !showReviewPrompt) {
         setReviewForRequest(req);
         setShowReviewPrompt(true);
-        // For SWAP requester: offer to add the received item to inventory
+        // For SWAP requester: offer to add the received item (owner's item) to inventory
         if (req.requestType === "SWAP" && isRequester) {
           setSwapInventoryItem(req.item);
           setShowSwapInventoryPrompt(true);
+        }
+        // For SWAP owner: offer to add all received items (requester's offered items) to inventory
+        if (req.requestType === "SWAP" && isOwner) {
+          const receivedItems = (req.counterSwapRequesterItems?.length ? req.counterSwapRequesterItems : req.swapOfferedItems) ?? [];
+          if (receivedItems.length > 0) {
+            setSwapOwnerReceivedItems(receivedItems as { id: number; name: string; photos: string[]; tier?: number | null }[]);
+            setShowSwapOwnerInventoryPrompt(true);
+          }
         }
         break;
       }
@@ -2696,6 +2706,68 @@ export function ChatWidget() {
                   Add to Inventory
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Swap owner received-items inventory prompt */}
+      {swapOwnerReceivedItems.length > 0 && (
+        <Dialog
+          open={showSwapOwnerInventoryPrompt}
+          onOpenChange={(open) => { if (!open) setShowSwapOwnerInventoryPrompt(false); }}
+        >
+          <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[420px] p-0 overflow-hidden">
+            <div className="bg-gradient-to-br from-[#0DCEA1] to-[#0BB88C] p-5 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Package className="h-6 w-6 text-white/80" />
+                </div>
+                <div>
+                  <p className="text-xs text-white/70 font-medium uppercase tracking-wide mb-0.5">Swap complete</p>
+                  <h3 className="font-bold text-base leading-tight">You received {swapOwnerReceivedItems.length} item{swapOwnerReceivedItems.length !== 1 ? "s" : ""}!</h3>
+                </div>
+              </div>
+            </div>
+            <div className="p-5">
+              <h4 className="font-semibold text-gray-900 mb-1">Add received items to your inventory?</h4>
+              <p className="text-sm text-muted-foreground mb-3">Review and edit each item's details before publishing.</p>
+              <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                {swapOwnerReceivedItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-2.5 p-2 bg-gray-50 rounded-lg">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
+                      {item.photos?.[0] ? (
+                        <img src={item.photos[0]} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-4 w-4 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 truncate">{item.name}</span>
+                    <button
+                      className="ml-auto text-xs text-teal-600 hover:text-teal-700 font-medium shrink-0"
+                      onClick={() => {
+                        sessionStorage.setItem("shareswap_swap_prefill", JSON.stringify({
+                          name: item.name,
+                          photos: item.photos || [],
+                        }));
+                        setShowSwapOwnerInventoryPrompt(false);
+                        navigate("/lend");
+                      }}
+                    >
+                      Add →
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowSwapOwnerInventoryPrompt(false)}
+              >
+                Maybe Later
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

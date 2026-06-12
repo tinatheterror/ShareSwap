@@ -2779,11 +2779,11 @@ export function ChatWidget() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Start</Label>
-                    <Input type="date" value={chatProposedStart} onChange={(e) => { setChatProposedStart(e.target.value); if (chatProposedEnd && e.target.value > chatProposedEnd) setChatProposedEnd(""); }} min={new Date().toISOString().split("T")[0]} />
+                    <Input type="date" value={chatProposedStart} onChange={(e) => { setChatProposedStart(e.target.value); if (chatProposedEnd && e.target.value > chatProposedEnd) setChatProposedEnd(""); }} min={new Date().toLocaleDateString("en-CA")} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">End</Label>
-                    <Input type="date" value={chatProposedEnd} onChange={(e) => setChatProposedEnd(e.target.value)} min={chatProposedStart || new Date().toISOString().split("T")[0]} />
+                    <Input type="date" value={chatProposedEnd} onChange={(e) => setChatProposedEnd(e.target.value)} min={chatProposedStart || new Date().toLocaleDateString("en-CA")} />
                   </div>
                 </div>
               </div>

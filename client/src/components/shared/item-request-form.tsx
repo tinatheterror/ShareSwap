@@ -160,8 +160,8 @@ export function ItemRequestForm({
     const end = new Date(start);
     end.setDate(start.getDate() + days - 1);
 
-    form.setValue("startDate", start.toISOString().split("T")[0]);
-    form.setValue("endDate", end.toISOString().split("T")[0]);
+    form.setValue("startDate", start.toLocaleDateString("en-CA"));
+    form.setValue("endDate", end.toLocaleDateString("en-CA"));
   };
 
   const createRequestMutation = useMutation({
@@ -460,7 +460,7 @@ export function ItemRequestForm({
                           <Input
                             type="date"
                             {...field}
-                            min={new Date().toISOString().split("T")[0]}
+                            min={new Date().toLocaleDateString("en-CA")}
                           />
                         </FormControl>
                         <FormMessage />
@@ -479,7 +479,7 @@ export function ItemRequestForm({
                             {...field}
                             min={
                               form.watch("startDate") ||
-                              new Date().toISOString().split("T")[0]
+                              new Date().toLocaleDateString("en-CA")
                             }
                           />
                         </FormControl>

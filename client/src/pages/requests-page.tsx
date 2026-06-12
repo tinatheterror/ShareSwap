@@ -1738,7 +1738,7 @@ export default function RequestsPage() {
                       type="date"
                       value={proposedStartDate}
                       onChange={(e) => { setProposedStartDate(e.target.value); if (proposedEndDate && e.target.value > proposedEndDate) setProposedEndDate(""); }}
-                      min={new Date().toISOString().split("T")[0]}
+                      min={new Date().toLocaleDateString("en-CA")}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1747,7 +1747,7 @@ export default function RequestsPage() {
                       type="date"
                       value={proposedEndDate}
                       onChange={(e) => setProposedEndDate(e.target.value)}
-                      min={proposedStartDate || new Date().toISOString().split("T")[0]}
+                      min={proposedStartDate || new Date().toLocaleDateString("en-CA")}
                     />
                   </div>
                 </div>

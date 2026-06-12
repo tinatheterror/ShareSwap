@@ -96,8 +96,8 @@ function SavedCardConfirmForm(props: FormProps) {
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
           ) : (
             <>
-              <span className="flex items-center gap-1.5"><CreditCard className="h-4 w-4" />Pay ${totalDueNow.toFixed(2)}</span>
-              <span className="text-[10px] opacity-75 font-normal">Charging card on file</span>
+              <span className="flex items-center gap-1.5 leading-none"><CreditCard className="h-4 w-4" />Pay ${totalDueNow.toFixed(2)}</span>
+              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Charging card on file</span>
             </>
           )}
         </Button>

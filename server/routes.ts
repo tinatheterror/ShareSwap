@@ -8364,7 +8364,9 @@ Respond with ONLY the category name, nothing else.`
         userId: request.item_requests.requesterId,
         type: "return_confirmed",
         title: "Return Confirmed",
-        message: `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner. Security deposit released.`,
+        message: request.item_requests.depositMethod === "in_person"
+          ? `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner.`
+          : `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner. Security deposit released.`,
         itemId: request.items.id,
         requestId,
         isRead: false,
@@ -8374,7 +8376,9 @@ Respond with ONLY the category name, nothing else.`
       const ownerId_conf = request.items.ownerId!;
       const borrowerId_conf = request.item_requests.requesterId;
       await db.insert(messages).values({
-        content: `✅ Return confirmed — item received in good condition. Security deposit has been released.`,
+        content: request.item_requests.depositMethod === "in_person"
+          ? `✅ Return confirmed — item received in good condition.`
+          : `✅ Return confirmed — item received in good condition. Security deposit has been released.`,
         senderId: ownerId_conf,
         receiverId: borrowerId_conf,
         messageType: "system",
@@ -8477,7 +8481,10 @@ Respond with ONLY the category name, nothing else.`
       await checkAndAwardAchievements(request.item_requests.requesterId);
       if (request.items.ownerId) await checkAndAwardAchievements(request.items.ownerId);
 
-      const returnMessage = isEarlyReturn ? "Item returned early. Deposit released." : "Return confirmed! Deposit released.";
+      const inPerson = request.item_requests.depositMethod === "in_person";
+      const returnMessage = isEarlyReturn
+        ? (inPerson ? "Item returned early." : "Item returned early. Deposit released.")
+        : (inPerson ? "Return confirmed!" : "Return confirmed! Deposit released.");
 
       res.json({
         success: true,

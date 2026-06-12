@@ -6519,6 +6519,15 @@ Respond with ONLY the category name, nothing else.`
         console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
       }
 
+      // Notify both parties that the deposit is now held
+      await db.insert(messages).values({
+        content: "🔒 Security deposit is now held until the item is returned",
+        senderId: request.items.ownerId!,
+        receiverId: request.item_requests.requesterId,
+        messageType: "system",
+        requestId,
+      });
+
       res.json({
         success: true,
         request: updated,
@@ -6659,6 +6668,17 @@ Respond with ONLY the category name, nothing else.`
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
+
+      // Notify both parties that the deposit is now held (only for in-app Stripe holds)
+      if (paymentIntentId) {
+        await db.insert(messages).values({
+          content: "🔒 Security deposit is now held until the item is returned",
+          senderId: request.items.ownerId!,
+          receiverId: request.item_requests.requesterId,
+          messageType: "system",
+          requestId,
+        });
+      }
 
       res.json({
         success: true,
@@ -7350,7 +7370,6 @@ Respond with ONLY the category name, nothing else.`
             `🤝 The ${isBorrow ? "borrow" : "rental"} period has officially started`,
             startFmt && endFmt ? `📅 Booked period: ${startFmt} – ${endFmt} | Handoff completed: ${handoffFmt}` : null,
             isLateHandoff && isBorrow ? `⚠️ Handoff was late — borrower can request a return date adjustment from their requests page.` : null,
-            isRent && request.item_requests.depositMethod !== "in_person" ? `🔒 Security deposit is now held until the item is returned` : null,
           ].filter(Boolean) as string[];
         }
 
@@ -7590,9 +7609,6 @@ Respond with ONLY the category name, nothing else.`
       } else {
         const periodType = requestType === "RENT" ? "rental" : "borrow";
         await db.insert(messages).values({ content: `🤝 Handoff confirmed via PIN — ${periodType} period has started`, senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
-        if (request.item_requests.depositMethod !== "in_person") {
-          await db.insert(messages).values({ content: "🔒 Security deposit is now held until the item is returned", senderId: ownerId, receiverId: borrowerId, messageType: "system", requestId });
-        }
         // For RENT: release rental earnings to owner at handoff (not at return)
         if (requestType === 'RENT' && request.item_requests.rentalAmount) {
           try {

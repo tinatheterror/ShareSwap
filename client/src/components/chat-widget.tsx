@@ -2779,7 +2779,7 @@ export function ChatWidget() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Start</Label>
-                    <Input type="date" value={chatProposedStart} onChange={(e) => setChatProposedStart(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+                    <Input type="date" value={chatProposedStart} onChange={(e) => { setChatProposedStart(e.target.value); if (chatProposedEnd && e.target.value > chatProposedEnd) setChatProposedEnd(""); }} min={new Date().toISOString().split("T")[0]} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">End</Label>
@@ -2792,14 +2792,21 @@ export function ChatWidget() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowChatCounterModal(false)}>Cancel</Button>
             <Button
-              onClick={() => chatCounterRequest && chatCounterMutation.mutate({
-                requestId: chatCounterRequest.id,
-                deliveryMethod: "in_person",
-                depositMethod: chatProposedDeposit,
-                startDate: chatProposedStart || undefined,
-                endDate: chatProposedEnd || undefined,
-                isResponse: chatCounterRole === "requester",
-              })}
+              onClick={() => {
+                if (!chatCounterRequest) return;
+                if (chatProposedStart && chatProposedEnd && chatProposedEnd < chatProposedStart) {
+                  toast({ title: "Invalid dates", description: "End date cannot be before start date.", variant: "destructive" });
+                  return;
+                }
+                chatCounterMutation.mutate({
+                  requestId: chatCounterRequest.id,
+                  deliveryMethod: "in_person",
+                  depositMethod: chatProposedDeposit,
+                  startDate: chatProposedStart || undefined,
+                  endDate: chatProposedEnd || undefined,
+                  isResponse: chatCounterRole === "requester",
+                });
+              }}
               disabled={chatCounterMutation.isPending}
               className="bg-amber-500 hover:bg-amber-600"
             >

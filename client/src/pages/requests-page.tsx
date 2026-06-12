@@ -544,16 +544,19 @@ export default function RequestsPage() {
   };
 
   const handleSubmitCounterProposal = () => {
-    if (counterProposalRequest) {
-      counterProposalMutation.mutate({
-        requestId: counterProposalRequest.id,
-        deliveryMethod: "in_person",
-        depositMethod: proposedDepositMethod,
-        startDate: proposedStartDate || undefined,
-        endDate: proposedEndDate || undefined,
-        isResponse: counterProposalRole === "requester",
-      });
+    if (!counterProposalRequest) return;
+    if (proposedStartDate && proposedEndDate && proposedEndDate < proposedStartDate) {
+      toast({ title: "Invalid dates", description: "End date cannot be before start date.", variant: "destructive" });
+      return;
     }
+    counterProposalMutation.mutate({
+      requestId: counterProposalRequest.id,
+      deliveryMethod: "in_person",
+      depositMethod: proposedDepositMethod,
+      startDate: proposedStartDate || undefined,
+      endDate: proposedEndDate || undefined,
+      isResponse: counterProposalRole === "requester",
+    });
   };
 
   const incomingRequests = requests.filter(
@@ -1734,7 +1737,7 @@ export default function RequestsPage() {
                     <Input
                       type="date"
                       value={proposedStartDate}
-                      onChange={(e) => setProposedStartDate(e.target.value)}
+                      onChange={(e) => { setProposedStartDate(e.target.value); if (proposedEndDate && e.target.value > proposedEndDate) setProposedEndDate(""); }}
                       min={new Date().toISOString().split("T")[0]}
                     />
                   </div>

@@ -6846,6 +6846,17 @@ Respond with ONLY the category name, nothing else.`
         itemName: request.items.name,
       });
 
+      // If a Stripe deposit was held, confirm its release in the chat
+      if (request.item_requests.depositPaymentIntentId && request.item_requests.depositMethod !== "in_person") {
+        await db.insert(messages).values({
+          content: "🔒 Security deposit has been released.",
+          senderId: request.items.ownerId!,
+          receiverId: request.item_requests.requesterId,
+          messageType: "system",
+          requestId,
+        });
+      }
+
       // Apply cancellation penalty to the cancelling user (with grace pass for first offense)
       // Exception: giver cancelling their own gift is not penalised (they're doing a favour)
       const isGiftGiverCancelling = request.item_requests.requestType === "GIFT" && isOwner;

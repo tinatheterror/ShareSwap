@@ -3953,9 +3953,6 @@ Respond with ONLY the category name, nothing else.`
     // Statuses considered "archived" (transaction done — read-only history)
     const ARCHIVED_STATUSES = ["COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
 
-    // How long a thread stays active after being unarchived (before re-archiving if no unread messages remain)
-    const UNARCHIVE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
-    const reArchiveCutoff = new Date(Date.now() - UNARCHIVE_WINDOW_MS);
 
     // --- Gather all item requests involving this user ---
     const allRequests = await db
@@ -4028,15 +4025,12 @@ Respond with ONLY the category name, nothing else.`
     }
 
     // Determine effective archive status for each request.
-    // A status-archived thread can be temporarily active if a new message unarchived it:
-    //   - unarchivedAt set within last 14 days → active regardless of unread
-    //   - unarchivedAt set but older than 14 days → re-archive only if no unread messages remain
+    // A status-archived thread surfaces in the active inbox while it has unread messages.
+    // Once all messages are read, it re-archives immediately.
     const isEffectivelyArchived = (r: { status: string; unarchivedAt: Date | null }, unread: number): boolean => {
       if (!ARCHIVED_STATUSES.includes(r.status)) return false;
       if (!r.unarchivedAt) return true;
-      const unarchivedDate = new Date(r.unarchivedAt);
-      if (unarchivedDate > reArchiveCutoff) return false; // within 14-day active window
-      return unread === 0; // beyond 14 days: re-archive only if no unread messages
+      return unread === 0; // re-archive as soon as all messages are read
     };
 
     // Now filter to the requested bucket

@@ -8460,12 +8460,12 @@ Respond with ONLY the category name, nothing else.`
       if (request.item_requests.depositPaymentIntentId) {
         try {
           await stripe.paymentIntents.cancel(request.item_requests.depositPaymentIntentId);
-          // Notify borrower their deposit has been released
+          // Notify borrower their deposit hold has been lifted
           await db.insert(notifications).values({
             userId: request.item_requests.requesterId,
             type: "security_deposit_released",
-            title: "Deposit Released",
-            message: `Deposit for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" released — arrives in 5–10 business days.`,
+            title: "Deposit Hold Lifted",
+            message: `Authorization hold for "${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" has been removed — nothing was charged.`,
             itemId: request.items.id,
             requestId,
             isRead: false,

@@ -53,7 +53,7 @@ export default function NotificationsPage() {
       return;
     }
 
-    if (["trust_score_changed", "milestone_achieved", "badge_earned"].includes(notification.type)) {
+    if (["trust_score_changed", "milestone_achieved", "badge_earned", "new_review_received"].includes(notification.type)) {
       navigate("/achievements");
       return;
     }

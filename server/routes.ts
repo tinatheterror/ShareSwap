@@ -3953,8 +3953,8 @@ Respond with ONLY the category name, nothing else.`
     // Statuses considered "archived" (transaction done — read-only history)
     const ARCHIVED_STATUSES = ["COMPLETED", "COMPLETED_EARLY", "CANCELLED", "DECLINED"];
 
-    // How long a thread stays active after being unarchived by a new message (before re-archiving if no unread)
-    const UNARCHIVE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+    // How long a thread stays active after being unarchived (before re-archiving if no unread messages remain)
+    const UNARCHIVE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
     const reArchiveCutoff = new Date(Date.now() - UNARCHIVE_WINDOW_MS);
 
     // --- Gather all item requests involving this user ---
@@ -8089,7 +8089,7 @@ Respond with ONLY the category name, nothing else.`
         const requesterId2 = row.item_requests.requesterId;
 
         await db.update(itemRequests)
-          .set({ status: "CANCELLED" })
+          .set({ status: "CANCELLED", unarchivedAt: new Date() })
           .where(eq(itemRequests.id, reqId));
 
         await db.update(items)
@@ -8144,6 +8144,7 @@ Respond with ONLY the category name, nothing else.`
         await db.update(itemRequests)
           .set({
             status: "CANCELLED",
+            unarchivedAt: new Date(),
             depositStatus: row.item_requests.depositPaymentIntentId ? "released" : null,
             depositReleasedAt: row.item_requests.depositPaymentIntentId ? now : null,
           })

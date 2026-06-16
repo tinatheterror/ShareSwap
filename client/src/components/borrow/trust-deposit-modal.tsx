@@ -155,11 +155,11 @@ export function TrustDepositModal({
                 <span>${processingFee.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold text-gray-800 pt-1 border-t border-gray-200">
-                <span>Total charged</span>
+                <span>Total authorized</span>
                 <span>${totalDue.toFixed(2)}</span>
               </div>
               <p className="text-sm text-gray-400">•••• 4242</p>
-              <p className="text-xs text-gray-400 italic">Deposit held securely and refunded after safe return</p>
+              <p className="text-xs text-gray-400 italic">Authorization hold only — not charged unless damage is reported</p>
             </div>
 
             <div className="text-left mb-6">
@@ -208,7 +208,7 @@ export function TrustDepositModal({
             {/* Breakdown */}
             <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
               <div className="flex justify-between text-gray-600">
-                <span>Refundable deposit</span>
+                <span>Security deposit</span>
                 <span>${depositAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-400">
@@ -216,6 +216,9 @@ export function TrustDepositModal({
                 <span>${processingFee.toFixed(2)}</span>
               </div>
             </div>
+            <p className="text-center text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">
+              This is an <span className="font-medium">authorization hold</span> — your card is not charged. The deposit is released automatically when the item is returned in good condition.
+            </p>
 
             {!isRental && (
               <p className="text-center text-xs text-gray-400 mb-4 flex items-center justify-center gap-1">
@@ -241,7 +244,7 @@ export function TrustDepositModal({
 
             <p className="text-center text-xs text-gray-300 flex items-start justify-center gap-1 mb-2">
               <Lock className="h-3 w-3 flex-shrink-0 mt-px" />
-              Deposit is securely held and refunded after return
+              Authorization hold only — not charged unless damage reported
             </p>
 
             <Button

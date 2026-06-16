@@ -545,7 +545,13 @@ export default function TransactionDetailPage() {
                           }
                           className="text-xs capitalize"
                         >
-                          {tx.depositStatus ?? "pending"}
+                          {tx.depositStatus === "authorized" || tx.depositStatus === "held"
+                            ? "On hold"
+                            : tx.depositStatus === "released"
+                            ? "Released"
+                            : tx.depositStatus === "captured"
+                            ? "Captured"
+                            : tx.depositStatus ?? "Pending"}
                         </Badge>
                       </div>
                     </div>
@@ -556,7 +562,7 @@ export default function TransactionDetailPage() {
                       {tx.depositAuthorizedAt && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                           <Lock className="h-3.5 w-3.5" />
-                          Held on{" "}
+                          Authorization placed on{" "}
                           {format(new Date(tx.depositAuthorizedAt), "MMM d, yyyy 'at' h:mm a")}
                         </p>
                       )}

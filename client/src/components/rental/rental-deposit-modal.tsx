@@ -85,8 +85,8 @@ function SavedCardConfirmForm(props: FormProps) {
       <div className="flex items-center gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
         <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
         <span>
-          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is refunded when you return the item in good condition.
-          The <span className="font-medium">${rentalPrice.toFixed(2)} rental</span> is released to owner after the item is picked up.
+          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. It's released automatically when you return the item in good condition.
+          The <span className="font-medium">${rentalPrice.toFixed(2)} rental fee</span> is the only amount actually charged.
         </span>
       </div>
       <div className="flex gap-2 pt-1">
@@ -97,7 +97,7 @@ function SavedCardConfirmForm(props: FormProps) {
           ) : (
             <>
               <span className="flex items-center gap-1.5 leading-none"><CreditCard className="h-4 w-4" />Pay ${totalDueNow.toFixed(2)}</span>
-              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Charging card on file</span>
+              <span className="text-[10px] opacity-75 font-normal leading-none -mt-0.5">Authorizing card on file</span>
             </>
           )}
         </Button>
@@ -167,7 +167,7 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
           </span>
           <span className="font-medium">${depositAmount.toFixed(2)}</span>
         </div>
-        <p className="text-[10px] text-gray-400 mt-0.5">Held securely, auto-refunded on return</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">Authorization hold only — not charged unless damage reported</p>
       </div>
 
       {/* Total */}
@@ -237,8 +237,8 @@ function PayAndConfirmForm({
       <div className="flex gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
         <span>
-          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is refunded when you return the item in good condition.
-          The <span className="font-medium">${rentalPrice.toFixed(2)} rental</span> is released to owner after the item is picked up.
+          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. It's released automatically when you return the item in good condition.
+          The <span className="font-medium">${rentalPrice.toFixed(2)} rental fee</span> is the only amount actually charged.
         </span>
       </div>
       <PaymentElement />

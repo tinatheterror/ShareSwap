@@ -769,59 +769,52 @@ export function ItemRequestForm({
                           How would you like to handle the deposit?
                         </FormLabel>
                         <FormControl>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => field.onChange("in_app")}
-                              className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
-                                depositValue === "in_app"
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-gray-200 hover:bg-gray-50"
-                              }`}
-                            >
-                              <span className="flex items-start gap-1.5 font-medium text-sm">
-                                <Shield
-                                  className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_app" ? "text-primary-foreground" : "text-gray-500"}`}
-                                />
-                                Handle In-app
-                              </span>
-                              <p
-                                className={`text-xs font-medium mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/80" : "text-teal-600"}`}
+                          <div className="space-y-2">
+                            {[
+                              {
+                                value: "in_app",
+                                icon: <Shield className="h-4 w-4 text-gray-500 flex-shrink-0" />,
+                                label: "Handle In-app",
+                                sub: <span className="text-teal-600 font-medium">Recommended</span>,
+                                detail: `Processing fee: $${processingFee}`,
+                              },
+                              {
+                                value: "in_person",
+                                icon: <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />,
+                                label: "Exchange In Person",
+                                sub: <span className="text-gray-600">Do it yourself</span>,
+                                detail: "No processing fee",
+                              },
+                            ].map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => field.onChange(opt.value)}
+                                className={`w-full text-left flex items-center gap-3 border rounded-lg px-3 py-2.5 transition-colors ${
+                                  depositValue === opt.value
+                                    ? "border-primary bg-primary/5"
+                                    : "border-gray-200 hover:bg-gray-50"
+                                }`}
                               >
-                                Recommended
-                              </p>
-                              <p
-                                className={`text-[10px] mt-0.5 ${depositValue === "in_app" ? "text-primary-foreground/70" : "text-muted-foreground"}`}
-                              >
-                                Processing fee: ${processingFee}
-                              </p>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => field.onChange("in_person")}
-                              className={`text-left flex flex-col justify-start border rounded-lg p-2.5 transition-colors ${
-                                depositValue === "in_person"
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-gray-200 hover:bg-gray-50"
-                              }`}
-                            >
-                              <span className="flex items-start gap-1.5 font-medium text-sm">
-                                <MapPin
-                                  className={`h-4 w-4 flex-shrink-0 mt-px ${depositValue === "in_person" ? "text-primary-foreground" : "text-gray-500"}`}
-                                />
-                                Exchange In Person
-                              </span>
-                              <p
-                                className={`text-xs font-medium mt-0.5 ${depositValue === "in_person" ? "text-primary-foreground/80" : "text-gray-600"}`}
-                              >
-                                Do it yourself
-                              </p>
-                              <p
-                                className={`text-[10px] mt-0.5 ${depositValue === "in_person" ? "text-primary-foreground/70" : "text-muted-foreground"}`}
-                              >
-                                No processing fee
-                              </p>
-                            </button>
+                                <span className={`h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                                  depositValue === opt.value ? "border-primary" : "border-gray-300"
+                                }`}>
+                                  {depositValue === opt.value && (
+                                    <span className="h-2 w-2 rounded-full bg-primary block" />
+                                  )}
+                                </span>
+                                {opt.icon}
+                                <span className="flex-1 min-w-0">
+                                  <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                    {opt.label}
+                                  </span>
+                                  <span className="flex items-center gap-2 text-xs mt-0.5">
+                                    {opt.sub}
+                                    <span className="text-muted-foreground">{opt.detail}</span>
+                                  </span>
+                                </span>
+                              </button>
+                            ))}
                           </div>
                         </FormControl>
                         {depositValue === "in_person" && (

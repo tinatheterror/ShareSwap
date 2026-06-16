@@ -164,19 +164,19 @@ export function ReturnConfirmationModal({
       } else if (isEarlyReturn && isRental) {
         toast({
           title: "Item returned early. Rental period is completed.",
-          description: `Deposit released and full rental amount was charged.`,
+          description: `Deposit hold lifted. Full rental fee was charged.`,
         });
       } else if (isEarlyReturn) {
         toast({
-          title: "Item returned early. Deposit released.",
-          description: `The security deposit has been released.`,
+          title: "Item returned early. Deposit hold lifted.",
+          description: `The security deposit hold has been lifted — nothing was charged.`,
         });
       } else {
         toast({
           title: "Return confirmed!",
           description: isRental
-            ? `Deposit released and rental earnings added to your balance.`
-            : `The security deposit has been released.`,
+            ? `Deposit hold lifted. Rental earnings added to your balance.`
+            : `The security deposit hold has been lifted — nothing was charged.`,
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/requests"] });
@@ -231,7 +231,7 @@ export function ReturnConfirmationModal({
                   Deposit
                 </div>
                 <p className="text-sm text-blue-600">
-                  {`Your $${depositAmount} deposit will be released once the owner confirms the item is returned in good condition.`}
+                  {`Your $${depositAmount} authorization hold will be lifted once the owner confirms the item is returned in good condition.`}
                 </p>
               </div>
             )}

@@ -217,7 +217,7 @@ export function TrustDepositModal({
               </div>
             </div>
             <p className="text-center text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">
-              This is an <span className="font-medium">authorization hold</span> — your card is not charged. The deposit is released automatically when the item is returned in good condition.
+              This is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when the item is returned in good condition.
             </p>
 
             {!isRental && (

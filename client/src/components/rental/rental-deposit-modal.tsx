@@ -85,7 +85,7 @@ function SavedCardConfirmForm(props: FormProps) {
       <div className="flex items-center gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
         <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
         <span>
-          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. It's released automatically when you return the item in good condition.
+          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when you return the item in good condition.
           The <span className="font-medium">${rentalPrice.toFixed(2)} rental fee</span> is the only amount actually charged.
         </span>
       </div>
@@ -237,7 +237,7 @@ function PayAndConfirmForm({
       <div className="flex gap-2 rounded-md bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
         <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
         <span>
-          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. It's released automatically when you return the item in good condition.
+          The <span className="font-medium">${depositAmount.toFixed(2)} deposit</span> is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when you return the item in good condition.
           The <span className="font-medium">${rentalPrice.toFixed(2)} rental fee</span> is the only amount actually charged.
         </span>
       </div>

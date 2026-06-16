@@ -256,12 +256,12 @@ function buildTimeline(tx: TransactionDetail): TimelineEvent[] {
   }
   if (tx.depositReleasedAt) {
     events.push({
-      label: "Security deposit released",
+      label: "Security deposit hold lifted",
       timestamp: tx.depositReleasedAt,
       icon: <Unlock className="h-4 w-4 text-white" />,
       iconBg: "bg-green-600",
       metadata: tx.trustDepositAmount
-        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} returned`
+        ? `$${parseFloat(tx.trustDepositAmount).toFixed(2)} hold lifted`
         : undefined,
     });
   }
@@ -548,7 +548,7 @@ export default function TransactionDetailPage() {
                           {tx.depositStatus === "authorized" || tx.depositStatus === "held"
                             ? "On hold"
                             : tx.depositStatus === "released"
-                            ? "Released"
+                            ? "Hold lifted"
                             : tx.depositStatus === "captured"
                             ? "Captured"
                             : tx.depositStatus ?? "Pending"}
@@ -569,7 +569,7 @@ export default function TransactionDetailPage() {
                       {tx.depositReleasedAt && (
                         <p className="text-xs text-green-600 flex items-center gap-1.5">
                           <Unlock className="h-3.5 w-3.5" />
-                          Released on{" "}
+                          Hold lifted on{" "}
                           {format(new Date(tx.depositReleasedAt), "MMM d, yyyy 'at' h:mm a")}
                         </p>
                       )}

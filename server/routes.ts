@@ -6850,7 +6850,7 @@ Respond with ONLY the category name, nothing else.`
       // If a Stripe deposit was held, confirm its release in the chat
       if (request.item_requests.depositPaymentIntentId && request.item_requests.depositMethod !== "in_person") {
         await db.insert(messages).values({
-          content: "🔒 Security deposit has been released.",
+          content: "🔒 Security deposit hold has been lifted — nothing was charged.",
           senderId: request.items.ownerId!,
           receiverId: request.item_requests.requesterId,
           messageType: "system",
@@ -8181,7 +8181,7 @@ Respond with ONLY the category name, nothing else.`
 
         if (row.item_requests.depositPaymentIntentId && row.item_requests.depositMethod !== "in_person") {
           await db.insert(messages).values({
-            content: "🔒 Security deposit has been released.",
+            content: "🔒 Security deposit hold has been lifted — nothing was charged.",
             senderId: ownerId2,
             receiverId: requesterId2,
             messageType: "system",
@@ -8509,7 +8509,7 @@ Respond with ONLY the category name, nothing else.`
         title: "Return Confirmed",
         message: request.item_requests.depositMethod === "in_person"
           ? `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner.`
-          : `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner. Security deposit released.`,
+          : `"${request.items.name.length > 20 ? request.items.name.slice(0, 20) + "…" : request.items.name}" returned to owner. Deposit hold lifted.`,
         itemId: request.items.id,
         requestId,
         isRead: false,
@@ -8521,7 +8521,7 @@ Respond with ONLY the category name, nothing else.`
       await db.insert(messages).values({
         content: request.item_requests.depositMethod === "in_person"
           ? `✅ Return confirmed — item received in good condition.`
-          : `✅ Return confirmed — item received in good condition. Security deposit has been released.`,
+          : `✅ Return confirmed — item received in good condition. Security deposit hold has been lifted.`,
         senderId: ownerId_conf,
         receiverId: borrowerId_conf,
         messageType: "system",
@@ -8626,8 +8626,8 @@ Respond with ONLY the category name, nothing else.`
 
       const inPerson = request.item_requests.depositMethod === "in_person";
       const returnMessage = isEarlyReturn
-        ? (inPerson ? "Item returned early." : "Item returned early. Deposit released.")
-        : (inPerson ? "Return confirmed!" : "Return confirmed! Deposit released.");
+        ? (inPerson ? "Item returned early." : "Item returned early. Deposit hold lifted.")
+        : (inPerson ? "Return confirmed!" : "Return confirmed! Deposit hold lifted.");
 
       res.json({
         success: true,

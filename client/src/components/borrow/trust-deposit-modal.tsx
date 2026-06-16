@@ -151,7 +151,7 @@ export function TrustDepositModal({
                 <span>${depositAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm text-gray-500">
-                <span>Processing fee (3%)</span>
+                <span>Platform fee (3%)</span>
                 <span>${processingFee.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold text-gray-800 pt-1 border-t border-gray-200">
@@ -212,7 +212,7 @@ export function TrustDepositModal({
                 <span>${depositAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-400">
-                <span>Processing fee (3%)</span>
+                <span>Platform fee (3%)</span>
                 <span>${processingFee.toFixed(2)}</span>
               </div>
             </div>

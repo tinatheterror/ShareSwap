@@ -579,7 +579,7 @@ export function ItemRequestForm({
                             </span>
                           </div>
                           <div className="flex justify-between text-gray-500 text-xs">
-                            <span>Processing fee (3%)</span>
+                            <span>Platform fee (3%)</span>
                             <span>${(pricing.total * 0.03).toFixed(2)}</span>
                           </div>
                           <div className="border-t border-gray-200 pt-1.5 mt-0.5">
@@ -776,7 +776,7 @@ export function ItemRequestForm({
                                 icon: <Shield className="h-4 w-4 text-gray-500 flex-shrink-0" />,
                                 label: "Handle In-app",
                                 sub: <span className="text-teal-600 font-medium">Recommended</span>,
-                                detail: `Processing fee: $${processingFee}`,
+                                detail: `Platform fee: $${processingFee}`,
                               },
                               {
                                 value: "in_person",

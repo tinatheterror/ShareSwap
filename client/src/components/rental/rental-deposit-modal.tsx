@@ -141,9 +141,9 @@ function BreakdownRows({ rentalPrice, rentalSubtotal, discountPct, discountAmoun
         <span className="text-teal-700">${rentalPrice.toFixed(2)}</span>
       </div>
 
-      {/* Processing fee */}
+      {/* Platform fee */}
       <div className="flex justify-between text-gray-500">
-        <span>Processing fee (3%)</span>
+        <span>Platform fee (3%)</span>
         <span>${processingFee.toFixed(2)}</span>
       </div>
 

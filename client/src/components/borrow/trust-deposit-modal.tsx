@@ -61,7 +61,6 @@ export function TrustDepositModal({
     trustScore,
   );
 
-  // Duration-based cost: ceil( (weeklyPrice / 7) × days )
   const _rawSCPrice = parseFloat(item.shareCoinPrice || "0") || 5;
   const shareCoinAmount = (() => {
     if (!request.startDate || !request.endDate) return _rawSCPrice;
@@ -72,23 +71,41 @@ export function TrustDepositModal({
   })();
 
   const depositAmount = depositCalc.finalDeposit;
-  const processingFee = Math.round(depositAmount * 0.03 * 100) / 100;
-  const totalDue = depositAmount + processingFee;
+  const platformFee = Math.round(depositAmount * 0.03 * 100) / 100;
 
   const payDepositMutation = useMutation({
     mutationFn: async () => {
       setIsProcessing(true);
+
+      // Step 1: Charge the platform fee immediately (real charge)
+      const feeRes = await apiRequest("POST", "/api/stripe/charge-platform-fee", {
+        platformFeeAmount: platformFee,
+        requestId: request.id,
+      });
+      const feeData = await feeRes.json();
+      if (!feeData.chargeId) throw new Error(feeData.error || "Failed to charge platform fee");
+
+      // Step 2: Create the authorization hold using saved card (off-session)
+      const holdRes = await apiRequest("POST", "/api/stripe/create-deposit-hold", {
+        depositAmount,
+        requestId: request.id,
+      });
+      const holdData = await holdRes.json();
+      if (!holdData.paymentIntentId) throw new Error(holdData.error || "Failed to create deposit hold");
+
+      // Step 3: Record everything in the database
       const response = await apiRequest(
         "POST",
         `/api/requests/${request.id}/pay-deposit`,
         {
           depositAmount,
-          processingFee,
-          totalAmount: totalDue,
+          processingFee: platformFee,
+          totalAmount: depositAmount + platformFee,
           baseDepositAmount: depositCalc.baseDeposit,
           discountPercentage: depositCalc.discountPercentage,
           trustScore,
-          paymentIntentId: `simulated-${Date.now()}`,
+          paymentIntentId: holdData.paymentIntentId,
+          platformFeeChargeId: feeData.chargeId,
           shareCoinAmount,
         },
       );
@@ -145,21 +162,16 @@ export function TrustDepositModal({
               </p>
             )}
 
-            <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1">
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Deposit</span>
-                <span>${depositAmount.toFixed(2)}</span>
-              </div>
+            <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1.5">
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Platform fee (3%)</span>
-                <span>${processingFee.toFixed(2)}</span>
+                <span className="font-medium text-gray-800">${platformFee.toFixed(2)} <span className="text-xs font-normal text-green-600">charged</span></span>
               </div>
-              <div className="flex justify-between text-sm font-semibold text-gray-800 pt-1 border-t border-gray-200">
-                <span>Total authorized</span>
-                <span>${totalDue.toFixed(2)}</span>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Security deposit</span>
+                <span className="font-medium text-gray-800">${depositAmount.toFixed(2)} <span className="text-xs font-normal text-blue-500">hold</span></span>
               </div>
-              <p className="text-sm text-gray-400">•••• 4242</p>
-              <p className="text-xs text-gray-400 italic">Authorization hold only — not charged unless damage is reported</p>
+              <p className="text-xs text-gray-400 italic pt-1 border-t border-gray-200">Deposit hold lifted automatically on safe return</p>
             </div>
 
             <div className="text-left mb-6">
@@ -198,26 +210,27 @@ export function TrustDepositModal({
               <p className="text-lg font-bold text-gray-900">{item.name}</p>
             </div>
 
-            <div className="text-center mb-4">
-              <p className="text-6xl font-bold tracking-tight text-gray-900 mb-1">
-                ${totalDue.toFixed(2)}
-              </p>
-              <p className="text-sm text-gray-500">Total due now</p>
+            {/* Breakdown */}
+            <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-2 text-sm">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-700 font-medium">Platform fee (3%)</p>
+                  <p className="text-xs text-green-600">Charged now</p>
+                </div>
+                <span className="font-semibold text-gray-900">${platformFee.toFixed(2)}</span>
+              </div>
+              <div className="border-t border-gray-200" />
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-700 font-medium">Security deposit</p>
+                  <p className="text-xs text-blue-500">Authorization hold only</p>
+                </div>
+                <span className="font-semibold text-gray-900">${depositAmount.toFixed(2)}</span>
+              </div>
             </div>
 
-            {/* Breakdown */}
-            <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-1.5 text-sm">
-              <div className="flex justify-between text-gray-600">
-                <span>Security deposit</span>
-                <span>${depositAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-gray-400">
-                <span>Platform fee (3%)</span>
-                <span>${processingFee.toFixed(2)}</span>
-              </div>
-            </div>
             <p className="text-center text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">
-              This is an <span className="font-medium">authorization hold</span> — your card is not charged. The hold is lifted automatically when the item is returned in good condition.
+              The deposit is an <span className="font-medium">authorization hold</span> — not charged. Lifted automatically on safe return.
             </p>
 
             {!isRental && (
@@ -235,16 +248,16 @@ export function TrustDepositModal({
               {isProcessing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing
+                  Processing…
                 </>
               ) : (
-                `Pay $${totalDue.toFixed(2)}`
+                `Pay $${platformFee.toFixed(2)} + authorise hold`
               )}
             </Button>
 
             <p className="text-center text-xs text-gray-300 flex items-start justify-center gap-1 mb-2">
               <Lock className="h-3 w-3 flex-shrink-0 mt-px" />
-              Authorization hold only — not charged unless damage reported
+              Deposit hold lifted on safe return — nothing extra charged
             </p>
 
             <Button

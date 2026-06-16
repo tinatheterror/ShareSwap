@@ -5780,46 +5780,88 @@ Respond with ONLY the category name, nothing else.`
 
   // Create Stripe payment authorization hold for security deposit
   app.post("/api/stripe/create-deposit-hold", csrfProtection, async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
+    if (!req.isAuthenticated()) return res.sendStatus(401);
     try {
       const { depositAmount, requestId } = req.body;
-
       if (!depositAmount || depositAmount <= 0) {
         return res.status(400).json({ error: "Invalid deposit amount" });
       }
 
-      // Calculate 5% processing fee
-      const processingFee = depositAmount * 0.05;
-      const totalAmount = depositAmount + processingFee;
+      // Look up saved payment method
+      const [userRecord] = await db
+        .select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
 
-      // Create payment intent with manual capture (authorization hold)
+      if (!userRecord?.stripeCustomerId || !userRecord?.stripePaymentMethodId) {
+        return res.status(400).json({ error: "No payment method on file. Please add a card in Settings." });
+      }
+
+      // Create authorization hold for deposit only (platform fee charged separately)
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalAmount * 100), // Convert to cents
+        amount: Math.round(depositAmount * 100),
         currency: "usd",
-        capture_method: "manual", // Hold funds, don't capture immediately
+        capture_method: "manual",
+        customer: userRecord.stripeCustomerId,
+        payment_method: userRecord.stripePaymentMethodId,
+        confirm: true,
+        off_session: true,
         metadata: {
           type: "security_deposit",
           request_id: requestId.toString(),
           user_id: req.user.id.toString(),
           deposit_amount: depositAmount.toString(),
-          processing_fee: processingFee.toString(),
         },
         description: `Security deposit hold for ShareSwap request #${requestId}`,
       });
 
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        depositAmount,
-        processingFee,
-        totalAmount,
-      });
+      res.json({ paymentIntentId: paymentIntent.id, depositAmount });
     } catch (error: any) {
       console.error("Error creating deposit hold:", error);
       res.status(500).json({ error: "Failed to create deposit hold: " + error.message });
+    }
+  });
+
+  // Charge platform fee immediately (separate from the authorization hold)
+  app.post("/api/stripe/charge-platform-fee", csrfProtection, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const { platformFeeAmount, requestId } = req.body;
+      if (!platformFeeAmount || platformFeeAmount <= 0) {
+        return res.status(400).json({ error: "Invalid platform fee amount" });
+      }
+
+      const [userRecord] = await db
+        .select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!userRecord?.stripeCustomerId || !userRecord?.stripePaymentMethodId) {
+        return res.status(400).json({ error: "No payment method on file. Please add a card in Settings." });
+      }
+
+      // Immediate capture — this is the real charge (not a hold)
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(platformFeeAmount * 100),
+        currency: "usd",
+        customer: userRecord.stripeCustomerId,
+        payment_method: userRecord.stripePaymentMethodId,
+        confirm: true,
+        off_session: true,
+        metadata: {
+          type: "platform_fee",
+          request_id: requestId.toString(),
+          user_id: req.user.id.toString(),
+        },
+        description: `ShareSwap platform fee for request #${requestId}`,
+      });
+
+      res.json({ chargeId: paymentIntent.id, amount: platformFeeAmount });
+    } catch (error: any) {
+      console.error("Error charging platform fee:", error);
+      res.status(500).json({ error: "Failed to charge platform fee: " + error.message });
     }
   });
 
@@ -6604,6 +6646,7 @@ Respond with ONLY the category name, nothing else.`
         discountPercentage, 
         trustScore,
         paymentIntentId,
+        platformFeeChargeId,
         shareCoinAmount 
       } = req.body;
       
@@ -6659,6 +6702,7 @@ Respond with ONLY the category name, nothing else.`
           depositStatus: "authorized",
           depositPaymentIntentId: paymentIntentId,
           depositAuthorizedAt: new Date(),
+          platformFeeChargeId: platformFeeChargeId ?? null,
           shareCoinAmount: shareCoinAmount?.toString(),
         })
         .where(eq(itemRequests.id, requestId))

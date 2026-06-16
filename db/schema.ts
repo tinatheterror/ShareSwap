@@ -312,9 +312,10 @@ export const itemRequests = pgTable("item_requests", {
   trustDiscountPercentage: integer("trust_discount_percentage"), // e.g., 20, 40, 60
   requesterTrustScoreSnapshot: integer("requester_trust_score_snapshot"), // trust score at time of request
   depositStatus: text("deposit_status"), // 'pending' | 'authorized' | 'held' | 'released' | 'captured' | 'failed'
-  depositPaymentIntentId: text("deposit_payment_intent_id"), // Stripe payment intent ID
+  depositPaymentIntentId: text("deposit_payment_intent_id"), // Stripe payment intent ID for the authorization hold
   depositAuthorizedAt: timestamp("deposit_authorized_at"),
   depositReleasedAt: timestamp("deposit_released_at"),
+  platformFeeChargeId: text("platform_fee_charge_id"), // Stripe charge ID for the immediately-captured platform fee
   
   // ShareCoin tracking for borrow
   shareCoinAmount: decimal("share_coin_amount", { precision: 10, scale: 2 }), // ShareCoins to be charged

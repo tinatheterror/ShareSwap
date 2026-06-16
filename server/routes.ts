@@ -6520,9 +6520,9 @@ Respond with ONLY the category name, nothing else.`
         console.log(`Created escrow for $${netAmount.toFixed(2)} rental earnings (held until return) for owner ${request.items.ownerId}`);
       }
 
-      // Notify both parties that the deposit is now held
+      // Notify both parties that the deposit authorization is in place
       await db.insert(messages).values({
-        content: "🔒 Security deposit is now held until the item is returned",
+        content: "🔒 Security deposit authorization is in place — your card is not charged unless damage is reported.",
         senderId: request.items.ownerId!,
         receiverId: request.item_requests.requesterId,
         messageType: "system",
@@ -6670,10 +6670,10 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(itemRequests.id, requestId))
         .returning();
 
-      // Notify both parties that the deposit is now held (only for in-app Stripe holds)
+      // Notify both parties that the deposit authorization is in place (only for in-app Stripe holds)
       if (paymentIntentId) {
         await db.insert(messages).values({
-          content: "🔒 Security deposit is now held until the item is returned",
+          content: "🔒 Security deposit authorization is in place — your card is not charged unless damage is reported.",
           senderId: request.items.ownerId!,
           receiverId: request.item_requests.requesterId,
           messageType: "system",

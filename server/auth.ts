@@ -627,7 +627,7 @@ export function setupAuth(app: Express) {
 
   app.post("/api/logout", (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ message: "Not logged in" });
+      return res.sendStatus(200);
     }
     req.logout((err) => {
       if (err) return next(err);

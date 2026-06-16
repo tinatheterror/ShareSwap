@@ -848,7 +848,7 @@ export function ItemRequestForm({
                         <span className="text-gray-600">
                           <span className="font-medium">Trust Deposit</span>{" "}
                           <span className="italic">
-                            — refunded after a safe return
+                            — authorization hold, lifted after a safe return
                           </span>
                         </span>
                       </div>
@@ -910,8 +910,7 @@ export function ItemRequestForm({
                         <span className="text-green-500">🟢</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Security Deposit</span>{" "}
-                          — temporarily held and fully refunded after a safe
-                          return
+                          — authorization hold, lifted after a safe return
                         </span>
                       </div>
                       <div className="flex items-center gap-2">

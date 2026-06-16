@@ -8091,7 +8091,7 @@ Respond with ONLY the category name, nothing else.`
           .where(eq(items.id, row.items.id));
 
         await db.insert(messages).values({
-          content: "⏰ Transaction expired. Deposit was not paid in time.",
+          content: "⏰ Transaction expired. Deposit authorization was not completed in time.",
           senderId: ownerId2,
           receiverId: requesterId2,
           messageType: "system",
@@ -8100,8 +8100,8 @@ Respond with ONLY the category name, nothing else.`
 
         const itemShort = row.items.name.length > 22 ? row.items.name.slice(0, 22) + "…" : row.items.name;
         await db.insert(notifications).values([
-          { userId: ownerId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit was not paid in time.`, itemId: row.items.id, requestId: reqId },
-          { userId: requesterId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit was not paid in time.`, itemId: row.items.id, requestId: reqId },
+          { userId: ownerId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit authorization was not completed in time.`, itemId: row.items.id, requestId: reqId },
+          { userId: requesterId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit authorization was not completed in time.`, itemId: row.items.id, requestId: reqId },
         ]);
 
         depositExpiredCount++;

@@ -776,7 +776,7 @@ export function ItemRequestForm({
                                 icon: <Shield className="h-4 w-4 text-gray-500 flex-shrink-0" />,
                                 label: "Handle In-app",
                                 sub: <span className="text-teal-600 font-medium">Recommended</span>,
-                                detail: `Platform fee: $${processingFee}`,
+                                detail: new Date().getFullYear() <= 2026 ? "Free through 2026 🎉" : `Platform fee: $${processingFee}`,
                               },
                               {
                                 value: "in_person",

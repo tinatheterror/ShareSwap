@@ -5832,6 +5832,13 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Invalid platform fee amount" });
       }
 
+      // Platform fee waived through end of 2026 to support user adoption
+      const PLATFORM_FEE_WAIVED_UNTIL_YEAR = 2026;
+      if (new Date().getFullYear() <= PLATFORM_FEE_WAIVED_UNTIL_YEAR) {
+        console.log(`🎉 Platform fee waived (${PLATFORM_FEE_WAIVED_UNTIL_YEAR} free period) for request #${requestId}`);
+        return res.json({ chargeId: null, amount: 0, waived: true });
+      }
+
       const [userRecord] = await db
         .select({ stripeCustomerId: users.stripeCustomerId, stripePaymentMethodId: users.stripePaymentMethodId })
         .from(users)

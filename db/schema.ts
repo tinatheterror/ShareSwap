@@ -385,7 +385,7 @@ export const itemRequests = pgTable("item_requests", {
   // Rental-specific fields
   rentalAmount: decimal("rental_amount", { precision: 10, scale: 2 }), // rental fee in dollars
   rentalProcessingFee: decimal("rental_processing_fee", { precision: 10, scale: 2 }), // 3% processing fee
-  rentalPlatformFee: decimal("rental_platform_fee", { precision: 10, scale: 2 }), // platform commission (0% for 2025)
+  rentalPlatformFee: decimal("rental_platform_fee", { precision: 10, scale: 2 }), // platform commission (0% for 2026)
 
   // Swap item tracking
   swapOfferedItemIds: integer("swap_offered_item_ids").array().default([]),  // requester's offered items (initial)

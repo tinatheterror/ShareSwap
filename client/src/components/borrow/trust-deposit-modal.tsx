@@ -71,7 +71,9 @@ export function TrustDepositModal({
   })();
 
   const depositAmount = depositCalc.finalDeposit;
-  const platformFee = Math.round(depositAmount * 0.03 * 100) / 100;
+  const PLATFORM_FEE_WAIVED = new Date().getFullYear() <= 2026;
+  const platformFee = PLATFORM_FEE_WAIVED ? 0 : Math.round(depositAmount * 0.03 * 100) / 100;
+  const platformFeeDisplay = Math.round(depositAmount * 0.03 * 100) / 100; // shown for reference even when waived
 
   const payDepositMutation = useMutation({
     mutationFn: async () => {
@@ -165,7 +167,10 @@ export function TrustDepositModal({
             <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 space-y-1.5">
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Platform fee (3%)</span>
-                <span className="font-medium text-gray-800">${platformFee.toFixed(2)} <span className="text-xs font-normal text-green-600">charged</span></span>
+                {PLATFORM_FEE_WAIVED
+                  ? <span className="font-medium text-green-600">Free through 2026 <span className="line-through text-gray-400">${platformFeeDisplay.toFixed(2)}</span></span>
+                  : <span className="font-medium text-gray-800">${platformFee.toFixed(2)} <span className="text-xs font-normal text-green-600">charged</span></span>
+                }
               </div>
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Security deposit</span>
@@ -215,9 +220,15 @@ export function TrustDepositModal({
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-gray-700 font-medium">Platform fee (3%)</p>
-                  <p className="text-xs text-green-600">Charged now</p>
+                  {PLATFORM_FEE_WAIVED
+                    ? <p className="text-xs text-green-600">Free through 2026 🎉</p>
+                    : <p className="text-xs text-green-600">Charged now</p>
+                  }
                 </div>
-                <span className="font-semibold text-gray-900">${platformFee.toFixed(2)}</span>
+                {PLATFORM_FEE_WAIVED
+                  ? <span className="font-semibold text-green-600">$0.00</span>
+                  : <span className="font-semibold text-gray-900">${platformFeeDisplay.toFixed(2)}</span>
+                }
               </div>
               <div className="border-t border-gray-200" />
               <div className="flex justify-between items-start">
@@ -250,6 +261,8 @@ export function TrustDepositModal({
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Processing…
                 </>
+              ) : PLATFORM_FEE_WAIVED ? (
+                `Authorise hold — free through 2026`
               ) : (
                 `Pay $${platformFee.toFixed(2)} + authorise hold`
               )}

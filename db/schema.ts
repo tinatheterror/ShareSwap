@@ -334,6 +334,7 @@ export const itemRequests = pgTable("item_requests", {
   handoffConfirmedAt: timestamp("handoff_confirmed_at"),
   borrowPeriodStartedAt: timestamp("borrow_period_started_at"),
   // PIN-based handoff confirmation
+  acceptedAt: timestamp("accepted_at"),                       // when owner formally accepts
   handoffPin: text("handoff_pin"),                            // 4-digit PIN generated on accept
   pinExpiresAt: timestamp("pin_expires_at"),                  // 24h from acceptance
   pinUsed: boolean("pin_used").default(false),                // true once borrower uses PIN

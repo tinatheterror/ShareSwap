@@ -4968,7 +4968,7 @@ Respond with ONLY the category name, nothing else.`
 
     const [updatedRequest] = await db
       .update(itemRequests)
-      .set({ status, ...counterPromotionFields })
+      .set({ status, ...counterPromotionFields, ...(status === "ACCEPTED" ? { acceptedAt: new Date() } : {}) })
       .where(eq(itemRequests.id, requestId))
       .returning();
 
@@ -5428,6 +5428,7 @@ Respond with ONLY the category name, nothing else.`
           startDate: finalStartDate,
           endDate: finalEndDate,
           termsAcceptedAt: new Date(),
+          ...(ownerIsAccepting ? { acceptedAt: new Date() } : {}),
         })
         .where(eq(itemRequests.id, requestId))
         .returning();
@@ -8066,7 +8067,138 @@ Respond with ONLY the category name, nothing else.`
         // ── Case 3 / Other edge cases: both silent past deadline — skip (no deadline was set without first confirm) ──
       }
 
-      res.json({ success: true, autoAdvancedCount, flaggedCount });
+      // ── Deposit timeout: ACCEPTED requests where deposit not paid within 48hrs ──
+      const depositDeadline = new Date(now.getTime() - 48 * 3_600_000);
+      const depositExpired = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            eq(itemRequests.status, "ACCEPTED"),
+            eq(itemRequests.depositMethod, "in_app"),
+            inArray(itemRequests.requestType, ["RENT", "BORROW"]),
+            lt(itemRequests.acceptedAt, depositDeadline)
+          )
+        );
+
+      let depositExpiredCount = 0;
+      for (const row of depositExpired) {
+        const reqId = row.item_requests.id;
+        const ownerId2 = row.items.ownerId!;
+        const requesterId2 = row.item_requests.requesterId;
+
+        await db.update(itemRequests)
+          .set({ status: "CANCELLED" })
+          .where(eq(itemRequests.id, reqId));
+
+        await db.update(items)
+          .set({ isAvailable: true, updatedAt: new Date() })
+          .where(eq(items.id, row.items.id));
+
+        await db.insert(messages).values({
+          content: "⏰ Transaction expired. Deposit was not paid in time.",
+          senderId: ownerId2,
+          receiverId: requesterId2,
+          messageType: "system",
+          requestId: reqId,
+        });
+
+        const itemShort = row.items.name.length > 22 ? row.items.name.slice(0, 22) + "…" : row.items.name;
+        await db.insert(notifications).values([
+          { userId: ownerId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit was not paid in time.`, itemId: row.items.id, requestId: reqId },
+          { userId: requesterId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — deposit was not paid in time.`, itemId: row.items.id, requestId: reqId },
+        ]);
+
+        depositExpiredCount++;
+      }
+
+      // ── Both-silent handoff timeout: AWAITING_HANDOFF_CONFIRM, neither confirmed, 48hrs past start date ──
+      const handoffSilentDeadline = new Date(now.getTime() - 48 * 3_600_000);
+      const bothSilent = await db
+        .select()
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(
+          and(
+            eq(itemRequests.status, "AWAITING_HANDOFF_CONFIRM"),
+            eq(itemRequests.ownerConfirmedHandoff, false),
+            eq(itemRequests.borrowerConfirmedHandoff, false),
+            lt(itemRequests.startDate, handoffSilentDeadline)
+          )
+        );
+
+      let bothSilentCount = 0;
+      for (const row of bothSilent) {
+        const reqId = row.item_requests.id;
+        const ownerId2 = row.items.ownerId!;
+        const requesterId2 = row.item_requests.requesterId;
+
+        // Release any Stripe deposit hold
+        if (row.item_requests.depositPaymentIntentId) {
+          try {
+            await stripe.paymentIntents.cancel(row.item_requests.depositPaymentIntentId);
+          } catch (_) {}
+        }
+
+        await db.update(itemRequests)
+          .set({
+            status: "CANCELLED",
+            depositStatus: row.item_requests.depositPaymentIntentId ? "released" : null,
+            depositReleasedAt: row.item_requests.depositPaymentIntentId ? now : null,
+          })
+          .where(eq(itemRequests.id, reqId));
+
+        await db.update(items)
+          .set({ isAvailable: true, updatedAt: new Date() })
+          .where(eq(items.id, row.items.id));
+
+        // Void any held rental payout
+        if (row.item_requests.requestType === "RENT") {
+          const [heldPayout] = await db
+            .select({ id: rentalPayouts.id, netAmount: rentalPayouts.netAmount, userId: rentalPayouts.userId })
+            .from(rentalPayouts)
+            .where(and(eq(rentalPayouts.requestId, reqId), eq(rentalPayouts.status, "held")))
+            .limit(1);
+          if (heldPayout) {
+            await db.update(rentalPayouts).set({ status: "cancelled" }).where(eq(rentalPayouts.id, heldPayout.id));
+            const reverseAmount = parseFloat(heldPayout.netAmount || "0");
+            if (reverseAmount > 0) {
+              await db.update(users)
+                .set({ pendingRentalBalance: sql`GREATEST(0, COALESCE(${users.pendingRentalBalance}, 0) - ${reverseAmount})` })
+                .where(eq(users.id, heldPayout.userId));
+            }
+          }
+        }
+
+        await db.insert(messages).values({
+          content: "⏰ Transaction expired due to no handoff confirmation.",
+          senderId: ownerId2,
+          receiverId: requesterId2,
+          messageType: "system",
+          requestId: reqId,
+        });
+
+        if (row.item_requests.depositPaymentIntentId && row.item_requests.depositMethod !== "in_person") {
+          await db.insert(messages).values({
+            content: "🔒 Security deposit has been released.",
+            senderId: ownerId2,
+            receiverId: requesterId2,
+            messageType: "system",
+            requestId: reqId,
+          });
+        }
+
+        const itemShort = row.items.name.length > 22 ? row.items.name.slice(0, 22) + "…" : row.items.name;
+        await db.insert(notifications).values([
+          { userId: ownerId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — no handoff confirmed.`, itemId: row.items.id, requestId: reqId },
+          { userId: requesterId2, type: "request_expired", title: "Transaction Expired", message: `"${itemShort}" — no handoff confirmed.`, itemId: row.items.id, requestId: reqId },
+        ]);
+
+        bothSilentCount++;
+      }
+
+      res.json({ success: true, autoAdvancedCount, flaggedCount, depositExpiredCount, bothSilentCount });
     } catch (error: any) {
       console.error("Error checking handoff deadlines:", error);
       res.status(500).json({ error: "Failed to check handoff deadlines" });

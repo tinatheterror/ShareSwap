@@ -215,7 +215,7 @@ export function ItemRequestForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white flex flex-col max-h-[92dvh] p-0 gap-0 overflow-hidden">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white flex flex-col max-h-[92dvh] p-0 gap-0">
           <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b">
             <DialogTitle className="pr-6 text-sm sm:text-base leading-snug line-clamp-2">
               {requestType === "GIFT"
@@ -461,6 +461,7 @@ export function ItemRequestForm({
                             type="date"
                             {...field}
                             min={new Date().toLocaleDateString("en-CA")}
+                            style={{ fontSize: "16px" }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -481,6 +482,7 @@ export function ItemRequestForm({
                               form.watch("startDate") ||
                               new Date().toLocaleDateString("en-CA")
                             }
+                            style={{ fontSize: "16px" }}
                           />
                         </FormControl>
                         <FormMessage />

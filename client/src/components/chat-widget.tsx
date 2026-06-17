@@ -1234,6 +1234,12 @@ export function ChatWidget() {
                   <span>{format(parseLocalDate(displayStart), "MMM d")} – {format(parseLocalDate(displayEnd), "MMM d")}</span>
                 </div>
               )}
+              {request.requestType === "BORROW" && displayDeposit && (
+                <div className={`flex items-center gap-1 text-xs mb-0.5 ${depositChanged ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
+                  <Shield className="h-3 w-3 shrink-0" />
+                  <span>{displayDeposit === "in_person" ? "Deposit in person" : "Deposit in-app"}</span>
+                </div>
+              )}
               {iSentCounter && (
                 <p className="text-[10px] text-amber-700 mt-0.5 italic">Waiting for their response…</p>
               )}

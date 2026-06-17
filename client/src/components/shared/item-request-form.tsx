@@ -215,8 +215,8 @@ export function ItemRequestForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white flex flex-col max-h-[92dvh] p-0 gap-0">
-          <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b">
+        <DialogContent variant="sheet" className="sm:max-w-lg bg-white sm:flex sm:flex-col sm:max-h-[92dvh] p-0 gap-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b sticky top-0 bg-white z-10">
             <DialogTitle className="pr-6 text-sm sm:text-base leading-snug line-clamp-2">
               {requestType === "GIFT"
                 ? `Request ${item.name} as a gift`
@@ -225,7 +225,7 @@ export function ItemRequestForm({
           </DialogHeader>
 
           {/* Scrollable body — everything below the header */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4 space-y-4">
+          <div className="px-6 pb-6 pt-4 space-y-4 sm:flex-1 sm:overflow-y-auto">
 
           {/* Verification warning for BORROW/RENT if user is not fully verified */}
           {(requestType === "BORROW" || requestType === "RENT") &&

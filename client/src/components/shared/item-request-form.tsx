@@ -446,7 +446,7 @@ export function ItemRequestForm({
             >
               {/* Date Selection - Hide for SWAP and GIFT */}
               {requestType !== "SWAP" && requestType !== "GIFT" && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
                   <FormField
                     control={form.control}
                     name="startDate"
@@ -805,13 +805,11 @@ export function ItemRequestForm({
                                 </span>
                                 {opt.icon}
                                 <span className="flex-1 min-w-0">
-                                  <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                                  <span className="block text-sm font-medium text-gray-900 leading-snug">
                                     {opt.label}
                                   </span>
-                                  <span className="flex items-center gap-2 text-xs mt-0.5">
-                                    {opt.sub}
-                                    <span className="text-muted-foreground">{opt.detail}</span>
-                                  </span>
+                                  <span className="block text-xs mt-0.5">{opt.sub}</span>
+                                  <span className="block text-xs text-muted-foreground">{opt.detail}</span>
                                 </span>
                               </button>
                             ))}

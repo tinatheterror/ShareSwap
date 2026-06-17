@@ -23,7 +23,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Calendar,
+  Calendar as CalendarIcon,
   ArrowLeftRight,
   Camera,
   Coins,
@@ -35,7 +35,11 @@ import {
   Gift,
   Tag,
   DollarSign,
+  ChevronDown,
 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, parseISO, isAfter, startOfDay } from "date-fns";
 import {
   formatReplacementValue,
   hasValidReplacementValue,
@@ -450,44 +454,88 @@ export function ItemRequestForm({
                   <FormField
                     control={form.control}
                     name="startDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Start Date
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            min={new Date().toLocaleDateString("en-CA")}
-                            style={{ fontSize: "16px" }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const selected = field.value ? parseISO(field.value) : undefined;
+                      const today = startOfDay(new Date());
+                      return (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1.5">
+                            <CalendarIcon className="h-4 w-4" />
+                            Start Date
+                          </FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className={`w-full justify-between text-left font-normal h-10 px-3 ${!field.value ? "text-muted-foreground" : ""}`}
+                                >
+                                  <span className="truncate text-sm">
+                                    {selected ? format(selected, "MMM d, yyyy") : "Pick date"}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 z-[200]" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={selected}
+                                onSelect={(date) => {
+                                  if (date) field.onChange(format(date, "yyyy-MM-dd"));
+                                }}
+                                disabled={(date) => date < today}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                   <FormField
                     control={form.control}
                     name="endDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Return Date</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            min={
-                              form.watch("startDate") ||
-                              new Date().toLocaleDateString("en-CA")
-                            }
-                            style={{ fontSize: "16px" }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const startVal = form.watch("startDate");
+                      const minDate = startVal ? parseISO(startVal) : startOfDay(new Date());
+                      const selected = field.value ? parseISO(field.value) : undefined;
+                      return (
+                        <FormItem>
+                          <FormLabel>Return Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className={`w-full justify-between text-left font-normal h-10 px-3 ${!field.value ? "text-muted-foreground" : ""}`}
+                                >
+                                  <span className="truncate text-sm">
+                                    {selected ? format(selected, "MMM d, yyyy") : "Pick date"}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 z-[200]" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={selected}
+                                onSelect={(date) => {
+                                  if (date) field.onChange(format(date, "yyyy-MM-dd"));
+                                }}
+                                disabled={(date) => date < minDate}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
               )}

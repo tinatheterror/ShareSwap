@@ -215,9 +215,9 @@ export function ItemRequestForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white flex flex-col max-h-[92dvh] p-0 gap-0 overflow-hidden">
-          <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b">
-            <DialogTitle className="pr-6 text-sm sm:text-base leading-snug line-clamp-2">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[420px] sm:max-w-lg bg-white flex flex-col max-h-[92dvh] p-0 gap-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="shrink-0 px-5 pt-5 pb-3 border-b">
+            <DialogTitle className="pr-6 text-base font-semibold leading-snug line-clamp-2">
               {requestType === "GIFT"
                 ? `Request ${item.name} as a gift`
                 : `Request to ${requestType.toLowerCase()} ${item.name}`}
@@ -225,7 +225,7 @@ export function ItemRequestForm({
           </DialogHeader>
 
           {/* Scrollable body — everything below the header */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4 space-y-4">
 
           {/* Verification warning for BORROW/RENT if user is not fully verified */}
           {(requestType === "BORROW" || requestType === "RENT") &&
@@ -446,47 +446,53 @@ export function ItemRequestForm({
             >
               {/* Date Selection - Hide for SWAP and GIFT */}
               {requestType !== "SWAP" && requestType !== "GIFT" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Start Date
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            min={new Date().toLocaleDateString("en-CA")}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Return Date</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                            min={
-                              form.watch("startDate") ||
-                              new Date().toLocaleDateString("en-CA")
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div>
+                  <div className="flex items-center gap-4 mb-2">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                      <Calendar className="h-4 w-4" />
+                      Start Date
+                    </span>
+                    <span className="text-sm font-medium text-gray-700">Return Date</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="startDate"
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <FormControl>
+                            <Input
+                              type="date"
+                              {...field}
+                              min={new Date().toLocaleDateString("en-CA")}
+                              className="border border-gray-200 rounded-xl h-12 px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-teal-500"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="endDate"
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <FormControl>
+                            <Input
+                              type="date"
+                              {...field}
+                              min={
+                                form.watch("startDate") ||
+                                new Date().toLocaleDateString("en-CA")
+                              }
+                              className="border border-gray-200 rounded-xl h-12 px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-teal-500"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -765,60 +771,58 @@ export function ItemRequestForm({
                     const depositValue = field.value;
                     return (
                       <FormItem className="space-y-3">
-                        <FormLabel className="flex items-center gap-2">
+                        <FormLabel className="text-sm font-semibold text-gray-900">
                           How would you like to handle the deposit?
                         </FormLabel>
                         <FormControl>
-                          <div className="space-y-2">
-                            {[
-                              {
-                                value: "in_app",
-                                icon: <Shield className="h-4 w-4 text-gray-500 flex-shrink-0" />,
-                                label: "Handle In-app",
-                                sub: <span className="text-teal-600 font-medium">Recommended</span>,
-                                detail: new Date().getFullYear() <= 2026 ? "Free through 2026 🎉" : `Platform fee: $${processingFee}`,
-                              },
-                              {
-                                value: "in_person",
-                                icon: <MapPin className="h-4 w-4 text-gray-500 flex-shrink-0" />,
-                                label: "Exchange In Person",
-                                sub: <span className="text-gray-600">Do it yourself</span>,
-                                detail: "No processing fee",
-                              },
-                            ].map((opt) => (
-                              <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() => field.onChange(opt.value)}
-                                className={`w-full text-left flex items-center gap-3 border rounded-lg px-3 py-2.5 transition-colors ${
-                                  depositValue === opt.value
-                                    ? "border-primary bg-primary/5"
-                                    : "border-gray-200 hover:bg-gray-50"
-                                }`}
-                              >
-                                <span className={`h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                                  depositValue === opt.value ? "border-primary" : "border-gray-300"
-                                }`}>
-                                  {depositValue === opt.value && (
-                                    <span className="h-2 w-2 rounded-full bg-primary block" />
-                                  )}
-                                </span>
-                                {opt.icon}
-                                <span className="flex-1 min-w-0">
-                                  <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                                    {opt.label}
-                                  </span>
-                                  <span className="flex items-center gap-2 text-xs mt-0.5">
-                                    {opt.sub}
-                                    <span className="text-muted-foreground">{opt.detail}</span>
-                                  </span>
-                                </span>
-                              </button>
-                            ))}
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Handle In-app card */}
+                            <button
+                              type="button"
+                              onClick={() => field.onChange("in_app")}
+                              className={`text-left rounded-2xl px-4 py-3.5 transition-colors border ${
+                                depositValue === "in_app"
+                                  ? "bg-[#0DCEA1] border-[#0DCEA1] text-white"
+                                  : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <Shield className={`h-4 w-4 flex-shrink-0 ${depositValue === "in_app" ? "text-white" : "text-gray-500"}`} />
+                                <span className="font-semibold text-sm leading-tight">Handle In-app</span>
+                              </div>
+                              <p className={`text-xs font-medium ${depositValue === "in_app" ? "text-white/90" : "text-teal-600"}`}>
+                                Recommended
+                              </p>
+                              <p className={`text-xs mt-0.5 ${depositValue === "in_app" ? "text-white/80" : "text-gray-500"}`}>
+                                {new Date().getFullYear() <= 2026 ? `Processing fee: $${processingFee}` : `Platform fee: $${processingFee}`}
+                              </p>
+                            </button>
+
+                            {/* Exchange In Person card */}
+                            <button
+                              type="button"
+                              onClick={() => field.onChange("in_person")}
+                              className={`text-left rounded-2xl px-4 py-3.5 transition-colors border ${
+                                depositValue === "in_person"
+                                  ? "bg-[#0DCEA1] border-[#0DCEA1] text-white"
+                                  : "bg-white border-gray-200 text-gray-800 hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <MapPin className={`h-4 w-4 flex-shrink-0 ${depositValue === "in_person" ? "text-white" : "text-gray-500"}`} />
+                                <span className="font-semibold text-sm leading-tight">Exchange In Person</span>
+                              </div>
+                              <p className={`text-xs ${depositValue === "in_person" ? "text-white/90" : "text-gray-600"}`}>
+                                Do it yourself
+                              </p>
+                              <p className={`text-xs mt-0.5 ${depositValue === "in_person" ? "text-white/80" : "text-gray-500"}`}>
+                                No processing fee
+                              </p>
+                            </button>
                           </div>
                         </FormControl>
                         {depositValue === "in_person" && (
-                          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
                             ⚠️ ShareSwap is not responsible for in-person
                             deposits. You assume full responsibility for
                             collection, return, and any disputes — no platform

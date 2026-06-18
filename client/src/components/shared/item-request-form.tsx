@@ -23,7 +23,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Calendar as CalendarIcon,
+  Calendar,
   ArrowLeftRight,
   Camera,
   Coins,
@@ -35,11 +35,7 @@ import {
   Gift,
   Tag,
   DollarSign,
-  ChevronDown,
 } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, parseISO, isAfter, startOfDay } from "date-fns";
 import {
   formatReplacementValue,
   hasValidReplacementValue,
@@ -219,8 +215,8 @@ export function ItemRequestForm({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent variant="sheet" className="sm:max-w-lg bg-white sm:flex sm:flex-col sm:max-h-[92dvh] p-0 gap-0">
-          <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b sticky top-0 bg-white z-10">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-auto sm:max-w-lg bg-white flex flex-col max-h-[92dvh] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-3 border-b">
             <DialogTitle className="pr-6 text-sm sm:text-base leading-snug line-clamp-2">
               {requestType === "GIFT"
                 ? `Request ${item.name} as a gift`
@@ -229,7 +225,7 @@ export function ItemRequestForm({
           </DialogHeader>
 
           {/* Scrollable body — everything below the header */}
-          <div className="px-6 pb-6 pt-4 space-y-4 sm:flex-1 sm:overflow-y-auto">
+          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4 space-y-4">
 
           {/* Verification warning for BORROW/RENT if user is not fully verified */}
           {(requestType === "BORROW" || requestType === "RENT") &&
@@ -450,92 +446,46 @@ export function ItemRequestForm({
             >
               {/* Date Selection - Hide for SWAP and GIFT */}
               {requestType !== "SWAP" && requestType !== "GIFT" && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="startDate"
-                    render={({ field }) => {
-                      const selected = field.value ? parseISO(field.value) : undefined;
-                      const today = startOfDay(new Date());
-                      return (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1.5">
-                            <CalendarIcon className="h-4 w-4" />
-                            Start Date
-                          </FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className={`w-full justify-between text-left font-normal h-10 px-3 ${!field.value ? "text-muted-foreground" : ""}`}
-                                >
-                                  <span className="truncate text-sm">
-                                    {selected ? format(selected, "MMM d, yyyy") : "Pick date"}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 z-[200]" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={selected}
-                                onSelect={(date) => {
-                                  if (date) field.onChange(format(date, "yyyy-MM-dd"));
-                                }}
-                                disabled={(date) => date < today}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Start Date
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            min={new Date().toLocaleDateString("en-CA")}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                   <FormField
                     control={form.control}
                     name="endDate"
-                    render={({ field }) => {
-                      const startVal = form.watch("startDate");
-                      const minDate = startVal ? parseISO(startVal) : startOfDay(new Date());
-                      const selected = field.value ? parseISO(field.value) : undefined;
-                      return (
-                        <FormItem>
-                          <FormLabel>Return Date</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className={`w-full justify-between text-left font-normal h-10 px-3 ${!field.value ? "text-muted-foreground" : ""}`}
-                                >
-                                  <span className="truncate text-sm">
-                                    {selected ? format(selected, "MMM d, yyyy") : "Pick date"}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0 z-[200]" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={selected}
-                                onSelect={(date) => {
-                                  if (date) field.onChange(format(date, "yyyy-MM-dd"));
-                                }}
-                                disabled={(date) => date < minDate}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Return Date</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                            min={
+                              form.watch("startDate") ||
+                              new Date().toLocaleDateString("en-CA")
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
               )}
@@ -855,11 +805,13 @@ export function ItemRequestForm({
                                 </span>
                                 {opt.icon}
                                 <span className="flex-1 min-w-0">
-                                  <span className="block text-sm font-medium text-gray-900 leading-snug">
+                                  <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
                                     {opt.label}
                                   </span>
-                                  <span className="block text-xs mt-0.5">{opt.sub}</span>
-                                  <span className="block text-xs text-muted-foreground">{opt.detail}</span>
+                                  <span className="flex items-center gap-2 text-xs mt-0.5">
+                                    {opt.sub}
+                                    <span className="text-muted-foreground">{opt.detail}</span>
+                                  </span>
                                 </span>
                               </button>
                             ))}

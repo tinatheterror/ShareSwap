@@ -28,13 +28,13 @@ const plans = [
     borderClass: "border-slate-200",
     ctaClass: "",
     features: [
-      "2 borrows per month",
+      "3 borrows per month",
       "Unlimited swaps & gifts",
       "Create & list items",
       "Community messaging",
       "Basic search & browse",
     ],
-    notes: ["5% platform fee on rentals", "Standard matching priority"],
+    notes: ["5% service fee on rentals"],
     highlight: false,
   },
   {
@@ -50,11 +50,11 @@ const plans = [
     features: [
       "Unlimited borrows",
       "Unlimited swaps & gifts",
-      "Priority matching",
-      "Extended borrow periods",
       "Create & list items",
+      "Community messaging",
+      "Basic search & browse",
     ],
-    notes: ["5% platform fee on rentals"],
+    notes: ["5% service fee on rentals"],
     highlight: true,
   },
   {
@@ -68,14 +68,13 @@ const plans = [
     borderClass: "border-amber-400",
     ctaClass: "bg-amber-500 hover:bg-amber-600 text-white",
     features: [
-      "Everything in Member",
-      "Reduced 4% platform fee (vs. 5%)",
-      "Featured item listings",
-      "Rental & lending analytics",
-      "Instant request approval",
-      "Waived late return fees",
+      "Unlimited borrows",
+      "Unlimited swaps & gifts",
+      "Create & list items",
+      "Community messaging",
+      "Basic search & browse",
     ],
-    notes: [],
+    notes: ["Reduced 4% service fee on rentals (vs. 5%)"],
     highlight: false,
   },
 ];
@@ -126,7 +125,6 @@ export default function PremiumPage() {
     },
   });
 
-  // Handle return from Stripe Checkout
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
@@ -136,19 +134,13 @@ export default function PremiumPage() {
       });
       window.history.replaceState({}, "", "/premium");
     } else if (params.get("canceled") === "true") {
-      toast({
-        title: "Checkout canceled",
-        description: "No charges were made.",
-      });
+      toast({ title: "Checkout canceled", description: "No charges were made." });
       window.history.replaceState({}, "", "/premium");
     }
   }, []);
 
   const handleSubscribe = (tier: string) => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+    if (!user) { navigate("/auth"); return; }
     checkoutMutation.mutate(tier);
   };
 
@@ -157,7 +149,6 @@ export default function PremiumPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-teal-50/40 to-white">
       <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Back button */}
         <button
           onClick={() => navigate("/")}
           className="flex items-center gap-2 text-sm text-slate-500 hover:text-teal-600 mb-6 transition-colors"
@@ -166,15 +157,14 @@ export default function PremiumPage() {
           Back to home
         </button>
 
-        {/* Page header */}
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Choose Your Plan</h1>
           <p className="text-slate-500 max-w-md mx-auto">
-            Share more, own less. Upgrade for unlimited borrows, reduced fees, and priority access.
+            Share more, own less. Upgrade to Member for unlimited borrows.
           </p>
         </div>
 
-        {/* Current plan status bar */}
+        {/* Current plan status */}
         {user && !statusLoading && (
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3 bg-white border border-teal-100 rounded-2xl px-5 py-4 shadow-sm">
             <div>
@@ -190,7 +180,7 @@ export default function PremiumPage() {
               </p>
               {currentTier === "free" && (
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {subStatus?.monthlyBorrowCount ?? 0} / 2 borrows used this month
+                  {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used this month
                 </p>
               )}
             </div>
@@ -233,7 +223,6 @@ export default function PremiumPage() {
                   </div>
                 )}
 
-                {/* Icon + title */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`p-2 rounded-xl ${plan.iconBg}`}>
                     <Icon className={`w-5 h-5 ${plan.iconColor}`} />
@@ -244,7 +233,6 @@ export default function PremiumPage() {
                   </div>
                 </div>
 
-                {/* Price */}
                 <div className="mb-5">
                   {plan.price === 0 ? (
                     <span className="text-2xl font-bold text-slate-600">$0</span>
@@ -256,7 +244,6 @@ export default function PremiumPage() {
                   )}
                 </div>
 
-                {/* Features list */}
                 <ul className="space-y-2.5 mb-6 flex-1">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2 text-sm text-slate-600">
@@ -274,7 +261,6 @@ export default function PremiumPage() {
                   ))}
                 </ul>
 
-                {/* CTA button */}
                 {plan.id === "free" ? (
                   <Button variant="outline" className="w-full rounded-xl text-slate-400 cursor-default" disabled>
                     {isCurrentPlan ? "Your Current Plan" : "Free Plan"}
@@ -291,8 +277,10 @@ export default function PremiumPage() {
                   >
                     {isCheckingOut ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : plan.id === "member" ? (
+                      "Subscribe — $4.99/mo"
                     ) : (
-                      plan.id === "member" ? "Subscribe — $4.99/mo" : "Subscribe — $9.99/mo"
+                      "Subscribe — $9.99/mo"
                     )}
                   </Button>
                 )}
@@ -301,9 +289,8 @@ export default function PremiumPage() {
           })}
         </div>
 
-        {/* Footer note */}
         <p className="text-center text-xs text-slate-400 mt-8">
-          Subscriptions renew monthly · Cancel anytime via Manage Subscription · 3% Stripe processing fee on paid rentals
+          Subscriptions renew monthly · Cancel anytime via Manage Subscription · Service fee includes Stripe payment processing
         </p>
       </div>
     </div>

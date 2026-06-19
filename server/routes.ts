@@ -4514,12 +4514,12 @@ Respond with ONLY the category name, nothing else.`
           await db.update(users)
             .set({ monthlyBorrowCount: 0, monthlyBorrowResetAt: now } as any)
             .where(eq(users.id, req.user.id));
-        } else if (((borrowerRecord as any)?.monthlyBorrowCount || 0) >= 2) {
+        } else if (((borrowerRecord as any)?.monthlyBorrowCount || 0) >= 3) {
           return res.status(403).json({
-            error: "You've reached your monthly borrow limit of 2 items on the Free plan. Upgrade to Member for unlimited borrows.",
+            error: "You've reached your monthly borrow limit of 3 items on the Free plan. Upgrade to Member for unlimited borrows.",
             code: "BORROW_LIMIT_REACHED",
             currentTier: 'free',
-            limit: 2,
+            limit: 3,
           });
         }
       }

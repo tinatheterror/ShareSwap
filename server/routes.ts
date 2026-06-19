@@ -4301,6 +4301,62 @@ Respond with ONLY the category name, nothing else.`
     res.json(games);
   });
 
+  // Offer eligibility status — checks transaction unlock, daily cap, monthly cap
+  app.get("/api/games/offer-status", async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+
+    const userId = req.user.id;
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Check if user has at least 1 completed transaction
+    const [{ txCount }] = await db
+      .select({ txCount: sql<number>`COUNT(*)` })
+      .from(itemRequests)
+      .where(and(
+        eq(itemRequests.requesterId, userId),
+        inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
+      ));
+    const hasCompletedTransaction = Number(txCount) > 0;
+
+    // Count SC earned from games today
+    const [{ dailyClaimed }] = await db
+      .select({ dailyClaimed: sql<number>`COALESCE(SUM(reward_amount), 0)` })
+      .from(gameSessions)
+      .where(and(
+        eq(gameSessions.userId, userId),
+        eq(gameSessions.status, "completed"),
+        sql`completed_at >= ${startOfDay}`,
+      ));
+
+    // Count SC earned from games this month
+    const [{ monthlyClaimed }] = await db
+      .select({ monthlyClaimed: sql<number>`COALESCE(SUM(reward_amount), 0)` })
+      .from(gameSessions)
+      .where(and(
+        eq(gameSessions.userId, userId),
+        eq(gameSessions.status, "completed"),
+        sql`completed_at >= ${startOfMonth}`,
+      ));
+
+    const DAILY_MAX = 1;
+    const MONTHLY_MAX = 20;
+    const dailyLimitReached = Number(dailyClaimed) >= DAILY_MAX;
+    const monthlyLimitReached = Number(monthlyClaimed) >= MONTHLY_MAX;
+
+    res.json({
+      hasCompletedTransaction,
+      dailyClaimed: Number(dailyClaimed),
+      dailyMax: DAILY_MAX,
+      dailyLimitReached,
+      monthlyClaimed: Number(monthlyClaimed),
+      monthlyMax: MONTHLY_MAX,
+      monthlyLimitReached,
+      canClaim: hasCompletedTransaction && !dailyLimitReached && !monthlyLimitReached,
+    });
+  });
+
   app.post("/api/games/:gameId/start-session", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -4329,14 +4385,64 @@ Respond with ONLY the category name, nothing else.`
     res.status(201).json(session);
   });
 
-  // Game session completion endpoint
-  app.post("/api/games/:gameId/complete-session", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
+  // Game session completion endpoint — enforces daily (1 SC) and monthly (20 SC) caps
+  app.post("/api/games/:gameId/complete-session", async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
 
+    const userId = req.user.id;
     const gameId = parseInt(req.params.gameId);
     const { score, sessionId } = req.body;
+
+    // Require at least 1 completed transaction to earn from offers
+    const [{ txCount }] = await db
+      .select({ txCount: sql<number>`COUNT(*)` })
+      .from(itemRequests)
+      .where(and(
+        eq(itemRequests.requesterId, userId),
+        inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
+      ));
+    if (Number(txCount) === 0) {
+      return res.status(403).json({
+        error: "Complete your first transaction to unlock ShareCoin rewards from sponsored offers.",
+        code: "TRANSACTION_REQUIRED",
+      });
+    }
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Daily cap: 1 SC per day
+    const [{ dailyClaimed }] = await db
+      .select({ dailyClaimed: sql<number>`COALESCE(SUM(reward_amount), 0)` })
+      .from(gameSessions)
+      .where(and(
+        eq(gameSessions.userId, userId),
+        eq(gameSessions.status, "completed"),
+        sql`completed_at >= ${startOfDay}`,
+      ));
+    if (Number(dailyClaimed) >= 1) {
+      return res.status(429).json({
+        error: "You've already claimed your daily ShareCoin reward. Check back tomorrow.",
+        code: "DAILY_LIMIT_REACHED",
+      });
+    }
+
+    // Monthly cap: 20 SC per month
+    const [{ monthlyClaimed }] = await db
+      .select({ monthlyClaimed: sql<number>`COALESCE(SUM(reward_amount), 0)` })
+      .from(gameSessions)
+      .where(and(
+        eq(gameSessions.userId, userId),
+        eq(gameSessions.status, "completed"),
+        sql`completed_at >= ${startOfMonth}`,
+      ));
+    if (Number(monthlyClaimed) >= 20) {
+      return res.status(429).json({
+        error: "You've reached your monthly limit of 20 ShareCoins from sponsored offers.",
+        code: "MONTHLY_LIMIT_REACHED",
+      });
+    }
 
     // Find the game and validate
     const [game] = await db
@@ -4346,38 +4452,36 @@ Respond with ONLY the category name, nothing else.`
       .limit(1);
 
     if (!game) {
-      return res.status(404).send("Game not found");
+      return res.status(404).json({ error: "Offer not found" });
     }
 
-    // Update session status and award coins
+    // Award exactly 1 SC regardless of game.rewardAmount (standardised reward)
+    const REWARD = 1;
+
     const [session] = await db
       .update(gameSessions)
       .set({
-        completedAt: new Date(),
-        score,
-        rewardAmount: game.rewardAmount,
+        completedAt: now,
+        score: score || null,
+        rewardAmount: REWARD.toString(),
         status: "completed",
       })
       .where(eq(gameSessions.id, parseInt(sessionId)))
       .returning();
 
-    // Record ShareCoins transaction
     await db.insert(shareCoinsTransactions).values({
-      userId: req.user.id,
-      amount: game.rewardAmount.toString(),
-      description: `Earned from completing ${game.name}`,
+      userId,
+      amount: REWARD.toString(),
+      description: `Sponsored offer: ${game.name}`,
       transactionType: "EARNED",
     });
 
-    // Update user's ShareCoins balance
     await db
       .update(users)
-      .set({
-        shareCoins: sql`share_coins + ${game.rewardAmount}`,
-      })
-      .where(eq(users.id, req.user.id));
+      .set({ shareCoins: sql`share_coins + ${REWARD}` })
+      .where(eq(users.id, userId));
 
-    res.json({ success: true, reward: game.rewardAmount });
+    res.json({ success: true, reward: REWARD });
   });
 
   // Get all challenges

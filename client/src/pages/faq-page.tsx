@@ -375,7 +375,7 @@ export default function FAQPage() {
                       Platform Fees
                     </p>
                     <p className="text-xs text-gray-500">
-                      0% platform fee for 2026. Only 3% payment processing.
+                      First 3 transactions free, then standard rates apply. Only 3% payment processing.
                     </p>
                   </div>
                   <div>

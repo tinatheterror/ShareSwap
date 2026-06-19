@@ -794,7 +794,7 @@ export function ItemRequestForm({
                                 Recommended
                               </p>
                               <p className={`text-xs mt-0.5 ${depositValue === "in_app" ? "text-white/80" : "text-gray-500"}`}>
-                                {new Date().getFullYear() <= 2026 ? `Processing fee: $${processingFee}` : `Platform fee: $${processingFee}`}
+                                {`Processing fee: $${processingFee}`}
                               </p>
                             </button>
 

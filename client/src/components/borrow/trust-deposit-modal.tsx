@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Lock, Loader2, MessageCircle, Coins } from "lucide-react";
 import { calculateSecurityDeposit } from "@/lib/deposit-calculator";
@@ -71,9 +71,20 @@ export function TrustDepositModal({
   })();
 
   const depositAmount = depositCalc.finalDeposit;
-  const PLATFORM_FEE_WAIVED = new Date().getFullYear() <= 2026;
+
+  const { data: feeWaiverData } = useQuery<{
+    feeWaived: boolean;
+    completedCount: number;
+    remainingFree: number;
+    totalFree: number;
+  }>({ queryKey: ["/api/user/fee-waiver-status"] });
+
+  const PLATFORM_FEE_WAIVED = feeWaiverData?.feeWaived ?? true; // default to waived while loading
   const platformFee = PLATFORM_FEE_WAIVED ? 0 : Math.round(depositAmount * 0.03 * 100) / 100;
   const platformFeeDisplay = Math.round(depositAmount * 0.03 * 100) / 100; // shown for reference even when waived
+  const feeWaiverLabel = feeWaiverData
+    ? `Transaction ${feeWaiverData.completedCount + 1} of ${feeWaiverData.totalFree} free`
+    : "Free";
 
   const payDepositMutation = useMutation({
     mutationFn: async () => {
@@ -168,7 +179,7 @@ export function TrustDepositModal({
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Platform fee (3%)</span>
                 {PLATFORM_FEE_WAIVED
-                  ? <span className="font-medium text-green-600">Free through 2026 <span className="line-through text-gray-400">${platformFeeDisplay.toFixed(2)}</span></span>
+                  ? <span className="font-medium text-green-600">{feeWaiverLabel} <span className="line-through text-gray-400">${platformFeeDisplay.toFixed(2)}</span></span>
                   : <span className="font-medium text-gray-800">${platformFee.toFixed(2)} <span className="text-xs font-normal text-green-600">charged</span></span>
                 }
               </div>
@@ -221,7 +232,7 @@ export function TrustDepositModal({
                 <div>
                   <p className="text-gray-700 font-medium">Platform fee (3%)</p>
                   {PLATFORM_FEE_WAIVED
-                    ? <p className="text-xs text-green-600">Free through 2026 🎉</p>
+                    ? <p className="text-xs text-green-600">{feeWaiverLabel} 🎉</p>
                     : <p className="text-xs text-green-600">Charged now</p>
                   }
                 </div>
@@ -262,7 +273,7 @@ export function TrustDepositModal({
                   Processing…
                 </>
               ) : PLATFORM_FEE_WAIVED ? (
-                `Authorise hold — free through 2026`
+                `Authorise hold — ${feeWaiverLabel.toLowerCase()}`
               ) : (
                 `Pay $${platformFee.toFixed(2)} + authorise hold`
               )}

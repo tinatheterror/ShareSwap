@@ -5057,14 +5057,11 @@ Respond with ONLY the category name, nothing else.`
 
 
     // Handle commission for rental transactions
-    // NOTE: Platform commission is FREE for all of 2026. Commission is charged in real money
-    // (not ShareCoins) when billing is activated in 2027+. No ShareCoin deduction is made here.
+    // NOTE: Platform commission is FREE for the first 3 transactions per requester.
+    // Standard rates apply after that. No ShareCoin deduction is made here.
     if (status === "ACCEPTED" && request.item_requests.requestType === "RENT") {
-      const currentYear = new Date().getFullYear();
-      if (currentYear <= 2026) {
-        console.log(`🎉 Platform commission waived — free for all of 2026`);
-      }
-      // Future real-money billing will be wired here when the 2026 free period ends.
+      // Logging only — actual fee waiver is enforced at payment time
+      console.log(`ℹ️ Rental accepted — fee waiver status checked at payment step`);
     }
 
     // Notify the requester that their request was accepted or declined
@@ -5832,10 +5829,17 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Invalid platform fee amount" });
       }
 
-      // Platform fee waived through end of 2026 to support user adoption
-      const PLATFORM_FEE_WAIVED_UNTIL_YEAR = 2026;
-      if (new Date().getFullYear() <= PLATFORM_FEE_WAIVED_UNTIL_YEAR) {
-        console.log(`🎉 Platform fee waived (${PLATFORM_FEE_WAIVED_UNTIL_YEAR} free period) for request #${requestId}`);
+      // Platform fee waived for first 3 completed transactions per user
+      const FREE_TRANSACTIONS = 3;
+      const [{ count: txCount }] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.requesterId, req.user.id),
+          inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
+        ));
+      if (Number(txCount) < FREE_TRANSACTIONS) {
+        console.log(`🎉 Platform fee waived (${Number(txCount) + 1}/3 free transactions) for request #${requestId}`);
         return res.json({ chargeId: null, amount: 0, waived: true });
       }
 
@@ -6521,12 +6525,19 @@ Respond with ONLY the category name, nothing else.`
 
       // Create escrow record for rental earnings (held until return confirmed).
       // Commission split: 5% to platform Stripe account, 95% to owner pending balance.
-      // During the 2026 free period the platform fee is waived — owner receives 100%.
+      // First 3 transactions per requester are free — owner receives 100%.
       // The Stripe processing fee (~2.9% + $0.30) is absorbed by the platform from its 5% cut,
       // so it is never deducted from the owner's share.
       if (rentalAmount && rentalAmount > 0) {
         const actualRentalAmount = parseFloat(rentalAmount);
-        const freeCommissionPeriod = new Date().getFullYear() <= 2026;
+        const [{ count: rentalTxCount }] = await db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(itemRequests)
+          .where(and(
+            eq(itemRequests.requesterId, request.item_requests.requesterId),
+            inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
+          ));
+        const freeCommissionPeriod = Number(rentalTxCount) < 3;
         const actualPlatformFee = freeCommissionPeriod
           ? 0                                    // free period — no platform cut
           : parseFloat((actualRentalAmount * 0.05).toFixed(2)); // 5% commission
@@ -9696,6 +9707,33 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Fee waiver status: first 3 completed transactions are free, then standard fees apply
+  app.get("/api/user/fee-waiver-status", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [{ count }] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(itemRequests)
+        .where(
+          and(
+            eq(itemRequests.requesterId, req.user.id),
+            inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
+          ),
+        );
+      const completedCount = Number(count);
+      const FREE_TRANSACTIONS = 3;
+      const feeWaived = completedCount < FREE_TRANSACTIONS;
+      res.json({
+        completedCount,
+        feeWaived,
+        remainingFree: Math.max(0, FREE_TRANSACTIONS - completedCount),
+        totalFree: FREE_TRANSACTIONS,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to fetch fee waiver status" });
+    }
+  });
+
   // Get user stats for achievements page
   app.get("/api/user-stats", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -10713,10 +10751,17 @@ Respond with ONLY the category name, nothing else.`
         return res.status(400).json({ error: "Rental already marked as returned" });
       }
 
-      // Platform commission is FREE for all of 2026; charged in real money (not ShareCoins) from 2027+.
+      // Platform commission is FREE for first 3 transactions; standard rates apply after that.
       // Use $0 commission for the free period so no charges are recorded or deducted.
       const rentalPrice = parseFloat(rental.items.dollarsPrice || "0");
-      const freeCommissionPeriod = new Date().getFullYear() <= 2026;
+      const [{ count: returnTxCount }] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(itemRequests)
+        .where(and(
+          eq(itemRequests.requesterId, rental.item_requests.requesterId),
+          inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
+        ));
+      const freeCommissionPeriod = Number(returnTxCount) < 3;
       const rawCommissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
       const commissionDetails = freeCommissionPeriod
         ? { ...rawCommissionDetails, commissionAmount: 0, platformAmount: 0, shareCoinsFromReward: rawCommissionDetails.shareCoinsFromReward }

@@ -4489,6 +4489,42 @@ Respond with ONLY the category name, nothing else.`
       });
     }
 
+    // Enforce Free tier borrow limit (max 2 borrows per 30-day window)
+    if (requestType === "BORROW") {
+      const [borrowerRecord] = await db
+        .select({
+          subscriptionTier: users.subscriptionTier,
+          monthlyBorrowCount: users.monthlyBorrowCount,
+          monthlyBorrowResetAt: users.monthlyBorrowResetAt,
+        })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      const tier = (borrowerRecord as any)?.subscriptionTier || 'free';
+      if (tier === 'free') {
+        const now = new Date();
+        const resetAt = (borrowerRecord as any)?.monthlyBorrowResetAt
+          ? new Date((borrowerRecord as any).monthlyBorrowResetAt)
+          : now;
+        const thirtyDayMs = 30 * 24 * 60 * 60 * 1000;
+
+        if (now.getTime() - resetAt.getTime() > thirtyDayMs) {
+          // Reset window
+          await db.update(users)
+            .set({ monthlyBorrowCount: 0, monthlyBorrowResetAt: now } as any)
+            .where(eq(users.id, req.user.id));
+        } else if (((borrowerRecord as any)?.monthlyBorrowCount || 0) >= 2) {
+          return res.status(403).json({
+            error: "You've reached your monthly borrow limit of 2 items on the Free plan. Upgrade to Member for unlimited borrows.",
+            code: "BORROW_LIMIT_REACHED",
+            currentTier: 'free',
+            limit: 2,
+          });
+        }
+      }
+    }
+
     // Validate deliveryMethod
     const validDeliveryMethods = ["in_person"];
     const validatedDeliveryMethod = validDeliveryMethods.includes(deliveryMethod) 
@@ -4595,6 +4631,20 @@ Respond with ONLY the category name, nothing else.`
           : {}),
       })
       .returning();
+
+    // Increment monthly borrow count for Free tier users
+    if (requestType === "BORROW") {
+      const [borrowerSub] = await db
+        .select({ subscriptionTier: users.subscriptionTier })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      if ((borrowerSub as any)?.subscriptionTier === 'free') {
+        await db.update(users)
+          .set({ monthlyBorrowCount: sql`${users.monthlyBorrowCount} + 1` } as any)
+          .where(eq(users.id, req.user.id));
+      }
+    }
 
     // Get requester info for notification
     const [requester] = await db
@@ -6537,16 +6587,25 @@ Respond with ONLY the category name, nothing else.`
             eq(itemRequests.requesterId, request.item_requests.requesterId),
             inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
           ));
+        // Check renter's subscription tier — Pro gets reduced 2% platform fee
+        const [renterSubRecord] = await db
+          .select({ subscriptionTier: users.subscriptionTier })
+          .from(users)
+          .where(eq(users.id, request.item_requests.requesterId))
+          .limit(1);
+        const renterTier = (renterSubRecord as any)?.subscriptionTier || 'free';
+        const commissionRate = renterTier === 'pro' ? 0.02 : 0.05;
+
         const freeCommissionPeriod = Number(rentalTxCount) < 3;
         const actualPlatformFee = freeCommissionPeriod
           ? 0                                    // free period — no platform cut
-          : parseFloat((actualRentalAmount * 0.05).toFixed(2)); // 5% commission
+          : parseFloat((actualRentalAmount * commissionRate).toFixed(2));
         const netAmount = parseFloat((actualRentalAmount - actualPlatformFee).toFixed(2));
 
         if (freeCommissionPeriod) {
-          console.log(`🎉 Platform fee waived (2026 free period) — owner receives full $${netAmount.toFixed(2)}`);
+          console.log(`🎉 Platform fee waived (first 3 transactions free) — owner receives full $${netAmount.toFixed(2)}`);
         } else {
-          console.log(`💰 Platform fee $${actualPlatformFee.toFixed(2)} (5%) — owner receives $${netAmount.toFixed(2)}`);
+          console.log(`💰 Platform fee $${actualPlatformFee.toFixed(2)} (${renterTier === 'pro' ? '2% Pro rate' : '5% standard'}) — owner receives $${netAmount.toFixed(2)}`);
         }
 
         // Create held payout record for the owner
@@ -10761,13 +10820,27 @@ Respond with ONLY the category name, nothing else.`
           eq(itemRequests.requesterId, rental.item_requests.requesterId),
           inArray(itemRequests.status, ["ACTIVE", "RETURNED", "COMPLETED"]),
         ));
+      // Check renter's subscription tier — Pro pays reduced 2% platform commission
+      const [returnRenterSub] = await db
+        .select({ subscriptionTier: users.subscriptionTier })
+        .from(users)
+        .where(eq(users.id, rental.item_requests.requesterId))
+        .limit(1);
+      const returnRenterTier = (returnRenterSub as any)?.subscriptionTier || 'free';
+      const returnCommissionRate = returnRenterTier === 'pro' ? 0.02 : 0.05;
+
       const freeCommissionPeriod = Number(returnTxCount) < 3;
       const rawCommissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
+      const proAdjustedCommission = returnRenterTier === 'pro'
+        ? { ...rawCommissionDetails, commissionAmount: parseFloat((rentalPrice * 0.02).toFixed(2)), platformAmount: parseFloat((rentalPrice * 0.02).toFixed(2)) }
+        : rawCommissionDetails;
       const commissionDetails = freeCommissionPeriod
         ? { ...rawCommissionDetails, commissionAmount: 0, platformAmount: 0, shareCoinsFromReward: rawCommissionDetails.shareCoinsFromReward }
-        : rawCommissionDetails;
+        : proAdjustedCommission;
       if (freeCommissionPeriod) {
-        console.log(`🎉 Platform commission waived at return — free for all of 2026`);
+        console.log(`🎉 Platform commission waived at return — first 3 transactions free`);
+      } else if (returnRenterTier === 'pro') {
+        console.log(`💎 Pro rate applied at return — ${(returnCommissionRate * 100).toFixed(0)}% commission`);
       }
 
       // Award ShareCoins to both users for successful rental completion
@@ -12532,6 +12605,189 @@ Respond with ONLY the category name, nothing else.`
     } catch (error) {
       console.error("Account status error:", error);
       res.status(500).json({ message: "Failed to get account status" });
+    }
+  });
+
+  // ===== SUBSCRIPTION ROUTES =====
+
+  // Get current subscription status
+  app.get("/api/subscription/status", async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    try {
+      const [user] = await db
+        .select({
+          subscriptionTier: users.subscriptionTier,
+          stripeSubscriptionId: users.stripeSubscriptionId,
+          stripeSubscriptionStatus: users.stripeSubscriptionStatus,
+          monthlyBorrowCount: users.monthlyBorrowCount,
+          monthlyBorrowResetAt: users.monthlyBorrowResetAt,
+        } as any)
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+      res.json(user || { subscriptionTier: 'free' });
+    } catch (error) {
+      console.error("Subscription status error:", error);
+      res.status(500).json({ message: "Failed to get subscription status" });
+    }
+  });
+
+  // Create Stripe Checkout session for subscription
+  app.post("/api/subscription/checkout", requireEmailVerified, async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    const { tier, successUrl, cancelUrl } = req.body;
+    if (!tier || !['member', 'pro'].includes(tier)) {
+      return res.status(400).json({ message: "Invalid tier. Must be 'member' or 'pro'" });
+    }
+    try {
+      const stripe = await getUncachableStripeClient();
+
+      const [userRecord] = await db
+        .select({ stripeCustomerId: users.stripeCustomerId, email: users.email, fullName: users.fullName })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      let customerId = userRecord?.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: userRecord?.email || undefined,
+          name: userRecord?.fullName || undefined,
+          metadata: { userId: String(req.user.id) },
+        });
+        customerId = customer.id;
+        await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, req.user.id));
+      }
+
+      // Find active Stripe price by tier metadata
+      const products = await stripe.products.search({
+        query: `metadata['tier']:'${tier}' AND metadata['app']:'shareswap'`,
+      });
+      if (!products.data.length) {
+        return res.status(404).json({ message: "Subscription plan not found. Please contact support." });
+      }
+      const prices = await stripe.prices.list({ product: products.data[0].id, active: true, limit: 1 });
+      if (!prices.data.length) {
+        return res.status(404).json({ message: "Price not found for this plan." });
+      }
+      const priceId = prices.data[0].id;
+
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const baseUrl = `${proto}://${host}`;
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: successUrl || `${baseUrl}/premium?success=true`,
+        cancel_url: cancelUrl || `${baseUrl}/premium?canceled=true`,
+        metadata: { userId: String(req.user.id), tier },
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Checkout session error:", error);
+      res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  // Stripe Customer Portal (manage/cancel subscription)
+  app.post("/api/subscription/portal", requireEmailVerified, async (req: any, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    try {
+      const stripe = await getUncachableStripeClient();
+      const [userRecord] = await db
+        .select({ stripeCustomerId: users.stripeCustomerId })
+        .from(users)
+        .where(eq(users.id, req.user.id))
+        .limit(1);
+
+      if (!userRecord?.stripeCustomerId) {
+        return res.status(400).json({ message: "No Stripe customer found. Please subscribe first." });
+      }
+
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const baseUrl = `${proto}://${host}`;
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: userRecord.stripeCustomerId,
+        return_url: req.body.returnUrl || `${baseUrl}/premium`,
+      });
+      res.json({ url: portalSession.url });
+    } catch (error) {
+      console.error("Customer portal error:", error);
+      res.status(500).json({ message: "Failed to open subscription management" });
+    }
+  });
+
+  // Stripe subscription webhook
+  app.post("/api/stripe/subscription-webhook", async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET;
+
+    let event: any;
+    try {
+      if (webhookSecret && sig) {
+        const stripe = await getUncachableStripeClient();
+        event = stripe.webhooks.constructEvent(req.body as Buffer, sig as string, webhookSecret);
+      } else {
+        const bodyStr = Buffer.isBuffer(req.body) ? req.body.toString() : JSON.stringify(req.body);
+        event = JSON.parse(bodyStr);
+        console.warn("⚠️ Stripe subscription webhook: STRIPE_SUBSCRIPTION_WEBHOOK_SECRET not set — skipping signature verification");
+      }
+    } catch (err: any) {
+      console.error("Subscription webhook signature error:", err.message);
+      return res.status(400).json({ error: `Webhook error: ${err.message}` });
+    }
+
+    try {
+      const stripe = await getUncachableStripeClient();
+
+      if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+        const subscription = event.data.object;
+        const customerId = subscription.customer as string;
+
+        let tier = 'free';
+        const priceId = subscription.items?.data?.[0]?.price?.id;
+        if (priceId) {
+          const price = await stripe.prices.retrieve(priceId, { expand: ['product'] });
+          const product = price.product as any;
+          tier = product?.metadata?.tier || 'free';
+        }
+
+        await db.update(users)
+          .set({
+            subscriptionTier: tier,
+            stripeSubscriptionId: subscription.id,
+            stripeSubscriptionStatus: subscription.status,
+          } as any)
+          .where(eq(users.stripeCustomerId, customerId));
+
+        console.log(`✅ Subscription updated for customer ${customerId}: tier=${tier}, status=${subscription.status}`);
+      }
+
+      if (event.type === 'customer.subscription.deleted') {
+        const subscription = event.data.object;
+        const customerId = subscription.customer as string;
+
+        await db.update(users)
+          .set({
+            subscriptionTier: 'free',
+            stripeSubscriptionId: null,
+            stripeSubscriptionStatus: 'canceled',
+          } as any)
+          .where(eq(users.stripeCustomerId, customerId));
+
+        console.log(`🔴 Subscription canceled for customer ${customerId}`);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Subscription webhook processing error:", error);
+      res.status(500).json({ error: "Webhook processing failed" });
     }
   });
 

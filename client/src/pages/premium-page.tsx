@@ -1,279 +1,311 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
+import { Check, Zap, Star, Crown, ArrowLeft, Loader2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Navbar } from "@/components/shared/navbar";
-import { Crown, Check, Star, Zap, Shield, Users, Gift } from "lucide-react";
 
-interface SubscriptionPlan {
-  id: number;
-  name: string;
-  description: string;
-  monthlyPrice: string;
-  annualPrice?: string;
-  features: string[];
-  discountPercentage: number;
-  priorityAccess: boolean;
-  lowerFees: boolean;
-  isActive: boolean;
+interface SubscriptionStatus {
+  subscriptionTier: string;
+  stripeSubscriptionId: string | null;
+  stripeSubscriptionStatus: string | null;
+  monthlyBorrowCount: number;
+  monthlyBorrowResetAt: string | null;
 }
 
-interface UserSubscription {
-  id: number;
-  startDate: string;
-  endDate: string;
-  status: string;
-  autoRenew: boolean;
-  planName: string;
-  planDescription: string;
-  monthlyPrice: string;
-  features: string[];
-}
+const plans = [
+  {
+    id: "free",
+    name: "Free",
+    price: 0,
+    priceLabel: "Free forever",
+    icon: Zap,
+    iconBg: "bg-slate-100",
+    iconColor: "text-slate-500",
+    borderClass: "border-slate-200",
+    ctaClass: "",
+    features: [
+      "2 borrows per month",
+      "Unlimited swaps & gifts",
+      "Create & list items",
+      "Community messaging",
+      "Basic search & browse",
+    ],
+    notes: ["5% platform fee on rentals", "Standard matching priority"],
+    highlight: false,
+  },
+  {
+    id: "member",
+    name: "Member",
+    price: 4.99,
+    priceLabel: "$4.99 / month",
+    icon: Star,
+    iconBg: "bg-teal-50",
+    iconColor: "text-teal-600",
+    borderClass: "border-teal-400",
+    ctaClass: "bg-teal-600 hover:bg-teal-700 text-white",
+    features: [
+      "Unlimited borrows",
+      "Unlimited swaps & gifts",
+      "Priority matching",
+      "Extended borrow periods",
+      "Create & list items",
+    ],
+    notes: ["5% platform fee on rentals"],
+    highlight: true,
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: 9.99,
+    priceLabel: "$9.99 / month",
+    icon: Crown,
+    iconBg: "bg-amber-50",
+    iconColor: "text-amber-500",
+    borderClass: "border-amber-400",
+    ctaClass: "bg-amber-500 hover:bg-amber-600 text-white",
+    features: [
+      "Everything in Member",
+      "Reduced 2% platform fee",
+      "Featured item listings",
+      "Rental & lending analytics",
+      "Instant request approval",
+      "Waived late return fees",
+    ],
+    notes: [],
+    highlight: false,
+  },
+];
 
 export default function PremiumPage() {
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { data: plans, isLoading: plansLoading } = useQuery<SubscriptionPlan[]>({
-    queryKey: ['/api/subscription-plans'],
+  const { data: subStatus, isLoading: statusLoading } = useQuery<SubscriptionStatus>({
+    queryKey: ["/api/subscription/status"],
+    enabled: !!user,
   });
 
-  const { data: currentSubscription, isLoading: subscriptionLoading } = useQuery<UserSubscription | null>({
-    queryKey: ['/api/user-subscription'],
-  });
+  const currentTier = subStatus?.subscriptionTier || "free";
 
-  const subscribeMutation = useMutation({
-    mutationFn: async (planId: number) => {
-      return apiRequest("POST", "/api/subscribe", { planId });
+  const checkoutMutation = useMutation({
+    mutationFn: async (tier: string) => {
+      const res = await apiRequest("POST", "/api/subscription/checkout", { tier });
+      return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user-subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      toast({
-        title: "Welcome to Premium!",
-        description: "Your subscription has been activated. Enjoy exclusive benefits!",
-      });
+    onSuccess: (data) => {
+      if (data.url) window.location.href = data.url;
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: "Subscription failed",
-        description: "Unable to process subscription. Please try again or contact support.",
+        title: "Checkout failed",
+        description: error.message || "Failed to start checkout. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const getFeatureIcon = (feature: string) => {
-    if (feature.toLowerCase().includes('priority')) return <Zap className="h-4 w-4 text-teal-600" />;
-    if (feature.toLowerCase().includes('fee')) return <Gift className="h-4 w-4 text-teal-600" />;
-    if (feature.toLowerCase().includes('support')) return <Shield className="h-4 w-4 text-teal-600" />;
-    if (feature.toLowerCase().includes('access')) return <Star className="h-4 w-4 text-teal-600" />;
-    return <Check className="h-4 w-4 text-primary" />;
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/subscription/portal", {});
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) window.location.href = data.url;
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to open subscription portal",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle return from Stripe Checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      toast({
+        title: "Subscription activated!",
+        description: "Welcome! Your new plan benefits are now active.",
+      });
+      window.history.replaceState({}, "", "/premium");
+    } else if (params.get("canceled") === "true") {
+      toast({
+        title: "Checkout canceled",
+        description: "No charges were made.",
+      });
+      window.history.replaceState({}, "", "/premium");
+    }
+  }, []);
+
+  const handleSubscribe = (tier: string) => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    checkoutMutation.mutate(tier);
   };
 
-  if (plansLoading || subscriptionLoading) {
-    return (
-      <div className="min-h-screen bg-[#F3F4F6]">
-        <Navbar />
-        <main className="max-w-7xl mx-auto px-4 py-12">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const hasActivePaidSub = currentTier !== "free" && subStatus?.stripeSubscriptionStatus === "active";
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6]">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-6 md:py-12">
-        <div className="text-center mb-6 md:mb-12">
-          <h1 className="text-xl md:text-4xl font-bold mb-2 md:mb-4 flex items-center justify-center gap-2 md:gap-3">
-            <Crown className="h-6 w-6 md:h-10 md:w-10 text-teal-600" />
-            Upgrade to Premium
-          </h1>
-          <p className="text-sm md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Get priority access, lower fees, and exclusive features to maximize your sharing experience
+    <div className="min-h-screen bg-gradient-to-b from-teal-50/40 to-white">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Back button */}
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 text-sm text-slate-500 hover:text-teal-600 mb-6 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </button>
+
+        {/* Page header */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Choose Your Plan</h1>
+          <p className="text-slate-500 max-w-md mx-auto">
+            Share more, own less. Upgrade for unlimited borrows, reduced fees, and priority access.
           </p>
         </div>
 
-        {/* Current Subscription Status */}
-        {currentSubscription && (
-          <Card className="mb-8 border-2 border-teal-200 bg-teal-50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Crown className="h-6 w-6 text-teal-600" />
-                  <div>
-                    <h3 className="font-semibold text-teal-800">Active Premium Subscription</h3>
-                    <p className="text-sm text-teal-600">
-                      {currentSubscription.planName} - Active until {new Date(currentSubscription.endDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <Badge className="bg-teal-100 text-teal-800">
-                  {currentSubscription.status === 'active' ? 'Active' : currentSubscription.status}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Subscription Plans */}
-        {!currentSubscription && (
-          <div className="grid md:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-12">
-            {plans?.map((plan) => {
-              const isPopular = plan.name.includes('Premium');
-              const annualSavings = plan.annualPrice 
-                ? ((parseFloat(plan.monthlyPrice) * 12) - parseFloat(plan.annualPrice)).toFixed(2)
-                : 0;
-
-              return (
-                <Card 
-                  key={plan.id} 
-                  className={`relative ${isPopular ? 'border-2 border-primary shadow-lg' : ''}`}
-                >
-                  {isPopular && (
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-primary text-white px-3 md:px-4 py-1 text-xs md:text-sm">
-                        <Star className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
-                        Most Popular
-                      </Badge>
-                    </div>
-                  )}
-                  
-                  <CardHeader className="text-center pb-2 md:pb-4 px-4 md:px-6 pt-4 md:pt-6">
-                    <CardTitle className="text-base md:text-2xl font-bold flex items-center justify-center gap-1.5 md:gap-2">
-                      <Crown className={`h-4 w-4 md:h-6 md:w-6 ${isPopular ? 'text-teal-600' : 'text-gray-400'}`} />
-                      {plan.name}
-                    </CardTitle>
-                    <p className="text-xs md:text-base text-muted-foreground">{plan.description}</p>
-                    
-                    <div className="mt-2 md:mt-4">
-                      <div className="text-2xl md:text-4xl font-bold text-primary">
-                        ${plan.monthlyPrice}
-                        <span className="text-sm md:text-lg text-muted-foreground">/month</span>
-                      </div>
-                      {plan.annualPrice && (
-                        <div className="mt-1 md:mt-2">
-                          <Badge variant="outline" className="bg-teal-50 text-teal-700 text-xs md:text-sm">
-                            Save ${annualSavings}/year with annual billing
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="px-4 md:px-6 pb-4 md:pb-6">
-                    <div className="space-y-2 md:space-y-3 mb-3 md:mb-6">
-                      {plan.features.map((feature, index) => (
-                        <div key={index} className="flex items-start gap-2 md:gap-3">
-                          {getFeatureIcon(feature)}
-                          <span className="text-xs md:text-sm">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="space-y-2 md:space-y-3">
-                      <Button
-                        onClick={() => subscribeMutation.mutate(plan.id)}
-                        disabled={subscribeMutation.isPending}
-                        className={`w-full text-xs md:text-sm h-8 md:h-10 ${isPopular ? 'bg-primary hover:bg-primary/90' : ''}`}
-                        variant={isPopular ? 'default' : 'outline'}
-                      >
-                        {subscribeMutation.isPending ? 'Processing...' : `Upgrade to ${plan.name}`}
-                      </Button>
-                      
-                      {plan.annualPrice && (
-                        <Button
-                          variant="ghost"
-                          className="w-full text-xs md:text-sm h-8 md:h-10"
-                        >
-                          Or pay ${plan.annualPrice} annually (2 months free!)
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        {/* Current plan status bar */}
+        {user && !statusLoading && (
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-3 bg-white border border-teal-100 rounded-2xl px-5 py-4 shadow-sm">
+            <div>
+              <p className="text-xs text-slate-400 mb-0.5">Current Plan</p>
+              <p className="font-semibold text-slate-800 capitalize flex items-center gap-2">
+                {currentTier === "pro" && <Crown className="w-4 h-4 text-amber-500" />}
+                {currentTier === "member" && <Star className="w-4 h-4 text-teal-600" />}
+                {currentTier === "free" && <Zap className="w-4 h-4 text-slate-400" />}
+                ShareSwap {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
+                {hasActivePaidSub && (
+                  <Badge className="bg-green-50 text-green-700 border-green-200 text-xs ml-1">Active</Badge>
+                )}
+              </p>
+              {currentTier === "free" && (
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {subStatus?.monthlyBorrowCount ?? 0} / 2 borrows used this month
+                </p>
+              )}
+            </div>
+            {hasActivePaidSub && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => portalMutation.mutate()}
+                disabled={portalMutation.isPending}
+                className="flex items-center gap-1.5 text-slate-600 border-slate-200"
+              >
+                {portalMutation.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Settings className="w-3.5 h-3.5" />
+                )}
+                Manage Subscription
+              </Button>
+            )}
           </div>
         )}
 
-        {/* Benefits Overview */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="text-center">Why Go Premium?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Zap className="h-8 w-8 text-teal-600" />
-                </div>
-                <h3 className="font-semibold mb-2">Priority Access</h3>
-                <p className="text-sm text-muted-foreground">
-                  Get first dibs on the most popular items before they're fully booked
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Gift className="h-8 w-8 text-teal-600" />
-                </div>
-                <h3 className="font-semibold mb-2">Lower Fees</h3>
-                <p className="text-sm text-muted-foreground">
-                  Save money with reduced transaction fees on all your borrowing and lending
-                </p>
-              </div>
-              
-              <div className="text-center">
-                <div className="bg-teal-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="h-8 w-8 text-teal-600" />
-                </div>
-                <h3 className="font-semibold mb-2">Premium Support</h3>
-                <p className="text-sm text-muted-foreground">
-                  Get faster response times and dedicated support when you need help
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Plan cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {plans.map((plan) => {
+            const Icon = plan.icon;
+            const isCurrentPlan = currentTier === plan.id;
+            const isCheckingOut = checkoutMutation.isPending && (checkoutMutation.variables as string) === plan.id;
 
-        {/* FAQ Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Frequently Asked Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-semibold mb-2">Can I cancel anytime?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Yes, you can cancel your subscription at any time. You'll continue to have access until your current billing period ends.
-                </p>
+            return (
+              <div
+                key={plan.id}
+                className={`relative bg-white rounded-2xl border-2 p-6 flex flex-col shadow-sm transition-all ${plan.borderClass} ${
+                  plan.highlight ? "shadow-teal-100 shadow-md" : ""
+                } ${isCurrentPlan ? "ring-2 ring-teal-400 ring-offset-1" : ""}`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-teal-600 text-white text-xs px-3">Most Popular</Badge>
+                  </div>
+                )}
+
+                {/* Icon + title */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`p-2 rounded-xl ${plan.iconBg}`}>
+                    <Icon className={`w-5 h-5 ${plan.iconColor}`} />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-slate-800 text-lg leading-tight">{plan.name}</h2>
+                    <p className="text-sm text-slate-400">{plan.priceLabel}</p>
+                  </div>
+                </div>
+
+                {/* Price */}
+                <div className="mb-5">
+                  {plan.price === 0 ? (
+                    <span className="text-2xl font-bold text-slate-600">$0</span>
+                  ) : (
+                    <span className="text-2xl font-bold text-slate-800">
+                      ${plan.price}
+                      <span className="text-sm font-normal text-slate-400"> /mo</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Features list */}
+                <ul className="space-y-2.5 mb-6 flex-1">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2 text-sm text-slate-600">
+                      <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                      {feature}
+                    </li>
+                  ))}
+                  {plan.notes.map((note) => (
+                    <li key={note} className="flex items-start gap-2 text-sm text-slate-400">
+                      <div className="w-4 h-4 shrink-0 mt-1 flex items-center justify-center">
+                        <div className="w-1 h-1 rounded-full bg-slate-300" />
+                      </div>
+                      {note}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA button */}
+                {plan.id === "free" ? (
+                  <Button variant="outline" className="w-full rounded-xl text-slate-400 cursor-default" disabled>
+                    {isCurrentPlan ? "Your Current Plan" : "Free Plan"}
+                  </Button>
+                ) : isCurrentPlan ? (
+                  <Button variant="outline" className="w-full rounded-xl border-teal-200 text-teal-600" disabled>
+                    ✓ Current Plan
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleSubscribe(plan.id)}
+                    disabled={checkoutMutation.isPending}
+                    className={`w-full rounded-xl font-semibold ${plan.ctaClass}`}
+                  >
+                    {isCheckingOut ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      plan.id === "member" ? "Subscribe — $4.99/mo" : "Subscribe — $9.99/mo"
+                    )}
+                  </Button>
+                )}
               </div>
-              
-              <div>
-                <h4 className="font-semibold mb-2">What happens to my current ShareCoins?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Your ShareCoins balance remains unchanged. Premium members just get better deals and access to exclusive opportunities to earn more.
-                </p>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold mb-2">Do I get priority for all items?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Premium members get early access to high-demand items and can browse items before they're visible to free users.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
+            );
+          })}
+        </div>
+
+        {/* Footer note */}
+        <p className="text-center text-xs text-slate-400 mt-8">
+          Subscriptions renew monthly · Cancel anytime via Manage Subscription · 3% Stripe processing fee on paid rentals
+        </p>
+      </div>
     </div>
   );
 }

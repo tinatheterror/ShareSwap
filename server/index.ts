@@ -139,6 +139,9 @@ app.use("/api/", generalLimiter);
 // Security: Parse cookies (required for CSRF protection)
 app.use(cookieParser());
 
+// Raw body needed for Stripe subscription webhook signature verification (must precede express.json)
+app.use('/api/stripe/subscription-webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json({ limit: "10mb" })); // Limit request body size
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 

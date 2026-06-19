@@ -65,6 +65,11 @@ export const users = pgTable("users", {
   defaultCity: text("default_city"), // Saved city for browsing
   locationRadius: integer("location_radius").default(25), // Search radius in km (5, 25, or custom)
   hasCompletedLocationSetup: boolean("has_completed_location_setup").default(false), // Track if user completed location setup
+  subscriptionTier: text("subscription_tier").default("free"), // 'free', 'member', 'pro'
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeSubscriptionStatus: text("stripe_subscription_status"), // 'active', 'canceled', 'past_due', etc.
+  monthlyBorrowCount: integer("monthly_borrow_count").default(0),
+  monthlyBorrowResetAt: timestamp("monthly_borrow_reset_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

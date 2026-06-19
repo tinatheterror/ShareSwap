@@ -69,7 +69,7 @@ const plans = [
     ctaClass: "bg-amber-500 hover:bg-amber-600 text-white",
     features: [
       "Everything in Member",
-      "Reduced 2% platform fee",
+      "Reduced 4% platform fee (vs. 5%)",
       "Featured item listings",
       "Rental & lending analytics",
       "Instant request approval",

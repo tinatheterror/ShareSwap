@@ -6594,7 +6594,7 @@ Respond with ONLY the category name, nothing else.`
           .where(eq(users.id, request.item_requests.requesterId))
           .limit(1);
         const renterTier = (renterSubRecord as any)?.subscriptionTier || 'free';
-        const commissionRate = renterTier === 'pro' ? 0.02 : 0.05;
+        const commissionRate = renterTier === 'pro' ? 0.04 : 0.05;
 
         const freeCommissionPeriod = Number(rentalTxCount) < 3;
         const actualPlatformFee = freeCommissionPeriod
@@ -10827,12 +10827,12 @@ Respond with ONLY the category name, nothing else.`
         .where(eq(users.id, rental.item_requests.requesterId))
         .limit(1);
       const returnRenterTier = (returnRenterSub as any)?.subscriptionTier || 'free';
-      const returnCommissionRate = returnRenterTier === 'pro' ? 0.02 : 0.05;
+      const returnCommissionRate = returnRenterTier === 'pro' ? 0.04 : 0.05;
 
       const freeCommissionPeriod = Number(returnTxCount) < 3;
       const rawCommissionDetails = calculateCommission(rentalPrice, 'RENTAL', false);
       const proAdjustedCommission = returnRenterTier === 'pro'
-        ? { ...rawCommissionDetails, commissionAmount: parseFloat((rentalPrice * 0.02).toFixed(2)), platformAmount: parseFloat((rentalPrice * 0.02).toFixed(2)) }
+        ? { ...rawCommissionDetails, commissionAmount: parseFloat((rentalPrice * 0.04).toFixed(2)), platformAmount: parseFloat((rentalPrice * 0.04).toFixed(2)) }
         : rawCommissionDetails;
       const commissionDetails = freeCommissionPeriod
         ? { ...rawCommissionDetails, commissionAmount: 0, platformAmount: 0, shareCoinsFromReward: rawCommissionDetails.shareCoinsFromReward }

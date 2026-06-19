@@ -100,6 +100,13 @@ export function ItemRequestForm({
     queryKey: ["/api/user"],
   });
 
+  const { data: feeWaiverData } = useQuery<{
+    feeWaived: boolean;
+    completedCount: number;
+    remainingFree: number;
+    totalFree: number;
+  }>({ queryKey: ["/api/user/fee-waiver-status"] });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -793,9 +800,18 @@ export function ItemRequestForm({
                               <p className={`text-xs font-medium ${depositValue === "in_app" ? "text-white/90" : "text-teal-600"}`}>
                                 Recommended
                               </p>
-                              <p className={`text-xs mt-0.5 ${depositValue === "in_app" ? "text-white/80" : "text-gray-500"}`}>
-                                {`Processing fee: $${processingFee}`}
-                              </p>
+                              {feeWaiverData?.feeWaived ? (
+                                <p className={`text-xs mt-0.5 ${depositValue === "in_app" ? "text-white/80" : "text-gray-500"}`}>
+                                  First 3 transactions free!{" "}
+                                  <span className={`line-through ${depositValue === "in_app" ? "text-white/50" : "text-gray-400"}`}>
+                                    ${processingFee}
+                                  </span>
+                                </p>
+                              ) : (
+                                <p className={`text-xs mt-0.5 ${depositValue === "in_app" ? "text-white/80" : "text-gray-500"}`}>
+                                  Processing fee: ${processingFee}
+                                </p>
+                              )}
                             </button>
 
                             {/* Exchange In Person card */}

@@ -1373,48 +1373,17 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Current plan status */}
-              {!subStatusLoading && (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-white border border-teal-100 rounded-xl px-4 py-3 shadow-sm">
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-0.5">Current Plan</p>
-                    <p className="font-semibold text-sm text-slate-800 capitalize flex items-center gap-2">
-                      {currentTier === "pro" && <Crown className="w-3.5 h-3.5 text-amber-500" />}
-                      {currentTier === "member" && <Star className="w-3.5 h-3.5 text-teal-600" />}
-                      {currentTier === "free" && <Zap className="w-3.5 h-3.5 text-slate-400" />}
-                      ShareSwap {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
-                      {hasActivePaidSub && (
-                        <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] ml-1">Active</Badge>
-                      )}
-                    </p>
-                    {currentTier === "free" && (
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used this month
-                      </p>
-                    )}
-                  </div>
-                  {hasActivePaidSub && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => portalMutation.mutate()}
-                      disabled={portalMutation.isPending}
-                      className="flex items-center gap-1.5 text-slate-600 border-slate-200 text-xs h-8"
-                    >
-                      {portalMutation.isPending ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Settings className="w-3 h-3" />
-                      )}
-                      Manage Subscription
-                    </Button>
-                  )}
-                </div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 {/* Free */}
                 <div className={`relative bg-white rounded-xl border-2 border-slate-200 p-4 flex flex-col shadow-sm ${currentTier === "free" ? "ring-2 ring-teal-400 ring-offset-1" : ""}`}>
+                  {currentTier === "free" && (
+                    <div className="mb-3 pb-3 border-b border-slate-100">
+                      <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
+                      <p className="text-xs text-slate-500">
+                        {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used this month
+                      </p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2.5 mb-3">
                     <div className="p-1.5 rounded-lg bg-slate-100">
                       <Zap className="w-4 h-4 text-slate-500" />
@@ -1450,6 +1419,12 @@ export default function ProfilePage() {
                   <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
                     <Badge className="bg-teal-600 text-white text-[10px] px-2.5">Most Popular</Badge>
                   </div>
+                  {currentTier === "member" && (
+                    <div className="mb-3 pb-3 border-b border-teal-100 pt-1">
+                      <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
+                      <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px]">Active</Badge>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2.5 mb-3 pt-1">
                     <div className="p-1.5 rounded-lg bg-teal-50">
                       <Star className="w-4 h-4 text-teal-600" />
@@ -1476,9 +1451,21 @@ export default function ProfilePage() {
                     </li>
                   </ul>
                   {currentTier === "member" ? (
-                    <Button variant="outline" className="w-full rounded-lg border-teal-200 text-teal-600 text-xs h-8" disabled>
-                      ✓ Current Plan
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="outline" className="w-full rounded-lg border-teal-200 text-teal-600 text-xs h-8" disabled>
+                        ✓ Current Plan
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => portalMutation.mutate()}
+                        disabled={portalMutation.isPending}
+                        className="w-full flex items-center justify-center gap-1.5 text-slate-500 text-xs h-7"
+                      >
+                        {portalMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
+                        Manage Subscription
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       onClick={() => checkoutMutation.mutate("member")}
@@ -1494,6 +1481,12 @@ export default function ProfilePage() {
 
                 {/* Pro */}
                 <div className={`relative bg-white rounded-xl border-2 border-amber-400 p-4 flex flex-col shadow-sm ${currentTier === "pro" ? "ring-2 ring-amber-400 ring-offset-1" : ""}`}>
+                  {currentTier === "pro" && (
+                    <div className="mb-3 pb-3 border-b border-amber-100">
+                      <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
+                      <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px]">Active</Badge>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2.5 mb-3">
                     <div className="p-1.5 rounded-lg bg-amber-50">
                       <Crown className="w-4 h-4 text-amber-500" />
@@ -1518,9 +1511,21 @@ export default function ProfilePage() {
                     </li>
                   </ul>
                   {currentTier === "pro" ? (
-                    <Button variant="outline" className="w-full rounded-lg border-amber-200 text-amber-600 text-xs h-8" disabled>
-                      ✓ Current Plan
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button variant="outline" className="w-full rounded-lg border-amber-200 text-amber-600 text-xs h-8" disabled>
+                        ✓ Current Plan
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => portalMutation.mutate()}
+                        disabled={portalMutation.isPending}
+                        className="w-full flex items-center justify-center gap-1.5 text-slate-500 text-xs h-7"
+                      >
+                        {portalMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
+                        Manage Subscription
+                      </Button>
+                    </div>
                   ) : (
                     <Button
                       onClick={() => checkoutMutation.mutate("pro")}

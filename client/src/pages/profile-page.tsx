@@ -1397,11 +1397,12 @@ export default function ProfilePage() {
                     <span className="text-2xl font-bold text-slate-600">$0</span>
                   </div>
                   <ul className="space-y-2 mb-4 flex-1 text-xs">
-                    {["3 borrows per month","Unlimited swaps & gifts","Create & list items","Community messaging","Basic search & browse"].map(f => (
-                      <li key={f} className="flex items-start gap-1.5 text-slate-600">
-                        <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />{f}
-                      </li>
-                    ))}
+                    <li className="flex items-start gap-1.5 text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />3 borrows per month
+                    </li>
+                    <li className="flex items-start gap-1.5 text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
+                    </li>
                     <li className="flex items-start gap-1.5 text-slate-400">
                       <div className="w-3.5 h-3.5 shrink-0 mt-1 flex items-center justify-center">
                         <div className="w-1 h-1 rounded-full bg-slate-300" />
@@ -1438,11 +1439,12 @@ export default function ProfilePage() {
                     <span className="text-2xl font-bold text-slate-800">$4.99<span className="text-xs font-normal text-slate-400"> /mo</span></span>
                   </div>
                   <ul className="space-y-2 mb-4 flex-1 text-xs">
-                    {["Unlimited borrows","Unlimited swaps & gifts","Create & list items","Community messaging","Basic search & browse"].map(f => (
-                      <li key={f} className="flex items-start gap-1.5 text-slate-600">
-                        <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />{f}
-                      </li>
-                    ))}
+                    <li className="flex items-start gap-1.5 text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited borrows
+                    </li>
+                    <li className="flex items-start gap-1.5 text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
+                    </li>
                     <li className="flex items-start gap-1.5 text-slate-400">
                       <div className="w-3.5 h-3.5 shrink-0 mt-1 flex items-center justify-center">
                         <div className="w-1 h-1 rounded-full bg-slate-300" />
@@ -1500,14 +1502,14 @@ export default function ProfilePage() {
                     <span className="text-2xl font-bold text-slate-800">$9.99<span className="text-xs font-normal text-slate-400"> /mo</span></span>
                   </div>
                   <ul className="space-y-2 mb-4 flex-1 text-xs">
-                    {["Unlimited borrows","Unlimited swaps & gifts","Create & list items","Community messaging","Basic search & browse"].map(f => (
-                      <li key={f} className="flex items-start gap-1.5 text-slate-600">
-                        <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />{f}
-                      </li>
-                    ))}
+                    <li className="flex items-start gap-1.5 text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited borrows
+                    </li>
+                    <li className="flex items-start gap-1.5 text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
+                    </li>
                     <li className="flex items-start gap-1.5 text-amber-600">
-                      <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      Reduced 4% service fee on rentals (vs. 5%)
+                      <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />Reduced 4% service fee on rentals (vs. 5%)
                     </li>
                   </ul>
                   {currentTier === "pro" ? (

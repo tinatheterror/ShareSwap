@@ -1305,179 +1305,110 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Upgrade to Premium */}
+            {/* Upgrade section */}
             <div className="mt-6">
               <div className="text-center mb-3 md:mb-4">
                 <h2 className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 text-base md:text-xl font-bold">
                   <Crown className="h-4 w-4 md:h-6 md:w-6 text-teal-600" />
-                  <span>Upgrade to Premium</span>
+                  <span>Upgrade Your Plan</span>
                 </h2>
                 <p className="text-xs md:text-sm text-gray-500 mt-1">
-                  Get priority access, lower fees, and exclusive features to
-                  maximize your sharing experience
+                  Share more, own less. Upgrade for unlimited borrows and lower rental fees.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                {/* ShareSwap Premium Card */}
-                <div className="relative border border-gray-200 rounded-lg p-3 md:p-4 bg-white">
-                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-teal-500 text-white text-[10px] md:text-xs px-2 md:px-3">
+                {/* Member Card */}
+                <div className="relative border-2 border-teal-400 rounded-lg p-3 md:p-4 bg-white">
+                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-teal-600 text-white text-[10px] md:text-xs px-2 md:px-3">
                     Most Popular
                   </Badge>
                   <div className="text-center pt-2 md:pt-3">
                     <div className="flex items-center justify-center gap-1.5 md:gap-2">
-                      <Crown className="h-3.5 w-3.5 md:h-5 md:w-5 text-teal-600" />
-                      <span className="font-semibold text-sm md:text-lg">
-                        ShareSwap Premium
-                      </span>
+                      <Star className="h-3.5 w-3.5 md:h-5 md:w-5 text-teal-600" />
+                      <span className="font-semibold text-sm md:text-lg">Member</span>
                     </div>
-                    <p className="text-[10px] md:text-xs text-gray-500 mt-1">
-                      Unlock priority access, lower fees, and exclusive features
-                    </p>
                     <div className="mt-2 md:mt-3">
-                      <span className="text-xl md:text-3xl font-bold text-teal-600">
-                        $9.99
-                      </span>
+                      <span className="text-xl md:text-3xl font-bold text-teal-600">$4.99</span>
                       <span className="text-xs md:text-sm text-gray-500">/month</span>
                     </div>
-                    <p className="text-[10px] md:text-xs text-teal-600 mt-1">
-                      Save $19.89/year with annual billing
-                    </p>
                   </div>
                   <div className="mt-3 md:mt-4 space-y-1.5 md:space-y-2 text-xs md:text-sm">
                     <div className="flex items-center gap-1.5 md:gap-2">
-                      <Zap className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Priority access to high-demand items</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 md:gap-2">
-                      <Gift className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>50% reduction in transaction fees</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 md:gap-2">
-                      <Star className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Early access to new features</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 md:gap-2">
-                      <Shield className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Premium customer support</span>
+                      <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
+                      <span>Unlimited borrows</span>
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2">
                       <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Advanced search filters</span>
+                      <span>Unlimited swaps &amp; gifts</span>
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2">
                       <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Unlimited wishlist items</span>
+                      <span>Create &amp; list items</span>
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2">
                       <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Enhanced profile visibility</span>
+                      <span>Community messaging</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 md:gap-2 text-gray-400">
+                      <div className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0 flex items-center justify-center">
+                        <div className="w-1 h-1 rounded-full bg-gray-300" />
+                      </div>
+                      <span>5% service fee on rentals</span>
                     </div>
                   </div>
                   <Link href="/premium">
-                    <Button className="w-full mt-3 md:mt-4 h-8 md:h-10 text-xs md:text-sm bg-teal-500 hover:bg-teal-600 text-white">
-                      Upgrade to ShareSwap Premium
+                    <Button className="w-full mt-3 md:mt-4 h-8 md:h-10 text-xs md:text-sm bg-teal-600 hover:bg-teal-700 text-white">
+                      Subscribe — $4.99/mo
                     </Button>
                   </Link>
-                  <p className="text-[10px] md:text-xs text-center text-gray-500 mt-1.5 md:mt-2">
-                    Or pay $99.99 annually (2 months free!)
-                  </p>
                 </div>
 
-                {/* ShareSwap Pro Card */}
-                <div className="border border-gray-200 rounded-lg p-3 md:p-4 bg-white">
+                {/* Pro Card */}
+                <div className="border-2 border-amber-400 rounded-lg p-3 md:p-4 bg-white">
                   <div className="text-center pt-2 md:pt-3">
                     <div className="flex items-center justify-center gap-1.5 md:gap-2">
-                      <Crown className="h-3.5 w-3.5 md:h-5 md:w-5 text-gray-600" />
-                      <span className="font-semibold text-sm md:text-lg">
-                        ShareSwap Pro
-                      </span>
+                      <Crown className="h-3.5 w-3.5 md:h-5 md:w-5 text-amber-500" />
+                      <span className="font-semibold text-sm md:text-lg">Pro</span>
                     </div>
-                    <p className="text-[10px] md:text-xs text-gray-500 mt-1">
-                      Perfect for active community members
-                    </p>
                     <div className="mt-2 md:mt-3">
-                      <span className="text-xl md:text-3xl font-bold text-gray-700">
-                        $4.99
-                      </span>
+                      <span className="text-xl md:text-3xl font-bold text-amber-500">$9.99</span>
                       <span className="text-xs md:text-sm text-gray-500">/month</span>
                     </div>
-                    <p className="text-[10px] md:text-xs text-teal-600 mt-1">
-                      Save $9.89/year with annual billing
-                    </p>
                   </div>
                   <div className="mt-3 md:mt-4 space-y-1.5 md:space-y-2 text-xs md:text-sm">
                     <div className="flex items-center gap-1.5 md:gap-2">
-                      <Gift className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>25% reduction in transaction fees</span>
+                      <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
+                      <span>Unlimited borrows</span>
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2">
                       <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Advanced search filters</span>
+                      <span>Unlimited swaps &amp; gifts</span>
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2">
                       <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Up to 20 wishlist items</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 md:gap-2">
-                      <Shield className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Priority customer support</span>
+                      <span>Create &amp; list items</span>
                     </div>
                     <div className="flex items-center gap-1.5 md:gap-2">
                       <Check className="h-3 w-3 md:h-4 md:w-4 text-teal-600 flex-shrink-0" />
-                      <span>Extended borrowing periods</span>
+                      <span>Community messaging</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 md:gap-2 text-amber-600">
+                      <Check className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                      <span>Reduced 4% service fee on rentals</span>
                     </div>
                   </div>
                   <Link href="/premium">
-                    <Button variant="outline" className="w-full mt-3 md:mt-4 h-8 md:h-10 text-xs md:text-sm">
-                      Upgrade to ShareSwap Pro
+                    <Button className="w-full mt-3 md:mt-4 h-8 md:h-10 text-xs md:text-sm bg-amber-500 hover:bg-amber-600 text-white">
+                      Subscribe — $9.99/mo
                     </Button>
                   </Link>
-                  <p className="text-[10px] md:text-xs text-center text-gray-500 mt-1.5 md:mt-2">
-                    Or pay $49.99 annually (2 months free!)
-                  </p>
                 </div>
               </div>
 
-              {/* Why Go Premium? */}
-              <div className="mt-3 md:mt-4 py-2.5 md:py-3 bg-gray-50 rounded-lg px-3 md:px-4">
-                <h3 className="text-sm md:text-lg font-bold text-center mb-2 md:mb-3">
-                  Why Go Premium?
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                  <div className="text-center">
-                    <div className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-1.5 md:mb-2 bg-teal-100 rounded-full flex items-center justify-center">
-                      <UserCheck className="h-4 w-4 md:h-5 md:w-5 text-teal-600" />
-                    </div>
-                    <h4 className="font-semibold text-xs md:text-sm mb-0.5 md:mb-1">
-                      Priority Access
-                    </h4>
-                    <p className="text-[10px] md:text-xs text-gray-500">
-                      Get first dibs on the most popular items
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-1.5 md:mb-2 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Percent className="h-4 w-4 md:h-5 md:w-5 text-teal-600" />
-                    </div>
-                    <h4 className="font-semibold text-xs md:text-sm mb-0.5 md:mb-1">Lower Fees</h4>
-                    <p className="text-[10px] md:text-xs text-gray-500">
-                      Reduced transaction fees on all your sharing activities
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-8 h-8 md:w-10 md:h-10 mx-auto mb-1.5 md:mb-2 bg-teal-100 rounded-full flex items-center justify-center">
-                      <Headphones className="h-4 w-4 md:h-5 md:w-5 text-teal-600" />
-                    </div>
-                    <h4 className="font-semibold text-xs md:text-sm mb-0.5 md:mb-1">
-                      Premium Support
-                    </h4>
-                    <p className="text-[10px] md:text-xs text-gray-500">
-                      Get faster responses and dedicated support from our team
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <p className="text-[10px] md:text-xs text-center text-gray-400 mt-3">
+                Free plan includes 3 borrows/month · Cancel anytime · Service fee includes Stripe processing
+              </p>
             </div>
 
             {/* Account Statistics — Mobile Only (mirrors sidebar card) */}

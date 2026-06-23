@@ -10034,6 +10034,145 @@ Respond with ONLY the category name, nothing else.`
     }
   });
 
+  // Pro analytics dashboard
+  app.get("/api/analytics/dashboard", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const userId = req.user.id;
+    const completedStatuses = or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY"));
+
+    try {
+      const now = new Date();
+      // Build last 6 calendar months
+      const months: { year: number; month: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
+      }
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Monthly completed transactions (as requester OR as owner)
+      const activityRows = await db
+        .select({
+          year: sql<number>`EXTRACT(YEAR FROM ${itemRequests.createdAt})::int`,
+          month: sql<number>`EXTRACT(MONTH FROM ${itemRequests.createdAt})::int`,
+          count: sql<number>`count(*)`,
+        })
+        .from(itemRequests)
+        .leftJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(
+          or(eq(itemRequests.requesterId, userId), eq(items.ownerId, userId)),
+          completedStatuses,
+          sql`${itemRequests.createdAt} >= ${sixMonthsAgo}`
+        ))
+        .groupBy(
+          sql`EXTRACT(YEAR FROM ${itemRequests.createdAt})`,
+          sql`EXTRACT(MONTH FROM ${itemRequests.createdAt})`
+        );
+
+      // ShareCoin flow by month
+      const coinRows = await db
+        .select({
+          year: sql<number>`EXTRACT(YEAR FROM ${shareCoinsTransactions.createdAt})::int`,
+          month: sql<number>`EXTRACT(MONTH FROM ${shareCoinsTransactions.createdAt})::int`,
+          type: shareCoinsTransactions.transactionType,
+          total: sql<number>`SUM(ABS(${shareCoinsTransactions.amount}::numeric))`,
+        })
+        .from(shareCoinsTransactions)
+        .where(and(
+          eq(shareCoinsTransactions.userId, userId),
+          sql`${shareCoinsTransactions.createdAt} >= ${sixMonthsAgo}`
+        ))
+        .groupBy(
+          sql`EXTRACT(YEAR FROM ${shareCoinsTransactions.createdAt})`,
+          sql`EXTRACT(MONTH FROM ${shareCoinsTransactions.createdAt})`,
+          shareCoinsTransactions.transactionType
+        );
+
+      // Rental earnings all time
+      const [rentalAll] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${itemRequests.rentalAmount}::numeric), 0)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(eq(items.ownerId, userId), eq(itemRequests.requestType, "RENT"), completedStatuses));
+
+      // Rental earnings this month
+      const [rentalMonth] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${itemRequests.rentalAmount}::numeric), 0)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(
+          eq(items.ownerId, userId),
+          eq(itemRequests.requestType, "RENT"),
+          completedStatuses,
+          sql`${itemRequests.createdAt} >= ${startOfMonth}`
+        ));
+
+      // Top 3 most requested items owned by user
+      const topItems = await db
+        .select({
+          name: items.name,
+          requests: sql<number>`count(*)`,
+        })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(eq(items.ownerId, userId))
+        .groupBy(items.name)
+        .orderBy(desc(sql`count(*)`))
+        .limit(3);
+
+      // Lifetime counts
+      const [lifetimeBorrows] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(and(eq(itemRequests.requesterId, userId), eq(itemRequests.requestType, "BORROW"), completedStatuses));
+
+      const [lifetimeLends] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(eq(items.ownerId, userId), completedStatuses));
+
+      const [lifetimeRentals] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(eq(items.ownerId, userId), eq(itemRequests.requestType, "RENT"), completedStatuses));
+
+      // Build month labels
+      const monthLabels = months.map(({ year, month }) =>
+        new Date(year, month - 1).toLocaleString("en-US", { month: "short" })
+      );
+
+      const activityByMonth = months.map(({ year, month }) =>
+        Number(activityRows.find(r => r.year === year && r.month === month)?.count || 0)
+      );
+
+      const coinsEarnedByMonth = months.map(({ year, month }) =>
+        Number(coinRows.find(r => r.year === year && r.month === month && r.type === "EARNED")?.total || 0)
+      );
+      const coinsSpentByMonth = months.map(({ year, month }) =>
+        Number(coinRows.find(r => r.year === year && r.month === month && r.type === "SPENT")?.total || 0)
+      );
+
+      res.json({
+        monthLabels,
+        activityByMonth,
+        coinsEarnedByMonth,
+        coinsSpentByMonth,
+        rentalEarningsAllTime: parseFloat(rentalAll?.total || "0"),
+        rentalEarningsThisMonth: parseFloat(rentalMonth?.total || "0"),
+        lifetimeBorrows: Number(lifetimeBorrows?.count || 0),
+        lifetimeLends: Number(lifetimeLends?.count || 0),
+        lifetimeRentals: Number(lifetimeRentals?.count || 0),
+        topItems: topItems.map(r => ({ name: r.name, requests: Number(r.requests) })),
+      });
+    } catch (error) {
+      console.error("Analytics dashboard error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
   // Get user profile
   app.get("/api/user-profile", async (req, res) => {
     if (!req.isAuthenticated()) {

@@ -328,12 +328,36 @@ async function checkAndAwardReferralBonus(
 
     console.log(`🎉 Referral bonus: Awarded ${rewardAmount} ShareCoins to user ${referral.referrerId} for referring user ${userId} (${transactionType})`);
 
+    // Award 5 welcome ShareCoins to the referred user
+    const welcomeReward = 5;
+    await db.insert(shareCoinsTransactions).values({
+      userId,
+      amount: welcomeReward.toString(),
+      description: `Welcome bonus: Joined via referral and completed your first ${transactionType || 'transaction'}`,
+      transactionType: "EARNED",
+    });
+    await db
+      .update(users)
+      .set({ shareCoins: sql`share_coins + ${welcomeReward}` })
+      .where(eq(users.id, userId));
+
+    console.log(`🎁 Welcome bonus: Awarded ${welcomeReward} ShareCoins to referred user ${userId}`);
+
     // Notify the referrer that their friend completed their first transaction
     await db.insert(notifications).values({
       userId: referral.referrerId,
       type: "referral_joined",
       title: "Your Referral Paid Off!",
       message: `Your referral completed their first ${transactionType?.toLowerCase() || 'transaction'}. You earned ${rewardAmount} ShareCoins!`,
+      isRead: false,
+    });
+
+    // Notify the referred user of their welcome bonus
+    await db.insert(notifications).values({
+      userId,
+      type: "system",
+      title: "Welcome Bonus!",
+      message: `You earned ${welcomeReward} ShareCoins for completing your first transaction as a referred member. Happy sharing!`,
       isRead: false,
     });
 

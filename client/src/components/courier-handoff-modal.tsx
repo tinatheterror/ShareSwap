@@ -179,7 +179,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
               </div>
               <div className="flex justify-between items-center text-sm text-teal-700">
                 <span className="flex items-center gap-1">
-                  Platform fee
+                  Private courier fee
                   {quote.platformFee === 0 && (
                     <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0 h-4">Pro</Badge>
                   )}

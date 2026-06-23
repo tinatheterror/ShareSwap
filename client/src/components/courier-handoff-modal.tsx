@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Truck, MapPin, Clock, CheckCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Truck, MapPin, Clock, CheckCircle, ShieldCheck, Crown } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,12 +18,23 @@ interface CourierHandoffModalProps {
 
 type Step = "address" | "quote" | "booked";
 
+interface QuoteData {
+  uberFee: number;
+  platformFee: number;
+  totalFee: number;
+  eta: string;
+  quoteId: string;
+  proDeliveriesUsed: number;
+  proDeliveriesLimit: number;
+  isPro: boolean;
+}
+
 export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSuccess }: CourierHandoffModalProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("address");
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
-  const [quote, setQuote] = useState<{ fee: number; eta: string; quoteId: string } | null>(null);
+  const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [trackingUrl, setTrackingUrl] = useState("");
 
@@ -87,10 +99,20 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-teal-800">
             <Truck className="h-5 w-5 text-teal-600" />
-            Book a delivery
+            Private courier delivery
           </DialogTitle>
-          <DialogDescription className="text-teal-700">
-            Arrange delivery of <span className="font-medium">{itemName}</span> via Uber Direct. The delivery fee will be charged to your saved payment method.
+          <DialogDescription asChild>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600">
+                Arrange delivery of <span className="font-medium text-gray-800">{itemName}</span> via Uber Direct.
+              </p>
+              <div className="flex items-start gap-2 bg-teal-50 border border-teal-100 rounded-lg px-3 py-2">
+                <ShieldCheck className="h-4 w-4 text-teal-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-teal-700 leading-snug">
+                  <span className="font-semibold">Neither party sees the other's address.</span> Both addresses go directly to the courier — never displayed to the other user in ShareSwap.
+                </p>
+              </div>
+            </div>
           </DialogDescription>
         </DialogHeader>
 
@@ -102,7 +124,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
                 Pickup address (owner's location)
               </Label>
               <Input
-                placeholder="123 Main St, City, State"
+                placeholder="123 Main St, City, Province"
                 value={pickupAddress}
                 onChange={(e) => setPickupAddress(e.target.value)}
               />
@@ -113,13 +135,13 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
                 Drop-off address (your location)
               </Label>
               <Input
-                placeholder="456 Oak Ave, City, State"
+                placeholder="456 Oak Ave, City, Province"
                 value={dropoffAddress}
                 onChange={(e) => setDropoffAddress(e.target.value)}
               />
             </div>
-            <p className="text-xs text-gray-500">
-              Typical cost is $10–$20. Your saved card will be charged after you confirm.
+            <p className="text-xs text-gray-400">
+              Addresses are shared securely with Uber Direct only. Typical delivery cost is $10–$20.
             </p>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
@@ -136,19 +158,57 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
 
         {step === "quote" && quote && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-teal-700 font-medium">Delivery fee</span>
-                <span className="text-xl font-bold text-teal-800">${quote.fee.toFixed(2)}</span>
+            {/* Pro delivery usage badge */}
+            {quote.isPro && (
+              <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-1.5">
+                  <Crown className="h-3.5 w-3.5 text-amber-500" />
+                  <span className="text-xs font-medium text-amber-700">Pro free deliveries</span>
+                </div>
+                <span className="text-xs text-amber-600 font-semibold">
+                  {quote.proDeliveriesUsed} / {quote.proDeliveriesLimit} used this month
+                </span>
+              </div>
+            )}
+
+            {/* Fee breakdown */}
+            <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-2.5">
+              <div className="flex justify-between items-center text-sm text-teal-700">
+                <span>Uber courier fee</span>
+                <span className="font-medium">${quote.uberFee.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm text-teal-700">
+                <span className="flex items-center gap-1">
+                  Platform fee
+                  {quote.platformFee === 0 && (
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] px-1.5 py-0 h-4">Pro</Badge>
+                  )}
+                </span>
+                {quote.platformFee === 0 ? (
+                  <span className="font-medium text-green-600">Free</span>
+                ) : (
+                  <span className="font-medium">${quote.platformFee.toFixed(2)}</span>
+                )}
+              </div>
+              <div className="border-t border-teal-200 pt-2 flex justify-between items-center">
+                <span className="text-sm font-semibold text-teal-800">Total</span>
+                <span className="text-xl font-bold text-teal-800">${quote.totalFee.toFixed(2)}</span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-teal-600">
                 <Clock className="h-3.5 w-3.5" />
                 <span>Estimated pickup: {quote.eta}</span>
               </div>
               <p className="text-xs text-gray-500">
-                Your card will be charged when the delivery is booked.
+                Your saved card will be charged when the delivery is booked.
               </p>
             </div>
+
+            {quote.platformFee === 0 && quote.proDeliveriesUsed >= quote.proDeliveriesLimit - 1 && (
+              <p className="text-xs text-amber-600 text-center">
+                This is your last free delivery this month. Additional deliveries will be $1.50 each.
+              </p>
+            )}
+
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setStep("address")}>Back</Button>
               <Button
@@ -156,7 +216,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
                 onClick={handleBook}
                 disabled={loading}
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : `Confirm & book — $${quote.fee.toFixed(2)}`}
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : `Confirm & book — $${quote.totalFee.toFixed(2)}`}
               </Button>
             </div>
           </div>
@@ -170,7 +230,7 @@ export function CourierHandoffModal({ isOpen, onClose, requestId, itemName, onSu
             <div>
               <p className="font-semibold text-teal-800 text-lg">Delivery booked!</p>
               <p className="text-sm text-gray-600 mt-1">
-                A courier is on their way to pick up the item. Enter the handoff PIN when it arrives at your door.
+                A courier is on their way. Neither party's address was shared through ShareSwap.
               </p>
             </div>
             {trackingUrl && (

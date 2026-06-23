@@ -9082,33 +9082,59 @@ Respond with ONLY the category name, nothing else.`
   });
 
   // Handoff-time delivery quote (sender-only, no transaction status change)
+  // Helper: compute platform delivery fee for the user ($1.50 or $0 if Pro with quota remaining)
+  async function getDeliveryPlatformFee(userId: number): Promise<{ platformFee: number; proDeliveriesUsed: number; proDeliveriesLimit: number; isPro: boolean }> {
+    const PRO_LIMIT = 5;
+    const [userRow] = await db
+      .select({ subscriptionTier: users.subscriptionTier, proDeliveryCount: users.proDeliveryCount, proDeliveryResetAt: users.proDeliveryResetAt })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const isPro = userRow?.subscriptionTier === "pro";
+    if (!isPro) return { platformFee: 1.50, proDeliveriesUsed: 0, proDeliveriesLimit: PRO_LIMIT, isPro: false };
+
+    // Reset monthly count if a new calendar month has started
+    const now = new Date();
+    const resetAt = userRow.proDeliveryResetAt ? new Date(userRow.proDeliveryResetAt) : new Date(0);
+    const isNewMonth = now.getFullYear() !== resetAt.getFullYear() || now.getMonth() !== resetAt.getMonth();
+    let usedCount = Number(userRow.proDeliveryCount || 0);
+    if (isNewMonth) {
+      usedCount = 0;
+      await db.update(users).set({ proDeliveryCount: 0, proDeliveryResetAt: now }).where(eq(users.id, userId));
+    }
+
+    const platformFee = usedCount < PRO_LIMIT ? 0 : 1.50;
+    return { platformFee, proDeliveriesUsed: usedCount, proDeliveriesLimit: PRO_LIMIT, isPro: true };
+  }
+
   app.post("/api/uber/handoff-quote", csrfProtection, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { requestId, pickupAddress, dropoffAddress } = req.body;
     if (!requestId || !pickupAddress || !dropoffAddress) {
       return res.status(400).json({ error: "requestId, pickupAddress and dropoffAddress are required" });
     }
-    // Verify the caller is the borrower/requester for this request
+    const userId = (req.user as any).id;
     const [request] = await db
       .select({ requesterId: itemRequests.requesterId })
       .from(itemRequests)
-      .innerJoin(items, eq(items.id, itemRequests.itemId))
       .where(eq(itemRequests.id, requestId))
       .limit(1);
     if (!request) return res.status(404).json({ error: "Request not found" });
-    if (request.requesterId !== (req.user as any).id) return res.status(403).json({ error: "Only the borrower can book a delivery" });
+    if (request.requesterId !== userId) return res.status(403).json({ error: "Only the borrower can book a delivery" });
+
+    const { platformFee, proDeliveriesUsed, proDeliveriesLimit, isPro } = await getDeliveryPlatformFee(userId);
 
     if (!uberDirect.isConfigured()) {
-      // Return a simulated quote in dev/staging
-      return res.json({ fee: 12.00, eta: "~30 min", quoteId: `sim_${Date.now()}` });
+      return res.json({ uberFee: 12.00, platformFee, totalFee: 12.00 + platformFee, eta: "~30 min", quoteId: `sim_${Date.now()}`, proDeliveriesUsed, proDeliveriesLimit, isPro });
     }
     try {
       const quote = await uberDirect.getDeliveryQuote({ pickupAddress, dropoffAddress });
-      const platformFee = 2.00;
-      res.json({ fee: (quote.fee || 10) + platformFee, eta: quote.eta || "~30 min", quoteId: quote.id || `q_${Date.now()}` });
+      const uberFee = quote.fee || 10;
+      res.json({ uberFee, platformFee, totalFee: uberFee + platformFee, eta: "~30 min", quoteId: quote.id || `q_${Date.now()}`, proDeliveriesUsed, proDeliveriesLimit, isPro });
     } catch (err: any) {
       console.error("[Uber Direct] Handoff quote error:", err.message, "— falling back to simulated quote");
-      res.json({ fee: 12.00, eta: "~30 min", quoteId: `sim_${Date.now()}` });
+      res.json({ uberFee: 12.00, platformFee, totalFee: 12.00 + platformFee, eta: "~30 min", quoteId: `sim_${Date.now()}`, proDeliveriesUsed, proDeliveriesLimit, isPro });
     }
   });
 
@@ -9131,23 +9157,29 @@ Respond with ONLY the category name, nothing else.`
     if (!reqRow) return res.status(404).json({ error: "Request not found" });
     if (reqRow.requesterId !== userId) return res.status(403).json({ error: "Only the borrower can book a delivery" });
 
+    const { platformFee, proDeliveriesUsed, proDeliveriesLimit, isPro } = await getDeliveryPlatformFee(userId);
+
     if (!uberDirect.isConfigured()) {
-      // Simulated booking in dev/staging — just return a fake tracking URL
       const trackingUrl = `https://track.uber.com/sim/${Date.now()}`;
       await db.insert(deliveryArrangements).values({
         requestId,
         deliveryType: "uber_direct",
         status: "CONFIRMED",
         uberTrackingUrl: trackingUrl,
+        deliveryMargin: platformFee.toFixed(2),
       }).onConflictDoUpdate({
         target: deliveryArrangements.requestId,
-        set: { uberTrackingUrl: trackingUrl, status: "CONFIRMED" },
+        set: { uberTrackingUrl: trackingUrl, status: "CONFIRMED", deliveryMargin: platformFee.toFixed(2) },
       });
-      return res.json({ trackingUrl });
+      // Increment Pro delivery count even in sim mode
+      if (isPro && platformFee === 0 && proDeliveriesUsed < proDeliveriesLimit) {
+        await db.update(users).set({ proDeliveryCount: proDeliveriesUsed + 1 }).where(eq(users.id, userId));
+      }
+      return res.json({ trackingUrl, platformFee, proDeliveriesUsed: isPro ? proDeliveriesUsed + (platformFee === 0 ? 1 : 0) : 0, proDeliveriesLimit });
     }
 
     try {
-      const [ownerProfile] = await db
+      const [requesterProfile] = await db
         .select({ stripeCustomerId: users.stripeCustomerId })
         .from(users)
         .where(eq(users.id, userId))
@@ -9164,21 +9196,26 @@ Respond with ONLY the category name, nothing else.`
         });
         trackingUrl = delivery.trackingUrl;
 
-        const platformFee = 2.00;
-        if (ownerProfile?.stripeCustomerId) {
+        // Charge platform fee via Stripe if applicable
+        if (platformFee > 0 && requesterProfile?.stripeCustomerId) {
           const stripe = (await import("stripe")).default(process.env.STRIPE_SECRET_KEY!);
-          const paymentMethods = await stripe.paymentMethods.list({ customer: ownerProfile.stripeCustomerId, type: "card" });
+          const paymentMethods = await stripe.paymentMethods.list({ customer: requesterProfile.stripeCustomerId, type: "card" });
           if (paymentMethods.data.length > 0) {
             await stripe.paymentIntents.create({
               amount: Math.round(platformFee * 100),
-              currency: "usd",
-              customer: ownerProfile.stripeCustomerId,
+              currency: "cad",
+              customer: requesterProfile.stripeCustomerId,
               payment_method: paymentMethods.data[0].id,
               confirm: true,
               off_session: true,
-              description: `ShareSwap delivery commission — request #${requestId}`,
+              description: `ShareSwap private courier fee — request #${requestId}`,
             });
           }
+        }
+
+        // Increment Pro delivery count if this was a free delivery
+        if (isPro && platformFee === 0 && proDeliveriesUsed < proDeliveriesLimit) {
+          await db.update(users).set({ proDeliveryCount: proDeliveriesUsed + 1 }).where(eq(users.id, userId));
         }
 
         await db.insert(deliveryArrangements).values({
@@ -9187,9 +9224,10 @@ Respond with ONLY the category name, nothing else.`
           uberDeliveryId: delivery.id,
           uberTrackingUrl: trackingUrl,
           status: "CONFIRMED",
+          deliveryMargin: platformFee.toFixed(2),
         }).onConflictDoUpdate({
           target: deliveryArrangements.requestId,
-          set: { uberDeliveryId: delivery.id, uberTrackingUrl: trackingUrl, status: "CONFIRMED" },
+          set: { uberDeliveryId: delivery.id, uberTrackingUrl: trackingUrl, status: "CONFIRMED", deliveryMargin: platformFee.toFixed(2) },
         });
       } catch (apiErr: any) {
         console.error("[Uber Direct] Book handoff delivery error:", apiErr.message, "— falling back to simulated booking");
@@ -9199,9 +9237,10 @@ Respond with ONLY the category name, nothing else.`
           deliveryType: "uber_direct",
           uberTrackingUrl: trackingUrl,
           status: "CONFIRMED",
+          deliveryMargin: platformFee.toFixed(2),
         }).onConflictDoUpdate({
           target: deliveryArrangements.requestId,
-          set: { uberTrackingUrl: trackingUrl, status: "CONFIRMED" },
+          set: { uberTrackingUrl: trackingUrl, status: "CONFIRMED", deliveryMargin: platformFee.toFixed(2) },
         });
       }
 
@@ -12864,6 +12903,8 @@ Respond with ONLY the category name, nothing else.`
           stripeSubscriptionStatus: users.stripeSubscriptionStatus,
           monthlyBorrowCount: users.monthlyBorrowCount,
           monthlyBorrowResetAt: users.monthlyBorrowResetAt,
+          proDeliveryCount: users.proDeliveryCount,
+          proDeliveryResetAt: users.proDeliveryResetAt,
         } as any)
         .from(users)
         .where(eq(users.id, req.user.id))

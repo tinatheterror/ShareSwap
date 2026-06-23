@@ -70,6 +70,8 @@ export const users = pgTable("users", {
   stripeSubscriptionStatus: text("stripe_subscription_status"), // 'active', 'canceled', 'past_due', etc.
   monthlyBorrowCount: integer("monthly_borrow_count").default(0),
   monthlyBorrowResetAt: timestamp("monthly_borrow_reset_at").defaultNow(),
+  proDeliveryCount: integer("pro_delivery_count").default(0),
+  proDeliveryResetAt: timestamp("pro_delivery_reset_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

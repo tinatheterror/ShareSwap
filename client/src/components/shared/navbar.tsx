@@ -405,6 +405,13 @@ export function Navbar() {
                             <span>Invite Friends</span>
                           </DropdownMenuItem>
                         </Link>
+                        <DropdownMenuSeparator />
+                        <Link href="/premium">
+                          <DropdownMenuItem className="cursor-pointer hover:text-primary">
+                            <Crown className="mr-2 h-4 w-4 text-teal-600" />
+                            <span>Plans &amp; Pricing</span>
+                          </DropdownMenuItem>
+                        </Link>
                         <DropdownMenuItem 
                           className="cursor-pointer hover:text-primary"
                           onClick={() => setShowWishlistPopup(true)}
@@ -612,6 +619,12 @@ export function Navbar() {
                         <Button variant="ghost" className="w-full justify-start gap-3 text-gray-500 hover:text-primary">
                           <HelpCircle className="h-5 w-5" />
                           How It Works
+                        </Button>
+                      </Link>
+                      <Link href="/premium" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start gap-3 text-teal-600 hover:text-teal-700">
+                          <Crown className="h-5 w-5" />
+                          Plans &amp; Pricing
                         </Button>
                       </Link>
 

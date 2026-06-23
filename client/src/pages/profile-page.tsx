@@ -1536,7 +1536,10 @@ export default function ProfilePage() {
                       <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Activity &amp; Insights dashboard
                     </li>
                     <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />$1.50 private courier fee waived on 5 deliveries/month
+                      <div className="flex flex-col">
+                        <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />$1.50 courier convenience fee waived (5 deliveries/month)</span>
+                        <span className="text-[10px] text-slate-400 ml-5">Neither party sees the other's address</span>
+                      </div>
                     </li>
                   </ul>
                   {currentTier === "pro" ? (

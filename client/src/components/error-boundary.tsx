@@ -42,11 +42,11 @@ export class ErrorBoundary extends Component<Props, State> {
             <Button
               onClick={() => {
                 this.setState({ hasError: false, error: null });
-                window.location.href = "/";
+                window.location.reload();
               }}
               className="w-full"
             >
-              Go back home
+              Reload App
             </Button>
           </div>
         </div>

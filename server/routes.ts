@@ -12785,8 +12785,8 @@ Respond with ONLY the category name, nothing else.`
         payment_method_types: ['card'],
         mode: 'subscription',
         line_items: [{ price: priceId, quantity: 1 }],
-        success_url: successUrl || `${baseUrl}/premium?success=true`,
-        cancel_url: cancelUrl || `${baseUrl}/premium?canceled=true`,
+        success_url: successUrl || `${baseUrl}/profile?sub_success=true`,
+        cancel_url: cancelUrl || `${baseUrl}/profile?sub_canceled=true`,
         metadata: { userId: String(req.user.id), tier },
       });
 
@@ -12818,7 +12818,7 @@ Respond with ONLY the category name, nothing else.`
 
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: userRecord.stripeCustomerId,
-        return_url: req.body.returnUrl || `${baseUrl}/premium`,
+        return_url: req.body.returnUrl || `${baseUrl}/profile`,
       });
       res.json({ url: portalSession.url });
     } catch (error) {

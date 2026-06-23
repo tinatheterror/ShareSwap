@@ -38,7 +38,6 @@ import ProfilePage from "@/pages/profile-page";
 import AchievementsPage from "@/pages/achievements-page";
 import WishlistsPage from "@/pages/wishlists-page";
 import CommunityWishlistsPage from "@/pages/community-wishlists-page";
-import PremiumPage from "@/pages/premium-page";
 import FAQPage from "@/pages/faq-page";
 import ReferralsPage from "@/pages/referrals-page";
 import MyItemsPage from "@/pages/my-items-page";
@@ -95,7 +94,6 @@ function Router() {
       <ProtectedRoute path="/wishlists" component={WishlistsPage} />
       <ProtectedRoute path="/community-wishlists" component={CommunityWishlistsPage} />
       <Route path="/sharecoins-info" component={ShareCoinsInfoPage} />
-      <ProtectedRoute path="/premium" component={PremiumPage} />
       <Route path="/help" component={FAQPage} />
       <Route path="/faq" component={FAQPage} />
       <ProtectedRoute path="/referrals" component={ReferralsPage} />

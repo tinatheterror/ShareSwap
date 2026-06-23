@@ -385,7 +385,9 @@ const ACHIEVEMENT_DEFS = [
   { name: 'five_borrows',        title: 'Active Borrower',       description: 'Borrowed 5 items — making the most of your community!',         icon: '🛍️', color: '#0891b2', category: 'milestone' },
   { name: 'five_listed',         title: 'ShareChest Curator',    description: 'Listed 5 items — your ShareChest is open for business!',        icon: '🗝️', color: '#059669', category: 'lending'  },
   { name: 'five_reviews_left',   title: 'Community Voice',       description: 'Left 5 reviews — helping neighbours make great decisions!',     icon: '💬', color: '#d97706', category: 'social'   },
-  { name: 'first_referral',      title: 'Community Builder',     description: 'Referred a friend to ShareSwap — growing the neighbourhood!',  icon: '🌐', color: '#2563eb', category: 'milestone' },
+  { name: 'referral_3',          title: 'Neighbour Connector',   description: 'Referred 3 friends to ShareSwap — spreading the word!',        icon: '🤝', color: '#2563eb', category: 'milestone' },
+  { name: 'referral_10',         title: 'Community Builder',     description: 'Referred 10 friends — you\'re building a real community!',        icon: '🌐', color: '#1d4ed8', category: 'milestone' },
+  { name: 'referral_25',         title: 'ShareSwap Ambassador',  description: 'Referred 25 friends — you\'re the heart of the neighbourhood!',   icon: '🏅', color: '#7c3aed', category: 'milestone' },
   { name: 'three_in_week',       title: 'Weekly Warrior',        description: 'Completed 3 transactions in a single week — on a roll!',        icon: '⚡', color: '#ea580c', category: 'milestone' },
   { name: 'five_reviews_received', title: 'Highly Rated',        description: 'Received 5 reviews — your neighbours love working with you!',  icon: '⭐', color: '#ca8a04', category: 'milestone' },
 ];
@@ -416,8 +418,8 @@ async function checkAndAwardAchievements(userId: number) {
       db.select({ cnt: sql<number>`count(*)` }).from(items).where(eq(items.ownerId, userId)),
       // Reviews left by user
       db.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewerId, userId)),
-      // Referrals made
-      db.select({ cnt: sql<number>`count(*)` }).from(referrals).where(eq(referrals.referrerId, userId)),
+      // Successful referrals (completed and rewarded)
+      db.select({ cnt: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, userId), eq(referrals.isRewardClaimed, true))),
       // Completed transactions in the past 7 days
       db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
         or(eq(itemRequests.requesterId, userId), ownerItemsSub),
@@ -454,7 +456,9 @@ async function checkAndAwardAchievements(userId: number) {
     if (borrows >= 5)     metKeys.push('five_borrows');
     if (listed >= 5)      metKeys.push('five_listed');
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
-    if (refs >= 1)        metKeys.push('first_referral');
+    if (refs >= 3)        metKeys.push('referral_3');
+    if (refs >= 10)       metKeys.push('referral_10');
+    if (refs >= 25)       metKeys.push('referral_25');
     if (weekly >= 3)      metKeys.push('three_in_week');
     if (reviewsRx >= 5)   metKeys.push('five_reviews_received');
 

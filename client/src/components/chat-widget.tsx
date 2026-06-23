@@ -2094,15 +2094,20 @@ export function ChatWidget() {
                           <p className="text-xs text-center text-muted-foreground">Ask the owner for the 4-digit handoff code when you meet</p>
                         )}
                         {(pr.requestType === "BORROW" || pr.requestType === "RENT") && !isOwner && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full h-9 border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-medium gap-2"
-                            onClick={() => { setSelectedRequest(pr); setShowCourierHandoffModal(true); }}
-                          >
-                            <Truck className="h-3.5 w-3.5 shrink-0" />
-                            Can't meet up? Book a delivery
-                          </Button>
+                          <div className="space-y-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full h-9 border-teal-200 text-teal-700 hover:bg-teal-50 text-xs font-medium gap-2"
+                              onClick={() => { setSelectedRequest(pr); setShowCourierHandoffModal(true); }}
+                            >
+                              <Truck className="h-3.5 w-3.5 shrink-0" />
+                              Private courier delivery
+                            </Button>
+                            <p className="text-[10px] text-center text-gray-400 leading-tight">
+                              Neither party sees the other's address. Ever.
+                            </p>
+                          </div>
                         )}
                       </div>
                     );

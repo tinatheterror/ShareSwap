@@ -1508,8 +1508,8 @@ export default function ProfilePage() {
                     <li className="flex items-start gap-1.5 text-slate-600">
                       <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
                     </li>
-                    <li className="flex items-start gap-1.5 text-amber-600">
-                      <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />Reduced 4% service fee on rentals (vs. 5%)
+                    <li className="flex items-start gap-1.5 text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Reduced 4% service fee on rentals (vs. 5%)
                     </li>
                   </ul>
                   {currentTier === "pro" ? (

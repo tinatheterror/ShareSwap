@@ -408,6 +408,7 @@ const ACHIEVEMENT_DEFS = [
   { name: 'shareswap_ambassador',   title: 'ShareSwap Ambassador', description: 'Referred 20 friends — a true ambassador of the sharing community.',         icon: '🌟', color: '#4338ca', category: 'milestone' },
   { name: 'coin_collector',         title: 'Coin Collector',       description: 'Accumulated 50 ShareCoins — a true sharing economy regular.',              icon: '🪙', color: '#d97706', category: 'milestone' },
   { name: 'power_lister',           title: 'Power Lister',        description: 'Listed 10 items — your ShareChest is stocked for the neighbourhood!',    icon: '📚', color: '#059669', category: 'lending'  },
+  { name: 'wish_maker',             title: 'Wish Maker',           description: 'Added 3 items to your wishlist — you know what your community can offer.', icon: '🔖', color: '#e11d48', category: 'social'   },
 ];
 
 async function checkAndAwardAchievements(userId: number) {
@@ -503,6 +504,10 @@ async function checkAndAwardAchievements(userId: number) {
     {
       const [earnedRow] = await db.select({ total: sql<number>`coalesce(sum(amount), 0)` }).from(shareCoinsTransactions).where(and(eq(shareCoinsTransactions.userId, userId), sql`amount > 0`));
       if (Number(earnedRow?.total ?? 0) >= 50) metKeys.push('coin_collector');
+    }
+    {
+      const [wlRow] = await db.select({ cnt: sql<number>`count(*)` }).from(wishlists).where(eq(wishlists.userId, userId));
+      if (Number(wlRow?.cnt ?? 0) >= 3) metKeys.push('wish_maker');
     }
     if (reviewsRx >= 10)  metKeys.push('well_loved');
     if (repScore >= 300)  metKeys.push('neighbourhood_hero');
@@ -10188,6 +10193,12 @@ Respond with ONLY the category name, nothing else.`
           eq(itemRequests.deliveryMethod, "courier"),
         ));
 
+      // Wishlist item count
+      const [wishlistRow] = await db
+        .select({ cnt: sql<number>`count(*)` })
+        .from(wishlists)
+        .where(eq(wishlists.userId, userId));
+
       // Total ShareCoins ever earned (sum of positive transactions — unaffected by spending)
       const [earnedCoinsRow] = await db
         .select({ total: sql<number>`coalesce(sum(amount), 0)` })
@@ -10211,6 +10222,7 @@ Respond with ONLY the category name, nothing else.`
         earlyMember: !!(req.user.createdAt && new Date(req.user.createdAt) < new Date('2026-09-01')),
         courierDeliveries: Number(courierCount?.count || 0),
         totalShareCoinsEarned: Number(earnedCoinsRow?.total || 0),
+        wishlistCount: Number(wishlistRow?.cnt || 0),
       });
     } catch (error) {
       console.error("Error fetching user stats:", error);

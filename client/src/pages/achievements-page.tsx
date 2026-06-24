@@ -37,6 +37,7 @@ import {
   Layers,
   Truck,
   Coins,
+  BookMarked,
 } from "lucide-react";
 
 interface UserStats {
@@ -56,6 +57,7 @@ interface UserStats {
   earlyMember: boolean;
   courierDeliveries: number;
   totalShareCoinsEarned: number;
+  wishlistCount: number;
 }
 
 interface Review {
@@ -174,6 +176,7 @@ export default function AchievementsPage() {
     { id: "first-swap", name: "Swap Starter", icon: <ArrowLeftRight className="h-5 w-5" />, earned: (stats?.totalSwaps || 0) >= 1, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You made your first trade — giving something to get something.", requirement: "Complete 1 item swap." },
     { id: "generous", name: "Generous Gifter", icon: <Gift className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 3, color: "bg-pink-100 text-pink-700 border-pink-200", description: "You give freely and often — a true spirit of generosity.", requirement: "Complete at least 3 gift transactions." },
     { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-5 w-5" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200", description: "You stepped up when a neighbour needed something urgently.", requirement: "Fulfil at least 1 urgent wishlist request." },
+    { id: "wish-maker", name: "Wish Maker", icon: <BookMarked className="h-5 w-5" />, earned: (stats?.wishlistCount || 0) >= 3, color: "bg-rose-100 text-rose-700 border-rose-200", description: "You know what you want — your wishlist is growing.", requirement: "Add 3 or more items to your wishlist." },
 
     // Growing activity
     { id: "active-borrower", name: "Active Borrower", icon: <ShoppingBag className="h-5 w-5" />, earned: (stats?.totalBorrowed || 0) >= 5, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You make the most of what your community has to offer.", requirement: "Complete 5 borrow transactions." },

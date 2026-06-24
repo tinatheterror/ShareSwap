@@ -81,9 +81,9 @@ interface Review {
 
 const LEVELS = [
   { name: "Newcomer", minScore: 0, perks: ["Access to community ShareChest", "Browse and request items"], color: "from-slate-400 to-slate-500" },
-  { name: "Neighbour", minScore: 50, perks: ["Reduced deposit requirements", "Priority in item requests"], color: "from-teal-400 to-teal-500" },
-  { name: "Trusted Member", minScore: 150, perks: ["Lower deposits on high-value items", "Access to premium items"], color: "from-teal-500 to-emerald-500" },
-  { name: "Community Pillar", minScore: 300, perks: ["Minimal deposits", "Featured profile", "Early access to new features"], color: "from-emerald-500 to-green-500" },
+  { name: "Neighbour", minScore: 50, perks: ["10% off trust deposits", "Priority in item requests"], color: "from-teal-400 to-teal-500" },
+  { name: "Trusted Member", minScore: 150, perks: ["20% off trust deposits", "Access to premium items"], color: "from-teal-500 to-emerald-500" },
+  { name: "Community Pillar", minScore: 300, perks: ["30% off trust deposits", "Priority item access"], color: "from-emerald-500 to-green-500" },
   { name: "ShareSwap Champion", minScore: 500, perks: ["No deposits required", "Verified badge", "Community ambassador status"], color: "from-amber-400 to-yellow-500" },
 ];
 
@@ -262,9 +262,6 @@ export default function AchievementsPage() {
                   <BadgeCheck className="h-3 w-3 mr-1" />Verified
                 </Badge>
               )}
-              <Badge variant="outline" className="text-slate-600 text-xs">
-                {earnedBadges.length} / {badges.length} badges earned
-              </Badge>
             </div>
           </div>
         </div>
@@ -289,6 +286,15 @@ export default function AchievementsPage() {
                 <span key={i} className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-teal-500" />{perk}</span>
               ))}
             </div>
+            {earnedBadges.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {earnedBadges.map((b) => (
+                  <div key={b.id} title={b.name} className={`w-6 h-6 rounded-full flex items-center justify-center border shrink-0 ${b.color}`}>
+                    <span className="scale-[0.55] flex items-center justify-center">{b.icon}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {nextLevel && (
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">

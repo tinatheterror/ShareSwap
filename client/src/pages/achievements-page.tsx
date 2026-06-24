@@ -277,7 +277,7 @@ export default function AchievementsPage() {
             <Crown className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center justify-between w-full mb-1">
               <h3 className="text-base font-semibold text-slate-800">{currentLevel.name}</h3>
               <Badge variant="outline" className="text-xs">Level {currentLevelIndex + 1}</Badge>
             </div>

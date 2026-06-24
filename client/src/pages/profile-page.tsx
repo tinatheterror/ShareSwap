@@ -67,6 +67,7 @@ import {
   Lock,
   TrendingDown,
   ArrowUpRight,
+  Users,
 } from "lucide-react";
 import { UserBadges } from "@/components/user-badges";
 import { useLocation, Link } from "wouter";
@@ -755,10 +756,15 @@ export default function ProfilePage() {
                 <div className="flex items-start gap-1.5">
                   <Package className="h-5 w-5 text-slate-500 flex-shrink-0 mt-px" />
                   <span>
-                    {(publicProfile as any).completedShares ?? 0} completed
-                    shares
+                    {(publicProfile as any).completedShares ?? 0} completed shares
                   </span>
                 </div>
+                {((publicProfile as any).referralCount ?? 0) > 0 && (
+                  <div className="flex items-start gap-1.5">
+                    <Users className="h-5 w-5 text-teal-500 flex-shrink-0 mt-px" />
+                    <span>{(publicProfile as any).referralCount} neighbour{(publicProfile as any).referralCount !== 1 ? "s" : ""} added</span>
+                  </div>
+                )}
               </div>
 
               {/* Trust stats — full-width row below avatar+info, left-aligned */}

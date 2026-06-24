@@ -3999,6 +3999,7 @@ Respond with ONLY the category name, nothing else.`
       issuesResult,
       activeStatus,
       responseTime,
+      referralCountResult,
     ] = await Promise.all([
       db.select({ rating: userReviews.rating }).from(userReviews).where(eq(userReviews.reviewedUserId, targetId)),
       db.select({ count: sql<number>`count(*)` })
@@ -4026,6 +4027,7 @@ Respond with ONLY the category name, nothing else.`
         )),
       computeActiveStatusFromDb(targetId, user.lastActiveAt ?? null),
       computeResponseTime(targetId),
+      db.select({ count: sql<number>`count(*)` }).from(referrals).where(and(eq(referrals.referrerId, targetId), eq(referrals.isRewardClaimed, true))),
     ]);
 
     const reviewCount = reviews.length;
@@ -4033,6 +4035,7 @@ Respond with ONLY the category name, nothing else.`
       ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10
       : null;
     const completedShares = Number(completedSharesResult[0]?.count ?? 0);
+    const referralCount = Number(referralCountResult[0]?.count ?? 0);
 
     // On-time return rate (as borrower)
     let onTimeReturnRate: number | null = null;
@@ -4055,6 +4058,7 @@ Respond with ONLY the category name, nothing else.`
       reviewCount,
       averageRating,
       completedShares,
+      referralCount,
       onTimeReturnRate,
       replyRate,
       issuesCount,

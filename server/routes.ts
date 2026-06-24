@@ -10031,11 +10031,11 @@ Respond with ONLY the category name, nothing else.`
           completedStatuses
         ));
 
-      // Count referrals
+      // Count successful referrals (friend completed first transaction)
       const [referralCount] = await db
         .select({ count: sql<number>`count(*)` })
         .from(referrals)
-        .where(eq(referrals.referrerId, userId));
+        .where(and(eq(referrals.referrerId, userId), eq(referrals.isRewardClaimed, true)));
 
       // Count urgent requests helped (responded to high urgency wishlists within 24 hours)
       // For now, count if user has lent to requests that came from wishlists

@@ -14,7 +14,6 @@ import {
   Zap,
   Sprout,
   CheckCircle,
-  Check,
   Heart,
   Sparkles,
   Star,
@@ -67,20 +66,37 @@ const LEVELS = [
   { name: "ShareSwap Champion", minScore: 500, perks: ["No deposits required", "Verified badge", "Community ambassador status"], color: "from-amber-400 to-yellow-500" },
 ];
 
-type MilestoneItem = { id: string; title: string; description: string; achieved: boolean; icon: React.ReactNode };
+type BadgeItem = { id: string; name: string; icon: React.ReactNode; earned: boolean; color: string; description: string; requirement: string };
 
-function MilestoneRow({ milestone, size = "md" }: { milestone: MilestoneItem; size?: "sm" | "md" }) {
-  const sm = size === "sm";
+function BadgeCard({ badge, popoverSide = "bottom" }: { badge: BadgeItem; popoverSide?: "bottom" | "left" | "right" | "top" }) {
   return (
-    <div className="flex items-start gap-2">
-      <div className={`mt-0.5 flex-shrink-0 rounded border-2 flex items-center justify-center ${sm ? "w-4 h-4" : "w-5 h-5"} ${milestone.achieved ? "bg-teal-500 border-teal-500" : "border-slate-300 bg-white"}`}>
-        {milestone.achieved && <Check className={sm ? "h-2.5 w-2.5 text-white" : "h-3 w-3 text-white"} />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className={`font-medium leading-tight ${sm ? "text-xs" : "text-sm"} ${milestone.achieved ? "text-slate-800" : "text-slate-500"}`}>{milestone.title}</p>
-        <p className={`text-slate-400 leading-tight mt-0.5 ${sm ? "text-[10px]" : "text-xs"}`}>{milestone.description}</p>
-      </div>
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className={`w-full p-3 rounded-xl border-2 text-center transition-all cursor-pointer hover:scale-105 active:scale-95 ${badge.earned ? badge.color : "bg-slate-50 text-slate-300 border-slate-200 opacity-60"}`}>
+          <div className="flex justify-center mb-1.5">{badge.icon}</div>
+          <div className="text-[10px] font-semibold leading-tight">{badge.name}</div>
+          {badge.earned && <div className="mt-1 w-1.5 h-1.5 rounded-full bg-current mx-auto opacity-60" />}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side={popoverSide} align="center" className="w-56 p-3 z-50">
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`p-1.5 rounded-lg border ${badge.earned ? badge.color : "bg-slate-100 text-slate-400 border-slate-200"}`}>
+            {badge.icon}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-800 leading-tight">{badge.name}</p>
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.earned ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-500"}`}>
+              {badge.earned ? "✓ Earned" : "Locked"}
+            </span>
+          </div>
+        </div>
+        <p className="text-xs text-slate-600 mb-2 leading-snug">{badge.description}</p>
+        <div className="bg-slate-50 rounded p-2">
+          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">How to earn</p>
+          <p className="text-xs text-slate-700 leading-snug">{badge.requirement}</p>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -99,7 +115,6 @@ export default function AchievementsPage() {
 
   const reputationScore = user?.reputationScore || 0;
 
-  // Animated display score — counts up from fromScore to reputationScore
   const [displayScore, setDisplayScore] = useState(fromScore !== null ? fromScore : reputationScore);
   const rafRef = useRef<number | null>(null);
 
@@ -112,28 +127,16 @@ export default function AchievementsPage() {
     const end = reputationScore;
     const duration = 1400;
     let startTime: number | null = null;
-
     const tick = (now: number) => {
       if (!startTime) startTime = now;
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // ease-out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayScore(Math.round(start + (end - start) * eased));
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
+      if (progress < 1) rafRef.current = requestAnimationFrame(tick);
     };
-
-    // Small delay so the page renders before animating
-    const delay = setTimeout(() => {
-      rafRef.current = requestAnimationFrame(tick);
-    }, 300);
-
-    return () => {
-      clearTimeout(delay);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
+    const delay = setTimeout(() => { rafRef.current = requestAnimationFrame(tick); }, 300);
+    return () => { clearTimeout(delay); if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [fromScore, reputationScore]);
 
   const displayTrustPercentage = Math.min(100, Math.round((displayScore / 500) * 100));
@@ -149,53 +152,51 @@ export default function AchievementsPage() {
     ? ((reputationScore - currentLevel.minScore) / (nextLevel.minScore - currentLevel.minScore)) * 100
     : 100;
 
-  const badges = [
-    { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-6 w-6" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200", description: "A confirmed member of the ShareSwap community.", requirement: "Complete identity verification — selfie + government ID." },
-    { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-6 w-6" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You return items on time and treat neighbours' belongings with care.", requirement: "Complete 5 successful item exchanges." },
-    { id: "generous", name: "Generous Gifter", icon: <Gift className="h-6 w-6" />, earned: (stats?.totalGifts || 0) >= 1, color: "bg-pink-100 text-pink-700 border-pink-200", description: "You've given something to the community with no strings attached.", requirement: "Complete at least 1 gift transaction." },
-    { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-6 w-6" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200", description: "You stepped up when a neighbour needed something urgently.", requirement: "Fulfil at least 1 urgent wishlist request." },
-    { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-6 w-6" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 3 friends who each complete their first transaction." },
-    { id: "fast-responder", name: "Fast Responder", icon: <Zap className="h-6 w-6" />, earned: stats?.fastResponder || false, color: "bg-amber-100 text-amber-700 border-amber-200", description: "Neighbours know they can count on you to move quickly.", requirement: "Complete 5 exchanges as a lender within 48 hours of the request." },
-    { id: "five-star-neighbour", name: "Five-Star Neighbour", icon: <Star className="h-6 w-6" />, earned: stats?.fiveStarNeighbour || false, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your neighbours consistently rate their experience with you at the highest level.", requirement: "Receive 5+ reviews with an average rating of 4.8 stars or above." },
-    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-6 w-6" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
-    { id: "super-lender", name: "Super Lender", icon: <Package className="h-6 w-6" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "Your ShareChest is a community staple — neighbours borrow from you regularly.", requirement: "Lend out items in 10 completed transactions." },
-    { id: "swap-star", name: "Swap Star", icon: <ArrowLeftRight className="h-6 w-6" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You've mastered the art of the swap — trading fairly and often.", requirement: "Complete 5 item swaps." },
-    { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-6 w-6" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your reputation speaks for itself — a pillar of the local sharing community.", requirement: "Reach a trust score of 300 or above." },
-    { id: "rising-star", name: "Rising Star", icon: <TrendingUp className="h-6 w-6" />, earned: (stats?.successfulHandoffs || 0) >= 20, color: "bg-orange-100 text-orange-700 border-orange-200", description: "You're on a roll — an exchange veteran that neighbours rely on.", requirement: "Complete 20 successful item exchanges." },
-    { id: "shareswap-legend", name: "ShareSwap Legend", icon: <Gem className="h-6 w-6" />, earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20, color: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-300", description: "The rarest badge on the platform. You've built something extraordinary.", requirement: "Reach a trust score of 500 and lend out 20+ items." },
-  ];
+  const badges: BadgeItem[] = [
+    // Verification & identity
+    { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-5 w-5" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200", description: "A confirmed member of the ShareSwap community.", requirement: "Complete identity verification — selfie + government ID." },
+    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-5 w-5" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
 
-  const milestones: MilestoneItem[] = [
-    // Column 1
-    { id: "first-lend", title: "First item shared", description: "Opened your ShareChest to neighbours", achieved: (stats?.totalLent || 0) >= 1, icon: <Gift className="h-5 w-5" /> },
-    { id: "ten-handoffs", title: "10 successful handoffs", description: "Building trust one exchange at a time", achieved: (stats?.successfulHandoffs || 0) >= 10, icon: <Handshake className="h-5 w-5" /> },
-    { id: "helped-neighbour", title: "Helped a neighbour in need", description: "Responded to an urgent request", achieved: (stats?.helpedUrgent || 0) >= 1, icon: <Sparkles className="h-5 w-5" /> },
-    { id: "level-up", title: `Reached ${currentLevel.name}`, description: "Your reputation is growing", achieved: currentLevelIndex >= 1, icon: <Star className="h-5 w-5" /> },
-    { id: "first-review-left", title: "Left your first review", description: "Gave feedback to help the community", achieved: (stats?.reviewsLeft || 0) >= 1, icon: <MessageSquare className="h-5 w-5" /> },
-    { id: "first-swap", title: "First swap completed", description: "You traded something you had for something you needed", achieved: (stats?.totalSwaps || 0) >= 1, icon: <ArrowLeftRight className="h-5 w-5" /> },
-    // Column 2
-    { id: "ten-gifts", title: "10 gifts given", description: "Generosity that inspires the whole community", achieved: (stats?.totalGifts || 0) >= 10, icon: <Gift className="h-5 w-5" /> },
-    { id: "five-borrows", title: "5 borrows completed", description: "Making the most of what your community offers", achieved: (stats?.totalBorrowed || 0) >= 5, icon: <Package className="h-5 w-5" /> },
-    { id: "five-listed", title: "5 items listed", description: "Your ShareChest is open for business", achieved: (stats?.itemsListed || 0) >= 5, icon: <TrendingUp className="h-5 w-5" /> },
-    { id: "five-reviews-left", title: "5 reviews left", description: "Helping neighbours make great decisions", achieved: (stats?.reviewsLeft || 0) >= 5, icon: <MessageSquare className="h-5 w-5" /> },
-    { id: "first-referral", title: "Referred a friend", description: "Growing the ShareSwap neighbourhood", achieved: (stats?.referrals || 0) >= 1, icon: <Users className="h-5 w-5" /> },
-    { id: "weekly-warrior", title: "3 transactions in a week", description: "On a sharing roll — keep the momentum going!", achieved: (stats?.weeklyActivity || 0) >= 3, icon: <Zap className="h-5 w-5" /> },
-    // Column 3
-    { id: "five-reviews-received", title: "Received 5 reviews", description: "Your neighbours love working with you", achieved: (stats?.reviewsReceived || 0) >= 5, icon: <Star className="h-5 w-5" /> },
-    { id: "first-borrow", title: "First borrow completed", description: "Experienced the joy of sharing firsthand", achieved: (stats?.totalBorrowed || 0) >= 1, icon: <Heart className="h-5 w-5" /> },
-    { id: "ten-lent", title: "10 items lent out", description: "A true pillar of the lending community", achieved: (stats?.totalLent || 0) >= 10, icon: <Package className="h-5 w-5" /> },
-    { id: "three-referrals", title: "Invited 3 friends", description: "Building the neighbourhood, one invite at a time", achieved: (stats?.referrals || 0) >= 3, icon: <Users className="h-5 w-5" /> },
-    { id: "ten-reviews-received", title: "Received 10 reviews", description: "A well-known face in the community", achieved: (stats?.reviewsReceived || 0) >= 10, icon: <Star className="h-5 w-5" /> },
-    { id: "twenty-five-handoffs", title: "25 successful handoffs", description: "An exchange veteran — neighbours count on you", achieved: (stats?.successfulHandoffs || 0) >= 25, icon: <Trophy className="h-5 w-5" /> },
+    // First steps
+    { id: "first-share", name: "First Share", icon: <Sprout className="h-5 w-5" />, earned: (stats?.totalLent || 0) >= 1, color: "bg-green-100 text-green-700 border-green-200", description: "You opened your ShareChest and shared with a neighbour for the first time.", requirement: "Complete 1 item lending transaction." },
+    { id: "first-borrow", name: "First Borrow", icon: <Heart className="h-5 w-5" />, earned: (stats?.totalBorrowed || 0) >= 1, color: "bg-sky-100 text-sky-700 border-sky-200", description: "You experienced the joy of borrowing from your community.", requirement: "Complete 1 borrow transaction." },
+    { id: "first-swap", name: "Swap Starter", icon: <ArrowLeftRight className="h-5 w-5" />, earned: (stats?.totalSwaps || 0) >= 1, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You made your first trade — giving something to get something.", requirement: "Complete 1 item swap." },
+    { id: "generous", name: "Generous Gifter", icon: <Gift className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 1, color: "bg-pink-100 text-pink-700 border-pink-200", description: "You've given something to the community with no strings attached.", requirement: "Complete at least 1 gift transaction." },
+
+    // Growing activity
+    { id: "active-borrower", name: "Active Borrower", icon: <Package className="h-5 w-5" />, earned: (stats?.totalBorrowed || 0) >= 5, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You make the most of what your community has to offer.", requirement: "Complete 5 borrow transactions." },
+    { id: "swap-star", name: "Swap Star", icon: <ArrowLeftRight className="h-5 w-5" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You've mastered the art of the swap — trading fairly and often.", requirement: "Complete 5 item swaps." },
+    { id: "generous-soul", name: "Generous Soul", icon: <Heart className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 10, color: "bg-rose-100 text-rose-700 border-rose-200", description: "Your generosity is legendary — you give freely and often.", requirement: "Complete 10 gift transactions." },
+    { id: "sharechest-curator", name: "ShareChest Curator", icon: <Gem className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 5, color: "bg-teal-100 text-teal-700 border-teal-200", description: "Your ShareChest is open for business — you've built a real lending library.", requirement: "List 5 or more items." },
+
+    // Lending & handoffs
+    { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You return items on time and treat neighbours' belongings with care.", requirement: "Complete 5 successful item exchanges." },
+    { id: "trusted-exchanger", name: "Trusted Exchanger", icon: <Handshake className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 10, color: "bg-sky-100 text-sky-800 border-sky-200", description: "Neighbours know they can trust you to follow through every time.", requirement: "Complete 10 successful item exchanges." },
+    { id: "super-lender", name: "Super Lender", icon: <Package className="h-5 w-5" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "Your ShareChest is a community staple — neighbours borrow from you regularly.", requirement: "Lend out items in 10 completed transactions." },
+    { id: "rising-star", name: "Rising Star", icon: <TrendingUp className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 20, color: "bg-orange-100 text-orange-700 border-orange-200", description: "You're on a roll — an exchange veteran that neighbours rely on.", requirement: "Complete 20 successful item exchanges." },
+    { id: "exchange-veteran", name: "Exchange Veteran", icon: <Trophy className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 25, color: "bg-amber-100 text-amber-700 border-amber-200", description: "25 exchanges — you've built something most people only dream about.", requirement: "Complete 25 successful item exchanges." },
+
+    // Community & social
+    { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-5 w-5" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200", description: "You stepped up when a neighbour needed something urgently.", requirement: "Fulfil at least 1 urgent wishlist request." },
+    { id: "weekly-warrior", name: "Weekly Warrior", icon: <Zap className="h-5 w-5" />, earned: (stats?.weeklyActivity || 0) >= 3, color: "bg-red-100 text-red-700 border-red-200", description: "You're on a sharing streak — active and engaged every week.", requirement: "Complete 3 transactions in a single week." },
+    { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-5 w-5" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 3 friends who each complete their first transaction." },
+
+    // Reviews
+    { id: "community-voice", name: "Community Voice", icon: <MessageSquare className="h-5 w-5" />, earned: (stats?.reviewsLeft || 0) >= 5, color: "bg-orange-100 text-orange-700 border-orange-200", description: "Your feedback helps neighbours make great decisions.", requirement: "Leave 5 reviews for other members." },
+    { id: "highly-rated", name: "Highly Rated", icon: <Star className="h-5 w-5" />, earned: (stats?.reviewsReceived || 0) >= 5, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your neighbours appreciate the experience of working with you.", requirement: "Receive 5 or more reviews." },
+    { id: "well-loved", name: "Well Loved", icon: <Crown className="h-5 w-5" />, earned: (stats?.reviewsReceived || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "A well-known and trusted face in the community.", requirement: "Receive 10 or more reviews." },
+    { id: "five-star-neighbour", name: "Five-Star Neighbour", icon: <Star className="h-5 w-5" />, earned: stats?.fiveStarNeighbour || false, color: "bg-yellow-100 text-yellow-800 border-yellow-300", description: "Your neighbours consistently rate their experience with you at the highest level.", requirement: "Receive 5+ reviews with an average rating of 4.8 stars or above." },
+
+    // Performance & speed
+    { id: "fast-responder", name: "Fast Responder", icon: <Zap className="h-5 w-5" />, earned: stats?.fastResponder || false, color: "bg-lime-100 text-lime-700 border-lime-200", description: "Neighbours know they can count on you to move quickly.", requirement: "Complete 5 exchanges as a lender within 48 hours of the request." },
+
+    // Reputation milestones
+    { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-5 w-5" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your reputation speaks for itself — a pillar of the local sharing community.", requirement: "Reach a trust score of 300 or above." },
+    { id: "shareswap-legend", name: "ShareSwap Legend", icon: <Gem className="h-5 w-5" />, earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20, color: "bg-gradient-to-br from-amber-100 to-yellow-100 text-amber-700 border-amber-300", description: "The rarest badge on the platform. You've built something extraordinary.", requirement: "Reach a trust score of 500 and lend out 20+ items." },
   ];
 
   const earnedBadges = badges.filter((b) => b.earned);
-  const col1 = milestones.slice(0, 6);
-  const col2 = milestones.slice(6, 12);
-  const col3 = milestones.slice(12, 18);
-
-  // SVG circle constants
-  const CIRCUMFERENCE = 2 * Math.PI * 42; // r=42 → ~263.9
+  const CIRCUMFERENCE = 2 * Math.PI * 42;
 
   const TrustRing = ({ gradientId }: { gradientId: string }) => (
     <Card className="overflow-hidden">
@@ -211,14 +212,7 @@ export default function AchievementsPage() {
                   </linearGradient>
                 </defs>
                 <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  fill="none"
-                  stroke={`url(#${gradientId})`}
-                  strokeWidth="8"
-                  strokeLinecap="round"
+                <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="8" strokeLinecap="round"
                   strokeDasharray={`${(displayTrustPercentage / 100) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
                   style={{ transition: fromScore !== null ? "none" : "stroke-dasharray 1s ease-out" }}
                 />
@@ -245,7 +239,7 @@ export default function AchievementsPage() {
                 </Badge>
               )}
               <Badge variant="outline" className="text-slate-600 text-xs">
-                {earnedBadges.length} badge{earnedBadges.length !== 1 ? "s" : ""} earned
+                {earnedBadges.length} / {badges.length} badges earned
               </Badge>
             </div>
           </div>
@@ -335,10 +329,24 @@ export default function AchievementsPage() {
     </div>
   );
 
+  const BadgesGrid = ({ cols = 5 }: { cols?: number }) => (
+    <div>
+      <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
+        <Star className="h-4 w-4 text-teal-500" />Your Badges
+        <span className="text-xs font-normal text-slate-400 ml-1">Tap any badge to learn more</span>
+      </h2>
+      <div className={`grid gap-2 ${cols === 5 ? "grid-cols-5" : "grid-cols-3"}`}>
+        {badges.map((badge) => (
+          <BadgeCard key={badge.id} badge={badge} popoverSide="bottom" />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#F3F4F6]">
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold mb-2 flex items-start justify-center gap-2">
             <Trophy className="h-8 w-8 text-primary mt-1 flex-shrink-0" />
@@ -348,63 +356,12 @@ export default function AchievementsPage() {
 
         {/* ── Desktop Layout ── */}
         <div className="hidden lg:block space-y-6">
-          {/* Top row: Trust + Level + Reviews | Badges */}
-          <div className="grid lg:grid-cols-[1fr,200px] gap-6">
-            <div className="space-y-4">
-              <TrustRing gradientId="trustGradientDesktop" />
-              <LevelCard />
-              <ReviewsSection />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <Star className="h-4 w-4 text-teal-500" />Your Badges
-              </h2>
-              <div className="space-y-2">
-                {badges.map((badge) => (
-                  <Popover key={badge.id}>
-                    <PopoverTrigger asChild>
-                      <button className={`w-full p-3 rounded-lg border-2 text-center transition-all cursor-pointer hover:opacity-80 ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"}`}>
-                        <div className="flex justify-center mb-1">{badge.icon}</div>
-                        <div className="text-xs font-medium leading-tight">{badge.name}</div>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent side="left" className="w-64 p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`p-1.5 rounded-lg border ${badge.earned ? badge.color : "bg-slate-100 text-slate-400 border-slate-200"}`}>{badge.icon}</div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800 leading-tight">{badge.name}</p>
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.earned ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-500"}`}>{badge.earned ? "Earned" : "Locked"}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-600 mb-2">{badge.description}</p>
-                      <div className="bg-slate-50 rounded p-2">
-                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mb-0.5">How to earn</p>
-                        <p className="text-xs text-slate-700">{badge.requirement}</p>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ))}
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-4">
+            <TrustRing gradientId="trustGradientDesktop" />
+            <LevelCard />
           </div>
-
-          {/* Milestones: 3 columns of 6 */}
-          <div>
-            <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-teal-500" />Milestones
-            </h2>
-            <div className="grid grid-cols-3 gap-x-8 gap-y-0">
-              <div className="space-y-2">
-                {col1.map((m) => <MilestoneRow key={m.id} milestone={m} />)}
-              </div>
-              <div className="space-y-2">
-                {col2.map((m) => <MilestoneRow key={m.id} milestone={m} />)}
-              </div>
-              <div className="space-y-2">
-                {col3.map((m) => <MilestoneRow key={m.id} milestone={m} />)}
-              </div>
-            </div>
-          </div>
+          <ReviewsSection />
+          <BadgesGrid cols={5} />
         </div>
 
         {/* ── Mobile Layout ── */}
@@ -412,45 +369,11 @@ export default function AchievementsPage() {
           <TrustRing gradientId="trustGradientMobile" />
           <LevelCard />
           <ReviewsSection />
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-teal-500" />Milestones
-              </h2>
-              <div className="space-y-2">
-                {milestones.map((m) => <MilestoneRow key={m.id} milestone={m} size="sm" />)}
-              </div>
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                <Star className="h-4 w-4 text-teal-500" />Your Badges
-              </h2>
-              <div className="space-y-2">
-                {badges.map((badge) => (
-                  <Popover key={badge.id}>
-                    <PopoverTrigger asChild>
-                      <button className={`w-full p-2 rounded-lg border-2 text-center transition-all cursor-pointer hover:opacity-80 ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"}`}>
-                        <div className="flex justify-center mb-1">{badge.icon}</div>
-                        <div className="text-[10px] font-medium leading-tight">{badge.name}</div>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent side="bottom" align="center" className="w-44 p-2.5">
-                      <p className="text-xs font-semibold text-slate-800 mb-1">{badge.name}</p>
-                      <p className="text-[11px] text-slate-600 mb-1.5 leading-snug">{badge.description}</p>
-                      <div className="bg-slate-50 rounded px-2 py-1.5">
-                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">How to earn</p>
-                        <p className="text-[11px] text-slate-700 leading-snug">{badge.requirement}</p>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ))}
-              </div>
-            </div>
-          </div>
+          <BadgesGrid cols={3} />
         </div>
 
-        <div className="mt-6 text-center">
-          <span>You're part of a growing community of sharers.</span>
+        <div className="mt-6 text-center text-sm text-slate-400">
+          You're part of a growing community of sharers.
         </div>
       </main>
     </div>

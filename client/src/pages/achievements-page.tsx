@@ -222,11 +222,10 @@ export default function AchievementsPage() {
   const earnedBadges = badges.filter((b) => b.earned);
   const CIRCUMFERENCE = 2 * Math.PI * 42;
 
-  const ProfileCard = ({ gradientId }: { gradientId: string }) => (
+  const TrustScoreCard = ({ gradientId }: { gradientId: string }) => (
     <Card className="overflow-hidden">
       <CardContent className="py-4 px-5">
-        {/* Row 1: ring + score + level title */}
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-4">
           <div className="relative w-20 h-20 flex-shrink-0">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <defs>
@@ -245,42 +244,53 @@ export default function AchievementsPage() {
               <Shield className="h-5 w-5 text-teal-500" />
             </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-2xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
-            <p className="text-xs text-slate-500 leading-none mt-0.5">Trust Score</p>
+          <div>
+            <span className="text-3xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
+            <p className="text-xs text-slate-500 mt-0.5">Trust Score</p>
+            <p className="text-sm font-medium text-slate-700 mt-1">
+              {trustPercentage >= 80 ? "You're a trusted neighbour!" : trustPercentage >= 50 ? "You're doing great!" : trustPercentage >= 25 ? "You're on your way!" : "You're new here!"}
+            </p>
+            <p className="text-xs text-slate-500">
+              {trustPercentage >= 80 ? "Your neighbours trust you with their items." : trustPercentage >= 50 ? "Building a solid reputation." : trustPercentage >= 25 ? "Each exchange builds more trust." : "Start sharing to build your trust score."}
+            </p>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
 
+  const levelBadgeColor = [
+    "bg-slate-100 text-slate-600 border-slate-300",
+    "bg-teal-100 text-teal-700 border-teal-300",
+    "bg-emerald-100 text-emerald-700 border-emerald-300",
+    "bg-green-100 text-green-700 border-green-300",
+    "bg-amber-100 text-amber-700 border-amber-300",
+  ][currentLevelIndex] || "bg-slate-100 text-slate-600 border-slate-300";
+
+  const LevelCard = () => (
+    <Card className="overflow-hidden">
+      <CardContent className="py-4 px-5">
         {/* Level name + badge */}
-        <div className="flex items-center gap-2 mb-2">
-          <p className="text-sm font-semibold text-slate-700">{currentLevel.name}</p>
-          <Badge className={`text-xs shrink-0 border ${[
-            "bg-slate-100 text-slate-600 border-slate-300",
-            "bg-teal-100 text-teal-700 border-teal-300",
-            "bg-emerald-100 text-emerald-700 border-emerald-300",
-            "bg-green-100 text-green-700 border-green-300",
-            "bg-amber-100 text-amber-700 border-amber-300",
-          ][currentLevelIndex] || "bg-slate-100 text-slate-600 border-slate-300"}`}>Level {currentLevelIndex + 1}</Badge>
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-base font-semibold text-slate-800">{currentLevel.name}</p>
+          <Badge className={`text-xs shrink-0 border ${levelBadgeColor}`}>Level {currentLevelIndex + 1}</Badge>
+          {user?.isVerified && (
+            <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs ml-auto">
+              <BadgeCheck className="h-3 w-3 mr-1" />Verified
+            </Badge>
+          )}
         </div>
 
-        {/* Trust message */}
-        <p className="text-sm font-medium text-slate-700 mb-0.5">
-          {trustPercentage >= 80 ? "You're a trusted neighbour!" : trustPercentage >= 50 ? "You're doing great!" : trustPercentage >= 25 ? "You're on your way!" : "You're new here!"}
-        </p>
-        <p className="text-xs text-slate-500 mb-2">
-          {trustPercentage >= 80 ? "Your neighbours trust you with their items." : trustPercentage >= 50 ? "Building a solid reputation." : trustPercentage >= 25 ? "Each exchange builds more trust." : "Start sharing to build your trust score."}
-        </p>
-
-        {/* Row 3: perks */}
-        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-600 mb-2">
+        {/* Perks */}
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-600 mb-3">
           {currentLevel.perks.map((perk, i) => (
             <span key={i} className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-teal-500 shrink-0" />{perk}</span>
           ))}
         </div>
 
-        {/* Row 4: progress bar */}
+        {/* Progress bar */}
         {nextLevel && (
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-3">
             <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`} style={{ width: `${Math.min(progressToNext, 100)}%` }} />
             </div>
@@ -288,16 +298,9 @@ export default function AchievementsPage() {
           </div>
         )}
 
-        {/* Row 5: verified badge */}
-        {user?.isVerified && (
-          <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs">
-            <BadgeCheck className="h-3 w-3 mr-1" />Verified
-          </Badge>
-        )}
-
-        {/* Row 6: earned badges */}
+        {/* Earned badges */}
         {earnedBadges.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
+          <div className="flex flex-wrap gap-1 pt-3 border-t border-slate-100">
             {earnedBadges.map((b) => (
               <div key={b.id} title={b.name} className={`w-7 h-7 rounded-full flex items-center justify-center border shrink-0 ${b.color}`}>
                 <span className="scale-[0.6] flex items-center justify-center">{b.icon}</span>
@@ -386,14 +389,18 @@ export default function AchievementsPage() {
 
         {/* ── Desktop Layout ── */}
         <div className="hidden lg:block space-y-6">
-          <ProfileCard gradientId="trustGradientDesktop" />
+          <div className="grid grid-cols-2 gap-4">
+            <TrustScoreCard gradientId="trustGradientDesktop" />
+            <LevelCard />
+          </div>
           <ReviewsSection />
           <BadgesGrid cols={5} />
         </div>
 
         {/* ── Mobile Layout ── */}
         <div className="lg:hidden space-y-4">
-          <ProfileCard gradientId="trustGradientMobile" />
+          <TrustScoreCard gradientId="trustGradientMobile" />
+          <LevelCard />
           <ReviewsSection />
           <BadgesGrid cols={3} />
         </div>

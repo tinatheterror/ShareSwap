@@ -172,7 +172,7 @@ export default function AchievementsPage() {
     { id: "helped-neighbour", title: "Helped a neighbour in need", description: "Responded to an urgent request", achieved: (stats?.helpedUrgent || 0) >= 1, icon: <Sparkles className="h-5 w-5" /> },
     { id: "level-up", title: `Reached ${currentLevel.name}`, description: "Your reputation is growing", achieved: currentLevelIndex >= 1, icon: <Star className="h-5 w-5" /> },
     { id: "first-review-left", title: "Left your first review", description: "Gave feedback to help the community", achieved: (stats?.reviewsLeft || 0) >= 1, icon: <MessageSquare className="h-5 w-5" /> },
-    { id: "five-swaps", title: "5 swaps completed", description: "Become a trading pro in your neighbourhood", achieved: (stats?.totalSwaps || 0) >= 5, icon: <ArrowLeftRight className="h-5 w-5" /> },
+    { id: "first-swap", title: "First swap completed", description: "You traded something you had for something you needed", achieved: (stats?.totalSwaps || 0) >= 1, icon: <ArrowLeftRight className="h-5 w-5" /> },
     // Column 2
     { id: "ten-gifts", title: "10 gifts given", description: "Generosity that inspires the whole community", achieved: (stats?.totalGifts || 0) >= 10, icon: <Gift className="h-5 w-5" /> },
     { id: "five-borrows", title: "5 borrows completed", description: "Making the most of what your community offers", achieved: (stats?.totalBorrowed || 0) >= 5, icon: <Package className="h-5 w-5" /> },

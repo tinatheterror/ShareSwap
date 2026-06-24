@@ -389,8 +389,19 @@ const ACHIEVEMENT_DEFS = [
   { name: 'fast_responder',      title: 'Fast Responder',        description: 'Completed 5+ exchanges quickly — neighbours count on your speed!', icon: '⚡', color: '#f59e0b', category: 'milestone' },
   { name: 'five_star_neighbour', title: 'Five-Star Neighbour',   description: 'Maintained a 4.8+ star rating across 5+ reviews.',               icon: '⭐', color: '#eab308', category: 'social'   },
   { name: 'early_member',        title: 'Early Member',          description: 'One of the founding members of the ShareSwap community.',          icon: '🚀', color: '#7c3aed', category: 'milestone' },
-  { name: 'three_in_week',       title: 'Weekly Warrior',        description: 'Completed 3 transactions in a single week — on a roll!',        icon: '⚡', color: '#ea580c', category: 'milestone' },
-  { name: 'five_reviews_received', title: 'Highly Rated',        description: 'Received 5 reviews — your neighbours love working with you!',  icon: '⭐', color: '#ca8a04', category: 'milestone' },
+  { name: 'three_in_week',          title: 'Weekly Warrior',      description: 'Completed 3 transactions in a single week — on a roll!',             icon: '⚡', color: '#ea580c', category: 'milestone' },
+  { name: 'five_reviews_received',  title: 'Highly Rated',        description: 'Received 5 reviews — your neighbours love working with you!',         icon: '⭐', color: '#ca8a04', category: 'milestone' },
+  // Badges converted from milestones
+  { name: 'first_borrow',           title: 'First Borrow',        description: 'Borrowed your first item from a neighbour.',                           icon: '💙', color: '#0ea5e9', category: 'milestone' },
+  { name: 'reliable_borrower',      title: 'Reliable Borrower',   description: 'Completed 5 exchanges — you return items on time.',                    icon: '🤝', color: '#3b82f6', category: 'milestone' },
+  { name: 'trusted_exchanger',      title: 'Trusted Exchanger',   description: 'Completed 10 exchanges — neighbours know they can count on you.',      icon: '🤝', color: '#0e7490', category: 'milestone' },
+  { name: 'super_lender',           title: 'Super Lender',        description: 'Lent out 10 items — your ShareChest is a community staple.',           icon: '📦', color: '#7c3aed', category: 'lending'  },
+  { name: 'rising_star',            title: 'Rising Star',         description: 'Completed 20 exchanges — an exchange veteran neighbours rely on.',      icon: '📈', color: '#ea580c', category: 'milestone' },
+  { name: 'exchange_veteran',       title: 'Exchange Veteran',    description: 'Completed 25 exchanges — you\'ve built something extraordinary.',       icon: '🏆', color: '#d97706', category: 'milestone' },
+  { name: 'urgent_helper',          title: 'Urgent Helper',       description: 'Stepped up when a neighbour needed something urgently.',                icon: '⚡', color: '#f59e0b', category: 'social'   },
+  { name: 'well_loved',             title: 'Well Loved',          description: 'Received 10 reviews — a well-known face in the community.',             icon: '👑', color: '#7c3aed', category: 'social'   },
+  { name: 'neighbourhood_hero',     title: 'Neighbourhood Hero',  description: 'Reached a trust score of 300 — a pillar of the sharing community.',    icon: '🥇', color: '#ca8a04', category: 'milestone' },
+  { name: 'shareswap_legend',       title: 'ShareSwap Legend',    description: 'Reached 500 trust score and lent 20+ items — the rarest badge.',       icon: '💎', color: '#b45309', category: 'milestone' },
 ];
 
 async function checkAndAwardAchievements(userId: number) {
@@ -403,8 +414,9 @@ async function checkAndAwardAchievements(userId: number) {
       [user],
       [totalRow], [lentRow], [giftRow], [swapRow],
       [borrowRow], [itemsRow], [reviewsLeftRow], [referralRow], [weeklyRow], [reviewsReceivedRow],
+      [urgentRow],
     ] = await Promise.all([
-      db.select({ isVerified: users.isVerified }).from(users).where(eq(users.id, userId)).limit(1),
+      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore }).from(users).where(eq(users.id, userId)).limit(1),
       // Total completed transactions (any side)
       db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
       // Items lent (as owner)
@@ -429,6 +441,11 @@ async function checkAndAwardAchievements(userId: number) {
       )),
       // Reviews received
       db.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewedUserId, userId)),
+      // Urgent wishlist requests helped
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .innerJoin(wishlists, sql`${wishlists.itemName} ILIKE '%' || ${items.name} || '%'`)
+        .where(and(eq(items.ownerId, userId), completedWhere, eq(wishlists.urgency, "urgent"))),
     ]);
 
     const total          = Number(totalRow?.cnt ?? 0);
@@ -441,6 +458,8 @@ async function checkAndAwardAchievements(userId: number) {
     const refs           = Number(referralRow?.cnt ?? 0);
     const weekly         = Number(weeklyRow?.cnt ?? 0);
     const reviewsRx      = Number(reviewsReceivedRow?.cnt ?? 0);
+    const urgent         = Number(urgentRow?.cnt ?? 0);
+    const repScore       = Number(user?.reputationScore ?? 0);
 
     const metKeys: string[] = [];
     if (total >= 1)       metKeys.push('first_transaction');
@@ -451,7 +470,7 @@ async function checkAndAwardAchievements(userId: number) {
     if (gifts >= 1)       metKeys.push('first_gift');
     if (swaps >= 1)       metKeys.push('first_swap');
     if (user?.isVerified) metKeys.push('verified_member');
-    // New milestones
+    // Milestone-origin badges
     if (swaps >= 5)       metKeys.push('five_swaps');
     if (gifts >= 10)      metKeys.push('ten_gifts');
     if (borrows >= 5)     metKeys.push('five_borrows');
@@ -459,6 +478,17 @@ async function checkAndAwardAchievements(userId: number) {
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
     if (refs >= 3)        metKeys.push('referral_3');
     if (weekly >= 3)      metKeys.push('three_in_week');
+    // Newly added badges
+    if (borrows >= 1)     metKeys.push('first_borrow');
+    if (total >= 5)       metKeys.push('reliable_borrower');
+    if (total >= 10)      metKeys.push('trusted_exchanger');
+    if (lent >= 10)       metKeys.push('super_lender');
+    if (total >= 20)      metKeys.push('rising_star');
+    if (total >= 25)      metKeys.push('exchange_veteran');
+    if (urgent >= 1)      metKeys.push('urgent_helper');
+    if (reviewsRx >= 10)  metKeys.push('well_loved');
+    if (repScore >= 300)  metKeys.push('neighbourhood_hero');
+    if (repScore >= 500 && lent >= 20) metKeys.push('shareswap_legend');
     // Fast Responder: 5+ completed exchanges (as owner) resolved within 48 hours
     {
       const [frCount] = await db
@@ -468,7 +498,7 @@ async function checkAndAwardAchievements(userId: number) {
         .where(and(
           eq(items.ownerId, userId),
           or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
-          sql`${itemRequests.updatedAt} - ${itemRequests.createdAt} < interval '48 hours'`
+          sql`${itemRequests.updatedAt} < ${itemRequests.createdAt} + interval '48 hours'`
         ));
       if (Number(frCount?.count || 0) >= 5) metKeys.push('fast_responder');
     }
@@ -10063,7 +10093,7 @@ Respond with ONLY the category name, nothing else.`
         .where(and(
           eq(items.ownerId, userId),
           or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
-          sql`${itemRequests.updatedAt} - ${itemRequests.createdAt} < interval '48 hours'`
+          sql`${itemRequests.updatedAt} < ${itemRequests.createdAt} + interval '48 hours'`
         ));
 
       // Five-Star Neighbour: 5+ reviews received with avg rating >= 4.8

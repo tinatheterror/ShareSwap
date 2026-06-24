@@ -1751,6 +1751,9 @@ Respond with ONLY valid JSON in this exact format:
         hasAlreadyEarnedBonus,
         message,
       });
+
+      // Check for Picture Perfect badge now that photo is set
+      checkAndAwardAchievements(userId).catch(() => {});
     } catch (error) {
       console.error("Error uploading profile photo:", error);
       res.status(500).json({ error: "Failed to upload profile photo" });

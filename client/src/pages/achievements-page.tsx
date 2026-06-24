@@ -222,12 +222,13 @@ export default function AchievementsPage() {
   const earnedBadges = badges.filter((b) => b.earned);
   const CIRCUMFERENCE = 2 * Math.PI * 42;
 
-  const TrustRing = ({ gradientId }: { gradientId: string }) => (
+  const ProfileCard = ({ gradientId }: { gradientId: string }) => (
     <Card className="overflow-hidden">
       <CardContent className="py-4 px-5">
-        <div className="flex items-start gap-5">
+        <div className="flex items-start gap-4">
+          {/* Trust ring */}
           <div className="flex flex-col items-center flex-shrink-0 gap-1">
-            <div className="relative w-28 h-28">
+            <div className="relative w-24 h-24">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 <defs>
                   <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -242,59 +243,30 @@ export default function AchievementsPage() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <Shield className="h-8 w-8 text-teal-500 mb-1" />
-                <span className="text-sm font-medium text-slate-600">Trust</span>
-                <span className="text-sm font-medium text-slate-600">Score</span>
+                <Shield className="h-6 w-6 text-teal-500" />
+                <span className="text-xs font-medium text-slate-500 mt-0.5">Trust</span>
               </div>
             </div>
-            <span className="text-lg font-bold text-slate-800 tabular-nums">{displayScore}</span>
+            <span className="text-xl font-bold text-slate-800 tabular-nums">{displayScore}</span>
           </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-slate-800 mb-1">
+
+          {/* Level + trust info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-base font-semibold text-slate-800">{currentLevel.name}</h3>
+              <Badge variant="outline" className="text-xs shrink-0">Level {currentLevelIndex + 1}</Badge>
+            </div>
+            <p className="text-sm font-medium text-slate-700 mb-0.5">
               {trustPercentage >= 80 ? "You're a trusted neighbour!" : trustPercentage >= 50 ? "You're doing great!" : trustPercentage >= 25 ? "You're on your way!" : "You're new here!"}
-            </h2>
-            <p className="text-slate-600 text-sm mb-2">
+            </p>
+            <p className="text-xs text-slate-500 mb-2">
               {trustPercentage >= 80 ? "Your neighbours trust you with their items." : trustPercentage >= 50 ? "Building a solid reputation." : trustPercentage >= 25 ? "Each exchange builds more trust." : "Start sharing to build your trust score."}
             </p>
-            <div className="flex flex-wrap gap-1">
-              {user?.isVerified && (
-                <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs">
-                  <BadgeCheck className="h-3 w-3 mr-1" />Verified
-                </Badge>
-              )}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const LevelCard = () => (
-    <Card>
-      <CardContent className="py-4 px-5">
-        <div className="flex items-center gap-4">
-          <div className={`p-2.5 rounded-xl bg-gradient-to-br ${currentLevel.color}`}>
-            <Crown className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between w-full mb-1">
-              <h3 className="text-base font-semibold text-slate-800">{currentLevel.name}</h3>
-              <Badge variant="outline" className="text-xs">Level {currentLevelIndex + 1}</Badge>
-            </div>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 mb-2">
               {currentLevel.perks.map((perk, i) => (
                 <span key={i} className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-teal-500" />{perk}</span>
               ))}
             </div>
-            {earnedBadges.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {earnedBadges.map((b) => (
-                  <div key={b.id} title={b.name} className={`w-7 h-7 rounded-full flex items-center justify-center border shrink-0 ${b.color}`}>
-                    <span className="scale-[0.6] flex items-center justify-center">{b.icon}</span>
-                  </div>
-                ))}
-              </div>
-            )}
             {nextLevel && (
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -303,8 +275,24 @@ export default function AchievementsPage() {
                 <span className="text-xs text-slate-500 whitespace-nowrap">Next: {nextLevel.name}</span>
               </div>
             )}
+            {user?.isVerified && (
+              <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs mt-2">
+                <BadgeCheck className="h-3 w-3 mr-1" />Verified
+              </Badge>
+            )}
           </div>
         </div>
+
+        {/* Earned badges */}
+        {earnedBadges.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
+            {earnedBadges.map((b) => (
+              <div key={b.id} title={b.name} className={`w-7 h-7 rounded-full flex items-center justify-center border shrink-0 ${b.color}`}>
+                <span className="scale-[0.6] flex items-center justify-center">{b.icon}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -386,18 +374,14 @@ export default function AchievementsPage() {
 
         {/* ── Desktop Layout ── */}
         <div className="hidden lg:block space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <TrustRing gradientId="trustGradientDesktop" />
-            <LevelCard />
-          </div>
+          <ProfileCard gradientId="trustGradientDesktop" />
           <ReviewsSection />
           <BadgesGrid cols={5} />
         </div>
 
         {/* ── Mobile Layout ── */}
         <div className="lg:hidden space-y-4">
-          <TrustRing gradientId="trustGradientMobile" />
-          <LevelCard />
+          <ProfileCard gradientId="trustGradientMobile" />
           <ReviewsSection />
           <BadgesGrid cols={3} />
         </div>

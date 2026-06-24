@@ -386,7 +386,7 @@ const ACHIEVEMENT_DEFS = [
   { name: 'five_borrows',        title: 'Active Borrower',       description: 'Borrowed 5 items — making the most of your community!',         icon: '🛍️', color: '#0891b2', category: 'milestone' },
   { name: 'five_listed',         title: 'ShareChest Curator',    description: 'Listed 5 items — your ShareChest is open for business!',        icon: '🗝️', color: '#059669', category: 'lending'  },
   { name: 'five_reviews_left',   title: 'Community Voice',       description: 'Left 5 reviews — helping neighbours make great decisions!',     icon: '💬', color: '#d97706', category: 'social'   },
-  { name: 'referral_3',          title: 'Neighbour Connector',   description: 'Referred 3 friends to ShareSwap — spreading the word!',        icon: '🤝', color: '#2563eb', category: 'milestone' },
+  { name: 'referral_5',          title: 'Neighbour Connector',   description: 'Referred 5 friends to ShareSwap — spreading the word!',        icon: '🤝', color: '#2563eb', category: 'milestone' },
   { name: 'fast_responder',      title: 'Fast Responder',        description: 'Completed 5+ exchanges quickly — neighbours count on your speed!', icon: '⚡', color: '#f59e0b', category: 'milestone' },
   { name: 'five_star_neighbour', title: 'Five-Star Neighbour',   description: 'Maintained a 4.8+ star rating across 5+ reviews.',               icon: '⭐', color: '#eab308', category: 'social'   },
   { name: 'early_member',        title: 'Early Member',          description: 'One of the founding members of the ShareSwap community.',          icon: '🚀', color: '#7c3aed', category: 'milestone' },
@@ -486,7 +486,7 @@ async function checkAndAwardAchievements(userId: number) {
     if (listed >= 10)     metKeys.push('power_lister');
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
     if (refs >= 1)        metKeys.push('community_builder');
-    if (refs >= 3)        metKeys.push('referral_3');
+    if (refs >= 5)        metKeys.push('referral_5');
     if (weekly >= 3)      metKeys.push('three_in_week');
     // Newly added badges
     if (borrows >= 1)     metKeys.push('first_borrow');

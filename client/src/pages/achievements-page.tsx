@@ -225,65 +225,68 @@ export default function AchievementsPage() {
   const ProfileCard = ({ gradientId }: { gradientId: string }) => (
     <Card className="overflow-hidden">
       <CardContent className="py-4 px-5">
-        <div className="flex items-start gap-4">
-          {/* Trust ring */}
-          <div className="flex flex-col items-center flex-shrink-0 gap-1">
-            <div className="relative w-24 h-24">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <defs>
-                  <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#0DCEA1" />
-                    <stop offset="100%" stopColor="#10B981" />
-                  </linearGradient>
-                </defs>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="8" strokeLinecap="round"
-                  strokeDasharray={`${(displayTrustPercentage / 100) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-                  style={{ transition: fromScore !== null ? "none" : "stroke-dasharray 1s ease-out" }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <Shield className="h-6 w-6 text-teal-500" />
-                <span className="text-xs font-medium text-slate-500 mt-0.5">Trust</span>
-              </div>
+        {/* Row 1: ring + score + level title */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="relative w-14 h-14 flex-shrink-0">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <defs>
+                <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#0DCEA1" />
+                  <stop offset="100%" stopColor="#10B981" />
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+              <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#${gradientId})`} strokeWidth="10" strokeLinecap="round"
+                strokeDasharray={`${(displayTrustPercentage / 100) * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                style={{ transition: fromScore !== null ? "none" : "stroke-dasharray 1s ease-out" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Shield className="h-5 w-5 text-teal-500" />
             </div>
-            <span className="text-xl font-bold text-slate-800 tabular-nums">{displayScore}</span>
           </div>
-
-          {/* Level + trust info */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-base font-semibold text-slate-800">{currentLevel.name}</h3>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
               <Badge variant="outline" className="text-xs shrink-0">Level {currentLevelIndex + 1}</Badge>
             </div>
-            <p className="text-sm font-medium text-slate-700 mb-0.5">
-              {trustPercentage >= 80 ? "You're a trusted neighbour!" : trustPercentage >= 50 ? "You're doing great!" : trustPercentage >= 25 ? "You're on your way!" : "You're new here!"}
-            </p>
-            <p className="text-xs text-slate-500 mb-2">
-              {trustPercentage >= 80 ? "Your neighbours trust you with their items." : trustPercentage >= 50 ? "Building a solid reputation." : trustPercentage >= 25 ? "Each exchange builds more trust." : "Start sharing to build your trust score."}
-            </p>
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-600 mb-2">
-              {currentLevel.perks.map((perk, i) => (
-                <span key={i} className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-teal-500" />{perk}</span>
-              ))}
-            </div>
-            {nextLevel && (
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`} style={{ width: `${Math.min(progressToNext, 100)}%` }} />
-                </div>
-                <span className="text-xs text-slate-500 whitespace-nowrap">Next: {nextLevel.name}</span>
-              </div>
-            )}
-            {user?.isVerified && (
-              <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs mt-2">
-                <BadgeCheck className="h-3 w-3 mr-1" />Verified
-              </Badge>
-            )}
+            <p className="text-sm font-semibold text-slate-700 mt-0.5">{currentLevel.name}</p>
           </div>
         </div>
 
-        {/* Earned badges */}
+        {/* Row 2: trust message */}
+        <p className="text-sm font-medium text-slate-700 mb-0.5">
+          {trustPercentage >= 80 ? "You're a trusted neighbour!" : trustPercentage >= 50 ? "You're doing great!" : trustPercentage >= 25 ? "You're on your way!" : "You're new here!"}
+        </p>
+        <p className="text-xs text-slate-500 mb-2">
+          {trustPercentage >= 80 ? "Your neighbours trust you with their items." : trustPercentage >= 50 ? "Building a solid reputation." : trustPercentage >= 25 ? "Each exchange builds more trust." : "Start sharing to build your trust score."}
+        </p>
+
+        {/* Row 3: perks */}
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-600 mb-2">
+          {currentLevel.perks.map((perk, i) => (
+            <span key={i} className="flex items-center gap-1"><CheckCircle className="h-3 w-3 text-teal-500 shrink-0" />{perk}</span>
+          ))}
+        </div>
+
+        {/* Row 4: progress bar */}
+        {nextLevel && (
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className={`h-full bg-gradient-to-r ${currentLevel.color} transition-all duration-500`} style={{ width: `${Math.min(progressToNext, 100)}%` }} />
+            </div>
+            <span className="text-xs text-slate-500 whitespace-nowrap">Next: {nextLevel.name}</span>
+          </div>
+        )}
+
+        {/* Row 5: verified badge */}
+        {user?.isVerified && (
+          <Badge className="bg-teal-100 text-teal-700 border-teal-200 text-xs">
+            <BadgeCheck className="h-3 w-3 mr-1" />Verified
+          </Badge>
+        )}
+
+        {/* Row 6: earned badges */}
         {earnedBadges.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
             {earnedBadges.map((b) => (

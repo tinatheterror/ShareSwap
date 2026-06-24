@@ -409,6 +409,9 @@ const ACHIEVEMENT_DEFS = [
   { name: 'coin_collector',         title: 'Coin Collector',       description: 'Accumulated 50 ShareCoins — a true sharing economy regular.',              icon: '🪙', color: '#d97706', category: 'milestone' },
   { name: 'power_lister',           title: 'Power Lister',        description: 'Listed 10 items — your ShareChest is stocked for the neighbourhood!',    icon: '📚', color: '#059669', category: 'lending'  },
   { name: 'wish_maker',             title: 'Wish Maker',           description: 'Added 3 items to your wishlist — you know what your community can offer.', icon: '🔖', color: '#e11d48', category: 'social'   },
+  { name: 'good_neighbour',         title: 'Good Neighbour',        description: 'Lent the same item to 3 different people — sharing efficiency at its best.', icon: '🏠', color: '#16a34a', category: 'lending'  },
+  { name: 'photo_pro',              title: 'Photo Pro',             description: 'Listed an item with 5 or more photos — making it irresistible to borrow.',   icon: '📷', color: '#7c3aed', category: 'lending'  },
+  { name: 'welcome_wagon',          title: 'Welcome Wagon',         description: 'Completed a transaction with a user who joined in the last 30 days.',         icon: '👋', color: '#0891b2', category: 'social'   },
 ];
 
 async function checkAndAwardAchievements(userId: number) {
@@ -508,6 +511,18 @@ async function checkAndAwardAchievements(userId: number) {
     {
       const [wlRow] = await db.select({ cnt: sql<number>`count(*)` }).from(wishlists).where(eq(wishlists.userId, userId));
       if (Number(wlRow?.cnt ?? 0) >= 3) metKeys.push('wish_maker');
+    }
+    {
+      const [ppRow] = await db.select({ cnt: sql<number>`count(*)` }).from(items).where(and(eq(items.ownerId, userId), sql`array_length(items.photos, 1) >= 5`));
+      if (Number(ppRow?.cnt ?? 0) >= 1) metKeys.push('photo_pro');
+    }
+    {
+      const gnRes = await db.execute(sql`SELECT COUNT(*) AS cnt FROM (SELECT item_requests.item_id FROM item_requests INNER JOIN items ON items.id = item_requests.item_id WHERE items.owner_id = ${userId} AND item_requests.status IN ('COMPLETED','COMPLETED_EARLY') GROUP BY item_requests.item_id HAVING COUNT(DISTINCT item_requests.requester_id) >= 3) AS subq`);
+      if (Number((gnRes.rows?.[0] as any)?.cnt ?? 0) >= 1) metKeys.push('good_neighbour');
+    }
+    {
+      const wwRes = await db.execute(sql`SELECT COUNT(*) AS cnt FROM item_requests ir INNER JOIN items i ON i.id = ir.item_id WHERE ir.status IN ('COMPLETED','COMPLETED_EARLY') AND ((i.owner_id = ${userId} AND EXISTS (SELECT 1 FROM users u WHERE u.id = ir.requester_id AND ir.created_at >= u.created_at AND ir.created_at - u.created_at < INTERVAL '30 days')) OR (ir.requester_id = ${userId} AND EXISTS (SELECT 1 FROM users u WHERE u.id = i.owner_id AND ir.created_at >= u.created_at AND ir.created_at - u.created_at < INTERVAL '30 days')))`);
+      if (Number((wwRes.rows?.[0] as any)?.cnt ?? 0) >= 1) metKeys.push('welcome_wagon');
     }
     if (reviewsRx >= 10)  metKeys.push('well_loved');
     if (repScore >= 300)  metKeys.push('neighbourhood_hero');
@@ -10193,6 +10208,46 @@ Respond with ONLY the category name, nothing else.`
           eq(itemRequests.deliveryMethod, "courier"),
         ));
 
+      // Photo Pro: any item owned by user with 5+ photos
+      const [photoProRow] = await db
+        .select({ cnt: sql<number>`count(*)` })
+        .from(items)
+        .where(and(eq(items.ownerId, userId), sql`array_length(items.photos, 1) >= 5`));
+
+      // Good Neighbour: same item lent to 3+ distinct borrowers
+      const gnResult = await db.execute(sql`
+        SELECT COUNT(*) AS cnt FROM (
+          SELECT item_requests.item_id FROM item_requests
+          INNER JOIN items ON items.id = item_requests.item_id
+          WHERE items.owner_id = ${userId}
+          AND item_requests.status IN ('COMPLETED','COMPLETED_EARLY')
+          GROUP BY item_requests.item_id
+          HAVING COUNT(DISTINCT item_requests.requester_id) >= 3
+        ) AS subq
+      `);
+      const goodNeighbourCount = Number((gnResult.rows?.[0] as any)?.cnt || 0);
+
+      // Welcome Wagon: completed txn with a user who joined within 30 days before the transaction
+      const wwResult = await db.execute(sql`
+        SELECT COUNT(*) AS cnt FROM item_requests ir
+        INNER JOIN items i ON i.id = ir.item_id
+        WHERE ir.status IN ('COMPLETED','COMPLETED_EARLY')
+        AND (
+          (i.owner_id = ${userId} AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = ir.requester_id
+            AND ir.created_at >= u.created_at
+            AND ir.created_at - u.created_at < INTERVAL '30 days'
+          ))
+          OR
+          (ir.requester_id = ${userId} AND EXISTS (
+            SELECT 1 FROM users u WHERE u.id = i.owner_id
+            AND ir.created_at >= u.created_at
+            AND ir.created_at - u.created_at < INTERVAL '30 days'
+          ))
+        )
+      `);
+      const welcomeWagonCount = Number((wwResult.rows?.[0] as any)?.cnt || 0);
+
       // Wishlist item count
       const [wishlistRow] = await db
         .select({ cnt: sql<number>`count(*)` })
@@ -10223,6 +10278,9 @@ Respond with ONLY the category name, nothing else.`
         courierDeliveries: Number(courierCount?.count || 0),
         totalShareCoinsEarned: Number(earnedCoinsRow?.total || 0),
         wishlistCount: Number(wishlistRow?.cnt || 0),
+        goodNeighbour: goodNeighbourCount >= 1,
+        photoPro: Number(photoProRow?.cnt || 0) >= 1,
+        welcomeWagon: welcomeWagonCount >= 1,
       });
     } catch (error) {
       console.error("Error fetching user stats:", error);

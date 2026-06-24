@@ -38,6 +38,9 @@ import {
   Truck,
   Coins,
   BookMarked,
+  Camera,
+  UserPlus,
+  Home,
 } from "lucide-react";
 
 interface UserStats {
@@ -58,6 +61,9 @@ interface UserStats {
   courierDeliveries: number;
   totalShareCoinsEarned: number;
   wishlistCount: number;
+  goodNeighbour: boolean;
+  photoPro: boolean;
+  welcomeWagon: boolean;
 }
 
 interface Review {
@@ -184,15 +190,18 @@ export default function AchievementsPage() {
     { id: "generous-soul", name: "Generous Soul", icon: <HeartHandshake className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 10, color: "bg-rose-100 text-rose-700 border-rose-200", description: "Your generosity is legendary — you give freely and often.", requirement: "Complete 10 gift transactions." },
     { id: "sharechest-curator", name: "ShareChest Curator", icon: <Key className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 5, color: "bg-teal-100 text-teal-700 border-teal-200", description: "Your ShareChest is open for business — you've built a real lending library.", requirement: "List 5 or more items." },
     { id: "power-lister", name: "Power Lister", icon: <Layers className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 10, color: "bg-emerald-100 text-emerald-700 border-emerald-200", description: "Your ShareChest is stocked — 10 items ready for the neighbourhood.", requirement: "List 10 or more items." },
+    { id: "photo-pro", name: "Photo Pro", icon: <Camera className="h-5 w-5" />, earned: stats?.photoPro || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You made a listing impossible to scroll past — perfect photos, real trust.", requirement: "List any item with 5 or more photos." },
     { id: "courier-rider", name: "Courier Rider", icon: <Truck className="h-5 w-5" />, earned: (stats?.courierDeliveries || 0) >= 1, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You went the extra distance — used courier delivery for a transaction.", requirement: "Complete at least 1 transaction using courier delivery." },
     { id: "weekly-warrior", name: "Weekly Warrior", icon: <Flame className="h-5 w-5" />, earned: (stats?.weeklyActivity || 0) >= 3, color: "bg-red-100 text-red-700 border-red-200", description: "You're on a sharing streak — active and engaged every week.", requirement: "Complete 3 transactions in a single week." },
     { id: "community-builder", name: "Community Builder", icon: <Users className="h-5 w-5" />, earned: (stats?.referrals || 0) >= 1, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You've started growing the ShareSwap community — your first referral is in.", requirement: "Refer 1 friend who completes their first transaction." },
+    { id: "welcome-wagon", name: "Welcome Wagon", icon: <UserPlus className="h-5 w-5" />, earned: stats?.welcomeWagon || false, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You helped a new neighbour take their first step into the sharing economy.", requirement: "Complete a transaction with a user who joined in the last 30 days." },
     { id: "neighbour-connector", name: "Neighbour Connector", icon: <span className="relative inline-flex"><Users className="h-5 w-5" /><Star className="h-2.5 w-2.5 absolute top-1 -right-2 fill-current" /></span>, earned: (stats?.referrals || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 5 friends who each complete their first transaction." },
 
     // Lending & handoffs
     { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You return items on time and treat neighbours' belongings with care.", requirement: "Complete 5 successful item exchanges." },
     { id: "trusted-exchanger", name: "Trusted Exchanger", icon: <Shield className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 10, color: "bg-sky-100 text-sky-800 border-sky-200", description: "Neighbours know they can trust you to follow through every time.", requirement: "Complete 10 successful item exchanges." },
     { id: "super-lender", name: "Super Lender", icon: <Package className="h-5 w-5" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "Your ShareChest is a community staple — neighbours borrow from you regularly.", requirement: "Lend out items in 10 completed transactions." },
+    { id: "good-neighbour", name: "Good Neighbour", icon: <Home className="h-5 w-5" />, earned: stats?.goodNeighbour || false, color: "bg-green-100 text-green-700 border-green-200", description: "One item, three different neighbours — your sharing efficiency is unmatched.", requirement: "Lend the same item to 3 different people." },
     { id: "rising-star", name: "Rising Star", icon: <TrendingUp className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 20, color: "bg-orange-100 text-orange-700 border-orange-200", description: "You're on a roll — an exchange veteran that neighbours rely on.", requirement: "Complete 20 successful item exchanges." },
     { id: "exchange-veteran", name: "Exchange Veteran", icon: <Trophy className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 25, color: "bg-amber-100 text-amber-700 border-amber-200", description: "25 exchanges — you've built something most people only dream about.", requirement: "Complete 25 successful item exchanges." },
 

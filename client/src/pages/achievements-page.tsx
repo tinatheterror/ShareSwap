@@ -247,10 +247,19 @@ export default function AchievementsPage() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
-              <Badge variant="outline" className="text-xs shrink-0">Level {currentLevelIndex + 1}</Badge>
+              <div>
+                <span className="text-2xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
+                <p className="text-xs text-slate-500 leading-none mt-0.5">Trust Score</p>
+              </div>
+              <Badge className={`text-xs shrink-0 border ${[
+                "bg-slate-100 text-slate-600 border-slate-300",
+                "bg-teal-100 text-teal-700 border-teal-300",
+                "bg-emerald-100 text-emerald-700 border-emerald-300",
+                "bg-green-100 text-green-700 border-green-300",
+                "bg-amber-100 text-amber-700 border-amber-300",
+              ][currentLevelIndex] || "bg-slate-100 text-slate-600 border-slate-300"}`}>Level {currentLevelIndex + 1}</Badge>
             </div>
-            <p className="text-sm font-semibold text-slate-700 mt-0.5">{currentLevel.name}</p>
+            <p className="text-sm font-semibold text-slate-700 mt-1">{currentLevel.name}</p>
           </div>
         </div>
 

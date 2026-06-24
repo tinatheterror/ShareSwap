@@ -151,8 +151,6 @@ export default function AchievementsPage() {
     { id: "generous", name: "Generous Gifter", icon: <Gift className="h-6 w-6" />, earned: (stats?.totalGifts || 0) >= 1, color: "bg-pink-100 text-pink-700 border-pink-200" },
     { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-6 w-6" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200" },
     { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-6 w-6" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200" },
-    { id: "community-builder", name: "Community Builder", icon: <Sprout className="h-6 w-6" />, earned: (stats?.referrals || 0) >= 10, color: "bg-green-100 text-green-700 border-green-200" },
-    { id: "shareswap-ambassador", name: "ShareSwap Ambassador", icon: <Medal className="h-6 w-6" />, earned: (stats?.referrals || 0) >= 25, color: "bg-purple-100 text-purple-700 border-purple-200" },
     { id: "super-lender", name: "Super Lender", icon: <Package className="h-6 w-6" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200" },
     { id: "swap-star", name: "Swap Star", icon: <ArrowLeftRight className="h-6 w-6" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
     { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-6 w-6" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200" },

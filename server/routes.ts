@@ -405,6 +405,7 @@ const ACHIEVEMENT_DEFS = [
   { name: 'shareswap_legend',       title: 'ShareSwap Legend',    description: 'Reached 500 trust score and lent 20+ items — the rarest badge.',       icon: '💎', color: '#b45309', category: 'milestone' },
   { name: 'courier_rider',          title: 'Courier Rider',       description: 'Used courier delivery for a transaction — going the extra distance.',   icon: '🚚', color: '#0891b2', category: 'milestone' },
   { name: 'community_builder',      title: 'Community Builder',   description: 'Referred your first friend to ShareSwap — the community grows!',          icon: '🤝', color: '#2563eb', category: 'social'   },
+  { name: 'shareswap_ambassador',   title: 'ShareSwap Ambassador', description: 'Referred 20 friends — a true ambassador of the sharing community.',         icon: '🌟', color: '#4338ca', category: 'milestone' },
   { name: 'power_lister',           title: 'Power Lister',        description: 'Listed 10 items — your ShareChest is stocked for the neighbourhood!',    icon: '📚', color: '#059669', category: 'lending'  },
 ];
 
@@ -487,6 +488,7 @@ async function checkAndAwardAchievements(userId: number) {
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
     if (refs >= 1)        metKeys.push('community_builder');
     if (refs >= 5)        metKeys.push('referral_5');
+    if (refs >= 20)       metKeys.push('shareswap_ambassador');
     if (weekly >= 3)      metKeys.push('three_in_week');
     // Newly added badges
     if (borrows >= 1)     metKeys.push('first_borrow');

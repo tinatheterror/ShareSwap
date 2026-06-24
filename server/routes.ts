@@ -386,6 +386,9 @@ const ACHIEVEMENT_DEFS = [
   { name: 'five_listed',         title: 'ShareChest Curator',    description: 'Listed 5 items — your ShareChest is open for business!',        icon: '🗝️', color: '#059669', category: 'lending'  },
   { name: 'five_reviews_left',   title: 'Community Voice',       description: 'Left 5 reviews — helping neighbours make great decisions!',     icon: '💬', color: '#d97706', category: 'social'   },
   { name: 'referral_3',          title: 'Neighbour Connector',   description: 'Referred 3 friends to ShareSwap — spreading the word!',        icon: '🤝', color: '#2563eb', category: 'milestone' },
+  { name: 'fast_responder',      title: 'Fast Responder',        description: 'Completed 5+ exchanges quickly — neighbours count on your speed!', icon: '⚡', color: '#f59e0b', category: 'milestone' },
+  { name: 'five_star_neighbour', title: 'Five-Star Neighbour',   description: 'Maintained a 4.8+ star rating across 5+ reviews.',               icon: '⭐', color: '#eab308', category: 'social'   },
+  { name: 'early_member',        title: 'Early Member',          description: 'One of the founding members of the ShareSwap community.',          icon: '🚀', color: '#7c3aed', category: 'milestone' },
   { name: 'three_in_week',       title: 'Weekly Warrior',        description: 'Completed 3 transactions in a single week — on a roll!',        icon: '⚡', color: '#ea580c', category: 'milestone' },
   { name: 'five_reviews_received', title: 'Highly Rated',        description: 'Received 5 reviews — your neighbours love working with you!',  icon: '⭐', color: '#ca8a04', category: 'milestone' },
 ];
@@ -456,6 +459,31 @@ async function checkAndAwardAchievements(userId: number) {
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
     if (refs >= 3)        metKeys.push('referral_3');
     if (weekly >= 3)      metKeys.push('three_in_week');
+    // Fast Responder: 5+ completed exchanges (as owner) resolved within 48 hours
+    {
+      const [frCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(
+          eq(items.ownerId, userId),
+          or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
+          sql`${itemRequests.updatedAt} - ${itemRequests.createdAt} < interval '48 hours'`
+        ));
+      if (Number(frCount?.count || 0) >= 5) metKeys.push('fast_responder');
+    }
+    // Five-Star Neighbour: 5+ reviews with avg >= 4.8
+    {
+      const [rRow] = await db
+        .select({ cnt: sql<number>`count(*)`, avg: sql<number>`avg(${userReviews.rating})` })
+        .from(userReviews).where(eq(userReviews.reviewedUserId, userId));
+      if (Number(rRow?.cnt || 0) >= 5 && Number(rRow?.avg || 0) >= 4.8) metKeys.push('five_star_neighbour');
+    }
+    // Early Member: joined before Sept 1, 2026
+    {
+      const [u] = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1);
+      if (u?.createdAt && new Date(u.createdAt) < new Date('2026-09-01')) metKeys.push('early_member');
+    }
     if (reviewsRx >= 5)   metKeys.push('five_reviews_received');
 
     for (const key of metKeys) {
@@ -10027,6 +10055,26 @@ Respond with ONLY the category name, nothing else.`
           completedStatuses
         ));
 
+      // Fast Responder: 5+ completed requests (as owner) resolved within 48 hours
+      const [fastResponderCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .innerJoin(items, eq(items.id, itemRequests.itemId))
+        .where(and(
+          eq(items.ownerId, userId),
+          or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
+          sql`${itemRequests.updatedAt} - ${itemRequests.createdAt} < interval '48 hours'`
+        ));
+
+      // Five-Star Neighbour: 5+ reviews received with avg rating >= 4.8
+      const [ratingRow] = await db
+        .select({
+          cnt: sql<number>`count(*)`,
+          avg: sql<number>`avg(${userReviews.rating})`
+        })
+        .from(userReviews)
+        .where(eq(userReviews.reviewedUserId, userId));
+
       // Count successful referrals (friend completed first transaction)
       const [referralCount] = await db
         .select({ count: sql<number>`count(*)` })
@@ -10090,6 +10138,9 @@ Respond with ONLY the category name, nothing else.`
         reviewsReceived: Number(reviewsReceivedCount?.count || 0),
         itemsListed: Number(itemsListedCount?.count || 0),
         weeklyActivity: Number(weeklyActivityCount?.count || 0),
+        fastResponder: Number(fastResponderCount?.count || 0) >= 5,
+        fiveStarNeighbour: Number(ratingRow?.cnt || 0) >= 5 && Number(ratingRow?.avg || 0) >= 4.8,
+        earlyMember: !!(req.user.createdAt && new Date(req.user.createdAt) < new Date('2026-09-01')),
       });
     } catch (error) {
       console.error("Error fetching user stats:", error);

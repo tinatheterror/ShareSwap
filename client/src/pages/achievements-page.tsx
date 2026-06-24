@@ -41,6 +41,9 @@ interface UserStats {
   reviewsReceived: number;
   itemsListed: number;
   weeklyActivity: number;
+  fastResponder: boolean;
+  fiveStarNeighbour: boolean;
+  earlyMember: boolean;
 }
 
 interface Review {
@@ -151,6 +154,9 @@ export default function AchievementsPage() {
     { id: "generous", name: "Generous Gifter", icon: <Gift className="h-6 w-6" />, earned: (stats?.totalGifts || 0) >= 1, color: "bg-pink-100 text-pink-700 border-pink-200" },
     { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-6 w-6" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200" },
     { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-6 w-6" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200" },
+    { id: "fast-responder", name: "Fast Responder", icon: <Zap className="h-6 w-6" />, earned: stats?.fastResponder || false, color: "bg-amber-100 text-amber-700 border-amber-200" },
+    { id: "five-star-neighbour", name: "Five-Star Neighbour", icon: <Star className="h-6 w-6" />, earned: stats?.fiveStarNeighbour || false, color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-6 w-6" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200" },
     { id: "super-lender", name: "Super Lender", icon: <Package className="h-6 w-6" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200" },
     { id: "swap-star", name: "Swap Star", icon: <ArrowLeftRight className="h-6 w-6" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
     { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-6 w-6" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200" },

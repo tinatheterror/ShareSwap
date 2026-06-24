@@ -406,6 +406,7 @@ const ACHIEVEMENT_DEFS = [
   { name: 'courier_rider',          title: 'Courier Rider',       description: 'Used courier delivery for a transaction — going the extra distance.',   icon: '🚚', color: '#0891b2', category: 'milestone' },
   { name: 'community_builder',      title: 'Community Builder',   description: 'Referred your first friend to ShareSwap — the community grows!',          icon: '🤝', color: '#2563eb', category: 'social'   },
   { name: 'shareswap_ambassador',   title: 'ShareSwap Ambassador', description: 'Referred 20 friends — a true ambassador of the sharing community.',         icon: '🌟', color: '#4338ca', category: 'milestone' },
+  { name: 'coin_collector',         title: 'Coin Collector',       description: 'Accumulated 50 ShareCoins — a true sharing economy regular.',              icon: '🪙', color: '#d97706', category: 'milestone' },
   { name: 'power_lister',           title: 'Power Lister',        description: 'Listed 10 items — your ShareChest is stocked for the neighbourhood!',    icon: '📚', color: '#059669', category: 'lending'  },
 ];
 
@@ -421,7 +422,7 @@ async function checkAndAwardAchievements(userId: number) {
       [borrowRow], [itemsRow], [reviewsLeftRow], [referralRow], [weeklyRow], [reviewsReceivedRow],
       [urgentRow], [courierRow],
     ] = await Promise.all([
-      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore }).from(users).where(eq(users.id, userId)).limit(1),
+      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore, shareCoins: users.shareCoins }).from(users).where(eq(users.id, userId)).limit(1),
       // Total completed transactions (any side)
       db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
       // Items lent (as owner)
@@ -499,6 +500,7 @@ async function checkAndAwardAchievements(userId: number) {
     if (total >= 25)      metKeys.push('exchange_veteran');
     if (urgent >= 1)      metKeys.push('urgent_helper');
     if (courier >= 1)     metKeys.push('courier_rider');
+    if (Number(user?.shareCoins ?? 0) >= 50) metKeys.push('coin_collector');
     if (reviewsRx >= 10)  metKeys.push('well_loved');
     if (repScore >= 300)  metKeys.push('neighbourhood_hero');
     if (repScore >= 500 && lent >= 20) metKeys.push('shareswap_legend');

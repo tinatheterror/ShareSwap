@@ -159,16 +159,16 @@ export default function AchievementsPage() {
     : 100;
 
   const badges: BadgeItem[] = [
+    // Verification & identity
+    { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-5 w-5" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200", description: "A confirmed member of the ShareSwap community.", requirement: "Complete identity verification — selfie + government ID." },
+    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-5 w-5" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
+
     // First steps (1 transaction each — onboarding wins)
     { id: "first-share", name: "First Share", icon: <Sprout className="h-5 w-5" />, earned: (stats?.totalLent || 0) >= 1, color: "bg-green-100 text-green-700 border-green-200", description: "You opened your ShareChest and shared with a neighbour for the first time.", requirement: "Complete 1 item lending transaction." },
     { id: "first-borrow", name: "First Borrow", icon: <Heart className="h-5 w-5" />, earned: (stats?.totalBorrowed || 0) >= 1, color: "bg-sky-100 text-sky-700 border-sky-200", description: "You experienced the joy of borrowing from your community.", requirement: "Complete 1 borrow transaction." },
     { id: "first-swap", name: "Swap Starter", icon: <ArrowLeftRight className="h-5 w-5" />, earned: (stats?.totalSwaps || 0) >= 1, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You made your first trade — giving something to get something.", requirement: "Complete 1 item swap." },
     { id: "generous", name: "Generous Gifter", icon: <Gift className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 3, color: "bg-pink-100 text-pink-700 border-pink-200", description: "You give freely and often — a true spirit of generosity.", requirement: "Complete at least 3 gift transactions." },
     { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-5 w-5" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200", description: "You stepped up when a neighbour needed something urgently.", requirement: "Fulfil at least 1 urgent wishlist request." },
-
-    // Verification & identity
-    { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-5 w-5" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200", description: "A confirmed member of the ShareSwap community.", requirement: "Complete identity verification — selfie + government ID." },
-    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-5 w-5" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
 
     // Growing activity
     { id: "active-borrower", name: "Active Borrower", icon: <ShoppingBag className="h-5 w-5" />, earned: (stats?.totalBorrowed || 0) >= 5, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You make the most of what your community has to offer.", requirement: "Complete 5 borrow transactions." },

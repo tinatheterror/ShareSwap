@@ -227,7 +227,7 @@ export default function AchievementsPage() {
       <CardContent className="py-4 px-5">
         {/* Row 1: ring + score + level title */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="relative w-14 h-14 flex-shrink-0">
+          <div className="relative w-20 h-20 flex-shrink-0">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <defs>
                 <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -246,11 +246,12 @@ export default function AchievementsPage() {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-2xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
-                <p className="text-xs text-slate-500 leading-none mt-0.5">Trust Score</p>
-              </div>
+            <div>
+              <span className="text-2xl font-bold text-slate-800 tabular-nums leading-none">{displayScore}</span>
+              <p className="text-xs text-slate-500 leading-none mt-0.5">Trust Score</p>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <p className="text-sm font-semibold text-slate-700">{currentLevel.name}</p>
               <Badge className={`text-xs shrink-0 border ${[
                 "bg-slate-100 text-slate-600 border-slate-300",
                 "bg-teal-100 text-teal-700 border-teal-300",
@@ -259,7 +260,6 @@ export default function AchievementsPage() {
                 "bg-amber-100 text-amber-700 border-amber-300",
               ][currentLevelIndex] || "bg-slate-100 text-slate-600 border-slate-300"}`}>Level {currentLevelIndex + 1}</Badge>
             </div>
-            <p className="text-sm font-semibold text-slate-700 mt-1">{currentLevel.name}</p>
           </div>
         </div>
 

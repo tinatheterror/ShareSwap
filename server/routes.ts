@@ -403,7 +403,7 @@ const ACHIEVEMENT_DEFS = [
   { name: 'well_loved',             title: 'Well Loved',          description: 'Received 10 reviews — a well-known face in the community.',             icon: '👑', color: '#7c3aed', category: 'social'   },
   { name: 'neighbourhood_hero',     title: 'Neighbourhood Hero',  description: 'Reached a trust score of 300 — a pillar of the sharing community.',    icon: '🥇', color: '#ca8a04', category: 'milestone' },
   { name: 'shareswap_legend',       title: 'ShareSwap Legend',    description: 'Reached 500 trust score and lent 20+ items — the rarest badge.',       icon: '💎', color: '#b45309', category: 'milestone' },
-  { name: 'picture_perfect',        title: 'Picture Perfect',     description: 'Added a profile photo so neighbours know who they\'re sharing with.',    icon: '📸', color: '#a21caf', category: 'milestone' },
+  { name: 'courier_rider',          title: 'Courier Rider',       description: 'Used courier delivery for a transaction — going the extra distance.',   icon: '🚚', color: '#0891b2', category: 'milestone' },
   { name: 'power_lister',           title: 'Power Lister',        description: 'Listed 10 items — your ShareChest is stocked for the neighbourhood!',    icon: '📚', color: '#059669', category: 'lending'  },
 ];
 
@@ -417,9 +417,9 @@ async function checkAndAwardAchievements(userId: number) {
       [user],
       [totalRow], [lentRow], [giftRow], [swapRow],
       [borrowRow], [itemsRow], [reviewsLeftRow], [referralRow], [weeklyRow], [reviewsReceivedRow],
-      [urgentRow],
+      [urgentRow], [courierRow],
     ] = await Promise.all([
-      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore, profilePhoto: users.profilePhoto }).from(users).where(eq(users.id, userId)).limit(1),
+      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore }).from(users).where(eq(users.id, userId)).limit(1),
       // Total completed transactions (any side)
       db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
       // Items lent (as owner)
@@ -449,6 +449,8 @@ async function checkAndAwardAchievements(userId: number) {
         .innerJoin(items, eq(items.id, itemRequests.itemId))
         .innerJoin(wishlists, sql`${wishlists.itemName} ILIKE '%' || ${items.name} || '%'`)
         .where(and(eq(items.ownerId, userId), completedWhere, eq(wishlists.urgency, "urgent"))),
+      // Courier deliveries (any side)
+      db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere, eq(itemRequests.deliveryMethod, "courier"))),
     ]);
 
     const total          = Number(totalRow?.cnt ?? 0);
@@ -462,6 +464,7 @@ async function checkAndAwardAchievements(userId: number) {
     const weekly         = Number(weeklyRow?.cnt ?? 0);
     const reviewsRx      = Number(reviewsReceivedRow?.cnt ?? 0);
     const urgent         = Number(urgentRow?.cnt ?? 0);
+    const courier        = Number(courierRow?.cnt ?? 0);
     const repScore       = Number(user?.reputationScore ?? 0);
 
     const metKeys: string[] = [];
@@ -480,7 +483,6 @@ async function checkAndAwardAchievements(userId: number) {
     if (borrows >= 5)     metKeys.push('five_borrows');
     if (listed >= 5)      metKeys.push('five_listed');
     if (listed >= 10)     metKeys.push('power_lister');
-    if (user?.profilePhoto) metKeys.push('picture_perfect');
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
     if (refs >= 3)        metKeys.push('referral_3');
     if (weekly >= 3)      metKeys.push('three_in_week');
@@ -492,6 +494,7 @@ async function checkAndAwardAchievements(userId: number) {
     if (total >= 20)      metKeys.push('rising_star');
     if (total >= 25)      metKeys.push('exchange_veteran');
     if (urgent >= 1)      metKeys.push('urgent_helper');
+    if (courier >= 1)     metKeys.push('courier_rider');
     if (reviewsRx >= 10)  metKeys.push('well_loved');
     if (repScore >= 300)  metKeys.push('neighbourhood_hero');
     if (repScore >= 500 && lent >= 20) metKeys.push('shareswap_legend');
@@ -1752,8 +1755,6 @@ Respond with ONLY valid JSON in this exact format:
         message,
       });
 
-      // Check for Picture Perfect badge now that photo is set
-      checkAndAwardAchievements(userId).catch(() => {});
     } catch (error) {
       console.error("Error uploading profile photo:", error);
       res.status(500).json({ error: "Failed to upload profile photo" });
@@ -10165,6 +10166,19 @@ Respond with ONLY the category name, nothing else.`
           sql`${itemRequests.updatedAt} >= ${sevenDaysAgo}`,
         ));
 
+      // Count courier deliveries (any side)
+      const [courierCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(itemRequests)
+        .where(and(
+          or(
+            eq(itemRequests.requesterId, userId),
+            sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
+          ),
+          or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
+          eq(itemRequests.deliveryMethod, "courier"),
+        ));
+
       res.json({
         totalBorrowed: Number(borrowedCount?.count || 0),
         totalLent: Number(lentCount?.count || 0),
@@ -10180,6 +10194,7 @@ Respond with ONLY the category name, nothing else.`
         fastResponder: Number(fastResponderCount?.count || 0) >= 5,
         fiveStarNeighbour: Number(ratingRow?.cnt || 0) >= 5 && Number(ratingRow?.avg || 0) >= 4.8,
         earlyMember: !!(req.user.createdAt && new Date(req.user.createdAt) < new Date('2026-09-01')),
+        courierDeliveries: Number(courierCount?.count || 0),
       });
     } catch (error) {
       console.error("Error fetching user stats:", error);

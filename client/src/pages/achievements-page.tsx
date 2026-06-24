@@ -34,8 +34,8 @@ import {
   ShoppingBag,
   Key,
   Award,
-  Camera,
   Layers,
+  Truck,
 } from "lucide-react";
 
 interface UserStats {
@@ -53,6 +53,7 @@ interface UserStats {
   fastResponder: boolean;
   fiveStarNeighbour: boolean;
   earlyMember: boolean;
+  courierDeliveries: number;
 }
 
 interface Review {
@@ -178,7 +179,7 @@ export default function AchievementsPage() {
     { id: "generous-soul", name: "Generous Soul", icon: <HeartHandshake className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 10, color: "bg-rose-100 text-rose-700 border-rose-200", description: "Your generosity is legendary — you give freely and often.", requirement: "Complete 10 gift transactions." },
     { id: "sharechest-curator", name: "ShareChest Curator", icon: <Key className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 5, color: "bg-teal-100 text-teal-700 border-teal-200", description: "Your ShareChest is open for business — you've built a real lending library.", requirement: "List 5 or more items." },
     { id: "power-lister", name: "Power Lister", icon: <Layers className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 10, color: "bg-emerald-100 text-emerald-700 border-emerald-200", description: "Your ShareChest is stocked — 10 items ready for the neighbourhood.", requirement: "List 10 or more items." },
-    { id: "picture-perfect", name: "Picture Perfect", icon: <Camera className="h-5 w-5" />, earned: !!user?.profilePhoto, color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200", description: "Your neighbours can put a face to the name — you've added a profile photo.", requirement: "Upload a profile photo to your account." },
+    { id: "courier-rider", name: "Courier Rider", icon: <Truck className="h-5 w-5" />, earned: (stats?.courierDeliveries || 0) >= 1, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You went the extra distance — used courier delivery for a transaction.", requirement: "Complete at least 1 transaction using courier delivery." },
     { id: "weekly-warrior", name: "Weekly Warrior", icon: <Flame className="h-5 w-5" />, earned: (stats?.weeklyActivity || 0) >= 3, color: "bg-red-100 text-red-700 border-red-200", description: "You're on a sharing streak — active and engaged every week.", requirement: "Complete 3 transactions in a single week." },
     { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-5 w-5" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 3 friends who each complete their first transaction." },
 

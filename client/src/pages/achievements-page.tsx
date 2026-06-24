@@ -81,7 +81,7 @@ function BadgeCard({ badge, popoverSide = "bottom" }: { badge: BadgeItem; popove
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className={`w-full p-3 rounded-xl border-2 text-center transition-all cursor-pointer hover:scale-105 active:scale-95 ${badge.earned ? `${badge.color} shadow-md ring-1 ring-current ring-opacity-20` : "bg-slate-100 text-slate-300 border-slate-200 opacity-35 grayscale"}`}>
+        <button className={`w-full p-3 rounded-xl border-2 text-center transition-all cursor-pointer hover:scale-105 active:scale-95 ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200"}`}>
           <div className="flex justify-center mb-2 scale-150">{badge.icon}</div>
           <div className="text-[8px] font-semibold leading-tight">{badge.name}</div>
         </button>

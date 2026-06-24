@@ -377,6 +377,7 @@ const ACHIEVEMENT_DEFS = [
   { name: 'first_lend',          title: 'First Lend',            description: 'Lent an item to a neighbour for the first time.',               icon: '🤝', color: '#3b82f6', category: 'lending'  },
   { name: 'five_lends',          title: 'Generous Lender',       description: 'Lent items 5 times — your neighbours appreciate you!',          icon: '💫', color: '#3b82f6', category: 'lending'  },
   { name: 'first_gift',          title: 'Gift Giver',            description: 'Gave your first gift on ShareSwap.',                            icon: '🎁', color: '#ec4899', category: 'social'   },
+  { name: 'three_gifts',         title: 'Generous Gifter',       description: 'Gave 3 gifts — a true spirit of generosity.',                    icon: '🎀', color: '#db2777', category: 'social'   },
   { name: 'first_swap',          title: 'Swap Starter',          description: 'Completed your first item swap.',                               icon: '🔄', color: '#8b5cf6', category: 'social'   },
   { name: 'verified_member',     title: 'Verified Member',       description: 'Completed identity verification on ShareSwap.',                 icon: '✅', color: '#06b6d4', category: 'milestone' },
   // New milestone badges
@@ -468,6 +469,7 @@ async function checkAndAwardAchievements(userId: number) {
     if (lent >= 1)        metKeys.push('first_lend');
     if (lent >= 5)        metKeys.push('five_lends');
     if (gifts >= 1)       metKeys.push('first_gift');
+    if (gifts >= 3)       metKeys.push('three_gifts');
     if (swaps >= 1)       metKeys.push('first_swap');
     if (user?.isVerified) metKeys.push('verified_member');
     // Milestone-origin badges

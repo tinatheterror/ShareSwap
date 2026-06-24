@@ -331,9 +331,9 @@ export default function AchievementsPage() {
 
   const BadgesGrid = ({ cols = 5 }: { cols?: number }) => (
     <div>
-      <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
-        <Star className="h-4 w-4 text-teal-500" />Your Badges
-        <span className="text-xs font-normal text-slate-400 ml-1">Tap any badge to learn more</span>
+      <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2 flex-wrap">
+        <span className="flex items-center gap-2 whitespace-nowrap"><Star className="h-4 w-4 text-teal-500" />Your Badges</span>
+        <span className="text-xs font-normal text-slate-400 whitespace-nowrap">Tap any badge to learn more</span>
       </h2>
       <div className={`grid gap-2 ${cols === 5 ? "grid-cols-5" : "grid-cols-3"}`}>
         {badges.map((badge) => (

@@ -41,6 +41,7 @@ import {
   Camera,
   UserPlus,
   Home,
+  PartyPopper,
 } from "lucide-react";
 
 interface UserStats {
@@ -194,7 +195,7 @@ export default function AchievementsPage() {
     { id: "courier-rider", name: "Courier Rider", icon: <Truck className="h-5 w-5" />, earned: (stats?.courierDeliveries || 0) >= 1, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You went the extra distance — used courier delivery for a transaction.", requirement: "Complete at least 1 transaction using courier delivery." },
     { id: "weekly-warrior", name: "Weekly Warrior", icon: <Flame className="h-5 w-5" />, earned: (stats?.weeklyActivity || 0) >= 3, color: "bg-red-100 text-red-700 border-red-200", description: "You're on a sharing streak — active and engaged every week.", requirement: "Complete 3 transactions in a single week." },
     { id: "community-builder", name: "Community Builder", icon: <Users className="h-5 w-5" />, earned: (stats?.referrals || 0) >= 1, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You've started growing the ShareSwap community — your first referral is in.", requirement: "Refer 1 friend who completes their first transaction." },
-    { id: "welcome-wagon", name: "Welcome Wagon", icon: <UserPlus className="h-5 w-5" />, earned: stats?.welcomeWagon || false, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You helped a new neighbour take their first step into the sharing economy.", requirement: "Complete a transaction with a user who joined in the last 30 days." },
+    { id: "welcome-wagon", name: "Welcome Wagon", icon: <PartyPopper className="h-5 w-5" />, earned: stats?.welcomeWagon || false, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You helped a new neighbour take their first step into the sharing economy.", requirement: "Complete a transaction with a user who joined in the last 30 days." },
     { id: "neighbour-connector", name: "Neighbour Connector", icon: <span className="relative inline-flex"><Users className="h-5 w-5" /><Star className="h-2.5 w-2.5 absolute top-1 -right-2 fill-current" /></span>, earned: (stats?.referrals || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 5 friends who each complete their first transaction." },
 
     // Lending & handoffs

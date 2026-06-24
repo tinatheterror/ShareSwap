@@ -83,7 +83,7 @@ const LEVELS = [
   { name: "Newcomer", minScore: 0, perks: ["Access to community ShareChest", "Browse and request items"], color: "from-slate-400 to-slate-500" },
   { name: "Neighbour", minScore: 50, perks: ["10% off trust deposits", "Priority in item requests"], color: "from-teal-400 to-teal-500" },
   { name: "Trusted Member", minScore: 150, perks: ["20% off trust deposits", "Access to premium items"], color: "from-teal-500 to-emerald-500" },
-  { name: "Community Pillar", minScore: 300, perks: ["30% off trust deposits", "Priority item access"], color: "from-emerald-500 to-green-500" },
+  { name: "Community Pillar", minScore: 300, perks: ["30% off trust deposits"], color: "from-emerald-500 to-green-500" },
   { name: "ShareSwap Champion", minScore: 500, perks: ["No deposits required", "Verified badge", "Community ambassador status"], color: "from-amber-400 to-yellow-500" },
 ];
 

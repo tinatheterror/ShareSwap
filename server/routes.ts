@@ -403,6 +403,8 @@ const ACHIEVEMENT_DEFS = [
   { name: 'well_loved',             title: 'Well Loved',          description: 'Received 10 reviews — a well-known face in the community.',             icon: '👑', color: '#7c3aed', category: 'social'   },
   { name: 'neighbourhood_hero',     title: 'Neighbourhood Hero',  description: 'Reached a trust score of 300 — a pillar of the sharing community.',    icon: '🥇', color: '#ca8a04', category: 'milestone' },
   { name: 'shareswap_legend',       title: 'ShareSwap Legend',    description: 'Reached 500 trust score and lent 20+ items — the rarest badge.',       icon: '💎', color: '#b45309', category: 'milestone' },
+  { name: 'picture_perfect',        title: 'Picture Perfect',     description: 'Added a profile photo so neighbours know who they\'re sharing with.',    icon: '📸', color: '#a21caf', category: 'milestone' },
+  { name: 'power_lister',           title: 'Power Lister',        description: 'Listed 10 items — your ShareChest is stocked for the neighbourhood!',    icon: '📚', color: '#059669', category: 'lending'  },
 ];
 
 async function checkAndAwardAchievements(userId: number) {
@@ -417,7 +419,7 @@ async function checkAndAwardAchievements(userId: number) {
       [borrowRow], [itemsRow], [reviewsLeftRow], [referralRow], [weeklyRow], [reviewsReceivedRow],
       [urgentRow],
     ] = await Promise.all([
-      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore }).from(users).where(eq(users.id, userId)).limit(1),
+      db.select({ isVerified: users.isVerified, reputationScore: users.reputationScore, profilePhoto: users.profilePhoto }).from(users).where(eq(users.id, userId)).limit(1),
       // Total completed transactions (any side)
       db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(or(eq(itemRequests.requesterId, userId), ownerItemsSub), completedWhere)),
       // Items lent (as owner)
@@ -477,6 +479,8 @@ async function checkAndAwardAchievements(userId: number) {
     if (gifts >= 10)      metKeys.push('ten_gifts');
     if (borrows >= 5)     metKeys.push('five_borrows');
     if (listed >= 5)      metKeys.push('five_listed');
+    if (listed >= 10)     metKeys.push('power_lister');
+    if (user?.profilePhoto) metKeys.push('picture_perfect');
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
     if (refs >= 3)        metKeys.push('referral_3');
     if (weekly >= 3)      metKeys.push('three_in_week');
@@ -500,7 +504,7 @@ async function checkAndAwardAchievements(userId: number) {
         .where(and(
           eq(items.ownerId, userId),
           or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
-          sql`${itemRequests.updatedAt} < ${itemRequests.createdAt} + interval '48 hours'`
+          sql`item_requests.updated_at < item_requests.created_at + interval '48 hours'`
         ));
       if (Number(frCount?.count || 0) >= 5) metKeys.push('fast_responder');
     }
@@ -10095,7 +10099,7 @@ Respond with ONLY the category name, nothing else.`
         .where(and(
           eq(items.ownerId, userId),
           or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
-          sql`${itemRequests.updatedAt} < ${itemRequests.createdAt} + interval '48 hours'`
+          sql`item_requests.updated_at < item_requests.created_at + interval '48 hours'`
         ));
 
       // Five-Star Neighbour: 5+ reviews received with avg rating >= 4.8

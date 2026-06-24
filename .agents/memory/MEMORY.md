@@ -1,0 +1,1 @@
+- [Drizzle sql template column refs](drizzle-sql-template-cols.md) — never use Drizzle column objects (e.g. `table.col`) inside `sql` tagged templates for inlined SQL expressions; use raw SQL strings instead.

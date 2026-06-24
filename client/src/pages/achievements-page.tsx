@@ -27,6 +27,13 @@ import {
   MessageSquare,
   Quote,
   Trophy,
+  Flame,
+  Timer,
+  Repeat2,
+  HeartHandshake,
+  ShoppingBag,
+  Key,
+  Award,
 } from "lucide-react";
 
 interface UserStats {
@@ -164,27 +171,27 @@ export default function AchievementsPage() {
     { id: "early-member", name: "Early Member", icon: <Sparkles className="h-5 w-5" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
 
     // Growing activity
-    { id: "active-borrower", name: "Active Borrower", icon: <Package className="h-5 w-5" />, earned: (stats?.totalBorrowed || 0) >= 5, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You make the most of what your community has to offer.", requirement: "Complete 5 borrow transactions." },
-    { id: "swap-star", name: "Swap Star", icon: <ArrowLeftRight className="h-5 w-5" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You've mastered the art of the swap — trading fairly and often.", requirement: "Complete 5 item swaps." },
-    { id: "generous-soul", name: "Generous Soul", icon: <Heart className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 10, color: "bg-rose-100 text-rose-700 border-rose-200", description: "Your generosity is legendary — you give freely and often.", requirement: "Complete 10 gift transactions." },
-    { id: "sharechest-curator", name: "ShareChest Curator", icon: <Gem className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 5, color: "bg-teal-100 text-teal-700 border-teal-200", description: "Your ShareChest is open for business — you've built a real lending library.", requirement: "List 5 or more items." },
-    { id: "weekly-warrior", name: "Weekly Warrior", icon: <Zap className="h-5 w-5" />, earned: (stats?.weeklyActivity || 0) >= 3, color: "bg-red-100 text-red-700 border-red-200", description: "You're on a sharing streak — active and engaged every week.", requirement: "Complete 3 transactions in a single week." },
+    { id: "active-borrower", name: "Active Borrower", icon: <ShoppingBag className="h-5 w-5" />, earned: (stats?.totalBorrowed || 0) >= 5, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You make the most of what your community has to offer.", requirement: "Complete 5 borrow transactions." },
+    { id: "swap-star", name: "Swap Star", icon: <Repeat2 className="h-5 w-5" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You've mastered the art of the swap — trading fairly and often.", requirement: "Complete 5 item swaps." },
+    { id: "generous-soul", name: "Generous Soul", icon: <HeartHandshake className="h-5 w-5" />, earned: (stats?.totalGifts || 0) >= 10, color: "bg-rose-100 text-rose-700 border-rose-200", description: "Your generosity is legendary — you give freely and often.", requirement: "Complete 10 gift transactions." },
+    { id: "sharechest-curator", name: "ShareChest Curator", icon: <Key className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 5, color: "bg-teal-100 text-teal-700 border-teal-200", description: "Your ShareChest is open for business — you've built a real lending library.", requirement: "List 5 or more items." },
+    { id: "weekly-warrior", name: "Weekly Warrior", icon: <Flame className="h-5 w-5" />, earned: (stats?.weeklyActivity || 0) >= 3, color: "bg-red-100 text-red-700 border-red-200", description: "You're on a sharing streak — active and engaged every week.", requirement: "Complete 3 transactions in a single week." },
     { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-5 w-5" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 3 friends who each complete their first transaction." },
 
     // Lending & handoffs
     { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You return items on time and treat neighbours' belongings with care.", requirement: "Complete 5 successful item exchanges." },
-    { id: "trusted-exchanger", name: "Trusted Exchanger", icon: <Handshake className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 10, color: "bg-sky-100 text-sky-800 border-sky-200", description: "Neighbours know they can trust you to follow through every time.", requirement: "Complete 10 successful item exchanges." },
+    { id: "trusted-exchanger", name: "Trusted Exchanger", icon: <Shield className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 10, color: "bg-sky-100 text-sky-800 border-sky-200", description: "Neighbours know they can trust you to follow through every time.", requirement: "Complete 10 successful item exchanges." },
     { id: "super-lender", name: "Super Lender", icon: <Package className="h-5 w-5" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "Your ShareChest is a community staple — neighbours borrow from you regularly.", requirement: "Lend out items in 10 completed transactions." },
     { id: "rising-star", name: "Rising Star", icon: <TrendingUp className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 20, color: "bg-orange-100 text-orange-700 border-orange-200", description: "You're on a roll — an exchange veteran that neighbours rely on.", requirement: "Complete 20 successful item exchanges." },
     { id: "exchange-veteran", name: "Exchange Veteran", icon: <Trophy className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 25, color: "bg-amber-100 text-amber-700 border-amber-200", description: "25 exchanges — you've built something most people only dream about.", requirement: "Complete 25 successful item exchanges." },
 
     // Reviews
     { id: "community-voice", name: "Community Voice", icon: <MessageSquare className="h-5 w-5" />, earned: (stats?.reviewsLeft || 0) >= 5, color: "bg-orange-100 text-orange-700 border-orange-200", description: "Your feedback helps neighbours make great decisions.", requirement: "Leave 5 reviews for other members." },
-    { id: "highly-rated", name: "Highly Rated", icon: <Star className="h-5 w-5" />, earned: (stats?.reviewsReceived || 0) >= 5, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your neighbours appreciate the experience of working with you.", requirement: "Receive 5 or more reviews." },
+    { id: "highly-rated", name: "Highly Rated", icon: <Award className="h-5 w-5" />, earned: (stats?.reviewsReceived || 0) >= 5, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your neighbours appreciate the experience of working with you.", requirement: "Receive 5 or more reviews." },
     { id: "well-loved", name: "Well Loved", icon: <Crown className="h-5 w-5" />, earned: (stats?.reviewsReceived || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "A well-known and trusted face in the community.", requirement: "Receive 10 or more reviews." },
 
     // Performance & prestige
-    { id: "fast-responder", name: "Fast Responder", icon: <Zap className="h-5 w-5" />, earned: stats?.fastResponder || false, color: "bg-lime-100 text-lime-700 border-lime-200", description: "Neighbours know they can count on you to move quickly.", requirement: "Complete 5 exchanges as a lender within 48 hours of the request." },
+    { id: "fast-responder", name: "Fast Responder", icon: <Timer className="h-5 w-5" />, earned: stats?.fastResponder || false, color: "bg-lime-100 text-lime-700 border-lime-200", description: "Neighbours know they can count on you to move quickly.", requirement: "Complete 5 exchanges as a lender within 48 hours of the request." },
     { id: "five-star-neighbour", name: "Five-Star Neighbour", icon: <Star className="h-5 w-5" />, earned: stats?.fiveStarNeighbour || false, color: "bg-yellow-100 text-yellow-800 border-yellow-300", description: "Your neighbours consistently rate their experience with you at the highest level.", requirement: "Receive 5+ reviews with an average rating of 4.8 stars or above." },
     { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-5 w-5" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your reputation speaks for itself — a pillar of the local sharing community.", requirement: "Reach a trust score of 300 or above." },
     { id: "shareswap-legend", name: "ShareSwap Legend", icon: <Gem className="h-5 w-5" />, earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20, color: "bg-gradient-to-br from-amber-100 to-yellow-100 text-amber-700 border-amber-300", description: "The rarest badge on the platform. You've built something extraordinary.", requirement: "Reach a trust score of 500 and lend out 20+ items." },

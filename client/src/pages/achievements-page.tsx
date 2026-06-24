@@ -434,18 +434,12 @@ export default function AchievementsPage() {
                         <div className="text-[10px] font-medium leading-tight">{badge.name}</div>
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent side="left" className="w-60 p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`p-1.5 rounded-lg border ${badge.earned ? badge.color : "bg-slate-100 text-slate-400 border-slate-200"}`}>{badge.icon}</div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800 leading-tight">{badge.name}</p>
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.earned ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-500"}`}>{badge.earned ? "Earned" : "Locked"}</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-600 mb-2">{badge.description}</p>
-                      <div className="bg-slate-50 rounded p-2">
-                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mb-0.5">How to earn</p>
-                        <p className="text-xs text-slate-700">{badge.requirement}</p>
+                    <PopoverContent side="bottom" align="center" className="w-44 p-2.5">
+                      <p className="text-xs font-semibold text-slate-800 mb-1">{badge.name}</p>
+                      <p className="text-[11px] text-slate-600 mb-1.5 leading-snug">{badge.description}</p>
+                      <div className="bg-slate-50 rounded px-2 py-1.5">
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-0.5">How to earn</p>
+                        <p className="text-[11px] text-slate-700 leading-snug">{badge.requirement}</p>
                       </div>
                     </PopoverContent>
                   </Popover>

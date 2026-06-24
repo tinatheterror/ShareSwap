@@ -500,7 +500,10 @@ async function checkAndAwardAchievements(userId: number) {
     if (total >= 25)      metKeys.push('exchange_veteran');
     if (urgent >= 1)      metKeys.push('urgent_helper');
     if (courier >= 1)     metKeys.push('courier_rider');
-    if (Number(user?.shareCoins ?? 0) >= 50) metKeys.push('coin_collector');
+    {
+      const [earnedRow] = await db.select({ total: sql<number>`coalesce(sum(amount), 0)` }).from(shareCoinsTransactions).where(and(eq(shareCoinsTransactions.userId, userId), sql`amount > 0`));
+      if (Number(earnedRow?.total ?? 0) >= 50) metKeys.push('coin_collector');
+    }
     if (reviewsRx >= 10)  metKeys.push('well_loved');
     if (repScore >= 300)  metKeys.push('neighbourhood_hero');
     if (repScore >= 500 && lent >= 20) metKeys.push('shareswap_legend');
@@ -10185,6 +10188,12 @@ Respond with ONLY the category name, nothing else.`
           eq(itemRequests.deliveryMethod, "courier"),
         ));
 
+      // Total ShareCoins ever earned (sum of positive transactions — unaffected by spending)
+      const [earnedCoinsRow] = await db
+        .select({ total: sql<number>`coalesce(sum(amount), 0)` })
+        .from(shareCoinsTransactions)
+        .where(and(eq(shareCoinsTransactions.userId, userId), sql`amount > 0`));
+
       res.json({
         totalBorrowed: Number(borrowedCount?.count || 0),
         totalLent: Number(lentCount?.count || 0),
@@ -10201,6 +10210,7 @@ Respond with ONLY the category name, nothing else.`
         fiveStarNeighbour: Number(ratingRow?.cnt || 0) >= 5 && Number(ratingRow?.avg || 0) >= 4.8,
         earlyMember: !!(req.user.createdAt && new Date(req.user.createdAt) < new Date('2026-09-01')),
         courierDeliveries: Number(courierCount?.count || 0),
+        totalShareCoinsEarned: Number(earnedCoinsRow?.total || 0),
       });
     } catch (error) {
       console.error("Error fetching user stats:", error);

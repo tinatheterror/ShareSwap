@@ -17,6 +17,7 @@ import {
   Heart,
   Sparkles,
   Star,
+  User,
   Users,
   ArrowLeftRight,
   Crown,
@@ -163,7 +164,7 @@ export default function AchievementsPage() {
   const badges: BadgeItem[] = [
     // Verification & identity
     { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-5 w-5" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200", description: "A confirmed member of the ShareSwap community.", requirement: "Complete identity verification — selfie + government ID." },
-    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-5 w-5" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
+    { id: "early-member", name: "Early Member", icon: <span className="relative inline-flex"><User className="h-5 w-5" /><Crown className="h-2.5 w-2.5 absolute -top-1 -right-1 fill-current" /></span>, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
 
     // First steps (1 transaction each — onboarding wins)
     { id: "first-share", name: "First Share", icon: <Sprout className="h-5 w-5" />, earned: (stats?.totalLent || 0) >= 1, color: "bg-green-100 text-green-700 border-green-200", description: "You opened your ShareChest and shared with a neighbour for the first time.", requirement: "Complete 1 item lending transaction." },

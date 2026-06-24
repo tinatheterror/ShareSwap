@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearch } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/shared/navbar";
 import { useAuth } from "@/hooks/use-auth";
@@ -149,19 +150,19 @@ export default function AchievementsPage() {
     : 100;
 
   const badges = [
-    { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-6 w-6" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200" },
-    { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-6 w-6" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200" },
-    { id: "generous", name: "Generous Gifter", icon: <Gift className="h-6 w-6" />, earned: (stats?.totalGifts || 0) >= 1, color: "bg-pink-100 text-pink-700 border-pink-200" },
-    { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-6 w-6" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200" },
-    { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-6 w-6" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200" },
-    { id: "fast-responder", name: "Fast Responder", icon: <Zap className="h-6 w-6" />, earned: stats?.fastResponder || false, color: "bg-amber-100 text-amber-700 border-amber-200" },
-    { id: "five-star-neighbour", name: "Five-Star Neighbour", icon: <Star className="h-6 w-6" />, earned: stats?.fiveStarNeighbour || false, color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-6 w-6" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200" },
-    { id: "super-lender", name: "Super Lender", icon: <Package className="h-6 w-6" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200" },
-    { id: "swap-star", name: "Swap Star", icon: <ArrowLeftRight className="h-6 w-6" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-    { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-6 w-6" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
-    { id: "rising-star", name: "Rising Star", icon: <TrendingUp className="h-6 w-6" />, earned: (stats?.successfulHandoffs || 0) >= 20, color: "bg-orange-100 text-orange-700 border-orange-200" },
-    { id: "shareswap-legend", name: "ShareSwap Legend", icon: <Gem className="h-6 w-6" />, earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20, color: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-300" },
+    { id: "verified", name: "Verified Neighbour", icon: <BadgeCheck className="h-6 w-6" />, earned: user?.isVerified || false, color: "bg-teal-100 text-teal-700 border-teal-200", description: "A confirmed member of the ShareSwap community.", requirement: "Complete identity verification — selfie + government ID." },
+    { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-6 w-6" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You return items on time and treat neighbours' belongings with care.", requirement: "Complete 5 successful item exchanges." },
+    { id: "generous", name: "Generous Gifter", icon: <Gift className="h-6 w-6" />, earned: (stats?.totalGifts || 0) >= 1, color: "bg-pink-100 text-pink-700 border-pink-200", description: "You've given something to the community with no strings attached.", requirement: "Complete at least 1 gift transaction." },
+    { id: "urgent", name: "Urgent Helper", icon: <Zap className="h-6 w-6" />, earned: (stats?.helpedUrgent || 0) >= 1, color: "bg-amber-100 text-amber-700 border-amber-200", description: "You stepped up when a neighbour needed something urgently.", requirement: "Fulfil at least 1 urgent wishlist request." },
+    { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-6 w-6" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 3 friends who each complete their first transaction." },
+    { id: "fast-responder", name: "Fast Responder", icon: <Zap className="h-6 w-6" />, earned: stats?.fastResponder || false, color: "bg-amber-100 text-amber-700 border-amber-200", description: "Neighbours know they can count on you to move quickly.", requirement: "Complete 5 exchanges as a lender within 48 hours of the request." },
+    { id: "five-star-neighbour", name: "Five-Star Neighbour", icon: <Star className="h-6 w-6" />, earned: stats?.fiveStarNeighbour || false, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your neighbours consistently rate their experience with you at the highest level.", requirement: "Receive 5+ reviews with an average rating of 4.8 stars or above." },
+    { id: "early-member", name: "Early Member", icon: <Sparkles className="h-6 w-6" />, earned: stats?.earlyMember || false, color: "bg-violet-100 text-violet-700 border-violet-200", description: "You were here from the beginning — a founding member of the ShareSwap neighbourhood.", requirement: "Joined during the ShareSwap beta period." },
+    { id: "super-lender", name: "Super Lender", icon: <Package className="h-6 w-6" />, earned: (stats?.totalLent || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "Your ShareChest is a community staple — neighbours borrow from you regularly.", requirement: "Lend out items in 10 completed transactions." },
+    { id: "swap-star", name: "Swap Star", icon: <ArrowLeftRight className="h-6 w-6" />, earned: (stats?.totalSwaps || 0) >= 5, color: "bg-indigo-100 text-indigo-700 border-indigo-200", description: "You've mastered the art of the swap — trading fairly and often.", requirement: "Complete 5 item swaps." },
+    { id: "neighbourhood-hero", name: "Neighbourhood Hero", icon: <Medal className="h-6 w-6" />, earned: reputationScore >= 300, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your reputation speaks for itself — a pillar of the local sharing community.", requirement: "Reach a trust score of 300 or above." },
+    { id: "rising-star", name: "Rising Star", icon: <TrendingUp className="h-6 w-6" />, earned: (stats?.successfulHandoffs || 0) >= 20, color: "bg-orange-100 text-orange-700 border-orange-200", description: "You're on a roll — an exchange veteran that neighbours rely on.", requirement: "Complete 20 successful item exchanges." },
+    { id: "shareswap-legend", name: "ShareSwap Legend", icon: <Gem className="h-6 w-6" />, earned: reputationScore >= 500 && (stats?.totalLent || 0) >= 20, color: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-300", description: "The rarest badge on the platform. You've built something extraordinary.", requirement: "Reach a trust score of 500 and lend out 20+ items." },
   ];
 
   const milestones: MilestoneItem[] = [
@@ -360,10 +361,28 @@ export default function AchievementsPage() {
               </h2>
               <div className="space-y-2">
                 {badges.map((badge) => (
-                  <div key={badge.id} className={`p-3 rounded-lg border-2 text-center transition-all ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"}`}>
-                    <div className="flex justify-center mb-1">{badge.icon}</div>
-                    <div className="text-xs font-medium leading-tight">{badge.name}</div>
-                  </div>
+                  <Popover key={badge.id}>
+                    <PopoverTrigger asChild>
+                      <button className={`w-full p-3 rounded-lg border-2 text-center transition-all cursor-pointer hover:opacity-80 ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"}`}>
+                        <div className="flex justify-center mb-1">{badge.icon}</div>
+                        <div className="text-xs font-medium leading-tight">{badge.name}</div>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="left" className="w-64 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`p-1.5 rounded-lg border ${badge.earned ? badge.color : "bg-slate-100 text-slate-400 border-slate-200"}`}>{badge.icon}</div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800 leading-tight">{badge.name}</p>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.earned ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-500"}`}>{badge.earned ? "Earned" : "Locked"}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 mb-2">{badge.description}</p>
+                      <div className="bg-slate-50 rounded p-2">
+                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mb-0.5">How to earn</p>
+                        <p className="text-xs text-slate-700">{badge.requirement}</p>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 ))}
               </div>
             </div>
@@ -408,10 +427,28 @@ export default function AchievementsPage() {
               </h2>
               <div className="space-y-2">
                 {badges.map((badge) => (
-                  <div key={badge.id} className={`p-2 rounded-lg border-2 text-center transition-all ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"}`}>
-                    <div className="flex justify-center mb-1">{badge.icon}</div>
-                    <div className="text-[10px] font-medium leading-tight">{badge.name}</div>
-                  </div>
+                  <Popover key={badge.id}>
+                    <PopoverTrigger asChild>
+                      <button className={`w-full p-2 rounded-lg border-2 text-center transition-all cursor-pointer hover:opacity-80 ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200 opacity-50"}`}>
+                        <div className="flex justify-center mb-1">{badge.icon}</div>
+                        <div className="text-[10px] font-medium leading-tight">{badge.name}</div>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="left" className="w-60 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={`p-1.5 rounded-lg border ${badge.earned ? badge.color : "bg-slate-100 text-slate-400 border-slate-200"}`}>{badge.icon}</div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800 leading-tight">{badge.name}</p>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${badge.earned ? "bg-teal-100 text-teal-700" : "bg-slate-100 text-slate-500"}`}>{badge.earned ? "Earned" : "Locked"}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 mb-2">{badge.description}</p>
+                      <div className="bg-slate-50 rounded p-2">
+                        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide mb-0.5">How to earn</p>
+                        <p className="text-xs text-slate-700">{badge.requirement}</p>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 ))}
               </div>
             </div>

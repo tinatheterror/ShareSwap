@@ -33,7 +33,6 @@ import {
   HeartHandshake,
   ShoppingBag,
   Key,
-  Award,
   Layers,
   Truck,
 } from "lucide-react";
@@ -181,7 +180,8 @@ export default function AchievementsPage() {
     { id: "power-lister", name: "Power Lister", icon: <Layers className="h-5 w-5" />, earned: (stats?.itemsListed || 0) >= 10, color: "bg-emerald-100 text-emerald-700 border-emerald-200", description: "Your ShareChest is stocked — 10 items ready for the neighbourhood.", requirement: "List 10 or more items." },
     { id: "courier-rider", name: "Courier Rider", icon: <Truck className="h-5 w-5" />, earned: (stats?.courierDeliveries || 0) >= 1, color: "bg-cyan-100 text-cyan-700 border-cyan-200", description: "You went the extra distance — used courier delivery for a transaction.", requirement: "Complete at least 1 transaction using courier delivery." },
     { id: "weekly-warrior", name: "Weekly Warrior", icon: <Flame className="h-5 w-5" />, earned: (stats?.weeklyActivity || 0) >= 3, color: "bg-red-100 text-red-700 border-red-200", description: "You're on a sharing streak — active and engaged every week.", requirement: "Complete 3 transactions in a single week." },
-    { id: "neighbour-connector", name: "Neighbour Connector", icon: <Users className="h-5 w-5" />, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 3 friends who each complete their first transaction." },
+    { id: "community-builder", name: "Community Builder", icon: <Users className="h-5 w-5" />, earned: (stats?.referrals || 0) >= 1, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You've started growing the ShareSwap community — your first referral is in.", requirement: "Refer 1 friend who completes their first transaction." },
+    { id: "neighbour-connector", name: "Neighbour Connector", icon: <span className="relative inline-flex"><Users className="h-5 w-5" /><Star className="h-2.5 w-2.5 absolute -top-1 -right-1 fill-current" /></span>, earned: (stats?.referrals || 0) >= 3, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You're actively growing the ShareSwap community around you.", requirement: "Refer 3 friends who each complete their first transaction." },
 
     // Lending & handoffs
     { id: "reliable", name: "Reliable Borrower", icon: <Handshake className="h-5 w-5" />, earned: (stats?.successfulHandoffs || 0) >= 5, color: "bg-blue-100 text-blue-700 border-blue-200", description: "You return items on time and treat neighbours' belongings with care.", requirement: "Complete 5 successful item exchanges." },
@@ -192,7 +192,6 @@ export default function AchievementsPage() {
 
     // Reviews
     { id: "community-voice", name: "Community Voice", icon: <MessageSquare className="h-5 w-5" />, earned: (stats?.reviewsLeft || 0) >= 5, color: "bg-orange-100 text-orange-700 border-orange-200", description: "Your feedback helps neighbours make great decisions.", requirement: "Leave 5 reviews for other members." },
-    { id: "highly-rated", name: "Highly Rated", icon: <Award className="h-5 w-5" />, earned: (stats?.reviewsReceived || 0) >= 5, color: "bg-yellow-100 text-yellow-700 border-yellow-200", description: "Your neighbours appreciate the experience of working with you.", requirement: "Receive 5 or more reviews." },
     { id: "well-loved", name: "Well Loved", icon: <Crown className="h-5 w-5" />, earned: (stats?.reviewsReceived || 0) >= 10, color: "bg-purple-100 text-purple-700 border-purple-200", description: "A well-known and trusted face in the community.", requirement: "Receive 10 or more reviews." },
 
     // Performance & prestige

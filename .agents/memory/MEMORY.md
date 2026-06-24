@@ -1,1 +1,2 @@
 - [Drizzle sql template column refs](drizzle-sql-template-cols.md) — never use Drizzle column objects (e.g. `table.col`) inside `sql` tagged templates for inlined SQL expressions; use raw SQL strings instead.
+- [item_requests schema notes](item-requests-schema.md) — table has no `updated_at`; use `created_at` for age checks, `accepted_at` for response-time checks.

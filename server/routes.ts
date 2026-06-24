@@ -404,6 +404,7 @@ const ACHIEVEMENT_DEFS = [
   { name: 'neighbourhood_hero',     title: 'Neighbourhood Hero',  description: 'Reached a trust score of 300 — a pillar of the sharing community.',    icon: '🥇', color: '#ca8a04', category: 'milestone' },
   { name: 'shareswap_legend',       title: 'ShareSwap Legend',    description: 'Reached 500 trust score and lent 20+ items — the rarest badge.',       icon: '💎', color: '#b45309', category: 'milestone' },
   { name: 'courier_rider',          title: 'Courier Rider',       description: 'Used courier delivery for a transaction — going the extra distance.',   icon: '🚚', color: '#0891b2', category: 'milestone' },
+  { name: 'community_builder',      title: 'Community Builder',   description: 'Referred your first friend to ShareSwap — the community grows!',          icon: '🤝', color: '#2563eb', category: 'social'   },
   { name: 'power_lister',           title: 'Power Lister',        description: 'Listed 10 items — your ShareChest is stocked for the neighbourhood!',    icon: '📚', color: '#059669', category: 'lending'  },
 ];
 
@@ -440,7 +441,7 @@ async function checkAndAwardAchievements(userId: number) {
       db.select({ cnt: sql<number>`count(*)` }).from(itemRequests).where(and(
         or(eq(itemRequests.requesterId, userId), ownerItemsSub),
         completedWhere,
-        sql`${itemRequests.updatedAt} >= ${sevenDaysAgo}`,
+        sql`item_requests.created_at >= ${sevenDaysAgo}`,
       )),
       // Reviews received
       db.select({ cnt: sql<number>`count(*)` }).from(userReviews).where(eq(userReviews.reviewedUserId, userId)),
@@ -484,6 +485,7 @@ async function checkAndAwardAchievements(userId: number) {
     if (listed >= 5)      metKeys.push('five_listed');
     if (listed >= 10)     metKeys.push('power_lister');
     if (reviewsLeft >= 5) metKeys.push('five_reviews_left');
+    if (refs >= 1)        metKeys.push('community_builder');
     if (refs >= 3)        metKeys.push('referral_3');
     if (weekly >= 3)      metKeys.push('three_in_week');
     // Newly added badges
@@ -507,7 +509,7 @@ async function checkAndAwardAchievements(userId: number) {
         .where(and(
           eq(items.ownerId, userId),
           or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
-          sql`item_requests.updated_at < item_requests.created_at + interval '48 hours'`
+          sql`item_requests.accepted_at < item_requests.created_at + interval '48 hours'`
         ));
       if (Number(frCount?.count || 0) >= 5) metKeys.push('fast_responder');
     }
@@ -10103,7 +10105,7 @@ Respond with ONLY the category name, nothing else.`
         .where(and(
           eq(items.ownerId, userId),
           or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
-          sql`item_requests.updated_at < item_requests.created_at + interval '48 hours'`
+          sql`item_requests.accepted_at < item_requests.created_at + interval '48 hours'`
         ));
 
       // Five-Star Neighbour: 5+ reviews received with avg rating >= 4.8
@@ -10163,7 +10165,7 @@ Respond with ONLY the category name, nothing else.`
             sql`${itemRequests.itemId} IN (SELECT id FROM items WHERE owner_id = ${userId})`
           ),
           or(eq(itemRequests.status, "COMPLETED"), eq(itemRequests.status, "COMPLETED_EARLY")),
-          sql`${itemRequests.updatedAt} >= ${sevenDaysAgo}`,
+          sql`item_requests.created_at >= ${sevenDaysAgo}`,
         ));
 
       // Count courier deliveries (any side)

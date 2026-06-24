@@ -289,9 +289,9 @@ export default function AchievementsPage() {
             {earnedBadges.length > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
                 {earnedBadges.map((b) => (
-                  <div key={b.id} title={b.name} className={`w-6 h-6 rounded-full flex items-center justify-center border shrink-0 ${b.color}`}>
-                    <span className="scale-[0.55] flex items-center justify-center">{b.icon}</span>
-                  </div>
+                  <span key={b.id} title={b.name} className={`flex items-center justify-center shrink-0 ${b.color.split(' ').find(c => c.startsWith('text-')) || 'text-slate-600'}`}>
+                    {b.icon}
+                  </span>
                 ))}
               </div>
             )}

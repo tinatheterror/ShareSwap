@@ -89,13 +89,42 @@ const LEVELS = [
 
 type BadgeItem = { id: string; name: string; icon: React.ReactNode; earned: boolean; color: string; description: string; requirement: string };
 
+const STICKER_BG: Record<string, string> = {
+  teal:    "bg-teal-500",
+  violet:  "bg-violet-500",
+  green:   "bg-green-500",
+  sky:     "bg-sky-400",
+  indigo:  "bg-indigo-500",
+  pink:    "bg-pink-400",
+  amber:   "bg-amber-400",
+  rose:    "bg-rose-400",
+  cyan:    "bg-cyan-400",
+  red:     "bg-red-400",
+  blue:    "bg-blue-500",
+  emerald: "bg-emerald-500",
+  purple:  "bg-purple-500",
+  orange:  "bg-orange-400",
+  lime:    "bg-lime-500",
+  yellow:  "bg-yellow-400",
+  slate:   "bg-slate-400",
+};
+
+function getStickerBg(colorClass: string): string {
+  const match = colorClass.match(/(?:bg-|from-)(\w+)-\d+/);
+  const name = match?.[1] || "slate";
+  return STICKER_BG[name] || "bg-slate-400";
+}
+
 function BadgeCard({ badge, popoverSide = "bottom" }: { badge: BadgeItem; popoverSide?: "bottom" | "left" | "right" | "top" }) {
+  const stickerBg = getStickerBg(badge.color);
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className={`w-full p-3 rounded-xl border-2 text-center transition-all cursor-pointer hover:scale-105 active:scale-95 ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200"}`}>
-          <div className="flex justify-center mb-2 scale-150">{badge.icon}</div>
-          <div className="text-[8px] font-semibold leading-tight">{badge.name}</div>
+        <button
+          className={`w-full aspect-square flex flex-col items-center justify-center gap-1 rounded-2xl border-[3px] border-white shadow-md transition-all cursor-pointer hover:scale-105 hover:shadow-lg active:scale-95 text-white ${badge.earned ? stickerBg : "bg-slate-200 grayscale opacity-50"}`}
+        >
+          <div className="flex items-center justify-center scale-[1.4]">{badge.icon}</div>
+          <div className="text-[7px] font-bold leading-tight text-center px-1 uppercase tracking-wide opacity-90">{badge.name}</div>
         </button>
       </PopoverTrigger>
       <PopoverContent side={popoverSide} align="center" className="w-56 p-3 z-50">

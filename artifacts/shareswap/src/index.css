@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-bg: #F3F4F6;
+}
+
+/* iOS Safe Area utilities */
+@supports (padding: env(safe-area-inset-top)) {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    background-color: var(--app-bg) !important;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  body,
+  #root {
+    background-color: var(--app-bg) !important;
+    overflow-x: hidden;
+  }
+
+  body {
+    @apply font-sans antialiased text-foreground m-0;
+  }
+}
+
+@layer components {
+  .layout-container {
+    @apply w-full max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .layout-stack {
+    @apply flex flex-col gap-4 md:gap-6 lg:gap-8;
+  }
+  
+  .layout-grid {
+    @apply grid gap-4 md:gap-6 lg:gap-8;
+  }
+  
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8;
+  }
+  
+  .heading-xl {
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight;
+  }
+  
+  .heading-lg {
+    @apply text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight;
+  }
+  
+  .heading-md {
+    @apply text-lg sm:text-xl font-semibold;
+  }
+  
+  .heading-sm {
+    @apply text-base sm:text-lg font-medium;
+  }
+  
+  .btn-responsive {
+    @apply w-full sm:w-auto;
+  }
+}
+
+/* Stripe Elements - ensure iframe is interactive */
+.StripeElement,
+.__PrivateStripeElement,
+.__PrivateStripeElement iframe,
+[class*="__PrivateStripeElement"] {
+  min-height: 24px;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* PaymentElement specific fixes */
+.p-PaymentElement,
+[data-testid="payment-element"],
+.PaymentElement {
+  pointer-events: auto !important;
+  position: relative !important;
+}
+
+.p-PaymentElement iframe,
+[data-testid="payment-element"] iframe {
+  pointer-events: auto !important;
+  z-index: 10 !important;
+}
+
+/* Ensure all Stripe iframes are clickable */
+iframe[name^="__privateStripeFrame"],
+iframe[title*="Secure"] {
+  pointer-events: auto !important;
+  z-index: 100 !important;
+}
+
+/* Tutorial highlight pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}

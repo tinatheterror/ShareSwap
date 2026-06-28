@@ -1,0 +1,182 @@
+We are implementing a permanent record system and linking it to notifications.
+
+GOAL:
+
+* Notifications are temporary (last 20 only)
+* All important actions link to a permanent record page
+* Users never lose access to transaction, payment, or dispute history
+
+---
+
+1. NOTIFICATION SYSTEM UPDATE
+
+* Store only the 20 most recent notifications per user
+* When a new notification is created:
+
+  * Insert at top
+  * Remove oldest if > 20
+
+Each notification must include:
+
+* id
+* type (transaction, payment, dispute, system)
+* title (short text)
+* message (optional detail)
+* createdAt
+* entityId (e.g., transactionId, disputeId)
+* entityType ("transaction", "payment", "dispute")
+* read (boolean)
+
+---
+
+2. CLICK BEHAVIOR
+
+When a user taps a notification:
+
+* If entityType = "transaction"
+  → navigate to /transactions/:id
+
+* If entityType = "payment"
+  → navigate to /transactions/:id#payment
+
+* If entityType = "dispute"
+  → navigate to /disputes/:id
+
+* If no entityId
+  → fallback to notifications screen
+
+---
+
+3. PERMANENT RECORD PAGES
+
+Create the following pages:
+
+A) Transaction Detail Page
+Route: /transactions/:id
+
+Must include:
+
+* Item name + image
+* Owner + borrower (clickable profiles)
+* Status (pending, active, completed, cancelled, disputed)
+* Handoff method (PIN or manual)
+* Dates (requested, accepted, completed)
+* Deposit info:
+
+  * amount
+  * status (held, released, charged)
+* Activity timeline (see below)
+
+---
+
+B) Dispute Page
+Route: /disputes/:id
+
+Must include:
+
+* Linked transaction
+* Current status (open, under review, resolved)
+* Both parties’ statements
+* Uploaded evidence (images, notes)
+* Resolution outcome
+
+---
+
+C) Payment Section (inside transaction page)
+Anchor: #payment
+
+Must include:
+
+* Deposit held timestamp
+* Deposit release timestamp OR charge details
+* Any adjustments or refunds
+
+---
+
+4. ACTIVITY TIMELINE (IMPORTANT)
+
+Each transaction page must include a timeline:
+
+Example entries:
+
+* Request sent
+* Request accepted
+* Handoff confirmed (via PIN/manual)
+* Deposit held
+* Deposit released
+* Dispute opened (if applicable)
+
+Each entry:
+
+* label
+* timestamp
+* optional metadata
+
+This is the permanent record replacing notifications.
+
+---
+
+5. NOTIFICATION → RECORD LINKING
+
+Every important notification MUST include entityId + entityType.
+
+Examples:
+
+“Handoff completed”
+→ entityType: "transaction"
+→ entityId: txn_123
+
+“Deposit released”
+→ entityType: "transaction"
+→ entityId: txn_123 (scroll to payment section)
+
+“Issue reported”
+→ entityType: "dispute"
+→ entityId: dsp_456
+
+---
+
+6. RETENTION RULES
+
+* Notifications:
+  → keep last 20 only
+
+* Transactions:
+  → store indefinitely (or minimum 12–24 months)
+
+* Disputes:
+  → store indefinitely
+
+* Payment records:
+  → store indefinitely
+
+---
+
+7. UX REQUIREMENTS
+
+* Notifications must always be clickable
+* Never show important info ONLY inside notifications
+* All critical data must exist on a permanent page
+* If a notification is deleted, user must still access the record
+
+---
+
+8. EMPTY STATE
+
+If no notifications:
+
+“Your recent activity will appear here”
+
+---
+
+GOAL SUMMARY
+
+* Notifications = lightweight, recent activity (20 max)
+* Record pages = source of truth
+* Every important event is traceable, even if notifications disappear
+
+Focus on:
+
+* clarity
+* trust
+* zero data loss feeling for users

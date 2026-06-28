@@ -1,0 +1,147 @@
+You’re using the Stripe Node SDK in a file that’s leaking into the client
+
+This file:
+
+import Stripe from 'stripe';
+
+
+🚨 Stripe (node SDK) must NEVER be imported in client-land
+If stripeclient.ts is imported anywhere that ends up in the browser bundle (even indirectly), Stripe Elements will silently fail to mount.
+
+What happens:
+
+Browser tries to bundle stripe
+
+Fails or tree-shakes weirdly
+
+<Elements> gets null or unresolved Stripe instance
+
+Result: dead input field
+
+This exactly matches your symptom.
+
+💄 Analogy: you put a kitchen oven inside a makeup bag. Looks fine until you try to use it.
+
+🔴 BREAK #2: You are NOT using @stripe/stripe-js on the client
+
+Your file ONLY provides:
+
+secret key
+
+publishable key (async)
+
+node Stripe client
+
+But on the frontend, Stripe Elements requires:
+
+import { loadStripe } from '@stripe/stripe-js';
+
+
+And it must be called synchronously at module scope, not via async fetch.
+
+❌ What you’re likely doing (broken):
+
+const pk = await getStripePublishableKey();
+const stripePromise = loadStripe(pk);
+
+
+This causes:
+
+hydration mismatch
+
+Stripe promise recreated
+
+Elements never mounts iframe
+
+Stripe HATES async keys at render time.
+
+🔴 BREAK #3 (architecture smell): Async credentials + Elements = silent failure
+
+Stripe Elements expects this shape:
+
+const stripePromise = loadStripe(PK); // STATIC
+
+
+But you’re doing:
+
+async fetch
+
+Replit connector
+
+environment switch
+
+runtime resolution
+
+That’s fine for server, not for Elements.
+
+💄 Analogy: you’re asking Stripe to apply lipstick while still picking the shade.
+
+✅ THE CORRECT FIX (clean, non-spaghetti)
+1️⃣ Split this file IMMEDIATELY
+stripe.server.ts (server-only)
+import Stripe from 'stripe';
+
+export async function getStripeServer() {
+  const secretKey = /* your existing getCredentials logic */;
+  return new Stripe(secretKey, {
+    apiVersion: '2025-11-17.clover',
+  });
+}
+
+stripe.client.ts (client-only)
+import { loadStripe } from '@stripe/stripe-js';
+
+export const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
+
+
+NO async. NO fetch. NO connectors.
+
+2️⃣ Stop fetching publishable key at runtime
+
+Stripe publishable keys are meant to be public.
+
+Put it in env:
+
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+
+Yes, even on Replit.
+Yes, even in dev.
+This is not a security issue.
+
+3️⃣ Use Elements correctly (this matters)
+
+If you are using PaymentElement:
+
+<Elements
+  stripe={stripePromise}
+  options={{ clientSecret }}
+>
+  <PaymentElement />
+</Elements>
+
+
+If clientSecret is missing or late → iframe never mounts.
+
+❌ What Stripe’s email does NOT mean
+
+“We’ve created a sandbox…”
+
+That email is a red herring.
+Stripe test mode is ready instantly.
+
+Your issue is rendering, not account readiness.
+
+Final blunt verdict
+
+Your Stripe server logic is fine
+
+Your Stripe client integration is broken
+
+You mixed server Stripe + client Elements
+
+Stripe responded by doing… nothing
+
+Which is why you’re staring at a dead input like it ghosted you 👻

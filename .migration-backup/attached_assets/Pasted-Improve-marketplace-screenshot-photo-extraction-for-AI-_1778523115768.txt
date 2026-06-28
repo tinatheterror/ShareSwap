@@ -1,0 +1,124 @@
+Improve marketplace screenshot photo extraction for AI listing imports.
+
+Goal:
+Increase the reliability and quality of item photo extraction from uploaded marketplace screenshots while keeping the flow fast and user-friendly.
+
+Requirements:
+
+1. Support multiple screenshot uploads.
+
+Update the import flow to encourage uploading 2–4 screenshots instead of a single screenshot.
+
+Add helper text:
+
+For best results, upload screenshots showing the photo gallery.
+
+Allow:
+
+* multi-image upload
+* drag and drop
+* mobile camera roll selection
+
+2. Build a dedicated screenshot image extraction pipeline.
+
+Do NOT rely only on the existing multimodal AI text extraction.
+
+Add image-region detection logic to:
+
+* identify probable product photo areas inside screenshots
+* detect large image containers
+* ignore marketplace UI chrome when possible
+* crop likely item photos automatically
+
+Prioritize:
+
+* largest visible product image
+* repeated image regions across screenshots
+* centered/high-confidence image areas
+
+3. Add extraction confidence scoring.
+
+For each extracted image:
+
+* assign confidence score
+* filter out low-confidence crops automatically
+
+Examples of low-confidence crops:
+
+* profile photos
+* UI icons
+* text-only areas
+* navigation bars
+* blurred thumbnails
+
+4. Add “Choose imported photos” review step.
+
+After extraction:
+Show extracted images in a selectable grid.
+
+Users can:
+
+* keep/remove extracted photos
+* reorder photos
+* preview larger version
+
+Do not auto-import extracted photos silently.
+
+5. Preserve imported text data separately from photo scanning.
+
+Do NOT overwrite imported title/description when users later upload manual item photos.
+
+Marketplace screenshot import and ShareSmart Scan should remain separate systems.
+
+Imported listing data should remain intact unless user explicitly chooses:
+“Refine with ShareSmart Scan”
+
+6. Add graceful fallback behavior.
+
+If no clean photos can be extracted:
+
+* do not fail the import flow
+* keep extracted title/description/category data
+* prompt user to upload photos manually
+
+Show:
+
+We couldn’t extract clean item photos from these screenshots.
+Add your own photos to finish the listing.
+
+7. Add optional manual refinement.
+
+After users upload manual item photos later:
+Offer optional button:
+
+Refine with ShareSmart Scan
+
+This should:
+
+* improve pricing accuracy
+* improve condition detection
+* suggest better categories/tags
+
+Do NOT automatically overwrite imported fields.
+
+8. Improve onboarding copy.
+
+Add helper text during screenshot upload:
+
+Screenshots showing the item gallery work best.
+
+Avoid technical wording about Facebook blocking imports or extraction failures.
+
+9. Keep existing systems intact.
+
+Do NOT modify:
+
+* ShareCoin pricing logic
+* tier logic
+* existing ShareSmart Scan functionality
+* listing publish flow
+
+Only improve screenshot photo extraction and flow separation.
+
+Design goal:
+Make marketplace imports feel fast, reliable, and intelligent even when photo extraction is imperfect.

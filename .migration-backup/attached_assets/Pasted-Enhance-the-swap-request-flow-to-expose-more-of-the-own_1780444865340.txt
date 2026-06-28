@@ -1,0 +1,108 @@
+Enhance the swap request flow to expose more of the owner’s available swap inventory before a counter-offer is required.
+
+Current behavior:
+
+* User opens a listing and clicks “Request Swap”.
+* User only sees the single item they clicked on.
+* User selects one or more of their own items to offer.
+* The owner’s other swap-eligible items are hidden until a counter-offer is sent.
+* This creates unnecessary negotiation and counter-offers because users cannot see alternative items the owner may be willing to trade.
+
+New behavior:
+
+1. Initial Swap Request Screen
+
+Keep the originally selected listing as the primary requested item.
+
+Display:
+
+Requested Item
+
+* Original listing item (preselected)
+
+Your Items
+
+* Show the user’s eligible swap items
+* Allow selecting one or more items
+* Show ShareCoin offset calculation in real time
+
+Owner’s Other Available Swap Items
+
+* Show a preview of 3–6 additional swap-eligible items from the owner’s inventory
+* Exclude:
+    * unavailable items
+    * reserved items
+    * lent/rented items
+    * gifted/swapped items
+* Display as a horizontal scroll section or compact grid
+
+Add CTA:
+
+“View all available swap items”
+
+2. View All Available Swap Items
+
+When clicked:
+
+* Open a modal or expandable section
+* Show all swap-eligible items from the owner’s inventory
+* Allow user to select additional owner items to include in the proposed swap
+* Update ShareCoin balancing automatically
+
+This allows:
+
+* 2 items for 1 item
+* 1 item for 3 items
+* Any item combination
+* ShareCoins automatically settle value differences
+
+3. Counter Offer Experience
+
+When a counter-offer is created:
+
+* Show both inventories side-by-side
+
+Sections:
+
+Your Available Items
+Owner’s Available Items
+
+Allow:
+
+* add/remove items
+* modify item combinations
+* recalculate ShareCoin offsets instantly
+
+This becomes the advanced negotiation interface.
+
+4. Inventory Eligibility Rules
+
+Only show items that:
+
+* are available
+* have swapping enabled
+* belong to the current participant
+
+Hide:
+
+* reserved
+* in dispute
+* paused
+* lent out
+* rented out
+* gifted
+* swapped
+
+5. UI Improvements
+
+Add a small inventory indicator on swap-enabled listings:
+
+Examples:
+
+* “8 swap items available”
+* “Owner has 12 available swap items”
+
+This helps users understand there may be more opportunities beyond the item they initially clicked.
+
+Goal:
+Reduce unnecessary counter-offers, improve swap discovery, support multi-item swaps from the first interaction, and make the swap process feel more flexible while keeping the originally selected item as the primary focus.

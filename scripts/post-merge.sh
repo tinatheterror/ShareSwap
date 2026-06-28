@@ -1,4 +1,4 @@
 #!/bin/bash
 set -e
-npm install
-npx drizzle-kit push --config=drizzle.config.ts <<< ""
+pnpm install --frozen-lockfile
+pnpm --filter db push

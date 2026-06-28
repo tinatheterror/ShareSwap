@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ShareSwap – Share More, Own Less</title>
+    <meta name="description" content="ShareSwap is a peer-to-peer neighbourhood sharing marketplace. Borrow, lend, rent, swap, or gift items with trusted neighbours. Share more, own less." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="ShareSwap – Share More, Own Less" />
+    <meta property="og:description" content="Borrow, lend, rent, swap, or gift items with trusted neighbours on ShareSwap." />
+    <meta property="og:type" content="website" />
+    <link rel="canonical" href="https://shareswap.app/" />
+    <script>
+      // Vite's HMR client tries to open a WebSocket to the dev server. In
+      // Replit's proxied environment the URL resolves to
+      // "wss://localhost:undefined/" which throws a SyntaxError. That
+      // unhandled rejection is caught by @replit/vite-plugin-runtime-error-modal
+      // and displayed as a full-screen crash overlay.
+      //
+      // Fix: wrap the global WebSocket constructor so that any call with an
+      // invalid (undefined-port) URL returns a harmless no-op object instead
+      // of throwing. This runs before any module scripts so it intercepts
+      // Vite's fallback reconnection attempt.
+      (function () {
+        var _WS = window.WebSocket;
+        function FakeSocket() {}
+        FakeSocket.prototype = {
+          close: function () {},
+          send: function () {},
+          addEventListener: function () {},
+          removeEventListener: function () {},
+          dispatchEvent: function () { return false; },
+          readyState: 3,
+          CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3,
+        };
+
+        window.WebSocket = function (url, protocols) {
+          if (typeof url === "string" && url.indexOf(":undefined") !== -1) {
+            return new FakeSocket();
+          }
+          return protocols
+            ? new _WS(url, protocols)
+            : new _WS(url);
+        };
+        window.WebSocket.prototype = _WS.prototype;
+        window.WebSocket.CONNECTING = 0;
+        window.WebSocket.OPEN = 1;
+        window.WebSocket.CLOSING = 2;
+        window.WebSocket.CLOSED = 3;
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

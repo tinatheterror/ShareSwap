@@ -1,0 +1,94 @@
+Refactor the Verification Status and Payment Methods pages to clearly separate identity verification from payment handling, following Stripe and App Store best practices.
+
+1️⃣ Verification Status Page (Identity Only)
+
+Purpose: Confirm the user is a real, accountable person and improve trust.
+
+Requirements:
+
+Remove ALL credit card–related fields and UI:
+
+No card number, expiry, CVV
+
+No “take photo of credit card”
+
+No explanations about charging cards
+
+Verification should include:
+
+Government ID upload (image or PDF)
+
+Legal full name (for ID matching)
+
+Verification status (Unverified / Pending / Verified / Failed)
+
+Make the page mostly read-only once verified
+
+Add copy explaining benefits:
+
+Improves trust score
+
+Adds verified badge to profile
+
+May increase visibility and highlight user in urgent requests
+
+Do NOT mention money, deposits, or charges on this page
+
+Tone: Calm, trust-focused, non-technical
+
+2️⃣ Payment Methods Page (Payments Only)
+
+Purpose: Securely manage payment methods used for deposits and reimbursements.
+
+Requirements:
+
+All payment entry must use Stripe-hosted UI (Stripe Elements / Payment Sheet)
+
+Do NOT manually collect or store card details
+
+Page should include:
+
+“Add payment method” button (opens Stripe UI)
+
+Masked card display (e.g. •••• 4242)
+
+Status indicator (On file / Needs update)
+
+Ability to update or replace card
+
+Add clear copy:
+
+Payment method is used only for refundable security deposits and reimbursements
+
+Card details are securely handled by our payment provider
+
+Allow editing at any time, independent of verification status
+
+3️⃣ Interaction Rules
+
+Browsing: no payment method or verification required
+
+Swap & Gift: no payment method required
+
+Borrow & Rent:
+
+Payment method required before sending a request
+
+Verification optional unless item or category requires it
+
+Keep Verification Status and Payment Methods as separate pages and concepts
+
+4️⃣ Quick Actions Card
+
+Ensure buttons route cleanly with no overlap:
+
+Account Settings → preferences
+
+Notifications → alerts
+
+Payment Methods → cards & deposits
+
+Verification Status → identity & trust
+
+Goal:
+Eliminate conceptual overlap, reduce user confusion, improve trust, and ensure compliance with Stripe and App Store review standards.

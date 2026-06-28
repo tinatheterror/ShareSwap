@@ -1,0 +1,117 @@
+Implement AI-powered item listing autofill using a multimodal AI API.
+
+Goal:
+Allow users to upload item photos and automatically generate:
+
+* title
+* description
+* item condition
+* category
+* tags
+
+Feature requirements:
+
+1. Add an “Auto-fill with AI” button in the item listing flow.
+
+Placement:
+After image upload.
+
+Button label:
+Auto-fill listing
+
+2. Backend endpoint:
+
+Create endpoint:
+
+POST /api/listings/ai-generate
+
+Input:
+
+* uploaded image URLs (array)
+
+3. Integrate a multimodal AI API (vision + text generation).
+
+Use uploaded item photos as input.
+
+Prompt the AI to return structured JSON with:
+
+{
+"title": "",
+"description": "",
+"condition": "",
+"category": "",
+"tags": []
+}
+
+Prompt requirements:
+
+Analyze the uploaded item photos and generate:
+
+* a concise marketplace-friendly title
+* an honest item description
+* likely item condition (new, like new, good, fair, worn)
+* item category
+* 3–5 searchable tags
+
+Be accurate and practical.
+Do not exaggerate condition.
+If uncertain, state the most conservative condition.
+
+Return JSON only.
+
+4. Frontend autofill behavior:
+
+After successful AI response:
+
+Auto-populate:
+
+* title input
+* description textarea
+* condition selector
+* category selector
+* tags field
+
+Allow full manual editing before publish.
+
+Do not auto-save or auto-publish.
+
+5. Loading state:
+
+Show:
+
+Analyzing your item…
+
+Disable button while processing.
+
+6. Error state:
+
+Show:
+
+Couldn’t generate listing details. Try again.
+
+7. Safety rules:
+
+Do not overwrite existing user-entered fields without confirmation.
+
+If fields already contain text:
+
+Show modal:
+
+Replace existing listing details?
+
+Options:
+Cancel
+Replace
+
+8. Logging:
+
+Track:
+
+* AI autofill used
+* user accepted/edit ratio (future analytics)
+
+Do not change listing creation flow.
+Only add AI-assisted autofill.
+
+UI goal:
+Make creating a listing feel 10x faster while keeping users in control.

@@ -1,0 +1,150 @@
+We are redesigning the handoff confirmation system to use a 4-digit PIN as the primary confirmation method.
+
+Core change:
+The OWNER generates the PIN.
+The BORROWER receives and uses the PIN.
+
+Build this as the new primary flow, with a fallback to manual confirmation.
+
+---
+
+SYSTEM OVERVIEW
+
+1. PIN GENERATION
+
+* When a request is accepted, generate a random 4-digit PIN (e.g., 4821)
+
+* Store it on the transaction:
+
+  * handoffPin (string)
+  * pinExpiresAt (timestamp, 24h)
+  * pinUsed (boolean, default false)
+
+* Only the OWNER can see the full PIN initially
+
+* The BORROWER sees:
+  "Ask the owner for the 4-digit handoff code when you meet"
+
+---
+
+2. UX FLOW
+
+OWNER VIEW:
+
+* Show:
+  "Your handoff code: 4821"
+  "Give this code to the borrower at meetup"
+* Include:
+  [Copy Code]
+
+BORROWER VIEW:
+
+* Show input:
+  "Enter the 4-digit code from the owner"
+  [ _ _ _ _ ]
+
+* Below input:
+  "Didn’t get a code? Confirm without code"
+
+---
+
+3. PIN CONFIRMATION LOGIC
+
+When borrower submits PIN:
+
+* If correct AND not expired AND not used:
+
+  * mark pinUsed = true
+  * mark transaction = completed
+  * set handoffConfirmed = true
+  * set confirmationMethod = "pin"
+  * timestamp completion
+  * trigger post-handoff logic (deposit handling, etc.)
+
+* If incorrect:
+
+  * show:
+    "That code didn’t match"
+    options:
+    [Try again]
+    [Confirm without code]
+
+---
+
+4. FALLBACK FLOW (NO PIN)
+
+If borrower taps "Confirm without code":
+
+* Show confirmation:
+  "Confirm you’ve received the item?"
+
+* If confirmed:
+
+  * mark borrowerConfirmed = true
+  * set confirmationMethod = "manual"
+  * continue with existing dual-confirm system
+
+* OWNER should still be able to confirm manually as well
+
+---
+
+5. AUTO-RESOLUTION (EXISTING LOGIC)
+
+Keep current logic:
+
+* borrower confirms + owner silent → auto-complete after 24h
+* conflicts → dispute
+* silence + silence → cancel
+
+Add:
+
+* if PIN used → skip all dual-confirm logic (instant completion)
+
+---
+
+6. SECURITY RULES
+
+* PIN expires after 24 hours
+* PIN can only be used once
+* PIN only valid for that specific transaction
+* Prevent reuse or guessing (rate limit attempts to e.g. 5 tries)
+
+---
+
+7. TRACKING
+
+Add fields:
+
+* confirmationMethod: "pin" | "manual"
+* pinUsed: boolean
+* pinAttempts: number
+* noPinUsed: boolean (true if fallback used)
+
+---
+
+8. EDGE CASES
+
+* If PIN expired:
+  show:
+  "This code has expired"
+  options:
+  [Confirm without code]
+
+* If already completed:
+  disable input and show:
+  "Handoff already completed"
+
+---
+
+GOAL
+
+* PIN = fast, primary path (1-step confirmation)
+* Manual confirm = smooth fallback (never block users)
+* No dead ends, no forced QR, no friction
+
+Focus on:
+
+* clean mobile UX
+* minimal taps
+* clear copy
+* zero confusion at meetup

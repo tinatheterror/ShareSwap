@@ -1,0 +1,67 @@
+list your item form should have 4 required questions, and use the answers from questions 2-4 to automatically assign the item to one of 4 value tiers (Tier 1–4). do not remove any of the current questions.
+
+question 1
+I'm Sharing my
+
+question 2
+"Item Type" – dropdown with:
+- Baby & Kids
+- Clothing & Accessories
+- Electronics
+- Home & Kitchen
+- Tools & Equipment
+this should be auto-filled using ai after typing in the item name (I'm Sharing my). the item type should appear to the right of I'm Sharing my. But AI suggestions should be editable by the user.
+Request to borrow - borrowing duration presets if Baby & Kids is selected show:
+1 week
+2 weeks
+1 month
+3 months
+6 months
+If NOT Baby & Kids show:
+1 day
+3 days
+1 week
+2 weeks
+1 month
+
+question 3
+"Condition":
+- New / Like New
+- Good
+- Fair
+- Well Loved
+change the current condition rating bar to have the 4 options 
+
+question 4
+"Original Value" – pill buttons with:
+- Under $50
+- $50–$150
+- $150–$300
+- $300–$600
+- $600+
+
+backend logic to automatically assign a Tier based on the 3 answers:
+- Tier 1 = Under $50
+- Tier 2 = $50–$150
+- Tier 3 = $150–$300
+- Tier 4 = $300+
+
+Condition modifies tier:
+- Well Loved/Good/Fair → drop 1 tier (but not below Tier 1)
+- New / Like New → keep the tier as-is
+
+After determining the tier, automatically generate a ShareCoin value using:
+Tier 1 = 5 ShareCoins/week
+Tier 2 = 10 ShareCoins/week
+Tier 3 = 20 ShareCoins/week
+Tier 4 = 40 ShareCoins/week
+
+Round down to the nearest whole ShareCoin for any partial weeks. prorate by days.
+Borrowing for x days → (Weekly ShareCoin ÷ 7) × x
+don’t show math only show the final rounded number.
+
+only display the assigned tier number on item cards in "my shared items" and not on the item cards in the borrow page. it should look like this:
+Assigned Tier: Tier 2 – Everyday Household Item
+(Used to calculate ShareCoin value automatically)
+With a tiny 💡tooltip explaining:
+“Tier is based on category, condition, and typical market value.”

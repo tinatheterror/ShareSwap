@@ -1,0 +1,127 @@
+📌 What is the Security Deposit for Borrowing?
+
+Borrowing uses a trust-based deposit:
+
+Your trust score lowers the deposit.
+Higher trust = smaller deposit.
+
+Each Tier has a base deposit percentage.
+Trust score discount is applied on top.
+
+This keeps borrowing safe without punishing good users.
+
+📌 What is the Security Deposit for Renting?
+
+Renting uses cash deposits (not ShareCoins).
+
+The app calculates:
+
+item value (AI estimate)
+
+rental price
+
+deposit amount
+
+You can edit rental price, but deposit is fixed for safety.
+
+📌 What is the difference between Borrowing and Renting?
+Borrowing (ShareCoins)
+
+community-based
+
+low cost
+
+trust-based deposit
+
+good for helping neighbors
+
+no cash earnings
+
+Renting (Cash)
+
+peer-to-peer income
+
+cash earnings
+
+cash deposit required
+
+ideal for side hustle vibes
+
+📌 Why do I need photos?
+
+Photos help AI:
+
+verify the item
+
+estimate value
+
+place it in the right Tier
+
+calculate fair rates
+
+At least one photo is required.
+Clear photos = accurate pricing.
+
+📌 Can I change the Tier or ShareCoin value?
+
+No.
+That’s locked to keep the system fair for everyone.
+
+📌 Can I edit rental prices?
+
+Yes.
+Rental prices are fully customizable (within platform limits).
+
+📌 What if someone damages my item?
+
+Every transaction has a deposit.
+If damage is reported:
+
+The deposit is held
+
+Support reviews both sides
+
+Funds go to the lender if damage is confirmed
+
+📌 What if someone doesn’t return my item?
+
+The deposit covers non-return.
+If the deposit isn’t enough, the user’s account is frozen until resolved.
+
+📌 How do I earn ShareCoins?
+
+Lend items
+
+Gift items
+
+Complete swaps
+
+Receive good reviews
+
+Maintain a high trust score
+
+📌 Can I farm ShareCoins with a friend or partner?
+
+No.
+We detect repeated transactions between the same two accounts.
+Suspicious activity reduces trust scores and ShareCoin earnings.
+
+📌 Is my address shown to other users?
+
+No.
+Only approximate neighborhood is shown.
+Exact address is shared only when both sides accept a transaction.
+
+📌 Can I list items I want to borrow?
+
+Yes — use the Wishlist to request items you need.
+
+📌 Do I need to meet people in person?
+
+Usually yes — pick-up or drop-off.
+You can choose a public meeting spot if you prefer.
+
+📌 What if I want to delete my account?
+
+You can delete it anytime in settings.
+Your items, messages, and balance will be removed.

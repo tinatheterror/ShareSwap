@@ -1,0 +1,164 @@
+Refactor the swap system to support flexible item-for-item trades with ShareCoin offsets.
+
+Goal:
+Remove the current ±1 tier restriction and allow users to trade any combination of items as long as value differences are settled with ShareCoins.
+
+New swap logic:
+
+Users can:
+
+* swap one item for one item
+* swap multiple items for one item
+* swap multiple items for multiple items
+
+Tier restrictions should be removed entirely.
+
+Instead:
+
+* calculate total ShareCoin value of each side
+* automatically calculate the value difference
+* settle the difference using ShareCoins
+
+Examples:
+
+Tier 1 item (5 SC)
+↔ Tier 4 item (20 SC)
+
+Required offset:
+15 ShareCoins
+
+OR
+
+2 Tier 1 items (10 SC total)
+↔ 1 Tier 2 item (10 SC)
+
+Offset:
+0 ShareCoins
+
+Requirements:
+
+1. Remove existing tier restriction logic.
+
+Delete:
+
+* ±1 tier validation
+* adjacent-tier swap checks
+* tier incompatibility error states
+
+Do not block swaps based on tier difference anymore.
+
+2. Add total value calculation.
+
+For each side of the trade:
+
+* sum total ShareCoin value of selected items
+* compare totals
+* calculate offset automatically
+
+Definitions:
+
+* higher value side receives ShareCoins
+* lower value side pays ShareCoins
+
+3. Add swap fairness summary UI.
+
+In swap request and counter-offer modals, show:
+
+Your offer: 15 SC
+Their offer: 10 SC
+
+You will receive +5 ShareCoins
+
+OR
+
+You will pay 5 ShareCoins
+
+If equal:
+Fair swap — no ShareCoin adjustment needed
+
+4. Support multi-item selection.
+
+Allow:
+
+* selecting multiple items on either side
+* dynamic recalculation as items are added/removed
+
+UI should clearly display:
+
+* selected items
+* total values
+* ShareCoin offset
+
+5. Add maximum offset safeguard.
+
+Add configurable max offset limit.
+
+Example:
+MAX_SWAP_OFFSET = 20
+
+If exceeded:
+Show validation error:
+
+This swap exceeds the maximum allowed ShareCoin difference.
+
+Do not allow submission.
+
+6. Update counter-offer flow.
+
+Counter offers should:
+
+* preserve flexible item selection
+* recalculate offsets live
+* support adding/removing multiple items
+
+7. Improve visual hierarchy.
+
+Make the selected trade preview the primary focus.
+
+Example layout:
+
+Your offer
+[item cards]
+Total: 15 SC
+
+↔
+
+Their offer
+[item cards]
+Total: 10 SC
+
+Offset:
++5 ShareCoins to you
+
+8. Preserve existing systems.
+
+Do NOT modify:
+
+* ShareCoin wallet logic
+* transaction system
+* swap completion flow
+* trust/review system
+
+Only refactor swap eligibility and valuation behavior.
+
+9. Validation rules.
+
+Prevent:
+
+* duplicate item selection
+* unavailable items
+* archived items
+* users selecting their own items on both sides
+
+10. UX goal.
+
+The new system should feel:
+
+* flexible
+* intuitive
+* community-driven
+* easy to negotiate
+
+Avoid making swaps feel rigid or over-restricted.
+
+update an ui, copies, tooltips to reflect this change

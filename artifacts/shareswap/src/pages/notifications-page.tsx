@@ -1,0 +1,348 @@
+
+import { Navbar } from "@/components/shared/navbar";
+import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { Bell, Package, Heart, AlertCircle, CheckCircle2, ArrowLeftRight, X, Shield, Trophy, TrendingUp, Coins, Clock, Flag, Truck, Gift, FileText, Star, RotateCcw, Users, Unlock, DollarSign, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { SelectNotification } from "@db/schema";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+interface ItemDetails {
+  id: number;
+  name: string;
+  description: string | null;
+  photos: string[] | null;
+  owner?: {
+    username: string;
+    isVerified: boolean;
+  };
+}
+
+export default function NotificationsPage() {
+  const [, navigate] = useLocation();
+  const [showWishlistMatchModal, setShowWishlistMatchModal] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<SelectNotification | null>(null);
+  const [matchedItemDetails, setMatchedItemDetails] = useState<ItemDetails | null>(null);
+  const [isLoadingItem, setIsLoadingItem] = useState(false);
+
+  const { data: notifications = [], isLoading } = useQuery<SelectNotification[]>({
+    queryKey: ['/api/notifications'],
+  });
+
+  const handleNotificationClick = async (notification: SelectNotification) => {
+    if (notification.type === 'wishlist_match' && notification.itemId) {
+      setSelectedNotification(notification);
+      setIsLoadingItem(true);
+      setShowWishlistMatchModal(true);
+
+      try {
+        const response = await fetch(`/api/items/${notification.itemId}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const itemData = await response.json();
+          setMatchedItemDetails(itemData);
+        }
+      } catch (error) {
+        console.error('Error fetching item details:', error);
+      } finally {
+        setIsLoadingItem(false);
+      }
+      return;
+    }
+
+    if (["trust_score_changed", "milestone_achieved", "badge_earned", "new_review_received"].includes(notification.type)) {
+      navigate("/achievements");
+      return;
+    }
+
+    if (notification.type === "sharecoin_earned") {
+      navigate("/wallet");
+      return;
+    }
+
+    if (notification.type === "dispute_resolved") {
+      navigate("/my-balance");
+      return;
+    }
+
+    if (notification.requestId) {
+      window.dispatchEvent(
+        new CustomEvent("open-chat-request", {
+          detail: {
+            requestId: notification.requestId,
+            scrollToCounter: notification.type === "terms_counter_proposed",
+          },
+        })
+      );
+    } else if (notification.itemId) {
+      navigate(`/items/${notification.itemId}`);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'item_request':
+        return <Package className="h-5 w-5 text-primary" />;
+      case 'request_accepted':
+      case 'terms_accepted':
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case 'request_declined':
+      case 'terms_declined':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'terms_counter_proposed':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'wishlist_match':
+        return <Heart className="h-5 w-5 text-pink-500" />;
+      case 'swap_match':
+        return <ArrowLeftRight className="h-5 w-5 text-teal-500" />;
+      case 'handoff_confirmed':
+      case 'handoff_auto_advanced':
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case 'handoff_pending':
+        return <Clock className="h-5 w-5 text-amber-500" />;
+      case 'handoff_dispute':
+      case 'handoff_disputed':
+      case 'dispute_opened':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'handoff_flagged':
+        return <Flag className="h-5 w-5 text-orange-500" />;
+      case 'gift_handoff_pending':
+        return <Gift className="h-5 w-5 text-amber-500" />;
+      case 'gift_completed':
+        return <Gift className="h-5 w-5 text-green-600" />;
+      case 'delivery_confirmed':
+        return <Truck className="h-5 w-5 text-green-600" />;
+      case 'courier_issue':
+        return <Truck className="h-5 w-5 text-red-600" />;
+      case 'return_initiated':
+        return <RotateCcw className="h-5 w-5 text-blue-500" />;
+      case 'return_confirmed':
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case 'return_reminder_tomorrow':
+        return <Clock className="h-5 w-5 text-amber-500" />;
+      case 'return_reminder_today':
+        return <Clock className="h-5 w-5 text-orange-500" />;
+      case 'return_reminder_overdue':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case 'sharecoin_earned':
+        return <Coins className="h-5 w-5 text-yellow-500" />;
+      case 'milestone_achieved':
+        return <Trophy className="h-5 w-5 text-amber-500" />;
+      case 'badge_earned':
+        return <Star className="h-5 w-5 text-purple-600" />;
+      case 'level_up':
+        return <TrendingUp className="h-5 w-5 text-purple-600" />;
+      case 'trust_score_changed':
+        return <Shield className="h-5 w-5 text-blue-600" />;
+      case 'new_review_received':
+        return <Star className="h-5 w-5 text-yellow-500" />;
+      case 'referral_joined':
+        return <Users className="h-5 w-5 text-teal-500" />;
+      case 'security_deposit_released':
+        return <Unlock className="h-5 w-5 text-green-600" />;
+      case 'payment_received':
+        return <DollarSign className="h-5 w-5 text-green-600" />;
+      case 'verification_failed':
+        return <ShieldAlert className="h-5 w-5 text-red-600" />;
+      default:
+        return <Bell className="h-5 w-5 text-gray-600" />;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F3F4F6]">
+        <Navbar />
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          <div className="animate-pulse space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F3F4F6]">
+      <Navbar />
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Bell className="h-8 w-8 text-primary" />
+            Notifications
+          </h1>
+        </div>
+
+        {notifications.length === 0 ? (
+          <div className="text-center py-12">
+            <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+              No notifications yet
+            </h3>
+            <p className="text-gray-500">
+              You'll see notifications here when someone interacts with your items
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notifications.map((notification) => (
+              <Card
+                key={notification.id}
+                className="cursor-pointer transition-all hover:shadow-md"
+                onClick={() => handleNotificationClick(notification)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="mt-1">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">
+                        {notification.title}
+                      </h3>
+                      <p className="text-muted-foreground mt-1">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {new Date(notification.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Wishlist Match Modal */}
+      <AnimatePresence>
+        {showWishlistMatchModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden"
+              initial={{ scale: 0.8, opacity: 0, y: 50 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 50 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+            >
+              <div className="bg-gradient-to-r from-pink-500 to-rose-500 p-4 text-white relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 text-white hover:bg-white/20"
+                  onClick={() => {
+                    setShowWishlistMatchModal(false);
+                    setMatchedItemDetails(null);
+                    setSelectedNotification(null);
+                  }}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Heart className="h-6 w-6" />
+                  <h2 className="text-lg font-bold">Great news!</h2>
+                </div>
+                <p className="text-white/90 text-sm mt-1">
+                  A neighbour has an item that matches your wishlist
+                </p>
+              </div>
+
+              <div className="p-4">
+                {isLoadingItem ? (
+                  <div className="animate-pulse space-y-4">
+                    <div className="h-40 bg-gray-200 rounded-lg"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                ) : matchedItemDetails ? (
+                  <>
+                    {matchedItemDetails.photos && matchedItemDetails.photos.length > 0 && (
+                      <div className="relative h-48 rounded-lg overflow-hidden mb-4">
+                        <img
+                          src={matchedItemDetails.photos[0]}
+                          alt={matchedItemDetails.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {matchedItemDetails.name}
+                    </h3>
+                    {matchedItemDetails.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                        {matchedItemDetails.description}
+                      </p>
+                    )}
+                    {matchedItemDetails.owner && (
+                      <div className="flex items-center gap-2 mb-6 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-semibold">
+                          {(matchedItemDetails.owner.username || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">
+                              {matchedItemDetails.owner.username}
+                            </span>
+                            {matchedItemDetails.owner.isVerified && (
+                              <Shield className="h-4 w-4 text-teal-500" />
+                            )}
+                          </div>
+                          {matchedItemDetails.owner.isVerified ? (
+                            <span className="text-xs text-teal-600">Verified user</span>
+                          ) : (
+                            <span className="text-xs text-gray-500">Not verified</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">Could not load item details</p>
+                )}
+
+                <div className="flex gap-3 mt-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowWishlistMatchModal(false);
+                      setMatchedItemDetails(null);
+                      setSelectedNotification(null);
+                    }}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    className="flex-1 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white"
+                    onClick={() => {
+                      if (matchedItemDetails?.id) {
+                        navigate(`/items/${matchedItemDetails.id}`);
+                      }
+                      setShowWishlistMatchModal(false);
+                      setMatchedItemDetails(null);
+                      setSelectedNotification(null);
+                    }}
+                    disabled={!matchedItemDetails}
+                  >
+                    Request this item
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

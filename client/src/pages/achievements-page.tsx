@@ -300,9 +300,9 @@ export default function AchievementsPage() {
 
         {/* Earned badges */}
         {earnedBadges.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-3 border-t border-slate-100">
+          <div className="pt-3 border-t border-slate-100" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(1.75rem, 1fr))', gap: '0.25rem' }}>
             {earnedBadges.map((b) => (
-              <div key={b.id} title={b.name} className={`w-7 h-7 rounded-full flex items-center justify-center border shrink-0 ${b.color}`}>
+              <div key={b.id} title={b.name} className={`aspect-square rounded-full flex items-center justify-center border ${b.color}`}>
                 <span className="scale-[0.6] flex items-center justify-center">{b.icon}</span>
               </div>
             ))}

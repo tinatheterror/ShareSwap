@@ -89,48 +89,13 @@ const LEVELS = [
 
 type BadgeItem = { id: string; name: string; icon: React.ReactNode; earned: boolean; color: string; description: string; requirement: string };
 
-const CIRCLE_COLORS: Record<string, { from: string; to: string; glow: string }> = {
-  teal:    { from: "#2dd4bf", to: "#0d9488", glow: "rgba(20,184,166,0.45)" },
-  violet:  { from: "#a78bfa", to: "#7c3aed", glow: "rgba(124,58,237,0.45)" },
-  green:   { from: "#4ade80", to: "#16a34a", glow: "rgba(22,163,74,0.45)" },
-  sky:     { from: "#38bdf8", to: "#0284c7", glow: "rgba(2,132,199,0.45)" },
-  indigo:  { from: "#818cf8", to: "#4338ca", glow: "rgba(67,56,202,0.45)" },
-  pink:    { from: "#f472b6", to: "#db2777", glow: "rgba(219,39,119,0.45)" },
-  amber:   { from: "#fbbf24", to: "#d97706", glow: "rgba(217,119,6,0.45)" },
-  rose:    { from: "#fb7185", to: "#e11d48", glow: "rgba(225,29,72,0.45)" },
-  cyan:    { from: "#22d3ee", to: "#0891b2", glow: "rgba(8,145,178,0.45)" },
-  red:     { from: "#f87171", to: "#dc2626", glow: "rgba(220,38,38,0.45)" },
-  blue:    { from: "#60a5fa", to: "#2563eb", glow: "rgba(37,99,235,0.45)" },
-  emerald: { from: "#34d399", to: "#059669", glow: "rgba(5,150,105,0.45)" },
-  purple:  { from: "#c084fc", to: "#9333ea", glow: "rgba(147,51,234,0.45)" },
-  orange:  { from: "#fb923c", to: "#ea580c", glow: "rgba(234,88,12,0.45)" },
-  lime:    { from: "#a3e635", to: "#65a30d", glow: "rgba(101,163,13,0.45)" },
-  yellow:  { from: "#fde047", to: "#ca8a04", glow: "rgba(202,138,4,0.45)" },
-  slate:   { from: "#94a3b8", to: "#64748b", glow: "rgba(100,116,139,0.35)" },
-};
-
-function getCircleColors(colorClass: string) {
-  const match = colorClass.match(/(?:bg-|from-)(\w+)-\d+/);
-  return CIRCLE_COLORS[match?.[1] || "slate"] ?? CIRCLE_COLORS.slate;
-}
-
 function BadgeCard({ badge, popoverSide = "bottom" }: { badge: BadgeItem; popoverSide?: "bottom" | "left" | "right" | "top" }) {
-  const colors = getCircleColors(badge.color);
-  const circleStyle: React.CSSProperties = badge.earned
-    ? { background: `linear-gradient(145deg, ${colors.from}, ${colors.to})`, boxShadow: `0 4px 12px ${colors.glow}, 0 0 0 3px white, 0 0 0 4px ${colors.from}40` }
-    : { background: "linear-gradient(145deg, #cbd5e1, #94a3b8)", boxShadow: "0 2px 6px rgba(0,0,0,0.12), 0 0 0 3px white, 0 0 0 4px #cbd5e140" };
-
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className={`flex flex-col items-center gap-1.5 w-full group transition-all cursor-pointer ${!badge.earned ? "opacity-45 grayscale" : ""}`}>
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-white transition-transform duration-200 group-hover:scale-110 group-active:scale-95"
-            style={circleStyle}
-          >
-            <div className="scale-[1.2]">{badge.icon}</div>
-          </div>
-          <div className="text-[7px] font-semibold text-slate-500 text-center leading-tight uppercase tracking-wide px-0.5">{badge.name}</div>
+        <button className={`w-full p-3 rounded-xl border-2 text-center transition-all cursor-pointer hover:scale-105 active:scale-95 ${badge.earned ? badge.color : "bg-slate-50 text-slate-400 border-slate-200"}`}>
+          <div className="flex justify-center mb-2 scale-150">{badge.icon}</div>
+          <div className="text-[8px] font-semibold leading-tight">{badge.name}</div>
         </button>
       </PopoverTrigger>
       <PopoverContent side={popoverSide} align="center" className="w-56 p-3 z-50">

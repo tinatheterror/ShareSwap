@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import helmet from "helmet";
+import cors from "cors";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -25,6 +26,23 @@ app.use(
         };
       },
     },
+  }),
+);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const allowed =
+        origin.includes(".replit.app") ||
+        origin.includes(".replit.dev") ||
+        origin.includes(".expo.spock.replit.dev") ||
+        origin.includes("localhost");
+      callback(null, allowed);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-csrf-token", "Authorization"],
   }),
 );
 

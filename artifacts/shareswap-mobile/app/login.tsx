@@ -108,7 +108,11 @@ export default function LoginScreen() {
             ]}
             onPress={handlePhone}
           >
-            <Text style={[styles.phoneBtnText, { color: colors.foreground }]}>
+            <Text
+              style={[styles.phoneBtnText, { color: colors.foreground }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               Continue with Phone Number
             </Text>
           </Pressable>
@@ -273,12 +277,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     paddingVertical: 15,
+    paddingHorizontal: 12,
     alignItems: "center",
     backgroundColor: "transparent",
   },
   phoneBtnText: {
     fontSize: 15,
     fontFamily: "Inter_400Regular",
+    numberOfLines: 1,
   },
   emailLink: {
     fontSize: 15,

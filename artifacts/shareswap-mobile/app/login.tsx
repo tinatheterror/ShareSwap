@@ -70,13 +70,10 @@ export default function LoginScreen() {
       >
         <View style={styles.logoContainer}>
           <Image
-            source={require("@/assets/images/icon.png")}
+            source={require("@/assets/images/shareswap-full-logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={[styles.appName, { color: colors.foreground }]}>
-            ShareSwap
-          </Text>
           <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
             Borrow, lend, swap & gift with your neighbours
           </Text>
@@ -218,14 +215,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-  },
-  appName: {
-    fontSize: 32,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
+    width: 220,
+    height: 56,
   },
   tagline: {
     fontSize: 14,

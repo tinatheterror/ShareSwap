@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Platform,
   Pressable,
   RefreshControl,
@@ -84,14 +85,11 @@ export default function BrowseScreen() {
         ]}
       >
         <View style={styles.headerTop}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-              Hello, {user?.displayName ?? user?.username ?? "neighbour"} 👋
-            </Text>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-              Browse Items
-            </Text>
-          </View>
+          <Image
+            source={require("@/assets/images/shareswap-full-logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <ShareCoinBadge />
         </View>
 
@@ -244,14 +242,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  greeting: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
+  logo: {
+    height: 36,
+    width: 160,
   },
   searchBar: {
     flexDirection: "row",

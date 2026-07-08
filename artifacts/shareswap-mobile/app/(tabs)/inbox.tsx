@@ -18,21 +18,13 @@ import { apiGet } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 interface Conversation {
-  id: number;
-  otherUser: {
-    id: number;
-    displayName?: string;
-    username: string;
-    avatarUrl?: string;
-    trustScore?: number;
-  };
-  lastMessage?: {
-    content: string;
-    createdAt: string;
-    senderId: number;
-  };
-  itemTitle?: string;
-  unreadCount?: number;
+  userId: number;
+  username: string;
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+  transactionType: string | null;
+  itemName: string | null;
 }
 
 function timeAgo(dateStr: string): string {
@@ -46,17 +38,10 @@ function timeAgo(dateStr: string): string {
   return `${days}d`;
 }
 
-function ConversationRow({
-  convo,
-  currentUserId,
-}: {
-  convo: Conversation;
-  currentUserId: number;
-}) {
+function ConversationRow({ convo }: { convo: Conversation }) {
   const colors = useColors();
   const router = useRouter();
-  const isUnread = (convo.unreadCount ?? 0) > 0;
-  const isSentByMe = convo.lastMessage?.senderId === currentUserId;
+  const isUnread = convo.unreadCount > 0;
 
   return (
     <Pressable
@@ -68,15 +53,13 @@ function ConversationRow({
           opacity: pressed ? 0.92 : 1,
         },
       ]}
-      onPress={() => router.push(`/chat/${convo.id}`)}
+      onPress={() => router.push(`/chat/${convo.userId}`)}
     >
       <View
         style={[styles.avatar, { backgroundColor: colors.primary + "30" }]}
       >
         <Text style={[styles.avatarText, { color: colors.primary }]}>
-          {(convo.otherUser.displayName ?? convo.otherUser.username)
-            .charAt(0)
-            .toUpperCase()}
+          {convo.username.charAt(0).toUpperCase()}
         </Text>
         {isUnread ? (
           <View
@@ -95,40 +78,33 @@ function ConversationRow({
             ]}
             numberOfLines={1}
           >
-            {convo.otherUser.displayName ?? convo.otherUser.username}
+            {convo.username}
           </Text>
-          {convo.lastMessage?.createdAt ? (
+          {convo.lastMessageTime ? (
             <Text style={[styles.time, { color: colors.mutedForeground }]}>
-              {timeAgo(convo.lastMessage.createdAt)}
+              {timeAgo(convo.lastMessageTime)}
             </Text>
           ) : null}
         </View>
 
-        {convo.itemTitle ? (
+        {convo.itemName ? (
           <View style={styles.itemTag}>
             <Feather name="package" size={10} color={colors.primary} />
             <Text style={[styles.itemTagText, { color: colors.primary }]} numberOfLines={1}>
-              {convo.itemTitle}
+              {convo.itemName}
             </Text>
           </View>
         ) : null}
 
-        {convo.lastMessage ? (
-          <Text
-            style={[
-              styles.preview,
-              { color: isUnread ? colors.foreground : colors.mutedForeground },
-            ]}
-            numberOfLines={1}
-          >
-            {isSentByMe ? "You: " : ""}
-            {convo.lastMessage.content}
-          </Text>
-        ) : (
-          <Text style={[styles.preview, { color: colors.mutedForeground }]}>
-            No messages yet
-          </Text>
-        )}
+        <Text
+          style={[
+            styles.preview,
+            { color: isUnread ? colors.foreground : colors.mutedForeground },
+          ]}
+          numberOfLines={1}
+        >
+          {convo.lastMessage || "No messages yet"}
+        </Text>
       </View>
 
       <Feather
@@ -207,9 +183,9 @@ export default function InboxScreen() {
       ) : (
         <FlatList
           data={data}
-          keyExtractor={(c) => c.id.toString()}
+          keyExtractor={(c) => c.userId.toString()}
           renderItem={({ item }) => (
-            <ConversationRow convo={item} currentUserId={user!.id} />
+            <ConversationRow convo={item} />
           )}
           contentContainerStyle={[
             styles.list,

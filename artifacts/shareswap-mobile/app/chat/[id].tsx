@@ -49,17 +49,17 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const { data: messages, isLoading } = useQuery<Message[]>({
-    queryKey: [`/api/conversations/${id}/messages`],
-    queryFn: () => apiGet<Message[]>(`/api/conversations/${id}/messages`),
+    queryKey: [`/api/messages/${id}`],
+    queryFn: () => apiGet<Message[]>(`/api/messages/${id}`),
     enabled: !!id,
     refetchInterval: 5000,
   });
 
   const sendMutation = useMutation({
     mutationFn: (content: string) =>
-      apiPost(`/api/conversations/${id}/messages`, { content }),
+      apiPost(`/api/messages`, { receiverId: parseInt(id ?? "0"), content }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/conversations/${id}/messages`] });
+      qc.invalidateQueries({ queryKey: [`/api/messages/${id}`] });
       qc.invalidateQueries({ queryKey: ["/api/conversations"] });
       setText("");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

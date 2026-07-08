@@ -1,8 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import React, { useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useState, useRef } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   Image,
   Platform,
@@ -16,25 +18,334 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { ItemCard, Item } from "@/components/ItemCard";
-import { ShareCoinBadge } from "@/components/ShareCoinBadge";
-import { apiGet } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "expo-router";
+import { apiGet } from "@/lib/api";
 
-const CATEGORIES = [
-  { label: "All", icon: "grid" as const },
-  { label: "Tools", icon: "tool" as const },
-  { label: "Kitchen", icon: "coffee" as const },
-  { label: "Sports", icon: "activity" as const },
-  { label: "Books", icon: "book" as const },
-  { label: "Garden", icon: "feather" as const },
-  { label: "Tech", icon: "cpu" as const },
-];
+const SCREEN_W = Dimensions.get("window").width;
+const GRID_GAP = 10;
+const GRID_PAD = 16;
+const CARD_W = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
+const SUGGEST_W = 158;
 
-const SHARE_TYPES = ["All", "Borrow", "Rent", "Swap", "Gift"];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-export default function BrowseScreen() {
+interface BrowseItem {
+  id: number;
+  name?: string;
+  title?: string;
+  photos?: string[] | null;
+  imageUrl?: string | null;
+  shareType?: string;
+  conditionRating?: number | null;
+  shareCoinsReward?: number | null;
+  shareCoinPrice?: number | null;
+  pricePerDay?: number | null;
+  city?: string | null;
+  postalCode?: string | null;
+  isGift?: boolean;
+  isLendable?: boolean;
+  isRentable?: boolean;
+  owner?: {
+    id: number;
+    username: string;
+    displayName?: string | null;
+    isVerified: boolean;
+  };
+  recommendationReasons?: string[];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function iname(item: BrowseItem) {
+  return item.name || item.title || "Item";
+}
+function iphoto(item: BrowseItem): string | null {
+  if (item.photos && item.photos.length > 0) return item.photos[0];
+  if (item.imageUrl) return item.imageUrl;
+  return null;
+}
+function stype(item: BrowseItem) {
+  return (item.shareType || "borrow").toLowerCase();
+}
+function actionLabel(st: string) {
+  if (st === "gift") return "claim this";
+  if (st === "rent") return "rent it";
+  if (st === "swap") return "swap it";
+  return "borrow it";
+}
+function badgeColor(st: string) {
+  if (st === "rent") return "#8b5cf6";
+  if (st === "swap") return "#f59e0b";
+  if (st === "gift") return "#ec4899";
+  return "#3b82f6";
+}
+function badgeLabel(st: string) {
+  return st.charAt(0).toUpperCase() + st.slice(1);
+}
+function coins(item: BrowseItem) {
+  return Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 0));
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+
+function SectionHeader({
+  emoji,
+  label,
+  count,
+  accentBg,
+  accentText,
+}: {
+  emoji: string;
+  label: string;
+  count?: number;
+  accentBg: string;
+  accentText: string;
+}) {
+  return (
+    <View style={sh.row}>
+      <View style={[sh.icon, { backgroundColor: accentBg }]}>
+        <Text style={sh.emoji}>{emoji}</Text>
+      </View>
+      <Text style={sh.label}>{label}</Text>
+      {count != null && (
+        <View style={[sh.badge, { backgroundColor: accentBg }]}>
+          <Text style={[sh.badgeText, { color: accentText }]}>
+            {count} available
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+const sh = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  icon: { width: 32, height: 32, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  emoji: { fontSize: 16 },
+  label: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#1f2937" },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
+  badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+});
+
+// ─── Suggested card (compact horizontal scroll) ────────────────────────────
+
+function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
+  const st = stype(item);
+  const photo = iphoto(item);
+  const c = coins(item);
+  return (
+    <Pressable
+      style={[scard.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}
+      onPress={() => router.push(`/item/${item.id}` as never)}
+    >
+      <View style={scard.imgWrap}>
+        {photo ? (
+          <Image source={{ uri: photo }} style={scard.img} resizeMode="cover" />
+        ) : (
+          <View style={[scard.imgPlaceholder, { backgroundColor: colors.muted }]}>
+            <Feather name="package" size={28} color={colors.mutedForeground} />
+          </View>
+        )}
+        <View style={[scard.badge, { backgroundColor: badgeColor(st) }]}>
+          <Text style={scard.badgeText}>{badgeLabel(st)}</Text>
+        </View>
+      </View>
+      <View style={scard.body}>
+        <Text style={[scard.title, { color: colors.foreground }]} numberOfLines={2}>
+          {iname(item)}
+        </Text>
+        <View style={scard.row}>
+          <Feather name="map-pin" size={10} color={colors.mutedForeground} />
+          <Text style={[scard.meta, { color: colors.mutedForeground }]}>
+            {item.city || "Nearby"}
+          </Text>
+        </View>
+        <Text style={[scard.meta, { color: colors.mutedForeground }]}>
+          Condition: {item.conditionRating ?? 8}/10
+        </Text>
+        {c > 0 && (
+          <Text style={[scard.coins, { color: colors.primary }]}>
+            🪙 {c} ShareCoins
+          </Text>
+        )}
+        {item.pricePerDay ? (
+          <Text style={[scard.price, { color: colors.mutedForeground }]}>
+            £{Number(item.pricePerDay).toFixed(0)}/day
+          </Text>
+        ) : null}
+        <Pressable
+          style={[scard.btn, { backgroundColor: colors.primary }]}
+          onPress={() => router.push(`/item/${item.id}` as never)}
+        >
+          <Text style={[scard.btnText, { color: colors.primaryForeground }]}>
+            {actionLabel(st)}
+          </Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+const scard = StyleSheet.create({
+  wrap: { width: SUGGEST_W, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
+  imgWrap: { position: "relative" },
+  img: { width: SUGGEST_W, height: SUGGEST_W * 0.75 },
+  imgPlaceholder: { width: SUGGEST_W, height: SUGGEST_W * 0.75, alignItems: "center", justifyContent: "center" },
+  badge: { position: "absolute", top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
+  badgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
+  body: { padding: 8, gap: 3 },
+  title: { fontSize: 12, fontFamily: "Inter_600SemiBold", lineHeight: 16 },
+  row: { flexDirection: "row", alignItems: "center", gap: 3 },
+  meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  price: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  btn: { marginTop: 4, borderRadius: 6, paddingVertical: 5, alignItems: "center" },
+  btnText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+});
+
+// ─── Gift card (carousel) ──────────────────────────────────────────────────
+
+function GiftCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
+  const photo = iphoto(item);
+  return (
+    <Pressable
+      style={[gcard.wrap, { backgroundColor: colors.card, borderColor: "#fce7f3" }]}
+      onPress={() => router.push(`/item/${item.id}` as never)}
+    >
+      <View style={gcard.imgWrap}>
+        {photo ? (
+          <Image source={{ uri: photo }} style={gcard.img} resizeMode="cover" />
+        ) : (
+          <View style={[gcard.imgPlaceholder, { backgroundColor: "#fce7f3" }]}>
+            <Text style={{ fontSize: 40 }}>🎁</Text>
+          </View>
+        )}
+        <View style={gcard.freeBadge}>
+          <Text style={gcard.freeBadgeText}>FREE</Text>
+        </View>
+      </View>
+      <View style={gcard.body}>
+        <Text style={[gcard.title, { color: "#1f2937" }]} numberOfLines={1}>
+          {iname(item)}
+        </Text>
+        <View style={gcard.row}>
+          <Feather name="map-pin" size={11} color="#6b7280" />
+          <Text style={gcard.meta}>{item.city || "Nearby"}</Text>
+        </View>
+        <View style={gcard.row}>
+          <Text style={gcard.meta}>
+            <Text style={{ fontFamily: "Inter_600SemiBold" }}>Condition:</Text>{" "}
+            {item.conditionRating ?? 8}/10
+          </Text>
+          {item.owner?.isVerified && (
+            <View style={gcard.verifiedPill}>
+              <Text style={gcard.verifiedText}>Verified Owner</Text>
+            </View>
+          )}
+        </View>
+        <Pressable
+          style={gcard.btn}
+          onPress={() => router.push(`/item/${item.id}` as never)}
+        >
+          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" }}>
+            🎁  Claim Gift
+          </Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+const gcard = StyleSheet.create({
+  wrap: { borderRadius: 14, borderWidth: 1.5, overflow: "hidden" },
+  imgWrap: { position: "relative" },
+  img: { width: "100%", height: 180 },
+  imgPlaceholder: { width: "100%", height: 180, alignItems: "center", justifyContent: "center" },
+  freeBadge: { position: "absolute", top: 8, right: 8, backgroundColor: "#ec4899", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  freeBadgeText: { fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" },
+  body: { padding: 12, gap: 5 },
+  title: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  row: { flexDirection: "row", alignItems: "center", gap: 6 },
+  meta: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#374151" },
+  verifiedPill: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#0DCEA130", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
+  verifiedText: { fontSize: 9, color: "#0DCEA1", fontFamily: "Inter_600SemiBold" },
+  btn: { backgroundColor: "#ec4899", borderRadius: 8, paddingVertical: 8, alignItems: "center", marginTop: 4 },
+});
+
+// ─── Grid card (All Items) ─────────────────────────────────────────────────
+
+function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
+  const st = stype(item);
+  const photo = iphoto(item);
+  const c = coins(item);
+  return (
+    <Pressable
+      style={[grid.wrap, { backgroundColor: colors.card, borderColor: colors.border, width: CARD_W }]}
+      onPress={() => router.push(`/item/${item.id}` as never)}
+    >
+      <View style={grid.imgWrap}>
+        {photo ? (
+          <Image source={{ uri: photo }} style={[grid.img, { width: CARD_W }]} resizeMode="cover" />
+        ) : (
+          <View style={[grid.imgPlaceholder, { width: CARD_W, backgroundColor: colors.muted }]}>
+            <Feather name="package" size={28} color={colors.mutedForeground} />
+          </View>
+        )}
+        <View style={[grid.badge, { backgroundColor: badgeColor(st) }]}>
+          <Text style={grid.badgeText}>{badgeLabel(st)}</Text>
+        </View>
+      </View>
+      <View style={grid.body}>
+        <Text style={[grid.title, { color: colors.foreground }]} numberOfLines={2}>
+          {iname(item)}
+        </Text>
+        <View style={grid.row}>
+          <Feather name="map-pin" size={10} color={colors.mutedForeground} />
+          <Text style={[grid.meta, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {item.city || "Nearby"}
+          </Text>
+        </View>
+        <Text style={[grid.meta, { color: colors.mutedForeground }]}>
+          Condition: {item.conditionRating ?? 8}/10
+        </Text>
+        {c > 0 && (
+          <Text style={[grid.coins, { color: colors.primary }]}>
+            🪙 {c} ShareCoins
+          </Text>
+        )}
+        {item.pricePerDay ? (
+          <Text style={[grid.meta, { color: colors.mutedForeground }]}>
+            £{Number(item.pricePerDay).toFixed(0)}/day
+          </Text>
+        ) : null}
+        <Pressable
+          style={[grid.btn, { backgroundColor: colors.primary }]}
+          onPress={() => router.push(`/item/${item.id}` as never)}
+        >
+          <Text style={[grid.btnText, { color: colors.primaryForeground }]}>
+            {actionLabel(st)}
+          </Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+const grid = StyleSheet.create({
+  wrap: { borderRadius: 12, borderWidth: 1, overflow: "hidden" },
+  imgWrap: { position: "relative" },
+  img: { height: CARD_W * 0.85 },
+  imgPlaceholder: { height: CARD_W * 0.85, alignItems: "center", justifyContent: "center" },
+  badge: { position: "absolute", top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
+  badgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
+  body: { padding: 8, gap: 3 },
+  title: { fontSize: 12, fontFamily: "Inter_600SemiBold", lineHeight: 16 },
+  row: { flexDirection: "row", alignItems: "center", gap: 3 },
+  meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  btn: { marginTop: 5, borderRadius: 6, paddingVertical: 6, alignItems: "center" },
+  btnText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+});
+
+// ─── Main screen ───────────────────────────────────────────────────────────
+
+export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -42,272 +353,260 @@ export default function BrowseScreen() {
   const isWeb = Platform.OS === "web";
 
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedType, setSelectedType] = useState("All");
   const [refreshing, setRefreshing] = useState(false);
-
-  const { data, isLoading, refetch } = useQuery<Item[]>({
-    queryKey: ["/api/items", selectedCategory, selectedType],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedCategory !== "All") params.set("category", selectedCategory);
-      if (selectedType !== "All")
-        params.set("shareType", selectedType.toLowerCase());
-      return apiGet<Item[]>(`/api/items?${params.toString()}`);
-    },
-  });
-
-  const items =
-    data?.filter((item) =>
-      search.trim()
-        ? item.title.toLowerCase().includes(search.toLowerCase())
-        : true,
-    ) ?? [];
-
-  async function handleRefresh() {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }
 
   const topPad = isWeb ? 67 : insets.top;
 
+  // All items
+  const { data: allItems = [], isLoading: loadingAll, refetch: refetchAll } = useQuery<BrowseItem[]>({
+    queryKey: ["/api/items"],
+    queryFn: () => apiGet<BrowseItem[]>("/api/items"),
+  });
+
+  // Gift items
+  const { data: giftItems = [], refetch: refetchGifts } = useQuery<BrowseItem[]>({
+    queryKey: ["/api/items", "gift"],
+    queryFn: () => apiGet<BrowseItem[]>("/api/items?type=gift"),
+  });
+
+  // Recommended items (falls back gracefully)
+  const { data: recommended = [], refetch: refetchRec } = useQuery<BrowseItem[]>({
+    queryKey: ["/api/recommendations"],
+    queryFn: () => apiGet<BrowseItem[]>("/api/recommendations?limit=10"),
+    enabled: !!user,
+  });
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([refetchAll(), refetchGifts(), refetchRec()]);
+    setRefreshing(false);
+  }
+
+  // Filter by search
+  const filtered = search.trim()
+    ? allItems.filter((i) =>
+        iname(i).toLowerCase().includes(search.toLowerCase()),
+      )
+    : allItems;
+
+  // Dedupe gifts (already in allItems sometimes)
+  const giftList = giftItems.length
+    ? giftItems
+    : allItems.filter((i) => i.isGift || stype(i) === "gift");
+
+  // Suggested = recommendations or first 10 non-gift items
+  const suggestedList = recommended.length
+    ? recommended
+    : allItems.filter((i) => !i.isGift && stype(i) !== "gift").slice(0, 10);
+
+  // Grid rows (pairs)
+  const nonGiftItems = filtered.filter((i) => !i.isGift && stype(i) !== "gift");
+  const gridRows: BrowseItem[][] = [];
+  for (let i = 0; i < nonGiftItems.length; i += 2) {
+    gridRows.push(nonGiftItems.slice(i, i + 2));
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: topPad + 12,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <View style={styles.headerTop}>
-          <Image
-            source={require("@/assets/images/shareswap-full-logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <ShareCoinBadge />
+      {/* ── Sticky header ── */}
+      <View style={[styles.header, { paddingTop: topPad + 10, backgroundColor: colors.primary }]}>
+        <View style={styles.headerTitleRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Browse the community ShareChest</Text>
+            <Text style={styles.headerSub}>
+              A curated collection of items available near you
+            </Text>
+          </View>
         </View>
 
-        <View
-          style={[
-            styles.searchBar,
-            { backgroundColor: colors.muted, borderColor: colors.border },
-          ]}
-        >
-          <Feather name="search" size={16} color={colors.mutedForeground} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.foreground }]}
-            placeholder="Search items..."
-            placeholderTextColor={colors.mutedForeground}
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")}>
-              <Feather name="x" size={16} color={colors.mutedForeground} />
-            </Pressable>
-          )}
+        {/* Search + location row */}
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
+            <Feather name="search" size={15} color="#9ca3af" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search items..."
+              placeholderTextColor="#9ca3af"
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch("")} hitSlop={6}>
+                <Feather name="x" size={15} color="#9ca3af" />
+              </Pressable>
+            )}
+          </View>
         </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categories}
-        >
-          {CATEGORIES.map((cat) => {
-            const active = selectedCategory === cat.label;
-            return (
-              <Pressable
-                key={cat.label}
-                style={[
-                  styles.categoryChip,
-                  {
-                    backgroundColor: active
-                      ? colors.primary
-                      : colors.muted,
-                    borderColor: active ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setSelectedCategory(cat.label)}
-              >
-                <Feather
-                  name={cat.icon}
-                  size={13}
-                  color={active ? colors.primaryForeground : colors.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.categoryText,
-                    { color: active ? colors.primaryForeground : colors.mutedForeground },
-                  ]}
-                >
-                  {cat.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.types}
-        >
-          {SHARE_TYPES.map((t) => {
-            const active = selectedType === t;
-            return (
-              <Pressable
-                key={t}
-                style={[
-                  styles.typeChip,
-                  {
-                    backgroundColor: active ? colors.accent : "transparent",
-                    borderColor: active ? colors.primary : colors.border,
-                  },
-                ]}
-                onPress={() => setSelectedType(t)}
-              >
-                <Text
-                  style={[
-                    styles.typeText,
-                    { color: active ? colors.primary : colors.mutedForeground },
-                  ]}
-                >
-                  {t}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
       </View>
 
-      {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : items.length === 0 ? (
-        <View style={styles.centered}>
-          <Feather name="package" size={48} color={colors.mutedForeground} />
-          <Text
-            style={[styles.emptyTitle, { color: colors.foreground }]}
-          >
-            No items found
-          </Text>
-          <Text
-            style={[styles.emptyText, { color: colors.mutedForeground }]}
-          >
-            Try a different filter or check back later
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <ItemCard item={item} />}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 90 },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={colors.primary}
+      {/* ── Scrollable body ── */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.body,
+          { paddingBottom: insets.bottom + 90 },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
+        {/* ── Suggested for You ── */}
+        {!search && suggestedList.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader
+              emoji="🪙"
+              label="Suggested for You"
+              accentBg="#d1fae5"
+              accentText="#065f46"
             />
-          }
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hscroll}
+            >
+              {suggestedList.map((item) => (
+                <SuggestedCard
+                  key={item.id}
+                  item={item}
+                  colors={colors}
+                  router={router}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Free Gifts ── */}
+        {!search && giftList.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader
+              emoji="🎁"
+              label="Free Gifts"
+              count={giftList.length}
+              accentBg="#fce7f3"
+              accentText="#9d174d"
+            />
+            {/* Swipeable carousel */}
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              snapToInterval={SCREEN_W - GRID_PAD * 2}
+              contentContainerStyle={{ gap: GRID_GAP }}
+            >
+              {giftList.slice(0, 6).map((item) => (
+                <View key={item.id} style={{ width: SCREEN_W - GRID_PAD * 2 }}>
+                  <GiftCard item={item} colors={colors} router={router} />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── All Items grid ── */}
+        <View style={styles.section}>
+          <SectionHeader
+            emoji="🗂️"
+            label={search ? `Results for "${search}"` : "All Items"}
+            count={!search ? nonGiftItems.length : undefined}
+            accentBg="#d1fae5"
+            accentText="#065f46"
+          />
+
+          {loadingAll ? (
+            <View style={styles.centered}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : gridRows.length === 0 ? (
+            <View style={styles.centered}>
+              <Feather name="package" size={40} color={colors.mutedForeground} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                {search ? `No results for "${search}"` : "No items yet"}
+              </Text>
+            </View>
+          ) : (
+            gridRows.map((row, ri) => (
+              <View key={ri} style={styles.gridRow}>
+                {row.map((item) => (
+                  <GridCard
+                    key={item.id}
+                    item={item}
+                    colors={colors}
+                    router={router}
+                  />
+                ))}
+                {row.length === 1 && <View style={{ width: CARD_W }} />}
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: 12,
+    paddingBottom: 14,
+    gap: 10,
   },
-  headerTop: {
+  headerTitleRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
   },
-  logo: {
-    height: 36,
-    width: 160,
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#ffffff",
+    lineHeight: 24,
+  },
+  headerSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 2,
+  },
+  searchRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
   },
   searchBar: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  categories: {
-    gap: 8,
-    paddingRight: 4,
-  },
-  categoryChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  categoryText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  types: {
-    gap: 8,
-    paddingRight: 4,
-  },
-  typeChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  typeText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  list: {
-    padding: 16,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    padding: 32,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
-  },
-  emptyText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    textAlign: "center",
+    color: "#1f2937",
+    padding: 0,
   },
+
+  body: { paddingTop: 16, gap: 0 },
+  section: { paddingHorizontal: 16, marginBottom: 24 },
+  hscroll: { gap: 10, paddingRight: 4 },
+  gridRow: { flexDirection: "row", gap: GRID_GAP, marginBottom: GRID_GAP },
+  centered: { paddingVertical: 40, alignItems: "center", gap: 12 },
+  emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
 });

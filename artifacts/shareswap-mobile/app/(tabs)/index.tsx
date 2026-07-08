@@ -29,6 +29,29 @@ const GRID_PAD = 16;
 const CARD_W = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
 const SUGGEST_W = 158;
 
+const ITEM_CATEGORIES = [
+  { label: "All",                  emoji: "🗂️" },
+  { label: "Baby & Kids",          emoji: "🍼" },
+  { label: "Clothing & Accessories", emoji: "👗" },
+  { label: "Electronics",          emoji: "📱" },
+  { label: "Hobbies & Collectibles",emoji: "🎮" },
+  { label: "Home & Kitchen",       emoji: "🏠" },
+  { label: "Tools & Equipment",    emoji: "🔧" },
+] as const;
+
+type CategoryLabel = typeof ITEM_CATEGORIES[number]["label"];
+
+function inferCategory(name: string): string {
+  const n = name.toLowerCase();
+  if (/baby|bassinet|stroller|crib|diaper|toddler|kid|child|toy|carrier|pram|playpen|highchair|bouncer|nursery/i.test(n)) return "Baby & Kids";
+  if (/clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|jewelry|watch|sweater|hoodie|jeans|leggings|bikini|skirt|sneaker|sandal|top|shorts|activewear|lululemon|nike|adidas/i.test(n)) return "Clothing & Accessories";
+  if (/phone|tablet|laptop|computer|camera|tv|speaker|headphone|charger|electronic|gaming|console|monitor|keyboard|printer|drone|smartwatch|earbuds|airpods|gopro|playstation|xbox|nintendo|ipad|iphone/i.test(n)) return "Electronics";
+  if (/camping|tent|bike|bicycle|golf|sports|game|book|guitar|instrument|hobby|fishing|kayak|ski|snowboard|surfboard|yoga|dumbbell|weight|exercise|treadmill|badminton|tennis|hockey|football|soccer|puzzle|board game|lego|craft/i.test(n)) return "Hobbies & Collectibles";
+  if (/kitchen|blender|mixer|pot|pan|plate|utensil|furniture|chair|table|lamp|decor|vacuum|appliance|oven|microwave|fridge|toaster|coffee|couch|sofa|mattress|bed|shelf|wardrobe|dresser|curtain|rug|pillow|duvet|towel|fan|heater/i.test(n)) return "Home & Kitchen";
+  if (/drill|saw|hammer|tool|wrench|screwdriver|mower|lawn|garden|ladder|pressure washer|generator|chainsaw|sander|grinder|level|shovel|rake|hoe|wheelbarrow|hose|hedge trimmer|leaf blower|snow blower/i.test(n)) return "Tools & Equipment";
+  return "Home & Kitchen";
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface BrowseItem {
@@ -360,6 +383,7 @@ export default function HomeScreen() {
   const [locationCity, setLocationCity] = useState("");
   const [locationRadius, setLocationRadius] = useState(25);
   const [detectLoading, setDetectLoading] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryLabel>("All");
   const queryClient = useQueryClient();
 
   // Seed from saved user profile on login
@@ -385,6 +409,18 @@ export default function HomeScreen() {
       queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
       setLocationModal(false);
     },
+  });
+
+  const addWishlistMutation = useMutation({
+    mutationFn: (itemName: string) => apiPost("/api/wishlists", { itemName }),
+    onSuccess: () => { setSearch(""); },
+  });
+
+  // Items user is subscribed to that are currently out on loan
+  const { data: subscribedOutItems = [] } = useQuery<{ id: number; name: string; photos: string[] | null; city: string | null; conditionRating: number | null }[]>({
+    queryKey: ["/api/items/my-subscribed-items"],
+    queryFn: () => apiGet("/api/items/my-subscribed-items"),
+    enabled: !!user,
   });
 
   const topPad = isWeb ? 67 : insets.top;
@@ -414,14 +450,19 @@ export default function HomeScreen() {
     setRefreshing(false);
   }
 
-  // Filter by search
-  const filtered = search.trim()
-    ? allItems.filter((i) =>
-        iname(i).toLowerCase().includes(search.toLowerCase()),
-      )
+  // Filter by search + category
+  const searchFiltered = search.trim()
+    ? allItems.filter((i) => iname(i).toLowerCase().includes(search.toLowerCase()))
     : allItems;
 
   const isGiftItem = (i: BrowseItem) => !!(i.isGift || (i.shareType || "").toLowerCase() === "gift");
+
+  const filtered = selectedCategory === "All"
+    ? searchFiltered
+    : searchFiltered.filter((i) => {
+        const cat = (i as any).category || inferCategory(iname(i));
+        return cat === selectedCategory;
+      });
 
   // Dedupe gifts (already in allItems sometimes)
   const giftList = giftItems.length
@@ -433,7 +474,7 @@ export default function HomeScreen() {
     ? recommended
     : allItems.filter((i) => !isGiftItem(i)).slice(0, 10);
 
-  // Grid rows (pairs)
+  // Grid rows (pairs) — non-gift items only
   const nonGiftItems = filtered.filter((i) => !isGiftItem(i));
   const gridRows: BrowseItem[][] = [];
   for (let i = 0; i < nonGiftItems.length; i += 2) {
@@ -479,6 +520,27 @@ export default function HomeScreen() {
           </Text>
           <Feather name="chevron-down" size={13} color="#9ca3af" />
         </Pressable>
+
+        {/* Category filter chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryRow}
+        >
+          {ITEM_CATEGORIES.map((cat) => {
+            const active = selectedCategory === cat.label;
+            return (
+              <Pressable
+                key={cat.label}
+                style={[styles.catChip, { backgroundColor: active ? "#fff" : "rgba(255,255,255,0.25)", borderColor: active ? "#fff" : "transparent" }]}
+                onPress={() => setSelectedCategory(cat.label as CategoryLabel)}
+              >
+                <Text style={styles.catChipEmoji}>{cat.emoji}</Text>
+                <Text style={[styles.catChipText, { color: active ? colors.primary : "#fff" }]}>{cat.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* ── Scrollable body ── */}
@@ -518,6 +580,54 @@ export default function HomeScreen() {
                   router={router}
                 />
               ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Coming Back Soon ── */}
+        {!search && user && subscribedOutItems.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader
+              emoji="🔔"
+              label="Coming Back Soon"
+              count={subscribedOutItems.length}
+              accentBg="#fef3c7"
+              accentText="#92400e"
+            />
+            <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+              Items you're watching — we'll notify you when they're available again.
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hscroll}>
+              {subscribedOutItems.map((item) => {
+                const photo = item.photos?.[0] ?? null;
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[cbs.card, { borderColor: "#fde68a" }]}
+                    onPress={() => router.push(`/item/${item.id}` as never)}
+                  >
+                    <View style={cbs.imgWrap}>
+                      {photo
+                        ? <Image source={{ uri: photo }} style={cbs.img} resizeMode="cover" />
+                        : <View style={[cbs.img, { backgroundColor: "#fef3c7", alignItems: "center", justifyContent: "center" }]}>
+                            <Feather name="package" size={20} color="#d97706" />
+                          </View>}
+                      <View style={cbs.overlay} />
+                      <View style={cbs.outBadge}><Text style={cbs.outBadgeText}>Currently Out</Text></View>
+                      <View style={cbs.bellCircle}><Feather name="bell" size={10} color="#d97706" /></View>
+                    </View>
+                    <View style={cbs.body}>
+                      <Text style={[cbs.name, { color: colors.foreground }]} numberOfLines={1}>{item.name}</Text>
+                      {item.city ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                          <Feather name="map-pin" size={9} color={colors.mutedForeground} />
+                          <Text style={[cbs.city, { color: colors.mutedForeground }]} numberOfLines={1}>{item.city}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
             </ScrollView>
           </View>
         )}
@@ -564,11 +674,36 @@ export default function HomeScreen() {
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
+          ) : gridRows.length === 0 && search ? (
+            /* ── Empty search: "Add to Wishlist" card (matches web) ── */
+            <View style={styles.centered}>
+              <View style={ws.card}>
+                <View style={ws.iconCircle}>
+                  <Feather name="heart" size={28} color="#fff" />
+                </View>
+                <Text style={ws.title}>No "{search}" found</Text>
+                <Text style={ws.body}>
+                  This item isn't available yet. Add it to your wishlist and we'll notify you when someone shares it!
+                </Text>
+                <Pressable
+                  style={[ws.btn, { opacity: addWishlistMutation.isPending ? 0.7 : 1 }]}
+                  onPress={() => user ? addWishlistMutation.mutate(search) : router.push("/login" as never)}
+                  disabled={addWishlistMutation.isPending}
+                >
+                  {addWishlistMutation.isPending
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={ws.btnText}>🔔 Add to Wishlist</Text>}
+                </Pressable>
+                <Pressable onPress={() => setSearch("")} style={{ marginTop: 8 }}>
+                  <Text style={[ws.clearText, { color: colors.mutedForeground }]}>Clear search</Text>
+                </Pressable>
+              </View>
+            </View>
           ) : gridRows.length === 0 ? (
             <View style={styles.centered}>
               <Feather name="package" size={40} color={colors.mutedForeground} />
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                {search ? `No results for "${search}"` : "No items yet"}
+                {selectedCategory !== "All" ? `No ${selectedCategory} items nearby` : "No items yet"}
               </Text>
             </View>
           ) : (
@@ -732,6 +867,42 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 16, marginBottom: 24 },
   hscroll: { gap: 10, paddingRight: 4 },
   gridRow: { flexDirection: "row", gap: GRID_GAP, marginBottom: GRID_GAP },
-  centered: { paddingVertical: 40, alignItems: "center", gap: 12 },
+  centered: { paddingVertical: 40, alignItems: "center", gap: 12, paddingHorizontal: 16 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  sectionSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: -6, marginBottom: 10 },
+
+  // Category filter chips
+  categoryRow: { gap: 7, paddingRight: 4 },
+  catChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 11, paddingVertical: 6,
+    borderRadius: 20, borderWidth: 1.5,
+  },
+  catChipEmoji: { fontSize: 13 },
+  catChipText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+});
+
+// ── Coming Back Soon card styles ─────────────────────────────────────────────
+const cbs = StyleSheet.create({
+  card: { width: 120, borderRadius: 12, borderWidth: 1.5, overflow: "hidden", backgroundColor: "#fffbeb" },
+  imgWrap: { position: "relative" },
+  img: { width: 120, height: 90 },
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)" },
+  outBadge: { position: "absolute", bottom: 5, left: 0, right: 0, alignItems: "center" },
+  outBadgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff", backgroundColor: "#f59e0b", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  bellCircle: { position: "absolute", top: 5, right: 5, backgroundColor: "#fff", borderRadius: 10, padding: 4 },
+  body: { padding: 7, gap: 2 },
+  name: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  city: { fontSize: 9, fontFamily: "Inter_400Regular" },
+});
+
+// ── Wishlist empty-state card styles ─────────────────────────────────────────
+const ws = StyleSheet.create({
+  card: { backgroundColor: "#D4F7F1", borderRadius: 20, padding: 24, alignItems: "center", gap: 10, width: "100%" },
+  iconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: "#0DCEA1", alignItems: "center", justifyContent: "center" },
+  title: { fontSize: 20, fontFamily: "Inter_700Bold", color: "#0D9488", textAlign: "center" },
+  body: { fontSize: 14, fontFamily: "Inter_400Regular", color: "#374151", textAlign: "center", lineHeight: 20 },
+  btn: { backgroundColor: "#0DCEA1", borderRadius: 12, paddingVertical: 12, paddingHorizontal: 24, marginTop: 4 },
+  btnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  clearText: { fontSize: 13, fontFamily: "Inter_400Regular" },
 });

@@ -567,13 +567,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
     color: "#000000",
-    lineHeight: 30,
+    lineHeight: 26,
   },
   headerSub: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     color: "rgba(0,0,0,0.6)",
     marginTop: 2,

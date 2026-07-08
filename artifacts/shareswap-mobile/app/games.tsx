@@ -40,7 +40,6 @@ export default function GamesScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const isWeb = Platform.OS === "web";
-  const topPad = isWeb ? 67 : insets.top;
 
   const { data: games, isLoading } = useQuery<Game[]>({
     queryKey: ["/api/games"],
@@ -78,27 +77,6 @@ export default function GamesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: topPad + 12,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <View style={styles.headerTop}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            Earn ShareCoins
-          </Text>
-          <ShareCoinBadge />
-        </View>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Complete offers to earn ShareCoins and unlock perks
-        </Text>
-      </View>
-
       {!user ? (
         <View style={styles.centered}>
           <Feather name="lock" size={40} color={colors.mutedForeground} />
@@ -120,6 +98,10 @@ export default function GamesScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.badgeRow}>
+            <ShareCoinBadge />
+          </View>
+
           <View style={styles.statsRow}>
             <View
               style={[
@@ -304,6 +286,10 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     gap: 16,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
   },
   statsRow: {
     flexDirection: "row",

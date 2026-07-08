@@ -13,19 +13,19 @@ function NativeTabLayout() {
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "house", selected: "house.fill" }} />
-        <Label>Browse</Label>
+        <Label>Home</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="inbox">
         <Icon sf={{ default: "message", selected: "message.fill" }} />
         <Label>Inbox</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="games">
-        <Icon sf={{ default: "star.circle", selected: "star.circle.fill" }} />
-        <Label>Earn</Label>
+      <NativeTabs.Trigger name="share">
+        <Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
+        <Label>Share</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="achievements">
-        <Icon sf={{ default: "trophy", selected: "trophy.fill" }} />
-        <Label>Badges</Label>
+      <NativeTabs.Trigger name="wishlist">
+        <Icon sf={{ default: "heart", selected: "heart.fill" }} />
+        <Label>Wishlist</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
@@ -80,7 +80,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Browse",
+          title: "Home",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="house" tintColor={color} size={24} />
@@ -102,26 +102,26 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="games"
+        name="share"
         options={{
-          title: "Earn",
+          title: "Share",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="star.circle" tintColor={color} size={24} />
+              <SymbolView name="plus.circle" tintColor={color} size={24} />
             ) : (
-              <Feather name="dollar-sign" size={22} color={color} />
+              <Feather name="plus-circle" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
-        name="achievements"
+        name="wishlist"
         options={{
-          title: "Badges",
+          title: "Wishlist",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="trophy" tintColor={color} size={24} />
+              <SymbolView name="heart" tintColor={color} size={24} />
             ) : (
-              <Feather name="award" size={22} color={color} />
+              <Feather name="heart" size={22} color={color} />
             ),
         }}
       />

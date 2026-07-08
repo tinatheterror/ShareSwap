@@ -253,6 +253,68 @@ export default function ProfileScreen() {
           ) : null}
         </View>
 
+        <View
+          style={[
+            styles.menuCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => router.push("/games")}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: colors.coin + "20" }]}>
+              <Feather name="dollar-sign" size={18} color={colors.coin} />
+            </View>
+            <View style={styles.menuTextGroup}>
+              <Text style={[styles.menuLabel, { color: colors.foreground }]}>
+                ShareCoins Wallet
+              </Text>
+              <Text style={[styles.menuSubtext, { color: colors.mutedForeground }]}>
+                {user.shareCoins ?? 0} SC · Earn more
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => router.push("/achievements")}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: colors.primary + "20" }]}>
+              <Feather name="award" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.menuTextGroup}>
+              <Text style={[styles.menuLabel, { color: colors.foreground }]}>
+                Achievements & Trust
+              </Text>
+              <Text style={[styles.menuSubtext, { color: colors.mutedForeground }]}>
+                Badges and trust score
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => router.push("/settings")}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: colors.muted }]}>
+              <Feather name="settings" size={18} color={colors.mutedForeground} />
+            </View>
+            <View style={styles.menuTextGroup}>
+              <Text style={[styles.menuLabel, { color: colors.foreground }]}>
+                Settings
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+
         {items && items.length > 0 ? (
           <View>
             <Text
@@ -413,6 +475,40 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     marginTop: 4,
     marginBottom: 4,
+  },
+  menuCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  menuRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+  },
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  menuLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  menuSubtext: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 64,
   },
   emptyListings: {
     alignItems: "center",

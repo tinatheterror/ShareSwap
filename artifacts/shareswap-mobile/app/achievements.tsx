@@ -120,7 +120,6 @@ export default function AchievementsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const isWeb = Platform.OS === "web";
-  const topPad = isWeb ? 67 : insets.top;
 
   const { data, isLoading } = useQuery<TrustData>({
     queryKey: ["/api/achievements"],
@@ -142,24 +141,6 @@ export default function AchievementsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: topPad + 12,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <View style={styles.headerTop}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
-            Achievements
-          </Text>
-          <ShareCoinBadge />
-        </View>
-      </View>
-
       {!user ? (
         <View style={styles.centered}>
           <Feather name="lock" size={40} color={colors.mutedForeground} />
@@ -179,6 +160,10 @@ export default function AchievementsScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.badgeRow}>
+            <ShareCoinBadge />
+          </View>
+
           <View
             style={[
               styles.trustCard,
@@ -315,6 +300,10 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     gap: 14,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
   },
   trustCard: {
     borderRadius: 20,

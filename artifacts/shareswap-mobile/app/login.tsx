@@ -284,7 +284,6 @@ const styles = StyleSheet.create({
   phoneBtnText: {
     fontSize: 15,
     fontFamily: "Inter_400Regular",
-    numberOfLines: 1,
   },
   emailLink: {
     fontSize: 15,

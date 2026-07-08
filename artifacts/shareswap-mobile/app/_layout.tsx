@@ -59,10 +59,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="chat/[id]"
-        options={{
-          title: "Message",
-          headerBackTitle: "Back",
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="settings"

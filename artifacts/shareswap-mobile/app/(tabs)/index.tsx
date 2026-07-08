@@ -24,6 +24,8 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost } from "@/lib/api";
 
+const rentalRateIcon = require("../../assets/icons/rental-rate.png");
+
 const SCREEN_W = Dimensions.get("window").width;
 const GRID_GAP = 10;
 const GRID_PAD = 16;
@@ -180,9 +182,9 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
   const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
   const weeklyPrice =
     item.dollarsPrice && Number(item.dollarsPrice) > 0
-      ? `$${Number(item.dollarsPrice).toFixed(0)}/wk`
+      ? `${Number(item.dollarsPrice).toFixed(0)}/wk`
       : item.pricePerDay && Number(item.pricePerDay) > 0
-      ? `$${(Number(item.pricePerDay) * 7).toFixed(0)}/wk`
+      ? `${(Number(item.pricePerDay) * 7).toFixed(0)}/wk`
       : null;
   return (
     <Pressable
@@ -220,13 +222,14 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
           <Coins size={13} color="#0DCEA1" strokeWidth={2} />
           <Text style={[scard.coins, { color: colors.foreground }]}>
             {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
-            {weeklyPrice ? (
-              <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
-                {"  |  $ "}
-                {weeklyPrice}
-              </Text>
-            ) : null}
           </Text>
+          {weeklyPrice ? (
+            <>
+              <Text style={[scard.coinsSep, { color: colors.mutedForeground }]}>{"  |  "}</Text>
+              <Image source={rentalRateIcon} style={scard.rateIcon} resizeMode="contain" />
+              <Text style={[scard.coinsRate, { color: colors.mutedForeground }]}>{weeklyPrice}</Text>
+            </>
+          ) : null}
         </View>
         <ActionButtons item={item} colors={colors} router={router} />
       </View>
@@ -262,7 +265,10 @@ const scard = StyleSheet.create({
   body: { padding: 14, gap: 4 },
   title: { fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 22 },
   row: { flexDirection: "row", alignItems: "center", gap: 4 },
-  coinsRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  coinsRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  coinsSep: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  rateIcon: { width: 13, height: 13 },
+  coinsRate: { fontSize: 13, fontFamily: "Inter_400Regular" },
   meta: { fontSize: 13, fontFamily: "Inter_400Regular" },
   coins: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
@@ -343,9 +349,9 @@ function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
   const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
   const price =
     item.dollarsPrice && Number(item.dollarsPrice) > 0
-      ? `$${Number(item.dollarsPrice).toFixed(0)}/wk`
+      ? `${Number(item.dollarsPrice).toFixed(0)}/wk`
       : item.pricePerDay && Number(item.pricePerDay) > 0
-      ? `$${Number(item.pricePerDay).toFixed(0)}/day`
+      ? `${Number(item.pricePerDay).toFixed(0)}/day`
       : null;
   return (
     <Pressable
@@ -383,8 +389,14 @@ function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
           <Coins size={11} color="#0DCEA1" strokeWidth={2} />
           <Text style={[grid.coins, { color: colors.foreground }]}>
             {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
-            {price ? <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{`  |  ${price}`}</Text> : null}
           </Text>
+          {price ? (
+            <>
+              <Text style={[grid.coinsSep, { color: colors.mutedForeground }]}>{"  |  "}</Text>
+              <Image source={rentalRateIcon} style={grid.rateIcon} resizeMode="contain" />
+              <Text style={[grid.coinsRate, { color: colors.mutedForeground }]}>{price}</Text>
+            </>
+          ) : null}
         </View>
         <ActionButtons item={item} colors={colors} router={router} />
       </View>
@@ -401,7 +413,10 @@ const grid = StyleSheet.create({
   body: { padding: 9, gap: 3 },
   title: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 17 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  coinsRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  coinsRow: { flexDirection: "row", alignItems: "center", gap: 2 },
+  coinsSep: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  rateIcon: { width: 11, height: 11 },
+  coinsRate: { fontSize: 10, fontFamily: "Inter_400Regular" },
   meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
   coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
 });

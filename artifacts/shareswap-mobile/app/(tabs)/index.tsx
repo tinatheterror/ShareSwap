@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { HandHeart } from "lucide-react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState, useRef, useEffect } from "react";
@@ -75,7 +76,7 @@ function coins(item: BrowseItem) {
 
 // ─── Action buttons ────────────────────────────────────────────────────────
 
-type IconFamily = "feather" | "mci";
+type IconFamily = "feather" | "mci" | "lucide-hand-heart";
 interface ActionBtn { label: string; icon: string; family: IconFamily; bg: string }
 
 function makeBtn(label: string, icon: string, family: IconFamily, bg: string): ActionBtn {
@@ -84,17 +85,16 @@ function makeBtn(label: string, icon: string, family: IconFamily, bg: string): A
 
 function getActionBtns(item: BrowseItem, primary: string): ActionBtn[] {
   const btns: ActionBtn[] = [];
-  if (item.isGift)     btns.push(makeBtn("Claim Gift", "gift",            "feather", "#ec4899"));
-  if (item.isLendable) btns.push(makeBtn("Borrow It",  "hand-heart",      "mci",     primary));
-  if (item.isRentable) btns.push(makeBtn("Rent It",    "dollar-sign",     "feather", primary));
-  if (item.isSwappable)btns.push(makeBtn("Swap It",    "swap-horizontal", "mci",     primary));
+  if (item.isGift)     btns.push(makeBtn("Claim Gift", "gift",            "feather",           "#ec4899"));
+  if (item.isLendable) btns.push(makeBtn("Borrow It",  "",                "lucide-hand-heart", primary));
+  if (item.isRentable) btns.push(makeBtn("Rent It",    "dollar-sign",     "feather",           primary));
+  if (item.isSwappable)btns.push(makeBtn("Swap It",    "swap-horizontal", "mci",               primary));
   if (btns.length > 0) return btns;
-  // fallback from shareType
   const st = (item.shareType || "borrow").toLowerCase();
-  if (st === "gift")  return [makeBtn("Claim Gift", "gift",            "feather", "#ec4899")];
-  if (st === "rent")  return [makeBtn("Rent It",    "dollar-sign",     "feather", primary)];
-  if (st === "swap")  return [makeBtn("Swap It",    "swap-horizontal", "mci",     primary)];
-  return                     [makeBtn("Borrow It",  "hand-heart",      "mci",     primary)];
+  if (st === "gift")  return [makeBtn("Claim Gift", "gift",            "feather",           "#ec4899")];
+  if (st === "rent")  return [makeBtn("Rent It",    "dollar-sign",     "feather",           primary)];
+  if (st === "swap")  return [makeBtn("Swap It",    "swap-horizontal", "mci",               primary)];
+  return                     [makeBtn("Borrow It",  "",                "lucide-hand-heart", primary)];
 }
 
 function ActionButtons({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
@@ -107,7 +107,9 @@ function ActionButtons({ item, colors, router }: { item: BrowseItem; colors: any
           style={[ab.btn, { backgroundColor: btn.bg }]}
           onPress={() => router.push(`/item/${item.id}` as never)}
         >
-          {btn.family === "mci"
+          {btn.family === "lucide-hand-heart"
+            ? <HandHeart size={13} color="#fff" strokeWidth={2} />
+            : btn.family === "mci"
             ? <MaterialCommunityIcons name={btn.icon as any} size={13} color="#fff" />
             : <Feather name={btn.icon as any} size={12} color="#fff" />}
           <Text style={ab.label}>{btn.label}</Text>

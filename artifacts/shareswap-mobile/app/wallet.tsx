@@ -1,12 +1,10 @@
 import { Feather } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  ActivityIndicator,
-  FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,22 +12,24 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import { apiGet } from "@/lib/api";
 
-interface Transaction {
-  id: number;
-  amount: string | number;
-  description: string;
-  createdAt: string;
+interface MenuItem {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  label: string;
+  route: string;
+  accent?: boolean;
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString([], {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+const MAIN_ITEMS: MenuItem[] = [
+  { icon: "list", label: "View Transactions", route: "/transactions" },
+  { icon: "award", label: "Achievements", route: "/achievements" },
+];
+
+const EARN_ITEMS: MenuItem[] = [
+  { icon: "play-circle", label: "Play Games", route: "/games", accent: true },
+  { icon: "user-plus", label: "Invite Friends", route: "/(tabs)/profile" },
+  { icon: "heart", label: "Help Neighbours", route: "/" },
+];
 
 export default function WalletScreen() {
   const colors = useColors();
@@ -38,17 +38,15 @@ export default function WalletScreen() {
   const router = useRouter();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
-
-  const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
-    queryKey: ["/api/transactions"],
-    queryFn: () => apiGet<Transaction[]>("/api/transactions"),
-  });
-
   const balance = Math.round(Number(user?.shareCoins ?? 0));
+
+  function nav(route: string) {
+    router.push(route as never);
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
+      {/* Custom header */}
       <View
         style={[
           styles.header,
@@ -65,128 +63,144 @@ export default function WalletScreen() {
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
           ShareCoin Wallet
         </Text>
-        <View style={styles.headerSpacer} />
+        <View style={{ width: 30 }} />
       </View>
 
-      <FlatList
-        data={transactions}
-        keyExtractor={(t) => t.id.toString()}
+      <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + 24 },
+          { paddingBottom: insets.bottom + 32 },
         ]}
-        ListHeaderComponent={
-          <>
-            {/* Balance card — matches the screenshot */}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Balance card */}
+        <View
+          style={[
+            styles.balanceCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>
+            Total Balance
+          </Text>
+          <View style={styles.balanceRow}>
             <View
-              style={[
-                styles.balanceCard,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
-              ]}
+              style={[styles.coinCircle, { backgroundColor: "#fef3c7" }]}
             >
-              <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>
-                Total Balance
-              </Text>
-              <View style={styles.balanceRow}>
+              <Text style={styles.coinEmoji}>🪙</Text>
+            </View>
+            <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
+              {balance} ShareCoins
+            </Text>
+          </View>
+        </View>
+
+        {/* Main menu items */}
+        <View
+          style={[
+            styles.menuCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          {MAIN_ITEMS.map((item, i) => (
+            <React.Fragment key={item.route}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.menuRow,
+                  pressed && { opacity: 0.6 },
+                ]}
+                onPress={() => nav(item.route)}
+              >
                 <View
                   style={[
-                    styles.coinIconWrap,
-                    { backgroundColor: colors.coinBackground },
+                    styles.menuIconWrap,
+                    { backgroundColor: colors.muted },
                   ]}
                 >
-                  <Text style={styles.coinEmoji}>🪙</Text>
+                  <Feather name={item.icon} size={18} color={colors.foreground} />
                 </View>
-                <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
-                  {balance} ShareCoins
+                <Text style={[styles.menuLabel, { color: colors.foreground }]}>
+                  {item.label}
                 </Text>
-              </View>
-            </View>
-
-            {/* Section heading */}
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Transaction History
-            </Text>
-          </>
-        }
-        renderItem={({ item }) => {
-          const amt = Number(item.amount);
-          const isPositive = amt >= 0;
-          return (
-            <View
-              style={[
-                styles.txRow,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              {/* Direction icon */}
-              <View
-                style={[
-                  styles.txIconWrap,
-                  {
-                    backgroundColor: isPositive
-                      ? colors.primary + "18"
-                      : "#dc262618",
-                  },
-                ]}
-              >
                 <Feather
-                  name={isPositive ? "arrow-up-circle" : "arrow-down-circle"}
-                  size={20}
-                  color={isPositive ? colors.primary : "#dc2626"}
+                  name="chevron-right"
+                  size={18}
+                  color={colors.mutedForeground}
                 />
-              </View>
+              </Pressable>
+              {i < MAIN_ITEMS.length - 1 && (
+                <View
+                  style={[styles.divider, { backgroundColor: colors.border }]}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
 
-              {/* Description + date */}
-              <View style={styles.txMeta}>
-                <Text
-                  style={[styles.txDesc, { color: colors.foreground }]}
-                  numberOfLines={2}
-                >
-                  {item.description}
-                </Text>
-                <Text style={[styles.txDate, { color: colors.mutedForeground }]}>
-                  {formatDate(item.createdAt)}
-                </Text>
-              </View>
+        {/* Earn More ShareCoins section */}
+        <Text style={[styles.sectionLabel, { color: colors.primary }]}>
+          Earn More ShareCoins
+        </Text>
 
-              {/* Amount */}
-              <Text
-                style={[
-                  styles.txAmount,
-                  { color: isPositive ? colors.primary : "#dc2626" },
+        <View
+          style={[
+            styles.menuCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          {EARN_ITEMS.map((item, i) => (
+            <React.Fragment key={item.route + item.label}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.menuRow,
+                  pressed && { opacity: 0.6 },
                 ]}
+                onPress={() => nav(item.route)}
               >
-                {isPositive ? "+" : "-"}
-                {Math.abs(amt).toFixed(2)}
-              </Text>
-            </View>
-          );
-        }}
-        ListEmptyComponent={
-          isLoading ? (
-            <View style={styles.centered}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            <View style={styles.empty}>
-              <Feather name="inbox" size={36} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                No transactions yet
-              </Text>
-            </View>
-          )
-        }
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => (
-          <View style={{ height: 8 }} />
-        )}
-      />
+                <View
+                  style={[
+                    styles.menuIconWrap,
+                    {
+                      backgroundColor: item.accent
+                        ? colors.primary + "18"
+                        : colors.muted,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name={item.icon}
+                    size={18}
+                    color={item.accent ? colors.primary : colors.foreground}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.menuLabel,
+                    {
+                      color: item.accent ? colors.primary : colors.foreground,
+                      fontFamily: item.accent
+                        ? "Inter_600SemiBold"
+                        : "Inter_400Regular",
+                    },
+                  ]}
+                >
+                  {item.label}
+                </Text>
+                <Feather
+                  name="chevron-right"
+                  size={18}
+                  color={colors.mutedForeground}
+                />
+              </Pressable>
+              {i < EARN_ITEMS.length - 1 && (
+                <View
+                  style={[styles.divider, { backgroundColor: colors.border }]}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -209,60 +223,60 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-  headerSpacer: { width: 30 },
 
-  content: { paddingHorizontal: 16, paddingTop: 20, gap: 8 },
+  content: { padding: 16, gap: 12 },
 
-  /* Balance card */
   balanceCard: {
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 20,
     paddingVertical: 20,
-    marginBottom: 24,
-    gap: 8,
+    gap: 10,
+    marginBottom: 4,
   },
   balanceLabel: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
-    letterSpacing: 0.3,
   },
   balanceRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
-  coinIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  coinCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
   },
-  coinEmoji: { fontSize: 20 },
+  coinEmoji: { fontSize: 18 },
   balanceAmount: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: "Inter_700Bold",
   },
 
-  /* Section title */
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 4,
+  sectionLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 4,
+    marginBottom: -4,
+    paddingHorizontal: 4,
   },
 
-  /* Transaction row */
-  txRow: {
+  menuCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  menuRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  txIconWrap: {
+  menuIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -270,30 +284,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  txMeta: { flex: 1, minWidth: 0, gap: 2 },
-  txDesc: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    lineHeight: 18,
-  },
-  txDate: {
-    fontSize: 11,
+  menuLabel: {
+    flex: 1,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
-  txAmount: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
-    flexShrink: 0,
-  },
-
-  centered: { paddingTop: 60, alignItems: "center" },
-  empty: {
-    paddingTop: 60,
-    alignItems: "center",
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 66,
   },
 });

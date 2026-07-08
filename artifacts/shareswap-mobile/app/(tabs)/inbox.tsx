@@ -1,117 +1,196 @@
 import { Feather } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-interface Conversation {
-  userId: number;
-  username: string;
-  lastMessage: string;
-  lastMessageTime: string;
+interface InboxItem {
+  requestId: number;
+  partnerId: number;
+  partnerUsername: string;
+  partnerDisplayName: string | null;
+  partnerPhoto: string | null;
+  partnerIsVerified: boolean;
+  partnerLastActiveAt: string | null;
+  partnerActiveStatus: string | null;
+  lastActivityTime: string;
+  preview: string;
+  previewType: "message" | "request";
+  previewSentByMe: boolean | null;
   unreadCount: number;
-  transactionType: string | null;
-  itemName: string | null;
+  requestType: string;
+  requestStatus: string;
+  requestNegotiationStatus: string | null;
+  itemName: string;
+  itemId: number;
+  itemPhoto: string | null;
+  iAmRequester: boolean;
+  isArchived: boolean;
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d`;
+type FilterKey = "all" | "lending" | "renting" | "swapping" | "gifting" | "archived";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "lending", label: "Lend" },
+  { key: "renting", label: "Rent" },
+  { key: "swapping", label: "Swap" },
+  { key: "gifting", label: "Gift" },
+  { key: "archived", label: "Archive" },
+];
+
+function formatTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-function ConversationRow({ convo }: { convo: Conversation }) {
+function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => void }) {
   const colors = useColors();
-  const router = useRouter();
-  const isUnread = convo.unreadCount > 0;
+  const partnerName = item.partnerDisplayName || item.partnerUsername;
+  const initials = partnerName.charAt(0).toUpperCase();
+  const isUnread = item.unreadCount > 0;
+  const needsAction =
+    !item.isArchived &&
+    ((item.requestStatus === "PENDING" && !item.iAmRequester) ||
+      item.requestNegotiationStatus === "counter_proposed");
+
+  const previewText =
+    item.previewType === "message"
+      ? (item.previewSentByMe ? "You: " : "") + item.preview
+      : item.preview;
 
   return (
     <Pressable
       style={({ pressed }) => [
         styles.row,
         {
-          backgroundColor: isUnread ? colors.accent : colors.card,
-          borderColor: colors.border,
-          opacity: pressed ? 0.92 : 1,
+          backgroundColor: needsAction
+            ? "#fffbeb"
+            : isUnread
+            ? colors.accent
+            : colors.card,
+          borderBottomColor: colors.border,
+          opacity: pressed ? 0.93 : 1,
         },
       ]}
-      onPress={() => router.push(`/chat/${convo.userId}`)}
+      onPress={onPress}
     >
-      <View
-        style={[styles.avatar, { backgroundColor: colors.primary + "30" }]}
-      >
-        <Text style={[styles.avatarText, { color: colors.primary }]}>
-          {convo.username.charAt(0).toUpperCase()}
-        </Text>
-        {isUnread ? (
+      {/* Avatar */}
+      <View style={styles.avatarWrap}>
+        <View style={[styles.avatar, { backgroundColor: colors.primary + "25" }]}>
+          {item.partnerPhoto ? (
+            <Image
+              source={{ uri: item.partnerPhoto }}
+              style={styles.avatarImg}
+            />
+          ) : (
+            <Text style={[styles.avatarText, { color: colors.primary }]}>
+              {initials}
+            </Text>
+          )}
+        </View>
+        {item.partnerActiveStatus === "online" ? (
           <View
-            style={[styles.unreadDot, { backgroundColor: colors.primary }]}
+            style={[styles.activeDot, { backgroundColor: "#22c55e", borderColor: colors.card }]}
           />
         ) : null}
       </View>
 
-      <View style={styles.rowContent}>
-        <View style={styles.rowTop}>
-          <Text
-            style={[
-              styles.name,
-              { color: colors.foreground },
-              isUnread && { fontFamily: "Inter_700Bold" },
-            ]}
-            numberOfLines={1}
-          >
-            {convo.username}
-          </Text>
-          {convo.lastMessageTime ? (
-            <Text style={[styles.time, { color: colors.mutedForeground }]}>
-              {timeAgo(convo.lastMessageTime)}
+      {/* Content */}
+      <View style={styles.content}>
+        {/* Row 1: name + time + unread */}
+        <View style={styles.row1}>
+          <View style={styles.nameRow}>
+            <Text
+              style={[
+                styles.name,
+                {
+                  color: colors.foreground,
+                  fontFamily: isUnread || needsAction ? "Inter_700Bold" : "Inter_600SemiBold",
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {partnerName}
             </Text>
-          ) : null}
-        </View>
-
-        {convo.itemName ? (
-          <View style={styles.itemTag}>
-            <Feather name="package" size={10} color={colors.primary} />
-            <Text style={[styles.itemTagText, { color: colors.primary }]} numberOfLines={1}>
-              {convo.itemName}
+            {item.partnerIsVerified ? (
+              <View style={[styles.verifiedBadge, { backgroundColor: colors.primary }]}>
+                <Feather name="check" size={8} color="#fff" />
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.metaRight}>
+            {isUnread ? (
+              <View style={[styles.unreadBadge, { backgroundColor: "#ef4444" }]}>
+                <Text style={styles.unreadText}>{item.unreadCount}</Text>
+              </View>
+            ) : needsAction ? (
+              <View style={[styles.unreadBadge, { backgroundColor: "#f59e0b" }]}>
+                <Text style={styles.unreadText}>!</Text>
+              </View>
+            ) : null}
+            <Text style={[styles.time, { color: colors.mutedForeground }]}>
+              {formatTime(item.lastActivityTime)}
             </Text>
           </View>
-        ) : null}
+        </View>
 
+        {/* Row 2: item thumbnail + name */}
+        <View style={styles.row2}>
+          {item.itemPhoto ? (
+            <Image
+              source={{ uri: item.itemPhoto }}
+              style={[styles.itemThumb, { borderColor: colors.border }]}
+            />
+          ) : (
+            <View style={[styles.itemThumbPlaceholder, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+              <Feather name="package" size={9} color={colors.mutedForeground} />
+            </View>
+          )}
+          <Text
+            style={[styles.itemName, { color: colors.foreground }]}
+            numberOfLines={1}
+          >
+            {item.itemName}
+          </Text>
+        </View>
+
+        {/* Row 3: message preview */}
         <Text
           style={[
             styles.preview,
-            { color: isUnread ? colors.foreground : colors.mutedForeground },
+            {
+              color: isUnread || needsAction ? colors.foreground : colors.mutedForeground,
+              fontFamily: isUnread ? "Inter_500Medium" : "Inter_400Regular",
+            },
           ]}
           numberOfLines={1}
         >
-          {convo.lastMessage || "No messages yet"}
+          {previewText}
         </Text>
       </View>
 
-      <Feather
-        name="chevron-right"
-        size={16}
-        color={colors.mutedForeground}
-      />
+      <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
     </Pressable>
   );
 }
@@ -120,25 +199,64 @@ export default function InboxScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const router = useRouter();
+  const qc = useQueryClient();
   const isWeb = Platform.OS === "web";
+
+  const [filter, setFilter] = useState<FilterKey>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data, isLoading, refetch } = useQuery<Conversation[]>({
-    queryKey: ["/api/conversations"],
-    queryFn: () => apiGet<Conversation[]>("/api/conversations"),
+  const isArchiveFilter = filter === "archived";
+
+  const { data: activeItems = [], isLoading: loadingActive, refetch: refetchActive } = useQuery<InboxItem[]>({
+    queryKey: ["/api/inbox"],
+    queryFn: () => apiGet<InboxItem[]>("/api/inbox"),
     enabled: !!user,
   });
 
+  const { data: archivedItems = [], isLoading: loadingArchived, refetch: refetchArchived } = useQuery<InboxItem[]>({
+    queryKey: ["/api/inbox/archived"],
+    queryFn: () => apiGet<InboxItem[]>("/api/inbox?archived=true"),
+    enabled: !!user && isArchiveFilter,
+  });
+
+  const isLoading = isArchiveFilter ? loadingArchived : loadingActive;
+  const baseItems = isArchiveFilter ? archivedItems : activeItems;
+
+  const filteredItems = baseItems.filter((item) => {
+    if (filter === "all" || filter === "archived") return true;
+    if (filter === "lending") return item.requestType === "BORROW";
+    if (filter === "renting") return item.requestType === "RENT";
+    if (filter === "swapping") return item.requestType === "SWAP";
+    if (filter === "gifting") return item.requestType === "GIFT";
+    return true;
+  });
+
+  const totalUnread = activeItems.reduce((s, i) => s + i.unreadCount, 0);
+
   async function handleRefresh() {
     setRefreshing(true);
-    await refetch();
+    await (isArchiveFilter ? refetchArchived() : refetchActive());
     setRefreshing(false);
+  }
+
+  function handleOpen(item: InboxItem) {
+    if (item.unreadCount > 0) {
+      apiRequest("POST", `/api/messages/mark-read/${item.partnerId}`, { requestId: item.requestId })
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+          qc.invalidateQueries({ queryKey: ["/api/inbox/archived"] });
+        })
+        .catch(() => {});
+    }
+    router.push(`/chat/${item.partnerId}?requestId=${item.requestId}`);
   }
 
   const topPad = isWeb ? 67 : insets.top;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View
         style={[
           styles.header,
@@ -149,16 +267,64 @@ export default function InboxScreen() {
           },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>Inbox</Text>
-        {(data?.reduce((a, c) => a + (c.unreadCount ?? 0), 0) ?? 0) > 0 ? (
-          <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.badgeText, { color: colors.primaryForeground }]}>
-              {data!.reduce((a, c) => a + (c.unreadCount ?? 0), 0)}
-            </Text>
-          </View>
-        ) : null}
+        <View style={styles.headerTop}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Inbox</Text>
+          {totalUnread > 0 ? (
+            <View style={[styles.totalBadge, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.totalBadgeText, { color: colors.primaryForeground }]}>
+                {totalUnread}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Filter chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          {FILTERS.map((f) => {
+            const active = filter === f.key;
+            const isArchive = f.key === "archived";
+            return (
+              <Pressable
+                key={f.key}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: active
+                      ? isArchive
+                        ? "#6b7280"
+                        : colors.foreground
+                      : colors.muted,
+                    borderColor: active
+                      ? isArchive
+                        ? "#6b7280"
+                        : colors.foreground
+                      : colors.border,
+                  },
+                ]}
+                onPress={() => setFilter(f.key)}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    {
+                      color: active ? "#fff" : colors.mutedForeground,
+                      fontFamily: active ? "Inter_600SemiBold" : "Inter_400Regular",
+                    },
+                  ]}
+                >
+                  {f.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
+      {/* Body */}
       {!user ? (
         <View style={styles.centered}>
           <Feather name="lock" size={40} color={colors.mutedForeground} />
@@ -170,27 +336,28 @@ export default function InboxScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : !data?.length ? (
+      ) : filteredItems.length === 0 ? (
         <View style={styles.centered}>
           <Feather name="message-circle" size={48} color={colors.mutedForeground} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            No conversations yet
+            {filter === "archived" ? "No archived chats" : "Nothing here yet"}
           </Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-            Start a conversation by messaging an item owner
+            {filter === "all"
+              ? "Start a conversation by requesting an item"
+              : "Try a different filter"}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={data}
-          keyExtractor={(c) => c.userId.toString()}
+          data={filteredItems}
+          keyExtractor={(item) => item.requestId.toString()}
           renderItem={({ item }) => (
-            <ConversationRow convo={item} />
+            <InboxRow item={item} onPress={() => handleOpen(item)} />
           )}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 90 },
-          ]}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 90,
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -199,11 +366,6 @@ export default function InboxScreen() {
             />
           }
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => (
-            <View
-              style={[styles.separator, { backgroundColor: colors.border }]}
-            />
-          )}
         />
       )}
     </View>
@@ -213,29 +375,44 @@ export default function InboxScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  headerTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
   title: {
     fontSize: 24,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
   },
-  badge: {
+  totalBadge: {
     borderRadius: 10,
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    minWidth: 22,
+    minWidth: 20,
     alignItems: "center",
   },
-  badgeText: {
-    color: "#fff",
-    fontSize: 12,
+  totalBadgeText: {
+    fontSize: 11,
     fontFamily: "Inter_700Bold",
+  },
+  filterRow: {
+    gap: 6,
+    paddingRight: 4,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterText: {
+    fontSize: 12,
   },
   centered: {
     flex: 1,
@@ -247,77 +424,132 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
   },
   emptyText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
   },
-  list: {
-    paddingTop: 4,
-  },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  avatarWrap: {
+    position: "relative",
+    flexShrink: 0,
+  },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarText: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
   },
-  unreadDot: {
+  activeDot: {
     position: "absolute",
-    top: 2,
-    right: 2,
+    bottom: 1,
+    right: 1,
     width: 10,
     height: 10,
     borderRadius: 5,
     borderWidth: 2,
-    borderColor: "#fff",
   },
-  rowContent: {
+  content: {
     flex: 1,
-    gap: 3,
+    gap: 2,
+    minWidth: 0,
   },
-  rowTop: {
+  row1: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    gap: 4,
   },
-  name: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-  },
-  time: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  itemTag: {
+  nameRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    flex: 1,
+    minWidth: 0,
   },
-  itemTagText: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
+  name: {
+    fontSize: 14,
+    flexShrink: 1,
+  },
+  verifiedBadge: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  metaRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flexShrink: 0,
+  },
+  unreadBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    minWidth: 16,
+    alignItems: "center",
+  },
+  unreadText: {
+    color: "#fff",
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+  },
+  time: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+  },
+  row2: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  itemThumb: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  itemThumbPlaceholder: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  itemName: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    flexShrink: 1,
+    fontStyle: "italic",
   },
   preview: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
+    lineHeight: 18,
   },
 });

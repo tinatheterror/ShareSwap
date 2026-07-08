@@ -38,7 +38,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, requestId } = useLocalSearchParams<{ id: string; requestId?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -48,19 +48,27 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
+  const messagesUrl = requestId
+    ? `/api/messages/${id}?requestId=${requestId}`
+    : `/api/messages/${id}`;
+
   const { data: messages, isLoading } = useQuery<Message[]>({
-    queryKey: [`/api/messages/${id}`],
-    queryFn: () => apiGet<Message[]>(`/api/messages/${id}`),
+    queryKey: [`/api/messages/${id}`, requestId ?? null],
+    queryFn: () => apiGet<Message[]>(messagesUrl),
     enabled: !!id,
     refetchInterval: 5000,
   });
 
   const sendMutation = useMutation({
     mutationFn: (content: string) =>
-      apiPost(`/api/messages`, { receiverId: parseInt(id ?? "0"), content }),
+      apiPost(`/api/messages`, {
+        receiverId: parseInt(id ?? "0"),
+        content,
+        ...(requestId ? { requestId: parseInt(requestId) } : {}),
+      }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/messages/${id}`] });
-      qc.invalidateQueries({ queryKey: ["/api/conversations"] });
+      qc.invalidateQueries({ queryKey: [`/api/messages/${id}`, requestId ?? null] });
+      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
       setText("");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },

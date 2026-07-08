@@ -121,9 +121,9 @@ function ActionButtons({ item, colors, router }: { item: BrowseItem; colors: any
   );
 }
 const ab = StyleSheet.create({
-  row: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  btn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20 },
-  label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  row: { flexDirection: "row", gap: 5, marginTop: 8 },
+  btn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 20, flexShrink: 1 },
+  label: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: "#fff", flexShrink: 1 },
 });
 
 // ─── Section header ───────────────────────────────────────────────────────────

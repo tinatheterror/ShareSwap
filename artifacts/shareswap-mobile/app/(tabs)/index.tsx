@@ -78,17 +78,17 @@ interface ActionBtn { label: string; icon: string; bg: string }
 
 function getActionBtns(item: BrowseItem, primary: string): ActionBtn[] {
   const btns: ActionBtn[] = [];
-  if (item.isGift)     btns.push({ label: "Claim Gift",  icon: "gift",               bg: "#ec4899" });
-  if (item.isLendable) btns.push({ label: "Borrow It",   icon: "arrow-down-circle",  bg: primary });
-  if (item.isRentable) btns.push({ label: "Rent It",     icon: "dollar-sign",        bg: primary });
-  if (item.isSwappable)btns.push({ label: "Swap It",     icon: "repeat",             bg: primary });
+  if (item.isGift)     btns.push({ label: "Claim Gift",  icon: "gift",         bg: "#ec4899" });
+  if (item.isLendable) btns.push({ label: "Borrow It",   icon: "refresh-cw",   bg: primary });
+  if (item.isRentable) btns.push({ label: "Rent It",     icon: "dollar-sign",  bg: primary });
+  if (item.isSwappable)btns.push({ label: "Swap It",     icon: "shuffle",      bg: primary });
   if (btns.length > 0) return btns;
   // fallback from shareType
   const st = (item.shareType || "borrow").toLowerCase();
-  if (st === "gift")  return [{ label: "Claim Gift", icon: "gift",              bg: "#ec4899" }];
-  if (st === "rent")  return [{ label: "Rent It",    icon: "dollar-sign",       bg: primary }];
-  if (st === "swap")  return [{ label: "Swap It",    icon: "repeat",            bg: primary }];
-  return              [{ label: "Borrow It",         icon: "arrow-down-circle", bg: primary }];
+  if (st === "gift")  return [{ label: "Claim Gift", icon: "gift",        bg: "#ec4899" }];
+  if (st === "rent")  return [{ label: "Rent It",    icon: "dollar-sign", bg: primary }];
+  if (st === "swap")  return [{ label: "Swap It",    icon: "shuffle",     bg: primary }];
+  return              [{ label: "Borrow It",         icon: "refresh-cw",  bg: primary }];
 }
 
 function ActionButtons({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {

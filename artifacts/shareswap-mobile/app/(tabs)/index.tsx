@@ -27,7 +27,8 @@ const SCREEN_W = Dimensions.get("window").width;
 const GRID_GAP = 10;
 const GRID_PAD = 16;
 const CARD_W = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
-const SUGGEST_W = 158;
+const SUGGEST_CARD_W = SCREEN_W - GRID_PAD * 2;
+const SUGGEST_IMG_H = Math.round(SUGGEST_CARD_W * 0.68);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -121,17 +122,21 @@ function SectionHeader({
   count,
   accentBg,
   accentText,
+  sparkle,
+  line,
 }: {
   emoji: string;
   label: string;
   count?: number;
   accentBg: string;
   accentText: string;
+  sparkle?: boolean;
+  line?: boolean;
 }) {
   return (
     <View style={sh.row}>
       <View style={[sh.icon, { backgroundColor: accentBg }]}>
-        <Text style={sh.emoji}>{emoji}</Text>
+        <Text style={sh.emoji}>{sparkle ? "✦" : emoji}</Text>
       </View>
       <Text style={sh.label}>{label}</Text>
       {count != null && (
@@ -141,6 +146,7 @@ function SectionHeader({
           </Text>
         </View>
       )}
+      {line && <View style={sh.line} />}
     </View>
   );
 }
@@ -151,18 +157,21 @@ const sh = StyleSheet.create({
   label: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#1f2937" },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 },
   badgeText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  line: { flex: 1, height: 1.5, backgroundColor: "#e5e7eb" },
 });
 
-// ─── Suggested card (compact horizontal scroll) ────────────────────────────
+// ─── Suggested card (full-width carousel) ─────────────────────────────────
 
 function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
   const photo = iphoto(item);
   const c = coins(item);
   const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
-  const price = item.pricePerDay ? `$${Number(item.pricePerDay).toFixed(0)}/day` : null;
+  const weeklyPrice = item.pricePerDay
+    ? `$${(Number(item.pricePerDay) * 7).toFixed(0)}/wk`
+    : null;
   return (
     <Pressable
-      style={[scard.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[scard.wrap, { backgroundColor: colors.card, width: SUGGEST_CARD_W }]}
       onPress={() => router.push(`/item/${item.id}` as never)}
     >
       <View style={scard.imgWrap}>
@@ -170,7 +179,7 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
           <Image source={{ uri: photo }} style={scard.img} resizeMode="cover" />
         ) : (
           <View style={[scard.imgPlaceholder, { backgroundColor: colors.muted }]}>
-            <Feather name="package" size={24} color={colors.mutedForeground} />
+            <Feather name="package" size={40} color={colors.mutedForeground} />
           </View>
         )}
         {isAiPick && (
@@ -184,8 +193,8 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
           {iname(item)}
         </Text>
         <View style={scard.row}>
-          <Feather name="map-pin" size={10} color={colors.mutedForeground} />
-          <Text style={[scard.meta, { color: colors.mutedForeground }]} numberOfLines={1}>
+          <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+          <Text style={[scard.meta, { color: colors.mutedForeground }]}>
             {item.city || "Nearby"}
           </Text>
         </View>
@@ -194,7 +203,12 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
         </Text>
         <Text style={[scard.coins, { color: colors.foreground }]}>
           🪙 {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
-          {price ? <Text style={{ color: colors.mutedForeground }}>{`  |  ${price}`}</Text> : null}
+          {weeklyPrice ? (
+            <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+              {"  |  $ "}
+              {weeklyPrice}
+            </Text>
+          ) : null}
         </Text>
         <ActionButtons item={item} colors={colors} router={router} />
       </View>
@@ -202,17 +216,36 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
   );
 }
 const scard = StyleSheet.create({
-  wrap: { width: SUGGEST_W, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
+  wrap: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
   imgWrap: { position: "relative" },
-  img: { width: SUGGEST_W, height: SUGGEST_W },
-  imgPlaceholder: { width: SUGGEST_W, height: SUGGEST_W, alignItems: "center", justifyContent: "center" },
-  aiPick: { position: "absolute", top: 7, right: 7, backgroundColor: "#0DCEA1", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 20 },
-  aiPickText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
-  body: { padding: 9, gap: 3 },
-  title: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 17 },
-  row: { flexDirection: "row", alignItems: "center", gap: 3 },
-  meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  img: { width: SUGGEST_CARD_W, height: SUGGEST_IMG_H },
+  imgPlaceholder: { width: SUGGEST_CARD_W, height: SUGGEST_IMG_H, alignItems: "center", justifyContent: "center" },
+  aiPick: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: "#0DCEA1",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  aiPickText: { fontSize: 12, fontFamily: "Inter_700Bold", color: "#fff" },
+  body: { padding: 14, gap: 4 },
+  title: { fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 22 },
+  row: { flexDirection: "row", alignItems: "center", gap: 4 },
+  meta: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  coins: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
 
 // ─── Gift card (carousel) ──────────────────────────────────────────────────
@@ -356,6 +389,8 @@ export default function HomeScreen() {
 
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [suggestedIndex, setSuggestedIndex] = useState(0);
+  const suggestedRef = useRef<FlatList>(null);
   const [locationModal, setLocationModal] = useState(false);
   const [locationCity, setLocationCity] = useState("");
   const [locationRadius, setLocationRadius] = useState(25);
@@ -500,25 +535,50 @@ export default function HomeScreen() {
         {!search && suggestedList.length > 0 && (
           <View style={styles.section}>
             <SectionHeader
-              emoji="🪙"
+              emoji=""
+              sparkle
+              line
               label="Suggested for You"
-              accentBg="#d1fae5"
+              accentBg="#0DCEA120"
               accentText="#065f46"
             />
-            <ScrollView
+            <FlatList
+              ref={suggestedRef}
+              data={suggestedList}
               horizontal
+              pagingEnabled={false}
+              snapToInterval={SUGGEST_CARD_W}
+              decelerationRate="fast"
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.hscroll}
-            >
-              {suggestedList.map((item) => (
-                <SuggestedCard
-                  key={item.id}
-                  item={item}
-                  colors={colors}
-                  router={router}
-                />
-              ))}
-            </ScrollView>
+              keyExtractor={(item) => String(item.id)}
+              renderItem={({ item }) => (
+                <SuggestedCard item={item} colors={colors} router={router} />
+              )}
+              onMomentumScrollEnd={(e) => {
+                const idx = Math.round(
+                  e.nativeEvent.contentOffset.x / SUGGEST_CARD_W
+                );
+                setSuggestedIndex(idx);
+              }}
+              scrollEnabled={suggestedList.length > 1}
+            />
+            {suggestedList.length > 1 && (
+              <View style={styles.dotsRow}>
+                {suggestedList.slice(0, 8).map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      {
+                        backgroundColor:
+                          i === suggestedIndex ? colors.primary : "#d1d5db",
+                        width: i === suggestedIndex ? 18 : 7,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -734,4 +794,6 @@ const styles = StyleSheet.create({
   gridRow: { flexDirection: "row", gap: GRID_GAP, marginBottom: GRID_GAP },
   centered: { paddingVertical: 40, alignItems: "center", gap: 12 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  dotsRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5, marginTop: 12 },
+  dot: { height: 7, borderRadius: 4 },
 });

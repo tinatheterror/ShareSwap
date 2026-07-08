@@ -1,12 +1,14 @@
 import { Feather } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   FlatList,
   Image,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -19,7 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPost } from "@/lib/api";
 
 const SCREEN_W = Dimensions.get("window").width;
 const GRID_GAP = 10;
@@ -354,6 +356,36 @@ export default function HomeScreen() {
 
   const [search, setSearch] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [locationModal, setLocationModal] = useState(false);
+  const [locationCity, setLocationCity] = useState("");
+  const [locationRadius, setLocationRadius] = useState(25);
+  const [detectLoading, setDetectLoading] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Seed from saved user profile on login
+  useEffect(() => {
+    if (user?.defaultCity) setLocationCity(user.defaultCity);
+    if (user?.locationRadius) setLocationRadius(user.locationRadius);
+  }, [user?.defaultCity, user?.locationRadius]);
+
+  async function detectLocation() {
+    setDetectLoading(true);
+    try {
+      const geo = await apiGet<{ city: string; postalCode: string }>("/api/geo/detect");
+      if (geo.city) setLocationCity(geo.city);
+    } catch {}
+    setDetectLoading(false);
+  }
+
+  const saveLocationMutation = useMutation({
+    mutationFn: () =>
+      apiPost("/api/user/location", { city: locationCity, postalCode: locationCity, radius: locationRadius }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+      setLocationModal(false);
+    },
+  });
 
   const topPad = isWeb ? 67 : insets.top;
 
@@ -440,9 +472,12 @@ export default function HomeScreen() {
         </View>
 
         {/* Location pill */}
-        <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]}>
+        <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]} onPress={() => setLocationModal(true)}>
           <Feather name="map-pin" size={14} color="#374151" />
-          <Text style={styles.locationText}>Nearby (25km radius)</Text>
+          <Text style={styles.locationText}>
+            {locationCity || "Nearby"} ({locationRadius}km radius)
+          </Text>
+          <Feather name="chevron-down" size={13} color="#9ca3af" />
         </Pressable>
       </View>
 
@@ -553,9 +588,79 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* ── Location picker modal ── */}
+      <Modal
+        visible={locationModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLocationModal(false)}
+      >
+        <Pressable style={lm.backdrop} onPress={() => setLocationModal(false)} />
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={lm.sheet}>
+          <View style={[lm.handle]} />
+          <Text style={lm.title}>Your Location</Text>
+          <Text style={lm.label}>City or neighbourhood</Text>
+          <View style={[lm.inputRow, { borderColor: colors.border }]}>
+            <Feather name="map-pin" size={15} color={colors.mutedForeground} />
+            <TextInput
+              style={[lm.input, { color: colors.foreground }]}
+              value={locationCity}
+              onChangeText={setLocationCity}
+              placeholder="e.g. Vancouver"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="words"
+            />
+            <Pressable onPress={detectLocation} disabled={detectLoading} hitSlop={8}>
+              {detectLoading
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <Text style={[lm.detectBtn, { color: colors.primary }]}>Detect</Text>}
+            </Pressable>
+          </View>
+
+          <Text style={lm.label}>Search radius</Text>
+          <View style={lm.radiusRow}>
+            {[5, 10, 25, 50, 100].map((r) => (
+              <Pressable
+                key={r}
+                style={[lm.chip, { borderColor: locationRadius === r ? colors.primary : colors.border, backgroundColor: locationRadius === r ? colors.primary : "transparent" }]}
+                onPress={() => setLocationRadius(r)}
+              >
+                <Text style={[lm.chipText, { color: locationRadius === r ? "#fff" : colors.foreground }]}>{r}km</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Pressable
+            style={[lm.saveBtn, { backgroundColor: colors.primary, opacity: saveLocationMutation.isPending ? 0.7 : 1 }]}
+            onPress={() => saveLocationMutation.mutate()}
+            disabled={saveLocationMutation.isPending}
+          >
+            {saveLocationMutation.isPending
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={lm.saveBtnText}>Save Location</Text>}
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
+
+const lm = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12 },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#d1d5db", alignSelf: "center", marginBottom: 4 },
+  title: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#1f2937" },
+  label: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#6b7280", marginTop: 4 },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
+  detectBtn: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  radiusRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
+  chipText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  saveBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 4 },
+  saveBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1 },

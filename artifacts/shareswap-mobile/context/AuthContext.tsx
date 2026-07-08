@@ -20,6 +20,9 @@ interface User {
   location?: string;
   neighbourhood?: string;
   isVerified?: boolean;
+  defaultCity?: string | null;
+  defaultPostalCode?: string | null;
+  locationRadius?: number | null;
 }
 
 interface AuthContextValue {

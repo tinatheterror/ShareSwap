@@ -602,7 +602,7 @@ export default function HomeScreen() {
           <Text style={lm.title}>Your Location</Text>
           <Text style={lm.label}>City or neighbourhood</Text>
           <View style={[lm.inputRow, { borderColor: colors.border }]}>
-            <Feather name="map-pin" size={15} color={colors.mutedForeground} />
+            <Feather name="map-pin" size={15} color={colors.mutedForeground} style={{ flexShrink: 0 }} />
             <TextInput
               style={[lm.input, { color: colors.foreground }]}
               value={locationCity}
@@ -611,7 +611,7 @@ export default function HomeScreen() {
               placeholderTextColor={colors.mutedForeground}
               autoCapitalize="words"
             />
-            <Pressable onPress={detectLocation} disabled={detectLoading} hitSlop={8}>
+            <Pressable onPress={detectLocation} disabled={detectLoading} hitSlop={8} style={{ flexShrink: 0 }}>
               {detectLoading
                 ? <ActivityIndicator size="small" color={colors.primary} />
                 : <Text style={[lm.detectBtn, { color: colors.primary }]}>Detect</Text>}
@@ -633,7 +633,7 @@ export default function HomeScreen() {
 
           <Pressable
             style={[lm.saveBtn, { backgroundColor: colors.primary, opacity: saveLocationMutation.isPending ? 0.7 : 1 }]}
-            onPress={() => saveLocationMutation.mutate()}
+            onPress={() => { setLocationModal(false); saveLocationMutation.mutate(); }}
             disabled={saveLocationMutation.isPending}
           >
             {saveLocationMutation.isPending

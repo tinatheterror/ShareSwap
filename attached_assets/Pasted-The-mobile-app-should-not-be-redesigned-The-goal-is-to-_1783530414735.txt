@@ -1,0 +1,94 @@
+The mobile app should not be redesigned. The goal is to create a mobile adaptation of the existing web app, preserving the ShareSwap design system exactly.
+
+Currently, many screens have different:
+
+layouts
+navigation
+icons
+illustrations
+colors
+spacing
+typography
+buttons
+cards
+components
+
+It feels like a completely different app rather than the mobile version of the existing product.
+
+Objective
+
+Treat the current web app as the single source of truth for all UI and branding.
+
+The mobile app should feel like the same product, only optimized for smaller screens.
+
+Requirements
+
+Design System
+
+Reuse the exact same color palette, gradients, shadows, border radius, typography, button styles, cards, badges, chips, and component styling from the web app.
+Do not introduce new design styles, icon sets, illustrations, or UI patterns unless absolutely required for mobile usability.
+
+Layout
+
+Convert existing desktop layouts into responsive mobile layouts.
+Preserve the visual hierarchy and spacing as closely as possible.
+Do not redesign screens simply because they are on mobile.
+
+Icons & Graphics
+
+Use the exact same icons, illustrations, logos, empty states, badges, and graphics that exist in the web app.
+Remove any placeholder or newly generated graphics that differ from the existing branding.
+
+Navigation
+
+Mirror the web app's information architecture.
+Do not invent new navigation items or restructure the app without approval.
+Mobile navigation should expose the same core features, only in a mobile-friendly way.
+
+Components
+Reuse existing components wherever possible, including:
+
+listing cards
+profile cards
+chat UI
+buttons
+forms
+filters
+search
+badges
+Trust Score components
+ShareCoin components
+transaction cards
+status chips
+modals
+
+These should look visually identical to the web app.
+
+Brand Consistency
+A user should immediately recognize that both experiences belong to the same product.
+
+If screenshots of the web app and mobile app are placed side by side:
+
+colors should match
+typography should match
+iconography should match
+component styling should match
+branding should match
+
+The only differences should be those necessary to accommodate the smaller screen size.
+
+Navigation
+
+Do not use the default mobile navigation that was generated.
+
+Design the mobile navigation based on ShareSwap's existing product structure and branding.
+
+General Principle
+
+Do not redesign ShareSwap.
+
+Adapt the existing web experience into a native mobile layout while maintaining visual and functional parity. The mobile app should feel like the web app shrunk intelligently for a phone—not like a separate product built from scratch.
+
+Deliverable
+
+Review every mobile screen against its corresponding web screen and update any inconsistencies so that the mobile app uses the same design language, components, branding, and user experience throughout. Any deviation from the web app should have a clear mobile usability reason rather than being an arbitrary redesign.

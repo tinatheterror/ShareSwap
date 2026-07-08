@@ -95,7 +95,7 @@ export default function ProfileScreen() {
             style={[styles.signInBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/login")}
           >
-            <Text style={styles.signInBtnText}>Sign In</Text>
+            <Text style={[styles.signInBtnText, { color: colors.primaryForeground }]}>Sign In</Text>
           </Pressable>
         </View>
       </View>
@@ -537,7 +537,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   signInBtnText: {
-    color: "#fff",
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
   },

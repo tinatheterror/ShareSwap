@@ -250,11 +250,11 @@ function GameCard({
         disabled={loading || done}
       >
         {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={colors.primaryForeground} />
         ) : done ? (
           <Feather name="check" size={16} color={colors.mutedForeground} />
         ) : (
-          <Feather name="play" size={16} color="#fff" />
+          <Feather name="play" size={16} color={colors.primaryForeground} />
         )}
       </Pressable>
     </View>

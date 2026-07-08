@@ -87,18 +87,20 @@ export default function LoginScreen() {
         />
 
         <View style={styles.card}>
-          <Text style={styles.heading}>
+          <Text style={[styles.heading, { color: colors.foreground }]}>
             Sign in and discover a world of shared resources
           </Text>
 
           <Pressable
             style={({ pressed }) => [
               styles.googleBtn,
-              { opacity: pressed ? 0.88 : 1 },
+              { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1 },
             ]}
             onPress={handleGoogleLogin}
           >
-            <Text style={styles.googleBtnText}>Continue with Google</Text>
+            <Text style={[styles.googleBtnText, { color: colors.primaryForeground }]}>
+              Continue with Google
+            </Text>
           </Pressable>
 
           <Pressable
@@ -177,9 +179,9 @@ export default function LoginScreen() {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.primaryForeground} />
                 ) : (
-                  <Text style={styles.signInBtnText}>Sign In</Text>
+                  <Text style={[styles.signInBtnText, { color: colors.primaryForeground }]}>Sign In</Text>
                 )}
               </Pressable>
             </View>
@@ -258,12 +260,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
-    color: "#0f172a",
     lineHeight: 28,
     marginBottom: 4,
   },
   googleBtn: {
-    backgroundColor: "#0DCEA1",
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
@@ -271,7 +271,6 @@ const styles = StyleSheet.create({
   googleBtnText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
-    color: "#fff",
   },
   phoneBtn: {
     borderRadius: 14,
@@ -317,7 +316,6 @@ const styles = StyleSheet.create({
   signInBtnText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
-    color: "#fff",
   },
   divider: {
     height: 1,

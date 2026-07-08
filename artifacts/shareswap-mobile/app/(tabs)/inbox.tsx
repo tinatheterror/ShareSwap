@@ -176,7 +176,7 @@ export default function InboxScreen() {
         <Text style={[styles.title, { color: colors.foreground }]}>Inbox</Text>
         {(data?.reduce((a, c) => a + (c.unreadCount ?? 0), 0) ?? 0) > 0 ? (
           <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.badgeText}>
+            <Text style={[styles.badgeText, { color: colors.primaryForeground }]}>
               {data!.reduce((a, c) => a + (c.unreadCount ?? 0), 0)}
             </Text>
           </View>

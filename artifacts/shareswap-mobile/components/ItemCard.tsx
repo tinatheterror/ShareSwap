@@ -85,10 +85,8 @@ export function ItemCard({ item, compact = false }: ItemCardProps) {
             <Feather name="package" size={32} color={colors.mutedForeground} />
           </View>
         )}
-        <View
-          style={[styles.typeBadge, { backgroundColor: typeColor + "20", borderColor: typeColor + "40" }]}
-        >
-          <Text style={[styles.typeText, { color: typeColor }]}>{typeLabel}</Text>
+        <View style={[styles.typeBadge, { backgroundColor: typeColor }]}>
+          <Text style={styles.typeText}>{typeLabel}</Text>
         </View>
       </View>
 
@@ -174,7 +172,7 @@ export function ItemCard({ item, compact = false }: ItemCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
     marginBottom: 12,
@@ -194,17 +192,17 @@ const styles = StyleSheet.create({
   },
   typeBadge: {
     position: "absolute",
-    top: 10,
-    left: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
+    top: 8,
+    right: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   typeText: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.3,
+    color: "#ffffff",
+    letterSpacing: 0.2,
   },
   content: {
     padding: 14,

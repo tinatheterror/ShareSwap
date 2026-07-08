@@ -157,7 +157,7 @@ export default function ShareScreen() {
             style={[styles.signInBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/login")}
           >
-            <Text style={styles.signInBtnText}>Sign In</Text>
+            <Text style={[styles.signInBtnText, { color: colors.primaryForeground }]}>Sign In</Text>
           </Pressable>
         </View>
       </View>
@@ -241,7 +241,7 @@ export default function ShareScreen() {
                   ]}
                   onPress={() => setItemType(type)}
                 >
-                  <Text style={[styles.chipText, { color: active ? "#fff" : colors.mutedForeground }]}>
+                  <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
                     {type}
                   </Text>
                 </Pressable>
@@ -267,7 +267,7 @@ export default function ShareScreen() {
                   ]}
                   onPress={() => setCondition(c)}
                 >
-                  <Text style={[styles.chipText, { color: active ? "#fff" : colors.mutedForeground }]}>{c}</Text>
+                  <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{c}</Text>
                 </Pressable>
               );
             })}
@@ -291,7 +291,7 @@ export default function ShareScreen() {
                   ]}
                   onPress={() => setOriginalValue(v)}
                 >
-                  <Text style={[styles.chipText, { color: active ? "#fff" : colors.mutedForeground }]}>{v}</Text>
+                  <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>{v}</Text>
                 </Pressable>
               );
             })}
@@ -331,9 +331,9 @@ export default function ShareScreen() {
           disabled={createItemMutation.isPending}
         >
           {createItemMutation.isPending ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.primaryForeground} />
           ) : (
-            <Text style={styles.submitBtnText}>List Item</Text>
+            <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>List Item</Text>
           )}
         </Pressable>
       </ScrollView>

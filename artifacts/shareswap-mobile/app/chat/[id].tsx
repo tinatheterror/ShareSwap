@@ -110,7 +110,7 @@ export default function ChatScreen() {
                 <Text
                   style={[
                     styles.bubbleText,
-                    { color: isMe ? "#fff" : colors.foreground },
+                    { color: isMe ? colors.primaryForeground : colors.foreground },
                   ]}
                 >
                   {item.content}
@@ -179,12 +179,12 @@ export default function ChatScreen() {
           disabled={sendMutation.isPending || !text.trim()}
         >
           {sendMutation.isPending ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
             <Feather
               name="send"
               size={18}
-              color={text.trim().length > 0 ? "#fff" : colors.mutedForeground}
+              color={text.trim().length > 0 ? colors.primaryForeground : colors.mutedForeground}
             />
           )}
         </Pressable>

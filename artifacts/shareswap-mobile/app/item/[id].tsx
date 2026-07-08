@@ -319,11 +319,11 @@ export default function ItemDetailScreen() {
                 disabled={sending}
               >
                 {sending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.primaryForeground} />
                 ) : (
                   <>
-                    <Feather name="send" size={16} color="#fff" />
-                    <Text style={styles.requestButtonText}>
+                    <Feather name="send" size={16} color={colors.primaryForeground} />
+                    <Text style={[styles.requestButtonText, { color: colors.primaryForeground }]}>
                       Request to {typeLabel}
                     </Text>
                   </>

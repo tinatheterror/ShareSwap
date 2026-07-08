@@ -1,1 +1,2 @@
 - [Express 5 port lessons](express5-port-lessons.md) — wildcards need named params, @replit/object-storage must be esbuild external, PORT env var required in workflow command
+- [Extracting shadcn theme tokens](shadcn-theme-token-extraction.md) — curl the running Vite dev server HTML to read the actual injected `--background`/`--primary`/etc HSL values instead of guessing from theme.json.

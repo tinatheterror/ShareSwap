@@ -138,12 +138,12 @@ export default function BrowseScreen() {
                 <Feather
                   name={cat.icon}
                   size={13}
-                  color={active ? "#fff" : colors.mutedForeground}
+                  color={active ? colors.primaryForeground : colors.mutedForeground}
                 />
                 <Text
                   style={[
                     styles.categoryText,
-                    { color: active ? "#fff" : colors.mutedForeground },
+                    { color: active ? colors.primaryForeground : colors.mutedForeground },
                   ]}
                 >
                   {cat.label}

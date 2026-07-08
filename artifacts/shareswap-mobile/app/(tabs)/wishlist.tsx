@@ -149,7 +149,7 @@ export default function WishlistScreen() {
             style={[styles.signInBtn, { backgroundColor: colors.primary }]}
             onPress={() => router.push("/login")}
           >
-            <Text style={styles.signInBtnText}>Sign In</Text>
+            <Text style={[styles.signInBtnText, { color: colors.primaryForeground }]}>Sign In</Text>
           </Pressable>
         </View>
       </View>
@@ -170,7 +170,7 @@ export default function WishlistScreen() {
             style={[styles.addBtn, { backgroundColor: colors.primary }]}
             onPress={() => setShowAdd(true)}
           >
-            <Feather name="plus" size={18} color="#fff" />
+            <Feather name="plus" size={18} color={colors.primaryForeground} />
           </Pressable>
         </View>
         <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
@@ -323,7 +323,7 @@ export default function WishlistScreen() {
                     ]}
                     onPress={() => setNeedType(t.key)}
                   >
-                    <Text style={[styles.chipText, { color: active ? "#fff" : colors.mutedForeground }]}>
+                    <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
                       {t.label}
                     </Text>
                   </Pressable>
@@ -347,7 +347,7 @@ export default function WishlistScreen() {
                     ]}
                     onPress={() => setUrgency(u.key)}
                   >
-                    <Text style={[styles.chipText, { color: active ? "#fff" : colors.mutedForeground }]}>
+                    <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
                       {u.label}
                     </Text>
                   </Pressable>
@@ -364,9 +364,9 @@ export default function WishlistScreen() {
               disabled={createMutation.isPending}
             >
               {createMutation.isPending ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.primaryForeground} />
               ) : (
-                <Text style={styles.submitBtnText}>Add to Wishlist</Text>
+                <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>Add to Wishlist</Text>
               )}
             </Pressable>
           </View>

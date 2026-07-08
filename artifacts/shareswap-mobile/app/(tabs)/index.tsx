@@ -414,8 +414,8 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Browse the community ShareChest</Text>
-            <Text style={styles.headerSub}>
+            <Text style={styles.headerTitle} numberOfLines={2}>Browse the community ShareChest</Text>
+            <Text style={styles.headerSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
               A curated collection of items available near you
             </Text>
           </View>

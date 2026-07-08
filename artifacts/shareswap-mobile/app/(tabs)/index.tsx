@@ -43,6 +43,7 @@ interface BrowseItem {
   shareCoinsReward?: number | null;
   shareCoinPrice?: number | null;
   pricePerDay?: number | null;
+  dollarsPrice?: string | number | null;
   city?: string | null;
   postalCode?: string | null;
   isGift?: boolean;
@@ -166,9 +167,12 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
   const photo = iphoto(item);
   const c = coins(item);
   const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
-  const weeklyPrice = item.pricePerDay
-    ? `$${(Number(item.pricePerDay) * 7).toFixed(0)}/wk`
-    : null;
+  const weeklyPrice =
+    item.dollarsPrice && Number(item.dollarsPrice) > 0
+      ? `$${Number(item.dollarsPrice).toFixed(0)}/wk`
+      : item.pricePerDay && Number(item.pricePerDay) > 0
+      ? `$${(Number(item.pricePerDay) * 7).toFixed(0)}/wk`
+      : null;
   return (
     <Pressable
       style={[scard.wrap, { backgroundColor: colors.card, width: SUGGEST_CARD_W }]}
@@ -322,7 +326,12 @@ function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
   const photo = iphoto(item);
   const c = coins(item);
   const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
-  const price = item.pricePerDay ? `$${Number(item.pricePerDay).toFixed(0)}/day` : null;
+  const price =
+    item.dollarsPrice && Number(item.dollarsPrice) > 0
+      ? `$${Number(item.dollarsPrice).toFixed(0)}/wk`
+      : item.pricePerDay && Number(item.pricePerDay) > 0
+      ? `$${Number(item.pricePerDay).toFixed(0)}/day`
+      : null;
   return (
     <Pressable
       style={[grid.wrap, { backgroundColor: colors.card, borderColor: colors.border, width: CARD_W }]}

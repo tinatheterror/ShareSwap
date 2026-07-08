@@ -411,7 +411,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Sticky header ── */}
-      <View style={[styles.header, { paddingTop: topPad + 10, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Browse the community ShareChest</Text>
@@ -567,15 +567,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontFamily: "Inter_700Bold",
-    color: "#ffffff",
-    lineHeight: 24,
+    color: "#000000",
+    lineHeight: 30,
   },
   headerSub: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(0,0,0,0.6)",
     marginTop: 2,
   },
   searchRow: {

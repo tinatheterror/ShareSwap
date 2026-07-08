@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 10,
   },

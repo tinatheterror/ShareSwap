@@ -379,8 +379,8 @@ export default function WishlistScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
   },

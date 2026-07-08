@@ -402,17 +402,17 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   filterRow: {
-    gap: 6,
+    gap: 5,
     paddingRight: 4,
   },
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
   },
   filterText: {
-    fontSize: 12,
+    fontSize: 11,
   },
   centered: {
     flex: 1,

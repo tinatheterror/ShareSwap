@@ -261,7 +261,7 @@ export default function ProfileScreen() {
         >
           <Pressable
             style={styles.menuRow}
-            onPress={() => router.push("/games")}
+            onPress={() => router.push("/wallet" as never)}
           >
             <View style={[styles.menuIcon, { backgroundColor: colors.coin + "20" }]}>
               <Feather name="dollar-sign" size={18} color={colors.coin} />

@@ -62,6 +62,10 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="wallet"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="settings"
         options={{
           title: "Settings",

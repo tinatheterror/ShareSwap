@@ -65,20 +65,6 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
-        name="games"
-        options={{
-          title: "Earn ShareCoins",
-          headerBackTitle: "Back",
-        }}
-      />
-      <Stack.Screen
-        name="achievements"
-        options={{
-          title: "Badges & Trust",
-          headerBackTitle: "Back",
-        }}
-      />
-      <Stack.Screen
         name="settings"
         options={{
           title: "Settings",

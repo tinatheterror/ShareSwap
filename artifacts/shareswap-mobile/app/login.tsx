@@ -1,5 +1,7 @@
 import { Feather } from "@expo/vector-icons";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -51,13 +53,13 @@ export default function LoginScreen() {
     }
   }
 
-  function handleGoogleLogin() {
+  async function handleGoogleLogin() {
     const googleUrl = `${BASE_URL}/api/auth/google`;
-    Alert.alert(
-      "Continue with Google",
-      "Google sign-in opens a browser window. Tap OK to continue.",
-      [{ text: "Cancel", style: "cancel" }, { text: "OK" }],
-    );
+    if (Platform.OS === "web") {
+      window.location.href = googleUrl;
+    } else {
+      await WebBrowser.openAuthSessionAsync(googleUrl, Linking.createURL("/"));
+    }
   }
 
   function handlePhone() {

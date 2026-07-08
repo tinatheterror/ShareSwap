@@ -45,6 +45,7 @@ interface BrowseItem {
   isGift?: boolean;
   isLendable?: boolean;
   isRentable?: boolean;
+  isSwappable?: boolean;
   owner?: {
     id: number;
     username: string;
@@ -64,27 +65,51 @@ function iphoto(item: BrowseItem): string | null {
   if (item.imageUrl) return item.imageUrl;
   return null;
 }
-function stype(item: BrowseItem) {
-  return (item.shareType || "borrow").toLowerCase();
-}
-function actionLabel(st: string) {
-  if (st === "gift") return "claim this";
-  if (st === "rent") return "rent it";
-  if (st === "swap") return "swap it";
-  return "borrow it";
-}
-function badgeColor(st: string) {
-  if (st === "rent") return "#8b5cf6";
-  if (st === "swap") return "#f59e0b";
-  if (st === "gift") return "#ec4899";
-  return "#3b82f6";
-}
-function badgeLabel(st: string) {
-  return st.charAt(0).toUpperCase() + st.slice(1);
-}
 function coins(item: BrowseItem) {
   return Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 0));
 }
+
+// ─── Action buttons ────────────────────────────────────────────────────────
+
+interface ActionBtn { label: string; icon: string; bg: string }
+
+function getActionBtns(item: BrowseItem, primary: string): ActionBtn[] {
+  const btns: ActionBtn[] = [];
+  if (item.isGift)     btns.push({ label: "Claim Gift",  icon: "gift",               bg: "#ec4899" });
+  if (item.isLendable) btns.push({ label: "Borrow It",   icon: "arrow-down-circle",  bg: primary });
+  if (item.isRentable) btns.push({ label: "Rent It",     icon: "dollar-sign",        bg: primary });
+  if (item.isSwappable)btns.push({ label: "Swap It",     icon: "repeat",             bg: primary });
+  if (btns.length > 0) return btns;
+  // fallback from shareType
+  const st = (item.shareType || "borrow").toLowerCase();
+  if (st === "gift")  return [{ label: "Claim Gift", icon: "gift",              bg: "#ec4899" }];
+  if (st === "rent")  return [{ label: "Rent It",    icon: "dollar-sign",       bg: primary }];
+  if (st === "swap")  return [{ label: "Swap It",    icon: "repeat",            bg: primary }];
+  return              [{ label: "Borrow It",         icon: "arrow-down-circle", bg: primary }];
+}
+
+function ActionButtons({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
+  const btns = getActionBtns(item, colors.primary);
+  return (
+    <View style={ab.row}>
+      {btns.map((btn) => (
+        <Pressable
+          key={btn.label}
+          style={[ab.btn, { backgroundColor: btn.bg }]}
+          onPress={() => router.push(`/item/${item.id}` as never)}
+        >
+          <Feather name={btn.icon as any} size={10} color="#fff" />
+          <Text style={ab.label}>{btn.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+const ab = StyleSheet.create({
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
+  btn: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20 },
+  label: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#fff" },
+});
 
 // ─── Section header ───────────────────────────────────────────────────────────
 
@@ -129,9 +154,10 @@ const sh = StyleSheet.create({
 // ─── Suggested card (compact horizontal scroll) ────────────────────────────
 
 function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
-  const st = stype(item);
   const photo = iphoto(item);
   const c = coins(item);
+  const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
+  const price = item.pricePerDay ? `$${Number(item.pricePerDay).toFixed(0)}/day` : null;
   return (
     <Pressable
       style={[scard.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -142,44 +168,33 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
           <Image source={{ uri: photo }} style={scard.img} resizeMode="cover" />
         ) : (
           <View style={[scard.imgPlaceholder, { backgroundColor: colors.muted }]}>
-            <Feather name="package" size={28} color={colors.mutedForeground} />
+            <Feather name="package" size={24} color={colors.mutedForeground} />
           </View>
         )}
-        <View style={[scard.badge, { backgroundColor: badgeColor(st) }]}>
-          <Text style={scard.badgeText}>{badgeLabel(st)}</Text>
-        </View>
+        {isAiPick && (
+          <View style={scard.aiPick}>
+            <Text style={scard.aiPickText}>✦ AI Pick</Text>
+          </View>
+        )}
       </View>
       <View style={scard.body}>
-        <Text style={[scard.title, { color: colors.foreground }]} numberOfLines={2}>
+        <Text style={[scard.title, { color: colors.foreground }]} numberOfLines={1}>
           {iname(item)}
         </Text>
         <View style={scard.row}>
           <Feather name="map-pin" size={10} color={colors.mutedForeground} />
-          <Text style={[scard.meta, { color: colors.mutedForeground }]}>
+          <Text style={[scard.meta, { color: colors.mutedForeground }]} numberOfLines={1}>
             {item.city || "Nearby"}
           </Text>
         </View>
         <Text style={[scard.meta, { color: colors.mutedForeground }]}>
-          Condition: {item.conditionRating ?? 8}/10
+          Condition: {item.conditionRating ?? 10}/10
         </Text>
-        {c > 0 && (
-          <Text style={[scard.coins, { color: colors.primary }]}>
-            🪙 {c} ShareCoins
-          </Text>
-        )}
-        {item.pricePerDay ? (
-          <Text style={[scard.price, { color: colors.mutedForeground }]}>
-            £{Number(item.pricePerDay).toFixed(0)}/day
-          </Text>
-        ) : null}
-        <Pressable
-          style={[scard.btn, { backgroundColor: colors.primary }]}
-          onPress={() => router.push(`/item/${item.id}` as never)}
-        >
-          <Text style={[scard.btnText, { color: colors.primaryForeground }]}>
-            {actionLabel(st)}
-          </Text>
-        </Pressable>
+        <Text style={[scard.coins, { color: colors.foreground }]}>
+          🪙 {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
+          {price ? <Text style={{ color: colors.mutedForeground }}>{`  |  ${price}`}</Text> : null}
+        </Text>
+        <ActionButtons item={item} colors={colors} router={router} />
       </View>
     </Pressable>
   );
@@ -187,18 +202,15 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
 const scard = StyleSheet.create({
   wrap: { width: SUGGEST_W, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
   imgWrap: { position: "relative" },
-  img: { width: SUGGEST_W, height: SUGGEST_W * 0.75 },
-  imgPlaceholder: { width: SUGGEST_W, height: SUGGEST_W * 0.75, alignItems: "center", justifyContent: "center" },
-  badge: { position: "absolute", top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
-  badgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
-  body: { padding: 8, gap: 3 },
-  title: { fontSize: 12, fontFamily: "Inter_600SemiBold", lineHeight: 16 },
+  img: { width: SUGGEST_W, height: SUGGEST_W },
+  imgPlaceholder: { width: SUGGEST_W, height: SUGGEST_W, alignItems: "center", justifyContent: "center" },
+  aiPick: { position: "absolute", top: 7, right: 7, backgroundColor: "#0DCEA1", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 20 },
+  aiPickText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
+  body: { padding: 9, gap: 3 },
+  title: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 17 },
   row: { flexDirection: "row", alignItems: "center", gap: 3 },
   meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
   coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
-  price: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  btn: { marginTop: 4, borderRadius: 6, paddingVertical: 5, alignItems: "center" },
-  btnText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
 });
 
 // ─── Gift card (carousel) ──────────────────────────────────────────────────
@@ -272,9 +284,10 @@ const gcard = StyleSheet.create({
 // ─── Grid card (All Items) ─────────────────────────────────────────────────
 
 function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
-  const st = stype(item);
   const photo = iphoto(item);
   const c = coins(item);
+  const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
+  const price = item.pricePerDay ? `$${Number(item.pricePerDay).toFixed(0)}/day` : null;
   return (
     <Pressable
       style={[grid.wrap, { backgroundColor: colors.card, borderColor: colors.border, width: CARD_W }]}
@@ -288,41 +301,30 @@ function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
             <Feather name="package" size={28} color={colors.mutedForeground} />
           </View>
         )}
-        <View style={[grid.badge, { backgroundColor: badgeColor(st) }]}>
-          <Text style={grid.badgeText}>{badgeLabel(st)}</Text>
-        </View>
+        {isAiPick && (
+          <View style={grid.aiPick}>
+            <Text style={grid.aiPickText}>✦ AI Pick</Text>
+          </View>
+        )}
       </View>
       <View style={grid.body}>
-        <Text style={[grid.title, { color: colors.foreground }]} numberOfLines={2}>
+        <Text style={[grid.title, { color: colors.foreground }]} numberOfLines={1}>
           {iname(item)}
         </Text>
-        <View style={grid.row}>
+        <View style={grid.infoRow}>
           <Feather name="map-pin" size={10} color={colors.mutedForeground} />
           <Text style={[grid.meta, { color: colors.mutedForeground }]} numberOfLines={1}>
             {item.city || "Nearby"}
           </Text>
         </View>
         <Text style={[grid.meta, { color: colors.mutedForeground }]}>
-          Condition: {item.conditionRating ?? 8}/10
+          Condition: {item.conditionRating ?? 10}/10
         </Text>
-        {c > 0 && (
-          <Text style={[grid.coins, { color: colors.primary }]}>
-            🪙 {c} ShareCoins
-          </Text>
-        )}
-        {item.pricePerDay ? (
-          <Text style={[grid.meta, { color: colors.mutedForeground }]}>
-            £{Number(item.pricePerDay).toFixed(0)}/day
-          </Text>
-        ) : null}
-        <Pressable
-          style={[grid.btn, { backgroundColor: colors.primary }]}
-          onPress={() => router.push(`/item/${item.id}` as never)}
-        >
-          <Text style={[grid.btnText, { color: colors.primaryForeground }]}>
-            {actionLabel(st)}
-          </Text>
-        </Pressable>
+        <Text style={[grid.coins, { color: colors.foreground }]}>
+          🪙 {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
+          {price ? <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{`  |  ${price}`}</Text> : null}
+        </Text>
+        <ActionButtons item={item} colors={colors} router={router} />
       </View>
     </Pressable>
   );
@@ -330,17 +332,15 @@ function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
 const grid = StyleSheet.create({
   wrap: { borderRadius: 12, borderWidth: 1, overflow: "hidden" },
   imgWrap: { position: "relative" },
-  img: { height: CARD_W * 0.85 },
-  imgPlaceholder: { height: CARD_W * 0.85, alignItems: "center", justifyContent: "center" },
-  badge: { position: "absolute", top: 6, right: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
-  badgeText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
-  body: { padding: 8, gap: 3 },
-  title: { fontSize: 12, fontFamily: "Inter_600SemiBold", lineHeight: 16 },
-  row: { flexDirection: "row", alignItems: "center", gap: 3 },
+  img: { height: CARD_W },
+  imgPlaceholder: { height: CARD_W, alignItems: "center", justifyContent: "center" },
+  aiPick: { position: "absolute", top: 7, right: 7, backgroundColor: "#0DCEA1", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 20 },
+  aiPickText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
+  body: { padding: 9, gap: 3 },
+  title: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 17 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 3 },
   meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
   coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
-  btn: { marginTop: 5, borderRadius: 6, paddingVertical: 6, alignItems: "center" },
-  btnText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
 });
 
 // ─── Main screen ───────────────────────────────────────────────────────────
@@ -389,18 +389,20 @@ export default function HomeScreen() {
       )
     : allItems;
 
+  const isGiftItem = (i: BrowseItem) => !!(i.isGift || (i.shareType || "").toLowerCase() === "gift");
+
   // Dedupe gifts (already in allItems sometimes)
   const giftList = giftItems.length
     ? giftItems
-    : allItems.filter((i) => i.isGift || stype(i) === "gift");
+    : allItems.filter(isGiftItem);
 
   // Suggested = recommendations or first 10 non-gift items
   const suggestedList = recommended.length
     ? recommended
-    : allItems.filter((i) => !i.isGift && stype(i) !== "gift").slice(0, 10);
+    : allItems.filter((i) => !isGiftItem(i)).slice(0, 10);
 
   // Grid rows (pairs)
-  const nonGiftItems = filtered.filter((i) => !i.isGift && stype(i) !== "gift");
+  const nonGiftItems = filtered.filter((i) => !isGiftItem(i));
   const gridRows: BrowseItem[][] = [];
   for (let i = 0; i < nonGiftItems.length; i += 2) {
     gridRows.push(nonGiftItems.slice(i, i + 2));

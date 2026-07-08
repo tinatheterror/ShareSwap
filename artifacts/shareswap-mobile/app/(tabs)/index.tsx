@@ -108,8 +108,8 @@ function ActionButtons({ item, colors, router }: { item: BrowseItem; colors: any
           onPress={() => router.push(`/item/${item.id}` as never)}
         >
           {btn.family === "mci"
-            ? <MaterialCommunityIcons name={btn.icon as any} size={11} color="#fff" />
-            : <Feather name={btn.icon as any} size={10} color="#fff" />}
+            ? <MaterialCommunityIcons name={btn.icon as any} size={13} color="#fff" />
+            : <Feather name={btn.icon as any} size={12} color="#fff" />}
           <Text style={ab.label}>{btn.label}</Text>
         </Pressable>
       ))}
@@ -117,9 +117,9 @@ function ActionButtons({ item, colors, router }: { item: BrowseItem; colors: any
   );
 }
 const ab = StyleSheet.create({
-  row: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 7 },
-  btn: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20 },
-  label: { fontSize: 10, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  btn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20 },
+  label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });
 
 // ─── Section header ───────────────────────────────────────────────────────────

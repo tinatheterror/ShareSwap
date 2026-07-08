@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { HandHeart, ArrowLeftRight } from "lucide-react-native";
+import { HandHeart, ArrowLeftRight, Coins } from "lucide-react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState, useRef, useEffect } from "react";
@@ -216,15 +216,18 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
         <Text style={[scard.meta, { color: colors.mutedForeground }]}>
           Condition: {item.conditionRating ?? 10}/10
         </Text>
-        <Text style={[scard.coins, { color: colors.foreground }]}>
-          🪙 {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
-          {weeklyPrice ? (
-            <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
-              {"  |  $ "}
-              {weeklyPrice}
-            </Text>
-          ) : null}
-        </Text>
+        <View style={scard.coinsRow}>
+          <Coins size={13} color="#0DCEA1" strokeWidth={2} />
+          <Text style={[scard.coins, { color: colors.foreground }]}>
+            {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
+            {weeklyPrice ? (
+              <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                {"  |  $ "}
+                {weeklyPrice}
+              </Text>
+            ) : null}
+          </Text>
+        </View>
         <ActionButtons item={item} colors={colors} router={router} />
       </View>
     </Pressable>
@@ -259,6 +262,7 @@ const scard = StyleSheet.create({
   body: { padding: 14, gap: 4 },
   title: { fontSize: 16, fontFamily: "Inter_700Bold", lineHeight: 22 },
   row: { flexDirection: "row", alignItems: "center", gap: 4 },
+  coinsRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   meta: { fontSize: 13, fontFamily: "Inter_400Regular" },
   coins: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
@@ -375,10 +379,13 @@ function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
         <Text style={[grid.meta, { color: colors.mutedForeground }]}>
           Condition: {item.conditionRating ?? 10}/10
         </Text>
-        <Text style={[grid.coins, { color: colors.foreground }]}>
-          🪙 {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
-          {price ? <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{`  |  ${price}`}</Text> : null}
-        </Text>
+        <View style={grid.coinsRow}>
+          <Coins size={11} color="#0DCEA1" strokeWidth={2} />
+          <Text style={[grid.coins, { color: colors.foreground }]}>
+            {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
+            {price ? <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{`  |  ${price}`}</Text> : null}
+          </Text>
+        </View>
         <ActionButtons item={item} colors={colors} router={router} />
       </View>
     </Pressable>
@@ -394,6 +401,7 @@ const grid = StyleSheet.create({
   body: { padding: 9, gap: 3 },
   title: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 17 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  coinsRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
   coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
 });

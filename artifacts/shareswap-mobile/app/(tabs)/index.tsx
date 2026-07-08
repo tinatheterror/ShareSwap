@@ -421,25 +421,29 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Search + location row */}
-        <View style={styles.searchRow}>
-          <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
-            <Feather name="search" size={15} color="#9ca3af" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search items..."
-              placeholderTextColor="#9ca3af"
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search.length > 0 && (
-              <Pressable onPress={() => setSearch("")} hitSlop={6}>
-                <Feather name="x" size={15} color="#9ca3af" />
-              </Pressable>
-            )}
-          </View>
+        {/* Search bar */}
+        <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
+          <Feather name="search" size={15} color="#9ca3af" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search items..."
+            placeholderTextColor="#9ca3af"
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch("")} hitSlop={6}>
+              <Feather name="x" size={15} color="#9ca3af" />
+            </Pressable>
+          )}
         </View>
+
+        {/* Location pill */}
+        <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]}>
+          <Feather name="map-pin" size={14} color="#374151" />
+          <Text style={styles.locationText}>Nearby (25km radius)</Text>
+        </Pressable>
       </View>
 
       {/* ── Scrollable body ── */}
@@ -578,10 +582,24 @@ const styles = StyleSheet.create({
     color: "rgba(0,0,0,0.6)",
     marginTop: 2,
   },
-  searchRow: {
+  locationPill: {
     flexDirection: "row",
-    gap: 8,
     alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  locationText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: "#374151",
   },
   searchBar: {
     flex: 1,

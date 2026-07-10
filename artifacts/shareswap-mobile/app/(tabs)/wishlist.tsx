@@ -512,6 +512,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
   },
   scroll: {
     padding: 16,

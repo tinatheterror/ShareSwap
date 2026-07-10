@@ -178,19 +178,6 @@ export default function WishlistScreen() {
         </View>
         <View style={[styles.tabRow, { backgroundColor: colors.muted }]}>
           <Pressable
-            style={[styles.tabBtn, tab === "mine" && { backgroundColor: colors.card }]}
-            onPress={() => setTab("mine")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                { color: tab === "mine" ? colors.foreground : colors.mutedForeground },
-              ]}
-            >
-              My Wishlist
-            </Text>
-          </Pressable>
-          <Pressable
             style={[styles.tabBtn, tab === "community" && { backgroundColor: colors.card }]}
             onPress={() => setTab("community")}
           >
@@ -201,6 +188,19 @@ export default function WishlistScreen() {
               ]}
             >
               Community Wishlist
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tabBtn, tab === "mine" && { backgroundColor: colors.card }]}
+            onPress={() => setTab("mine")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                { color: tab === "mine" ? colors.foreground : colors.mutedForeground },
+              ]}
+            >
+              My Wishlist
             </Text>
           </Pressable>
         </View>

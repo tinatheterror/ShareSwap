@@ -699,59 +699,62 @@ export default function HomeScreen() {
         animationType="slide"
         onRequestClose={() => setLocationModal(false)}
       >
-        <Pressable style={lm.backdrop} onPress={() => setLocationModal(false)} />
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={lm.sheet}>
-          <View style={[lm.handle]} />
-          <Text style={lm.title}>Your Location</Text>
-          <Text style={lm.label}>City or neighbourhood</Text>
-          <View style={[lm.inputRow, { borderColor: colors.border }]}>
-            <Feather name="map-pin" size={15} color={colors.mutedForeground} style={{ flexShrink: 0 }} />
-            <TextInput
-              style={[lm.input, { color: colors.foreground }]}
-              value={locationCity}
-              onChangeText={setLocationCity}
-              placeholder="e.g. Vancouver"
-              placeholderTextColor={colors.mutedForeground}
-              autoCapitalize="words"
-            />
-            <Pressable onPress={detectLocation} disabled={detectLoading} hitSlop={8} style={{ flexShrink: 0 }}>
-              {detectLoading
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Text style={[lm.detectBtn, { color: colors.primary }]}>Detect</Text>}
-            </Pressable>
-          </View>
-
-          <Text style={lm.label}>Search radius</Text>
-          <View style={lm.radiusRow}>
-            {[5, 10, 25, 50, 100].map((r) => (
-              <Pressable
-                key={r}
-                style={[lm.chip, { borderColor: locationRadius === r ? colors.primary : colors.border, backgroundColor: locationRadius === r ? colors.primary : "transparent" }]}
-                onPress={() => setLocationRadius(r)}
-              >
-                <Text style={[lm.chipText, { color: locationRadius === r ? "#fff" : colors.foreground }]}>{r}km</Text>
+        <View style={lm.overlay}>
+          <Pressable style={lm.backdrop} onPress={() => setLocationModal(false)} />
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={lm.sheet}>
+            <View style={[lm.handle]} />
+            <Text style={lm.title}>Your Location</Text>
+            <Text style={lm.label}>City or neighbourhood</Text>
+            <View style={[lm.inputRow, { borderColor: colors.border }]}>
+              <Feather name="map-pin" size={15} color={colors.mutedForeground} style={{ flexShrink: 0 }} />
+              <TextInput
+                style={[lm.input, { color: colors.foreground }]}
+                value={locationCity}
+                onChangeText={setLocationCity}
+                placeholder="e.g. Vancouver"
+                placeholderTextColor={colors.mutedForeground}
+                autoCapitalize="words"
+              />
+              <Pressable onPress={detectLocation} disabled={detectLoading} hitSlop={8} style={{ flexShrink: 0 }}>
+                {detectLoading
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Text style={[lm.detectBtn, { color: colors.primary }]}>Detect</Text>}
               </Pressable>
-            ))}
-          </View>
+            </View>
 
-          <Pressable
-            style={[lm.saveBtn, { backgroundColor: colors.primary, opacity: saveLocationMutation.isPending ? 0.7 : 1 }]}
-            onPress={() => { setLocationModal(false); saveLocationMutation.mutate(); }}
-            disabled={saveLocationMutation.isPending}
-          >
-            {saveLocationMutation.isPending
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={lm.saveBtnText}>Save Location</Text>}
-          </Pressable>
-        </KeyboardAvoidingView>
+            <Text style={lm.label}>Search radius</Text>
+            <View style={lm.radiusRow}>
+              {[5, 10, 25, 50, 100].map((r) => (
+                <Pressable
+                  key={r}
+                  style={[lm.chip, { borderColor: locationRadius === r ? colors.primary : colors.border, backgroundColor: locationRadius === r ? colors.primary : "transparent" }]}
+                  onPress={() => setLocationRadius(r)}
+                >
+                  <Text style={[lm.chipText, { color: locationRadius === r ? "#fff" : colors.foreground }]}>{r}km</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              style={[lm.saveBtn, { backgroundColor: colors.primary, opacity: saveLocationMutation.isPending ? 0.7 : 1 }]}
+              onPress={() => { setLocationModal(false); saveLocationMutation.mutate(); }}
+              disabled={saveLocationMutation.isPending}
+            >
+              {saveLocationMutation.isPending
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={lm.saveBtnText}>Save Location</Text>}
+            </Pressable>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
 }
 
 const lm = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
-  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12 },
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
+  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12, maxHeight: "85%" },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#d1d5db", alignSelf: "center", marginBottom: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#1f2937" },
   label: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#6b7280", marginTop: 4 },

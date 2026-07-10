@@ -545,7 +545,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Sticky header ── */}
-      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: topPad + 4, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle} numberOfLines={2}>Browse the community ShareChest</Text>

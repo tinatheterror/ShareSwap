@@ -835,7 +835,7 @@ const cm = StyleSheet.create({
     justifyContent: "center",
   },
   optTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
   },
   optSub: {

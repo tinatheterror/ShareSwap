@@ -678,9 +678,9 @@ const im = StyleSheet.create({
     flex: 1,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
-    lineHeight: 20,
+    lineHeight: 18,
   },
   platformRow: {
     flexDirection: "row",

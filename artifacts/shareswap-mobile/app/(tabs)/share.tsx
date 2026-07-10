@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { HeartPeopleIcon } from "@/components/HeartPeopleIcon";
 
 const ITEM_TYPES = [
   "Baby & Kids",
@@ -293,7 +294,7 @@ export default function ShareScreen() {
             }}
           >
             <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
-              <Feather name="heart" size={20} color="#0f766e" />
+              <HeartPeopleIcon size={20} color="#0f766e" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[cm.optTitle, { color: colors.foreground }]}>See what people need</Text>

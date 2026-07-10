@@ -87,6 +87,38 @@ export default function WishlistScreen() {
   const [needTypes, setNeedTypes] = useState<string[]>(["borrow"]);
   const [urgency, setUrgency] = useState("normal");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [neededDate, setNeededDate] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+
+  function selectUrgency(key: string) {
+    setUrgency(key);
+    if (key !== "normal") {
+      setShowDatePicker(true);
+    } else {
+      setNeededDate("");
+    }
+  }
+
+  function pickDate(day: number) {
+    const y = pickerMonth.getFullYear();
+    const m = pickerMonth.getMonth();
+    const dateStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    setNeededDate(dateStr);
+    setShowDatePicker(false);
+  }
+
+  function formatNeededDate(dateStr: string) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
 
   function toggleNeedType(key: string) {
     setNeedTypes((prev) => {
@@ -121,6 +153,7 @@ export default function WishlistScreen() {
         needType: needTypes.join(","),
         urgency,
         isPrivate,
+        neededDate: neededDate || undefined,
       });
     },
     onSuccess: () => {
@@ -131,6 +164,7 @@ export default function WishlistScreen() {
       setNeedTypes(["borrow"]);
       setUrgency("normal");
       setIsPrivate(false);
+      setNeededDate("");
       setShowAdd(false);
     },
     onError: (error: Error) => {
@@ -319,23 +353,21 @@ export default function WishlistScreen() {
                       </View>
                     ) : null}
 
-                    {item.neededDate ? (
-                      <View style={styles.commInfoRow}>
-                        <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
-                          <Feather name="calendar" size={13} color={colors.accentForeground} />
-                        </View>
-                        <View>
-                          <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
-                            Needed: {new Date(item.neededDate).toLocaleDateString()}
-                          </Text>
-                          {item.returnDate && item.needType === "borrow" ? (
-                            <Text style={[styles.commInfoSubText, { color: colors.mutedForeground }]}>
-                              Return: {new Date(item.returnDate).toLocaleDateString()}
-                            </Text>
-                          ) : null}
-                        </View>
+                    <View style={styles.commInfoRow}>
+                      <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
+                        <Feather name="calendar" size={13} color={colors.accentForeground} />
                       </View>
-                    ) : null}
+                      <View>
+                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                          Needed: {item.neededDate ? new Date(item.neededDate).toLocaleDateString() : "Whenever"}
+                        </Text>
+                        {item.returnDate && item.needType === "borrow" ? (
+                          <Text style={[styles.commInfoSubText, { color: colors.mutedForeground }]}>
+                            Return: {new Date(item.returnDate).toLocaleDateString()}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
                   </View>
 
                   <Pressable
@@ -476,7 +508,7 @@ export default function WishlistScreen() {
                         borderColor: active ? colors.primary : colors.border,
                       },
                     ]}
-                    onPress={() => setUrgency(u.key)}
+                    onPress={() => selectUrgency(u.key)}
                   >
                     <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
                       {u.label}
@@ -485,6 +517,18 @@ export default function WishlistScreen() {
                 );
               })}
             </View>
+
+            {urgency !== "normal" ? (
+              <Pressable
+                style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Feather name="calendar" size={14} color={colors.mutedForeground} />
+                <Text style={[styles.dateBtnText, { color: neededDate ? colors.foreground : colors.mutedForeground }]}>
+                  {neededDate ? `Needed by ${formatNeededDate(neededDate)}` : "Select a date"}
+                </Text>
+              </Pressable>
+            ) : null}
 
             <View style={[styles.privateRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Switch
@@ -521,6 +565,90 @@ export default function WishlistScreen() {
             </Pressable>
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
+        <Pressable style={styles.datePickerOverlay} onPress={() => setShowDatePicker(false)}>
+          <Pressable style={[styles.datePickerCard, { backgroundColor: colors.card }]} onPress={() => {}}>
+            <View style={styles.datePickerHeader}>
+              <Pressable
+                onPress={() =>
+                  setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+                }
+              >
+                <Feather name="chevron-left" size={20} color={colors.foreground} />
+              </Pressable>
+              <Text style={[styles.datePickerTitle, { color: colors.foreground }]}>
+                {pickerMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+              </Text>
+              <Pressable
+                onPress={() =>
+                  setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+                }
+              >
+                <Feather name="chevron-right" size={20} color={colors.foreground} />
+              </Pressable>
+            </View>
+
+            <View style={styles.datePickerWeekRow}>
+              {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                <Text key={i} style={[styles.datePickerWeekDay, { color: colors.mutedForeground }]}>
+                  {d}
+                </Text>
+              ))}
+            </View>
+
+            <View style={styles.datePickerGrid}>
+              {(() => {
+                const year = pickerMonth.getFullYear();
+                const month = pickerMonth.getMonth();
+                const firstDayOfWeek = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const cells: (number | null)[] = [
+                  ...Array(firstDayOfWeek).fill(null),
+                  ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+                ];
+                return cells.map((day, idx) => {
+                  if (day === null) {
+                    return <View key={idx} style={styles.datePickerCell} />;
+                  }
+                  const cellDate = new Date(year, month, day);
+                  const isPast = cellDate < today;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                  const isSelected = neededDate === dateStr;
+                  return (
+                    <Pressable
+                      key={idx}
+                      style={[
+                        styles.datePickerCell,
+                        isSelected ? { backgroundColor: colors.primary, borderRadius: 8 } : null,
+                      ]}
+                      disabled={isPast}
+                      onPress={() => pickDate(day)}
+                    >
+                      <Text
+                        style={[
+                          styles.datePickerDayText,
+                          {
+                            color: isSelected
+                              ? colors.primaryForeground
+                              : isPast
+                                ? colors.border
+                                : colors.foreground,
+                          },
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </Pressable>
+                  );
+                });
+              })()}
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -824,6 +952,67 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_400Regular",
     marginTop: 4,
+  },
+  dateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  dateBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  datePickerCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 16,
+    padding: 16,
+  },
+  datePickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  datePickerTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  datePickerWeekRow: {
+    flexDirection: "row",
+    marginBottom: 4,
+  },
+  datePickerWeekDay: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  datePickerGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  datePickerCell: {
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  datePickerDayText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   submitBtn: {
     borderRadius: 14,

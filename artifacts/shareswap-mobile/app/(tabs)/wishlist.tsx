@@ -57,11 +57,6 @@ const NEED_TYPE_OPTIONS = [
   { key: "gift", label: "Be Gifted", icon: "gift" as const },
 ];
 
-const URGENCY_LEVELS = [
-  { key: "normal", label: "Whenever" },
-  { key: "soon", label: "Soon" },
-  { key: "urgent", label: "Urgent" },
-];
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -96,12 +91,13 @@ export default function WishlistScreen() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
-  function selectUrgency(key: string) {
-    setUrgency(key);
-    if (key !== "normal") {
+  function toggleWhenever() {
+    if (urgency === "normal") {
+      setUrgency("soon");
       setDatePickerField("from");
       setShowDatePicker(true);
     } else {
+      setUrgency("normal");
       setNeededFromDate("");
       setNeededToDate("");
     }
@@ -518,64 +514,67 @@ export default function WishlistScreen() {
               Select one or more options
             </Text>
 
-            <Text style={[styles.label, { color: colors.foreground }]}>How soon?</Text>
-            <View style={styles.chipRow}>
-              {URGENCY_LEVELS.map((u) => {
-                const active = urgency === u.key;
-                return (
-                  <Pressable
-                    key={u.key}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor: active ? colors.primary : colors.muted,
-                        borderColor: active ? colors.primary : colors.border,
-                      },
-                    ]}
-                    onPress={() => selectUrgency(u.key)}
-                  >
-                    <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
-                      {u.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <Text style={[styles.label, { color: colors.foreground }]}>Needed by</Text>
+            <Pressable
+              style={[
+                styles.wheneverBtn,
+                {
+                  backgroundColor: urgency === "normal" ? colors.primary : colors.muted,
+                  borderColor: urgency === "normal" ? colors.primary : colors.border,
+                },
+              ]}
+              onPress={toggleWhenever}
+            >
+              <Feather
+                name={urgency === "normal" ? "check-circle" : "circle"}
+                size={15}
+                color={urgency === "normal" ? colors.primaryForeground : colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.wheneverBtnText,
+                  { color: urgency === "normal" ? colors.primaryForeground : colors.mutedForeground },
+                ]}
+              >
+                Whenever
+              </Text>
+            </Pressable>
 
-            {urgency !== "normal" ? (
-              <View style={styles.dateRangeRow}>
-                <View style={styles.dateRangeCol}>
-                  <Text style={[styles.dateRangeLabel, { color: colors.mutedForeground }]}>From</Text>
-                  <Pressable
-                    style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                    onPress={() => openDatePicker("from")}
+            <View
+              style={[styles.dateRangeRow, urgency === "normal" ? styles.dateRangeRowDisabled : null]}
+              pointerEvents={urgency === "normal" ? "none" : "auto"}
+            >
+              <View style={styles.dateRangeCol}>
+                <Text style={[styles.dateRangeLabel, { color: colors.mutedForeground }]}>From</Text>
+                <Pressable
+                  style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  onPress={() => openDatePicker("from")}
+                >
+                  <Feather name="calendar" size={14} color={colors.mutedForeground} />
+                  <Text
+                    style={[styles.dateBtnText, { color: neededFromDate ? colors.foreground : colors.mutedForeground }]}
+                    numberOfLines={1}
                   >
-                    <Feather name="calendar" size={14} color={colors.mutedForeground} />
-                    <Text
-                      style={[styles.dateBtnText, { color: neededFromDate ? colors.foreground : colors.mutedForeground }]}
-                      numberOfLines={1}
-                    >
-                      {neededFromDate ? formatNeededDate(neededFromDate) : "Select date"}
-                    </Text>
-                  </Pressable>
-                </View>
-                <View style={styles.dateRangeCol}>
-                  <Text style={[styles.dateRangeLabel, { color: colors.mutedForeground }]}>To</Text>
-                  <Pressable
-                    style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                    onPress={() => openDatePicker("to")}
-                  >
-                    <Feather name="calendar" size={14} color={colors.mutedForeground} />
-                    <Text
-                      style={[styles.dateBtnText, { color: neededToDate ? colors.foreground : colors.mutedForeground }]}
-                      numberOfLines={1}
-                    >
-                      {neededToDate ? formatNeededDate(neededToDate) : "Select date"}
-                    </Text>
-                  </Pressable>
-                </View>
+                    {neededFromDate ? formatNeededDate(neededFromDate) : "Select date"}
+                  </Text>
+                </Pressable>
               </View>
-            ) : null}
+              <View style={styles.dateRangeCol}>
+                <Text style={[styles.dateRangeLabel, { color: colors.mutedForeground }]}>To</Text>
+                <Pressable
+                  style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  onPress={() => openDatePicker("to")}
+                >
+                  <Feather name="calendar" size={14} color={colors.mutedForeground} />
+                  <Text
+                    style={[styles.dateBtnText, { color: neededToDate ? colors.foreground : colors.mutedForeground }]}
+                    numberOfLines={1}
+                  >
+                    {neededToDate ? formatNeededDate(neededToDate) : "Select date"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
 
             <View style={[styles.privateRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Switch
@@ -1015,10 +1014,28 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 4,
   },
+  wheneverBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  wheneverBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
   dateRangeRow: {
     flexDirection: "row",
     gap: 10,
     marginTop: 4,
+  },
+  dateRangeRowDisabled: {
+    opacity: 0.35,
   },
   dateRangeCol: {
     flex: 1,

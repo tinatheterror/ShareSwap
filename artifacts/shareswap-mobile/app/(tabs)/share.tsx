@@ -696,13 +696,13 @@ const im = StyleSheet.create({
     gap: 8,
   },
   platformChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
   },
   platformChipText: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Inter_500Medium",
   },
   dropzone: {

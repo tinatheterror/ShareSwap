@@ -29,7 +29,6 @@ const rentalRateIcon = require("../../assets/icons/rental-rate.png");
 const SCREEN_W = Dimensions.get("window").width;
 const GRID_GAP = 10;
 const GRID_PAD = 16;
-const CARD_W = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
 const SUGGEST_CARD_W = SCREEN_W - GRID_PAD * 2;
 const SUGGEST_IMG_H = Math.round(SUGGEST_CARD_W * 0.68);
 
@@ -74,6 +73,62 @@ function iphoto(item: BrowseItem): string | null {
 }
 function coins(item: BrowseItem) {
   return Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 0));
+}
+
+const ITEM_CATEGORIES = [
+  "Baby & Kids",
+  "Clothing & Accessories",
+  "Electronics",
+  "Hobbies & Collectibles",
+  "Home & Kitchen",
+  "Tools & Equipment",
+] as const;
+
+function inferCategory(itemName: string): string {
+  const name = itemName.toLowerCase();
+  if (
+    /baby|bassinet|stroller|crib|diaper|toddler|kid|child|toy|pacifier|bottle|carrier|pram|playpen|highchair|bouncer|nursery|onesie|sleepsuit|nappy/i.test(
+      name,
+    )
+  ) {
+    return "Baby & Kids";
+  }
+  if (
+    /clothing|dress|shirt|pants|jacket|coat|shoes|boots|hat|scarf|bag|purse|accessory|jewelry|watch|crewneck|sweater|hoodie|tee|jeans|denim|leggings|bikini|swimsuit|skirt|blouse|cardigan|vest|beanie|sneaker|sandal|bra|top|bottom|romper|jumpsuit|suit|blazer|tie|socks|gloves|mittens|belt|sunglasses|glasses|cap|toque|parka|fleece|polo|shorts|tracksuit|activewear|sportswear|yoga|gym|alo|lululemon|nike|adidas/i.test(
+      name,
+    )
+  ) {
+    return "Clothing & Accessories";
+  }
+  if (
+    /phone|tablet|laptop|computer|camera|tv|television|speaker|headphone|charger|electronic|gaming|console|monitor|keyboard|mouse|printer|projector|drone|smartwatch|earbuds|airpods|gopro|playstation|xbox|nintendo|ipad|iphone|android|router|modem/i.test(
+      name,
+    )
+  ) {
+    return "Electronics";
+  }
+  if (
+    /camping|tent|bike|bicycle|golf|sports|game|book|guitar|instrument|hobby|collect|fishing|kayak|ski|snowboard|surfboard|skateboard|scooter|rollerblade|yoga mat|dumbbell|weight|exercise|fitness|treadmill|elliptical|rowing|badminton|tennis|racket|hockey|football|soccer|baseball|basketball|volleyball|frisbee|puzzle|board game|lego|craft|sewing|knitting/i.test(
+      name,
+    )
+  ) {
+    return "Hobbies & Collectibles";
+  }
+  if (
+    /kitchen|blender|mixer|pot|pan|plate|utensil|furniture|chair|table|lamp|decor|vacuum|appliance|oven|microwave|fridge|toaster|coffee|couch|sofa|mattress|bed|shelf|bookcase|wardrobe|dresser|curtain|rug|pillow|duvet|towel|fan|heater|air purifier|humidifier|dehumidifier|instant pot|air fryer|waffle|rice cooker|slow cooker|juicer|kettle|dishware|cutlery/i.test(
+      name,
+    )
+  ) {
+    return "Home & Kitchen";
+  }
+  if (
+    /drill|saw|hammer|tool|wrench|screwdriver|mower|lawn|garden|ladder|equipment|pressure washer|generator|chainsaw|sander|grinder|level|measuring|tape measure|shovel|rake|hoe|wheelbarrow|hose|sprinkler|hedge trimmer|leaf blower|snow blower/i.test(
+      name,
+    )
+  ) {
+    return "Tools & Equipment";
+  }
+  return "Home & Kitchen";
 }
 
 // ─── Action buttons ────────────────────────────────────────────────────────
@@ -273,6 +328,48 @@ const scard = StyleSheet.create({
   coins: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
 
+// ─── Category carousel (All Items, grouped) ────────────────────────────────
+
+function CategoryCarousel({ items, colors, router }: { items: BrowseItem[]; colors: any; router: any }) {
+  const [index, setIndex] = useState(0);
+  return (
+    <View>
+      <FlatList
+        data={items}
+        horizontal
+        snapToInterval={SUGGEST_CARD_W}
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => (
+          <SuggestedCard item={item} colors={colors} router={router} />
+        )}
+        onMomentumScrollEnd={(e) => {
+          const idx = Math.round(e.nativeEvent.contentOffset.x / SUGGEST_CARD_W);
+          setIndex(idx);
+        }}
+        scrollEnabled={items.length > 1}
+      />
+      {items.length > 1 && (
+        <View style={styles.dotsRow}>
+          {items.slice(0, 8).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                {
+                  backgroundColor: i === index ? colors.primary : "#d1d5db",
+                  width: i === index ? 18 : 7,
+                },
+              ]}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 // ─── Gift card (carousel) ──────────────────────────────────────────────────
 
 function GiftCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
@@ -339,86 +436,6 @@ const gcard = StyleSheet.create({
   verifiedPill: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#0DCEA130", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
   verifiedText: { fontSize: 9, color: "#0DCEA1", fontFamily: "Inter_600SemiBold" },
   btn: { backgroundColor: "#ec4899", borderRadius: 8, paddingVertical: 8, alignItems: "center", marginTop: 4 },
-});
-
-// ─── Grid card (All Items) ─────────────────────────────────────────────────
-
-function GridCard({ item, colors, router }: { item: BrowseItem; colors: any; router: any }) {
-  const photo = iphoto(item);
-  const c = coins(item);
-  const isAiPick = item.recommendationReasons && item.recommendationReasons.length > 0;
-  const price =
-    item.dollarsPrice && Number(item.dollarsPrice) > 0
-      ? `${Number(item.dollarsPrice).toFixed(0)}/wk`
-      : item.pricePerDay && Number(item.pricePerDay) > 0
-      ? `${Number(item.pricePerDay).toFixed(0)}/day`
-      : null;
-  return (
-    <Pressable
-      style={[grid.wrap, { backgroundColor: colors.card, borderColor: colors.border, width: CARD_W }]}
-      onPress={() => router.push(`/item/${item.id}` as never)}
-    >
-      <View style={grid.imgWrap}>
-        {photo ? (
-          <Image source={{ uri: photo }} style={[grid.img, { width: CARD_W }]} resizeMode="cover" />
-        ) : (
-          <View style={[grid.imgPlaceholder, { width: CARD_W, backgroundColor: colors.muted }]}>
-            <Feather name="package" size={28} color={colors.mutedForeground} />
-          </View>
-        )}
-        {isAiPick && (
-          <View style={grid.aiPick}>
-            <Text style={grid.aiPickText}>✦ AI Pick</Text>
-          </View>
-        )}
-      </View>
-      <View style={grid.body}>
-        <Text style={[grid.title, { color: colors.foreground }]} numberOfLines={1}>
-          {iname(item)}
-        </Text>
-        <View style={grid.infoRow}>
-          <Feather name="map-pin" size={10} color={colors.mutedForeground} />
-          <Text style={[grid.meta, { color: colors.mutedForeground }]} numberOfLines={1}>
-            {item.city || "Nearby"}
-          </Text>
-        </View>
-        <Text style={[grid.meta, { color: colors.mutedForeground }]}>
-          Condition: {item.conditionRating ?? 10}/10
-        </Text>
-        <View style={grid.coinsRow}>
-          <Coins size={11} color="#0DCEA1" strokeWidth={2} />
-          <Text style={[grid.coins, { color: colors.foreground }]}>
-            {c > 0 ? `${c} ShareCoins` : "0 ShareCoins"}
-          </Text>
-          {price ? (
-            <>
-              <Text style={[grid.coinsSep, { color: colors.mutedForeground }]}>{"  |  "}</Text>
-              <Image source={rentalRateIcon} style={grid.rateIcon} resizeMode="contain" />
-              <Text style={[grid.coinsRate, { color: colors.mutedForeground }]}>{price}</Text>
-            </>
-          ) : null}
-        </View>
-        <ActionButtons item={item} colors={colors} router={router} />
-      </View>
-    </Pressable>
-  );
-}
-const grid = StyleSheet.create({
-  wrap: { borderRadius: 12, borderWidth: 1, overflow: "hidden" },
-  imgWrap: { position: "relative" },
-  img: { height: CARD_W },
-  imgPlaceholder: { height: CARD_W, alignItems: "center", justifyContent: "center" },
-  aiPick: { position: "absolute", top: 7, right: 7, backgroundColor: "#0DCEA1", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 20 },
-  aiPickText: { fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" },
-  body: { padding: 9, gap: 3 },
-  title: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 17 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  coinsRow: { flexDirection: "row", alignItems: "center", gap: 2 },
-  coinsSep: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  rateIcon: { width: 7, height: 11 },
-  coinsRate: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  meta: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  coins: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
 });
 
 // ─── Main screen ───────────────────────────────────────────────────────────
@@ -511,12 +528,14 @@ export default function HomeScreen() {
     ? recommended
     : allItems.filter((i) => !isGiftItem(i)).slice(0, 10);
 
-  // Grid rows (pairs)
+  // Group by category
   const nonGiftItems = filtered.filter((i) => !isGiftItem(i));
-  const gridRows: BrowseItem[][] = [];
-  for (let i = 0; i < nonGiftItems.length; i += 2) {
-    gridRows.push(nonGiftItems.slice(i, i + 2));
-  }
+  const categoryGroups: [string, BrowseItem[]][] = ITEM_CATEGORIES.map(
+    (cat): [string, BrowseItem[]] => [
+      cat,
+      nonGiftItems.filter((i) => inferCategory(iname(i)) === cat),
+    ]
+  ).filter(([, items]) => items.length > 0);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -653,7 +672,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* ── All Items grid ── */}
+        {/* ── All Items, grouped by category ── */}
         <View style={styles.section}>
           <SectionHeader
             emoji="🗂️"
@@ -667,7 +686,7 @@ export default function HomeScreen() {
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
-          ) : gridRows.length === 0 ? (
+          ) : categoryGroups.length === 0 ? (
             <View style={styles.centered}>
               <Feather name="package" size={40} color={colors.mutedForeground} />
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
@@ -675,17 +694,12 @@ export default function HomeScreen() {
               </Text>
             </View>
           ) : (
-            gridRows.map((row, ri) => (
-              <View key={ri} style={styles.gridRow}>
-                {row.map((item) => (
-                  <GridCard
-                    key={item.id}
-                    item={item}
-                    colors={colors}
-                    router={router}
-                  />
-                ))}
-                {row.length === 1 && <View style={{ width: CARD_W }} />}
+            categoryGroups.map(([cat, items]) => (
+              <View key={cat} style={styles.categoryBlock}>
+                <Text style={[styles.categoryTitle, { color: colors.foreground }]}>
+                  {cat}
+                </Text>
+                <CategoryCarousel items={items} colors={colors} router={router} />
               </View>
             ))
           )}
@@ -837,7 +851,8 @@ const styles = StyleSheet.create({
   body: { paddingTop: 16, gap: 0 },
   section: { paddingHorizontal: 16, marginBottom: 24 },
   hscroll: { gap: 10, paddingRight: 4 },
-  gridRow: { flexDirection: "row", gap: GRID_GAP, marginBottom: GRID_GAP },
+  categoryBlock: { marginBottom: 22 },
+  categoryTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 12 },
   centered: { paddingVertical: 40, alignItems: "center", gap: 12 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
   dotsRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5, marginTop: 12 },

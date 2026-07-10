@@ -3272,7 +3272,7 @@ Respond with ONLY the category name, nothing else.`
   // Create wishlist item
   app.post("/api/wishlists", requireEmailVerified, async (req: any, res) => {
     try {
-      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency } = req.body;
+      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency, isPrivate } = req.body;
 
       if (!itemName) {
         return res.status(400).json({ error: "Item name is required" });
@@ -3292,6 +3292,7 @@ Respond with ONLY the category name, nothing else.`
           neededDate: neededDate || null,
           returnDate: returnDate || null,
           urgency: urgency || 'normal',
+          isPrivate: isPrivate ?? false,
         })
         .returning();
 
@@ -3320,7 +3321,7 @@ Respond with ONLY the category name, nothing else.`
         return res.status(404).json({ error: "Wishlist item not found" });
       }
 
-      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency } = req.body;
+      const { itemName, description, category, needType, maxShareCoinPrice, maxDollarPrice, preferredLocation, neededDate, returnDate, urgency, isPrivate } = req.body;
 
       const [updated] = await db
         .update(wishlists)
@@ -3335,6 +3336,7 @@ Respond with ONLY the category name, nothing else.`
           neededDate: neededDate !== undefined ? neededDate : existing.neededDate,
           returnDate: returnDate !== undefined ? returnDate : existing.returnDate,
           urgency: urgency ?? existing.urgency,
+          isPrivate: isPrivate !== undefined ? isPrivate : existing.isPrivate,
         })
         .where(eq(wishlists.id, wishlistId))
         .returning();

@@ -10,6 +10,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -85,6 +86,7 @@ export default function WishlistScreen() {
   const [description, setDescription] = useState("");
   const [needTypes, setNeedTypes] = useState<string[]>(["borrow"]);
   const [urgency, setUrgency] = useState("normal");
+  const [isPrivate, setIsPrivate] = useState(false);
 
   function toggleNeedType(key: string) {
     setNeedTypes((prev) => {
@@ -118,6 +120,7 @@ export default function WishlistScreen() {
         description: description.trim() || undefined,
         needType: needTypes.join(","),
         urgency,
+        isPrivate,
       });
     },
     onSuccess: () => {
@@ -127,6 +130,7 @@ export default function WishlistScreen() {
       setDescription("");
       setNeedTypes(["borrow"]);
       setUrgency("normal");
+      setIsPrivate(false);
       setShowAdd(false);
     },
     onError: (error: Error) => {
@@ -482,6 +486,25 @@ export default function WishlistScreen() {
               })}
             </View>
 
+            <View style={[styles.privateRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <Switch
+                value={isPrivate}
+                onValueChange={setIsPrivate}
+                trackColor={{ false: colors.border, true: colors.primary }}
+              />
+              <View style={{ flex: 1 }}>
+                <View style={styles.privateRowHeader}>
+                  <Feather name="eye-off" size={14} color={colors.mutedForeground} />
+                  <Text style={[styles.privateRowTitle, { color: colors.foreground }]}>Private request</Text>
+                </View>
+                {isPrivate ? (
+                  <Text style={[styles.privateRowHint, { color: colors.mutedForeground }]}>
+                    Your name will be hidden until you send a request for an item someone offers.
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
             <Pressable
               style={[
                 styles.submitBtn,
@@ -775,6 +798,29 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   helperNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 4,
+  },
+  privateRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  privateRowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  privateRowTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  privateRowHint: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
     marginTop: 4,

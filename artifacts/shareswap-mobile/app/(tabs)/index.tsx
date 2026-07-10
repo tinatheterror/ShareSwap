@@ -187,6 +187,7 @@ const ab = StyleSheet.create({
 
 function SectionHeader({
   emoji,
+  icon,
   label,
   count,
   accentBg,
@@ -195,6 +196,7 @@ function SectionHeader({
   line,
 }: {
   emoji: string;
+  icon?: React.ReactNode;
   label: string;
   count?: number;
   accentBg: string;
@@ -205,7 +207,7 @@ function SectionHeader({
   return (
     <View style={sh.row}>
       <View style={[sh.icon, { backgroundColor: accentBg }]}>
-        <Text style={sh.emoji}>{sparkle ? "✦" : emoji}</Text>
+        {icon ? icon : <Text style={sh.emoji}>{sparkle ? "✦" : emoji}</Text>}
       </View>
       <Text style={sh.label}>{label}</Text>
       {count != null && (
@@ -676,6 +678,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <SectionHeader
             emoji="🗂️"
+            icon={<Feather name="grid" size={16} color="#0d9488" />}
             label={search ? `Results for "${search}"` : "All Items"}
             count={!search ? nonGiftItems.length : undefined}
             accentBg="#d1fae5"

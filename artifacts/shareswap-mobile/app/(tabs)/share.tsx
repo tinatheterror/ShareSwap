@@ -735,7 +735,7 @@ const im = StyleSheet.create({
     marginTop: 2,
   },
   dropHint: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
     marginTop: 10,
   },
@@ -776,7 +776,7 @@ const im = StyleSheet.create({
     justifyContent: "center",
   },
   helper: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
   },

@@ -97,10 +97,14 @@ export default function ShareScreen() {
   const topPad = isWeb ? 67 : insets.top;
 
   const [choiceVisible, setChoiceVisible] = useState(true);
+  const [importVisible, setImportVisible] = useState(false);
+  const [importPhotos, setImportPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       setChoiceVisible(true);
+      setImportVisible(false);
+      setImportPhotos([]);
     }, [])
   );
 
@@ -149,21 +153,23 @@ export default function ShareScreen() {
   }
 
   const analyzeMutation = useMutation({
-    mutationFn: async (asset: ImagePicker.ImagePickerAsset) => {
+    mutationFn: async (assets: ImagePicker.ImagePickerAsset[]) => {
       const formData = new FormData();
-      const uriParts = asset.uri.split(".");
-      const fileExt = uriParts[uriParts.length - 1] || "jpg";
-      formData.append("photos", {
-        uri: asset.uri,
-        name: `screenshot.${fileExt}`,
-        type: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
-      } as any);
+      assets.forEach((asset, i) => {
+        const uriParts = asset.uri.split(".");
+        const fileExt = uriParts[uriParts.length - 1] || "jpg";
+        formData.append("photos", {
+          uri: asset.uri,
+          name: `screenshot-${i}.${fileExt}`,
+          type: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
+        } as any);
+      });
       const res = await apiRequest("POST", "/api/smartscan/analyze", formData);
       return res.json() as Promise<{ analysis: SmartScanAnalysis }>;
     },
-    onSuccess: ({ analysis }, asset) => {
+    onSuccess: ({ analysis }, assets) => {
       resetForm();
-      setPhoto(asset);
+      setPhoto(assets[0]);
       setName(analysis.name || "");
       setDescription(analysis.description || "");
       setItemType(CATEGORY_MAP[analysis.category] || "");
@@ -171,13 +177,14 @@ export default function ShareScreen() {
       setOriginalValue(
         (analysis.suggestedValueRange && VALUE_RANGE_MAP[analysis.suggestedValueRange]) || ""
       );
+      setImportVisible(false);
     },
     onError: (error: Error) => {
-      Alert.alert("Couldn't read that image", error.message);
+      Alert.alert("Couldn't read that listing", error.message);
     },
   });
 
-  async function pickImportScreenshot() {
+  async function pickImportScreenshots() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission needed", "Please allow photo access to import a listing screenshot.");
@@ -186,10 +193,11 @@ export default function ShareScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.9,
+      allowsMultipleSelection: true,
+      selectionLimit: 5,
     });
     if (!result.canceled && result.assets.length > 0) {
-      setChoiceVisible(false);
-      analyzeMutation.mutate(result.assets[0]);
+      setImportPhotos((prev) => [...prev, ...result.assets].slice(0, 5));
     }
   }
 
@@ -272,7 +280,10 @@ export default function ShareScreen() {
 
           <Pressable
             style={[cm.option, { backgroundColor: colors.muted }]}
-            onPress={pickImportScreenshot}
+            onPress={() => {
+              setChoiceVisible(false);
+              setImportVisible(true);
+            }}
           >
             <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
               <Feather name="download" size={20} color="#0f766e" />
@@ -303,6 +314,129 @@ export default function ShareScreen() {
               </Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (importVisible) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View
+          style={[
+            im.headerRow,
+            { paddingTop: topPad + 12, borderBottomColor: colors.border, backgroundColor: colors.background },
+          ]}
+        >
+          <View style={{ width: 24 }} />
+          <View style={{ flex: 1 }} />
+          <Pressable
+            onPress={() => {
+              setImportVisible(false);
+              setImportPhotos([]);
+              setChoiceVisible(true);
+            }}
+            hitSlop={8}
+          >
+            <Feather name="x" size={22} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={im.scroll} showsVerticalScrollIndicator={false}>
+          <View style={[im.titleRow]}>
+            <View style={[im.sparkleWrap, { backgroundColor: "#ccfbf1" }]}>
+              <Feather name="zap" size={20} color="#0f766e" />
+            </View>
+            <Text style={[im.title, { color: colors.foreground }]}>Import Marketplace Listing</Text>
+          </View>
+
+          <Text style={[im.subtitle, { color: colors.mutedForeground }]}>
+            Upload screenshots of your listing from any marketplace to generate a new listing.
+          </Text>
+
+          <View style={im.platformRow}>
+            {["Facebook Marketplace", "Craigslist", "Poshmark", "OfferUp", "Karrot", "Any resale platform"].map(
+              (platform) => (
+                <View key={platform} style={[im.platformChip, { backgroundColor: "#f0fdfa", borderColor: "#99f6e4" }]}>
+                  <Text style={[im.platformChipText, { color: "#0f766e" }]}>{platform}</Text>
+                </View>
+              )
+            )}
+          </View>
+
+          <Pressable
+            style={[im.dropzone, { borderColor: colors.primary, backgroundColor: colors.muted }]}
+            onPress={pickImportScreenshots}
+          >
+            {importPhotos.length > 0 ? (
+              <View style={im.thumbRow}>
+                {importPhotos.map((asset, idx) => (
+                  <View key={asset.assetId || asset.uri} style={im.thumbWrap}>
+                    <Image source={{ uri: asset.uri }} style={im.thumb} />
+                    <Pressable
+                      style={[im.thumbRemove, { backgroundColor: colors.card }]}
+                      onPress={() => setImportPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                      hitSlop={6}
+                    >
+                      <Feather name="x" size={12} color={colors.foreground} />
+                    </Pressable>
+                  </View>
+                ))}
+                {importPhotos.length < 5 && (
+                  <View style={[im.thumbAdd, { borderColor: colors.border }]}>
+                    <Feather name="plus" size={20} color={colors.mutedForeground} />
+                  </View>
+                )}
+              </View>
+            ) : (
+              <>
+                <View style={[im.uploadCircle, { borderColor: colors.primary }]}>
+                  <Feather name="upload" size={20} color={colors.primary} />
+                </View>
+                <Text style={[im.dropTitle, { color: colors.foreground }]}>Drop screenshots here</Text>
+                <Text style={[im.dropSub, { color: colors.mutedForeground }]}>or tap to browse your files</Text>
+                <Text style={[im.dropHint, { color: colors.mutedForeground }]}>
+                  Up to 5 screenshots · JPG, PNG, WEBP
+                </Text>
+              </>
+            )}
+          </Pressable>
+
+          <Text style={[im.helper, { color: colors.mutedForeground }]}>
+            Screenshots of the full listing page work best.
+          </Text>
+
+          <Pressable
+            style={[
+              im.scanBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity: importPhotos.length === 0 || analyzeMutation.isPending ? 0.5 : 1,
+              },
+            ]}
+            disabled={importPhotos.length === 0 || analyzeMutation.isPending}
+            onPress={() => analyzeMutation.mutate(importPhotos)}
+          >
+            {analyzeMutation.isPending ? (
+              <ActivityIndicator color={colors.primaryForeground} />
+            ) : (
+              <>
+                <Feather name="zap" size={16} color={colors.primaryForeground} />
+                <Text style={[im.scanBtnText, { color: colors.primaryForeground }]}>Scan listing</Text>
+              </>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={im.manualLink}
+            onPress={() => {
+              resetForm();
+              setImportVisible(false);
+            }}
+          >
+            <Feather name="edit-2" size={14} color={colors.mutedForeground} />
+            <Text style={[im.manualLinkText, { color: colors.mutedForeground }]}>Enter manually instead</Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -512,6 +646,155 @@ export default function ShareScreen() {
     </View>
   );
 }
+
+const im = StyleSheet.create({
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  scroll: {
+    padding: 20,
+    gap: 14,
+    paddingBottom: 60,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sparkleWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 19,
+    fontFamily: "Inter_700Bold",
+    flex: 1,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+  },
+  platformRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  platformChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  platformChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  dropzone: {
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderRadius: 16,
+    minHeight: 190,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    gap: 4,
+  },
+  uploadCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  dropTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  dropSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  dropHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: 10,
+  },
+  thumbRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "center",
+  },
+  thumbWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    overflow: "visible",
+  },
+  thumb: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 10,
+  },
+  thumbRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbAdd: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  helper: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  scanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 15,
+  },
+  scanBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  manualLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+  },
+  manualLinkText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+});
 
 const cm = StyleSheet.create({
   fullHeaderRow: {

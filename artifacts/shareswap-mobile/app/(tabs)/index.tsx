@@ -654,6 +654,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <SectionHeader
               emoji="🎁"
+              icon={<Feather name="gift" size={16} color="#db2777" />}
               label="Free Gifts"
               count={giftList.length}
               accentBg="#fce7f3"

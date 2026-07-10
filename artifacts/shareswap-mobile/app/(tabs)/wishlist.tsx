@@ -69,7 +69,7 @@ export default function WishlistScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  const [tab, setTab] = useState<"mine" | "community">("mine");
+  const [tab, setTab] = useState<"mine" | "community">("community");
   const [showAdd, setShowAdd] = useState(false);
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
@@ -197,7 +197,7 @@ export default function WishlistScreen() {
                 { color: tab === "community" ? colors.foreground : colors.mutedForeground },
               ]}
             >
-              Community Requests
+              Community Wishlist
             </Text>
           </Pressable>
         </View>
@@ -211,7 +211,7 @@ export default function WishlistScreen() {
         <View style={styles.centered}>
           <Feather name="heart" size={44} color={colors.mutedForeground} />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {tab === "mine" ? "Nothing on your wishlist yet" : "No community requests yet"}
+            {tab === "mine" ? "Nothing on your wishlist yet" : "No community wishlist items yet"}
           </Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
             {tab === "mine"

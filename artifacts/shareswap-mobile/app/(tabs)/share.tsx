@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -241,6 +240,74 @@ export default function ShareScreen() {
     },
   });
 
+  if (choiceVisible) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View
+          style={[
+            cm.fullHeaderRow,
+            { paddingTop: topPad + 12, borderBottomColor: colors.border, backgroundColor: colors.background },
+          ]}
+        >
+          <Text style={[cm.heading, { color: colors.foreground }]}>How would you like to share?</Text>
+        </View>
+
+        <ScrollView contentContainerStyle={cm.fullScroll} showsVerticalScrollIndicator={false}>
+          <Pressable
+            style={[cm.option, { backgroundColor: colors.muted }]}
+            onPress={() => setChoiceVisible(false)}
+          >
+            <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
+              <Feather name="plus" size={20} color="#0f766e" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[cm.optTitle, { color: colors.foreground }]}>List an item</Text>
+              <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
+                Add item details or use ShareSmart Scan
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          <Pressable
+            style={[cm.option, { backgroundColor: colors.muted }]}
+            onPress={pickImportScreenshot}
+          >
+            <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
+              <Feather name="download" size={20} color="#0f766e" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[cm.optTitle, { color: colors.foreground }]}>Import a listing</Text>
+              <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
+                Turn screenshots into a listing in seconds
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          <Pressable
+            style={[cm.option, { backgroundColor: colors.muted }]}
+            onPress={() => {
+              setChoiceVisible(false);
+              router.push("/(tabs)/wishlist" as never);
+            }}
+          >
+            <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
+              <Feather name="heart" size={20} color="#0f766e" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[cm.optTitle, { color: colors.foreground }]}>See what people need</Text>
+              <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
+                Fulfill a wishlist and earn ShareCoins
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+        </ScrollView>
+      </View>
+    );
+  }
+
   if (!user) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -441,103 +508,24 @@ export default function ShareScreen() {
           </Pressable>
         </ScrollView>
       )}
-
-      {/* ── "How would you like to share?" picker ── */}
-      <Modal
-        visible={choiceVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setChoiceVisible(false)}
-      >
-        <Pressable style={cm.backdrop} onPress={() => setChoiceVisible(false)}>
-          <Pressable style={[cm.sheet, { backgroundColor: colors.card }]} onPress={() => {}}>
-            <View style={cm.headerRow}>
-              <Text style={[cm.heading, { color: colors.foreground }]}>How would you like to share?</Text>
-              <Pressable onPress={() => setChoiceVisible(false)} hitSlop={8}>
-                <Feather name="x" size={20} color={colors.mutedForeground} />
-              </Pressable>
-            </View>
-
-            <Pressable
-              style={[cm.option, { backgroundColor: colors.muted }]}
-              onPress={() => setChoiceVisible(false)}
-            >
-              <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
-                <Feather name="plus" size={20} color="#0f766e" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[cm.optTitle, { color: colors.foreground }]}>List an item</Text>
-                <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
-                  Add item details or use ShareSmart Scan
-                </Text>
-              </View>
-            </Pressable>
-
-            <Pressable
-              style={[cm.option, { backgroundColor: colors.muted }]}
-              onPress={pickImportScreenshot}
-            >
-              <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
-                <Feather name="download" size={20} color="#0f766e" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[cm.optTitle, { color: colors.foreground }]}>Import a listing</Text>
-                <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
-                  Turn screenshots into a listing in seconds
-                </Text>
-              </View>
-            </Pressable>
-
-            <Pressable
-              style={[cm.option, { backgroundColor: colors.muted }]}
-              onPress={() => {
-                setChoiceVisible(false);
-                router.push("/(tabs)/wishlist" as never);
-              }}
-            >
-              <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
-                <Feather name="heart" size={20} color="#0f766e" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[cm.optTitle, { color: colors.foreground }]}>See what people need</Text>
-                <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
-                  Fulfill a wishlist and earn ShareCoins
-                </Text>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
 
 const cm = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
+  fullHeaderRow: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  sheet: {
-    width: "100%",
-    maxWidth: 400,
-    borderRadius: 18,
-    padding: 20,
-    gap: 10,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
+  fullScroll: {
+    padding: 16,
+    gap: 12,
   },
   heading: {
-    fontSize: 18,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
-    flex: 1,
-    textAlign: "center",
+    letterSpacing: -0.5,
   },
   option: {
     flexDirection: "row",

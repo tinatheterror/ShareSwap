@@ -348,7 +348,13 @@ export default function ShareScreen() {
             <View style={[im.sparkleWrap, { backgroundColor: "#ccfbf1" }]}>
               <Feather name="zap" size={20} color="#0f766e" />
             </View>
-            <Text style={[im.title, { color: colors.foreground }]}>Import Marketplace Listing</Text>
+            <Text
+              style={[im.title, { color: colors.foreground }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              Import Marketplace Listing
+            </Text>
           </View>
 
           <Text style={[im.subtitle, { color: colors.mutedForeground }]}>
@@ -673,7 +679,7 @@ const im = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    fontSize: 19,
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
     flex: 1,
   },

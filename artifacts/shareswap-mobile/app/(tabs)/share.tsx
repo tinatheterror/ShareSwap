@@ -693,16 +693,17 @@ const im = StyleSheet.create({
   platformRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    rowGap: 6,
+    columnGap: 5,
   },
   platformChip: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
     borderRadius: 20,
     borderWidth: 1,
   },
   platformChipText: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Inter_500Medium",
   },
   dropzone: {

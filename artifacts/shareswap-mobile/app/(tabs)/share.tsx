@@ -346,7 +346,7 @@ export default function ShareScreen() {
         <ScrollView contentContainerStyle={im.scroll} showsVerticalScrollIndicator={false}>
           <View style={[im.titleRow]}>
             <View style={[im.sparkleWrap, { backgroundColor: "#ccfbf1" }]}>
-              <Feather name="zap" size={20} color="#0f766e" />
+              <Feather name="zap" size={14} color="#0f766e" />
             </View>
             <Text
               style={[im.title, { color: colors.foreground }]}

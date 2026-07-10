@@ -26,10 +26,13 @@ interface WishlistItem {
   description?: string;
   category?: string;
   needType: string;
+  preferredLocation?: string;
   urgency: string;
   neededDate?: string;
+  returnDate?: string;
   isActive: boolean;
   isExpired?: boolean;
+  isPrivate?: boolean;
   createdAt: string;
   user?: {
     id: number;
@@ -224,52 +227,145 @@ export default function WishlistScreen() {
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 100 }]}
           showsVerticalScrollIndicator={false}
         >
-          {list.map((item) => (
-            <View
-              key={item.id}
-              style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <View style={styles.cardTop}>
-                <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
-                  {item.itemName}
-                </Text>
-                {item.urgency === "urgent" ? (
-                  <View style={[styles.urgentPill, { backgroundColor: colors.destructive + "20" }]}>
-                    <Text style={[styles.urgentText, { color: colors.destructive }]}>Urgent</Text>
+          {list.map((item) =>
+            tab === "community" ? (
+              <View
+                key={item.id}
+                style={[styles.commCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={[styles.commAccent, { backgroundColor: colors.primary }]} />
+                <View style={styles.commBody}>
+                  <View style={styles.cardTop}>
+                    <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+                      {item.itemName}
+                    </Text>
                   </View>
-                ) : null}
-              </View>
-              {item.description ? (
-                <Text
-                  style={[styles.itemDesc, { color: colors.mutedForeground }]}
-                  numberOfLines={2}
-                >
-                  {item.description}
-                </Text>
-              ) : null}
-              <View style={styles.cardMeta}>
-                <View style={[styles.needPill, { backgroundColor: colors.accent }]}>
-                  <Text style={[styles.needText, { color: colors.accentForeground }]}>
-                    {NEED_TYPES.find((n) => n.key === item.needType)?.label ?? item.needType}
-                  </Text>
+                  <View style={styles.commBadgeRow}>
+                    {item.urgency === "urgent" ? (
+                      <View style={[styles.urgentPill, { backgroundColor: "#EFE4B0" }]}>
+                        <Feather name="clock" size={11} color="#78350f" />
+                        <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
+                      </View>
+                    ) : null}
+                    <View style={[styles.needPill, { backgroundColor: colors.accent }]}>
+                      <Feather name="heart" size={11} color={colors.accentForeground} />
+                      <Text style={[styles.needText, { color: colors.accentForeground }]}>
+                        {NEED_TYPES.find((n) => n.key === item.needType)?.label ?? item.needType}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {item.description ? (
+                    <Text
+                      style={[styles.itemDesc, { color: colors.mutedForeground }]}
+                      numberOfLines={2}
+                    >
+                      {item.description}
+                    </Text>
+                  ) : null}
+
+                  <View style={styles.commInfoList}>
+                    {item.isPrivate ? (
+                      <View style={styles.commInfoRow}>
+                        <View style={[styles.commIconCircle, { backgroundColor: colors.muted }]}>
+                          <Feather name="eye-off" size={13} color={colors.mutedForeground} />
+                        </View>
+                        <Text style={[styles.commInfoText, { color: colors.mutedForeground, fontStyle: "italic" }]}>
+                          Private request
+                        </Text>
+                      </View>
+                    ) : item.user ? (
+                      <View style={styles.commInfoRow}>
+                        <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
+                          <Text style={[styles.commAvatarText, { color: colors.accentForeground }]}>
+                            {(item.user.displayName || item.user.username || "?").charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                          {item.user.displayName || item.user.username}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {item.preferredLocation ? (
+                      <View style={styles.commInfoRow}>
+                        <View style={[styles.commIconCircle, { backgroundColor: colors.muted }]}>
+                          <Feather name="map-pin" size={13} color={colors.mutedForeground} />
+                        </View>
+                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                          {item.preferredLocation}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {item.neededDate ? (
+                      <View style={styles.commInfoRow}>
+                        <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
+                          <Feather name="calendar" size={13} color={colors.accentForeground} />
+                        </View>
+                        <View>
+                          <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                            Needed: {new Date(item.neededDate).toLocaleDateString()}
+                          </Text>
+                          {item.returnDate && item.needType === "borrow" ? (
+                            <Text style={[styles.commInfoSubText, { color: colors.mutedForeground }]}>
+                              Return: {new Date(item.returnDate).toLocaleDateString()}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <Pressable
+                    style={[styles.commBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => router.push("/(tabs)/share")}
+                  >
+                    <Text style={[styles.commBtnText, { color: colors.primaryForeground }]}>
+                      I Have This Item!
+                    </Text>
+                  </Pressable>
                 </View>
-                {tab === "community" && item.user ? (
-                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                    {item.user.displayName || item.user.username}
+              </View>
+            ) : (
+              <View
+                key={item.id}
+                style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+              >
+                <View style={styles.cardTop}>
+                  <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+                    {item.itemName}
                   </Text>
-                ) : (
+                  {item.urgency === "urgent" ? (
+                    <View style={[styles.urgentPill, { backgroundColor: colors.destructive + "20" }]}>
+                      <Text style={[styles.urgentText, { color: colors.destructive }]}>Urgent</Text>
+                    </View>
+                  ) : null}
+                </View>
+                {item.description ? (
+                  <Text
+                    style={[styles.itemDesc, { color: colors.mutedForeground }]}
+                    numberOfLines={2}
+                  >
+                    {item.description}
+                  </Text>
+                ) : null}
+                <View style={styles.cardMeta}>
+                  <View style={[styles.needPill, { backgroundColor: colors.accent }]}>
+                    <Text style={[styles.needText, { color: colors.accentForeground }]}>
+                      {NEED_TYPES.find((n) => n.key === item.needType)?.label ?? item.needType}
+                    </Text>
+                  </View>
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                     {timeAgo(item.createdAt)}
                   </Text>
-                )}
-              </View>
-              {tab === "mine" ? (
+                </View>
                 <Pressable style={styles.deleteBtn} onPress={() => confirmDelete(item)}>
                   <Feather name="trash-2" size={16} color={colors.mutedForeground} />
                 </Pressable>
-              ) : null}
-            </View>
-          ))}
+              </View>
+            ),
+          )}
         </ScrollView>
       )}
 
@@ -439,6 +535,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   urgentPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 12,
@@ -458,6 +557,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   needPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -474,6 +576,70 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 14,
     right: 14,
+  },
+  commCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  commAccent: {
+    height: 6,
+  },
+  commBody: {
+    padding: 16,
+    gap: 10,
+  },
+  commBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  commInfoList: {
+    gap: 10,
+  },
+  commInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  commIconCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commAvatarCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commAvatarText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  commInfoText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  commInfoSubText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  commBtn: {
+    marginTop: 4,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
   },
   centered: {
     flex: 1,

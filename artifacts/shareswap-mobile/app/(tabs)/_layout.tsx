@@ -15,13 +15,13 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="inbox">
-        <Icon sf={{ default: "message", selected: "message.fill" }} />
-        <Label>Inbox</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="share">
         <Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
         <Label>Share</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="inbox">
+        <Icon sf={{ default: "message", selected: "message.fill" }} />
+        <Label>Inbox</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="wishlist">
         <Icon sf={{ default: "heart", selected: "heart.fill" }} />
@@ -90,18 +90,6 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="inbox"
-        options={{
-          title: "Inbox",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="message" tintColor={color} size={24} />
-            ) : (
-              <Feather name="message-circle" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
         name="share"
         options={{
           title: "Share",
@@ -110,6 +98,18 @@ function ClassicTabLayout() {
               <SymbolView name="plus.circle" tintColor={color} size={24} />
             ) : (
               <Feather name="plus-circle" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: "Inbox",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="message" tintColor={color} size={24} />
+            ) : (
+              <Feather name="message-circle" size={22} color={color} />
             ),
         }}
       />

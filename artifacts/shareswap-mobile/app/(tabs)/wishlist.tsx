@@ -49,6 +49,13 @@ const NEED_TYPES = [
   { key: "gift", label: "Gift" },
 ];
 
+const NEED_TYPE_OPTIONS = [
+  { key: "borrow", label: "Borrow It", icon: "heart" as const },
+  { key: "rent", label: "Rent It", icon: "repeat" as const },
+  { key: "swap", label: "Swap It", icon: "repeat" as const },
+  { key: "gift", label: "Be Gifted", icon: "gift" as const },
+];
+
 const URGENCY_LEVELS = [
   { key: "normal", label: "Whenever" },
   { key: "soon", label: "Soon" },
@@ -76,8 +83,18 @@ export default function WishlistScreen() {
   const [showAdd, setShowAdd] = useState(false);
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
-  const [needType, setNeedType] = useState("borrow");
+  const [needTypes, setNeedTypes] = useState<string[]>(["borrow"]);
   const [urgency, setUrgency] = useState("normal");
+
+  function toggleNeedType(key: string) {
+    setNeedTypes((prev) => {
+      if (prev.includes(key)) {
+        const next = prev.filter((t) => t !== key);
+        return next.length ? next : prev;
+      }
+      return [...prev, key];
+    });
+  }
 
   const { data: myWishlists, isLoading: loadingMine } = useQuery<WishlistItem[]>({
     queryKey: ["/api/my-wishlists"],
@@ -99,7 +116,7 @@ export default function WishlistScreen() {
       return apiPost("/api/wishlists", {
         itemName: itemName.trim(),
         description: description.trim() || undefined,
-        needType,
+        needType: needTypes.join(","),
         urgency,
       });
     },
@@ -108,7 +125,7 @@ export default function WishlistScreen() {
       queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
       setItemName("");
       setDescription("");
-      setNeedType("borrow");
+      setNeedTypes(["borrow"]);
       setUrgency("normal");
       setShowAdd(false);
     },
@@ -403,29 +420,43 @@ export default function WishlistScreen() {
               numberOfLines={3}
             />
 
-            <Text style={[styles.label, { color: colors.foreground }]}>How would you like it?</Text>
-            <View style={styles.chipRow}>
-              {NEED_TYPES.map((t) => {
-                const active = needType === t.key;
+            <Text style={[styles.label, { color: colors.foreground }]}>I want to</Text>
+            <View style={styles.wantGrid}>
+              {NEED_TYPE_OPTIONS.map((t) => {
+                const active = needTypes.includes(t.key);
+                const isGift = t.key === "gift";
+                const activeColor = isGift ? "#ec4899" : colors.primary;
                 return (
                   <Pressable
                     key={t.key}
                     style={[
-                      styles.chip,
+                      styles.wantBtn,
                       {
-                        backgroundColor: active ? colors.primary : colors.muted,
-                        borderColor: active ? colors.primary : colors.border,
+                        backgroundColor: active ? activeColor : colors.muted,
                       },
                     ]}
-                    onPress={() => setNeedType(t.key)}
+                    onPress={() => toggleNeedType(t.key)}
                   >
-                    <Text style={[styles.chipText, { color: active ? colors.primaryForeground : colors.mutedForeground }]}>
+                    <Feather
+                      name={t.icon}
+                      size={14}
+                      color={active ? "#fff" : colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.wantBtnText,
+                        { color: active ? "#fff" : colors.mutedForeground },
+                      ]}
+                    >
                       {t.label}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+            <Text style={[styles.helperNote, { color: colors.mutedForeground }]}>
+              Select one or more options
+            </Text>
 
             <Text style={[styles.label, { color: colors.foreground }]}>How soon?</Text>
             <View style={styles.chipRow}>
@@ -723,6 +754,30 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  wantGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  wantBtn: {
+    flexBasis: "48%",
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  wantBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  helperNote: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 4,
   },
   submitBtn: {
     borderRadius: 14,

@@ -557,7 +557,7 @@ export default function HomeScreen() {
 
         {/* Search bar */}
         <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
-          <Feather name="search" size={15} color="#9ca3af" />
+          <Feather name="search" size={13} color="#9ca3af" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search items..."
@@ -568,18 +568,18 @@ export default function HomeScreen() {
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch("")} hitSlop={6}>
-              <Feather name="x" size={15} color="#9ca3af" />
+              <Feather name="x" size={13} color="#9ca3af" />
             </Pressable>
           )}
         </View>
 
         {/* Location pill */}
         <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]} onPress={() => setLocationModal(true)}>
-          <Feather name="map-pin" size={14} color="#374151" />
+          <Feather name="map-pin" size={12} color="#374151" />
           <Text style={styles.locationText}>
             {locationCity || "Nearby"} ({locationRadius}km radius)
           </Text>
-          <Feather name="chevron-down" size={13} color="#9ca3af" />
+          <Feather name="chevron-down" size={11} color="#9ca3af" />
         </Pressable>
       </View>
 
@@ -818,10 +818,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    gap: 5,
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   locationText: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
     color: "#374151",
   },
@@ -837,10 +837,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 6,
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -849,7 +849,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
     color: "#1f2937",
     padding: 0,

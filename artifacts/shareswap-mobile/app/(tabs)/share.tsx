@@ -352,6 +352,8 @@ export default function ShareScreen() {
               style={[im.title, { color: colors.foreground }]}
               numberOfLines={1}
               adjustsFontSizeToFit
+              minimumFontScale={0.5}
+              ellipsizeMode="clip"
             >
               Import Marketplace Listing
             </Text>
@@ -669,17 +671,17 @@ const im = StyleSheet.create({
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   sparkleWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   title: {
-    fontSize: 17,
+    fontSize: 15,
     fontFamily: "Inter_700Bold",
     flex: 1,
   },

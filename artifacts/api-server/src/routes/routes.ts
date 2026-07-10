@@ -3200,7 +3200,7 @@ Respond with ONLY the category name, nothing else.`
         })
         .from(wishlists)
         .innerJoin(users, eq(users.id, wishlists.userId))
-        .where(eq(wishlists.isActive, true))
+        .where(and(eq(wishlists.isActive, true), ne(wishlists.userId, req.user.id)))
         .orderBy(desc(wishlists.createdAt));
 
       // For urgent wishlists, highlight verified users and calculate expired status

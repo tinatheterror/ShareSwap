@@ -87,8 +87,10 @@ export default function WishlistScreen() {
   const [needTypes, setNeedTypes] = useState<string[]>(["borrow"]);
   const [urgency, setUrgency] = useState("normal");
   const [isPrivate, setIsPrivate] = useState(false);
-  const [neededDate, setNeededDate] = useState("");
+  const [neededFromDate, setNeededFromDate] = useState("");
+  const [neededToDate, setNeededToDate] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerField, setDatePickerField] = useState<"from" | "to">("from");
   const [pickerMonth, setPickerMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -97,17 +99,31 @@ export default function WishlistScreen() {
   function selectUrgency(key: string) {
     setUrgency(key);
     if (key !== "normal") {
+      setDatePickerField("from");
       setShowDatePicker(true);
     } else {
-      setNeededDate("");
+      setNeededFromDate("");
+      setNeededToDate("");
     }
+  }
+
+  function openDatePicker(field: "from" | "to") {
+    setDatePickerField(field);
+    setShowDatePicker(true);
   }
 
   function pickDate(day: number) {
     const y = pickerMonth.getFullYear();
     const m = pickerMonth.getMonth();
     const dateStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    setNeededDate(dateStr);
+    if (datePickerField === "from") {
+      setNeededFromDate(dateStr);
+      if (neededToDate && neededToDate < dateStr) {
+        setNeededToDate("");
+      }
+    } else {
+      setNeededToDate(dateStr);
+    }
     setShowDatePicker(false);
   }
 
@@ -153,7 +169,8 @@ export default function WishlistScreen() {
         needType: needTypes.join(","),
         urgency,
         isPrivate,
-        neededDate: neededDate || undefined,
+        neededDate: neededFromDate || undefined,
+        returnDate: neededToDate || undefined,
       });
     },
     onSuccess: () => {
@@ -164,7 +181,8 @@ export default function WishlistScreen() {
       setNeedTypes(["borrow"]);
       setUrgency("normal");
       setIsPrivate(false);
-      setNeededDate("");
+      setNeededFromDate("");
+      setNeededToDate("");
       setShowAdd(false);
     },
     onError: (error: Error) => {
@@ -359,13 +377,13 @@ export default function WishlistScreen() {
                       </View>
                       <View>
                         <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
-                          Needed: {item.neededDate ? new Date(item.neededDate).toLocaleDateString() : "Whenever"}
+                          Needed:{" "}
+                          {item.neededDate
+                            ? item.returnDate
+                              ? `${new Date(item.neededDate).toLocaleDateString()} - ${new Date(item.returnDate).toLocaleDateString()}`
+                              : new Date(item.neededDate).toLocaleDateString()
+                            : "Whenever"}
                         </Text>
-                        {item.returnDate && item.needType === "borrow" ? (
-                          <Text style={[styles.commInfoSubText, { color: colors.mutedForeground }]}>
-                            Return: {new Date(item.returnDate).toLocaleDateString()}
-                          </Text>
-                        ) : null}
                       </View>
                     </View>
                   </View>
@@ -525,15 +543,38 @@ export default function WishlistScreen() {
             </View>
 
             {urgency !== "normal" ? (
-              <Pressable
-                style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Feather name="calendar" size={14} color={colors.mutedForeground} />
-                <Text style={[styles.dateBtnText, { color: neededDate ? colors.foreground : colors.mutedForeground }]}>
-                  {neededDate ? `Needed by ${formatNeededDate(neededDate)}` : "Select a date"}
-                </Text>
-              </Pressable>
+              <View style={styles.dateRangeRow}>
+                <View style={styles.dateRangeCol}>
+                  <Text style={[styles.dateRangeLabel, { color: colors.mutedForeground }]}>From</Text>
+                  <Pressable
+                    style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                    onPress={() => openDatePicker("from")}
+                  >
+                    <Feather name="calendar" size={14} color={colors.mutedForeground} />
+                    <Text
+                      style={[styles.dateBtnText, { color: neededFromDate ? colors.foreground : colors.mutedForeground }]}
+                      numberOfLines={1}
+                    >
+                      {neededFromDate ? formatNeededDate(neededFromDate) : "Select date"}
+                    </Text>
+                  </Pressable>
+                </View>
+                <View style={styles.dateRangeCol}>
+                  <Text style={[styles.dateRangeLabel, { color: colors.mutedForeground }]}>To</Text>
+                  <Pressable
+                    style={[styles.dateBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                    onPress={() => openDatePicker("to")}
+                  >
+                    <Feather name="calendar" size={14} color={colors.mutedForeground} />
+                    <Text
+                      style={[styles.dateBtnText, { color: neededToDate ? colors.foreground : colors.mutedForeground }]}
+                      numberOfLines={1}
+                    >
+                      {neededToDate ? formatNeededDate(neededToDate) : "Select date"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
             ) : null}
 
             <View style={[styles.privateRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
@@ -585,9 +626,14 @@ export default function WishlistScreen() {
               >
                 <Feather name="chevron-left" size={20} color={colors.foreground} />
               </Pressable>
-              <Text style={[styles.datePickerTitle, { color: colors.foreground }]}>
-                {pickerMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
-              </Text>
+              <View style={{ alignItems: "center" }}>
+                <Text style={[styles.datePickerSubtitle, { color: colors.mutedForeground }]}>
+                  {datePickerField === "from" ? "Select start date" : "Select end date"}
+                </Text>
+                <Text style={[styles.datePickerTitle, { color: colors.foreground }]}>
+                  {pickerMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+                </Text>
+              </View>
               <Pressable
                 onPress={() =>
                   setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
@@ -624,7 +670,10 @@ export default function WishlistScreen() {
                   const cellDate = new Date(year, month, day);
                   const isPast = cellDate < today;
                   const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                  const isSelected = neededDate === dateStr;
+                  const isBeforeFrom = datePickerField === "to" && !!neededFromDate && dateStr < neededFromDate;
+                  const isDisabled = isPast || isBeforeFrom;
+                  const isSelected =
+                    datePickerField === "from" ? neededFromDate === dateStr : neededToDate === dateStr;
                   return (
                     <Pressable
                       key={idx}
@@ -632,7 +681,7 @@ export default function WishlistScreen() {
                         styles.datePickerCell,
                         isSelected ? { backgroundColor: colors.primary, borderRadius: 8 } : null,
                       ]}
-                      disabled={isPast}
+                      disabled={isDisabled}
                       onPress={() => pickDate(day)}
                     >
                       <Text
@@ -641,7 +690,7 @@ export default function WishlistScreen() {
                           {
                             color: isSelected
                               ? colors.primaryForeground
-                              : isPast
+                              : isDisabled
                                 ? colors.border
                                 : colors.foreground,
                           },
@@ -966,6 +1015,19 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 4,
   },
+  dateRangeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  dateRangeCol: {
+    flex: 1,
+  },
+  dateRangeLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    marginBottom: 4,
+  },
   dateBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -974,11 +1036,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    marginTop: 4,
   },
   dateBtnText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+    flexShrink: 1,
   },
   datePickerOverlay: {
     flex: 1,
@@ -998,6 +1060,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 12,
+  },
+  datePickerSubtitle: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   datePickerTitle: {
     fontSize: 15,

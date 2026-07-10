@@ -432,6 +432,12 @@ export default function WishlistScreen() {
               </Pressable>
             </View>
 
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             <Text style={[styles.label, { color: colors.foreground }]}>What are you looking for?</Text>
             <TextInput
               style={[styles.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card }]}
@@ -563,6 +569,7 @@ export default function WishlistScreen() {
                 <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>Add to Wishlist</Text>
               )}
             </Pressable>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -861,8 +868,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    gap: 10,
     maxHeight: "85%",
+  },
+  modalScroll: {
+    flexShrink: 1,
+  },
+  modalScrollContent: {
+    gap: 10,
+    paddingBottom: 12,
   },
   modalHeader: {
     flexDirection: "row",

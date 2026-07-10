@@ -416,9 +416,12 @@ function GiftCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
           style={gcard.btn}
           onPress={() => router.push(`/item/${item.id}` as never)}
         >
-          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" }}>
-            🎁  Claim Gift
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <Feather name="gift" size={13} color="#fff" />
+            <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" }}>
+              Claim Gift
+            </Text>
+          </View>
         </Pressable>
       </View>
     </Pressable>

@@ -900,9 +900,13 @@ export function registerRoutes(app: Express): Server {
     // Generate and set CSRF token in cookie
     const token = setCsrfToken(req, res);
     console.log('[CSRF Token Endpoint] Token generated and set');
-    
-    res.json({ 
+
+    res.json({
       message: "CSRF token set in cookie and ready for use",
+      // Also returned in the body: native clients (e.g. React Native/Expo)
+      // cannot read Set-Cookie headers or document.cookie, so they need the
+      // token value directly to send back in the x-csrf-token header.
+      csrfToken: token,
     });
   });
 

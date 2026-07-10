@@ -36,10 +36,9 @@ async function fetchCsrfToken(): Promise<void> {
     const res = await fetch(`${BASE_URL}/api/csrf-token`, {
       credentials: "include",
     });
-    const setCookie = res.headers.get("set-cookie") || "";
-    const match = setCookie.match(/x-csrf-token=([^;]+)/);
-    if (match) {
-      await AsyncStorage.setItem("csrf_token", decodeURIComponent(match[1]));
+    const body = (await res.json().catch(() => null)) as { csrfToken?: string } | null;
+    if (body?.csrfToken) {
+      await AsyncStorage.setItem("csrf_token", body.csrfToken);
     }
   } catch {}
 }

@@ -324,12 +324,25 @@ export default function WishlistScreen() {
                         <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
                       </View>
                     ) : null}
-                    <View style={[styles.needPill, { backgroundColor: colors.accent }]}>
-                      <Feather name="heart" size={11} color={colors.accentForeground} />
-                      <Text style={[styles.needText, { color: colors.accentForeground }]}>
-                        {NEED_TYPES.find((n) => n.key === item.needType)?.label ?? item.needType}
-                      </Text>
-                    </View>
+                    {(item.needType ?? "").split(",").map((key) => {
+                      const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
+                      const isGift = key.trim() === "gift";
+                      return (
+                        <View
+                          key={key}
+                          style={[styles.needPill, { backgroundColor: isGift ? "#fce7f3" : colors.accent }]}
+                        >
+                          <Feather
+                            name={match?.icon ?? "tag"}
+                            size={11}
+                            color={isGift ? "#be185d" : colors.accentForeground}
+                          />
+                          <Text style={[styles.needText, { color: isGift ? "#be185d" : colors.accentForeground }]}>
+                            {match?.label ?? key.trim()}
+                          </Text>
+                        </View>
+                      );
+                    })}
                   </View>
 
                   {item.description ? (

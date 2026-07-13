@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
@@ -51,10 +51,10 @@ const NEED_TYPES = [
 ];
 
 const NEED_TYPE_OPTIONS = [
-  { key: "borrow", label: "Borrow It", icon: "heart" as const },
-  { key: "rent", label: "Rent It", icon: "repeat" as const },
-  { key: "swap", label: "Swap It", icon: "repeat" as const },
-  { key: "gift", label: "Be Gifted", icon: "gift" as const },
+  { key: "borrow", label: "Borrow It", icon: "hand-heart", mci: true },
+  { key: "rent", label: "Rent It", icon: "repeat", mci: false },
+  { key: "swap", label: "Swap It", icon: "repeat", mci: false },
+  { key: "gift", label: "Be Gifted", icon: "gift", mci: false },
 ];
 
 
@@ -340,11 +340,19 @@ export default function WishlistScreen() {
                           key={key}
                           style={[styles.needPill, { backgroundColor: isGift ? "#fce7f3" : colors.accent }]}
                         >
-                          <Feather
-                            name={match?.icon ?? "tag"}
-                            size={11}
-                            color={isGift ? "#be185d" : colors.accentForeground}
-                          />
+                          {match?.mci ? (
+                            <MaterialCommunityIcons
+                              name={match.icon as any}
+                              size={11}
+                              color={isGift ? "#be185d" : colors.accentForeground}
+                            />
+                          ) : (
+                            <Feather
+                              name={(match?.icon ?? "tag") as any}
+                              size={11}
+                              color={isGift ? "#be185d" : colors.accentForeground}
+                            />
+                          )}
                           <Text style={[styles.needText, { color: isGift ? "#be185d" : colors.accentForeground }]}>
                             {match?.label ?? key.trim()}
                           </Text>
@@ -531,11 +539,19 @@ export default function WishlistScreen() {
                     ]}
                     onPress={() => toggleNeedType(t.key)}
                   >
-                    <Feather
-                      name={t.icon}
-                      size={14}
-                      color={active ? "#fff" : inactiveText}
-                    />
+                    {t.mci ? (
+                      <MaterialCommunityIcons
+                        name={t.icon as any}
+                        size={14}
+                        color={active ? "#fff" : inactiveText}
+                      />
+                    ) : (
+                      <Feather
+                        name={t.icon as any}
+                        size={14}
+                        color={active ? "#fff" : inactiveText}
+                      />
+                    )}
                     <Text
                       style={[
                         styles.wantBtnText,

@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { ShareCoinBadge } from "@/components/ShareCoinBadge";
 import { HandHeart, ArrowLeftRight, Coins } from "lucide-react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -553,6 +554,7 @@ export default function HomeScreen() {
               A curated collection of items available near you
             </Text>
           </View>
+          <ShareCoinBadge />
         </View>
 
         {/* Search bar */}

@@ -992,9 +992,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   neededByRow: {
-    flexDirection: "row",
+    flexDirection: "column",
     gap: 8,
-    flexWrap: "wrap",
   },
   neededByChip: {
     flexDirection: "row",

@@ -477,6 +477,9 @@ export default function WishlistScreen() {
             />
 
             <Text style={[styles.label, { color: colors.foreground }]}>I want to</Text>
+            <Text style={[styles.helperNote, { color: colors.mutedForeground }]}>
+              Select one or more options
+            </Text>
             <View style={styles.wantGrid}>
               {NEED_TYPE_OPTIONS.map((t) => {
                 const active = needTypes.includes(t.key);
@@ -510,9 +513,6 @@ export default function WishlistScreen() {
                 );
               })}
             </View>
-            <Text style={[styles.helperNote, { color: colors.mutedForeground }]}>
-              Select one or more options
-            </Text>
 
             <Text style={[styles.label, { color: colors.foreground }]}>Needed by</Text>
 

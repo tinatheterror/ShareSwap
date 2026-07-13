@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
@@ -333,16 +333,19 @@ export default function WishlistScreen() {
                       </View>
                     ) : null}
                     <View style={[styles.needPill, { backgroundColor: colors.accent }]}>
-                      <Feather
-                        name={
-                          item.needType?.startsWith("borrow") ? "heart" :
-                          item.needType?.startsWith("rent") ? "refresh-cw" :
-                          item.needType?.startsWith("swap") ? "repeat" :
-                          item.needType?.startsWith("gift") ? "gift" : "shopping-cart"
-                        }
-                        size={11}
-                        color={colors.accentForeground}
-                      />
+                      {item.needType?.startsWith("borrow") ? (
+                        <MaterialCommunityIcons name="hand-heart" size={11} color={colors.accentForeground} />
+                      ) : (
+                        <Feather
+                          name={
+                            item.needType?.startsWith("rent") ? "refresh-cw" :
+                            item.needType?.startsWith("swap") ? "repeat" :
+                            item.needType?.startsWith("gift") ? "gift" : "shopping-cart"
+                          }
+                          size={11}
+                          color={colors.accentForeground}
+                        />
+                      )}
                       <Text style={[styles.needText, { color: colors.accentForeground }]}>
                         {(item.needType ?? "").charAt(0).toUpperCase() + (item.needType ?? "").slice(1)}
                       </Text>
@@ -523,11 +526,11 @@ export default function WishlistScreen() {
                     ]}
                     onPress={() => toggleNeedType(t.key)}
                   >
-                    <Feather
-                      name={t.icon}
-                      size={14}
-                      color={active ? "#fff" : colors.mutedForeground}
-                    />
+                    {t.key === "borrow" ? (
+                      <MaterialCommunityIcons name="hand-heart" size={14} color={active ? "#fff" : colors.mutedForeground} />
+                    ) : (
+                      <Feather name={t.icon} size={14} color={active ? "#fff" : colors.mutedForeground} />
+                    )}
                     <Text
                       style={[
                         styles.wantBtnText,

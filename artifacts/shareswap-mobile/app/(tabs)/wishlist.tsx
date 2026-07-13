@@ -966,7 +966,7 @@ const styles = StyleSheet.create({
   helperNote: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
-    marginTop: 4,
+    marginTop: 1,
   },
   privateRow: {
     flexDirection: "row",

@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { apiDelete, apiGet, apiPost } from "@/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 interface WishlistItem {
@@ -92,10 +92,20 @@ export default function WishlistScreen() {
   }, [showAdd]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerField, setDatePickerField] = useState<"from" | "to">("from");
+  const [datePickerContext, setDatePickerContext] = useState<"add" | "edit">("add");
   const [pickerMonth, setPickerMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+
+  const [editItem, setEditItem] = useState<WishlistItem | null>(null);
+  const [editItemName, setEditItemName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editNeedTypes, setEditNeedTypes] = useState<string[]>(["borrow"]);
+  const [editUrgency, setEditUrgency] = useState("normal");
+  const [editNeededFromDate, setEditNeededFromDate] = useState("");
+  const [editNeededToDate, setEditNeededToDate] = useState("");
+  const [editPreferredLocation, setEditPreferredLocation] = useState("");
 
   function isUrgent(neededDate?: string) {
     if (!neededDate) return false;
@@ -103,6 +113,13 @@ export default function WishlistScreen() {
     const needed = new Date(neededDate);
     const daysUntilNeeded = Math.ceil((needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
+  }
+
+  function isExpired(neededDate?: string) {
+    if (!neededDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(neededDate) < today;
   }
 
   function toggleWhenever() {
@@ -117,7 +134,8 @@ export default function WishlistScreen() {
     }
   }
 
-  function openDatePicker(field: "from" | "to") {
+  function openDatePicker(field: "from" | "to", context: "add" | "edit" = "add") {
+    setDatePickerContext(context);
     setDatePickerField(field);
     setShowDatePicker(true);
   }
@@ -126,13 +144,21 @@ export default function WishlistScreen() {
     const y = pickerMonth.getFullYear();
     const m = pickerMonth.getMonth();
     const dateStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    if (datePickerField === "from") {
-      setNeededFromDate(dateStr);
-      if (neededToDate && neededToDate < dateStr) {
-        setNeededToDate("");
+    if (datePickerContext === "edit") {
+      if (datePickerField === "from") {
+        setEditNeededFromDate(dateStr);
+        if (editNeededToDate && editNeededToDate < dateStr) setEditNeededToDate("");
+      } else {
+        setEditNeededToDate(dateStr);
       }
+      setEditUrgency("soon");
     } else {
-      setNeededToDate(dateStr);
+      if (datePickerField === "from") {
+        setNeededFromDate(dateStr);
+        if (neededToDate && neededToDate < dateStr) setNeededToDate("");
+      } else {
+        setNeededToDate(dateStr);
+      }
     }
     setShowDatePicker(false);
   }
@@ -154,6 +180,27 @@ export default function WishlistScreen() {
       }
       return [...prev, key];
     });
+  }
+
+  function toggleEditNeedType(key: string) {
+    setEditNeedTypes((prev) => {
+      if (prev.includes(key)) {
+        const next = prev.filter((t) => t !== key);
+        return next.length ? next : prev;
+      }
+      return [...prev, key];
+    });
+  }
+
+  function openEdit(item: WishlistItem) {
+    setEditItem(item);
+    setEditItemName(item.itemName);
+    setEditDescription(item.description || "");
+    setEditNeedTypes(item.needType ? item.needType.split(",") : ["borrow"]);
+    setEditUrgency(item.neededDate ? "soon" : "normal");
+    setEditNeededFromDate(item.neededDate || "");
+    setEditNeededToDate(item.returnDate || "");
+    setEditPreferredLocation(item.preferredLocation || "");
   }
 
   const { data: myWishlists, isLoading: loadingMine } = useQuery<WishlistItem[]>({
@@ -207,6 +254,30 @@ export default function WishlistScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/my-wishlists"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editItem) throw new Error("No item selected");
+      if (!editItemName.trim()) throw new Error("Please enter an item name");
+      return apiPatch(`/api/wishlists/${editItem.id}`, {
+        itemName: editItemName.trim(),
+        description: editDescription.trim() || undefined,
+        needType: editNeedTypes.join(","),
+        urgency: editUrgency,
+        neededDate: editNeededFromDate || undefined,
+        returnDate: editNeededToDate || undefined,
+        preferredLocation: editPreferredLocation.trim() || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/my-wishlists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wishlists"] });
+      setEditItem(null);
+    },
+    onError: (error: Error) => {
+      Alert.alert("Couldn't update wishlist", error.message);
     },
   });
 
@@ -436,13 +507,17 @@ export default function WishlistScreen() {
             ) : (
               <View
                 key={item.id}
-                style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+                style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, opacity: item.isExpired ? 0.65 : 1 }]}
               >
                 <View style={styles.cardTop}>
-                  <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+                  <Text style={[styles.itemName, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
                     {item.itemName}
                   </Text>
-                  {isUrgent(item.neededDate) ? (
+                  {item.isExpired ? (
+                    <View style={[styles.urgentPill, { backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border }]}>
+                      <Text style={[styles.urgentText, { color: colors.mutedForeground }]}>EXPIRED</Text>
+                    </View>
+                  ) : isUrgent(item.neededDate) ? (
                     <View style={[styles.urgentPill, { backgroundColor: "#EFE4B0" }]}>
                       <Feather name="clock" size={11} color="#78350f" />
                       <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
@@ -450,26 +525,61 @@ export default function WishlistScreen() {
                   ) : null}
                 </View>
                 {item.description ? (
-                  <Text
-                    style={[styles.itemDesc, { color: colors.mutedForeground }]}
-                    numberOfLines={2}
-                  >
+                  <Text style={[styles.itemDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
                     {item.description}
                   </Text>
                 ) : null}
-                <View style={styles.cardMeta}>
-                  <View style={[styles.needPill, { backgroundColor: colors.accent }]}>
-                    <Text style={[styles.needText, { color: colors.accentForeground }]}>
-                      {NEED_TYPES.find((n) => n.key === item.needType)?.label ?? item.needType}
-                    </Text>
+                <View style={styles.commBadgeRow}>
+                  {(item.needType ?? "").split(",").map((key) => {
+                    const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
+                    const isGift = key.trim() === "gift";
+                    return (
+                      <View key={key} style={[styles.needPill, { backgroundColor: isGift ? "#fce7f3" : colors.accent }]}>
+                        {match?.mci ? (
+                          <MaterialCommunityIcons name={match.icon as any} size={11} color={isGift ? "#be185d" : colors.accentForeground} />
+                        ) : (
+                          <Feather name={(match?.icon ?? "tag") as any} size={11} color={isGift ? "#be185d" : colors.accentForeground} />
+                        )}
+                        <Text style={[styles.needText, { color: isGift ? "#be185d" : colors.accentForeground }]}>
+                          {match?.label ?? key.trim()}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+                {(item.neededDate || item.preferredLocation) ? (
+                  <View style={{ gap: 3 }}>
+                    {item.neededDate ? (
+                      <View style={styles.commInfoRow}>
+                        <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                        <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                          {formatNeededDate(item.neededDate)}{item.returnDate ? ` – ${formatNeededDate(item.returnDate)}` : ""}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {item.preferredLocation ? (
+                      <View style={styles.commInfoRow}>
+                        <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                        <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                          {item.preferredLocation}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
+                ) : null}
+                <View style={[styles.cardMeta, { marginTop: 2 }]}>
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                     {timeAgo(item.createdAt)}
                   </Text>
+                  <View style={{ flexDirection: "row", gap: 14 }}>
+                    <Pressable onPress={() => openEdit(item)}>
+                      <Feather name="edit-2" size={15} color={colors.primary} />
+                    </Pressable>
+                    <Pressable onPress={() => confirmDelete(item)}>
+                      <Feather name="trash-2" size={15} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
                 </View>
-                <Pressable style={styles.deleteBtn} onPress={() => confirmDelete(item)}>
-                  <Feather name="trash-2" size={16} color={colors.mutedForeground} />
-                </Pressable>
               </View>
             ),
           )}
@@ -648,6 +758,118 @@ export default function WishlistScreen() {
                 <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>Add to Wishlist</Text>
               )}
             </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!editItem} animationType="slide" transparent onRequestClose={() => setEditItem(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Wishlist Item</Text>
+              <Pressable onPress={() => setEditItem(null)}>
+                <Feather name="x" size={22} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text style={[styles.label, { color: colors.foreground }]}>What are you looking for?</Text>
+              <TextInput
+                style={[styles.input, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card }]}
+                placeholder="e.g. Pressure washer"
+                placeholderTextColor={colors.mutedForeground}
+                value={editItemName}
+                onChangeText={setEditItemName}
+              />
+              <Text style={[styles.label, { color: colors.foreground }]}>Details (optional)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.card }]}
+                placeholder="Any specifics that would help neighbours..."
+                placeholderTextColor={colors.mutedForeground}
+                value={editDescription}
+                onChangeText={setEditDescription}
+                multiline
+                numberOfLines={3}
+              />
+              <Text style={[styles.label, { color: colors.foreground }]}>I want to</Text>
+              <Text style={[styles.helperNote, { color: colors.mutedForeground }]}>Select one or more options</Text>
+              <View style={styles.wantGrid}>
+                {NEED_TYPE_OPTIONS.map((t) => {
+                  const active = editNeedTypes.includes(t.key);
+                  const isGift = t.key === "gift";
+                  const activeColor = isGift ? "#ec4899" : colors.primary;
+                  const inactiveBg = colors.muted;
+                  const inactiveBorder = isGift ? colors.border : colors.primary;
+                  const inactiveText = isGift ? colors.mutedForeground : colors.primary;
+                  return (
+                    <Pressable
+                      key={t.key}
+                      style={[styles.wantBtn, { backgroundColor: active ? activeColor : inactiveBg, borderColor: active ? "transparent" : inactiveBorder, borderWidth: active ? 0 : 1.5 }]}
+                      onPress={() => toggleEditNeedType(t.key)}
+                    >
+                      {t.mci ? (
+                        <MaterialCommunityIcons name={t.icon as any} size={14} color={active ? "#fff" : inactiveText} />
+                      ) : (
+                        <Feather name={t.icon as any} size={14} color={active ? "#fff" : inactiveText} />
+                      )}
+                      <Text style={[styles.wantBtnText, { color: active ? "#fff" : inactiveText }]}>{t.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={[styles.label, { color: colors.foreground }]}>Needed by</Text>
+              <View style={styles.neededByRow}>
+                <Pressable
+                  style={[styles.neededByChipDate, { backgroundColor: editUrgency !== "normal" ? colors.primary : colors.muted, borderColor: editUrgency !== "normal" ? "transparent" : colors.border }]}
+                  onPress={() => { if (editUrgency === "normal") setEditUrgency("soon"); }}
+                >
+                  <Text style={[styles.neededByChipLabel, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>From</Text>
+                  <Pressable
+                    style={[styles.dateBtnCompact, { backgroundColor: editUrgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
+                    onPress={() => { if (editUrgency === "normal") setEditUrgency("soon"); openDatePicker("from", "edit"); }}
+                  >
+                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
+                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
+                      {editNeededFromDate ? formatNeededDate(editNeededFromDate) : "Select"}
+                    </Text>
+                  </Pressable>
+                  <Text style={[styles.neededByChipLabel, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>To</Text>
+                  <Pressable
+                    style={[styles.dateBtnCompact, { backgroundColor: editUrgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
+                    onPress={() => { if (editUrgency === "normal") setEditUrgency("soon"); openDatePicker("to", "edit"); }}
+                  >
+                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
+                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
+                      {editNeededToDate ? formatNeededDate(editNeededToDate) : "Select"}
+                    </Text>
+                  </Pressable>
+                </Pressable>
+                <Pressable
+                  style={[styles.neededByChip, { backgroundColor: editUrgency === "normal" ? colors.primary : colors.muted, borderColor: editUrgency === "normal" ? "transparent" : colors.border }]}
+                  onPress={() => { setEditUrgency("normal"); setEditNeededFromDate(""); setEditNeededToDate(""); }}
+                >
+                  <Text style={[styles.neededByChipText, { color: editUrgency === "normal" ? colors.primaryForeground : colors.mutedForeground }]}>Whenever</Text>
+                </Pressable>
+              </View>
+              <Text style={[styles.label, { color: colors.foreground }]}>Preferred Location</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.muted }]}
+                placeholder="e.g. Downtown, Westside…"
+                placeholderTextColor={colors.mutedForeground}
+                value={editPreferredLocation}
+                onChangeText={setEditPreferredLocation}
+              />
+              <Pressable
+                style={[styles.submitBtn, { backgroundColor: colors.primary, opacity: updateMutation.isPending ? 0.7 : 1 }]}
+                onPress={() => updateMutation.mutate()}
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <ActivityIndicator color={colors.primaryForeground} />
+                ) : (
+                  <Text style={[styles.submitBtnText, { color: colors.primaryForeground }]}>Save Changes</Text>
+                )}
+              </Pressable>
             </ScrollView>
           </View>
         </View>

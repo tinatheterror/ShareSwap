@@ -97,6 +97,14 @@ export default function WishlistScreen() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
+  function isUrgent(neededDate?: string) {
+    if (!neededDate) return false;
+    const today = new Date();
+    const needed = new Date(neededDate);
+    const daysUntilNeeded = Math.ceil((needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
+  }
+
   function toggleWhenever() {
     if (urgency === "normal") {
       setUrgency("soon");
@@ -318,7 +326,7 @@ export default function WishlistScreen() {
                     </Text>
                   </View>
                   <View style={styles.commBadgeRow}>
-                    {item.urgency === "urgent" ? (
+                    {isUrgent(item.neededDate) ? (
                       <View style={[styles.urgentPill, { backgroundColor: "#EFE4B0" }]}>
                         <Feather name="clock" size={11} color="#78350f" />
                         <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
@@ -424,9 +432,10 @@ export default function WishlistScreen() {
                   <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
                     {item.itemName}
                   </Text>
-                  {item.urgency === "urgent" ? (
-                    <View style={[styles.urgentPill, { backgroundColor: colors.destructive + "20" }]}>
-                      <Text style={[styles.urgentText, { color: colors.destructive }]}>Urgent</Text>
+                  {isUrgent(item.neededDate) ? (
+                    <View style={[styles.urgentPill, { backgroundColor: "#EFE4B0" }]}>
+                      <Feather name="clock" size={11} color="#78350f" />
+                      <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
                     </View>
                   ) : null}
                 </View>

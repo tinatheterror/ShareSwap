@@ -332,25 +332,21 @@ export default function WishlistScreen() {
                         <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
                       </View>
                     ) : null}
-                    {(item.needType ?? "").split(",").map((key) => {
-                      const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
-                      const isGift = key.trim() === "gift";
-                      return (
-                        <View
-                          key={key}
-                          style={[styles.needPill, { backgroundColor: isGift ? "#fce7f3" : colors.accent }]}
-                        >
-                          <Feather
-                            name={match?.icon ?? "tag"}
-                            size={11}
-                            color={isGift ? "#be185d" : colors.accentForeground}
-                          />
-                          <Text style={[styles.needText, { color: isGift ? "#be185d" : colors.accentForeground }]}>
-                            {match?.label ?? key.trim()}
-                          </Text>
-                        </View>
-                      );
-                    })}
+                    <View style={[styles.needPill, { backgroundColor: colors.accent }]}>
+                      <Feather
+                        name={
+                          item.needType?.startsWith("borrow") ? "heart" :
+                          item.needType?.startsWith("rent") ? "refresh-cw" :
+                          item.needType?.startsWith("swap") ? "repeat" :
+                          item.needType?.startsWith("gift") ? "gift" : "shopping-cart"
+                        }
+                        size={11}
+                        color={colors.accentForeground}
+                      />
+                      <Text style={[styles.needText, { color: colors.accentForeground }]}>
+                        {(item.needType ?? "").charAt(0).toUpperCase() + (item.needType ?? "").slice(1)}
+                      </Text>
+                    </View>
                   </View>
 
                   {item.description ? (

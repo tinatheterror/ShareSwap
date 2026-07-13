@@ -249,7 +249,13 @@ export default function InboxScreen() {
         })
         .catch(() => {});
     }
-    router.push(`/chat/${item.partnerId}?requestId=${item.requestId}`);
+    const params = new URLSearchParams({
+      requestId: String(item.requestId),
+      requestType: item.requestType,
+      iAmRequester: item.iAmRequester ? "1" : "0",
+      itemName: item.itemName,
+    });
+    router.push(`/chat/${item.partnerId}?${params.toString()}` as never);
   }
 
   const topPad = isWeb ? 67 : insets.top;

@@ -492,6 +492,7 @@ export default function WishlistScreen() {
                       styles.wantBtn,
                       {
                         backgroundColor: active ? activeColor : colors.muted,
+                        borderColor: active ? "transparent" : colors.border,
                       },
                     ]}
                     onPress={() => toggleNeedType(t.key)}
@@ -518,7 +519,7 @@ export default function WishlistScreen() {
 
             <View style={styles.neededByRow}>
               <Pressable
-                style={[styles.neededByChipDate, { backgroundColor: urgency !== "normal" ? colors.primary : colors.muted }]}
+                style={[styles.neededByChipDate, { backgroundColor: urgency !== "normal" ? colors.primary : colors.muted, borderColor: urgency !== "normal" ? "transparent" : colors.border }]}
                 onPress={() => { if (urgency === "normal") setUrgency("soon"); }}
               >
                 <Text style={[styles.neededByChipLabel, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>From</Text>
@@ -544,7 +545,7 @@ export default function WishlistScreen() {
               </Pressable>
 
               <Pressable
-                style={[styles.neededByChip, { backgroundColor: urgency === "normal" ? colors.primary : colors.muted }]}
+                style={[styles.neededByChip, { backgroundColor: urgency === "normal" ? colors.primary : colors.muted, borderColor: urgency === "normal" ? "transparent" : colors.border }]}
                 onPress={() => { setUrgency("normal"); setNeededFromDate(""); setNeededToDate(""); }}
               >
                 <Text style={[styles.neededByChipText, { color: urgency === "normal" ? colors.primaryForeground : colors.mutedForeground }]}>
@@ -958,6 +959,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     borderRadius: 20,
+    borderWidth: 1,
   },
   wantBtnText: {
     fontSize: 13,
@@ -1003,6 +1005,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 20,
+    borderWidth: 1,
   },
   neededByChipText: {
     fontSize: 13,
@@ -1016,6 +1019,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: 1,
   },
   neededByChipLabel: {
     fontSize: 12,

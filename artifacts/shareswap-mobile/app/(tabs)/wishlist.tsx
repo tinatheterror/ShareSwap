@@ -825,6 +825,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     lineHeight: 18,
+    marginVertical: 3,
   },
   cardMeta: {
     flexDirection: "row",

@@ -84,6 +84,12 @@ export default function WishlistScreen() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [neededFromDate, setNeededFromDate] = useState("");
   const [neededToDate, setNeededToDate] = useState("");
+  const [preferredLocation, setPreferredLocation] = useState("");
+  React.useEffect(() => {
+    if (showAdd) {
+      setPreferredLocation(user?.neighbourhood || user?.location || user?.defaultCity || "");
+    }
+  }, [showAdd]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerField, setDatePickerField] = useState<"from" | "to">("from");
   const [pickerMonth, setPickerMonth] = useState(() => {
@@ -167,6 +173,7 @@ export default function WishlistScreen() {
         isPrivate,
         neededDate: neededFromDate || undefined,
         returnDate: neededToDate || undefined,
+        preferredLocation: preferredLocation.trim() || undefined,
       });
     },
     onSuccess: () => {
@@ -179,6 +186,7 @@ export default function WishlistScreen() {
       setIsPrivate(false);
       setNeededFromDate("");
       setNeededToDate("");
+      setPreferredLocation("");
       setShowAdd(false);
     },
     onError: (error: Error) => {
@@ -553,6 +561,15 @@ export default function WishlistScreen() {
                 </Text>
               </Pressable>
             </View>
+
+            <Text style={[styles.label, { color: colors.foreground }]}>Preferred Location</Text>
+            <TextInput
+              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.muted }]}
+              placeholder="e.g. Downtown, Westside…"
+              placeholderTextColor={colors.mutedForeground}
+              value={preferredLocation}
+              onChangeText={setPreferredLocation}
+            />
 
             <View style={[styles.privateRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Switch

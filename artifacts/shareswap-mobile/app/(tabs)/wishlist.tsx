@@ -52,7 +52,7 @@ const NEED_TYPES = [
 
 const NEED_TYPE_OPTIONS = [
   { key: "borrow", label: "Borrow It", icon: "hand-heart", mci: true },
-  { key: "rent", label: "Rent It", icon: "repeat", mci: false },
+  { key: "rent", label: "Rent It", icon: "dollar-sign", mci: false },
   { key: "swap", label: "Swap It", icon: "repeat", mci: false },
   { key: "gift", label: "Be Gifted", icon: "gift", mci: false },
 ];

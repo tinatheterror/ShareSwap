@@ -324,14 +324,14 @@ export default function WishlistScreen() {
                     <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
                       {item.itemName}
                     </Text>
+                  </View>
+                  <View style={styles.commBadgeRow}>
                     {isUrgent(item.neededDate) ? (
                       <View style={[styles.urgentPill, { backgroundColor: "#EFE4B0" }]}>
                         <Feather name="clock" size={11} color="#78350f" />
                         <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
                       </View>
                     ) : null}
-                  </View>
-                  <View style={styles.commBadgeRow}>
                     {(item.needType ?? "").split(",").map((key) => {
                       const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
                       const isGift = key.trim() === "gift";

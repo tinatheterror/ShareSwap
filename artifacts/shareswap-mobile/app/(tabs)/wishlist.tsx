@@ -516,46 +516,42 @@ export default function WishlistScreen() {
 
             <Text style={[styles.label, { color: colors.foreground }]}>Needed by</Text>
 
-            <Pressable
-              style={[styles.neededByOption, { borderColor: urgency === "normal" ? colors.primary : colors.border }]}
-              onPress={() => { setUrgency("normal"); setNeededFromDate(""); setNeededToDate(""); }}
-            >
-              <View style={[styles.radioCircle, { borderColor: urgency === "normal" ? colors.primary : colors.border }]}>
-                {urgency === "normal" && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
-              </View>
-              <Text style={[styles.neededByOptionText, { color: colors.foreground }]}>Whenever</Text>
-            </Pressable>
+            <View style={styles.neededByRow}>
+              <Pressable
+                style={[styles.neededByChip, { backgroundColor: urgency === "normal" ? colors.primary : colors.muted }]}
+                onPress={() => { setUrgency("normal"); setNeededFromDate(""); setNeededToDate(""); }}
+              >
+                <Text style={[styles.neededByChipText, { color: urgency === "normal" ? colors.primaryForeground : colors.mutedForeground }]}>
+                  Whenever
+                </Text>
+              </Pressable>
 
-            <Pressable
-              style={[styles.neededByOption, { borderColor: urgency !== "normal" ? colors.primary : colors.border }]}
-              onPress={() => { if (urgency === "normal") setUrgency("soon"); }}
-            >
-              <View style={[styles.radioCircle, { borderColor: urgency !== "normal" ? colors.primary : colors.border }]}>
-                {urgency !== "normal" && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
-              </View>
-              <View style={styles.dateRangeInline}>
-                <Text style={[styles.dateRangeInlineLabel, { color: colors.mutedForeground }]}>From</Text>
+              <Pressable
+                style={[styles.neededByChipDate, { backgroundColor: urgency !== "normal" ? colors.primary : colors.muted }]}
+                onPress={() => { if (urgency === "normal") setUrgency("soon"); }}
+              >
+                <Text style={[styles.neededByChipLabel, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>From</Text>
                 <Pressable
-                  style={[styles.dateBtnCompact, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  style={[styles.dateBtnCompact, { backgroundColor: urgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
                   onPress={() => { if (urgency === "normal") setUrgency("soon"); openDatePicker("from"); }}
                 >
-                  <Feather name="calendar" size={13} color={colors.mutedForeground} />
-                  <Text style={[styles.dateBtnCompactText, { color: neededFromDate ? colors.foreground : colors.mutedForeground }]} numberOfLines={1}>
+                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
+                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
                     {neededFromDate ? formatNeededDate(neededFromDate) : "Select date"}
                   </Text>
                 </Pressable>
-                <Text style={[styles.dateRangeInlineLabel, { color: colors.mutedForeground }]}>To</Text>
+                <Text style={[styles.neededByChipLabel, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>To</Text>
                 <Pressable
-                  style={[styles.dateBtnCompact, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                  style={[styles.dateBtnCompact, { backgroundColor: urgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
                   onPress={() => { if (urgency === "normal") setUrgency("soon"); openDatePicker("to"); }}
                 >
-                  <Feather name="calendar" size={13} color={colors.mutedForeground} />
-                  <Text style={[styles.dateBtnCompactText, { color: neededToDate ? colors.foreground : colors.mutedForeground }]} numberOfLines={1}>
+                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
+                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
                     {neededToDate ? formatNeededDate(neededToDate) : "Select date"}
                   </Text>
                 </Pressable>
-              </View>
-            </Pressable>
+              </Pressable>
+            </View>
 
             <View style={[styles.privateRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Switch
@@ -995,44 +991,35 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 4,
   },
-  neededByOption: {
+  neededByRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  neededByChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  radioCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  radioDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  neededByChipText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
-  neededByOptionText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
-  dateRangeInline: {
+  neededByChipDate: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    flexWrap: "nowrap",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  dateRangeInlineLabel: {
+  neededByChipLabel: {
     fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Inter_600SemiBold",
     flexShrink: 0,
   },
   dateBtnCompact: {
@@ -1041,8 +1028,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
     borderWidth: 1,
     minWidth: 0,
   },

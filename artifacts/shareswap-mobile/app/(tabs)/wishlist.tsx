@@ -518,15 +518,6 @@ export default function WishlistScreen() {
 
             <View style={styles.neededByRow}>
               <Pressable
-                style={[styles.neededByChip, { backgroundColor: urgency === "normal" ? colors.primary : colors.muted }]}
-                onPress={() => { setUrgency("normal"); setNeededFromDate(""); setNeededToDate(""); }}
-              >
-                <Text style={[styles.neededByChipText, { color: urgency === "normal" ? colors.primaryForeground : colors.mutedForeground }]}>
-                  Whenever
-                </Text>
-              </Pressable>
-
-              <Pressable
                 style={[styles.neededByChipDate, { backgroundColor: urgency !== "normal" ? colors.primary : colors.muted }]}
                 onPress={() => { if (urgency === "normal") setUrgency("soon"); }}
               >
@@ -550,6 +541,15 @@ export default function WishlistScreen() {
                     {neededToDate ? formatNeededDate(neededToDate) : "Select date"}
                   </Text>
                 </Pressable>
+              </Pressable>
+
+              <Pressable
+                style={[styles.neededByChip, { backgroundColor: urgency === "normal" ? colors.primary : colors.muted }]}
+                onPress={() => { setUrgency("normal"); setNeededFromDate(""); setNeededToDate(""); }}
+              >
+                <Text style={[styles.neededByChipText, { color: urgency === "normal" ? colors.primaryForeground : colors.mutedForeground }]}>
+                  Whenever
+                </Text>
               </Pressable>
             </View>
 

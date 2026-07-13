@@ -529,7 +529,7 @@ export default function WishlistScreen() {
                 >
                   <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
                   <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
-                    {neededFromDate ? formatNeededDate(neededFromDate) : "Select date"}
+                    {neededFromDate ? formatNeededDate(neededFromDate) : "Select"}
                   </Text>
                 </Pressable>
                 <Text style={[styles.neededByChipLabel, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>To</Text>
@@ -539,7 +539,7 @@ export default function WishlistScreen() {
                 >
                   <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
                   <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
-                    {neededToDate ? formatNeededDate(neededToDate) : "Select date"}
+                    {neededToDate ? formatNeededDate(neededToDate) : "Select"}
                   </Text>
                 </Pressable>
               </Pressable>

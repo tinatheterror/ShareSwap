@@ -18,7 +18,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { ShareCoinBadge } from "@/components/ShareCoinBadge";
 
 interface InboxItem {
   requestId: number;
@@ -250,13 +249,7 @@ export default function InboxScreen() {
         })
         .catch(() => {});
     }
-    const params = new URLSearchParams({
-      requestId: String(item.requestId),
-      requestType: item.requestType,
-      iAmRequester: item.iAmRequester ? "1" : "0",
-      itemName: item.itemName,
-    });
-    router.push(`/chat/${item.partnerId}?${params.toString()}` as never);
+    router.push(`/chat/${item.partnerId}?requestId=${item.requestId}`);
   }
 
   const topPad = isWeb ? 67 : insets.top;
@@ -276,16 +269,13 @@ export default function InboxScreen() {
       >
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>Inbox</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {totalUnread > 0 ? (
-              <View style={[styles.totalBadge, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.totalBadgeText, { color: colors.primaryForeground }]}>
-                  {totalUnread}
-                </Text>
-              </View>
-            ) : null}
-            <ShareCoinBadge />
-          </View>
+          {totalUnread > 0 ? (
+            <View style={[styles.totalBadge, { backgroundColor: colors.primary }]}>
+              <Text style={[styles.totalBadgeText, { color: colors.primaryForeground }]}>
+                {totalUnread}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Filter chips */}

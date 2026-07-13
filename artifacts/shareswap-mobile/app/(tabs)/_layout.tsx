@@ -12,20 +12,20 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "square.grid.2x2", selected: "square.grid.2x2.fill" }} />
-        <Label>Browse</Label>
+        <Icon sf={{ default: "house", selected: "house.fill" }} />
+        <Label>Home</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="share">
+        <Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
+        <Label>Share</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="inbox">
         <Icon sf={{ default: "message", selected: "message.fill" }} />
         <Label>Inbox</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="games">
-        <Icon sf={{ default: "gamecontroller", selected: "gamecontroller.fill" }} />
-        <Label>Games</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="achievements">
-        <Icon sf={{ default: "star", selected: "star.fill" }} />
-        <Label>Achievements</Label>
+      <NativeTabs.Trigger name="wishlist">
+        <Icon sf={{ default: "heart", selected: "heart.fill" }} />
+        <Label>Wishlist</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
@@ -80,12 +80,24 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Browse",
+          title: "Home",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="square.grid.2x2" tintColor={color} size={24} />
+              <SymbolView name="house" tintColor={color} size={24} />
             ) : (
-              <Feather name="grid" size={22} color={color} />
+              <Feather name="home" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="share"
+        options={{
+          title: "Share",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="plus.circle" tintColor={color} size={24} />
+            ) : (
+              <Feather name="plus-circle" size={22} color={color} />
             ),
         }}
       />
@@ -102,26 +114,14 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="games"
+        name="wishlist"
         options={{
-          title: "Games",
+          title: "Wishlist",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="gamecontroller" tintColor={color} size={24} />
+              <SymbolView name="heart" tintColor={color} size={24} />
             ) : (
-              <Feather name="zap" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="achievements"
-        options={{
-          title: "Achievements",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="star" tintColor={color} size={24} />
-            ) : (
-              <Feather name="award" size={22} color={color} />
+              <Feather name="heart" size={22} color={color} />
             ),
         }}
       />
@@ -137,8 +137,8 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen name="share" options={{ href: null }} />
-      <Tabs.Screen name="wishlist" options={{ href: null }} />
+      <Tabs.Screen name="games" options={{ href: null }} />
+      <Tabs.Screen name="achievements" options={{ href: null }} />
     </Tabs>
   );
 }

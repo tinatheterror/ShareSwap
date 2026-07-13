@@ -5135,52 +5135,6 @@ Respond with ONLY the category name, nothing else.`
     res.json(sortedRequests);
   });
 
-  // Get a single request by ID (used by mobile chat action card)
-  app.get("/api/requests/:requestId", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    const requestId = parseInt(req.params.requestId);
-    if (isNaN(requestId)) return res.status(400).json({ error: "Invalid requestId" });
-
-    const [row] = await db
-      .select({
-        id: itemRequests.id,
-        requestType: itemRequests.requestType,
-        status: itemRequests.status,
-        negotiationStatus: itemRequests.negotiationStatus,
-        counterProposedBy: itemRequests.counterProposedBy,
-        counterRound: itemRequests.counterRound,
-        startDate: itemRequests.startDate,
-        endDate: itemRequests.endDate,
-        counterStartDate: itemRequests.counterStartDate,
-        counterEndDate: itemRequests.counterEndDate,
-        deliveryMethod: itemRequests.deliveryMethod,
-        depositMethod: itemRequests.depositMethod,
-        counterDeliveryMethod: itemRequests.counterDeliveryMethod,
-        counterDepositMethod: itemRequests.counterDepositMethod,
-        ownerConfirmedHandoff: itemRequests.ownerConfirmedHandoff,
-        borrowerConfirmedHandoff: itemRequests.borrowerConfirmedHandoff,
-        requesterId: itemRequests.requesterId,
-        depositStatus: itemRequests.depositStatus,
-        itemOwnerId: items.ownerId,
-        itemName: items.name,
-      })
-      .from(itemRequests)
-      .innerJoin(items, eq(items.id, itemRequests.itemId))
-      .where(
-        and(
-          eq(itemRequests.id, requestId),
-          or(
-            eq(items.ownerId, req.user.id),
-            eq(itemRequests.requesterId, req.user.id),
-          ),
-        ),
-      )
-      .limit(1);
-
-    if (!row) return res.status(404).json({ error: "Not found" });
-    res.json(row);
-  });
-
   // Update request status (accept/decline)
   app.patch("/api/requests/:requestId", async (req, res) => {
     if (!req.isAuthenticated()) {

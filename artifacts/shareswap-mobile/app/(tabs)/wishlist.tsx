@@ -416,13 +416,13 @@ export default function WishlistScreen() {
                           {match?.mci ? (
                             <MaterialCommunityIcons
                               name={match.icon as any}
-                              size={11}
+                              size={9}
                               color={isGift ? "#be185d" : colors.accentForeground}
                             />
                           ) : (
                             <Feather
                               name={(match?.icon ?? "tag") as any}
-                              size={11}
+                              size={9}
                               color={isGift ? "#be185d" : colors.accentForeground}
                             />
                           )}
@@ -536,9 +536,9 @@ export default function WishlistScreen() {
                     return (
                       <View key={key} style={[styles.needPill, { backgroundColor: isGift ? "#fce7f3" : colors.accent }]}>
                         {match?.mci ? (
-                          <MaterialCommunityIcons name={match.icon as any} size={11} color={isGift ? "#be185d" : colors.accentForeground} />
+                          <MaterialCommunityIcons name={match.icon as any} size={9} color={isGift ? "#be185d" : colors.accentForeground} />
                         ) : (
-                          <Feather name={(match?.icon ?? "tag") as any} size={11} color={isGift ? "#be185d" : colors.accentForeground} />
+                          <Feather name={(match?.icon ?? "tag") as any} size={9} color={isGift ? "#be185d" : colors.accentForeground} />
                         )}
                         <Text style={[styles.needText, { color: isGift ? "#be185d" : colors.accentForeground }]}>
                           {match?.label ?? key.trim()}
@@ -1059,13 +1059,13 @@ const styles = StyleSheet.create({
   needPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 6,
+    gap: 2,
+    paddingHorizontal: 4,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 6,
   },
   needText: {
-    fontSize: 11,
+    fontSize: 9,
     fontFamily: "Inter_600SemiBold",
   },
   metaText: {
@@ -1092,8 +1092,8 @@ const styles = StyleSheet.create({
   commBadgeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    flexWrap: "wrap",
+    gap: 3,
+    flexWrap: "nowrap",
   },
   commInfoList: {
     gap: 6,

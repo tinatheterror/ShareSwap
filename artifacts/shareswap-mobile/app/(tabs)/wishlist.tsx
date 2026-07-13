@@ -515,14 +515,18 @@ export default function WishlistScreen() {
                 const active = needTypes.includes(t.key);
                 const isGift = t.key === "gift";
                 const activeColor = isGift ? "#ec4899" : colors.primary;
+                const inactiveBg = colors.muted;
+                const inactiveBorder = isGift ? colors.border : colors.primary;
+                const inactiveText = isGift ? colors.mutedForeground : colors.primary;
                 return (
                   <Pressable
                     key={t.key}
                     style={[
                       styles.wantBtn,
                       {
-                        backgroundColor: active ? activeColor : colors.muted,
-                        borderColor: active ? "transparent" : colors.border,
+                        backgroundColor: active ? activeColor : inactiveBg,
+                        borderColor: active ? "transparent" : inactiveBorder,
+                        borderWidth: active ? 0 : 1.5,
                       },
                     ]}
                     onPress={() => toggleNeedType(t.key)}
@@ -530,12 +534,12 @@ export default function WishlistScreen() {
                     <Feather
                       name={t.icon}
                       size={14}
-                      color={active ? "#fff" : colors.mutedForeground}
+                      color={active ? "#fff" : inactiveText}
                     />
                     <Text
                       style={[
                         styles.wantBtnText,
-                        { color: active ? "#fff" : colors.mutedForeground },
+                        { color: active ? "#fff" : inactiveText },
                       ]}
                     >
                       {t.label}

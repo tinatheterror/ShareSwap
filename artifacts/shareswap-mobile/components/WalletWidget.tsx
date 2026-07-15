@@ -1,12 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
@@ -26,26 +21,21 @@ export function WalletWidget() {
       style={[
         styles.container,
         {
-          top: insets.top + 8,
+          top: insets.top + 14,
           backgroundColor: colors.card,
           borderColor: colors.border,
           shadowColor: "#000",
         },
       ]}
     >
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>
-        Total Balance
+      <MaterialCommunityIcons
+        name="circle-multiple"
+        size={14}
+        color={colors.primary}
+      />
+      <Text style={[styles.amount, { color: colors.foreground }]}>
+        {coins} ShareCoins
       </Text>
-      <View style={styles.row}>
-        <MaterialCommunityIcons
-          name="circle-multiple"
-          size={18}
-          color={colors.primary}
-        />
-        <Text style={[styles.amount, { color: colors.foreground }]}>
-          {coins} ShareCoins
-        </Text>
-      </View>
     </Pressable>
   );
 }
@@ -53,31 +43,22 @@ export function WalletWidget() {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    right: 14,
+    right: 12,
     zIndex: 9999,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
-    alignItems: "flex-start",
-    gap: 2,
-  },
-  label: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 0.2,
-  },
-  row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 3,
   },
   amount: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
   },
 });

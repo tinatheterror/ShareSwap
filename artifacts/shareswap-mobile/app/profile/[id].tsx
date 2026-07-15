@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Coins } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -217,10 +218,7 @@ function ItemsCarousel({
                 <View style={styles.itemPricing}>
                   {item.shareCoinPrice ? (
                     <View style={styles.pricingChip}>
-                      <Image
-                        source={require("../../assets/icons/sharecoin.png")}
-                        style={{ width: 14, height: 14 }}
-                      />
+                      <Coins size={13} color="#0DCEA1" strokeWidth={2} />
                       <Text
                         style={[
                           styles.pricingText,

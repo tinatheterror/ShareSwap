@@ -560,7 +560,7 @@ export default function HomeScreen() {
             >
               <Text style={styles.walletLabel}>Total Balance</Text>
               <View style={styles.walletRow}>
-                <Image source={require("../../assets/icons/sharecoin.png")} style={{ width: 16, height: 16 }} />
+                <Coins size={16} color="#0DCEA1" strokeWidth={2} />
                 <Text style={styles.walletAmount}>
                   {Math.round(Number(user.shareCoins ?? 0))} ShareCoins
                 </Text>

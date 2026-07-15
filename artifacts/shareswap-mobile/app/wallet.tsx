@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
+import { Coins } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -10,12 +10,9 @@ import {
   Text,
   View,
 } from "react-native";
-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-
-const shareCoinIcon = require("../assets/icons/sharecoin.png");
 
 interface MenuItem {
   icon: React.ComponentProps<typeof Feather>["name"];
@@ -88,7 +85,7 @@ export default function WalletScreen() {
             Total Balance
           </Text>
           <View style={styles.balanceRow}>
-            <Image source={shareCoinIcon} style={{ width: 32, height: 32 }} />
+            <Coins size={32} color="#0DCEA1" strokeWidth={1.5} />
             <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
               {balance} ShareCoins
             </Text>

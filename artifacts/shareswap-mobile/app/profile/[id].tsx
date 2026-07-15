@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -387,14 +387,7 @@ function ReviewsCarousel({
                       {reviewerName}
                     </Text>
                     {review.reviewer.isVerified ? (
-                      <View
-                        style={[
-                          styles.verifiedDot,
-                          { backgroundColor: colors.primary },
-                        ]}
-                      >
-                        <Feather name="check" size={7} color="#fff" />
-                      </View>
+                      <MaterialCommunityIcons name="check-decagram" size={16} color={colors.primary} />
                     ) : null}
                   </View>
                   <View style={styles.reviewStarsRow}>
@@ -527,14 +520,7 @@ export default function PublicProfileScreen() {
                   {displayName}
                 </Text>
                 {profile.isVerified ? (
-                  <View
-                    style={[
-                      styles.verifiedDot,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  >
-                    <Feather name="check" size={9} color="#fff" />
-                  </View>
+                  <MaterialCommunityIcons name="check-decagram" size={20} color={colors.primary} />
                 ) : null}
               </View>
               <Text style={[styles.handle, { color: colors.mutedForeground }]}>

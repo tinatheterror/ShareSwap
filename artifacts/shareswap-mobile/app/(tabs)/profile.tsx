@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -245,7 +245,7 @@ export default function ProfileScreen() {
                 { backgroundColor: colors.accent, borderColor: colors.primary + "40" },
               ]}
             >
-              <Feather name="check-circle" size={14} color={colors.primary} />
+              <MaterialCommunityIcons name="check-decagram" size={16} color={colors.primary} />
               <Text style={[styles.verifiedText, { color: colors.primary }]}>
                 Verified Member
               </Text>

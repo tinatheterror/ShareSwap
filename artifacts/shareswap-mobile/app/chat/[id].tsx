@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -215,14 +215,7 @@ export default function ChatScreen() {
               {partnerName || "Loading…"}
             </Text>
             {partner?.isVerified ? (
-              <View
-                style={[
-                  styles.verifiedBadge,
-                  { backgroundColor: colors.primary },
-                ]}
-              >
-                <Feather name="check" size={8} color="#fff" />
-              </View>
+              <MaterialCommunityIcons name="check-decagram" size={18} color={colors.primary} />
             ) : null}
           </Pressable>
 

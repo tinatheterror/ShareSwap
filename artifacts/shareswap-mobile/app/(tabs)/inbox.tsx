@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -134,9 +134,7 @@ function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => void }) {
               {partnerName}
             </Text>
             {item.partnerIsVerified ? (
-              <View style={[styles.verifiedBadge, { backgroundColor: colors.primary }]}>
-                <Feather name="check" size={8} color="#fff" />
-              </View>
+              <MaterialCommunityIcons name="check-decagram" size={16} color={colors.primary} />
             ) : null}
           </View>
           <View style={styles.metaRight}>

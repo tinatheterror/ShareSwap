@@ -554,20 +554,29 @@ export default function HomeScreen() {
               A curated collection of items available near you
             </Text>
           </View>
-          {user && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Pressable
-              onPress={() => router.push("/wallet" as never)}
-              style={styles.walletCard}
+              onPress={() => router.push("/(tabs)/share" as never)}
+              style={styles.shareBtn}
+              hitSlop={6}
             >
-              <Text style={styles.walletLabel}>Total Balance</Text>
-              <View style={styles.walletRow}>
-                <Coins size={16} color="#0DCEA1" strokeWidth={2} />
-                <Text style={styles.walletAmount}>
-                  {Math.round(Number(user.shareCoins ?? 0))} ShareCoins
-                </Text>
-              </View>
+              <Feather name="plus" size={20} color="#fff" />
             </Pressable>
-          )}
+            {user && (
+              <Pressable
+                onPress={() => router.push("/wallet" as never)}
+                style={styles.walletCard}
+              >
+                <Text style={styles.walletLabel}>Total Balance</Text>
+                <View style={styles.walletRow}>
+                  <Coins size={16} color="#0DCEA1" strokeWidth={2} />
+                  <Text style={styles.walletAmount}>
+                    {Math.round(Number(user.shareCoins ?? 0))} ShareCoins
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {/* Search bar */}
@@ -816,6 +825,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
+  },
+  shareBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   walletCard: {
     backgroundColor: "rgba(255,255,255,0.95)",

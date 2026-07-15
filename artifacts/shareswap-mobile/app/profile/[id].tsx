@@ -527,16 +527,7 @@ export default function PublicProfileScreen() {
                 @{handle}
               </Text>
               {activeStatus ? (
-                <Text
-                  style={[
-                    styles.activeText,
-                    {
-                      color: activeStatus.isNow
-                        ? "#16a34a"
-                        : colors.mutedForeground,
-                    },
-                  ]}
-                >
+                <Text style={[styles.activeText, { color: colors.mutedForeground }]}>
                   {activeStatus.label}
                 </Text>
               ) : null}
@@ -552,16 +543,14 @@ export default function PublicProfileScreen() {
           >
             <View style={styles.statCol}>
               <View style={styles.statInner}>
-                <Feather name="star" size={16} color="#f59e0b" />
-                <Text style={[styles.statVal, { color: colors.foreground }]}>
+                <Feather name="star" size={15} color="#f59e0b" />
+                <Text style={[styles.statText, { color: colors.foreground }]}>
                   {profile.averageRating != null
                     ? Number(profile.averageRating).toFixed(1)
-                    : "—"}
+                    : "—"}{" "}
+                  ({profile.reviewCount ?? 0}{"\n"}reviews)
                 </Text>
               </View>
-              <Text style={[styles.statSub, { color: colors.mutedForeground }]}>
-                ({profile.reviewCount ?? 0} reviews)
-              </Text>
             </View>
             <View
               style={[
@@ -571,14 +560,11 @@ export default function PublicProfileScreen() {
             />
             <View style={styles.statCol}>
               <View style={styles.statInner}>
-                <Feather name="package" size={16} color={colors.primary} />
-                <Text style={[styles.statVal, { color: colors.foreground }]}>
-                  {profile.completedShares ?? 0}
+                <Feather name="package" size={15} color={colors.primary} />
+                <Text style={[styles.statText, { color: colors.foreground }]}>
+                  {profile.completedShares ?? 0} completed{"\n"}shares
                 </Text>
               </View>
-              <Text style={[styles.statSub, { color: colors.mutedForeground }]}>
-                completed shares
-              </Text>
             </View>
           </View>
 
@@ -696,22 +682,22 @@ const styles = StyleSheet.create({
 
   avatarRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  avatarImg: { width: 72, height: 72, borderRadius: 36 },
+  avatarImg: { width: 80, height: 80, borderRadius: 40 },
   avatarInitial: {
-    fontSize: 28,
+    fontSize: 32,
     fontFamily: "Inter_700Bold",
     color: "#fff",
   },
   nameBlock: { flex: 1, gap: 3 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  displayName: { fontSize: 20, fontFamily: "Inter_700Bold", flexShrink: 1 },
+  displayName: { fontSize: 22, fontFamily: "Inter_700Bold", flexShrink: 1 },
   verifiedDot: {
     width: 18,
     height: 18,
@@ -724,21 +710,20 @@ const styles = StyleSheet.create({
 
   statsRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     borderTopWidth: 1,
     paddingTop: 14,
   },
-  statCol: { flex: 1, alignItems: "center", gap: 3 },
-  statInner: { flexDirection: "row", alignItems: "center", gap: 5 },
-  statVal: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  statSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  statDivider: { width: 1, height: 36, marginHorizontal: 8 },
+  statCol: { flex: 1, alignItems: "center" },
+  statInner: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  statText: { fontSize: 15, fontFamily: "Inter_600SemiBold", flex: 1, lineHeight: 21 },
+  statDivider: { width: 1, height: 44, marginHorizontal: 8 },
 
-  infoRows: { gap: 8 },
+  infoRows: { gap: 7 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  infoText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  infoText: { fontSize: 12, fontFamily: "Inter_400Regular" },
 
-  sectionTitle: { fontSize: 20, fontFamily: "Inter_700Bold", marginBottom: 12 },
+  sectionTitle: { fontSize: 24, fontFamily: "Inter_700Bold", marginBottom: 12 },
 
   itemCard: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
   itemPhoto: { width: "100%", height: 180 },

@@ -17,7 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { ShareCoinBadge } from "@/components/ShareCoinBadge";
 import { ItemCard, Item } from "@/components/ItemCard";
 
 interface ProfileStats {
@@ -122,7 +121,6 @@ export default function ProfileScreen() {
             Profile
           </Text>
           <View style={styles.headerActions}>
-            <ShareCoinBadge />
             <Pressable
               onPress={() => router.push("/settings")}
               hitSlop={12}
@@ -259,25 +257,6 @@ export default function ProfileScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Pressable
-            style={styles.menuRow}
-            onPress={() => router.push("/wallet" as never)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: colors.coin + "20" }]}>
-              <Feather name="dollar-sign" size={18} color={colors.coin} />
-            </View>
-            <View style={styles.menuTextGroup}>
-              <Text style={[styles.menuLabel, { color: colors.foreground }]}>
-                ShareCoins Wallet
-              </Text>
-              <Text style={[styles.menuSubtext, { color: colors.mutedForeground }]}>
-                {user.shareCoins ?? 0} SC · Earn more
-              </Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-          </Pressable>
-
-          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
 
           <Pressable
             style={styles.menuRow}

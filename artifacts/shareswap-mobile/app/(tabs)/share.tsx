@@ -454,7 +454,7 @@ export default function ShareScreen() {
   if (!user) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.primary, borderBottomColor: "transparent" }]}>
           <Text style={[styles.title, { color: colors.foreground }]}>Share an Item</Text>
         </View>
         <View style={styles.centered}>
@@ -476,7 +476,7 @@ export default function ShareScreen() {
       <View
         style={[
           styles.header,
-          { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border },
+          { paddingTop: topPad + 12, backgroundColor: colors.primary, borderBottomColor: "transparent" },
         ]}
       >
         <Text style={[styles.title, { color: colors.foreground }]}>Share an Item</Text>

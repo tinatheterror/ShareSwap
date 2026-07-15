@@ -260,16 +260,16 @@ export default function InboxScreen() {
           styles.header,
           {
             paddingTop: topPad + 12,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
+            backgroundColor: colors.primary,
+            borderBottomColor: "transparent",
           },
         ]}
       >
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>Inbox</Text>
           {totalUnread > 0 ? (
-            <View style={[styles.totalBadge, { backgroundColor: colors.primary }]}>
-              <Text style={[styles.totalBadgeText, { color: colors.primaryForeground }]}>
+            <View style={[styles.totalBadge, { backgroundColor: "rgba(0,0,0,0.18)" }]}>
+              <Text style={[styles.totalBadgeText, { color: "#fff" }]}>
                 {totalUnread}
               </Text>
             </View>

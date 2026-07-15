@@ -111,8 +111,8 @@ export default function ProfileScreen() {
           styles.header,
           {
             paddingTop: topPad + 12,
-            borderBottomColor: colors.border,
-            backgroundColor: colors.background,
+            borderBottomColor: "transparent",
+            backgroundColor: colors.primary,
           },
         ]}
       >

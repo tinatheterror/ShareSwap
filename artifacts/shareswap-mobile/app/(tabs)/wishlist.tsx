@@ -298,7 +298,7 @@ export default function WishlistScreen() {
   if (!user) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { paddingTop: topPad + 12, borderBottomColor: colors.border }]}>
+        <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.primary, borderBottomColor: "transparent" }]}>
           <Text style={[styles.title, { color: colors.foreground }]}>Wishlist</Text>
         </View>
         <View style={styles.centered}>
@@ -320,7 +320,7 @@ export default function WishlistScreen() {
       <View
         style={[
           styles.header,
-          { paddingTop: topPad + 12, backgroundColor: colors.background, borderBottomColor: colors.border },
+          { paddingTop: topPad + 12, backgroundColor: colors.primary, borderBottomColor: "transparent" },
         ]}
       >
         <View style={styles.headerTop}>

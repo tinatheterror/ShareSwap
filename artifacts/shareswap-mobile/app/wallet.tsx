@@ -53,8 +53,8 @@ export default function WalletScreen() {
           styles.header,
           {
             paddingTop: topPad + 8,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
+            backgroundColor: colors.primary,
+            borderBottomColor: "transparent",
           },
         ]}
       >

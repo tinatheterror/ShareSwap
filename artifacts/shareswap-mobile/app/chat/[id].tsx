@@ -208,15 +208,23 @@ export default function ChatScreen() {
             onPress={() => router.push(`/profile/${id}` as never)}
             hitSlop={6}
           >
-            <Text
-              style={[styles.partnerName, { color: colors.foreground }]}
-              numberOfLines={1}
-            >
-              {partnerName || "Loading…"}
-            </Text>
-            {partner?.isVerified ? (
-              <MaterialCommunityIcons name="check-decagram" size={18} color={colors.primary} />
-            ) : null}
+            {({ hovered }: { hovered?: boolean }) => (
+              <>
+                <Text
+                  style={[
+                    styles.partnerName,
+                    { color: colors.foreground },
+                    hovered ? { textDecorationLine: "underline" } : null,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {partnerName || "Loading…"}
+                </Text>
+                {partner?.isVerified ? (
+                  <MaterialCommunityIcons name="check-decagram" size={18} color={colors.primary} />
+                ) : null}
+              </>
+            )}
           </Pressable>
 
           {hasSubtext ? (

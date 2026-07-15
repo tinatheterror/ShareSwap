@@ -203,7 +203,11 @@ export default function ChatScreen() {
 
         {/* Name + meta */}
         <View style={styles.headerMeta}>
-          <View style={styles.nameRow}>
+          <Pressable
+            style={styles.nameRow}
+            onPress={() => router.push(`/profile/${id}` as never)}
+            hitSlop={6}
+          >
             <Text
               style={[styles.partnerName, { color: colors.foreground }]}
               numberOfLines={1}
@@ -220,7 +224,7 @@ export default function ChatScreen() {
                 <Feather name="check" size={8} color="#fff" />
               </View>
             ) : null}
-          </View>
+          </Pressable>
 
           {hasSubtext ? (
             <View style={styles.metaRow}>
@@ -289,14 +293,6 @@ export default function ChatScreen() {
           ) : null}
         </View>
 
-        {/* View profile button */}
-        <Pressable
-          style={styles.profileBtn}
-          onPress={() => router.push(`/profile/${id}` as never)}
-          hitSlop={10}
-        >
-          <Feather name="user" size={20} color={colors.mutedForeground} />
-        </Pressable>
       </View>
 
       {/* Messages */}

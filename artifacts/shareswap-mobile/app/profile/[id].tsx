@@ -19,16 +19,26 @@ import { ItemCard, Item } from "@/components/ItemCard";
 interface PublicProfile {
   id: number;
   username: string;
+  handle?: string;
   displayName?: string;
   bio?: string;
-  avatarUrl?: string;
-  trustScore?: number;
-  trustLevel?: string;
+  profilePhoto?: string;
   isVerified?: boolean;
+  reputationScore?: number;
+  trustScore?: number;
   location?: string;
   neighbourhood?: string;
+  lastActiveAt?: string;
+  createdAt?: string;
   completedShares?: number;
   referralCount?: number;
+  reviewCount?: number;
+  averageRating?: number | null;
+  onTimeReturnRate?: number | null;
+  replyRate?: number | null;
+  issuesCount?: number;
+  activeStatus?: { label: string; isNow: boolean } | null;
+  responseTime?: string | null;
   items?: Item[];
 }
 
@@ -40,8 +50,8 @@ export default function PublicProfileScreen() {
   const isWeb = Platform.OS === "web";
 
   const { data: profile, isLoading } = useQuery<PublicProfile>({
-    queryKey: [`/api/users/${id}/profile`],
-    queryFn: () => apiGet<PublicProfile>(`/api/users/${id}/profile`),
+    queryKey: [`/api/users/${id}/public-profile`],
+    queryFn: () => apiGet<PublicProfile>(`/api/users/${id}/public-profile`),
     enabled: !!id,
   });
 

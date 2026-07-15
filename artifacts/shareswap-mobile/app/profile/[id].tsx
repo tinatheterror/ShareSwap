@@ -341,7 +341,7 @@ function ReviewsCarousel({
               style={[
                 styles.reviewCard,
                 {
-                  backgroundColor: colors.accent,
+                  backgroundColor: colors.card,
                   borderColor: colors.border,
                   width: CARD_W,
                 },
@@ -395,8 +395,8 @@ function ReviewsCarousel({
                       <Feather
                         key={i}
                         name="star"
-                        size={11}
-                        color={i < review.rating ? "#f59e0b" : colors.border}
+                        size={12}
+                        color={i < Math.round(review.rating) ? "#f59e0b" : colors.border}
                       />
                     ))}
                     <Text
@@ -762,8 +762,7 @@ const styles = StyleSheet.create({
   reviewQuote: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    lineHeight: 19,
-    fontStyle: "italic",
+    lineHeight: 20,
   },
   viewAllLink: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 

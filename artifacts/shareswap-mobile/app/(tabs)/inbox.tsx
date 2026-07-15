@@ -1,5 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { photoUrl } from "@/lib/api";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -100,7 +101,7 @@ function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => void }) {
         <View style={[styles.avatar, { backgroundColor: colors.primary + "25" }]}>
           {item.partnerPhoto ? (
             <Image
-              source={{ uri: item.partnerPhoto }}
+              source={{ uri: photoUrl(item.partnerPhoto) }}
               style={styles.avatarImg}
             />
           ) : (
@@ -157,7 +158,7 @@ function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => void }) {
         <View style={styles.row2}>
           {item.itemPhoto ? (
             <Image
-              source={{ uri: item.itemPhoto }}
+              source={{ uri: photoUrl(item.itemPhoto) }}
               style={[styles.itemThumb, { borderColor: colors.border }]}
             />
           ) : (

@@ -22,7 +22,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, photoUrl } from "@/lib/api";
 
 const rentalRateIcon = require("../../assets/icons/rental-rate.png");
 
@@ -66,10 +66,11 @@ interface BrowseItem {
 function iname(item: BrowseItem) {
   return item.name || item.title || "Item";
 }
-function iphoto(item: BrowseItem): string | null {
-  if (item.photos && item.photos.length > 0) return item.photos[0];
-  if (item.imageUrl) return item.imageUrl;
-  return null;
+function iphoto(item: BrowseItem): string | undefined {
+  const raw = (item.photos && item.photos.length > 0)
+    ? item.photos[0]
+    : item.imageUrl ?? null;
+  return photoUrl(raw);
 }
 function coins(item: BrowseItem) {
   return Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 0));

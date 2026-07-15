@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { photoUrl } from "@/lib/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
@@ -132,7 +133,7 @@ export default function ItemDetailScreen() {
       >
         {item.imageUrl ? (
           <Image
-            source={{ uri: item.imageUrl }}
+            source={{ uri: photoUrl(item.imageUrl) }}
             style={styles.heroImage}
             resizeMode="cover"
           />

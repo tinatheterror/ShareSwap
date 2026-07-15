@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useColors } from "@/hooks/useColors";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, photoUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 interface Message {
@@ -179,7 +179,7 @@ export default function ChatScreen() {
           >
             {partner?.profilePhoto ? (
               <Image
-                source={{ uri: partner.profilePhoto }}
+                source={{ uri: photoUrl(partner.profilePhoto) }}
                 style={styles.avatarImg}
               />
             ) : (

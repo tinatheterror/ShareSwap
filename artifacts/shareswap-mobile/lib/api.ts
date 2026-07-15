@@ -127,4 +127,10 @@ export async function apiDelete<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** Ensure photo/avatar paths stored as "/storage/..." become full URLs. */
+export function photoUrl(raw: string | null | undefined): string | undefined {
+  if (!raw) return undefined;
+  return raw.startsWith("/") ? `${BASE_URL}${raw}` : raw;
+}
+
 export { BASE_URL };

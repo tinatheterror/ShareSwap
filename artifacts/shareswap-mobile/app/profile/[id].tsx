@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { apiGet } from "@/lib/api";
+import { apiGet, photoUrl } from "@/lib/api";
 
 const SCREEN_W = Dimensions.get("window").width;
 const CARD_W = SCREEN_W - 48;
@@ -179,7 +179,7 @@ function ItemsCarousel({
             >
               {photo ? (
                 <Image
-                  source={{ uri: photo }}
+                  source={{ uri: photoUrl(photo) }}
                   style={styles.itemPhoto}
                 />
               ) : (
@@ -349,7 +349,7 @@ function ReviewsCarousel({
               <View style={styles.reviewerRow}>
                 {review.reviewer.profilePhoto ? (
                   <Image
-                    source={{ uri: review.reviewer.profilePhoto }}
+                    source={{ uri: photoUrl(review.reviewer.profilePhoto) }}
                     style={styles.reviewerAvatar}
                   />
                 ) : (
@@ -501,7 +501,7 @@ export default function PublicProfileScreen() {
             <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
               {profile.profilePhoto ? (
                 <Image
-                  source={{ uri: profile.profilePhoto }}
+                  source={{ uri: photoUrl(profile.profilePhoto) }}
                   style={styles.avatarImg}
                 />
               ) : (

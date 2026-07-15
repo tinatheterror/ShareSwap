@@ -483,8 +483,8 @@ const styles = StyleSheet.create({
     marginTop: 1,
     flexWrap: "nowrap",
   },
-  metaText: { fontSize: 11, fontFamily: "Inter_400Regular" },
-  metaSep: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  metaText: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  metaSep: { fontSize: 10, fontFamily: "Inter_400Regular" },
   profileBtn: { padding: 4, flexShrink: 0 },
 
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },

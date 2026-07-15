@@ -553,6 +553,20 @@ export default function HomeScreen() {
               A curated collection of items available near you
             </Text>
           </View>
+          {user && (
+            <Pressable
+              onPress={() => router.push("/wallet" as never)}
+              style={styles.walletCard}
+            >
+              <Text style={styles.walletLabel}>Total Balance</Text>
+              <View style={styles.walletRow}>
+                <MaterialCommunityIcons name="circle-multiple" size={14} color="#0DCEA1" />
+                <Text style={styles.walletAmount}>
+                  {Math.round(Number(user.shareCoins ?? 0))} ShareCoins
+                </Text>
+              </View>
+            </Pressable>
+          )}
         </View>
 
         {/* Search bar */}
@@ -801,6 +815,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
+  },
+  walletCard: {
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    alignItems: "flex-start",
+    gap: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  walletLabel: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    color: "#6b7280",
+    letterSpacing: 0.2,
+  },
+  walletRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  walletAmount: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#111827",
   },
   headerTitle: {
     fontSize: 20,

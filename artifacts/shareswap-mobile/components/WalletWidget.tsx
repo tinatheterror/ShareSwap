@@ -15,13 +15,18 @@ export function WalletWidget() {
 
   const coins = user.shareCoins ?? 0;
 
+  // Position beside the camera pill: go slightly above the safe-area bottom
+  // to sit at the same vertical level as the Dynamic Island / notch.
+  // Clamp to at least 8 so it's never flush against the very top edge.
+  const top = Math.max(8, insets.top - 42);
+
   return (
     <Pressable
       onPress={() => router.push("/wallet" as never)}
       style={[
         styles.container,
         {
-          top: Math.max(insets.top, 44) + 20,
+          top,
           backgroundColor: colors.card,
           borderColor: colors.border,
           shadowColor: "#000",
@@ -34,7 +39,7 @@ export function WalletWidget() {
       <View style={styles.row}>
         <MaterialCommunityIcons
           name="circle-multiple"
-          size={16}
+          size={15}
           color={colors.primary}
         />
         <Text style={[styles.amount, { color: colors.foreground }]}>
@@ -50,29 +55,29 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 12,
     zIndex: 9999,
-    borderRadius: 14,
+    borderRadius: 13,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
     alignItems: "flex-start",
-    gap: 2,
+    gap: 1,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Inter_400Regular",
     letterSpacing: 0.1,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
   },
   amount: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
 });

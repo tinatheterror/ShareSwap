@@ -255,7 +255,7 @@ export default function ShareScreen() {
         <View
           style={[
             cm.fullHeaderRow,
-            { paddingTop: topPad + 12, borderBottomColor: colors.border, backgroundColor: colors.background },
+            { paddingTop: topPad + 12, borderBottomColor: "transparent", backgroundColor: colors.primary },
           ]}
         >
           <Text style={[cm.heading, { color: colors.foreground }]}>How would you like to share?</Text>

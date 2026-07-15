@@ -217,10 +217,9 @@ function ItemsCarousel({
                 <View style={styles.itemPricing}>
                   {item.shareCoinPrice ? (
                     <View style={styles.pricingChip}>
-                      <Feather
-                        name="codepen"
-                        size={12}
-                        color={colors.primary}
+                      <Image
+                        source={require("../../assets/icons/sharecoin.png")}
+                        style={{ width: 14, height: 14 }}
                       />
                       <Text
                         style={[

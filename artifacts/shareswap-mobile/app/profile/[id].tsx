@@ -158,7 +158,7 @@ function ItemsCarousel({
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => {
           const shareTypes: string[] = [];
-          if (item.isLendable) shareTypes.push("Lend");
+          if (item.isLendable) shareTypes.push("Borrow");
           if (item.isRentable) shareTypes.push("Rent");
           if (item.isSwappable) shareTypes.push("Swap");
           if (item.isGift) shareTypes.push("Gift");
@@ -271,19 +271,21 @@ function ItemsCarousel({
                         ]}
                         onPress={() => router.push(`/item/${item.id}` as never)}
                       >
-                        <Feather
-                          name={
-                            t === "Lend"
-                              ? "clock"
-                              : t === "Rent"
-                              ? "dollar-sign"
-                              : t === "Swap"
-                              ? "repeat"
-                              : "gift"
-                          }
-                          size={13}
-                          color="#fff"
-                        />
+                        {t === "Borrow" ? (
+                          <MaterialCommunityIcons name="hand-heart" size={14} color="#fff" />
+                        ) : (
+                          <Feather
+                            name={
+                              t === "Rent"
+                                ? "dollar-sign"
+                                : t === "Swap"
+                                ? "repeat"
+                                : "gift"
+                            }
+                            size={13}
+                            color="#fff"
+                          />
+                        )}
                         <Text style={styles.actionBtnText}>{t}</Text>
                       </Pressable>
                     ))}

@@ -383,6 +383,19 @@ export default function WishlistScreen() {
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 100 }]}
           showsVerticalScrollIndicator={false}
         >
+          {tab === "community" && (
+            <View style={[styles.communityBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
+              <Feather name="heart" size={14} color={colors.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.communityBannerTitle, { color: colors.primary }]}>
+                  Neighbours are looking for these items
+                </Text>
+                <Text style={[styles.communityBannerSub, { color: colors.primary + "99" }]}>
+                  Fulfill urgent wishlists and earn extra ShareCoins!
+                </Text>
+              </View>
+            </View>
+          )}
           {list.map((item) =>
             tab === "community" ? (
               <View
@@ -1015,6 +1028,24 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     gap: 12,
+  },
+  communityBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+  },
+  communityBannerTitle: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 2,
+  },
+  communityBannerSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 15,
   },
   card: {
     borderRadius: 14,

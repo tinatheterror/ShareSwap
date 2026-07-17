@@ -91,13 +91,11 @@ export default function ReferralsScreen() {
 
           {code ? (
             <View style={styles.codeSection}>
-              {/* Code display */}
+              {/* Code + Buttons in one row */}
+              <View style={styles.btnRow}>
               <View style={[styles.codeBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <Text style={[styles.codeText, { color: colors.foreground }]}>{code}</Text>
               </View>
-
-              {/* Buttons */}
-              <View style={styles.btnRow}>
                 <Pressable
                   style={({ pressed }) => [
                     styles.btn,
@@ -229,14 +227,16 @@ const styles = StyleSheet.create({
 
   codeSection: { gap: 12 },
   codeBox: {
+    flex: 2,
     borderRadius: 10,
     borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     alignItems: "center",
+    justifyContent: "center",
   },
   codeText: {
-    fontSize: 22,
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
     letterSpacing: 3,
   },

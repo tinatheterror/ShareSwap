@@ -564,7 +564,7 @@ export default function HomeScreen() {
             </Pressable>
           )}
         </View>
-        <Text style={styles.headerSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        <Text style={styles.headerSub}>
           A trusted collection of items available{locationCity ? ` near ${locationCity}` : " near you"}
         </Text>
 
@@ -851,10 +851,11 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   headerSub: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
     color: "rgba(0,0,0,0.6)",
     marginTop: 2,
+    flexShrink: 1,
   },
   locationPill: {
     flexDirection: "row",

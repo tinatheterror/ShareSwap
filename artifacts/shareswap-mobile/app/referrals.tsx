@@ -77,9 +77,6 @@ export default function ReferralsScreen() {
             <Users size={26} color={colors.primary} strokeWidth={1.75} />
             <Text style={[styles.heroTitle, { color: colors.foreground }]}>Invite Friends</Text>
           </View>
-          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
-            Earn 10 ShareCoins every time a friend joins and completes their first transaction
-          </Text>
         </View>
 
         {/* Referral Code Card */}

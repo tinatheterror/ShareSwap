@@ -130,7 +130,7 @@ export default function ReferralsScreen() {
                 <Text style={[styles.howItem, { color: colors.primary + "cc" }]}>• Share your code with friends</Text>
                 <Text style={[styles.howItem, { color: colors.primary + "cc" }]}>• They sign up using your code</Text>
                 <Text style={[styles.howItem, { color: colors.primary + "cc" }]}>
-                  • When they complete their first transaction, you get 10 ShareCoins!
+                  • After they complete their first transaction, you earn 10 ShareCoins
                 </Text>
               </View>
             </View>
@@ -166,9 +166,9 @@ export default function ReferralsScreen() {
               <View style={[styles.benefitIcon, { backgroundColor: colors.primary + "18" }]}>
                 <Gift size={28} color={colors.primary} strokeWidth={1.5} />
               </View>
-              <Text style={[styles.benefitTitle, { color: colors.foreground }]}>Earn ShareCoins</Text>
+              <Text style={[styles.benefitTitle, { color: colors.foreground }]}>Earn 10 ShareCoins</Text>
               <Text style={[styles.benefitText, { color: colors.mutedForeground }]}>
-                Get 10 ShareCoins for each successful referral
+                For every friend who completes their first transaction.
               </Text>
             </View>
 

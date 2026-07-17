@@ -372,16 +372,13 @@ export default function WishlistScreen() {
           showsVerticalScrollIndicator={false}
         >
           {tab === "community" && (
-            <View style={[styles.communityBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
-              <Feather name="heart" size={14} color={colors.primary} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.communityBannerTitle, { color: colors.primary }]}>
-                  Neighbours are looking for these items
-                </Text>
-                <Text style={[styles.communityBannerSub, { color: colors.primary + "99" }]}>
-                  Fulfill urgent wishlists and earn extra ShareCoins!
-                </Text>
-              </View>
+            <View style={styles.communitySubtitle}>
+              <Text style={[styles.communityBannerTitle, { color: colors.foreground }]}>
+                Neighbours are looking for these items
+              </Text>
+              <Text style={[styles.communityBannerSub, { color: colors.mutedForeground }]}>
+                Fulfill urgent wishlists and earn extra ShareCoins!
+              </Text>
             </View>
           )}
           {!list?.length ? (
@@ -1030,13 +1027,8 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  communityBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 12,
+  communitySubtitle: {
+    paddingBottom: 4,
   },
   communityBannerTitle: {
     fontSize: 12,

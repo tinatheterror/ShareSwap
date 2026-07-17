@@ -31,7 +31,7 @@ const MAIN_ITEMS: MenuItem[] = [
 const EARN_ITEMS: MenuItem[] = [
   { icon: Gamepad2, label: "Play Games", route: "/games" },
   { icon: Users, label: "Invite Friends", route: "/referrals" },
-  { icon: HeartHandshake, label: "Help Neighbours", route: "/" },
+  { icon: HeartHandshake, label: "Help Neighbours", route: "/(tabs)/wishlist" },
 ];
 
 export default function WalletScreen() {

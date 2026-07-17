@@ -565,7 +565,7 @@ export default function HomeScreen() {
           )}
         </View>
         <Text style={styles.headerSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-          A curated collection of items available near you
+          A curated collection of items available{locationCity ? ` in ${locationCity}` : " near you"}
         </Text>
 
         {/* Search bar */}

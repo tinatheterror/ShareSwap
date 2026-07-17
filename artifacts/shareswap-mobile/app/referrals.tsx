@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   content: { padding: 16, gap: 16 },
 
-  hero: { alignItems: "center", paddingVertical: 8, gap: 10 },
+  hero: { alignItems: "center", paddingTop: 4, paddingBottom: 0, gap: 6 },
   heroTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   heroTitle: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.4 },
   heroSubtitle: {

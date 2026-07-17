@@ -259,8 +259,8 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 5,
   },
-  howTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
-  howItem: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  howTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  howItem: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
 
   noCodeSection: { alignItems: "center", gap: 16, paddingVertical: 8 },
   noCodeText: {

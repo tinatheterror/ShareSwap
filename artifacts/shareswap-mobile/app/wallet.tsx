@@ -29,7 +29,7 @@ const MAIN_ITEMS: MenuItem[] = [
 ];
 
 const EARN_ITEMS: MenuItem[] = [
-  { icon: Gamepad2, label: "Play Games", route: "/games", accent: true },
+  { icon: Gamepad2, label: "Play Games", route: "/games" },
   { icon: Users, label: "Invite Friends", route: "/(tabs)/profile" },
   { icon: HeartHandshake, label: "Help Neighbours", route: "/" },
 ];

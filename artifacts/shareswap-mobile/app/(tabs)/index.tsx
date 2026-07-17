@@ -548,12 +548,7 @@ export default function HomeScreen() {
       {/* ── Sticky header ── */}
       <View style={[styles.header, { paddingTop: topPad + 4, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle} numberOfLines={2}>Browse the ShareChest</Text>
-            <Text style={styles.headerSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              A curated collection of items available near you
-            </Text>
-          </View>
+          <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
           {user && (
             <Pressable
               onPress={() => router.push("/wallet" as never)}
@@ -569,6 +564,9 @@ export default function HomeScreen() {
             </Pressable>
           )}
         </View>
+        <Text style={styles.headerSub} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+          A curated collection of items available near you
+        </Text>
 
         {/* Search bar */}
         <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>

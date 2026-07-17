@@ -749,12 +749,12 @@ export default function HomeScreen() {
                 placeholderTextColor={colors.mutedForeground}
                 autoCapitalize="words"
               />
-              <Pressable onPress={detectLocation} disabled={detectLoading} hitSlop={8} style={{ flexShrink: 0 }}>
-                {detectLoading
-                  ? <ActivityIndicator size="small" color={colors.primary} />
-                  : <Text style={[lm.detectBtn, { color: colors.primary }]}>Detect</Text>}
-              </Pressable>
             </View>
+            <Pressable onPress={detectLocation} disabled={detectLoading} hitSlop={8} style={lm.detectRow}>
+              {detectLoading
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <><Feather name="crosshair" size={13} color={colors.primary} /><Text style={[lm.detectBtn, { color: colors.primary }]}>Use my current location</Text></>}
+            </Pressable>
 
             <Text style={lm.label}>Search radius</Text>
             <View style={lm.radiusRow}>
@@ -788,12 +788,13 @@ export default function HomeScreen() {
 const lm = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end" },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
-  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12, maxHeight: "85%" },
+  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36, gap: 12, maxHeight: "85%", width: "100%" },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: "#d1d5db", alignSelf: "center", marginBottom: 4 },
   title: { fontSize: 18, fontFamily: "Inter_700Bold", color: "#1f2937" },
   label: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#6b7280", marginTop: 4 },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", padding: 0 },
+  detectRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: -4 },
   detectBtn: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   radiusRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },

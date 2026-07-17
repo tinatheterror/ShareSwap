@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -119,6 +121,7 @@ export default function AchievementsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const router = useRouter();
   const isWeb = Platform.OS === "web";
 
   const { data, isLoading } = useQuery<TrustData>({
@@ -141,6 +144,22 @@ export default function AchievementsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.primary,
+            paddingTop: insets.top + (isWeb ? 8 : 0),
+          },
+        ]}
+      >
+        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
+          <Feather name="chevron-left" size={26} color="#fff" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Achievements</Text>
+        <View style={{ width: 30 }} />
+      </View>
       {!user ? (
         <View style={styles.centered}>
           <Feather name="lock" size={40} color={colors.mutedForeground} />
@@ -283,9 +302,18 @@ export default function AchievementsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+  },
+  backBtn: { width: 30, alignItems: "flex-start" },
+  headerTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: -0.3,
   },
   headerTop: {
     flexDirection: "row",

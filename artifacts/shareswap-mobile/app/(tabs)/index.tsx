@@ -568,32 +568,33 @@ export default function HomeScreen() {
           A trusted collection of items available{locationCity ? ` near ${locationCity}` : " near you"}
         </Text>
 
-        {/* Search bar */}
-        <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
-          <Feather name="search" size={13} color="#9ca3af" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search items..."
-            placeholderTextColor="#9ca3af"
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search.length > 0 && (
-            <Pressable onPress={() => setSearch("")} hitSlop={6}>
-              <Feather name="x" size={13} color="#9ca3af" />
-            </Pressable>
-          )}
-        </View>
+        {/* Search + Location row */}
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
+            <Feather name="search" size={13} color="#9ca3af" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search items..."
+              placeholderTextColor="#9ca3af"
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => setSearch("")} hitSlop={6}>
+                <Feather name="x" size={13} color="#9ca3af" />
+              </Pressable>
+            )}
+          </View>
 
-        {/* Location pill */}
-        <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]} onPress={() => setLocationModal(true)}>
-          <Feather name="map-pin" size={12} color="#374151" />
-          <Text style={styles.locationText}>
-            {locationCity || "Nearby"} ({locationRadius}km radius)
-          </Text>
-          <Feather name="chevron-down" size={11} color="#9ca3af" />
-        </Pressable>
+          <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]} onPress={() => setLocationModal(true)}>
+            <Feather name="map-pin" size={12} color="#374151" />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {locationCity || "Nearby"}
+            </Text>
+            <Feather name="chevron-down" size={11} color="#9ca3af" />
+          </Pressable>
+        </View>
       </View>
 
       {/* ── Scrollable body ── */}
@@ -858,7 +859,13 @@ const styles = StyleSheet.create({
     marginTop: -4,
     flexShrink: 1,
   },
+  searchRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
   locationPill: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -878,7 +885,7 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
   searchBar: {
-    flex: 1,
+    flex: 2,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

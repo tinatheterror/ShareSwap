@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   codeBox: {
     borderRadius: 10,
     borderWidth: 1,
-    paddingVertical: 14,
+    paddingVertical: 11,
     paddingHorizontal: 16,
     alignItems: "center",
   },

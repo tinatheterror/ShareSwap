@@ -546,7 +546,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ── Sticky header ── */}
-      <View style={[styles.header, { paddingTop: topPad + 4, backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
           {user && (
@@ -807,21 +807,21 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 14,
-    gap: 10,
+    paddingBottom: 10,
+    gap: 7,
   },
   headerTitleRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 8,
   },
   walletCard: {
     backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     alignItems: "flex-start",
-    gap: 3,
+    gap: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -840,21 +840,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   walletAmount: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_600SemiBold",
     color: "#111827",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
     color: "#000000",
-    lineHeight: 26,
+    lineHeight: 22,
   },
   headerSub: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Inter_400Regular",
     color: "rgba(0,0,0,0.6)",
-    marginTop: 2,
+    marginTop: 0,
     flexShrink: 1,
   },
   locationPill: {
@@ -862,9 +862,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 5,
-    borderRadius: 9,
+    borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -872,7 +872,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   locationText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_500Medium",
     color: "#374151",
   },
@@ -881,9 +881,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    borderRadius: 9,
+    borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     color: "#1f2937",
     padding: 0,

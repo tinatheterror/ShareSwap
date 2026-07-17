@@ -85,7 +85,7 @@ export default function WalletScreen() {
             Total Balance
           </Text>
           <View style={styles.balanceRow}>
-            <Coins size={32} color="#0DCEA1" strokeWidth={1.5} />
+            <Coins size={22} color="#0DCEA1" strokeWidth={1.5} />
             <Text style={[styles.balanceAmount, { color: colors.foreground }]}>
               {balance} ShareCoins
             </Text>
@@ -224,32 +224,32 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 12 },
 
   balanceCard: {
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6,
     marginBottom: 4,
   },
   balanceLabel: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: "Inter_500Medium",
   },
   balanceRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 7,
   },
   coinCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
-  coinEmoji: { fontSize: 18 },
+  coinEmoji: { fontSize: 14 },
   balanceAmount: {
-    fontSize: 24,
+    fontSize: 18,
     fontFamily: "Inter_700Bold",
   },
 

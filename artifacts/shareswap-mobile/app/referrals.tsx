@@ -93,16 +93,10 @@ export default function ReferralsScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero */}
-        <View style={styles.hero}>
-          <View style={styles.heroTitleRow}>
-            <Users size={26} color={colors.primary} strokeWidth={1.75} />
-            <Text style={[styles.heroTitle, { color: colors.foreground }]}>Invite Friends</Text>
-          </View>
-          <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
-            Earn 10 ShareCoins every time a friend joins and completes their first transaction
-          </Text>
-        </View>
+        {/* Hero subtitle */}
+        <Text style={[styles.heroSubtitle, { color: colors.mutedForeground }]}>
+          Earn 10 ShareCoins every time a friend joins and completes their first transaction
+        </Text>
 
         {/* Referral Code Card */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -228,9 +222,6 @@ const styles = StyleSheet.create({
   },
   content: { padding: 16, gap: 16 },
 
-  hero: { alignItems: "center", paddingVertical: 8, gap: 10 },
-  heroTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  heroTitle: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.4 },
   heroSubtitle: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",

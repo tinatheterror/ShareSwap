@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { Coins } from "lucide-react-native";
+import { Coins, Trophy, Gamepad2, Users, HeartHandshake } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -14,22 +14,24 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 
+type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+
 interface MenuItem {
-  icon: React.ComponentProps<typeof Feather>["name"];
+  icon: LucideIcon;
   label: string;
   route: string;
   accent?: boolean;
 }
 
 const MAIN_ITEMS: MenuItem[] = [
-  { icon: "list", label: "View Transactions", route: "/transactions" },
-  { icon: "award", label: "Achievements", route: "/achievements" },
+  { icon: Coins, label: "View Transactions", route: "/transactions" },
+  { icon: Trophy, label: "Achievements", route: "/achievements" },
 ];
 
 const EARN_ITEMS: MenuItem[] = [
-  { icon: "play-circle", label: "Play Games", route: "/games", accent: true },
-  { icon: "user-plus", label: "Invite Friends", route: "/(tabs)/profile" },
-  { icon: "heart", label: "Help Neighbours", route: "/" },
+  { icon: Gamepad2, label: "Play Games", route: "/games", accent: true },
+  { icon: Users, label: "Invite Friends", route: "/(tabs)/profile" },
+  { icon: HeartHandshake, label: "Help Neighbours", route: "/" },
 ];
 
 export default function WalletScreen() {
@@ -114,7 +116,7 @@ export default function WalletScreen() {
                     { backgroundColor: colors.muted },
                   ]}
                 >
-                  <Feather name={item.icon} size={18} color={colors.foreground} />
+                  <item.icon size={18} color={colors.foreground} strokeWidth={1.75} />
                 </View>
                 <Text style={[styles.menuLabel, { color: colors.foreground }]}>
                   {item.label}
@@ -164,10 +166,10 @@ export default function WalletScreen() {
                     },
                   ]}
                 >
-                  <Feather
-                    name={item.icon}
+                  <item.icon
                     size={18}
                     color={item.accent ? colors.primary : colors.foreground}
+                    strokeWidth={1.75}
                   />
                 </View>
                 <Text

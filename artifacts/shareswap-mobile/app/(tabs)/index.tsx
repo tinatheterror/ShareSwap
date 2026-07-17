@@ -588,11 +588,10 @@ export default function HomeScreen() {
           </View>
 
           <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]} onPress={() => setLocationModal(true)}>
-            <Feather name="map-pin" size={12} color="#374151" />
-            <Text style={styles.locationText}>
+            <Feather name="map-pin" size={14} color="#0DCEA1" />
+            <Text style={styles.locationText} numberOfLines={1}>
               {locationCity || "Nearby"}
             </Text>
-            <Feather name="chevron-down" size={11} color="#9ca3af" />
           </Pressable>
         </View>
       </View>

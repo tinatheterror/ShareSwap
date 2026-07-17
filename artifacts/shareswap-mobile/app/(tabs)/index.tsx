@@ -845,10 +845,10 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
     color: "#000000",
-    lineHeight: 22,
+    lineHeight: 28,
   },
   headerSub: {
     fontSize: 9,

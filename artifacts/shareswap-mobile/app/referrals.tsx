@@ -291,11 +291,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  benefitTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  benefitTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center" },
   benefitText: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 17,
+    lineHeight: 14,
   },
 });

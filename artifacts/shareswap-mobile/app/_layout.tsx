@@ -75,7 +75,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="referrals"
-        options={{ headerShown: false }}
+        options={{ title: "Referrals", headerBackTitle: "Back" }}
       />
       <Stack.Screen
         name="settings"

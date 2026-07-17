@@ -1,13 +1,10 @@
-import { Feather } from "@expo/vector-icons";
-import { Gift, Users } from "lucide-react-native";
+import { Check, Copy, Gift, Share2, Users } from "lucide-react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Clipboard,
-  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -27,9 +24,7 @@ interface User {
 export default function ReferralsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const isWeb = Platform.OS === "web";
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -72,23 +67,6 @@ export default function ReferralsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: colors.primary,
-            paddingTop: insets.top + (isWeb ? 8 : 0),
-          },
-        ]}
-      >
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
-          <Feather name="chevron-left" size={26} color="#fff" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Invite Friends</Text>
-        <View style={{ width: 30 }} />
-      </View>
-
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
@@ -128,7 +106,7 @@ export default function ReferralsScreen() {
                   ]}
                   onPress={copyCode}
                 >
-                  <Feather name={copied ? "check" : "copy"} size={15} color={colors.foreground} />
+                  {copied ? <Check size={15} color={colors.foreground} strokeWidth={2} /> : <Copy size={15} color={colors.foreground} strokeWidth={2} />}
                   <Text style={[styles.btnText, { color: colors.foreground }]}>
                     {copied ? "Copied!" : "Copy"}
                   </Text>
@@ -141,7 +119,7 @@ export default function ReferralsScreen() {
                   ]}
                   onPress={shareCode}
                 >
-                  <Feather name="share-2" size={15} color="#fff" />
+                  <Share2 size={15} color="#fff" strokeWidth={2} />
                   <Text style={[styles.btnText, { color: "#fff" }]}>Share</Text>
                 </Pressable>
               </View>

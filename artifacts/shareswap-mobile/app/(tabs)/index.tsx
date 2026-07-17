@@ -852,9 +852,9 @@ const styles = StyleSheet.create({
   },
   headerSub: {
     fontSize: 9,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "Inter_600SemiBold",
     color: "rgba(0,0,0,0.6)",
-    marginTop: 0,
+    marginTop: -4,
     flexShrink: 1,
   },
   locationPill: {

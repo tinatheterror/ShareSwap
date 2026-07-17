@@ -70,6 +70,14 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="achievements"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="referrals"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="settings"
         options={{
           title: "Settings",

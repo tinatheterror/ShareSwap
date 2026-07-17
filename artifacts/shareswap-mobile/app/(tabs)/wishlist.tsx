@@ -366,18 +366,6 @@ export default function WishlistScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : !list?.length ? (
-        <View style={styles.centered}>
-          <Feather name="heart" size={44} color={colors.mutedForeground} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {tab === "mine" ? "Nothing on your wishlist yet" : "No community wishlist items yet"}
-          </Text>
-          <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-            {tab === "mine"
-              ? "Add something you're hoping to borrow, rent, swap, or receive as a gift."
-              : "Check back soon to see what neighbours are looking for."}
-          </Text>
-        </View>
       ) : (
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 100 }]}
@@ -396,7 +384,20 @@ export default function WishlistScreen() {
               </View>
             </View>
           )}
-          {list.map((item) =>
+          {!list?.length ? (
+            <View style={styles.centered}>
+              <Feather name="heart" size={44} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                {tab === "mine" ? "Nothing on your wishlist yet" : "No community wishlist items yet"}
+              </Text>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                {tab === "mine"
+                  ? "Add something you're hoping to borrow, rent, swap, or receive as a gift."
+                  : "Check back soon to see what neighbours are looking for."}
+              </Text>
+            </View>
+          ) : null}
+          {(list ?? []).map((item) =>
             tab === "community" ? (
               <View
                 key={item.id}

@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   hero: { alignItems: "center", paddingTop: 4, paddingBottom: 0, gap: 6 },
   heroTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   heroTitle: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.4 },
-  heroSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 6 },
+  heroSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 6, textAlign: "center" },
   heroSubtitle: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",

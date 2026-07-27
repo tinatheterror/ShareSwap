@@ -647,8 +647,8 @@ export default function WishlistScreen() {
                 const isGift = t.key === "gift";
                 const activeColor = isGift ? "#ec4899" : colors.primary;
                 const inactiveBg = colors.muted;
-                const inactiveBorder = isGift ? colors.border : colors.primary;
-                const inactiveText = isGift ? colors.mutedForeground : colors.primary;
+                const inactiveBorder = colors.border;
+                const inactiveText = colors.mutedForeground;
                 return (
                   <Pressable
                     key={t.key}
@@ -810,8 +810,8 @@ export default function WishlistScreen() {
                   const isGift = t.key === "gift";
                   const activeColor = isGift ? "#ec4899" : colors.primary;
                   const inactiveBg = colors.muted;
-                  const inactiveBorder = isGift ? colors.border : colors.primary;
-                  const inactiveText = isGift ? colors.mutedForeground : colors.primary;
+                  const inactiveBorder = colors.border;
+                  const inactiveText = colors.mutedForeground;
                   return (
                     <Pressable
                       key={t.key}

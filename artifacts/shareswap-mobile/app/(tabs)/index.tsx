@@ -554,7 +554,7 @@ export default function HomeScreen() {
             <Text style={styles.walletBadgeLabel}>Total Balance</Text>
             <View style={styles.walletBadgeRow}>
               <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
-              <Text style={styles.walletBadgeAmount}>{user ? Math.round(Number(user.shareCoins ?? 0)) : "–"}</Text>
+              <Text style={styles.walletBadgeAmount}>{user ? `${Math.round(Number(user.shareCoins ?? 0))} ShareCoins` : "–"}</Text>
             </View>
           </Pressable>
         </View>

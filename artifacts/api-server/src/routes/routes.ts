@@ -897,6 +897,10 @@ export function registerRoutes(app: Express): Server {
   // Security: CSRF token endpoint - call this before making mutating requests
   // This endpoint generates and sets the CSRF token cookie
   app.get("/api/csrf-token", (req, res) => {
+    // Never cache — every call must return a fresh signed token so retries work
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.set("Pragma", "no-cache");
+
     // Generate and set CSRF token in cookie
     const token = setCsrfToken(req, res);
     console.log('[CSRF Token Endpoint] Token generated and set');

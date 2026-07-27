@@ -98,6 +98,8 @@ export default function WishlistScreen() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
+  const [myFilter, setMyFilter] = useState<"all" | "active" | "expired">("active");
+
   const [editItem, setEditItem] = useState<WishlistItem | null>(null);
   const [editItemName, setEditItemName] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -115,11 +117,12 @@ export default function WishlistScreen() {
     return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
   }
 
-  function isExpired(neededDate?: string) {
-    if (!neededDate) return false;
+  function checkExpired(item: WishlistItem): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return new Date(neededDate) < today;
+    if (item.returnDate) return new Date(item.returnDate) < today;
+    if (item.neededDate) return new Date(item.neededDate) < today;
+    return false;
   }
 
   function toggleWhenever() {
@@ -292,7 +295,17 @@ export default function WishlistScreen() {
     ]);
   }
 
-  const list = tab === "mine" ? myWishlists : communityWishlists;
+  // Augment my wishlists with client-side expiry (server doesn't compute it for /api/my-wishlists)
+  const mineWithExpiry = (myWishlists ?? []).map((item) => ({
+    ...item,
+    isExpired: item.isExpired ?? checkExpired(item),
+  }));
+  const mineActive = mineWithExpiry.filter((i) => !i.isExpired && i.isActive !== false);
+  const mineExpired = mineWithExpiry.filter((i) => i.isExpired);
+  const filteredMine =
+    myFilter === "active" ? mineActive : myFilter === "expired" ? mineExpired : mineWithExpiry;
+
+  const list = tab === "mine" ? filteredMine : communityWishlists;
   const isLoading = tab === "mine" ? loadingMine : loadingCommunity;
 
   if (!user) {
@@ -360,6 +373,26 @@ export default function WishlistScreen() {
             </Text>
           </Pressable>
         </View>
+        {tab === "mine" && (
+          <View style={styles.filterRow}>
+            {(["active", "expired", "all"] as const).map((f) => {
+              const count = f === "active" ? mineActive.length : f === "expired" ? mineExpired.length : mineWithExpiry.length;
+              const active = myFilter === f;
+              return (
+                <Pressable
+                  key={f}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  onPress={() => setMyFilter(f)}
+                >
+                  <Text style={[styles.filterChipText, { color: active ? "#fff" : "rgba(255,255,255,0.7)" }]}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                    {count > 0 ? ` · ${count}` : ""}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       {isLoading ? (
@@ -385,11 +418,21 @@ export default function WishlistScreen() {
             <View style={styles.centered}>
               <Feather name="heart" size={44} color={colors.mutedForeground} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                {tab === "mine" ? "Nothing on your wishlist yet" : "No community wishlist items yet"}
+                {tab === "mine"
+                  ? myFilter === "expired"
+                    ? "No expired items"
+                    : myFilter === "active"
+                    ? "No active wishlist items"
+                    : "Nothing on your wishlist yet"
+                  : "No community wishlist items yet"}
               </Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
                 {tab === "mine"
-                  ? "Add something you're hoping to borrow, rent, swap, or receive as a gift."
+                  ? myFilter === "expired"
+                    ? "Items expire once their needed date has passed."
+                    : myFilter === "active"
+                    ? "Add something you're hoping to borrow, rent, swap, or receive as a gift."
+                    : "Add something you're hoping to borrow, rent, swap, or receive as a gift."
                   : "Check back soon to see what neighbours are looking for."}
               </Text>
             </View>
@@ -1026,6 +1069,26 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     gap: 12,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: 6,
+    paddingTop: 10,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  filterChipActive: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderColor: "rgba(255,255,255,0.7)",
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   communitySubtitle: {
     paddingBottom: 4,

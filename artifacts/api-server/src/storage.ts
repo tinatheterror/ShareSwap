@@ -13,15 +13,12 @@ async function getClient(): Promise<Client | null> {
   
   try {
     client = new Client();
-    // Test if storage is working by listing (will fail if not configured)
-    const result = await client.list({ startOffset: "", endOffset: "" });
-    storageAvailable = result.ok;
-    if (storageAvailable) {
-      console.log("[Storage] ✓ Object Storage initialized successfully - images will persist across redeploys");
-    } else {
-      console.log("[Storage] ⚠ Object Storage bucket not found. Using local fallback (images may not persist).");
-      console.log("[Storage] To enable persistent storage: Tools → Object Storage → Create bucket");
-    }
+    // Mark available immediately — avoid using list() as a probe because it can
+    // return ok:false on transient errors or with certain bucket configurations,
+    // which would permanently disable image serving for the process lifetime.
+    // The actual downloadAsBytes call in the route handler is the real availability test.
+    storageAvailable = true;
+    console.log("[Storage] ✓ Object Storage client initialized - images will persist across redeploys");
   } catch (error: any) {
     const errorMessage = error?.message || String(error);
     if (errorMessage.includes("bucket name is needed") || errorMessage.includes("REPLIT_OBJECT_STORE_BUCKET_ID")) {

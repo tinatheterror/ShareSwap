@@ -25,6 +25,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost, photoUrl } from "@/lib/api";
 
 const rentalRateIcon = require("../../assets/icons/rental-rate.png");
+const shareCoinIcon = require("../../assets/icons/sharecoin.png");
 
 const SCREEN_W = Dimensions.get("window").width;
 const GRID_GAP = 10;
@@ -545,24 +546,23 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* ── Wallet badge — top-right corner, safe-area aware ── */}
+      {user && (
+        <Pressable
+          style={[styles.walletBadge, { top: topPad + 10 }]}
+          onPress={() => router.push("/wallet" as never)}
+        >
+          <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+          <Text style={styles.walletBadgeAmount}>
+            {Math.round(Number(user.shareCoins ?? 0))}
+          </Text>
+        </Pressable>
+      )}
+
       {/* ── Sticky header ── */}
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
-          <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
-          {user && (
-            <Pressable
-              onPress={() => router.push("/wallet" as never)}
-              style={styles.walletCard}
-            >
-              <Text style={styles.walletLabel}>Total Balance</Text>
-              <View style={styles.walletRow}>
-                <Coins size={16} color="#0DCEA1" strokeWidth={2} />
-                <Text style={styles.walletAmount}>
-                  {Math.round(Number(user.shareCoins ?? 0))} ShareCoins
-                </Text>
-              </View>
-            </Pressable>
-          )}
+          <Text style={[styles.headerTitle, { flex: 1, paddingRight: 80 }]} numberOfLines={2}>Browse the ShareChest</Text>
         </View>
         <Text style={styles.headerSub}>
           A trusted collection of items available{locationCity ? ` near ${locationCity}` : " near you"}
@@ -816,33 +816,30 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 8,
   },
-  walletCard: {
+  walletBadge: {
+    position: "absolute",
+    right: 14,
+    zIndex: 100,
     backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    alignItems: "flex-start",
-    gap: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  walletLabel: {
-    fontSize: 9,
-    fontFamily: "Inter_400Regular",
-    color: "#6b7280",
-    letterSpacing: 0.2,
-  },
-  walletRow: {
+    borderRadius: 24,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  walletAmount: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
+  walletBadgeCoin: {
+    width: 20,
+    height: 20,
+  },
+  walletBadgeAmount: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
     color: "#111827",
   },
   headerTitle: {

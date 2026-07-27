@@ -551,8 +551,11 @@ export default function HomeScreen() {
         <View style={styles.headerTitleRow}>
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
           <Pressable style={styles.walletBadge} onPress={() => router.push("/wallet" as never)}>
-            <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
-            <Text style={styles.walletBadgeAmount}>{user ? Math.round(Number(user.shareCoins ?? 0)) : "–"}</Text>
+            <Text style={styles.walletBadgeLabel}>Total Balance</Text>
+            <View style={styles.walletBadgeRow}>
+              <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+              <Text style={styles.walletBadgeAmount}>{user ? Math.round(Number(user.shareCoins ?? 0)) : "–"}</Text>
+            </View>
           </Pressable>
         </View>
         <Text style={styles.headerSub}>
@@ -810,12 +813,11 @@ const styles = StyleSheet.create({
   },
   walletBadge: {
     backgroundColor: "rgba(255,255,255,0.95)",
-    borderRadius: 24,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    flexDirection: "row",
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     alignItems: "center",
-    gap: 6,
+    gap: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
@@ -823,12 +825,24 @@ const styles = StyleSheet.create({
     elevation: 5,
     alignSelf: "flex-start",
   },
+  walletBadgeLabel: {
+    fontSize: 8,
+    fontFamily: "Inter_600SemiBold",
+    color: "#6b7280",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  walletBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   walletBadgeCoin: {
-    width: 20,
-    height: 20,
+    width: 16,
+    height: 16,
   },
   walletBadgeAmount: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_700Bold",
     color: "#111827",
   },

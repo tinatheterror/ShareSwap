@@ -546,19 +546,6 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* ── Wallet badge — top-right corner, safe-area aware ── */}
-      {user && (
-        <Pressable
-          style={[styles.walletBadge, { top: topPad + 10 }]}
-          onPress={() => router.push("/wallet" as never)}
-        >
-          <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
-          <Text style={styles.walletBadgeAmount}>
-            {Math.round(Number(user.shareCoins ?? 0))}
-          </Text>
-        </Pressable>
-      )}
-
       {/* ── Sticky header ── */}
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
@@ -781,6 +768,19 @@ export default function HomeScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      {/* ── Wallet badge — top-right corner, safe-area aware, renders last so it's on top ── */}
+      {user && (
+        <Pressable
+          style={[styles.walletBadge, { top: topPad + 10 }]}
+          onPress={() => router.push("/wallet" as never)}
+        >
+          <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+          <Text style={styles.walletBadgeAmount}>
+            {Math.round(Number(user.shareCoins ?? 0))}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

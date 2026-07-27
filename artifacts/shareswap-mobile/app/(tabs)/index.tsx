@@ -550,12 +550,10 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
-          {user && (
-            <Pressable style={styles.walletBadge} onPress={() => router.push("/wallet" as never)}>
-              <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
-              <Text style={styles.walletBadgeAmount}>{Math.round(Number(user.shareCoins ?? 0))}</Text>
-            </Pressable>
-          )}
+          <Pressable style={styles.walletBadge} onPress={() => router.push("/wallet" as never)}>
+            <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+            <Text style={styles.walletBadgeAmount}>{user ? Math.round(Number(user.shareCoins ?? 0)) : "–"}</Text>
+          </Pressable>
         </View>
         <Text style={styles.headerSub}>
           A trusted collection of items available{locationCity ? ` near ${locationCity}` : " near you"}

@@ -840,9 +840,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   walletBadgeCoin: {
-    width: 14,
-    height: 14,
-    tintColor: "#0DCEA1",
+    width: 12,
+    height: 12,
   },
   walletBadgeAmount: {
     fontSize: 10,

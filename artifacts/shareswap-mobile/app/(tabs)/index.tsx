@@ -623,6 +623,7 @@ export default function HomeScreen() {
               pagingEnabled={false}
               snapToInterval={SUGGEST_CARD_W}
               decelerationRate="fast"
+              disableIntervalMomentum={true}
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => (

@@ -812,6 +812,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   walletBadge: {
+    width: 115,
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 14,
     paddingHorizontal: 10,
@@ -865,7 +866,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   locationPill: {
-    flex: 1,
+    width: 115,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

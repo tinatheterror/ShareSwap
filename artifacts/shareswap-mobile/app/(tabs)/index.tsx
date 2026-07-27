@@ -549,7 +549,13 @@ export default function HomeScreen() {
       {/* ── Sticky header ── */}
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
-          <Text style={[styles.headerTitle, { flex: 1, paddingRight: 80 }]} numberOfLines={2}>Browse the ShareChest</Text>
+          <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
+          {user && (
+            <Pressable style={styles.walletBadge} onPress={() => router.push("/wallet" as never)}>
+              <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+              <Text style={styles.walletBadgeAmount}>{Math.round(Number(user.shareCoins ?? 0))}</Text>
+            </Pressable>
+          )}
         </View>
         <Text style={styles.headerSub}>
           A trusted collection of items available{locationCity ? ` near ${locationCity}` : " near you"}
@@ -769,18 +775,6 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
-      {/* ── Wallet badge — top-right corner, safe-area aware, renders last so it's on top ── */}
-      {user && (
-        <Pressable
-          style={[styles.walletBadge, { top: topPad + 10 }]}
-          onPress={() => router.push("/wallet" as never)}
-        >
-          <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
-          <Text style={styles.walletBadgeAmount}>
-            {Math.round(Number(user.shareCoins ?? 0))}
-          </Text>
-        </Pressable>
-      )}
     </View>
   );
 }
@@ -817,9 +811,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   walletBadge: {
-    position: "absolute",
-    right: 14,
-    zIndex: 100,
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 24,
     paddingHorizontal: 11,
@@ -832,6 +823,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 6,
     elevation: 5,
+    alignSelf: "flex-start",
   },
   walletBadgeCoin: {
     width: 20,

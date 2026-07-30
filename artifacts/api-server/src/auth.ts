@@ -7,7 +7,14 @@ import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, items, referrals, verifications, insertUserSchema, type SelectUser } from "@workspace/db";
+import {
+  users,
+  items,
+  referrals,
+  verifications,
+  insertUserSchema,
+  type SelectUser,
+} from "@workspace/db";
 import { db, pool } from "@workspace/db";
 import { eq, or, and } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
@@ -18,7 +25,7 @@ import { computeActiveStatus, computeResponseTime } from "./user-stats";
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // Limit each IP to 5 attempts per windowMs
-  message: 'Too many authentication attempts, please try again later.',
+  message: "Too many authentication attempts, please try again later.",
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
@@ -46,15 +53,16 @@ function generateEmailVerificationToken(): string {
 // Generate a unique 6-char user code: L N L N L N (e.g. T3B7C2)
 // Used as both handle (userCode) and referralCode — they are always the same value.
 async function generateUserCode(firstLetter?: string): Promise<string> {
-  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O (confusing)
-  const digits  = '23456789';                  // no 0/1 (confusing)
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I/O (confusing)
+  const digits = "23456789"; // no 0/1 (confusing)
   const rL = () => letters[Math.floor(Math.random() * letters.length)];
   const rD = () => digits[Math.floor(Math.random() * digits.length)];
 
   const generate = () => {
-    const l1 = (firstLetter && /^[a-zA-Z]$/.test(firstLetter))
-      ? firstLetter.toUpperCase()
-      : rL();
+    const l1 =
+      firstLetter && /^[a-zA-Z]$/.test(firstLetter)
+        ? firstLetter.toUpperCase()
+        : rL();
     return `${l1}${rD()}${rL()}${rD()}${rL()}${rD()}`;
   };
 
@@ -77,26 +85,27 @@ async function generateUserCode(firstLetter?: string): Promise<string> {
 function generateDisplayName(email?: string, googleName?: string): string {
   if (googleName) {
     // Use Google profile name, optionally abbreviate last name
-    const parts = googleName.trim().split(' ');
+    const parts = googleName.trim().split(" ");
     if (parts.length > 1) {
       return `${parts[0]} ${parts[parts.length - 1][0]}.`;
     }
     return parts[0];
   }
-  
+
   if (email) {
-    const [rawPrefix, rawDomain] = email.split('@');
-    const prefix = (rawPrefix || '').replace(/[^a-zA-Z]/g, '');
-    const domainName = (rawDomain || '').split('.')[0]; // e.g. "live" from "live.ca"
-    const firstName = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+    const [rawPrefix, rawDomain] = email.split("@");
+    const prefix = (rawPrefix || "").replace(/[^a-zA-Z]/g, "");
+    const domainName = (rawDomain || "").split(".")[0]; // e.g. "live" from "live.ca"
+    const firstName =
+      prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
     if (domainName && domainName.length > 0) {
       const lastInitial = domainName.charAt(0).toUpperCase();
       return `${firstName} ${lastInitial}.`;
     }
     return firstName;
   }
-  
-  return 'User';
+
+  return "User";
 }
 
 export async function comparePasswords(supplied: string, stored: string) {
@@ -111,10 +120,15 @@ async function getUserByUsername(username: string) {
 }
 
 // Use a strong session secret from environment, fallback to REPL_ID only in development
-const SESSION_SECRET = process.env.SESSION_SECRET || process.env.REPL_ID || randomBytes(32).toString('hex');
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ||
+  process.env.REPL_ID ||
+  randomBytes(32).toString("hex");
 
-if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
-  console.warn('WARNING: SESSION_SECRET not set in production! Using fallback which is insecure.');
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
+  console.warn(
+    "WARNING: SESSION_SECRET not set in production! Using fallback which is insecure.",
+  );
 }
 
 export const sessionSettings: session.SessionOptions = {
@@ -122,30 +136,32 @@ export const sessionSettings: session.SessionOptions = {
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Enable secure cookies in production
+    secure: process.env.NODE_ENV === "production", // Enable secure cookies in production
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'strict', // Stricter CSRF protection
+    sameSite: "strict", // Stricter CSRF protection
     httpOnly: true,
-    path: '/'
+    path: "/",
   },
-  name: 'shareswap.sid'
+  name: "shareswap.sid",
 };
 
 export const store = new PostgresStore({
   pool,
   createTableIfMissing: true,
-  tableName: 'session',
-  pruneSessionInterval: 60
+  tableName: "session",
+  pruneSessionInterval: 60,
 });
 
 export function setupAuth(app: Express) {
   // Enable trust proxy for secure cookies behind reverse proxy
-  app.set('trust proxy', 1);
+  app.set("trust proxy", 1);
 
-  app.use(session({
-    ...sessionSettings,
-    store
-  }));
+  app.use(
+    session({
+      ...sessionSettings,
+      store,
+    }),
+  );
 
   app.use(passport.initialize());
   app.use(passport.session());
@@ -154,7 +170,11 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const [user] = await getUserByUsername(username);
-        if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+        if (
+          !user ||
+          !user.password ||
+          !(await comparePasswords(password, user.password))
+        ) {
           return done(null, false, { message: "Invalid username or password" });
         }
         return done(null, user);
@@ -162,16 +182,19 @@ export function setupAuth(app: Express) {
         console.error("Authentication error:", error);
         return done(error);
       }
-    })
+    }),
   );
 
   // Google OAuth Strategy - use custom domain if available, fallback to Replit URL
   const googleCallbackURL = process.env.CUSTOM_DOMAIN
     ? `https://${process.env.CUSTOM_DOMAIN}/api/auth/google/callback`
-    : 'https://share-swap-mvp.replit.app/api/auth/google/callback';
-  
+    : "https://share-swap-mvp.replit.app/api/auth/google/callback";
+
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    console.log("[Google OAuth] Strategy configured with callback URL:", googleCallbackURL);
+    console.log(
+      "[Google OAuth] Strategy configured with callback URL:",
+      googleCallbackURL,
+    );
     passport.use(
       new GoogleStrategy(
         {
@@ -180,7 +203,13 @@ export function setupAuth(app: Express) {
           callbackURL: googleCallbackURL,
           passReqToCallback: true,
         } as any,
-        async (req: any, accessToken: any, refreshToken: any, profile: any, done: any) => {
+        async (
+          req: any,
+          accessToken: any,
+          refreshToken: any,
+          profile: any,
+          done: any,
+        ) => {
           try {
             // Check if user exists with this Google ID
             const [existingUser] = await db
@@ -208,7 +237,9 @@ export function setupAuth(app: Express) {
             }
 
             // Get referral code from session
-            const referralCode = req.session?.pendingReferralCode as string | undefined;
+            const referralCode = req.session?.pendingReferralCode as
+              | string
+              | undefined;
             let referrerId: number | null = null;
             let referrerDeviceFingerprint: string | null = null;
 
@@ -218,20 +249,23 @@ export function setupAuth(app: Express) {
                 .from(users)
                 .where(eq(users.referralCode, referralCode))
                 .limit(1);
-              
+
               if (referrer) {
                 referrerId = referrer.id;
                 referrerDeviceFingerprint = referrer.deviceFingerprint || null;
-                console.log(`[Google OAuth] Valid referral code ${referralCode} from user ${referrerId}`);
+                console.log(
+                  `[Google OAuth] Valid referral code ${referralCode} from user ${referrerId}`,
+                );
               }
             }
 
             // Create new user from Google profile
             const email = profile.emails?.[0]?.value;
-            let baseUsername = email?.split('@')[0] || `google_${profile.id.slice(0, 10)}`;
+            let baseUsername =
+              email?.split("@")[0] || `google_${profile.id.slice(0, 10)}`;
             let username = baseUsername;
             let suffix = 1;
-            
+
             // Ensure username is unique by checking and appending suffix if needed
             while (true) {
               const [existingUsername] = await db
@@ -239,18 +273,21 @@ export function setupAuth(app: Express) {
                 .from(users)
                 .where(eq(users.username, username))
                 .limit(1);
-              
+
               if (!existingUsername) break;
               username = `${baseUsername}${suffix}`;
               suffix++;
             }
-            
+
             // Generate unique userCode (handle = referralCode = same 6-char code)
             const googleName = profile.displayName || profile.name?.givenName;
             const displayName = generateDisplayName(email, googleName);
-            const firstLetter = email?.split('@')[0]?.replace(/[^a-zA-Z]/g, '').charAt(0);
+            const firstLetter = email
+              ?.split("@")[0]
+              ?.replace(/[^a-zA-Z]/g, "")
+              .charAt(0);
             const userCode = await generateUserCode(firstLetter);
-            
+
             const [newUser] = await db
               .insert(users)
               .values({
@@ -259,7 +296,7 @@ export function setupAuth(app: Express) {
                 displayName,
                 email: email || null,
                 googleId: profile.id,
-                authProvider: 'google',
+                authProvider: "google",
                 isVerified: false,
                 password: null,
                 referredBy: referrerId,
@@ -279,7 +316,9 @@ export function setupAuth(app: Express) {
                 referrerDeviceFingerprint: referrerDeviceFingerprint,
                 referredDeviceFingerprint: null,
               });
-              console.log(`📣 [Google OAuth] Referral created: User ${newUser.id} was referred by user ${referrerId}`);
+              console.log(
+                `📣 [Google OAuth] Referral created: User ${newUser.id} was referred by user ${referrerId}`,
+              );
               // Store referral applied flag in session for callback redirect
               if (req.session) {
                 (req.session as any).referralApplied = true;
@@ -296,8 +335,8 @@ export function setupAuth(app: Express) {
             console.error("Google authentication error:", error);
             return done(error as Error);
           }
-        }
-      )
+        },
+      ),
     );
   }
 
@@ -323,75 +362,92 @@ export function setupAuth(app: Express) {
 
   // Security: Apply rate limiting to login endpoint
   app.post("/api/login", authLimiter, (req, res, next) => {
-    passport.authenticate("local", async (err: any, user: SelectUser | false, info: any) => {
-      if (err) return next(err);
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
-      }
-      // Check if account is deactivated
-      if ((user as any).accountStatus === 'deactivated') {
-        return res.status(403).json({ 
-          message: "Account deactivated",
-          accountStatus: 'deactivated',
-          deactivatedAt: (user as any).deactivatedAt,
-          userId: user.id
-        });
-      }
-      
-      // Update device fingerprint on login for referral fraud detection
-      const { deviceFingerprint } = req.body;
-      if (deviceFingerprint) {
-        try {
-          await db
-            .update(users)
-            .set({ deviceFingerprint: deviceFingerprint })
-            .where(eq(users.id, user.id));
-        } catch (e) {
-          console.error("Failed to update device fingerprint:", e);
-        }
-      }
-      
-      req.login(user, (err) => {
+    passport.authenticate(
+      "local",
+      async (err: any, user: SelectUser | false, info: any) => {
         if (err) return next(err);
-        res.json(user);
-      });
-    })(req, res, next);
+        if (!user) {
+          return res
+            .status(401)
+            .json({ message: info?.message || "Authentication failed" });
+        }
+        // Check if account is deactivated
+        if ((user as any).accountStatus === "deactivated") {
+          return res.status(403).json({
+            message: "Account deactivated",
+            accountStatus: "deactivated",
+            deactivatedAt: (user as any).deactivatedAt,
+            userId: user.id,
+          });
+        }
+
+        // Update device fingerprint on login for referral fraud detection
+        const { deviceFingerprint } = req.body;
+        if (deviceFingerprint) {
+          try {
+            await db
+              .update(users)
+              .set({ deviceFingerprint: deviceFingerprint })
+              .where(eq(users.id, user.id));
+          } catch (e) {
+            console.error("Failed to update device fingerprint:", e);
+          }
+        }
+
+        req.login(user, (err) => {
+          if (err) return next(err);
+          res.json(user);
+        });
+      },
+    )(req, res, next);
   });
 
   // Reactivate a deactivated account
   app.post("/api/reactivate-account", authLimiter, async (req, res, next) => {
     const { username, password } = req.body;
     if (!username || !password) {
-      return res.status(400).json({ message: "Username and password required" });
+      return res
+        .status(400)
+        .json({ message: "Username and password required" });
     }
     try {
       const [user] = await getUserByUsername(username);
-      if (!user || !user.password || !(await comparePasswords(password, user.password))) {
+      if (
+        !user ||
+        !user.password ||
+        !(await comparePasswords(password, user.password))
+      ) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      if ((user as any).accountStatus !== 'deactivated') {
+      if ((user as any).accountStatus !== "deactivated") {
         return res.status(400).json({ message: "Account is not deactivated" });
       }
       // Reactivate the account
       await db
         .update(users)
-        .set({ 
-          accountStatus: 'active',
-          deactivatedAt: null
+        .set({
+          accountStatus: "active",
+          deactivatedAt: null,
         } as any)
         .where(eq(users.id, user.id));
-      
+
       // Restore user's items (make them available again)
       await db
         .update(items)
         .set({ isAvailable: true })
         .where(eq(items.ownerId, user.id));
-      
+
       // Login the user
-      req.login({ ...user, accountStatus: 'active', deactivatedAt: null } as any, (err) => {
-        if (err) return next(err);
-        res.json({ message: "Account reactivated successfully", user: { ...user, accountStatus: 'active' } });
-      });
+      req.login(
+        { ...user, accountStatus: "active", deactivatedAt: null } as any,
+        (err) => {
+          if (err) return next(err);
+          res.json({
+            message: "Account reactivated successfully",
+            user: { ...user, accountStatus: "active" },
+          });
+        },
+      );
     } catch (error) {
       console.error("Reactivation error:", error);
       next(error);
@@ -427,7 +483,8 @@ export function setupAuth(app: Express) {
 
         if (referrer) {
           referrerId = referrer.id;
-          referrerDeviceFingerprint = (referrer as any).deviceFingerprint || null;
+          referrerDeviceFingerprint =
+            (referrer as any).deviceFingerprint || null;
         }
       }
 
@@ -438,14 +495,19 @@ export function setupAuth(app: Express) {
         ? generateDisplayName(undefined, submittedName) // treat submitted name like a Google display name
         : generateDisplayName(emailUsername);
       const firstLetter = submittedName
-        ? submittedName.replace(/[^a-zA-Z]/g, '').charAt(0)
-        : emailUsername.split('@')[0]?.replace(/[^a-zA-Z]/g, '').charAt(0);
+        ? submittedName.replace(/[^a-zA-Z]/g, "").charAt(0)
+        : emailUsername
+            .split("@")[0]
+            ?.replace(/[^a-zA-Z]/g, "")
+            .charAt(0);
       const userCode = await generateUserCode(firstLetter);
-      
+
       // Generate email verification token
       const emailVerificationToken = generateEmailVerificationToken();
-      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      
+      const emailVerificationExpires = new Date(
+        Date.now() + 24 * 60 * 60 * 1000,
+      ); // 24 hours
+
       const [user] = await db
         .insert(users)
         .values({
@@ -453,20 +515,26 @@ export function setupAuth(app: Express) {
           handle: userCode,
           displayName,
           fullName: submittedName || null,
-          password: result.data.password ? await hashPassword(result.data.password) : null,
+          password: result.data.password
+            ? await hashPassword(result.data.password)
+            : null,
           referredBy: referrerId,
           deviceFingerprint: deviceFingerprint || null,
           referralCode: userCode,
           emailVerified: false,
           emailVerificationToken,
           emailVerificationExpires,
-          authProvider: 'local',
+          authProvider: "local",
         })
         .returning();
-      
+
       // Send verification email (don't block registration on email failure)
-      sendVerificationEmail(emailUsername, emailVerificationToken, displayName).catch(err => {
-        console.error('[Auth] Failed to send verification email:', err);
+      sendVerificationEmail(
+        emailUsername,
+        emailVerificationToken,
+        displayName,
+      ).catch((err) => {
+        console.error("[Auth] Failed to send verification email:", err);
       });
 
       // Create referral record if user was referred
@@ -481,7 +549,9 @@ export function setupAuth(app: Express) {
           referrerDeviceFingerprint: referrerDeviceFingerprint,
           referredDeviceFingerprint: deviceFingerprint || null,
         });
-        console.log(`📣 Referral created: User ${user.id} was referred by user ${referrerId}`);
+        console.log(
+          `📣 Referral created: User ${user.id} was referred by user ${referrerId}`,
+        );
       }
 
       req.login(user, (err) => {
@@ -496,26 +566,41 @@ export function setupAuth(app: Express) {
   // Google OAuth routes
   app.get("/api/auth/google", authLimiter, (req, res, next) => {
     console.log("[Google OAuth] /api/auth/google hit");
-    console.log("[Google OAuth] Client ID exists:", !!process.env.GOOGLE_CLIENT_ID);
-    console.log("[Google OAuth] Client Secret exists:", !!process.env.GOOGLE_CLIENT_SECRET);
-    
+    console.log(
+      "[Google OAuth] Client ID exists:",
+      !!process.env.GOOGLE_CLIENT_ID,
+    );
+    console.log(
+      "[Google OAuth] Client Secret exists:",
+      !!process.env.GOOGLE_CLIENT_SECRET,
+    );
     // Store referral code in session for use after OAuth callback
     const refCode = req.query.ref as string;
     if (refCode) {
       (req.session as any).pendingReferralCode = refCode;
       console.log("[Google OAuth] Referral code stored in session:", refCode);
     }
-    
-    passport.authenticate("google", { 
-      scope: ["profile", "email"]
+    // Flag native app requests so the callback knows to deep-link back
+    if (req.query.platform === "native") {
+      (req.session as any).isNativeAuth = true;
+      console.log("[Google OAuth] Native auth flow flagged in session");
+    }
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
     })(req, res, next);
   });
 
   app.get("/api/auth/google/callback", authLimiter, (req, res, next) => {
-    passport.authenticate("google", { 
-      failureRedirect: "/auth"
+    passport.authenticate("google", {
+      failureRedirect: "/auth",
     })(req, res, (err: any) => {
       if (err) return next(err);
+      // Check if this login came from the native app
+      const isNativeAuth = (req.session as any)?.isNativeAuth;
+      if (isNativeAuth) {
+        delete (req.session as any).isNativeAuth;
+        return res.redirect("shareswap://");
+      }
       // Check if referral was applied during this OAuth flow
       const referralApplied = (req.session as any)?.referralApplied;
       if (referralApplied) {
@@ -531,27 +616,30 @@ export function setupAuth(app: Express) {
   app.get("/api/auth/verify-email", async (req, res) => {
     try {
       const token = req.query.token as string;
-      
+
       if (!token) {
         return res.redirect("/auth?error=missing_token");
       }
-      
+
       // Find user with this token
       const [user] = await db
         .select()
         .from(users)
         .where(eq(users.emailVerificationToken, token))
         .limit(1);
-      
+
       if (!user) {
         return res.redirect("/auth?error=invalid_token");
       }
-      
+
       // Check if token has expired
-      if (user.emailVerificationExpires && new Date() > user.emailVerificationExpires) {
+      if (
+        user.emailVerificationExpires &&
+        new Date() > user.emailVerificationExpires
+      ) {
         return res.redirect("/auth?error=token_expired");
       }
-      
+
       // Mark email as verified
       const [updatedUser] = await db
         .update(users)
@@ -562,14 +650,19 @@ export function setupAuth(app: Express) {
         })
         .where(eq(users.id, user.id))
         .returning();
-      
-      console.log(`[Auth] Email verified for user ${user.id} (${user.username})`);
-      
+
+      console.log(
+        `[Auth] Email verified for user ${user.id} (${user.username})`,
+      );
+
       // Refresh the session so the user object reflects the verified state
       if (req.isAuthenticated()) {
         req.login(updatedUser, (loginErr) => {
           if (loginErr) {
-            console.error("[Auth] Session refresh after verification failed:", loginErr);
+            console.error(
+              "[Auth] Session refresh after verification failed:",
+              loginErr,
+            );
           }
           return res.redirect("/?verified=true");
         });
@@ -581,24 +674,26 @@ export function setupAuth(app: Express) {
       return res.redirect("/auth?error=verification_failed");
     }
   });
-  
+
   // Resend verification email endpoint
   app.post("/api/auth/resend-verification", async (req, res) => {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    
+
     try {
       const user = req.user;
-      
+
       if (user.emailVerified) {
         return res.status(400).json({ message: "Email already verified" });
       }
-      
+
       // Generate new token
       const emailVerificationToken = generateEmailVerificationToken();
-      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      
+      const emailVerificationExpires = new Date(
+        Date.now() + 24 * 60 * 60 * 1000,
+      );
+
       await db
         .update(users)
         .set({
@@ -606,14 +701,14 @@ export function setupAuth(app: Express) {
           emailVerificationExpires,
         })
         .where(eq(users.id, user.id));
-      
+
       // Send verification email
       const sent = await sendVerificationEmail(
         user.username,
         emailVerificationToken,
-        user.displayName || undefined
+        user.displayName || undefined,
       );
-      
+
       if (sent) {
         res.json({ message: "Verification email sent" });
       } else {
@@ -639,10 +734,13 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    
+
     // Check verification levels
-    const emailVerified = req.user.emailVerified || !!req.user.googleId || req.user.authProvider === 'google';
-    
+    const emailVerified =
+      req.user.emailVerified ||
+      !!req.user.googleId ||
+      req.user.authProvider === "google";
+
     // Check identity verification (verifications table has an approved record)
     const [idVerification] = await db
       .select({ status: verifications.status })
@@ -650,8 +748,8 @@ export function setupAuth(app: Express) {
       .where(
         and(
           eq(verifications.userId, req.user.id),
-          eq(verifications.status, 'approved')
-        )
+          eq(verifications.status, "approved"),
+        ),
       )
       .limit(1);
     const idVerified = !!idVerification;
@@ -660,15 +758,18 @@ export function setupAuth(app: Express) {
     const paymentVerified = !!req.user.stripePaymentMethodId;
 
     // Determine verification level
-    let verificationLevel: 'unverified' | 'email_only' | 'fully_verified' = 'unverified';
+    let verificationLevel: "unverified" | "email_only" | "fully_verified" =
+      "unverified";
     if (emailVerified && idVerified && paymentVerified) {
-      verificationLevel = 'fully_verified';
+      verificationLevel = "fully_verified";
     } else if (emailVerified) {
-      verificationLevel = 'email_only';
+      verificationLevel = "email_only";
     }
 
     const [activeStatus, responseTime] = await Promise.all([
-      Promise.resolve(computeActiveStatus((req.user as any).lastActiveAt ?? null)),
+      Promise.resolve(
+        computeActiveStatus((req.user as any).lastActiveAt ?? null),
+      ),
       computeResponseTime(req.user.id),
     ]);
 

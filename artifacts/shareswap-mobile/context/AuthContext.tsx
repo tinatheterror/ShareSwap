@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "@/lib/api";
 
 interface User {
@@ -44,6 +45,7 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const fetchUser = useCallback(async () => {
     try {
@@ -71,7 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await apiPost("/api/logout");
     setUser(null);
-  }, []);
+    // Mirror web: clear the entire React Query cache so stale data
+    // from the previous session never bleeds into the next login.
+    queryClient.clear();
+  }, [queryClient]);
 
   return (
     <AuthContext.Provider

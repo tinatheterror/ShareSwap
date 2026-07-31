@@ -6605,10 +6605,13 @@ Respond with ONLY the category name, nothing else.`
       }
 
       const origin = `${req.protocol}://${req.get('host')}`;
+      // Mobile app passes its own deep-link URLs; web falls back to origin-relative paths
+      const returnUrl = req.body.returnUrl || `${origin}/my-balance?connected=true`;
+      const refreshUrl = req.body.refreshUrl || `${origin}/my-balance?reconnect=true`;
       const accountLink = await stripe.accountLinks.create({
         account: accountId,
-        refresh_url: `${origin}/my-balance?reconnect=true`,
-        return_url: `${origin}/my-balance?connected=true`,
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
         type: 'account_onboarding',
       });
 

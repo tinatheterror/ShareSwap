@@ -1,10 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
+  AppStateStatus,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -94,6 +96,10 @@ export default function MyBalanceScreen() {
   const [cashOutOpen, setCashOutOpen] = useState(false);
   const [payoutAmount, setPayoutAmount] = useState("");
 
+  // Track when the Stripe Connect browser is open so AppState listener knows to act
+  const hasOpenedStripe = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+
   const { data: balanceData, isLoading: balanceLoading } = useQuery<BalanceData>({
     queryKey: ["/api/rental-balance"],
     queryFn: () => apiGet("/api/rental-balance"),
@@ -104,9 +110,49 @@ export default function MyBalanceScreen() {
     queryFn: () => apiGet("/api/stripe/connect/status"),
   });
 
+  // Native: refetch connect status when user returns from Stripe Connect browser
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        next === "active" &&
+        hasOpenedStripe.current
+      ) {
+        hasOpenedStripe.current = false;
+        refetchStatus();
+        queryClient.invalidateQueries({ queryKey: ["/api/rental-balance"] });
+      }
+      appStateRef.current = next;
+    });
+    return () => sub.remove();
+  }, [refetchStatus, queryClient]);
+
+  // Web: detect Stripe Connect redirect back with ?connected / ?reconnect params
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("connected") === "true") {
+      Alert.alert("Bank account connected!", "Your payout account is set up. Earnings will be sent to your bank.");
+      window.history.replaceState({}, "", window.location.pathname);
+      refetchStatus();
+    } else if (params.get("reconnect") === "true") {
+      Alert.alert("Complete your setup", "Please finish connecting your bank account.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [refetchStatus]);
+
   const onboardMutation = useMutation({
-    mutationFn: () => apiPost<{ url: string }>("/api/stripe/connect/onboard", {}),
-    onSuccess: (data) => { if (data.url) Linking.openURL(data.url); },
+    mutationFn: () => {
+      const returnUrl = Linking.createURL("/wallet?connected=true");
+      const refreshUrl = Linking.createURL("/wallet?reconnect=true");
+      return apiPost<{ url: string }>("/api/stripe/connect/onboard", { returnUrl, refreshUrl });
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        hasOpenedStripe.current = true;
+        Linking.openURL(data.url);
+      }
+    },
     onError: (err: any) => Alert.alert("Setup Failed", err.message || "Could not start bank account setup."),
   });
 

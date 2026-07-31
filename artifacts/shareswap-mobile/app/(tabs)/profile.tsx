@@ -335,43 +335,6 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        {/* Account Statistics card */}
-        <View style={[styles.sectionCard, { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }]}>
-          <View style={styles.sectionCardHeader}>
-            <View style={styles.sectionCardTitleRow}>
-              <Feather name="trending-up" size={18} color="#0d9488" />
-              <Text style={[styles.sectionCardTitle, { color: colors.foreground }]}>Account Statistics</Text>
-            </View>
-          </View>
-
-          {[
-            { label: "Level", icon: "award", value: userProfile?.reputationLevel ?? user.reputationLevel ?? "Newcomer" },
-            { label: "ShareCoins", icon: "dollar-sign", value: String(Math.round(Number(userProfile?.shareCoins ?? user.shareCoins ?? 0))) },
-            { label: "Completed Shares", icon: "package", value: String(userProfile?.completedShares ?? stats?.completedShares ?? 0) },
-            {
-              label: "Rating",
-              icon: "star",
-              value: userProfile?.averageRating != null
-                ? `${Number(userProfile.averageRating).toFixed(1)} ★ · ${userProfile.reviewCount ?? 0} reviews`
-                : `— · ${userProfile?.reviewCount ?? 0} reviews`,
-            },
-            { label: "Trust Score", icon: "shield", value: String(user.trustScore ?? 0) },
-            {
-              label: "On-time Returns",
-              icon: "clock",
-              value: userProfile?.onTimeReturnRate != null ? `${userProfile.onTimeReturnRate}%` : "—",
-            },
-          ].map(({ label, icon, value }) => (
-            <View key={label} style={styles.statRow}>
-              <View style={styles.statRowLeft}>
-                <Feather name={icon as any} size={15} color="#0d9488" />
-                <Text style={[styles.statRowLabel, { color: "#475569" }]}>{label}</Text>
-              </View>
-              <Text style={[styles.statRowValue, { color: "#0f766e" }]}>{value}</Text>
-            </View>
-          ))}
-        </View>
-
         {/* Plans & Pricing */}
         <View style={styles.plansSection}>
           <View style={styles.plansSectionHeader}>
@@ -567,6 +530,43 @@ export default function ProfileScreen() {
           <Text style={[styles.plansFooter, { color: colors.mutedForeground }]}>
             Subscriptions renew monthly · Cancel anytime via Manage Subscription · Service fee includes Stripe payment processing
           </Text>
+        </View>
+
+        {/* Account Statistics card */}
+        <View style={[styles.sectionCard, { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }]}>
+          <View style={styles.sectionCardHeader}>
+            <View style={styles.sectionCardTitleRow}>
+              <Feather name="trending-up" size={18} color="#0d9488" />
+              <Text style={[styles.sectionCardTitle, { color: colors.foreground }]}>Account Statistics</Text>
+            </View>
+          </View>
+
+          {[
+            { label: "Level", icon: "award", value: userProfile?.reputationLevel ?? user.reputationLevel ?? "Newcomer" },
+            { label: "ShareCoins", icon: "dollar-sign", value: String(Math.round(Number(userProfile?.shareCoins ?? user.shareCoins ?? 0))) },
+            { label: "Completed Shares", icon: "package", value: String(userProfile?.completedShares ?? stats?.completedShares ?? 0) },
+            {
+              label: "Rating",
+              icon: "star",
+              value: userProfile?.averageRating != null
+                ? `${Number(userProfile.averageRating).toFixed(1)} ★ · ${userProfile.reviewCount ?? 0} reviews`
+                : `— · ${userProfile?.reviewCount ?? 0} reviews`,
+            },
+            { label: "Trust Score", icon: "shield", value: String(user.trustScore ?? 0) },
+            {
+              label: "On-time Returns",
+              icon: "clock",
+              value: userProfile?.onTimeReturnRate != null ? `${userProfile.onTimeReturnRate}%` : "—",
+            },
+          ].map(({ label, icon, value }) => (
+            <View key={label} style={styles.statRow}>
+              <View style={styles.statRowLeft}>
+                <Feather name={icon as any} size={15} color="#0d9488" />
+                <Text style={[styles.statRowLabel, { color: "#475569" }]}>{label}</Text>
+              </View>
+              <Text style={[styles.statRowValue, { color: "#0f766e" }]}>{value}</Text>
+            </View>
+          ))}
         </View>
 
         <Pressable

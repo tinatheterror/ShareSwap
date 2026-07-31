@@ -122,14 +122,24 @@ export default function EditProfileScreen() {
         throw new Error((body as any).error || "Upload failed");
       }
       const data = await res.json();
+      // Mirror web: invalidate user (ShareCoin count), user-profile, and public profile
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["public-profile"] });
       if (refreshUser) refreshUser();
-      if (data.earnedCoin) {
-        Alert.alert("🪙 ShareCoin Earned!", "You earned 1 ShareCoin for adding a profile photo.");
+
+      if (data.shareCoinsAwarded > 0) {
+        Alert.alert("Photo Approved! 🪙", "You earned 1 ShareCoin for adding a profile photo!");
+      } else if (data.validationStatus === "rejected") {
+        Alert.alert(
+          "Photo Saved",
+          data.validationReason || "Try another photo to earn 1 ShareCoin."
+        );
+      } else {
+        Alert.alert("Photo Updated!", "Your profile photo has been updated.");
       }
     } catch (e: any) {
-      Alert.alert("Upload failed", e.message || "Could not upload photo.");
+      Alert.alert("Upload Failed", e.message || "Could not upload photo.");
       setLocalPhoto(null);
     } finally {
       setPhotoUploading(false);

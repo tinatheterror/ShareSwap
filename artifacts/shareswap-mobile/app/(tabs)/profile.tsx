@@ -227,27 +227,11 @@ export default function ProfileScreen() {
             style={styles.menuRow}
             onPress={() => router.push("/wallet")}
           >
-            <View style={[styles.menuIcon, { backgroundColor: colors.primary + "20" }]}>
-              <Feather name="credit-card" size={18} color={colors.primary} />
+            <View style={[styles.menuIcon, { backgroundColor: colors.muted }]}>
+              <Feather name="credit-card" size={18} color={colors.mutedForeground} />
             </View>
             <View style={styles.menuTextGroup}>
               <Text style={[styles.menuLabel, { color: colors.foreground }]}>My Balance</Text>
-            </View>
-            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-          </Pressable>
-
-          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
-
-          <Pressable
-            style={styles.menuRow}
-            onPress={() => router.push("/achievements")}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: colors.primary + "20" }]}>
-              <Feather name="award" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.menuTextGroup}>
-              <Text style={[styles.menuLabel, { color: colors.foreground }]}>Achievements & Trust</Text>
-              <Text style={[styles.menuSubtext, { color: colors.mutedForeground }]}>Badges and trust score</Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -360,31 +344,6 @@ export default function ProfileScreen() {
             </View>
           ))}
         </View>
-
-        {items && items.length > 0 ? (
-          <View>
-            <Text
-              style={[styles.sectionTitle, { color: colors.foreground }]}
-            >
-              My Listings
-            </Text>
-            {items.map((item) => (
-              <ItemCard key={item.id} item={item} />
-            ))}
-          </View>
-        ) : items !== undefined ? (
-          <View style={styles.emptyListings}>
-            <Feather name="package" size={36} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              No listings yet
-            </Text>
-            <Text
-              style={[styles.emptyText, { color: colors.mutedForeground }]}
-            >
-              Add your first item to start sharing with neighbours
-            </Text>
-          </View>
-        ) : null}
 
         <Pressable
           style={({ pressed }) => [

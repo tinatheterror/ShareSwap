@@ -1,8 +1,9 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Feather } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,12 +21,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { BASE_URL } from "@/lib/api";
+import { LAST_AUTH_METHOD_KEY } from "@/context/AuthContext";
 
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { login, refetchUser } = useAuth();
+  const params = useLocalSearchParams<{ session_expired?: string }>();
+
+  const sessionExpired = params.session_expired === "1";
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [username, setUsername] = useState("");
@@ -34,6 +39,16 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
   const [referralCode, setReferralCode] = useState("");
+  const [lastAuthMethod, setLastAuthMethod] = useState<"google" | "email" | null>(null);
+
+  // Read the previously used sign-in method so we can highlight it.
+  useEffect(() => {
+    AsyncStorage.getItem(LAST_AUTH_METHOD_KEY)
+      .then((val) => {
+        if (val === "google" || val === "email") setLastAuthMethod(val);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleLogin() {
     if (!username.trim() || !password.trim()) {
@@ -63,6 +78,7 @@ export default function LoginScreen() {
       try {
         const result = await WebBrowser.openAuthSessionAsync(googleUrl, redirectUri);
         if (result.type === "success") {
+          await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "google");
           await refetchUser();
           router.replace("/(tabs)");
         }
@@ -102,6 +118,15 @@ export default function LoginScreen() {
         />
 
         <View style={styles.card}>
+          {sessionExpired && (
+            <View style={[styles.sessionBanner, { backgroundColor: "#fff7ed", borderColor: "#fdba74" }]}>
+              <Feather name="clock" size={15} color="#ea580c" />
+              <Text style={styles.sessionBannerText}>
+                Your session expired — please sign in again.
+              </Text>
+            </View>
+          )}
+
           <Text style={[styles.heading, { color: colors.foreground }]}>
             Sign in and discover a world of shared resources
           </Text>
@@ -110,12 +135,18 @@ export default function LoginScreen() {
             style={({ pressed }) => [
               styles.googleBtn,
               { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1 },
+              lastAuthMethod === "google" && styles.googleBtnHighlighted,
             ]}
             onPress={handleGoogleLogin}
           >
             <Text style={[styles.googleBtnText, { color: colors.primaryForeground }]}>
               Continue with Google
             </Text>
+            {lastAuthMethod === "google" && (
+              <View style={styles.lastUsedBadge}>
+                <Text style={styles.lastUsedBadgeText}>Last used</Text>
+              </View>
+            )}
           </Pressable>
 
           <Pressable
@@ -278,14 +309,50 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     marginBottom: 4,
   },
+  sessionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  sessionBannerText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: "#ea580c",
+    flex: 1,
+  },
   googleBtn: {
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+  },
+  googleBtnHighlighted: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   googleBtnText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+  },
+  lastUsedBadge: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  lastUsedBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#fff",
   },
   phoneBtn: {
     borderRadius: 14,

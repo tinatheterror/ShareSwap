@@ -1,12 +1,17 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "@/lib/api";
+
+const HAS_SESSION_KEY = "has_session";
+export const LAST_AUTH_METHOD_KEY = "lastAuthMethod";
 
 interface User {
   id: number;
@@ -29,6 +34,8 @@ interface User {
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
+  sessionExpired: boolean;
+  clearSessionExpired: () => void;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refetchUser: () => Promise<void>;
@@ -37,6 +44,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   isLoading: true,
+  sessionExpired: false,
+  clearSessionExpired: () => {},
   login: async () => {},
   logout: async () => {},
   refetchUser: async () => {},
@@ -45,14 +54,32 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const queryClient = useQueryClient();
+
+  // Track whether we had a valid session before this fetch so we can
+  // distinguish "first open with no session" from "session expired mid-use".
+  const hadSession = useRef(false);
 
   const fetchUser = useCallback(async () => {
     try {
       const data = await apiGet<User>("/api/user");
       setUser(data);
-    } catch {
+      hadSession.current = true;
+      // Persist the fact that the user has an active session.
+      await AsyncStorage.setItem(HAS_SESSION_KEY, "1");
+    } catch (err: unknown) {
       setUser(null);
+      const status = (err as { status?: number })?.status;
+      if (status === 401) {
+        // Only flag as expired when the user had a prior session.
+        // This avoids showing the banner on a fresh install / clean logout.
+        const storedSession = await AsyncStorage.getItem(HAS_SESSION_KEY);
+        if (hadSession.current || storedSession === "1") {
+          setSessionExpired(true);
+          await AsyncStorage.removeItem(HAS_SESSION_KEY);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -62,9 +89,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUser();
   }, [fetchUser]);
 
+  const clearSessionExpired = useCallback(() => {
+    setSessionExpired(false);
+  }, []);
+
   const login = useCallback(
     async (username: string, password: string) => {
       await apiPost("/api/login", { username, password });
+      await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");
+      setSessionExpired(false);
       await fetchUser();
     },
     [fetchUser],
@@ -73,6 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await apiPost("/api/logout");
     setUser(null);
+    setSessionExpired(false);
+    hadSession.current = false;
+    await AsyncStorage.multiRemove([HAS_SESSION_KEY, LAST_AUTH_METHOD_KEY]);
     // Mirror web: clear the entire React Query cache so stale data
     // from the previous session never bleeds into the next login.
     queryClient.clear();
@@ -83,6 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isLoading,
+        sessionExpired,
+        clearSessionExpired,
         login,
         logout,
         refetchUser: fetchUser,

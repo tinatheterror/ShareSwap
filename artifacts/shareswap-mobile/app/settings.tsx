@@ -533,9 +533,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { paddingHorizontal: 16, gap: 16 },
 
-  pageHeader: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 4 },
-  gearIconWrap: { width: 48, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  pageTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  pageHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 },
+  gearIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  pageTitle: { fontSize: 24, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   pageSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
 
   card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },

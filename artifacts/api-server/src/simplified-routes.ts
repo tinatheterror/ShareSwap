@@ -4,6 +4,52 @@ import { db } from "@workspace/db";
 import { users, achievements, userAchievements } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
+const BADGE_TITLE_MAP: Record<string, string> = {
+  five_transactions: "Community Sharer",
+  ten_transactions: "Power Sharer",
+  first_lend: "First Lend",
+  five_lends: "Generous Lender",
+  first_gift: "Gift Giver",
+  three_gifts: "Generous Gifter",
+  first_swap: "Swap Starter",
+  verified_member: "Verified Member",
+  five_swaps: "Swap Champion",
+  ten_gifts: "Generous Soul",
+  five_borrows: "Active Borrower",
+  five_listed: "ShareChest Curator",
+  five_reviews_left: "Community Voice",
+  referral_5: "Neighbour Connector",
+  fast_responder: "Fast Responder",
+  five_star_neighbour: "Five-Star Neighbour",
+  early_member: "Early Member",
+  three_in_week: "Weekly Warrior",
+  five_reviews_received: "Highly Rated",
+  first_borrow: "First Borrow",
+  reliable_borrower: "Reliable Borrower",
+  trusted_exchanger: "Trusted Exchanger",
+  super_lender: "Super Lender",
+  rising_star: "Rising Star",
+  exchange_veteran: "Exchange Veteran",
+  urgent_helper: "Urgent Helper",
+  well_loved: "Well Loved",
+  neighbourhood_hero: "Neighbourhood Hero",
+  shareswap_legend: "ShareSwap Legend",
+  courier_rider: "Courier Rider",
+  community_builder: "Community Builder",
+  shareswap_ambassador: "ShareSwap Ambassador",
+  coin_collector: "Coin Collector",
+  power_lister: "Power Lister",
+  wish_maker: "Wish Maker",
+  good_neighbour: "Good Neighbour",
+  photo_pro: "Photo Pro",
+  welcome_wagon: "Welcome Wagon",
+};
+
+function badgeTitle(rawName: string): string {
+  return BADGE_TITLE_MAP[rawName] ??
+    rawName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function addSimplifiedRoutes(app: Express) {
   // Real achievements route
   app.get("/api/achievements", async (req, res) => {
@@ -51,7 +97,7 @@ export function addSimplifiedRoutes(app: Express) {
 
       const badges = allAchievements.map((a) => ({
         id: a.id,
-        title: a.name,
+        title: badgeTitle(a.name),
         description: a.description,
         badgeIcon: a.badgeIcon,
         category: a.category ?? undefined,

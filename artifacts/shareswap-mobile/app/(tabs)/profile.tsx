@@ -193,7 +193,7 @@ export default function ProfileScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.profileCard,
-            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: colors.accent, borderColor: "transparent", opacity: pressed ? 0.85 : 1 },
           ]}
           onPress={() => router.push(`/profile/${user.id}` as never)}
         >

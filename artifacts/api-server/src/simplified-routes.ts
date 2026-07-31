@@ -1,52 +1,65 @@
 // Simple API routes for new features that work with current database structure
 import type { Express } from "express";
 import { db } from "@workspace/db";
-import { users } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { users, achievements, userAchievements } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 export function addSimplifiedRoutes(app: Express) {
-  // Basic achievements route
+  // Real achievements route
   app.get("/api/achievements", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
-
     try {
-      // Mock achievements data for now
-      const achievements = [
-        {
-          id: 1,
-          name: "First Lender",
-          description: "Lend your first item to a neighbour",
-          badgeIcon: "🤝",
-          badgeColor: "#10b981",
-          pointsRequired: 0,
-          category: "milestone",
-          isActive: true,
-        },
-        {
-          id: 2,
-          name: "Trusted Neighbour", 
-          description: "Maintain a 4.5+ star rating with 10+ transactions",
-          badgeIcon: "⭐",
-          badgeColor: "#f59e0b",
-          pointsRequired: 100,
-          category: "social",
-          isActive: true,
-        },
-        {
-          id: 3,
-          name: "Green Warrior",
-          description: "Share 50+ items promoting sustainable living",
-          badgeIcon: "🌱",
-          badgeColor: "#059669",
-          pointsRequired: 250,
-          category: "lending",
-          isActive: true,
-        }
-      ];
+      const userId = (req.user as any).id;
 
-      res.json(achievements);
+      const [userRow] = await db
+        .select({ reputationScore: users.reputationScore, reputationLevel: users.reputationLevel })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const score = userRow?.reputationScore ?? 0;
+      const level = userRow?.reputationLevel ?? "Newcomer";
+
+      const LEVEL_THRESHOLDS = [
+        { name: "Newcomer", minScore: 0 },
+        { name: "Neighbour", minScore: 50 },
+        { name: "Trusted Member", minScore: 150 },
+        { name: "Community Pillar", minScore: 300 },
+        { name: "ShareSwap Champion", minScore: 500 },
+      ];
+      const nextLevel = LEVEL_THRESHOLDS.find((l) => l.minScore > score);
+      const nextLevelScore = nextLevel ? nextLevel.minScore : undefined;
+
+      const allAchievements = await db
+        .select({
+          id: achievements.id,
+          name: achievements.name,
+          description: achievements.description,
+          badgeIcon: achievements.badgeIcon,
+          category: achievements.category,
+        })
+        .from(achievements);
+
+      const earnedRows = await db
+        .select({ achievementId: userAchievements.achievementId, earnedAt: userAchievements.earnedAt })
+        .from(userAchievements)
+        .where(and(eq(userAchievements.userId, userId), eq(userAchievements.isCompleted, true)));
+
+      const earnedMap = new Map(earnedRows.map((r) => [r.achievementId, r.earnedAt]));
+
+      const badges = allAchievements.map((a) => ({
+        id: a.id,
+        title: a.name,
+        description: a.description,
+        badgeIcon: a.badgeIcon,
+        category: a.category ?? undefined,
+        earned: earnedMap.has(a.id),
+        earnedAt: earnedMap.get(a.id) ?? undefined,
+      }));
+
+      res.json({ score, level, nextLevelScore, badges });
     } catch (error) {
       console.error("Error fetching achievements:", error);
       res.status(500).json({ error: "Failed to fetch achievements" });
@@ -136,8 +149,8 @@ export function addSimplifiedRoutes(app: Express) {
         return {
           ...wishlist,
           isExpired: expired,
-          expirationReason: expired ? 
-            `Needed date ${new Date(wishlist.neededDate).toLocaleDateString()} has passed` : 
+          expirationReason: expired ?
+            `Needed date ${new Date(wishlist.neededDate).toLocaleDateString()} has passed` :
             undefined
         };
       });
@@ -240,7 +253,7 @@ export function addSimplifiedRoutes(app: Express) {
 
       // Filter out current user's own wishlists
       const otherUsersWishlists = sampleWishlists.filter(w => w.userId !== req.user.id);
-      
+
       // Add isExpired field to each wishlist (reuse today var, normalize to midnight)
       const todayMidnight = new Date();
       todayMidnight.setHours(0, 0, 0, 0);
@@ -253,7 +266,7 @@ export function addSimplifiedRoutes(app: Express) {
         }
         return { ...w, isExpired };
       });
-      
+
       res.json(wishlistsWithExpiry);
     } catch (error) {
       console.error("Error fetching all wishlists:", error);
@@ -409,7 +422,7 @@ export function addSimplifiedRoutes(app: Express) {
 
     try {
       const wishlistId = parseInt(req.params.id);
-      
+
       // In production, this would delete from the database
       // For now, we'll just return success
       res.json({ success: true, message: "Wishlist item deleted" });
@@ -428,7 +441,7 @@ export function addSimplifiedRoutes(app: Express) {
     try {
       const wishlistId = parseInt(req.params.id);
       const { itemName, description, preferredLocation, neededDate, returnDate } = req.body;
-      
+
       // In production, this would update the database
       // For now, we'll return the updated data
       const updatedWishlist = {
@@ -529,7 +542,7 @@ export function addSimplifiedRoutes(app: Express) {
     try {
       // Generate unique referral code
       const referralCode = `SHARE${req.user.id}${Date.now().toString().slice(-6)}`;
-      
+
       // Update user's referral code in database
       try {
         await db

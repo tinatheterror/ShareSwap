@@ -244,15 +244,24 @@ export default function ProfileScreen() {
           onPress={() => router.push(`/profile/${user.id}` as never)}
         >
           <View style={styles.profileTop}>
-            <View
-              style={[
-                styles.avatar,
-                { backgroundColor: colors.primary + "30" },
-              ]}
-            >
-              <Text style={[styles.avatarText, { color: colors.primary }]}>
-                {initial}
-              </Text>
+            {/* Avatar column: circle + Add photo nudge */}
+            <View style={styles.avatarCol}>
+              <View style={[styles.avatar, { backgroundColor: "#0d9488" }]}>
+                {(user.avatarUrl || userProfile?.avatarUrl) ? (
+                  <Text style={[styles.avatarText, { color: "#fff" }]}>{initial}</Text>
+                ) : (
+                  <Text style={[styles.avatarText, { color: "#fff" }]}>{initial}</Text>
+                )}
+              </View>
+              {!(user.avatarUrl || userProfile?.avatarUrl) && (
+                <Pressable
+                  style={styles.addPhotoNudge}
+                  onPress={() => router.push("/edit-profile" as never)}
+                  hitSlop={6}
+                >
+                  <Text style={styles.addPhotoText}>+1 🪙 · Add photo</Text>
+                </Pressable>
+              )}
             </View>
             <View style={styles.profileInfo}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -655,6 +664,10 @@ const styles = StyleSheet.create({
     gap: 14,
     alignItems: "center",
   },
+  avatarCol: {
+    alignItems: "center",
+    gap: 6,
+  },
   avatar: {
     width: 72,
     height: 72,
@@ -665,6 +678,19 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 28,
     fontFamily: "Inter_700Bold",
+  },
+  addPhotoNudge: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#A7F0E4",
+  },
+  addPhotoText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#0d9488",
   },
   profileInfo: {
     flex: 1,

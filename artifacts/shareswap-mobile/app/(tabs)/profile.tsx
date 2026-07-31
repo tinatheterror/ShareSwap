@@ -1,10 +1,11 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -61,6 +62,32 @@ export default function ProfileScreen() {
     queryKey: ["/api/user-profile"],
     queryFn: () => apiGet<UserProfile>("/api/user-profile"),
     enabled: !!user,
+  });
+
+  const { data: subStatus } = useQuery<{
+    subscriptionTier: string;
+    stripeSubscriptionId: string | null;
+    stripeSubscriptionStatus: string | null;
+    monthlyBorrowCount: number;
+    monthlyBorrowResetAt: string | null;
+  }>({
+    queryKey: ["/api/subscription/status"],
+    queryFn: () => apiGet("/api/subscription/status"),
+    enabled: !!user,
+  });
+
+  const currentTier = subStatus?.subscriptionTier ?? "free";
+
+  const checkoutMutation = useMutation({
+    mutationFn: (tier: string) => apiPost<{ url: string }>("/api/subscription/checkout", { tier }),
+    onSuccess: (data) => { if (data.url) Linking.openURL(data.url); },
+    onError: () => Alert.alert("Checkout failed", "Please try again."),
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: () => apiPost<{ url: string }>("/api/subscription/portal", {}),
+    onSuccess: (data) => { if (data.url) Linking.openURL(data.url); },
+    onError: () => Alert.alert("Error", "Could not open subscription portal."),
   });
 
   async function handleRefresh() {
@@ -345,6 +372,203 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {/* Plans & Pricing */}
+        <View style={styles.plansSection}>
+          <View style={styles.plansSectionHeader}>
+            <Feather name="award" size={18} color="#0d9488" />
+            <Text style={[styles.plansSectionTitle, { color: colors.foreground }]}>Plans &amp; Pricing</Text>
+          </View>
+          <Text style={[styles.plansSectionSub, { color: colors.mutedForeground }]}>
+            Share more, own less. Upgrade to Member for unlimited borrows.
+          </Text>
+
+          {/* Free */}
+          <View style={[
+            styles.planCard,
+            { backgroundColor: colors.card, borderColor: "#e2e8f0" },
+            currentTier === "free" && styles.planCardActive,
+            currentTier === "free" && { borderColor: "#2dd4bf" },
+          ]}>
+            {currentTier === "free" && (
+              <View style={[styles.planCurrentBanner, { borderBottomColor: "#f1f5f9" }]}>
+                <Text style={styles.planCurrentLabel}>Current Plan</Text>
+                <Text style={[styles.planBorrowCount, { color: colors.mutedForeground }]}>
+                  {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used this month
+                </Text>
+              </View>
+            )}
+            <View style={styles.planRow}>
+              <View style={[styles.planIconWrap, { backgroundColor: "#f1f5f9" }]}>
+                <Feather name="zap" size={16} color="#64748b" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.planName, { color: colors.foreground }]}>Free</Text>
+                <Text style={[styles.planBillingNote, { color: colors.mutedForeground }]}>Free forever</Text>
+              </View>
+              <Text style={[styles.planPrice, { color: "#475569" }]}>$0</Text>
+            </View>
+            <View style={styles.planFeatures}>
+              {[
+                { text: "3 borrows per month", included: true },
+                { text: "Unlimited swaps & gifts", included: true },
+                { text: "5% service fee on rentals", included: false },
+              ].map(({ text, included }) => (
+                <View key={text} style={styles.planFeatureRow}>
+                  {included
+                    ? <Feather name="check" size={13} color="#14b8a6" />
+                    : <View style={styles.planDot} />}
+                  <Text style={[styles.planFeatureText, { color: included ? "#475569" : "#94a3b8" }]}>{text}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={[styles.planBtn, { borderColor: "#e2e8f0", backgroundColor: "transparent" }]}>
+              <Text style={{ color: "#94a3b8", fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" }}>
+                {currentTier === "free" ? "Your Current Plan" : "Free Plan"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Member */}
+          <View style={[
+            styles.planCard,
+            { backgroundColor: colors.card, borderColor: "#2dd4bf" },
+            currentTier === "member" && styles.planCardActive,
+          ]}>
+            <View style={styles.popularBadge}>
+              <Text style={styles.popularBadgeText}>Most Popular</Text>
+            </View>
+            {currentTier === "member" && (
+              <View style={[styles.planCurrentBanner, { borderBottomColor: "#f0fdfa" }]}>
+                <Text style={styles.planCurrentLabel}>Current Plan</Text>
+                <View style={[styles.activePill, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
+                  <Text style={{ color: "#15803d", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>Active</Text>
+                </View>
+              </View>
+            )}
+            <View style={[styles.planRow, { marginTop: currentTier !== "member" ? 12 : 0 }]}>
+              <View style={[styles.planIconWrap, { backgroundColor: "#f0fdfa" }]}>
+                <Feather name="star" size={16} color="#0d9488" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.planName, { color: colors.foreground }]}>Member</Text>
+                <Text style={[styles.planBillingNote, { color: colors.mutedForeground }]}>$4.99 / month</Text>
+              </View>
+              <Text style={[styles.planPrice, { color: colors.foreground }]}>$4.99<Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}> /mo</Text></Text>
+            </View>
+            <View style={styles.planFeatures}>
+              {[
+                "Unlimited borrows",
+                "Unlimited swaps & gifts",
+                "5% service fee on rentals",
+              ].map((text) => (
+                <View key={text} style={styles.planFeatureRow}>
+                  <Feather name="check" size={13} color="#14b8a6" />
+                  <Text style={[styles.planFeatureText, { color: "#475569" }]}>{text}</Text>
+                </View>
+              ))}
+            </View>
+            {currentTier === "member" ? (
+              <View style={{ gap: 8 }}>
+                <View style={[styles.planBtn, { borderColor: "#99f6e4", backgroundColor: "transparent" }]}>
+                  <Text style={{ color: "#0d9488", fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" }}>✓ Current Plan</Text>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [styles.planBtnGhost, { opacity: pressed ? 0.7 : 1 }]}
+                  onPress={() => portalMutation.mutate()}
+                  disabled={portalMutation.isPending}
+                >
+                  <Feather name="settings" size={13} color="#64748b" />
+                  <Text style={{ color: "#64748b", fontSize: 13, fontFamily: "Inter_400Regular" }}>
+                    {portalMutation.isPending ? "Opening…" : "Manage Subscription"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [styles.planBtnFilled, { backgroundColor: pressed ? "#0f766e" : "#0d9488", opacity: checkoutMutation.isPending ? 0.7 : 1 }]}
+                onPress={() => checkoutMutation.mutate("member")}
+                disabled={checkoutMutation.isPending}
+              >
+                <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                  {checkoutMutation.isPending && checkoutMutation.variables === "member" ? "Loading…" : "Subscribe — $4.99/mo"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Pro */}
+          <View style={[
+            styles.planCard,
+            { backgroundColor: colors.card, borderColor: "#fbbf24" },
+            currentTier === "pro" && styles.planCardActive,
+            currentTier === "pro" && { borderColor: "#fbbf24" },
+          ]}>
+            {currentTier === "pro" && (
+              <View style={[styles.planCurrentBanner, { borderBottomColor: "#fffbeb" }]}>
+                <Text style={styles.planCurrentLabel}>Current Plan</Text>
+                <View style={[styles.activePill, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
+                  <Text style={{ color: "#15803d", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>Active</Text>
+                </View>
+              </View>
+            )}
+            <View style={styles.planRow}>
+              <View style={[styles.planIconWrap, { backgroundColor: "#fffbeb" }]}>
+                <Feather name="award" size={16} color="#f59e0b" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.planName, { color: colors.foreground }]}>Pro</Text>
+                <Text style={[styles.planBillingNote, { color: colors.mutedForeground }]}>$9.99 / month</Text>
+              </View>
+              <Text style={[styles.planPrice, { color: colors.foreground }]}>$9.99<Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}> /mo</Text></Text>
+            </View>
+            <View style={styles.planFeatures}>
+              {[
+                "Unlimited borrows",
+                "Unlimited swaps & gifts",
+                "Reduced 4% service fee on rentals",
+                "Activity & Insights dashboard",
+                "$1.50 courier fee waived (5/mo)",
+              ].map((text) => (
+                <View key={text} style={styles.planFeatureRow}>
+                  <Feather name="check" size={13} color="#14b8a6" />
+                  <Text style={[styles.planFeatureText, { color: "#475569" }]}>{text}</Text>
+                </View>
+              ))}
+            </View>
+            {currentTier === "pro" ? (
+              <View style={{ gap: 8 }}>
+                <View style={[styles.planBtn, { borderColor: "#fde68a", backgroundColor: "transparent" }]}>
+                  <Text style={{ color: "#d97706", fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" }}>✓ Current Plan</Text>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [styles.planBtnGhost, { opacity: pressed ? 0.7 : 1 }]}
+                  onPress={() => portalMutation.mutate()}
+                  disabled={portalMutation.isPending}
+                >
+                  <Feather name="settings" size={13} color="#64748b" />
+                  <Text style={{ color: "#64748b", fontSize: 13, fontFamily: "Inter_400Regular" }}>
+                    {portalMutation.isPending ? "Opening…" : "Manage Subscription"}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [styles.planBtnFilled, { backgroundColor: pressed ? "#d97706" : "#f59e0b", opacity: checkoutMutation.isPending ? 0.7 : 1 }]}
+                onPress={() => checkoutMutation.mutate("pro")}
+                disabled={checkoutMutation.isPending}
+              >
+                <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
+                  {checkoutMutation.isPending && checkoutMutation.variables === "pro" ? "Loading…" : "Subscribe — $9.99/mo"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          <Text style={[styles.plansFooter, { color: colors.mutedForeground }]}>
+            Subscriptions renew monthly · Cancel anytime via Manage Subscription · Service fee includes Stripe payment processing
+          </Text>
+        </View>
+
         <Pressable
           style={({ pressed }) => [
             styles.logoutBtn,
@@ -544,6 +768,144 @@ const styles = StyleSheet.create({
   signInBtnText: {
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
+  },
+  plansSection: {
+    gap: 12,
+  },
+  plansSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  plansSectionTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+  },
+  plansSectionSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  planCard: {
+    borderRadius: 16,
+    borderWidth: 2,
+    padding: 16,
+    gap: 12,
+  },
+  planCardActive: {
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  popularBadge: {
+    alignSelf: "center",
+    backgroundColor: "#0d9488",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    marginTop: -8,
+  },
+  popularBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  planCurrentBanner: {
+    borderBottomWidth: 1,
+    paddingBottom: 10,
+    gap: 4,
+  },
+  planCurrentLabel: {
+    fontSize: 10,
+    color: "#94a3b8",
+    fontFamily: "Inter_400Regular",
+  },
+  planBorrowCount: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  activePill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  planRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  planIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  planName: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 18,
+  },
+  planBillingNote: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  planPrice: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+  },
+  planFeatures: {
+    gap: 8,
+  },
+  planFeatureRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  planDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#cbd5e1",
+    marginTop: 4,
+  },
+  planFeatureText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+  planBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 9,
+    alignItems: "center",
+  },
+  planBtnGhost: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+  },
+  planBtnFilled: {
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  plansFooter: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 16,
+    marginTop: 4,
   },
   logoutBtn: {
     flexDirection: "row",

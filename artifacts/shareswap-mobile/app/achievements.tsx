@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { ShareCoinBadge } from "@/components/ShareCoinBadge";
 
 interface Achievement {
   id: number;
@@ -179,10 +178,6 @@ export default function AchievementsScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.badgeRow}>
-            <ShareCoinBadge />
-          </View>
-
           <View
             style={[
               styles.trustCard,

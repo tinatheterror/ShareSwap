@@ -1,10 +1,12 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
+  AppStateStatus,
   Linking,
   Platform,
   Pressable,
@@ -43,8 +45,43 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout, refetchUser } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isWeb = Platform.OS === "web";
   const [refreshing, setRefreshing] = useState(false);
+
+  // Track when the Stripe browser is open so the AppState listener knows to act
+  const hasOpenedStripe = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+
+  // Native: refetch subscription status when user returns from Stripe browser
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        next === "active" &&
+        hasOpenedStripe.current
+      ) {
+        hasOpenedStripe.current = false;
+        queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+      }
+      appStateRef.current = next;
+    });
+    return () => sub.remove();
+  }, [queryClient]);
+
+  // Web: detect Stripe redirect back with ?sub_success / ?sub_canceled params
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("sub_success") === "true") {
+      Alert.alert("Subscription activated!", "Your new plan benefits are now active.");
+      window.history.replaceState({}, "", window.location.pathname);
+      queryClient.invalidateQueries({ queryKey: ["/api/subscription/status"] });
+    } else if (params.get("sub_canceled") === "true") {
+      Alert.alert("Checkout canceled", "No charges were made.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [queryClient]);
 
   const { data: items, refetch: refetchItems } = useQuery<Item[]>({
     queryKey: ["/api/my-items"],
@@ -79,14 +116,31 @@ export default function ProfileScreen() {
   const currentTier = subStatus?.subscriptionTier ?? "free";
 
   const checkoutMutation = useMutation({
-    mutationFn: (tier: string) => apiPost<{ url: string }>("/api/subscription/checkout", { tier }),
-    onSuccess: (data) => { if (data.url) Linking.openURL(data.url); },
+    mutationFn: (tier: string) => {
+      const successUrl = Linking.createURL("/profile?sub_success=true");
+      const cancelUrl = Linking.createURL("/profile?sub_canceled=true");
+      return apiPost<{ url: string }>("/api/subscription/checkout", { tier, successUrl, cancelUrl });
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        hasOpenedStripe.current = true;
+        Linking.openURL(data.url);
+      }
+    },
     onError: () => Alert.alert("Checkout failed", "Please try again."),
   });
 
   const portalMutation = useMutation({
-    mutationFn: () => apiPost<{ url: string }>("/api/subscription/portal", {}),
-    onSuccess: (data) => { if (data.url) Linking.openURL(data.url); },
+    mutationFn: () => {
+      const returnUrl = Linking.createURL("/profile");
+      return apiPost<{ url: string }>("/api/subscription/portal", { returnUrl });
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        hasOpenedStripe.current = true;
+        Linking.openURL(data.url);
+      }
+    },
     onError: () => Alert.alert("Error", "Could not open subscription portal."),
   });
 

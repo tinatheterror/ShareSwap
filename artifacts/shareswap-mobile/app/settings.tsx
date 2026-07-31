@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -22,31 +23,34 @@ import { apiGet, apiRequest } from "@/lib/api";
 
 interface UserProfile {
   id: number;
-  username: string; // this is the email
+  username: string;
   displayName?: string | null;
   phone?: string | null;
-  phoneVerified?: boolean;
   authProvider?: string | null;
 }
 
 interface AccountStatus {
-  accountStatus: string;
-  deactivatedAt?: string | null;
+  accountStatus?: string;
 }
 
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  // ── phone state ──────────────────────────────────────────────────────────
-  const [phone, setPhone] = useState("");
+  // ── state ────────────────────────────────────────────────────────────────
+  const [phone, setPhone] = useState((user as any)?.phone || "");
+  const [isDeactivated, setIsDeactivated] = useState(false);
 
-  // ── password modal state ─────────────────────────────────────────────────
+  // deactivate modal
+  const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false);
+
+  // password modal
   const [pwdModalVisible, setPwdModalVisible] = useState(false);
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
@@ -70,26 +74,29 @@ export default function SettingsScreen() {
     if (profile?.phone) setPhone(profile.phone);
   }, [profile?.phone]);
 
-  // ── mutations ─────────────────────────────────────────────────────────────
-  const phoneMutation = useMutation({
-    mutationFn: async () => {
+  // ── mutations — exactly mirrors web app ──────────────────────────────────
+
+  // Phone: PATCH /api/user-profile  { phone }
+  const updatePhoneMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
       const res = await apiRequest("PATCH", "/api/user-profile", {
-        phone: phone.trim(),
+        phone: phoneNumber,
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as any).error || (body as any).message || "Failed to save");
-      }
-      return res.json();
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || body?.message || "Could not update phone number.");
+      return body;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      Alert.alert("Saved", "Phone number registered successfully.");
+      Alert.alert("Phone number saved", "Your phone number has been updated.");
     },
-    onError: (e: Error) => Alert.alert("Error", e.message),
+    onError: (error: Error) => {
+      Alert.alert("Failed to save", error.message);
+    },
   });
 
-  const passwordMutation = useMutation({
+  // Password: POST /api/account/change-password
+  const changePasswordMutation = useMutation({
     mutationFn: async () => {
       if (newPwd !== confirmPwd) throw new Error("New passwords do not match.");
       if (newPwd.length < 8) throw new Error("New password must be at least 8 characters.");
@@ -97,68 +104,40 @@ export default function SettingsScreen() {
         currentPassword: currentPwd,
         newPassword: newPwd,
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as any).message || "Failed to change password");
-      }
-      return res.json();
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.message || "Could not update password.");
+      return body;
     },
     onSuccess: () => {
-      setPwdModalVisible(false);
-      setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
-      Alert.alert("Password updated", "Your password has been changed.");
+      Alert.alert("Password changed", "Your password has been updated successfully.");
+      closePwdModal();
     },
-    onError: (e: Error) => Alert.alert("Error", e.message),
+    onError: (error: Error) => {
+      Alert.alert("Failed to change password", error.message);
+    },
   });
 
+  // Deactivate: POST /api/account/deactivate  — server calls req.logout()
   const deactivateMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/account/deactivate", {
         confirmDeactivation: true,
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as any).message || "Failed to deactivate");
-      }
-      return res.json();
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.message || "Failed to deactivate account");
+      return body;
     },
-    onSuccess: async () => {
-      await logout();
-      router.replace("/(tabs)" as never);
+    onSuccess: () => {
+      // Mirror web: clear query cache, show deactivated screen
+      queryClient.clear();
+      setDeactivateModalOpen(false);
+      setIsDeactivated(true);
     },
-    onError: (e: Error) => Alert.alert("Cannot deactivate", e.message),
+    onError: (error: Error) => {
+      setDeactivateModalOpen(false);
+      Alert.alert("Cannot Deactivate", error.message);
+    },
   });
-
-  const handleDeactivate = () => {
-    Alert.alert(
-      "Deactivate Account",
-      "Your profile and listings will be hidden. You can reactivate anytime by logging back in.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Deactivate",
-          style: "destructive",
-          onPress: () => deactivateMutation.mutate(),
-        },
-      ]
-    );
-  };
-
-  const handleDeleteRequest = () => {
-    Alert.alert(
-      "Delete Account",
-      "To permanently delete your account and data, please contact our support team.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Contact Support",
-          onPress: () => {
-            Alert.alert("Support", "Email us at support@shareswap.community");
-          },
-        },
-      ]
-    );
-  };
 
   const closePwdModal = () => {
     setPwdModalVisible(false);
@@ -166,12 +145,55 @@ export default function SettingsScreen() {
     setShowCurrent(false); setShowNew(false); setShowConfirm(false);
   };
 
+  const openDeactivateModal = () => {
+    setConfirmChecked(false);
+    setDeactivateModalOpen(true);
+  };
+
+  // Contact Support: open mail client (mirrors web toast with email address)
+  const handleContactSupport = () => {
+    Linking.openURL("mailto:support@shareswap.com").catch(() => {
+      Alert.alert(
+        "Contact Support",
+        "Please email support@shareswap.com to request account deletion."
+      );
+    });
+  };
+
   const statusLabel = accountStatus?.accountStatus ?? "active";
   const isActive = statusLabel === "active" || !statusLabel;
+  const isOAuthUser = !!(profile?.authProvider && profile.authProvider !== "local");
 
-  // ── is google / OAuth user (no password) ─────────────────────────────────
-  const isOAuthUser = profile?.authProvider && profile.authProvider !== "local";
+  // ── deactivated screen (mirrors web) ────────────────────────────────────
+  if (isDeactivated) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.muted ?? "#f5f6f8", alignItems: "center", justifyContent: "center", padding: 24 }]}>
+        <View style={[styles.deactivatedCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.deactivatedIcon}>
+            <Feather name="user-x" size={32} color="#d97706" />
+          </View>
+          <Text style={[styles.deactivatedTitle, { color: colors.foreground }]}>Account Deactivated</Text>
+          <Text style={[styles.deactivatedBody, { color: colors.mutedForeground }]}>
+            Your profile and listings are now hidden from other users. Your transaction history, messages, and reviews have been preserved for trust and safety purposes.
+          </Text>
+          <View style={[styles.deactivatedInfoBox, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
+            <Text style={styles.deactivatedInfoTitle}>Want to come back?</Text>
+            <Text style={styles.deactivatedInfoBody}>
+              Simply log in again with your credentials and you'll have the option to reactivate your account instantly.
+            </Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [styles.saveBtn, { opacity: pressed ? 0.8 : 1, marginTop: 4 }]}
+            onPress={() => router.replace("/login" as never)}
+          >
+            <Text style={styles.saveBtnText}>Return to Login</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
+  // ── main screen ──────────────────────────────────────────────────────────
   return (
     <View style={[styles.container, { backgroundColor: colors.muted ?? "#f5f6f8" }]}>
       <ScrollView
@@ -180,6 +202,7 @@ export default function SettingsScreen() {
           { paddingTop: topPad + 16, paddingBottom: insets.bottom + 40 },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Page header */}
         <View style={styles.pageHeader}>
@@ -187,9 +210,7 @@ export default function SettingsScreen() {
             <Feather name="settings" size={22} color="#0d9488" />
           </View>
           <View>
-            <Text style={[styles.pageTitle, { color: colors.foreground }]}>
-              Settings
-            </Text>
+            <Text style={[styles.pageTitle, { color: colors.foreground }]}>Settings</Text>
             <Text style={[styles.pageSubtitle, { color: colors.mutedForeground }]}>
               Manage your account preferences
             </Text>
@@ -202,7 +223,6 @@ export default function SettingsScreen() {
             <Feather name="phone" size={17} color="#0d9488" />
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Contact</Text>
           </View>
-
           <View style={styles.fieldBlock}>
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Phone Number</Text>
             <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
@@ -212,11 +232,7 @@ export default function SettingsScreen() {
               <TextInput
                 style={[
                   styles.phoneInput,
-                  {
-                    backgroundColor: colors.background,
-                    borderColor: colors.border,
-                    color: colors.foreground,
-                  },
+                  { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground },
                 ]}
                 value={phone}
                 onChangeText={setPhone}
@@ -228,12 +244,12 @@ export default function SettingsScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.registerBtn,
-                  { opacity: pressed || phoneMutation.isPending ? 0.8 : 1 },
+                  { opacity: pressed || updatePhoneMutation.isPending ? 0.8 : 1 },
                 ]}
-                onPress={() => phoneMutation.mutate()}
-                disabled={phoneMutation.isPending}
+                onPress={() => updatePhoneMutation.mutate(phone)}
+                disabled={updatePhoneMutation.isPending}
               >
-                {phoneMutation.isPending ? (
+                {updatePhoneMutation.isPending ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.registerBtnText}>Register</Text>
@@ -250,15 +266,13 @@ export default function SettingsScreen() {
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Account</Text>
           </View>
 
-          {/* Email */}
           <View style={styles.fieldBlock}>
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Email Address</Text>
             <Text style={[styles.fieldValue, { color: colors.mutedForeground }]}>
-              {profile?.username ?? user?.email ?? "—"}
+              {(user as any)?.email || profile?.username || "—"}
             </Text>
           </View>
 
-          {/* Change password — only for local accounts */}
           {!isOAuthUser ? (
             <Pressable
               onPress={() => setPwdModalVisible(true)}
@@ -274,21 +288,10 @@ export default function SettingsScreen() {
 
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
 
-          {/* Account Status */}
           <View style={styles.statusRow}>
             <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Account Status</Text>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: isActive ? "#d1fae5" : "#fee2e2" },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.statusBadgeText,
-                  { color: isActive ? "#065f46" : "#991b1b" },
-                ]}
-              >
+            <View style={[styles.statusBadge, { backgroundColor: isActive ? "#d1fae5" : "#fee2e2" }]}>
+              <Text style={[styles.statusBadgeText, { color: isActive ? "#065f46" : "#991b1b" }]}>
                 {isActive ? "Active" : "Deactivated"}
               </Text>
             </View>
@@ -302,12 +305,9 @@ export default function SettingsScreen() {
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Account Actions</Text>
           </View>
 
-          {/* Deactivate */}
           <View style={styles.actionRow}>
             <View style={styles.actionText}>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                Deactivate Account
-              </Text>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Deactivate Account</Text>
               <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
                 Hide your profile and listings.{"\n"}Reactivate anytime by logging back in.
               </Text>
@@ -315,48 +315,123 @@ export default function SettingsScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.outlineBtn,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.background,
-                  opacity: pressed || deactivateMutation.isPending ? 0.7 : 1,
-                },
+                { borderColor: colors.border, backgroundColor: colors.background, opacity: pressed ? 0.7 : 1 },
               ]}
-              onPress={handleDeactivate}
-              disabled={deactivateMutation.isPending}
+              onPress={openDeactivateModal}
             >
-              {deactivateMutation.isPending ? (
-                <ActivityIndicator size="small" color={colors.foreground} />
-              ) : (
-                <Text style={[styles.outlineBtnText, { color: colors.foreground }]}>
-                  Deactivate
-                </Text>
-              )}
+              <Text style={[styles.outlineBtnText, { color: colors.foreground }]}>Deactivate</Text>
             </Pressable>
           </View>
 
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
 
-          {/* Delete */}
           <View style={styles.actionRow}>
             <View style={styles.actionText}>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                Delete Account
-              </Text>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Delete Account</Text>
               <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
                 Permanently delete your{"\n"}account and data.
               </Text>
             </View>
             <Pressable
-              onPress={handleDeleteRequest}
+              onPress={handleContactSupport}
               style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
             >
-              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>
-                Contact Support
-              </Text>
+              <Text style={[styles.linkText, { color: colors.mutedForeground }]}>Contact Support</Text>
             </Pressable>
           </View>
         </View>
       </ScrollView>
+
+      {/* ── Deactivate Confirm Modal ── */}
+      <Modal
+        visible={deactivateModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setDeactivateModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setDeactivateModalOpen(false)} />
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+
+            <View style={styles.modalTitleRow}>
+              <Feather name="user-x" size={20} color="#d97706" />
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Deactivate Your Account</Text>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              This will temporarily hide your presence on ShareSwap
+            </Text>
+
+            {/* What happens */}
+            <View style={styles.infoBox}>
+              <Text style={styles.infoBoxTitle}>⚠️ What happens when you deactivate?</Text>
+              {[
+                "Your profile will be hidden from discovery",
+                "All your listings will be archived",
+                "You won't be able to send or receive new requests",
+                "Your trust score and reputation will be frozen",
+              ].map((item) => (
+                <Text key={item} style={styles.infoBoxItem}>• {item}</Text>
+              ))}
+            </View>
+
+            {/* Data preserved */}
+            <View style={[styles.infoBox, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
+              <Text style={[styles.infoBoxTitle, { color: "#1e40af" }]}>🛡 Your data is preserved</Text>
+              <Text style={[styles.infoBoxItem, { color: "#1e40af" }]}>
+                Your transaction history, messages, and reviews are retained for trust, safety, and legal compliance. Nothing is deleted.
+              </Text>
+            </View>
+
+            {/* Confirm checkbox */}
+            <Pressable
+              style={styles.checkRow}
+              onPress={() => setConfirmChecked(v => !v)}
+            >
+              <View style={[
+                styles.checkbox,
+                {
+                  borderColor: confirmChecked ? "#0d9488" : colors.border,
+                  backgroundColor: confirmChecked ? "#0d9488" : colors.background,
+                },
+              ]}>
+                {confirmChecked && <Feather name="check" size={13} color="#fff" />}
+              </View>
+              <Text style={[styles.checkLabel, { color: colors.foreground }]}>
+                I understand that deactivating my account hides my profile and listings, and that my history is retained for trust and safety.
+              </Text>
+            </Pressable>
+
+            <View style={styles.modalBtns}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.destructiveBtn,
+                  {
+                    opacity: (!confirmChecked || deactivateMutation.isPending || pressed) ? 0.5 : 1,
+                  },
+                ]}
+                onPress={() => deactivateMutation.mutate()}
+                disabled={!confirmChecked || deactivateMutation.isPending}
+              >
+                {deactivateMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Deactivate Account</Text>
+                )}
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cancelBtn,
+                  { borderColor: colors.border, backgroundColor: colors.background, opacity: pressed ? 0.7 : 1 },
+                ]}
+                onPress={() => setDeactivateModalOpen(false)}
+              >
+                <Text style={[styles.cancelBtnText, { color: colors.foreground }]}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Change Password Modal ── */}
       <Modal
@@ -370,21 +445,11 @@ export default function SettingsScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <Pressable style={styles.modalBackdrop} onPress={closePwdModal} />
-          <View
-            style={[
-              styles.modalSheet,
-              { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 },
-            ]}
-          >
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
             <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-              Change Password
-            </Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Change Password</Text>
 
-            {/* Current password */}
-            <Text style={[styles.inputLabel, { color: colors.foreground }]}>
-              Current Password
-            </Text>
+            <Text style={[styles.inputLabel, { color: colors.foreground }]}>Current Password</Text>
             <View style={[styles.pwdRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <TextInput
                 style={[styles.pwdInput, { color: colors.foreground }]}
@@ -400,10 +465,7 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
 
-            {/* New password */}
-            <Text style={[styles.inputLabel, { color: colors.foreground }]}>
-              New Password
-            </Text>
+            <Text style={[styles.inputLabel, { color: colors.foreground }]}>New Password</Text>
             <View style={[styles.pwdRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <TextInput
                 style={[styles.pwdInput, { color: colors.foreground }]}
@@ -419,10 +481,7 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
 
-            {/* Confirm password */}
-            <Text style={[styles.inputLabel, { color: colors.foreground }]}>
-              Confirm New Password
-            </Text>
+            <Text style={[styles.inputLabel, { color: colors.foreground }]}>Confirm New Password</Text>
             <View style={[styles.pwdRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
               <TextInput
                 style={[styles.pwdInput, { color: colors.foreground }]}
@@ -442,12 +501,12 @@ export default function SettingsScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.saveBtn,
-                  { opacity: pressed || passwordMutation.isPending ? 0.8 : 1 },
+                  { opacity: (pressed || changePasswordMutation.isPending || !currentPwd || !newPwd || !confirmPwd) ? 0.6 : 1 },
                 ]}
-                onPress={() => passwordMutation.mutate()}
-                disabled={passwordMutation.isPending}
+                onPress={() => changePasswordMutation.mutate()}
+                disabled={changePasswordMutation.isPending || !currentPwd || !newPwd || !confirmPwd}
               >
-                {passwordMutation.isPending ? (
+                {changePasswordMutation.isPending ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.saveBtnText}>Update Password</Text>
@@ -456,11 +515,7 @@ export default function SettingsScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.cancelBtn,
-                  {
-                    borderColor: colors.border,
-                    backgroundColor: colors.background,
-                    opacity: pressed ? 0.7 : 1,
-                  },
+                  { borderColor: colors.border, backgroundColor: colors.background, opacity: pressed ? 0.7 : 1 },
                 ]}
                 onPress={closePwdModal}
               >
@@ -476,207 +531,101 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
-  pageHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 4,
-  },
-  gearIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageTitle: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-  },
-  pageSubtitle: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    marginTop: 1,
-  },
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 14,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  fieldBlock: {
-    gap: 4,
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  fieldHint: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
-  fieldValue: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
-  },
-  phoneRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 8,
-  },
+  scroll: { paddingHorizontal: 16, gap: 16 },
+
+  pageHeader: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 4 },
+  gearIconWrap: { width: 48, height: 48, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  pageTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  pageSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
+
+  card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 14 },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+
+  fieldBlock: { gap: 4 },
+  fieldLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  fieldHint: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  fieldValue: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 2 },
+
+  phoneRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 },
   phoneInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
+    flex: 1, borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+    fontSize: 14, fontFamily: "Inter_400Regular",
   },
   registerBtn: {
-    backgroundColor: "#0d9488",
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 90,
+    backgroundColor: "#0d9488", borderRadius: 10,
+    paddingHorizontal: 18, paddingVertical: 12,
+    alignItems: "center", justifyContent: "center", minWidth: 90,
   },
-  registerBtnText: {
-    color: "#fff",
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  linkText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
-  sep: {
-    height: StyleSheet.hairlineWidth,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  statusBadge: {
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  statusBadgeText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  actionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  actionText: {
-    flex: 1,
-    gap: 3,
-  },
-  outlineBtn: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 100,
-  },
-  outlineBtnText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
+  registerBtnText: { color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold" },
 
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "flex-end",
+  linkText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  sep: { height: StyleSheet.hairlineWidth },
+  statusRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  statusBadge: { borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
+  statusBadgeText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+
+  actionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  actionText: { flex: 1, gap: 3 },
+  outlineBtn: {
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 16, paddingVertical: 10,
+    alignItems: "center", justifyContent: "center", minWidth: 100,
   },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+  outlineBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+
+  // Deactivated screen
+  deactivatedCard: {
+    width: "100%", borderRadius: 20, borderWidth: 1,
+    padding: 24, gap: 16, alignItems: "center",
   },
-  modalSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    gap: 12,
+  deactivatedIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: "#fef3c7",
+    alignItems: "center", justifyContent: "center",
   },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginBottom: 4,
+  deactivatedTitle: { fontSize: 22, fontFamily: "Inter_700Bold", textAlign: "center" },
+  deactivatedBody: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  deactivatedInfoBox: { width: "100%", borderWidth: 1, borderRadius: 12, padding: 14, gap: 6 },
+  deactivatedInfoTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#1e40af" },
+  deactivatedInfoBody: { fontSize: 13, fontFamily: "Inter_400Regular", color: "#1e40af", lineHeight: 18 },
+
+  // Modals
+  modalOverlay: { flex: 1, justifyContent: "flex-end" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
+  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+  modalTitleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  modalTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  modalSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: -6 },
+
+  infoBox: {
+    backgroundColor: "#fffbeb", borderColor: "#fde68a",
+    borderWidth: 1, borderRadius: 12, padding: 12, gap: 6,
   },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 4,
+  infoBoxTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#92400e" },
+  infoBoxItem: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#92400e", lineHeight: 18 },
+
+  checkRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 4 },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2,
+    alignItems: "center", justifyContent: "center", marginTop: 1,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: -4,
-  },
+  checkLabel: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
+  inputLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", marginBottom: -4 },
   pwdRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 8,
+    flexDirection: "row", alignItems: "center",
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 10, gap: 8,
   },
-  pwdInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  modalBtns: {
-    gap: 10,
-    marginTop: 4,
-  },
-  saveBtn: {
-    backgroundColor: "#0d9488",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  saveBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  cancelBtn: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  cancelBtnText: {
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-  },
+  pwdInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+
+  modalBtns: { gap: 10, marginTop: 4 },
+  saveBtn: { backgroundColor: "#0d9488", borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  saveBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  destructiveBtn: { backgroundColor: "#dc2626", borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  cancelBtn: { borderWidth: 1, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  cancelBtnText: { fontSize: 15, fontFamily: "Inter_500Medium" },
 });

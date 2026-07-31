@@ -91,6 +91,20 @@ function RootLayoutNav() {
           headerBackTitle: "Back",
         }}
       />
+      <Stack.Screen
+        name="payment-methods"
+        options={{
+          title: "Payment Methods",
+          headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="verification"
+        options={{
+          title: "Identity Verification",
+          headerBackTitle: "Back",
+        }}
+      />
     </Stack>
   );
 }

@@ -510,17 +510,28 @@ export default function PublicProfileScreen() {
             </Pressable>
           )}
           <View style={styles.avatarRow}>
-            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              {profile.profilePhoto ? (
-                <Image
-                  source={{ uri: photoUrl(profile.profilePhoto) }}
-                  style={styles.avatarImg}
-                />
-              ) : (
-                <Text style={styles.avatarInitial}>
-                  {displayName.charAt(0).toUpperCase()}
-                </Text>
-              )}
+            {/* Avatar + nudge stacked */}
+            <View style={styles.avatarCol}>
+              <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+                {profile.profilePhoto ? (
+                  <Image
+                    source={{ uri: photoUrl(profile.profilePhoto) }}
+                    style={styles.avatarImg}
+                  />
+                ) : (
+                  <Text style={styles.avatarInitial}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+              {isOwnProfile && !profile.profilePhoto ? (
+                <Pressable
+                  style={styles.addPhotoNudge}
+                  onPress={() => router.push("/edit-profile" as never)}
+                >
+                  <Text style={styles.addPhotoText}>+1 🪙 · Add photo</Text>
+                </Pressable>
+              ) : null}
             </View>
             <View style={styles.nameBlock}>
               <View style={styles.nameRow}>
@@ -541,14 +552,6 @@ export default function PublicProfileScreen() {
                 <Text style={[styles.activeText, { color: colors.mutedForeground }]}>
                   {activeStatus.label}
                 </Text>
-              ) : null}
-              {isOwnProfile && !profile.profilePhoto ? (
-                <Pressable
-                  style={styles.addPhotoNudge}
-                  onPress={() => router.push("/edit-profile" as never)}
-                >
-                  <Text style={styles.addPhotoText}>+1 🪙 · Add photo</Text>
-                </Pressable>
               ) : null}
             </View>
           </View>
@@ -700,6 +703,7 @@ const styles = StyleSheet.create({
   headerCard: { borderRadius: 20, padding: 18, gap: 16 },
 
   avatarRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  avatarCol: { alignItems: "center", gap: 6 },
   avatar: {
     width: 80,
     height: 80,

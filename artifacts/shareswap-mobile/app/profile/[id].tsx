@@ -499,7 +499,7 @@ export default function PublicProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header card */}
-        <View style={[styles.headerCard, { backgroundColor: colors.accent }]}>
+        <View style={[styles.headerCard, { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4", borderWidth: 1 }]}>
           {isOwnProfile && (
             <Pressable
               style={({ pressed }) => [styles.editProfileBtn, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}

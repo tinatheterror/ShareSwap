@@ -239,7 +239,7 @@ export default function ProfileScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.profileCard,
-            { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4", opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: "#D4F7F1", opacity: pressed ? 0.85 : 1 },
           ]}
           onPress={() => router.push(`/profile/${user.id}` as never)}
         >
@@ -321,8 +321,8 @@ export default function ProfileScreen() {
         <View style={[
           styles.sectionCard,
           user.isVerified
-            ? { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }
-            : { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
+            ? { backgroundColor: "#D4F7F1" }
+            : { backgroundColor: "#FFFBEB" },
         ]}>
           <View style={styles.sectionCardHeader}>
             <View style={styles.sectionCardTitleRow}>
@@ -571,7 +571,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Account Statistics card */}
-        <View style={[styles.sectionCard, { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }]}>
+        <View style={[styles.sectionCard, { backgroundColor: "#D4F7F1" }]}>
           <View style={styles.sectionCardHeader}>
             <View style={styles.sectionCardTitleRow}>
               <Feather name="trending-up" size={18} color="#0d9488" />
@@ -655,7 +655,6 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     borderRadius: 20,
-    borderWidth: 1,
     padding: 20,
     gap: 14,
   },
@@ -978,7 +977,6 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     borderRadius: 16,
-    borderWidth: 1,
     padding: 16,
     gap: 10,
   },

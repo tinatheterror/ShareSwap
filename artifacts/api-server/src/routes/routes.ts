@@ -1615,19 +1615,39 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Profile photo upload endpoint with face validation
+  // Accepts both multipart/form-data (web) and JSON base64 (mobile native/web)
   app.post("/api/users/profile-photo", upload.single("profilePhoto"), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
 
     try {
-      if (!req.file) {
+      // Resolve file buffer + name from either multipart upload or base64 JSON body
+      let fileBuffer: Buffer;
+      let originalname: string;
+      let mimetype: string;
+
+      if (req.file) {
+        // Standard multipart upload (web)
+        fileBuffer = req.file.buffer;
+        originalname = req.file.originalname;
+        mimetype = req.file.mimetype;
+      } else if (req.body?.imageBase64) {
+        // Base64 JSON upload (mobile) — avoids multipart/FormData boundary issues in RN
+        const { imageBase64, mimeType, filename } = req.body;
+        if (!imageBase64 || typeof imageBase64 !== "string") {
+          return res.status(400).json({ error: "Profile photo is required" });
+        }
+        fileBuffer = Buffer.from(imageBase64, "base64");
+        originalname = filename ?? "photo.jpg";
+        mimetype = mimeType ?? "image/jpeg";
+      } else {
         return res.status(400).json({ error: "Profile photo is required" });
       }
 
       // Upload photo to object storage
-      const photoUrl = await uploadToStorage(req.file.buffer, req.file.originalname);
-      console.log(`[Profile Photo] Uploaded: ${req.file.originalname} -> ${photoUrl}`);
+      const photoUrl = await uploadToStorage(fileBuffer, originalname);
+      console.log(`[Profile Photo] Uploaded: ${originalname} -> ${photoUrl}`);
       
       const userId = req.user.id;
 
@@ -1647,9 +1667,9 @@ export function registerRoutes(app: Express): Server {
 
       if (!hasAlreadyEarnedBonus) {
         try {
-          // Use buffer directly instead of reading from file
-          const base64Image = req.file.buffer.toString("base64");
-          const mimeType = req.file.mimetype || "image/jpeg";
+          // Use resolved buffer (from multipart or base64 JSON)
+          const base64Image = fileBuffer.toString("base64");
+          const mimeType = mimetype || "image/jpeg";
 
           // Call GPT-4 Vision for face validation
           const OpenAI = (await import("openai")).default;

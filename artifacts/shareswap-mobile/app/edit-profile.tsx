@@ -97,6 +97,7 @@ export default function EditProfileScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true, // request base64 data directly — avoids multipart/FormData issues on native
     });
 
     if (result.canceled || !result.assets[0]) return;
@@ -106,17 +107,22 @@ export default function EditProfileScreen() {
     setPhotoUploading(true);
 
     try {
-      const formData = new FormData();
+      // Use the base64 string from ImagePicker directly.
+      // Sending JSON is far more reliable than multipart/FormData in React Native,
+      // which can silently drop the file part when custom headers (CSRF) are present.
       const filename = asset.uri.split("/").pop() ?? "photo.jpg";
-      const ext = filename.split(".").pop()?.toLowerCase() ?? "jpg";
-      const mimeType = ext === "png" ? "image/png" : "image/jpeg";
-      formData.append("profilePhoto", {
-        uri: asset.uri,
-        name: filename,
-        type: mimeType,
-      } as any);
+      const ext = (asset.mimeType?.split("/")[1] ?? filename.split(".").pop() ?? "jpg").toLowerCase();
+      const mimeType = asset.mimeType ?? (ext === "png" ? "image/png" : "image/jpeg");
 
-      const res = await apiRequest("POST", "/api/users/profile-photo", formData);
+      if (!asset.base64) {
+        throw new Error("Could not read image data. Please try again.");
+      }
+
+      const res = await apiRequest("POST", "/api/users/profile-photo", {
+        imageBase64: asset.base64,
+        mimeType,
+        filename: `photo.${ext === "png" ? "png" : "jpg"}`,
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as any).error || "Upload failed");

@@ -503,7 +503,7 @@ export default function PublicProfileScreen() {
           {isOwnProfile && (
             <Pressable
               style={({ pressed }) => [styles.editProfileBtn, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
-              onPress={() => router.push("/settings" as never)}
+              onPress={() => router.push("/edit-profile" as never)}
             >
               <Feather name="edit-2" size={13} color={colors.foreground} />
               <Text style={[styles.editProfileText, { color: colors.foreground }]}>Edit Profile</Text>
@@ -545,7 +545,7 @@ export default function PublicProfileScreen() {
               {isOwnProfile && !profile.profilePhoto ? (
                 <Pressable
                   style={styles.addPhotoNudge}
-                  onPress={() => router.push("/settings" as never)}
+                  onPress={() => router.push("/edit-profile" as never)}
                 >
                   <Text style={styles.addPhotoText}>+1 🪙 · Add photo</Text>
                 </Pressable>

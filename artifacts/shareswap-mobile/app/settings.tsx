@@ -33,8 +33,7 @@ export default function SettingsScreen() {
     {
       icon: "user",
       label: "Edit Profile",
-      onPress: () =>
-        Alert.alert("Coming Soon", "Profile editing is available on the web app."),
+      onPress: () => router.push("/edit-profile" as never),
     },
     {
       icon: "bell",

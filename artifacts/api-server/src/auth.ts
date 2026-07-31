@@ -581,9 +581,12 @@ export function setupAuth(app: Express) {
       console.log("[Google OAuth] Referral code stored in session:", refCode);
     }
     // Flag native app requests so the callback knows to deep-link back
-    if (req.query.platform === "native") {
-      (req.session as any).isNativeAuth = true;
-      console.log("[Google OAuth] Native auth flow flagged in session");
+    if (req.query.platform === "native" && req.query.redirect_uri) {
+      (req.session as any).nativeRedirectUri = req.query.redirect_uri as string;
+      console.log(
+        "[Google OAuth] Native redirect URI stored:",
+        req.query.redirect_uri,
+      );
     }
     passport.authenticate("google", {
       scope: ["profile", "email"],
@@ -596,10 +599,10 @@ export function setupAuth(app: Express) {
     })(req, res, (err: any) => {
       if (err) return next(err);
       // Check if this login came from the native app
-      const isNativeAuth = (req.session as any)?.isNativeAuth;
-      if (isNativeAuth) {
-        delete (req.session as any).isNativeAuth;
-        return res.redirect("shareswap://");
+      const nativeRedirectUri = (req.session as any)?.nativeRedirectUri;
+      if (nativeRedirectUri) {
+        delete (req.session as any).nativeRedirectUri;
+        return res.redirect(nativeRedirectUri);
       }
       // Check if referral was applied during this OAuth flow
       const referralApplied = (req.session as any)?.referralApplied;

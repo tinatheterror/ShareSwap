@@ -219,14 +219,6 @@ export default function ProfileScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>
             Profile
           </Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push("/settings")}
-              hitSlop={12}
-            >
-              <Feather name="settings" size={20} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
         </View>
       </View>
 

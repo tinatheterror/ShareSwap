@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, refetchUser } = useAuth();
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [username, setUsername] = useState("");
@@ -54,11 +54,24 @@ export default function LoginScreen() {
   }
 
   async function handleGoogleLogin() {
-    const googleUrl = `${BASE_URL}/api/auth/google`;
     if (Platform.OS === "web") {
-      window.location.href = googleUrl;
+      window.location.href = `${BASE_URL}/api/auth/google`;
     } else {
-      await WebBrowser.openAuthSessionAsync(googleUrl, Linking.createURL("/"));
+      const redirectUri = Linking.createURL("/");
+      const googleUrl = `${BASE_URL}/api/auth/google?platform=native&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      setLoading(true);
+      try {
+        const result = await WebBrowser.openAuthSessionAsync(googleUrl, redirectUri);
+        if (result.type === "success") {
+          await refetchUser();
+          router.replace("/(tabs)");
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Google sign-in failed.";
+        Alert.alert("Sign-in failed", msg);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 

@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
 import { apiGet, photoUrl } from "@/lib/api";
 
 const SCREEN_W = Dimensions.get("window").width;
@@ -437,6 +438,8 @@ export default function PublicProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isWeb = Platform.OS === "web";
+  const { user: currentUser } = useAuth();
+  const isOwnProfile = !!currentUser && String(currentUser.id) === String(id);
 
   const { data: profile, isLoading } = useQuery<PublicProfile>({
     queryKey: [`/api/users/${id}/public-profile`],
@@ -497,6 +500,15 @@ export default function PublicProfileScreen() {
       >
         {/* Header card */}
         <View style={[styles.headerCard, { backgroundColor: colors.accent }]}>
+          {isOwnProfile && (
+            <Pressable
+              style={({ pressed }) => [styles.editProfileBtn, { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => router.push("/settings" as never)}
+            >
+              <Feather name="edit-2" size={13} color={colors.foreground} />
+              <Text style={[styles.editProfileText, { color: colors.foreground }]}>Edit Profile</Text>
+            </Pressable>
+          )}
           <View style={styles.avatarRow}>
             <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
               {profile.profilePhoto ? (
@@ -529,6 +541,14 @@ export default function PublicProfileScreen() {
                 <Text style={[styles.activeText, { color: colors.mutedForeground }]}>
                   {activeStatus.label}
                 </Text>
+              ) : null}
+              {isOwnProfile && !profile.profilePhoto ? (
+                <Pressable
+                  style={styles.addPhotoNudge}
+                  onPress={() => router.push("/settings" as never)}
+                >
+                  <Text style={styles.addPhotoText}>+1 🪙 · Add photo</Text>
+                </Pressable>
               ) : null}
             </View>
           </View>
@@ -773,4 +793,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   emptyText: { fontSize: 13, fontFamily: "Inter_400Regular" },
+
+  editProfileBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  editProfileText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  addPhotoNudge: {
+    marginTop: 4,
+  },
+  addPhotoText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "#0d9488",
+  },
 });

@@ -190,11 +190,12 @@ export default function ProfileScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[
+        <Pressable
+          style={({ pressed }) => [
             styles.profileCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
+            { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
           ]}
+          onPress={() => router.push(`/profile/${user.id}` as never)}
         >
           <View style={styles.profileTop}>
             <View
@@ -208,41 +209,23 @@ export default function ProfileScreen() {
               </Text>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={[styles.displayName, { color: colors.foreground }]}>
-                {displayName}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={[styles.displayName, { color: colors.foreground }]}>
+                  {displayName}
+                </Text>
+                {user.isVerified ? (
+                  <MaterialCommunityIcons name="check-decagram" size={18} color={colors.primary} />
+                ) : null}
+              </View>
               <Text
                 style={[styles.username, { color: colors.mutedForeground }]}
               >
                 @{user.username}
               </Text>
-              {user.neighbourhood ?? user.location ? (
-                <View style={styles.locationRow}>
-                  <Feather
-                    name="map-pin"
-                    size={12}
-                    color={colors.mutedForeground}
-                  />
-                  <Text
-                    style={[
-                      styles.locationText,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    {user.neighbourhood ?? user.location}
-                  </Text>
-                </View>
-              ) : null}
             </View>
+            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
           </View>
-
-          {user.bio ? (
-            <Text style={[styles.bio, { color: colors.mutedForeground }]}>
-              {user.bio}
-            </Text>
-          ) : null}
-
-        </View>
+        </Pressable>
 
         <View
           style={[

@@ -25,6 +25,18 @@ interface ProfileStats {
   referralCount?: number;
 }
 
+interface UserProfile {
+  shareCoins?: number;
+  completedShares?: number;
+  averageRating?: number | null;
+  reviewCount?: number;
+  onTimeReturnRate?: number | null;
+  reputationLevel?: string;
+  paymentMethodLast4?: string | null;
+  idVerified?: boolean;
+  isVerified?: boolean;
+}
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -45,9 +57,15 @@ export default function ProfileScreen() {
     enabled: !!user,
   });
 
+  const { data: userProfile, refetch: refetchProfile } = useQuery<UserProfile>({
+    queryKey: ["/api/user-profile"],
+    queryFn: () => apiGet<UserProfile>("/api/user-profile"),
+    enabled: !!user,
+  });
+
   async function handleRefresh() {
     setRefreshing(true);
-    await Promise.all([refetchUser(), refetchItems(), refetchStats()]);
+    await Promise.all([refetchUser(), refetchItems(), refetchStats(), refetchProfile()]);
     setRefreshing(false);
   }
 
@@ -197,58 +215,6 @@ export default function ProfileScreen() {
             </Text>
           ) : null}
 
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.foreground }]}>
-                {user.trustScore ?? 0}
-              </Text>
-              <Text
-                style={[styles.statLabel, { color: colors.mutedForeground }]}
-              >
-                Trust Score
-              </Text>
-            </View>
-            <View
-              style={[styles.statDivider, { backgroundColor: colors.border }]}
-            />
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.foreground }]}>
-                {stats?.completedShares ?? 0}
-              </Text>
-              <Text
-                style={[styles.statLabel, { color: colors.mutedForeground }]}
-              >
-                Shares
-              </Text>
-            </View>
-            <View
-              style={[styles.statDivider, { backgroundColor: colors.border }]}
-            />
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.foreground }]}>
-                {stats?.activeListings ?? items?.length ?? 0}
-              </Text>
-              <Text
-                style={[styles.statLabel, { color: colors.mutedForeground }]}
-              >
-                Listings
-              </Text>
-            </View>
-          </View>
-
-          {user.isVerified ? (
-            <View
-              style={[
-                styles.verifiedBadge,
-                { backgroundColor: colors.accent, borderColor: colors.primary + "40" },
-              ]}
-            >
-              <MaterialCommunityIcons name="check-decagram" size={16} color={colors.primary} />
-              <Text style={[styles.verifiedText, { color: colors.primary }]}>
-                Verified Member
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         <View
@@ -257,6 +223,20 @@ export default function ProfileScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
+          <Pressable
+            style={styles.menuRow}
+            onPress={() => router.push("/wallet")}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: colors.primary + "20" }]}>
+              <Feather name="credit-card" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.menuTextGroup}>
+              <Text style={[styles.menuLabel, { color: colors.foreground }]}>My Balance</Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
 
           <Pressable
             style={styles.menuRow}
@@ -266,12 +246,8 @@ export default function ProfileScreen() {
               <Feather name="award" size={18} color={colors.primary} />
             </View>
             <View style={styles.menuTextGroup}>
-              <Text style={[styles.menuLabel, { color: colors.foreground }]}>
-                Achievements & Trust
-              </Text>
-              <Text style={[styles.menuSubtext, { color: colors.mutedForeground }]}>
-                Badges and trust score
-              </Text>
+              <Text style={[styles.menuLabel, { color: colors.foreground }]}>Achievements & Trust</Text>
+              <Text style={[styles.menuSubtext, { color: colors.mutedForeground }]}>Badges and trust score</Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -286,12 +262,103 @@ export default function ProfileScreen() {
               <Feather name="settings" size={18} color={colors.mutedForeground} />
             </View>
             <View style={styles.menuTextGroup}>
-              <Text style={[styles.menuLabel, { color: colors.foreground }]}>
-                Settings
-              </Text>
+              <Text style={[styles.menuLabel, { color: colors.foreground }]}>Account Settings</Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </Pressable>
+        </View>
+
+        {/* Verification Status card */}
+        <View style={[
+          styles.sectionCard,
+          user.isVerified
+            ? { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }
+            : { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
+        ]}>
+          <View style={styles.sectionCardHeader}>
+            <View style={styles.sectionCardTitleRow}>
+              <Feather
+                name="shield"
+                size={18}
+                color={user.isVerified ? "#16a34a" : "#d97706"}
+              />
+              <Text style={[styles.sectionCardTitle, { color: colors.foreground }]}>
+                Verification Status
+              </Text>
+            </View>
+            <View style={[
+              styles.verifiedChip,
+              { backgroundColor: user.isVerified ? "#dcfce7" : "#fef3c7",
+                borderColor: user.isVerified ? "#86efac" : "#fcd34d" },
+            ]}>
+              <Text style={[styles.verifiedChipText, { color: user.isVerified ? "#15803d" : "#92400e" }]}>
+                {user.isVerified ? "Verified" : "Unverified"}
+              </Text>
+            </View>
+          </View>
+
+          <Pressable
+            style={[styles.verifyRow, { backgroundColor: "rgba(255,255,255,0.8)", borderColor: colors.border }]}
+            onPress={() => router.push("/payment-methods" as any)}
+          >
+            <Feather
+              name={userProfile?.paymentMethodLast4 ? "check" : "x"}
+              size={15}
+              color={userProfile?.paymentMethodLast4 ? "#16a34a" : "#9ca3af"}
+            />
+            <Feather name="credit-card" size={15} color={colors.mutedForeground} />
+            <Text style={[styles.verifyRowText, { color: colors.foreground }]}>Payment Methods</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.verifyRow, { backgroundColor: "rgba(255,255,255,0.8)", borderColor: colors.border }]}
+            onPress={() => router.push("/verification" as any)}
+          >
+            <Feather
+              name={userProfile?.idVerified ? "check" : "x"}
+              size={15}
+              color={userProfile?.idVerified ? "#16a34a" : "#9ca3af"}
+            />
+            <Feather name="shield" size={15} color={colors.mutedForeground} />
+            <Text style={[styles.verifyRowText, { color: colors.foreground }]}>Identity Verification</Text>
+          </Pressable>
+        </View>
+
+        {/* Account Statistics card */}
+        <View style={[styles.sectionCard, { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }]}>
+          <View style={styles.sectionCardHeader}>
+            <View style={styles.sectionCardTitleRow}>
+              <Feather name="trending-up" size={18} color="#0d9488" />
+              <Text style={[styles.sectionCardTitle, { color: colors.foreground }]}>Account Statistics</Text>
+            </View>
+          </View>
+
+          {[
+            { label: "Level", icon: "award", value: userProfile?.reputationLevel ?? user.reputationLevel ?? "Newcomer" },
+            { label: "ShareCoins", icon: "dollar-sign", value: String(Math.round(Number(userProfile?.shareCoins ?? user.shareCoins ?? 0))) },
+            { label: "Completed Shares", icon: "package", value: String(userProfile?.completedShares ?? stats?.completedShares ?? 0) },
+            {
+              label: "Rating",
+              icon: "star",
+              value: userProfile?.averageRating != null
+                ? `${Number(userProfile.averageRating).toFixed(1)} ★ · ${userProfile.reviewCount ?? 0} reviews`
+                : `— · ${userProfile?.reviewCount ?? 0} reviews`,
+            },
+            { label: "Trust Score", icon: "shield", value: String(user.trustScore ?? 0) },
+            {
+              label: "On-time Returns",
+              icon: "clock",
+              value: userProfile?.onTimeReturnRate != null ? `${userProfile.onTimeReturnRate}%` : "—",
+            },
+          ].map(({ label, icon, value }) => (
+            <View key={label} style={styles.statRow}>
+              <View style={styles.statRowLeft}>
+                <Feather name={icon as any} size={15} color="#0d9488" />
+                <Text style={[styles.statRowLabel, { color: "#475569" }]}>{label}</Text>
+              </View>
+              <Text style={[styles.statRowValue, { color: "#0f766e" }]}>{value}</Text>
+            </View>
+          ))}
         </View>
 
         {items && items.length > 0 ? (
@@ -532,5 +599,67 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 15,
     fontFamily: "Inter_500Medium",
+  },
+  sectionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+  },
+  sectionCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  sectionCardTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionCardTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  verifiedChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  verifiedChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  verifyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  verifyRowText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  statRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  statRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  statRowLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  statRowValue: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
   },
 });

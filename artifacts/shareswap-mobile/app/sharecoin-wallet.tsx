@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Coins, Trophy, Gamepad2, Users, HeartHandshake } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -38,11 +39,11 @@ export default function ShareCoinWalletScreen() {
   const balance = Math.round(Number((freshUser ?? user)?.shareCoins ?? 0));
 
   function Row({
-    icon,
+    Icon,
     label,
     route,
   }: {
-    icon: React.ComponentProps<typeof Feather>["name"];
+    Icon: React.ComponentType<{ size?: number; color?: string; style?: object }>;
     label: string;
     route: string;
   }) {
@@ -54,7 +55,7 @@ export default function ShareCoinWalletScreen() {
         ]}
         onPress={() => router.push(route as never)}
       >
-        <Feather name={icon} size={20} color={colors.foreground} style={styles.rowIcon} />
+        <Icon size={20} color={colors.foreground} style={styles.rowIcon} />
         <Text style={[styles.rowLabel, { color: colors.foreground }]}>{label}</Text>
         <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
       </Pressable>
@@ -88,9 +89,9 @@ export default function ShareCoinWalletScreen() {
 
         {/* Top group */}
         <View style={[styles.group, { borderColor: colors.border }]}>
-          <Row icon="list" label="View Transactions" route="/transactions" />
+          <Row Icon={Coins} label="View Transactions" route="/transactions" />
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
-          <Row icon="award" label="Achievements" route="/achievements" />
+          <Row Icon={Trophy} label="Achievements" route="/achievements" />
         </View>
 
         {/* Section header */}
@@ -98,11 +99,11 @@ export default function ShareCoinWalletScreen() {
 
         {/* Bottom group */}
         <View style={[styles.group, { borderColor: colors.border }]}>
-          <Row icon="zap" label="Play Games" route="/games" />
+          <Row Icon={Gamepad2} label="Play Games" route="/games" />
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
-          <Row icon="users" label="Invite Friends" route="/referrals" />
+          <Row Icon={Users} label="Invite Friends" route="/referrals" />
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
-          <Row icon="heart" label="Help Neighbours" route="/(tabs)/wishlist" />
+          <Row Icon={HeartHandshake} label="Help Neighbours" route="/(tabs)/wishlist" />
         </View>
       </ScrollView>
     </View>

@@ -170,7 +170,6 @@ const styles = StyleSheet.create({
 
   balanceCard: {
     borderRadius: 12,
-    borderWidth: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignItems: "center",

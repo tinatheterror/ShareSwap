@@ -67,6 +67,10 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="sharecoin-wallet"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="transactions"
         options={{ headerShown: false }}
       />

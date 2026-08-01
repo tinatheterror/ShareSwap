@@ -102,7 +102,7 @@ export default function ShareCoinWalletScreen() {
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
           <Row icon="users" label="Invite Friends" route="/referrals" />
           <View style={[styles.separator, { backgroundColor: colors.border }]} />
-          <Row icon="heart" label="Help Neighbours" route="/(tabs)/share" />
+          <Row icon="heart" label="Help Neighbours" route="/(tabs)/wishlist" />
         </View>
       </ScrollView>
     </View>

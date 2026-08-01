@@ -12,7 +12,8 @@ async function getClient(): Promise<Client | null> {
   if (client !== null) return storageAvailable ? client : null;
   
   try {
-    client = new Client();
+    const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID;
+    client = bucketId ? new Client({ bucketId }) : new Client();
     // Mark available immediately — avoid using list() as a probe because it can
     // return ok:false on transient errors or with certain bucket configurations,
     // which would permanently disable image serving for the process lifetime.

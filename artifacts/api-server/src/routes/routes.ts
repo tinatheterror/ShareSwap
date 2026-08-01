@@ -77,7 +77,6 @@ import {
 } from "../trust-score-service";
 import { calculateAIValuation, getTierBand, type ItemValuationInput } from "../ai-valuation";
 import { calculateReplacementValueAndTier } from "../replacement-value";
-import { validateProfilePhotoWithAI, determinePhotoBonus } from "../lib/validate-profile-photo";
 
 // Helper function to award ShareCoins with first-time bonus handling
 async function awardShareCoinsWithFirstTimeBonus(
@@ -1667,16 +1666,88 @@ export function registerRoutes(app: Express): Server {
       let shareCoinsAwarded = 0;
 
       if (!hasAlreadyEarnedBonus) {
-        // Call GPT-4 Vision for face validation via extracted, testable helper
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({
-          apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-          baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-        });
-        const aiResult = await validateProfilePhotoWithAI(fileBuffer, mimetype, openai);
-        console.log(`📷 Profile photo validation for user ${userId}:`, aiResult);
-        validationStatus = aiResult.validationStatus;
-        validationReason = aiResult.validationReason;
+        try {
+          // Use resolved buffer (from multipart or base64 JSON)
+          const base64Image = fileBuffer.toString("base64");
+          const mimeType = mimetype || "image/jpeg";
+
+          // Call GPT-4 Vision for face validation
+          const OpenAI = (await import("openai")).default;
+          const openai = new OpenAI({
+            apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+            baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+          });
+
+          const response = await openai.chat.completions.create({
+            model: "gpt-5",
+            messages: [
+              {
+                role: "system",
+                content: `You are a profile photo moderator for ShareSwap, a peer-to-peer sharing community. Your job is to determine if a profile photo shows a clear, visible human face suitable for building trust in the community.
+
+APPROVE photos that:
+- Show a clear, visible human face (selfies, headshots, portrait photos)
+- Have reasonable lighting and focus
+- Show a single person as the clear subject
+- Natural accessories like glasses, hats, or light makeup are fine
+
+REJECT photos that:
+- Logos, icons, graphics, or illustrations (no person at all)
+- Only pets, objects, or scenery with no human face visible
+- Face completely cropped out or fully hidden (e.g. back of head only)
+- Memes, screenshots, or collages
+
+Respond with ONLY valid JSON in this exact format:
+{"decision": "approved" or "rejected", "reason": "brief explanation"}`
+              },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: "Please analyze this profile photo and determine if it shows a clear, visible human face."
+                  },
+                  {
+                    type: "image_url",
+                    image_url: {
+                      url: `data:${mimeType};base64,${base64Image}`,
+                      detail: "auto"
+                    }
+                  }
+                ]
+              }
+            ],
+            max_tokens: 150,
+            temperature: 0.1
+          });
+
+          const content = response.choices[0]?.message?.content || "";
+          console.log(`📷 Profile photo validation for user ${userId}:`, content);
+
+          // Parse the AI response
+          try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const result = JSON.parse(jsonMatch[0]);
+              validationStatus = result.decision === "approved" ? "approved" : "rejected";
+              validationReason = result.reason || "";
+            } else {
+              // If can't parse, be conservative and reject
+              validationStatus = "rejected";
+              validationReason = "Could not verify face in photo";
+            }
+          } catch (parseError) {
+            console.error("Error parsing AI response:", parseError);
+            validationStatus = "rejected";
+            validationReason = "Could not verify face in photo";
+          }
+        } catch (aiError) {
+          console.error("AI validation error (awarding coin anyway):", aiError);
+          // If AI validation fails for any reason, fail open — award the coin
+          // The photo is saved and the reward is given; validation is a UX encouragement, not a strict gate
+          validationStatus = "approved";
+          validationReason = "Validation skipped";
+        }
       }
 
       // Update user profile photo (always save, even if validation fails)
@@ -1686,16 +1757,11 @@ export function registerRoutes(app: Express): Server {
         profilePhotoValidationReason: validationReason,
       };
 
-      // Determine award and message via extracted, testable helper
-      const { shareCoinsAwarded: coinsToAward, message } = determinePhotoBonus(
-        validationStatus as "approved" | "rejected",
-        hasAlreadyEarnedBonus,
-      );
-      shareCoinsAwarded = coinsToAward;
-
-      // Award bonus only on first upload AND when AI validation approves a real face
-      if (!hasAlreadyEarnedBonus && validationStatus === "approved") {
+      // Award bonus on first upload regardless of AI validation result
+      // AI validation is informational only, not a gate
+      if (!hasAlreadyEarnedBonus) {
         updateData.hasUploadedProfilePhoto = true;
+        shareCoinsAwarded = 1;
 
         await db.insert(shareCoinsTransactions).values({
           userId,
@@ -1722,14 +1788,18 @@ export function registerRoutes(app: Express): Server {
           isRead: false,
         });
       } else {
-        // Mark that an upload was attempted — even if this photo was rejected,
-        // the bonus slot is consumed so the user cannot earn the coin again
-        // by swapping to a valid photo later.
-        updateData.hasUploadedProfilePhoto = true;
         await db
           .update(users)
           .set(updateData)
           .where(eq(users.id, userId));
+      }
+
+      // Determine response message
+      let message: string;
+      if (hasAlreadyEarnedBonus) {
+        message = "Profile photo updated!";
+      } else {
+        message = "Profile photo uploaded! You earned 1 ShareCoin.";
       }
 
       res.json({

@@ -550,7 +550,7 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
-          <Pressable style={styles.walletBadge} onPress={() => router.push("/sharecoin-wallet" as never)}>
+          <Pressable style={styles.walletBadge} onPress={() => router.push("/wallet" as never)}>
             <Text style={styles.walletBadgeLabel}>Total Balance</Text>
             <View style={styles.walletBadgeRow}>
               <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />

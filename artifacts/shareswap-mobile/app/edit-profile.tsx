@@ -78,6 +78,7 @@ export default function EditProfileScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["public-profile"] });
       if (refreshUser) refreshUser();
       router.back();
@@ -136,6 +137,7 @@ export default function EditProfileScreen() {
       // Mirror web: invalidate user (ShareCoin count), user-profile, and public profile
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["public-profile"] });
       if (refreshUser) refreshUser();
 

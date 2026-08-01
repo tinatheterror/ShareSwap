@@ -1,9 +1,7 @@
 import { Feather } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -13,142 +11,70 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useAuth } from "@/context/AuthContext";
-import { apiGet } from "@/lib/api";
-
-const shareCoinIcon = require("../assets/icons/sharecoin.png");
-
-interface User {
-  shareCoins?: number | string | null;
-}
-
-interface MenuItem {
-  icon: React.ComponentProps<typeof Feather>["name"];
-  label: string;
-  sublabel: string;
-  route: string;
-  accent: string;
-  bg: string;
-}
-
-const MENU: MenuItem[] = [
-  {
-    icon: "list",
-    label: "View Transactions",
-    sublabel: "See your earn & spend history",
-    route: "/transactions",
-    accent: "#0d9488",
-    bg: "#D4F7F1",
-  },
-  {
-    icon: "award",
-    label: "Achievements",
-    sublabel: "Track your milestones",
-    route: "/achievements",
-    accent: "#7c3aed",
-    bg: "#ede9fe",
-  },
-  {
-    icon: "zap",
-    label: "Play Games",
-    sublabel: "Earn ShareCoins by playing",
-    route: "/games",
-    accent: "#f59e0b",
-    bg: "#fef3c7",
-  },
-  {
-    icon: "users",
-    label: "Invite Friends",
-    sublabel: "Earn 5 coins per referral",
-    route: "/referrals",
-    accent: "#2563eb",
-    bg: "#dbeafe",
-  },
-  {
-    icon: "heart",
-    label: "Help Neighbours",
-    sublabel: "List items for your community",
-    route: "/(tabs)/share",
-    accent: "#e11d48",
-    bg: "#ffe4e6",
-  },
-];
 
 export default function ShareCoinWalletScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user } = useAuth() as { user: User | null };
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  const { data: freshUser } = useQuery<User>({
-    queryKey: ["/api/user"],
-    queryFn: () => apiGet<User>("/api/user"),
-  });
-
-  const balance = Math.round(
-    Number((freshUser ?? user)?.shareCoins ?? 0)
-  );
+  function Row({
+    icon,
+    label,
+    route,
+  }: {
+    icon: React.ComponentProps<typeof Feather>["name"];
+    label: string;
+    route: string;
+  }) {
+    return (
+      <Pressable
+        style={({ pressed }) => [
+          styles.row,
+          { backgroundColor: pressed ? colors.muted : colors.card },
+        ]}
+        onPress={() => router.push(route as never)}
+      >
+        <Feather name={icon} size={20} color={colors.foreground} style={styles.rowIcon} />
+        <Text style={[styles.rowLabel, { color: colors.foreground }]}>{label}</Text>
+        <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+      </Pressable>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Teal header with balance */}
-      <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: "#0d9488" }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: topPad + 8, borderBottomColor: colors.border }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
-          <Feather name="chevron-left" size={26} color="#fff" />
+          <Feather name="chevron-left" size={26} color={colors.foreground} />
         </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>ShareCoin Wallet</Text>
-        </View>
-        <View style={{ width: 36 }} />
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>ShareCoin Wallet</Text>
+        <View style={{ width: 26 }} />
       </View>
 
-      {/* Balance card */}
-      <View style={[styles.balanceCard, { backgroundColor: "#0d9488" }]}>
-        <View style={styles.balanceInner}>
-          <Image source={shareCoinIcon} style={styles.coinIcon} resizeMode="contain" />
-          <Text style={styles.balanceAmount}>{balance}</Text>
-          <Text style={styles.balanceLabel}>ShareCoins</Text>
-        </View>
-        <Text style={styles.balanceHint}>
-          Use ShareCoins to borrow items, tip neighbours, and more
-        </Text>
-      </View>
-
-      {/* Menu */}
       <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: insets.bottom + 32 },
-        ]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {MENU.map((item, idx) => (
-            <React.Fragment key={item.route}>
-              {idx > 0 && (
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              )}
-              <Pressable
-                style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
-                onPress={() => router.push(item.route as never)}
-              >
-                <View style={[styles.iconWrap, { backgroundColor: item.bg }]}>
-                  <Feather name={item.icon} size={18} color={item.accent} />
-                </View>
-                <View style={styles.rowText}>
-                  <Text style={[styles.rowLabel, { color: colors.foreground }]}>
-                    {item.label}
-                  </Text>
-                  <Text style={[styles.rowSub, { color: colors.mutedForeground }]}>
-                    {item.sublabel}
-                  </Text>
-                </View>
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              </Pressable>
-            </React.Fragment>
-          ))}
+        {/* Top group */}
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          <Row icon="list" label="View Transactions" route="/transactions" />
+          <View style={[styles.separator, { backgroundColor: colors.border }]} />
+          <Row icon="award" label="Achievements" route="/achievements" />
+        </View>
+
+        {/* Section header */}
+        <Text style={[styles.sectionHeader, { color: "#0d9488" }]}>Earn More ShareCoins</Text>
+
+        {/* Bottom group */}
+        <View style={[styles.group, { borderColor: colors.border }]}>
+          <Row icon="zap" label="Play Games" route="/games" />
+          <View style={[styles.separator, { backgroundColor: colors.border }]} />
+          <Row icon="users" label="Invite Friends" route="/referrals" />
+          <View style={[styles.separator, { backgroundColor: colors.border }]} />
+          <Row icon="heart" label="Help Neighbours" route="/(tabs)/share" />
         </View>
       </ScrollView>
     </View>
@@ -157,74 +83,60 @@ export default function ShareCoinWalletScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { width: 36, alignItems: "flex-start" },
-  headerCenter: { flex: 1, alignItems: "center" },
+  backBtn: { width: 26 },
   headerTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
   },
-  balanceCard: {
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    paddingBottom: 28,
-    alignItems: "center",
+
+  scroll: {
+    paddingTop: 20,
+    paddingHorizontal: 16,
     gap: 6,
   },
-  balanceInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  coinIcon: { width: 36, height: 36 },
-  balanceAmount: {
-    fontSize: 48,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-    letterSpacing: -1,
-  },
-  balanceLabel: {
-    fontSize: 18,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.85)",
-    marginTop: 6,
-  },
-  balanceHint: {
+
+  sectionHeader: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.7)",
-    textAlign: "center",
-    maxWidth: 260,
-    marginTop: 4,
+    fontFamily: "Inter_600SemiBold",
+    paddingHorizontal: 4,
+    paddingTop: 20,
+    paddingBottom: 6,
+    letterSpacing: 0.2,
   },
-  scroll: { padding: 16, gap: 16 },
-  menuCard: {
-    borderRadius: 16,
-    borderWidth: 1,
+
+  group: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
+
   row: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
+    paddingVertical: 15,
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  rowIcon: {
+    width: 28,
+    marginRight: 12,
   },
-  rowText: { flex: 1, gap: 2 },
-  rowLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  rowSub: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  divider: { height: 1, marginLeft: 68 },
+  rowLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+  },
+
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 56,
+  },
 });

@@ -678,18 +678,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontFamily: "Inter_700Bold",
   },
-  addPhotoNudge: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: "#A7F0E4",
-  },
+  addPhotoNudge: {},
   addPhotoText: {
     fontSize: 11,
     fontFamily: "Inter_500Medium",
-    color: "#0d9488",
+    color: "#f59e0b",
   },
   profileInfo: {
     flex: 1,

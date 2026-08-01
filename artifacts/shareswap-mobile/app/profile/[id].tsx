@@ -819,6 +819,6 @@ const styles = StyleSheet.create({
   addPhotoText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
-    color: "#0d9488",
+    color: "#f59e0b",
   },
 });

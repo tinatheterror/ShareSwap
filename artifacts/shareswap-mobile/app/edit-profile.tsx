@@ -60,11 +60,16 @@ export default function EditProfileScreen() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("PATCH", "/api/user-profile", {
-        displayName: displayName.trim() || undefined,
+      const trimmedName = displayName.trim();
+      const body: Record<string, string | undefined> = {
         bio: bio.trim() || undefined,
         location: location.trim() || undefined,
-      });
+      };
+      // Only send displayName if it actually changed — server enforces a 30-day cooldown
+      if (trimmedName && trimmedName !== (profile?.displayName ?? "")) {
+        body.displayName = trimmedName;
+      }
+      const res = await apiRequest("PATCH", "/api/user-profile", body);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as any).error || "Failed to save");

@@ -99,11 +99,13 @@ app.use(
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  // Development: very high limit so active testing never hits it.
+  // Production: 200 req/15 min per IP.
+  max: process.env.NODE_ENV === "production" ? 200 : 10000,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req: Request, res: Response) => {
-    res.status(429).json({ message: "Too many requests, please try again later." });
+    res.status(429).json({ error: "Too many requests, please try again later." });
   },
 });
 

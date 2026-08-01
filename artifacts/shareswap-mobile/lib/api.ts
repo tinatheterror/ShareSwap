@@ -11,7 +11,9 @@ async function throwIfNotOk(res: Response) {
       parsed = JSON.parse(text);
     } catch {}
     const msg =
-      (parsed?.error as string) || `${res.status}: ${text}`;
+      (parsed?.error as string) ||
+      (parsed?.message as string) ||
+      `${res.status}: ${text}`;
     const err = new Error(msg) as Error & {
       status?: number;
       code?: string;

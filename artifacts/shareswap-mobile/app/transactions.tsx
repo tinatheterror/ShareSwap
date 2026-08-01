@@ -50,17 +50,15 @@ export default function TransactionsScreen() {
           styles.header,
           {
             paddingTop: topPad + 8,
-            backgroundColor: colors.primary,
-            borderBottomColor: "transparent",
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
           },
         ]}
       >
         <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
           <Feather name="chevron-left" size={26} color={colors.foreground} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          Transactions
-        </Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Transactions</Text>
         <View style={{ width: 30 }} />
       </View>
 

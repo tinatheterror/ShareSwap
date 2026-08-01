@@ -148,15 +148,17 @@ export default function AchievementsScreen() {
         style={[
           styles.header,
           {
-            backgroundColor: colors.primary,
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+            borderBottomWidth: StyleSheet.hairlineWidth,
             paddingTop: insets.top + (isWeb ? 8 : 0),
           },
         ]}
       >
         <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
-          <Feather name="chevron-left" size={26} color="#fff" />
+          <Feather name="chevron-left" size={26} color={colors.foreground} />
         </Pressable>
-        <Text style={styles.headerTitle}>Achievements</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Achievements</Text>
         <View style={{ width: 30 }} />
       </View>
       {!user ? (

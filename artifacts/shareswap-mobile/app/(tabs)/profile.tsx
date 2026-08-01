@@ -252,7 +252,7 @@ export default function ProfileScreen() {
                 {userProfile?.profilePhoto ? (
                   <Image
                     source={{ uri: photoUrl(userProfile.profilePhoto) }}
-                    style={StyleSheet.absoluteFill}
+                    style={styles.avatarImg}
                     resizeMode="cover"
                   />
                 ) : (
@@ -679,6 +679,11 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: 72,
+    height: 72,
   },
   avatarText: {
     fontSize: 28,

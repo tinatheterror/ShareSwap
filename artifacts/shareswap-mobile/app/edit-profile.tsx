@@ -287,7 +287,7 @@ export default function EditProfileScreen() {
               { opacity: pressed || isSaving ? 0.8 : 1 },
             ]}
             onPress={() => saveMutation.mutate()}
-            disabled={isSaving || isLoading}
+            disabled={isSaving || isLoading || photoUploading}
           >
             {isSaving ? (
               <ActivityIndicator color="#fff" size="small" />

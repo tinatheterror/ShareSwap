@@ -7,6 +7,7 @@ import {
   Alert,
   AppState,
   AppStateStatus,
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -18,7 +19,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { apiGet } from "@/lib/api";
+import { apiGet, photoUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { ItemCard, Item } from "@/components/ItemCard";
 
@@ -38,6 +39,7 @@ interface UserProfile {
   paymentMethodLast4?: string | null;
   idVerified?: boolean;
   isVerified?: boolean;
+  profilePhoto?: string | null;
 }
 
 export default function ProfileScreen() {
@@ -247,13 +249,17 @@ export default function ProfileScreen() {
             {/* Avatar column: circle + Add photo nudge */}
             <View style={styles.avatarCol}>
               <View style={[styles.avatar, { backgroundColor: "#0d9488" }]}>
-                {(user.avatarUrl || userProfile?.avatarUrl) ? (
-                  <Text style={[styles.avatarText, { color: "#fff" }]}>{initial}</Text>
+                {userProfile?.profilePhoto ? (
+                  <Image
+                    source={{ uri: photoUrl(userProfile.profilePhoto) }}
+                    style={StyleSheet.absoluteFill}
+                    resizeMode="cover"
+                  />
                 ) : (
                   <Text style={[styles.avatarText, { color: "#fff" }]}>{initial}</Text>
                 )}
               </View>
-              {!(user.avatarUrl || userProfile?.avatarUrl) && (
+              {!userProfile?.profilePhoto && (
                 <Pressable
                   style={styles.addPhotoNudge}
                   onPress={() => router.push("/edit-profile" as never)}

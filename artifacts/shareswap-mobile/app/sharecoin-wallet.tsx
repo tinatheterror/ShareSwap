@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -11,13 +13,29 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { useAuth } from "@/context/AuthContext";
+import { apiGet } from "@/lib/api";
+
+const shareCoinIcon = require("../assets/icons/sharecoin.png");
+
+interface User {
+  shareCoins?: number | string | null;
+}
 
 export default function ShareCoinWalletScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth() as { user: User | null };
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
+
+  const { data: freshUser } = useQuery<User>({
+    queryKey: ["/api/user"],
+    queryFn: () => apiGet<User>("/api/user"),
+  });
+
+  const balance = Math.round(Number((freshUser ?? user)?.shareCoins ?? 0));
 
   function Row({
     icon,
@@ -58,6 +76,16 @@ export default function ShareCoinWalletScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Balance card */}
+        <View style={[styles.balanceCard, { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }]}>
+          <Text style={styles.balanceCaption}>CURRENT BALANCE</Text>
+          <View style={styles.balanceRow}>
+            <Image source={shareCoinIcon} style={styles.balanceCoin} resizeMode="contain" />
+            <Text style={styles.balanceAmount}>{balance}</Text>
+          </View>
+          <Text style={styles.balanceLabel}>ShareCoins</Text>
+        </View>
+
         {/* Top group */}
         <View style={[styles.group, { borderColor: colors.border }]}>
           <Row icon="list" label="View Transactions" route="/transactions" />
@@ -138,5 +166,35 @@ const styles = StyleSheet.create({
   separator: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 56,
+  },
+
+  balanceCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 8,
+  },
+  balanceCaption: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#0d9488",
+    letterSpacing: 0.8,
+  },
+  balanceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
+  balanceCoin: { width: 36, height: 36 },
+  balanceAmount: {
+    fontSize: 48,
+    fontFamily: "Inter_700Bold",
+    color: "#0d9488",
+    lineHeight: 56,
+  },
+  balanceLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: "#0d9488",
+    marginTop: 2,
   },
 });

@@ -77,7 +77,7 @@ export default function ShareCoinWalletScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Balance card */}
-        <View style={[styles.balanceCard, { backgroundColor: "#D4F7F1", borderColor: "#A7F0E4" }]}>
+        <View style={[styles.balanceCard, { backgroundColor: "#D4F7F1" }]}>
           <Text style={styles.balanceCaption}>CURRENT BALANCE</Text>
           <View style={styles.balanceRow}>
             <Image source={shareCoinIcon} style={styles.balanceCoin} resizeMode="contain" />
@@ -169,32 +169,32 @@ const styles = StyleSheet.create({
   },
 
   balanceCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: "center",
-    gap: 4,
+    gap: 2,
     marginBottom: 8,
   },
   balanceCaption: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_600SemiBold",
     color: "#0d9488",
     letterSpacing: 0.8,
   },
-  balanceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
-  balanceCoin: { width: 36, height: 36 },
+  balanceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  balanceCoin: { width: 24, height: 24 },
   balanceAmount: {
-    fontSize: 48,
+    fontSize: 32,
     fontFamily: "Inter_700Bold",
     color: "#0d9488",
-    lineHeight: 56,
+    lineHeight: 38,
   },
   balanceLabel: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: "#0d9488",
-    marginTop: 2,
+    marginTop: 1,
   },
 });

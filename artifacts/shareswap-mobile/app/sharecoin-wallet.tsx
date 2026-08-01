@@ -77,8 +77,8 @@ export default function ShareCoinWalletScreen() {
         {/* Balance card */}
         <View style={styles.balanceCard}>
           <View style={styles.balanceRow}>
-            <Coins size={32} color="#0d9488" />
-            <Text style={styles.balanceAmount}>{balance}</Text>
+            <Coins size={32} color={colors.primary} />
+            <Text style={[styles.balanceAmount, { color: colors.primary }]}>{balance}</Text>
           </View>
           <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>ShareCoins</Text>
         </View>
@@ -91,7 +91,7 @@ export default function ShareCoinWalletScreen() {
         </View>
 
         {/* Section header */}
-        <Text style={[styles.sectionHeader, { color: "#0d9488" }]}>Earn More ShareCoins</Text>
+        <Text style={[styles.sectionHeader, { color: colors.primary }]}>Earn More ShareCoins</Text>
 
         {/* Bottom group */}
         <View style={[styles.group, { borderColor: colors.border }]}>
@@ -175,7 +175,6 @@ const styles = StyleSheet.create({
   balanceAmount: {
     fontSize: 30,
     fontFamily: "Inter_700Bold",
-    color: "#0d9488",
   },
   balanceLabel: {
     fontSize: 14,

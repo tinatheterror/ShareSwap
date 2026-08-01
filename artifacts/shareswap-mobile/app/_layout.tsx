@@ -44,6 +44,14 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
+        name="register"
+        options={{
+          title: "Create Account",
+          headerBackTitle: "Back",
+          presentation: "modal",
+        }}
+      />
+      <Stack.Screen
         name="item/[id]"
         options={{
           title: "",

@@ -37,6 +37,7 @@ interface AuthContextValue {
   sessionExpired: boolean;
   clearSessionExpired: () => void;
   login: (username: string, password: string) => Promise<void>;
+  register: (opts: { email: string; password: string; fullName?: string; referralCode?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refetchUser: () => Promise<void>;
 }
@@ -47,6 +48,7 @@ const AuthContext = createContext<AuthContextValue>({
   sessionExpired: false,
   clearSessionExpired: () => {},
   login: async () => {},
+  register: async () => {},
   logout: async () => {},
   refetchUser: async () => {},
 });
@@ -93,14 +95,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSessionExpired(false);
   }, []);
 
+  // Stable device fingerprint stored in AsyncStorage — used for referral fraud detection
+  const getDeviceFingerprint = useCallback(async (): Promise<string> => {
+    const FINGERPRINT_KEY = "device_fingerprint";
+    try {
+      const stored = await AsyncStorage.getItem(FINGERPRINT_KEY);
+      if (stored) return stored;
+      // Simple UUID v4-like generator without external deps
+      const id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = Math.random() * 16 | 0;
+        const v = c === "x" ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+      await AsyncStorage.setItem(FINGERPRINT_KEY, id);
+      return id;
+    } catch {
+      return "unknown";
+    }
+  }, []);
+
   const login = useCallback(
     async (username: string, password: string) => {
-      await apiPost("/api/login", { username, password });
+      const deviceFingerprint = await getDeviceFingerprint();
+      await apiPost("/api/login", { username, password, deviceFingerprint });
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");
       setSessionExpired(false);
       await fetchUser();
     },
-    [fetchUser],
+    [fetchUser, getDeviceFingerprint],
+  );
+
+  const register = useCallback(
+    async (opts: { email: string; password: string; fullName?: string; referralCode?: string }) => {
+      const deviceFingerprint = await getDeviceFingerprint();
+      await apiPost("/api/register", {
+        username: opts.email,
+        password: opts.password,
+        fullName: opts.fullName,
+        referralCode: opts.referralCode,
+        deviceFingerprint,
+      });
+      await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");
+      setSessionExpired(false);
+      await fetchUser();
+    },
+    [fetchUser, getDeviceFingerprint],
   );
 
   const logout = useCallback(async () => {
@@ -122,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionExpired,
         clearSessionExpired,
         login,
+        register,
         logout,
         refetchUser: fetchUser,
       }}

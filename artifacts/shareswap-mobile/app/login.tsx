@@ -182,7 +182,7 @@ export default function LoginScreen() {
                 <Feather name="user" size={15} color={colors.mutedForeground} />
                 <TextInput
                   style={[styles.input, { color: colors.foreground }]}
-                  placeholder="Username or email"
+                  placeholder="Email"
                   placeholderTextColor={colors.mutedForeground}
                   value={username}
                   onChangeText={setUsername}
@@ -266,6 +266,15 @@ export default function LoginScreen() {
           )}
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <Pressable onPress={() => router.push("/register" as never)}>
+            <Text style={[styles.referralLink, { color: colors.mutedForeground, textAlign: "center" }]}>
+              New to ShareSwap?{" "}
+              <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+                Create an account
+              </Text>
+            </Text>
+          </Pressable>
 
           <View style={styles.trustRow}>
             <Feather name="lock" size={15} color={colors.primary} />

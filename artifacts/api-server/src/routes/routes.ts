@@ -1717,8 +1717,7 @@ Respond with ONLY valid JSON in this exact format:
                 ]
               }
             ],
-            max_tokens: 150,
-            temperature: 0.1
+            max_completion_tokens: 150,
           });
 
           const content = response.choices[0]?.message?.content || "";
@@ -1742,11 +1741,11 @@ Respond with ONLY valid JSON in this exact format:
             validationReason = "Could not verify face in photo";
           }
         } catch (aiError) {
-          console.error("AI validation error (awarding coin anyway):", aiError);
-          // If AI validation fails for any reason, fail open — award the coin
-          // The photo is saved and the reward is given; validation is a UX encouragement, not a strict gate
-          validationStatus = "approved";
-          validationReason = "Validation skipped";
+          console.error("AI validation error (withholding coin):", aiError);
+          // If AI validation fails for any reason, fail closed — do not award the coin
+          // The photo is always saved, but the reward requires a confirmed approved face
+          validationStatus = "rejected";
+          validationReason = "Could not verify face in photo";
         }
       }
 
@@ -1757,9 +1756,8 @@ Respond with ONLY valid JSON in this exact format:
         profilePhotoValidationReason: validationReason,
       };
 
-      // Award bonus on first upload regardless of AI validation result
-      // AI validation is informational only, not a gate
-      if (!hasAlreadyEarnedBonus) {
+      // Award bonus only on first upload AND when AI validation approves a real face
+      if (!hasAlreadyEarnedBonus && validationStatus === "approved") {
         updateData.hasUploadedProfilePhoto = true;
         shareCoinsAwarded = 1;
 
@@ -1798,8 +1796,10 @@ Respond with ONLY valid JSON in this exact format:
       let message: string;
       if (hasAlreadyEarnedBonus) {
         message = "Profile photo updated!";
-      } else {
+      } else if (validationStatus === "approved") {
         message = "Profile photo uploaded! You earned 1 ShareCoin.";
+      } else {
+        message = "Photo Saved — Try another photo to earn 1 ShareCoin";
       }
 
       res.json({

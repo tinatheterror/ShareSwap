@@ -1786,6 +1786,10 @@ Respond with ONLY valid JSON in this exact format:
           isRead: false,
         });
       } else {
+        // Mark that an upload was attempted — even if this photo was rejected,
+        // the bonus slot is consumed so the user cannot earn the coin again
+        // by swapping to a valid photo later.
+        updateData.hasUploadedProfilePhoto = true;
         await db
           .update(users)
           .set(updateData)
@@ -1799,7 +1803,7 @@ Respond with ONLY valid JSON in this exact format:
       } else if (validationStatus === "approved") {
         message = "Profile photo uploaded! You earned 1 ShareCoin.";
       } else {
-        message = "Photo Saved — Try another photo to earn 1 ShareCoin";
+        message = "Photo saved. Make sure your photo clearly shows your face to earn 1 ShareCoin.";
       }
 
       res.json({

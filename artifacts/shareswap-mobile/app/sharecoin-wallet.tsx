@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -16,8 +15,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet } from "@/lib/api";
-
-const shareCoinIcon = require("../assets/icons/sharecoin.png");
 
 interface User {
   shareCoins?: number | string | null;
@@ -78,13 +75,12 @@ export default function ShareCoinWalletScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Balance card */}
-        <View style={[styles.balanceCard, { backgroundColor: "#D4F7F1" }]}>
-          <Text style={styles.balanceCaption}>CURRENT BALANCE</Text>
+        <View style={styles.balanceCard}>
           <View style={styles.balanceRow}>
-            <Image source={shareCoinIcon} style={styles.balanceCoin} resizeMode="contain" />
+            <Coins size={32} color="#0d9488" />
             <Text style={styles.balanceAmount}>{balance}</Text>
           </View>
-          <Text style={styles.balanceLabel}>ShareCoins</Text>
+          <Text style={[styles.balanceLabel, { color: colors.mutedForeground }]}>ShareCoins</Text>
         </View>
 
         {/* Top group */}
@@ -170,31 +166,19 @@ const styles = StyleSheet.create({
   },
 
   balanceCard: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
     alignItems: "center",
-    gap: 2,
-    marginBottom: 8,
+    paddingVertical: 16,
+    gap: 4,
+    marginBottom: 4,
   },
-  balanceCaption: {
-    fontSize: 10,
-    fontFamily: "Inter_600SemiBold",
-    color: "#0d9488",
-    letterSpacing: 0.8,
-  },
-  balanceRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
-  balanceCoin: { width: 24, height: 24 },
+  balanceRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   balanceAmount: {
-    fontSize: 32,
+    fontSize: 30,
     fontFamily: "Inter_700Bold",
     color: "#0d9488",
-    lineHeight: 38,
   },
   balanceLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: "#0d9488",
-    marginTop: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
   },
 });

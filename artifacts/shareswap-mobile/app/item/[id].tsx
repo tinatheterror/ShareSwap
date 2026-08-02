@@ -8,12 +8,15 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,6 +34,7 @@ interface ItemDetail extends Item {
   maximumDays?: number;
   rules?: string;
   tags?: string[];
+  photos?: string[];
 }
 
 const SHARE_TYPE_LABELS: Record<string, string> = {
@@ -62,6 +66,8 @@ export default function ItemDetailScreen() {
   const [sending, setSending] = useState(false);
   const [showVerifModal, setShowVerifModal] = useState(false);
   const [verifMissing, setVerifMissing] = useState<{ idVerified?: boolean; paymentVerified?: boolean }>({});
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const { width: screenWidth } = useWindowDimensions();
 
   const { data: item, isLoading } = useQuery<ItemDetail>({
     queryKey: [`/api/items/${id}`],
@@ -137,6 +143,19 @@ export default function ItemDetailScreen() {
   const typeLabel = SHARE_TYPE_LABELS[item.shareType ?? "borrow"] ?? "Share";
   const conditionLabel = CONDITION_LABELS[item.condition ?? "good"] ?? "Good";
 
+  // Build the photos list: prefer the photos array, fall back to imageUrl
+  const allPhotos: string[] =
+    item.photos && item.photos.length > 0
+      ? item.photos
+      : item.imageUrl
+        ? [item.imageUrl]
+        : [];
+
+  function handlePhotoScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+    setActivePhotoIndex(index);
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <VerificationGateModal
@@ -150,12 +169,44 @@ export default function ItemDetailScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {item.imageUrl ? (
-          <Image
-            source={{ uri: photoUrl(item.imageUrl) }}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
+        {allPhotos.length > 0 ? (
+          <View>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handlePhotoScroll}
+              scrollEventThrottle={16}
+            >
+              {allPhotos.map((photo, index) => (
+                <Image
+                  key={index}
+                  source={{ uri: photoUrl(photo) }}
+                  style={[styles.heroImage, { width: screenWidth }]}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+            {allPhotos.length > 1 && (
+              <View style={styles.dotRow}>
+                {allPhotos.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.dot,
+                      {
+                        backgroundColor:
+                          index === activePhotoIndex
+                            ? colors.primary
+                            : colors.primary + "40",
+                        width: index === activePhotoIndex ? 18 : 6,
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         ) : (
           <View
             style={[styles.heroPlaceholder, { backgroundColor: colors.muted }]}
@@ -395,7 +446,6 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   heroImage: {
-    width: "100%",
     height: 280,
   },
   heroPlaceholder: {
@@ -403,6 +453,17 @@ const styles = StyleSheet.create({
     height: 280,
     alignItems: "center",
     justifyContent: "center",
+  },
+  dotRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 10,
+  },
+  dot: {
+    height: 6,
+    borderRadius: 3,
   },
   content: {
     padding: 20,

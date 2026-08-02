@@ -246,7 +246,7 @@ export default function MySharedItemsScreen() {
             {!isPassed && (
               <Pressable
                 style={[s.thumbBtn, { backgroundColor: "rgba(255,255,255,0.92)" }]}
-                onPress={() => router.push(`/item/${item.id}` as never)}
+                onPress={() => router.push(`/edit-item/${item.id}` as never)}
                 hitSlop={6}
               >
                 <Feather name="edit-2" size={13} color="#374151" />

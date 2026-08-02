@@ -38,6 +38,7 @@ import { addSimplifiedRoutes } from "../simplified-routes";
 import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
+import { sendVerificationEmail } from "../sendgrid";
 
 // Notify all availability subscribers that an item is back
 async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
@@ -13186,6 +13187,91 @@ Respond with ONLY the category name, nothing else.`
     const hashed = await hashPassword(newPassword);
     await db.update(users).set({ password: hashed }).where(eq(users.id, userId));
     res.json({ message: "Password updated successfully" });
+  });
+
+  // POST /api/account/change-email
+  // Body: { newEmail, currentPassword }
+  // Only available to local (email/password) accounts. Requires current password.
+  app.post("/api/account/change-email", csrfProtection, async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+    const userId = (req.user as any).id;
+    const { newEmail, currentPassword } = req.body;
+
+    if (!newEmail || typeof newEmail !== "string") {
+      return res.status(400).json({ message: "New email is required" });
+    }
+    if (!currentPassword || typeof currentPassword !== "string") {
+      return res.status(400).json({ message: "Current password is required" });
+    }
+
+    // Basic email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail.trim())) {
+      return res.status(400).json({ message: "Invalid email address" });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Google/OAuth users have no local password — they cannot use this endpoint
+    if (user.authProvider && user.authProvider !== "local") {
+      return res.status(403).json({ message: "Email change is not available for accounts using social login" });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({ message: "Password login is not enabled for this account" });
+    }
+
+    const valid = await comparePasswords(currentPassword, user.password);
+    if (!valid) return res.status(401).json({ message: "Current password is incorrect" });
+
+    const trimmedEmail = newEmail.trim().toLowerCase();
+
+    // Case-insensitive uniqueness check to catch any legacy mixed-case addresses
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(ilike(users.username, trimmedEmail))
+      .limit(1);
+    if (existing) {
+      return res.status(409).json({ message: "That email address is already in use" });
+    }
+
+    // Generate a fresh verification token for the new address
+    const emailVerificationToken = randomBytes(32).toString("hex");
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    try {
+      await db
+        .update(users)
+        .set({
+          username: trimmedEmail,
+          email: trimmedEmail,
+          // Reset verification: the new address has not been proven yet
+          emailVerified: false,
+          emailVerificationToken,
+          emailVerificationExpires,
+        })
+        .where(eq(users.id, userId));
+    } catch (err: any) {
+      // Unique constraint violation (race or missed ilike check)
+      if (err?.code === "23505") {
+        return res.status(409).json({ message: "That email address is already in use" });
+      }
+      throw err;
+    }
+
+    // Send verification email to the new address (non-blocking)
+    sendVerificationEmail(
+      trimmedEmail,
+      emailVerificationToken,
+      user.displayName || undefined,
+    ).catch((err) => {
+      console.error("[Auth] Failed to send verification email after email change:", err);
+    });
+
+    console.log(`[Auth] Email changed for user ${userId} to ${trimmedEmail}; verification required`);
+    res.json({ message: "Email updated. Please check your inbox to verify your new address." });
   });
 
   app.post("/api/account/deactivate", csrfProtection, async (req, res) => {

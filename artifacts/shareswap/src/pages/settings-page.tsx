@@ -52,6 +52,9 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
 
   const updatePhoneMutation = useMutation({
     mutationFn: async (phoneNumber: string) => {
@@ -93,6 +96,28 @@ export default function SettingsPage() {
     },
     onError: (error: any) => {
       toast({ title: "Failed to change password", description: error.message || "Could not update password.", variant: "destructive" });
+    },
+  });
+
+  const changeEmailMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/account/change-email", {
+        newEmail: newEmail.trim().toLowerCase(),
+        currentPassword: emailCurrentPassword,
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.message || "Could not update email.");
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({ title: "Email updated", description: "Your email address has been changed. Please use your new email to log in." });
+      setShowChangeEmail(false);
+      setNewEmail("");
+      setEmailCurrentPassword("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to update email", description: error.message || "Could not update email.", variant: "destructive" });
     },
   });
 
@@ -226,6 +251,59 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500">{(user as any)?.email || user?.username}</p>
               </div>
             </div>
+            {!(user as any)?.authProvider || (user as any)?.authProvider === "local" ? (
+              <div className="pl-0 pb-1 flex gap-4">
+                {!showChangeEmail && (
+                  <button
+                    onClick={() => setShowChangeEmail(true)}
+                    className="text-xs text-[#0BB88C] hover:underline font-medium"
+                  >
+                    Change email
+                  </button>
+                )}
+              </div>
+            ) : null}
+            {showChangeEmail && (
+              <div className="space-y-2 pt-1 pb-1">
+                <p className="text-xs font-medium text-gray-600">Change Email Address</p>
+                <Input
+                  type="email"
+                  placeholder="New email address"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <Input
+                  type="password"
+                  placeholder="Current password to confirm"
+                  value={emailCurrentPassword}
+                  onChange={(e) => setEmailCurrentPassword(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    onClick={() => changeEmailMutation.mutate()}
+                    disabled={changeEmailMutation.isPending || !newEmail || !emailCurrentPassword}
+                    style={{ backgroundColor: "#0BB88C" }}
+                    className="text-white"
+                  >
+                    {changeEmailMutation.isPending ? "Saving..." : "Update Email"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowChangeEmail(false);
+                      setNewEmail("");
+                      setEmailCurrentPassword("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="pl-0 pb-1">
               {!showChangePassword ? (
                 <button

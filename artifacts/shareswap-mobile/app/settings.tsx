@@ -70,6 +70,12 @@ export default function SettingsScreen() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // email modal
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCurrentPwd, setEmailCurrentPwd] = useState("");
+  const [showEmailPwd, setShowEmailPwd] = useState(false);
+
   // ── queries ───────────────────────────────────────────────────────────────
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["user-profile"],
@@ -176,6 +182,37 @@ export default function SettingsScreen() {
     setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
     setShowCurrent(false); setShowNew(false); setShowConfirm(false);
   };
+
+  const closeEmailModal = () => {
+    setEmailModalVisible(false);
+    setNewEmail(""); setEmailCurrentPwd("");
+    setShowEmailPwd(false);
+  };
+
+  // Email change: POST /api/account/change-email
+  const changeEmailMutation = useMutation({
+    mutationFn: async () => {
+      const trimmed = newEmail.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmed)) throw new Error("Please enter a valid email address.");
+      if (!emailCurrentPwd) throw new Error("Current password is required.");
+      const res = await apiRequest("POST", "/api/account/change-email", {
+        newEmail: trimmed,
+        currentPassword: emailCurrentPwd,
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.message || "Could not update email.");
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      Alert.alert("Email updated", "Your email address has been changed. Please use your new email to log in.");
+      closeEmailModal();
+    },
+    onError: (error: Error) => {
+      Alert.alert("Failed to update email", error.message);
+    },
+  });
 
   const openDeactivateModal = () => {
     setConfirmChecked(false);
@@ -317,12 +354,20 @@ export default function SettingsScreen() {
           </View>
 
           {!isOAuthUser ? (
-            <Pressable
-              onPress={() => setPwdModalVisible(true)}
-              style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Text style={[styles.linkText, { color: "#0d9488" }]}>Change password</Text>
-            </Pressable>
+            <View style={{ flexDirection: "row", gap: 16, flexWrap: "wrap" }}>
+              <Pressable
+                onPress={() => setPwdModalVisible(true)}
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={[styles.linkText, { color: "#0d9488" }]}>Change password</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setEmailModalVisible(true)}
+                style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
+              >
+                <Text style={[styles.linkText, { color: "#0d9488" }]}>Change email</Text>
+              </Pressable>
+            </View>
           ) : (
             <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
               Password login is managed through your Google account.
@@ -520,6 +565,81 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ── Change Email Modal ── */}
+      <Modal
+        visible={emailModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={closeEmailModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <Pressable style={styles.modalBackdrop} onPress={closeEmailModal} />
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Change Email</Text>
+
+            <Text style={[styles.inputLabel, { color: colors.foreground }]}>New Email Address</Text>
+            <View style={[styles.pwdRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <TextInput
+                style={[styles.pwdInput, { color: colors.foreground }]}
+                value={newEmail}
+                onChangeText={setNewEmail}
+                placeholder="Enter new email"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.foreground }]}>Current Password</Text>
+            <View style={[styles.pwdRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <TextInput
+                style={[styles.pwdInput, { color: colors.foreground }]}
+                value={emailCurrentPwd}
+                onChangeText={setEmailCurrentPwd}
+                placeholder="Confirm with current password"
+                placeholderTextColor={colors.mutedForeground}
+                secureTextEntry={!showEmailPwd}
+                autoCapitalize="none"
+              />
+              <Pressable onPress={() => setShowEmailPwd(v => !v)}>
+                <Feather name={showEmailPwd ? "eye-off" : "eye"} size={18} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+
+            <View style={styles.modalBtns}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.saveBtn,
+                  { opacity: (pressed || changeEmailMutation.isPending || !newEmail || !emailCurrentPwd) ? 0.6 : 1 },
+                ]}
+                onPress={() => changeEmailMutation.mutate()}
+                disabled={changeEmailMutation.isPending || !newEmail || !emailCurrentPwd}
+              >
+                {changeEmailMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Update Email</Text>
+                )}
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cancelBtn,
+                  { borderColor: colors.border, backgroundColor: colors.background, opacity: pressed ? 0.7 : 1 },
+                ]}
+                onPress={closeEmailModal}
+              >
+                <Text style={[styles.cancelBtnText, { color: colors.foreground }]}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Change Password Modal ── */}

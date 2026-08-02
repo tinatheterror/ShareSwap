@@ -371,25 +371,34 @@ export default function MySharedItemsScreen() {
         </View>
       </View>
 
-      {/* Filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.filterRow}
-        style={[s.filterBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
-      >
-        {visibleFilters.map(({ key, label }) => (
-          <Pressable
-            key={key}
-            style={[s.filterChip, filter === key && { backgroundColor: colors.primary }]}
-            onPress={() => setFilter(key)}
-          >
-            <Text style={[s.filterChipText, { color: filter === key ? "#fff" : colors.foreground }]}>
-              {label} ({counts[key] ?? 0})
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      {/* Filter tabs */}
+      <View style={[s.filterBar, { backgroundColor: "#fff", borderBottomColor: colors.border }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.filterRow}
+        >
+          {visibleFilters.map(({ key, label }) => {
+            const active = filter === key;
+            return (
+              <Pressable
+                key={key}
+                style={[s.filterTab, active && { borderBottomColor: colors.primary }]}
+                onPress={() => setFilter(key)}
+              >
+                <Text style={[s.filterTabText, { color: active ? colors.primary : colors.mutedForeground }]}>
+                  {label}
+                </Text>
+                <View style={[s.filterTabBadge, { backgroundColor: active ? colors.primary : colors.muted }]}>
+                  <Text style={[s.filterTabBadgeText, { color: active ? "#fff" : colors.mutedForeground }]}>
+                    {counts[key] ?? 0}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {/* List */}
       {isLoading ? (
@@ -510,21 +519,33 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   filterRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  filterChip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: "#d1d5db",
+    gap: 0,
+    alignItems: "stretch",
   },
-  filterChipText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
+  filterTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  filterTabText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  filterTabBadge: {
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 20,
+    alignItems: "center",
+  },
+  filterTabBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
   },
   list: {
     padding: 16,

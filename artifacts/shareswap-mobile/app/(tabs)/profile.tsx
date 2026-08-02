@@ -202,7 +202,7 @@ export default function ProfileScreen() {
     );
   }
 
-  const displayName = user.displayName ?? user.username;
+  const displayName = user.displayName ?? user.handle ?? user.username;
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
@@ -281,7 +281,7 @@ export default function ProfileScreen() {
               <Text
                 style={[styles.username, { color: colors.mutedForeground }]}
               >
-                @{user.username}
+                @{user.handle ?? user.username}
               </Text>
             </View>
             <Feather name="chevron-right" size={20} color={colors.mutedForeground} />

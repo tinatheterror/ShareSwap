@@ -16,6 +16,7 @@ export const LAST_AUTH_METHOD_KEY = "lastAuthMethod";
 interface User {
   id: number;
   username: string;
+  handle?: string;
   email: string;
   displayName?: string;
   bio?: string;

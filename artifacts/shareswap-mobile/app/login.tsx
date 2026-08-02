@@ -244,6 +244,16 @@ export default function LoginScreen() {
                   Forgot password?
                 </Text>
               </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, alignSelf: "center" }]}
+                onPress={() => router.push("/register" as never)}
+                hitSlop={8}
+              >
+                <Text style={[styles.forgotLink, { color: colors.primary }]}>
+                  New to ShareSwap? Create an account
+                </Text>
+              </Pressable>
             </View>
           )}
 
@@ -277,20 +287,6 @@ export default function LoginScreen() {
                 autoCorrect={false}
               />
             </View>
-          )}
-
-          {showEmailForm && (
-            <>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <Pressable onPress={() => router.push("/register" as never)}>
-                <Text style={[styles.referralLink, { color: colors.mutedForeground, textAlign: "center" }]}>
-                  New to ShareSwap?{" "}
-                  <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
-                    Create an account
-                  </Text>
-                </Text>
-              </Pressable>
-            </>
           )}
 
           <View style={styles.trustRow}>

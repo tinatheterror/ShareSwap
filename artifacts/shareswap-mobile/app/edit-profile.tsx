@@ -208,9 +208,11 @@ export default function EditProfileScreen() {
             </Pressable>
             <View style={styles.photoHint}>
               <Text style={[styles.addPhotoText, { color: colors.foreground }]}>
-                Add a photo
+                {currentPhotoUri ? "Change photo" : "Add a photo"}
               </Text>
-              <Text style={styles.earnText}>🪙 Earn 1 ShareCoin</Text>
+              {!currentPhotoUri && (
+                <Text style={styles.earnText}>🪙 Earn 1 ShareCoin</Text>
+              )}
             </View>
           </View>
         </View>

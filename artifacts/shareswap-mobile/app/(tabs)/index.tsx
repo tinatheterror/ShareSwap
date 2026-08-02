@@ -587,7 +587,14 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          <Pressable style={[styles.walletBadge, { backgroundColor: "rgba(255,255,255,0.95)" }]} onPress={() => router.push("/sharecoin-wallet" as never)}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.walletBadge,
+              { backgroundColor: "rgba(255,255,255,0.95)" },
+              pressed && styles.walletBadgeGlow,
+            ]}
+            onPress={() => router.push("/sharecoin-wallet" as never)}
+          >
             <View style={styles.walletBadgeInner}>
               <Text style={styles.walletBadgeLabel}>Total Balance</Text>
               <View style={styles.walletBadgeRow}>
@@ -848,6 +855,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
+  },
+  walletBadgeGlow: {
+    shadowColor: "#0DCEA1",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 14,
+    elevation: 16,
   },
   walletBadgeLabel: {
     fontSize: 7,

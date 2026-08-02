@@ -802,13 +802,20 @@ export function setupAuth(app: Express) {
       (req.session as any).pendingReferralCode = refCode;
       console.log("[Google OAuth] Referral code stored in session:", refCode);
     }
-    // Flag native app requests so the callback knows to deep-link back
+    // Flag native app requests so the callback knows to deep-link back.
+    // We encode the redirect_uri in the OAuth `state` parameter rather than
+    // the session because passport regenerates the session after login
+    // (session-fixation protection), which would destroy any session values
+    // written here before the callback fires.
     if (req.query.platform === "native" && req.query.redirect_uri) {
-      (req.session as any).nativeRedirectUri = req.query.redirect_uri as string;
-      console.log(
-        "[Google OAuth] Native redirect URI stored:",
-        req.query.redirect_uri,
-      );
+      const statePayload = Buffer.from(
+        JSON.stringify({ nativeRedirectUri: req.query.redirect_uri as string }),
+      ).toString("base64url");
+      console.log("[Google OAuth] Native redirect URI encoded into state");
+      return passport.authenticate("google", {
+        scope: ["profile", "email"],
+        state: statePayload,
+      } as any)(req, res, next);
     }
     passport.authenticate("google", {
       scope: ["profile", "email"],
@@ -820,10 +827,27 @@ export function setupAuth(app: Express) {
       failureRedirect: "/auth",
     })(req, res, (err: any) => {
       if (err) return next(err);
-      // Check if this login came from the native app
-      const nativeRedirectUri = (req.session as any)?.nativeRedirectUri;
-      if (nativeRedirectUri) {
+      // Resolve native redirect URI — prefer state param (session-independent)
+      // then fall back to session (legacy / web-initiated flows).
+      let nativeRedirectUri: string | undefined;
+      const rawState = req.query.state as string | undefined;
+      if (rawState) {
+        try {
+          const decoded = JSON.parse(
+            Buffer.from(rawState, "base64url").toString(),
+          );
+          if (decoded?.nativeRedirectUri) {
+            nativeRedirectUri = decoded.nativeRedirectUri;
+          }
+        } catch {
+          // not our encoded state — ignore
+        }
+      }
+      if (!nativeRedirectUri && (req.session as any)?.nativeRedirectUri) {
+        nativeRedirectUri = (req.session as any).nativeRedirectUri;
         delete (req.session as any).nativeRedirectUri;
+      }
+      if (nativeRedirectUri) {
         return res.redirect(nativeRedirectUri);
       }
       // Check if referral was applied during this OAuth flow

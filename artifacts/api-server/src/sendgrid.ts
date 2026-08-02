@@ -128,8 +128,9 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
       ? `https://${process.env.CUSTOM_DOMAIN}`
       : 'http://localhost:5000';
 
-    // Token is included so the mobile app can deep-link directly to the reset screen
-    const resetLink = `${baseUrl}/api/auth/reset-password-redirect?token=${resetToken}`;
+    // Link goes to the web reset-password page; mobile users can enter the token manually
+    // or use the deep-link redirect route if their device opens the app
+    const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
     const msg = {
       to: toEmail,

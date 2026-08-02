@@ -1,10 +1,10 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect, useSearch } from "wouter";
+import { Redirect, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { RollingCounter } from "@/components/rolling-counter";
-import { Lock, Mail, RotateCcw, AlertCircle, Eye, EyeOff, Users, CheckCircle2 } from "lucide-react";
+import { Lock, Mail, RotateCcw, AlertCircle, Eye, EyeOff, Users, CheckCircle2, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -44,6 +44,7 @@ function generateDeviceFingerprint(): string {
 export default function AuthPage() {
   const { user } = useAuth();
   const searchString = useSearch();
+  const [, navigate] = useLocation();
   const [showEmailAuth, setShowEmailAuth] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -53,6 +54,10 @@ export default function AuthPage() {
   const [showReactivate, setShowReactivate] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showReferralInput, setShowReferralInput] = useState(false);
+  // Forgot-password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
   const { toast } = useToast();
 
   // Extract referral code from URL and handle verification status
@@ -96,6 +101,25 @@ export default function AuthPage() {
   }>({
     queryKey: ["/api/stats"],
     staleTime: 5 * 60 * 1000,
+  });
+
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (emailArg: string) => {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailArg.trim().toLowerCase() }),
+      });
+      // Always 200 from backend — if not ok, surface the error
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || "Request failed");
+      return body;
+    },
+    onSuccess: () => setForgotSent(true),
+    onError: () => {
+      // Still show "check your email" — backend intentionally non-discloses
+      setForgotSent(true);
+    },
   });
 
   const reactivateMutation = useMutation({
@@ -402,6 +426,22 @@ export default function AuthPage() {
                   ? "Sign In"
                   : "Create Account"}
             </Button>
+            {isLogin && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotEmail(email);
+                    setForgotSent(false);
+                    setShowEmailAuth(false);
+                    setShowForgotPassword(true);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-primary underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
             {!isLogin && (
               <p className="text-xs text-gray-500 text-center">
                 You can browse right away. Verification is only required for
@@ -420,6 +460,109 @@ export default function AuthPage() {
               </button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Forgot Password Dialog ─────────────────────────────────── */}
+      <Dialog
+        open={showForgotPassword}
+        onOpenChange={(open) => {
+          setShowForgotPassword(open);
+          if (!open) { setForgotEmail(""); setForgotSent(false); }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-primary" />
+              {forgotSent ? "Check your email" : "Forgot password?"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {!forgotSent ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                forgotPasswordMutation.mutate(forgotEmail);
+              }}
+              className="space-y-4"
+            >
+              <p className="text-sm text-muted-foreground">
+                Enter your account email and we'll send you a reset link.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={forgotPasswordMutation.isPending}
+              >
+                {forgotPasswordMutation.isPending ? "Sending…" : "Send reset link"}
+              </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setShowEmailAuth(true);
+                  }}
+                  className="text-sm text-muted-foreground hover:text-primary underline inline-flex items-center gap-1"
+                >
+                  <ArrowLeft className="h-3 w-3" />
+                  Back to sign in
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3 py-2 text-center">
+                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                  <CheckCircle2 className="h-7 w-7 text-green-600" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  If an account exists for{" "}
+                  <span className="font-medium text-foreground">{forgotEmail.trim().toLowerCase()}</span>
+                  , you'll receive a reset email shortly.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Click the link in the email to open the reset page, or copy the token and enter it manually.
+                </p>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  navigate("/reset-password");
+                }}
+              >
+                Enter reset token
+              </Button>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setForgotSent(false);
+                    setShowEmailAuth(true);
+                  }}
+                  className="text-sm text-muted-foreground hover:text-primary underline inline-flex items-center gap-1"
+                >
+                  <ArrowLeft className="h-3 w-3" />
+                  Back to sign in
+                </button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

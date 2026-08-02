@@ -50,6 +50,7 @@ import DiscoverNeighboursPage from "@/pages/discover-neighbours-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentMethodsPage from "@/pages/payment-methods-page";
 import MyBalancePage from "@/pages/my-balance-page";
+import ResetPasswordPage from "@/pages/reset-password-page";
 import { VerificationNudge } from "@/components/verification-nudge";
 import { BackgroundPolling } from "@/components/background-polling";
 import { LocationSetupWrapper } from "@/components/location-setup-wrapper";
@@ -68,6 +69,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/register" component={RegisterRedirect} />
       <Route path="/join" component={RegisterRedirect} />
       <ProtectedRoute path="/" component={HomePage} />

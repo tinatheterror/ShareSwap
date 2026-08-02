@@ -259,7 +259,10 @@ export default function ShareScreen() {
             { paddingTop: topPad + 12, borderBottomColor: "transparent", backgroundColor: colors.primary },
           ]}
         >
-          <Text style={[cm.heading, { color: colors.foreground }]}>How would you like to share?</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={[cm.heading, { color: colors.foreground, flex: 1 }]}>How would you like to share?</Text>
+            <NotificationBell />
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={cm.fullScroll} showsVerticalScrollIndicator={false}>
@@ -330,8 +333,8 @@ export default function ShareScreen() {
             { paddingTop: topPad + 12, borderBottomColor: colors.border, backgroundColor: colors.background },
           ]}
         >
-          <View style={{ width: 24 }} />
           <View style={{ flex: 1 }} />
+          <NotificationBell />
           <Pressable
             onPress={() => {
               setImportVisible(false);
@@ -339,6 +342,7 @@ export default function ShareScreen() {
               setChoiceVisible(true);
             }}
             hitSlop={8}
+            style={{ marginLeft: 8 }}
           >
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </Pressable>
@@ -456,7 +460,10 @@ export default function ShareScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: colors.primary, borderBottomColor: "transparent" }]}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Share an Item</Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={[styles.title, { color: colors.foreground, flex: 1 }]}>Share an Item</Text>
+            <NotificationBell />
+          </View>
         </View>
         <View style={styles.centered}>
           <Feather name="upload" size={48} color={colors.mutedForeground} />

@@ -31,9 +31,12 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set to true when the API tells us the token is expired or already used.
+  const [linkExpired, setLinkExpired] = useState(false);
 
   async function handleReset() {
     setError(null);
+    setLinkExpired(false);
     if (!token.trim()) { setError("Please enter the reset token from your email."); return; }
     if (newPassword.length < 8) { setError("New password must be at least 8 characters."); return; }
     if (newPassword !== confirmPassword) { setError("Passwords do not match."); return; }
@@ -47,7 +50,13 @@ export default function ResetPasswordScreen() {
       setDone(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Could not reset password. Please try again.";
-      setError(msg);
+      // Detect expired / already-used token responses from the API
+      const lower = msg.toLowerCase();
+      if (lower.includes("expired") || lower.includes("invalid or expired")) {
+        setLinkExpired(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -77,7 +86,32 @@ export default function ResetPasswordScreen() {
         </Pressable>
 
         <View style={styles.card}>
-          {!done ? (
+          {linkExpired ? (
+            <>
+              <View style={[styles.iconWrap, { backgroundColor: "#fef2f218" }]}>
+                <Feather name="clock" size={30} color="#dc2626" />
+              </View>
+              <Text style={[styles.heading, { color: colors.foreground }]}>Link has expired</Text>
+              <Text style={[styles.sub, { color: colors.mutedForeground }]}>
+                This reset link has already been used or has expired. Reset links are valid for 1 hour and can only be used once.
+              </Text>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.submitBtn,
+                  { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+                ]}
+                onPress={() => router.replace("/forgot-password" as never)}
+              >
+                <Text style={styles.submitBtnText}>Request a new link</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1, alignSelf: "center" }]}
+                onPress={() => router.replace("/login" as never)}
+              >
+                <Text style={[styles.backText, { color: colors.mutedForeground }]}>Back to sign in</Text>
+              </Pressable>
+            </>
+          ) : !done ? (
             <>
               <View style={[styles.iconWrap, { backgroundColor: colors.primary + "18" }]}>
                 <Feather name="key" size={30} color={colors.primary} />

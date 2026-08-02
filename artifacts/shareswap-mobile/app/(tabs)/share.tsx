@@ -109,7 +109,7 @@ export default function ShareScreen() {
     }, [])
   );
 
-  const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [photos, setPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [itemType, setItemType] = useState<string>("");
@@ -123,7 +123,7 @@ export default function ShareScreen() {
   });
 
   function resetForm() {
-    setPhoto(null);
+    setPhotos([]);
     setName("");
     setDescription("");
     setItemType("");
@@ -137,19 +137,21 @@ export default function ShareScreen() {
   }
 
   async function pickPhoto() {
+    if (photos.length >= 5) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission needed", "Please allow photo access to add a picture of your item.");
       return;
     }
+    const remaining = 5 - photos.length;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
     });
     if (!result.canceled && result.assets.length > 0) {
-      setPhoto(result.assets[0]);
+      setPhotos((prev) => [...prev, ...result.assets].slice(0, 5));
     }
   }
 
@@ -170,7 +172,7 @@ export default function ShareScreen() {
     },
     onSuccess: ({ analysis }, assets) => {
       resetForm();
-      setPhoto(assets[0]);
+      setPhotos([assets[0]]);
       setName(analysis.name || "");
       setDescription(analysis.description || "");
       setItemType(CATEGORY_MAP[analysis.category] || "");
@@ -209,7 +211,7 @@ export default function ShareScreen() {
       if (!itemType) throw new Error("Please choose a category");
       if (!condition) throw new Error("Please choose a condition");
       if (!originalValue) throw new Error("Please choose an approximate value");
-      if (!photo) throw new Error("Please add at least one photo");
+      if (photos.length === 0) throw new Error("Please add at least one photo");
       if (!Object.values(modes).some(Boolean)) {
         throw new Error("Please select at least one sharing option");
       }
@@ -225,13 +227,15 @@ export default function ShareScreen() {
         formData.append(key, String(value));
       });
 
-      const uriParts = photo.uri.split(".");
-      const fileExt = uriParts[uriParts.length - 1] || "jpg";
-      formData.append("photos", {
-        uri: photo.uri,
-        name: `photo.${fileExt}`,
-        type: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
-      } as any);
+      photos.forEach((p, i) => {
+        const uriParts = p.uri.split(".");
+        const fileExt = uriParts[uriParts.length - 1] || "jpg";
+        formData.append("photos", {
+          uri: p.uri,
+          name: `photo-${i}.${fileExt}`,
+          type: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
+        } as any);
+      });
 
       const res = await apiRequest("POST", "/api/items", formData);
       return res.json();
@@ -530,19 +534,46 @@ export default function ShareScreen() {
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 100 }]}
           showsVerticalScrollIndicator={false}
         >
-          <Pressable
-            style={[styles.photoBox, { borderColor: colors.border, backgroundColor: colors.muted }]}
-            onPress={pickPhoto}
-          >
-            {photo ? (
-              <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
+          {/* Photos */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>
+              Photos <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground }}>({photos.length}/5)</Text>
+            </Text>
+            {photos.length === 0 ? (
+              <Pressable
+                style={[styles.photoBox, { borderColor: colors.border, backgroundColor: colors.muted }]}
+                onPress={pickPhoto}
+              >
+                <View style={styles.photoPlaceholder}>
+                  <Feather name="camera" size={28} color={colors.mutedForeground} />
+                  <Text style={[styles.photoText, { color: colors.mutedForeground }]}>Add up to 5 photos</Text>
+                </View>
+              </Pressable>
             ) : (
-              <View style={styles.photoPlaceholder}>
-                <Feather name="camera" size={28} color={colors.mutedForeground} />
-                <Text style={[styles.photoText, { color: colors.mutedForeground }]}>Add a photo</Text>
+              <View style={[styles.photoThumbRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                {photos.map((p, idx) => (
+                  <View key={p.assetId ?? p.uri} style={styles.photoThumbWrap}>
+                    <Image source={{ uri: p.uri }} style={styles.photoThumb} />
+                    <Pressable
+                      style={[styles.photoThumbRemove, { backgroundColor: colors.card }]}
+                      onPress={() => setPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                      hitSlop={6}
+                    >
+                      <Feather name="x" size={12} color={colors.foreground} />
+                    </Pressable>
+                  </View>
+                ))}
+                {photos.length < 5 && (
+                  <Pressable
+                    style={[styles.photoThumbAdd, { borderColor: colors.border }]}
+                    onPress={pickPhoto}
+                  >
+                    <Feather name="plus" size={20} color={colors.mutedForeground} />
+                  </Pressable>
+                )}
               </View>
             )}
-          </Pressable>
+          </View>
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.foreground }]}>What are you sharing?</Text>
@@ -918,7 +949,7 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   photoBox: {
-    height: 180,
+    height: 160,
     borderRadius: 16,
     borderWidth: 1,
     borderStyle: "dashed",
@@ -937,6 +968,44 @@ const styles = StyleSheet.create({
   photoText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  photoThumbRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  photoThumbWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    overflow: "visible",
+  },
+  photoThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+  },
+  photoThumbRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoThumbAdd: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
   },
   field: {
     gap: 8,

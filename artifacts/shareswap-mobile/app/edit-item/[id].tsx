@@ -85,10 +85,10 @@ export default function EditItemScreen() {
     isRentable: false,
     isGift: false,
   });
-  // New photo picked from library (replaces existing)
-  const [newPhoto, setNewPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  // Existing photo URL from server
-  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
+  // New photos picked from library (appended to existing)
+  const [newPhotos, setNewPhotos] = useState<ImagePicker.ImagePickerAsset[]>([]);
+  // Existing photo keys from server (ones not removed)
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
 
   const [initialized, setInitialized] = useState(false);
 
@@ -113,8 +113,7 @@ export default function EditItemScreen() {
         isRentable: item.isRentable ?? false,
         isGift: item.isGift ?? false,
       });
-      const firstPhoto = item.photos?.[0];
-      setExistingPhotoUrl(firstPhoto ? photoUrl(firstPhoto) ?? null : null);
+      setExistingPhotos(item.photos ?? []);
       setInitialized(true);
     }
   }, [item, initialized]);
@@ -123,20 +122,23 @@ export default function EditItemScreen() {
     setModes((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  async function pickPhoto() {
+  async function addPhoto() {
+    const totalPhotos = existingPhotos.length + newPhotos.length;
+    if (totalPhotos >= 5) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission needed", "Please allow photo access to update the item photo.");
+      Alert.alert("Permission needed", "Please allow photo access to add photos.");
       return;
     }
+    const remaining = 5 - totalPhotos;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.8,
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
     });
     if (!result.canceled && result.assets.length > 0) {
-      setNewPhoto(result.assets[0]);
+      setNewPhotos((prev) => [...prev, ...result.assets].slice(0, 5 - existingPhotos.length));
     }
   }
 
@@ -162,19 +164,20 @@ export default function EditItemScreen() {
         formData.append(key, String(value));
       });
 
-      if (newPhoto) {
-        // Upload new photo
-        const uriParts = newPhoto.uri.split(".");
+      // Preserve any existing photos not removed
+      if (existingPhotos.length > 0) {
+        formData.append("existingPhotos", JSON.stringify(existingPhotos));
+      }
+      // Append newly picked photos
+      newPhotos.forEach((p, i) => {
+        const uriParts = p.uri.split(".");
         const fileExt = uriParts[uriParts.length - 1] || "jpg";
         formData.append("photos", {
-          uri: newPhoto.uri,
-          name: `photo.${fileExt}`,
+          uri: p.uri,
+          name: `photo-${i}.${fileExt}`,
           type: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
         } as any);
-      } else if (item?.photos?.[0]) {
-        // Keep existing photos
-        formData.append("existingPhotos", JSON.stringify(item.photos));
-      }
+      });
 
       const res = await apiRequest("PATCH", `/api/items/${id}`, formData);
       return res.json();
@@ -192,7 +195,7 @@ export default function EditItemScreen() {
     },
   });
 
-  const displayPhoto = newPhoto ? newPhoto.uri : existingPhotoUrl;
+  const totalPhotoCount = existingPhotos.length + newPhotos.length;
 
   if (isLoading) {
     return (
@@ -253,26 +256,61 @@ export default function EditItemScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Photo */}
-        <Pressable
-          style={[styles.photoBox, { borderColor: colors.border, backgroundColor: colors.muted }]}
-          onPress={pickPhoto}
-        >
-          {displayPhoto ? (
-            <>
-              <Image source={{ uri: displayPhoto }} style={styles.photoPreview} />
-              <View style={styles.photoEditOverlay}>
-                <Feather name="camera" size={16} color="#fff" />
-                <Text style={styles.photoEditText}>Change photo</Text>
+        {/* Photos */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.foreground }]}>
+            Photos{" "}
+            <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground }}>
+              ({totalPhotoCount}/5)
+            </Text>
+          </Text>
+          {totalPhotoCount === 0 ? (
+            <Pressable
+              style={[styles.photoBox, { borderColor: colors.border, backgroundColor: colors.muted }]}
+              onPress={addPhoto}
+            >
+              <View style={styles.photoPlaceholder}>
+                <Feather name="camera" size={28} color={colors.mutedForeground} />
+                <Text style={[styles.photoText, { color: colors.mutedForeground }]}>Add up to 5 photos</Text>
               </View>
-            </>
+            </Pressable>
           ) : (
-            <View style={styles.photoPlaceholder}>
-              <Feather name="camera" size={28} color={colors.mutedForeground} />
-              <Text style={[styles.photoText, { color: colors.mutedForeground }]}>Add a photo</Text>
+            <View style={[styles.thumbRow, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              {existingPhotos.map((key, idx) => (
+                <View key={key} style={styles.thumbWrap}>
+                  <Image source={{ uri: photoUrl(key) ?? key }} style={styles.thumb} />
+                  <Pressable
+                    style={[styles.thumbRemove, { backgroundColor: colors.card }]}
+                    onPress={() => setExistingPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                    hitSlop={6}
+                  >
+                    <Feather name="x" size={12} color={colors.foreground} />
+                  </Pressable>
+                </View>
+              ))}
+              {newPhotos.map((p, idx) => (
+                <View key={p.assetId ?? p.uri} style={styles.thumbWrap}>
+                  <Image source={{ uri: p.uri }} style={styles.thumb} />
+                  <Pressable
+                    style={[styles.thumbRemove, { backgroundColor: colors.card }]}
+                    onPress={() => setNewPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                    hitSlop={6}
+                  >
+                    <Feather name="x" size={12} color={colors.foreground} />
+                  </Pressable>
+                </View>
+              ))}
+              {totalPhotoCount < 5 && (
+                <Pressable
+                  style={[styles.thumbAdd, { borderColor: colors.border }]}
+                  onPress={addPhoto}
+                >
+                  <Feather name="plus" size={20} color={colors.mutedForeground} />
+                </Pressable>
+              )}
             </View>
           )}
-        </Pressable>
+        </View>
 
         {/* Name */}
         <View style={styles.field}>
@@ -467,33 +505,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   photoBox: {
-    height: 200,
+    height: 160,
     borderRadius: 16,
     borderWidth: 1.5,
     overflow: "hidden",
-    position: "relative",
-  },
-  photoPreview: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  photoEditOverlay: {
-    position: "absolute",
-    bottom: 10,
-    right: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  photoEditText: {
-    color: "#fff",
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
   },
   photoPlaceholder: {
     flex: 1,
@@ -504,6 +519,44 @@ const styles = StyleSheet.create({
   photoText: {
     fontSize: 14,
     fontFamily: "Inter_500Medium",
+  },
+  thumbRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  thumbWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    overflow: "visible",
+  },
+  thumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+  },
+  thumbRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbAdd: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
   },
   field: {
     gap: 8,

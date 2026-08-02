@@ -10069,7 +10069,7 @@ Respond with ONLY the category name, nothing else.`
               .limit(1);
 
             if (existingNotification.length === 0) {
-              // Create the notification
+              // Create the in-app notification
               await db.insert(notifications).values({
                 userId,
                 type: notificationType,
@@ -10080,6 +10080,16 @@ Respond with ONLY the category name, nothing else.`
                 isRead: false,
               });
               remindersCreated++;
+
+              // Fire a push notification so the alert arrives even when the
+              // app is closed.  Tapping it deep-links to the notifications tab.
+              sendPushToUser(userId, {
+                title,
+                body: message,
+                data: { screen: "notifications", requestId: request.id, itemId: item.id },
+              }).catch((err) =>
+                console.error("[push] return-reminder push failed:", err)
+              );
             }
           } catch (insertError) {
             // Silently handle duplicate insert errors from race conditions

@@ -4,7 +4,6 @@ import { registerRoutes } from "./routes/routes";
 import { setupStorageRoutes } from "./storage";
 import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
-import { pool } from "@workspace/db";
 import { startRateLimitCleanup } from "./auth";
 
 const rawPort = process.env["PORT"];
@@ -28,47 +27,6 @@ const httpServer = registerRoutes(app);
 // Initialize features
 (async () => {
   try {
-    // Ensure user_notification_prefs table exists (idempotent migration)
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_notification_prefs (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id),
-        messages BOOLEAN NOT NULL DEFAULT true,
-        requests BOOLEAN NOT NULL DEFAULT true,
-        payments BOOLEAN NOT NULL DEFAULT true,
-        achievements BOOLEAN NOT NULL DEFAULT true,
-        sharecoins BOOLEAN NOT NULL DEFAULT true,
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    await pool.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS user_notification_prefs_user_uniq
-      ON user_notification_prefs(user_id)
-    `);
-    // Ensure user_push_tokens table exists (idempotent migration).
-    // Stores one row per device token so a single user on multiple devices
-    // receives all notifications.
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_push_tokens (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        token TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-    await pool.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS user_push_tokens_token_uniq
-      ON user_push_tokens(token)
-    `);
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS user_push_tokens_user_id_idx
-      ON user_push_tokens(user_id)
-    `);
-    // Ensure pending_email column exists (idempotent migration for email-change pending flow)
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email TEXT
-    `);
     await initializeSampleGames();
     await initializeAchievements();
     // @ts-ignore

@@ -18,18 +18,24 @@ import { Platform } from "react-native";
 import { apiRequest } from "@/lib/api";
 
 // ── Notification presentation behaviour while the app is in the foreground ──
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// expo-notifications APIs are not available on web
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 /** Registers for push and POSTs the Expo token to the server. Fire-and-forget. */
 export async function registerPushToken(): Promise<void> {
+  // Push notifications are not supported on web
+  if (Platform.OS === "web") return;
+
   try {
     // Android requires a notification channel
     if (Platform.OS === "android") {
@@ -93,6 +99,9 @@ export function usePushNotificationNavigation() {
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
+    // Push notification APIs are not available on web
+    if (Platform.OS === "web") return;
+
     // Notification received while app is in the foreground (no navigation, just display)
     notificationListener.current =
       Notifications.addNotificationReceivedListener(() => {

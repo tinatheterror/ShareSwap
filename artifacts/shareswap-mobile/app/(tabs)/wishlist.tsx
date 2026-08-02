@@ -756,21 +756,21 @@ export default function WishlistScreen() {
               >
                 <Text style={[styles.neededByChipLabel, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>From</Text>
                 <Pressable
-                  style={[styles.dateBtnCompact, { backgroundColor: urgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
+                  style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                   onPress={() => { if (urgency === "normal") setUrgency("soon"); openDatePicker("from"); }}
                 >
-                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
-                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
+                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
                     {neededFromDate ? formatNeededDate(neededFromDate) : "Select"}
                   </Text>
                 </Pressable>
                 <Text style={[styles.neededByChipLabel, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>To</Text>
                 <Pressable
-                  style={[styles.dateBtnCompact, { backgroundColor: urgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
+                  style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                   onPress={() => { if (urgency === "normal") setUrgency("soon"); openDatePicker("to"); }}
                 >
-                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
-                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
+                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primary : colors.mutedForeground} />
+                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
                     {neededToDate ? formatNeededDate(neededToDate) : "Select"}
                   </Text>
                 </Pressable>
@@ -895,21 +895,21 @@ export default function WishlistScreen() {
                 >
                   <Text style={[styles.neededByChipLabel, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>From</Text>
                   <Pressable
-                    style={[styles.dateBtnCompact, { backgroundColor: editUrgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
+                    style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                     onPress={() => { if (editUrgency === "normal") setEditUrgency("soon"); openDatePicker("from", "edit"); }}
                   >
-                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
-                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
+                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primary : colors.mutedForeground} />
+                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
                       {editNeededFromDate ? formatNeededDate(editNeededFromDate) : "Select"}
                     </Text>
                   </Pressable>
                   <Text style={[styles.neededByChipLabel, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]}>To</Text>
                   <Pressable
-                    style={[styles.dateBtnCompact, { backgroundColor: editUrgency !== "normal" ? "rgba(255,255,255,0.2)" : colors.card, borderColor: "transparent" }]}
+                    style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                     onPress={() => { if (editUrgency === "normal") setEditUrgency("soon"); openDatePicker("to", "edit"); }}
                   >
-                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground} />
-                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primaryForeground : colors.mutedForeground }]} numberOfLines={1}>
+                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primary : colors.mutedForeground} />
+                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
                       {editNeededToDate ? formatNeededDate(editNeededToDate) : "Select"}
                     </Text>
                   </Pressable>

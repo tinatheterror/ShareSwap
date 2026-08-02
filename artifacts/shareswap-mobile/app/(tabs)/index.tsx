@@ -868,8 +868,8 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   headerSub: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
     color: "rgba(0,0,0,0.6)",
     marginTop: -4,
     flexShrink: 1,

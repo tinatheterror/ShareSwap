@@ -10,6 +10,7 @@ import React, {
 import { AppState, AppStateStatus } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "@/lib/api";
+import { registerPushToken } from "@/hooks/usePushNotifications";
 
 const HAS_SESSION_KEY = "has_session";
 export const LAST_AUTH_METHOD_KEY = "lastAuthMethod";
@@ -127,6 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");
       setSessionExpired(false);
       await fetchUser();
+      // Register Expo push token with the server after successful login
+      registerPushToken().catch(() => {});
     },
     [fetchUser, getDeviceFingerprint],
   );
@@ -144,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "email");
       setSessionExpired(false);
       await fetchUser();
+      // Register Expo push token with the server after successful registration
+      registerPushToken().catch(() => {});
     },
     [fetchUser, getDeviceFingerprint],
   );

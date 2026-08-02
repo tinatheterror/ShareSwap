@@ -74,6 +74,7 @@ export const users = pgTable("users", {
   monthlyBorrowResetAt: timestamp("monthly_borrow_reset_at").defaultNow(),
   proDeliveryCount: integer("pro_delivery_count").default(0),
   proDeliveryResetAt: timestamp("pro_delivery_reset_at").defaultNow(),
+  expoPushToken: text("expo_push_token"), // Expo push notification token for native push delivery
   createdAt: timestamp("created_at").defaultNow(),
 });
 

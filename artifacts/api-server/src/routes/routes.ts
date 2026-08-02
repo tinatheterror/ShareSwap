@@ -37,6 +37,7 @@ import { recommendationEngine } from "../recommendation-engine";
 import { addSimplifiedRoutes } from "../simplified-routes";
 import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
+import { sendPushToUser, sendPushToUsers } from "../push-notifications";
 
 // Notify all availability subscribers that an item is back
 async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
@@ -1611,6 +1612,27 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error saving location:", error);
       res.status(500).json({ error: "Failed to save location" });
+    }
+  });
+
+  // ── Expo Push Token ─────────────────────────────────────────────────────────
+  // The mobile app calls this after login to register its Expo push token so
+  // the server can send native push notifications.
+  app.patch("/api/user/push-token", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { token } = req.body;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "token is required" });
+    }
+    try {
+      await db
+        .update(users)
+        .set({ expoPushToken: token })
+        .where(eq(users.id, req.user.id));
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[push-token] error:", err);
+      res.status(500).json({ error: "Failed to save push token" });
     }
   });
 
@@ -3918,11 +3940,18 @@ Respond with ONLY the category name, nothing else.`
       }
     }
 
-    // Push to recipient in real-time if they are connected
+    // Push to recipient in real-time if they are connected via WebSocket
     const receiverWs = connectedClients.get(receiverId);
     if (receiverWs?.readyState === WebSocket.OPEN) {
       receiverWs.send(JSON.stringify({ type: "new_message", message }));
     }
+
+    // Native push notification so the message arrives even when the app is closed
+    sendPushToUser(receiverId, {
+      title: "New Message",
+      body: content.length > 120 ? content.slice(0, 120) + "…" : content,
+      data: { screen: "chat", chatUserId: req.user.id },
+    }).catch(() => {});
 
     res.status(201).json(message);
   });
@@ -4937,6 +4966,12 @@ Respond with ONLY the category name, nothing else.`
         requestId: request.id,
         isRead: false,
       });
+      // Native push so the owner is alerted instantly even if the app is closed
+      sendPushToUser(item.ownerId, {
+        title: `New ${requestTypeLabel} Request`,
+        body: `${requesterName} wants to ${requestType === "GIFT" ? "claim gift" : requestType.toLowerCase()} "${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}"`,
+        data: { screen: "notifications", requestId: request.id, itemId: item.id },
+      }).catch(() => {});
     }
 
     res.status(201).json(request);
@@ -5401,6 +5436,12 @@ Respond with ONLY the category name, nothing else.`
         if (requesterWs?.readyState === WebSocket.OPEN) {
           requesterWs.send(JSON.stringify({ type: "notification", requestId }));
         }
+        // Native push so requester gets instant alert when app is closed
+        sendPushToUser(request.item_requests.requesterId, {
+          title: notifTitle,
+          body: notifMessage,
+          data: { screen: "notifications", requestId, itemId: request.items.id },
+        }).catch(() => {});
       } catch (_) {}
     }
 
@@ -5783,6 +5824,18 @@ Respond with ONLY the category name, nothing else.`
         itemId: request.items.id,
         requestId,
       });
+      // Native push for terms negotiation updates
+      const termsTitle = ownerIsAccepting ? "Request Accepted" : "Terms Accepted";
+      const termsBody = ownerIsAccepting
+        ? inPersonBorrowDeposit
+          ? `"${request.items.name}" — meet up and exchange the deposit in person.`
+          : `"${request.items.name}" — pay your deposit to confirm.`
+        : "Your terms were accepted. Accept or decline to proceed.";
+      sendPushToUser(otherUserId, {
+        title: termsTitle,
+        body: termsBody,
+        data: { screen: "notifications", requestId, itemId: request.items.id },
+      }).catch(() => {});
 
       // For BORROW with in-person deposit, skip the in-app deposit step entirely
       let finalRequest = updated;
@@ -6581,6 +6634,11 @@ Respond with ONLY the category name, nothing else.`
         message: `$${requestedAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
         isRead: false,
       });
+      sendPushToUser(req.user.id, {
+        title: "Payout Sent",
+        body: `$${requestedAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
+        data: { screen: "notifications" },
+      }).catch(() => {});
 
       res.json({
         success: true,

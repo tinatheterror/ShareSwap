@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/context/AuthContext";
 import { SessionGuard } from "@/components/SessionGuard";
+import { usePushNotificationNavigation } from "@/hooks/usePushNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,6 +33,9 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
+  // Set up deep-link navigation from push notification taps
+  usePushNotificationNavigation();
+
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -120,6 +124,13 @@ function RootLayoutNav() {
         options={{
           title: "Identity Verification",
           headerBackTitle: "Back",
+        }}
+      />
+      <Stack.Screen
+        name="verify-email-prompt"
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
         }}
       />
     </Stack>

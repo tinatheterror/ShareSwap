@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes/routes";
 import { setupStorageRoutes } from "./storage";
 import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
+import { pool } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
 
@@ -26,6 +27,10 @@ const httpServer = registerRoutes(app);
 // Initialize features
 (async () => {
   try {
+    // Ensure expo_push_token column exists (idempotent migration)
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS expo_push_token TEXT
+    `);
     await initializeSampleGames();
     await initializeAchievements();
     // @ts-ignore

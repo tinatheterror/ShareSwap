@@ -1100,7 +1100,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   communityBannerTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontFamily: "Inter_700Bold",
     marginBottom: 4,
   },

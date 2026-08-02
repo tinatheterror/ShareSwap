@@ -52,6 +52,10 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
+        name="notifications"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="item/[id]"
         options={{
           title: "",

@@ -20,6 +20,7 @@ import { useColors } from "@/hooks/useColors";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { HeartPeopleIcon } from "@/components/HeartPeopleIcon";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const ITEM_TYPES = [
   "Baby & Kids",
@@ -479,7 +480,10 @@ export default function ShareScreen() {
           { paddingTop: topPad + 12, backgroundColor: colors.primary, borderBottomColor: "transparent" },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>Share an Item</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, { color: colors.foreground, flex: 1 }]}>Share an Item</Text>
+          <NotificationBell />
+        </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
           List something to lend, rent, swap, or gift
         </Text>

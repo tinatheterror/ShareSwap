@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface WishlistItem {
   id: number;
@@ -337,7 +338,8 @@ export default function WishlistScreen() {
         ]}
       >
         <View style={styles.headerTop}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Wishlist</Text>
+          <Text style={[styles.title, { color: colors.foreground, flex: 1 }]}>Wishlist</Text>
+          <NotificationBell />
           <Pressable
             style={[styles.addBtn, { backgroundColor: "rgba(255,255,255,0.25)" }]}
             onPress={() => setShowAdd(true)}

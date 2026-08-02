@@ -22,6 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { apiGet, photoUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { ItemCard, Item } from "@/components/ItemCard";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface ProfileStats {
   completedShares: number;
@@ -218,9 +219,10 @@ export default function ProfileScreen() {
         ]}
       >
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: colors.foreground }]}>
+          <Text style={[styles.title, { color: colors.foreground, flex: 1 }]}>
             Profile
           </Text>
+          <NotificationBell />
         </View>
       </View>
 

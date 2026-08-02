@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface InboxItem {
   requestId: number;
@@ -275,6 +276,8 @@ export default function InboxScreen() {
               </Text>
             </View>
           ) : null}
+          <View style={{ flex: 1 }} />
+          <NotificationBell />
         </View>
 
         {/* Filter chips */}

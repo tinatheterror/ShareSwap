@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost, photoUrl } from "@/lib/api";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const rentalRateIcon = require("../../assets/icons/rental-rate.png");
 const shareCoinIcon = require("../../assets/icons/sharecoin.png");
@@ -550,6 +551,7 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
+          <NotificationBell />
           <Pressable style={styles.walletBadge} onPress={() => router.push("/sharecoin-wallet" as never)}>
             <Text style={styles.walletBadgeLabel}>Total Balance</Text>
             <View style={styles.walletBadgeRow}>

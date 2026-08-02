@@ -386,24 +386,30 @@ export default function WishlistScreen() {
           </Pressable>
         </View>
         {tab === "mine" && (
-          <View style={styles.filterRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
             {(["active", "expired", "all"] as const).map((f) => {
               const count = f === "active" ? mineActive.length : f === "expired" ? mineExpired.length : mineWithExpiry.length;
               const active = myFilter === f;
               return (
                 <Pressable
                   key={f}
-                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: active ? colors.foreground : colors.muted,
+                      borderColor: active ? colors.foreground : colors.border,
+                    },
+                  ]}
                   onPress={() => setMyFilter(f)}
                 >
-                  <Text style={[styles.filterChipText, { color: active ? "#fff" : "rgba(255,255,255,0.7)" }]}>
+                  <Text style={[styles.filterChipText, { color: active ? "#fff" : colors.mutedForeground, fontFamily: active ? "Inter_600SemiBold" : "Inter_400Regular" }]}>
                     {f.charAt(0).toUpperCase() + f.slice(1)}
                     {count > 0 ? ` · ${count}` : ""}
                   </Text>
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         )}
       </View>
 
@@ -1088,23 +1094,18 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: "row",
-    gap: 6,
+    gap: 5,
     paddingTop: 10,
+    paddingRight: 4,
   },
   filterChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  filterChipActive: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    borderColor: "rgba(255,255,255,0.7)",
   },
   filterChipText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
+    fontSize: 11,
   },
   communitySubtitle: {
     paddingBottom: 4,

@@ -931,6 +931,58 @@ export function setupAuth(app: Express) {
     return res.send(html);
   });
 
+  // ── Change password (authenticated) ────────────────────────────────────────
+  // POST /api/account/change-password
+  // Body: { currentPassword, newPassword }
+  // Only available to local (email/password) accounts. Rate-limited.
+  app.post("/api/account/change-password", authLimiter, async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || typeof currentPassword !== "string") {
+      return res.status(400).json({ message: "Current password is required" });
+    }
+    if (!newPassword || typeof newPassword !== "string") {
+      return res.status(400).json({ message: "New password is required" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+
+    const user = req.user;
+
+    // Google/OAuth users have no local password — they cannot use this endpoint
+    if (user.authProvider && user.authProvider !== "local") {
+      return res.status(403).json({ message: "Password change is not available for accounts using social login" });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({ message: "No password set on this account" });
+    }
+
+    try {
+      const isMatch = await comparePasswords(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      const hashed = await hashPassword(newPassword);
+      await db
+        .update(users)
+        .set({ password: hashed })
+        .where(eq(users.id, user.id));
+
+      console.log(`[Auth] Password changed for user ${user.id} (${user.username})`);
+      return res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("[Auth] Change-password error:", error);
+      return res.status(500).json({ message: "An error occurred. Please try again." });
+    }
+  });
+
   app.post("/api/logout", (req, res, next) => {
     if (!req.user) {
       return res.status(200).json({ success: true });

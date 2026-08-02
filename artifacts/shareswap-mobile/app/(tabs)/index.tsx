@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
   },
   headerTitleRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 8,
   },
   walletBadge: {

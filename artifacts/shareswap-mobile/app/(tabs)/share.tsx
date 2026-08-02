@@ -480,7 +480,7 @@ export default function ShareScreen() {
           { paddingTop: topPad + 12, backgroundColor: colors.primary, borderBottomColor: "transparent" },
         ]}
       >
-        <View style={styles.headerRow}>
+        <View style={styles.headerTitleRow}>
           <Text style={[styles.title, { color: colors.foreground, flex: 1 }]}>Share an Item</Text>
           <NotificationBell />
         </View>
@@ -660,6 +660,11 @@ export default function ShareScreen() {
 }
 
 const im = StyleSheet.create({
+  headerTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

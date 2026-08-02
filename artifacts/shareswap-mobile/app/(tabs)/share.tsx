@@ -322,7 +322,7 @@ export default function ShareScreen() {
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </Pressable>
 
-          <Text style={[cm.sectionLabel, { color: colors.foreground, marginTop: 20 }]}>My Share Chest</Text>
+          <Text style={[cm.sectionLabel, { color: colors.foreground, marginTop: 20 }]}>My ShareChest</Text>
 
           <Pressable
             style={[cm.option, { backgroundColor: colors.muted }]}

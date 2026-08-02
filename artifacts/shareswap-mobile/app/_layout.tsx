@@ -93,6 +93,10 @@ function RootLayoutNav() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
+        name="my-shared-items"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="transactions"
         options={{ headerShown: false }}
       />

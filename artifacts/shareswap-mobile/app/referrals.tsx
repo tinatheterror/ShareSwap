@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, BASE_URL } from "@/lib/api";
 
 interface User {
   referralCode?: string;
@@ -26,7 +26,7 @@ export default function ReferralsScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
 
   const { data: user } = useQuery<User>({
     queryKey: ["/api/user"],
@@ -46,22 +46,33 @@ export default function ReferralsScreen() {
     },
   });
 
+  const registerLink = code ? `${BASE_URL}/register?ref=${code}` : null;
+
   async function copyCode() {
     if (!code) return;
     Clipboard.setString(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopied("code");
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function copyLink() {
+    if (!registerLink) return;
+    Clipboard.setString(registerLink);
+    setCopied("link");
+    setTimeout(() => setCopied(null), 2000);
   }
 
   async function shareCode() {
-    if (!code) return;
+    if (!code || !registerLink) return;
     try {
       await Share.share({
         title: "Join ShareSwap",
-        message: `Hi! Join me on ShareSwap with code ${code} — it helps me earn ShareCoins.`,
+        // Match web: text + url
+        message: `Hi! Join me on ShareSwap with code ${code} — it helps me earn ShareCoins.\n${registerLink}`,
+        url: registerLink, // iOS uses this; Android uses message
       });
     } catch {
-      copyCode();
+      copyLink();
     }
   }
 
@@ -106,9 +117,9 @@ export default function ReferralsScreen() {
                   ]}
                   onPress={copyCode}
                 >
-                  {copied ? <Check size={15} color={colors.foreground} strokeWidth={2} /> : <Copy size={15} color={colors.foreground} strokeWidth={2} />}
+                  {copied === "code" ? <Check size={15} color={colors.foreground} strokeWidth={2} /> : <Copy size={15} color={colors.foreground} strokeWidth={2} />}
                   <Text style={[styles.btnText, { color: colors.foreground }]}>
-                    {copied ? "Copied!" : "Copy"}
+                    {copied === "code" ? "Copied!" : "Copy Code"}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -123,6 +134,20 @@ export default function ReferralsScreen() {
                   <Text style={[styles.btnText, { color: "#fff" }]}>Share</Text>
                 </Pressable>
               </View>
+
+              {/* Copy link row */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.copyLinkBtn,
+                  { borderColor: colors.border, backgroundColor: pressed ? colors.muted : "transparent" },
+                ]}
+                onPress={copyLink}
+              >
+                {copied === "link" ? <Check size={14} color={colors.primary} strokeWidth={2} /> : <Copy size={14} color={colors.primary} strokeWidth={2} />}
+                <Text style={[styles.copyLinkText, { color: colors.primary }]}>
+                  {copied === "link" ? "Link copied!" : "Copy invite link"}
+                </Text>
+              </Pressable>
 
               {/* How it works */}
               <View style={[styles.howItWorks, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "30" }]}>
@@ -282,6 +307,17 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
   },
+
+  copyLinkBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  copyLinkText: { fontSize: 13, fontFamily: "Inter_500Medium" },
 
   benefitsRow: { flexDirection: "row", gap: 12 },
   benefit: { flex: 1, alignItems: "center", gap: 10 },

@@ -196,6 +196,17 @@ export default function SettingsScreen() {
   const isActive = statusLabel === "active" || !statusLabel;
   const isOAuthUser = !!(profile?.authProvider && profile.authProvider !== "local");
 
+  // ── notification summary ──────────────────────────────────────────────────
+  const allNotifCategories: NotifCategory[] = ["messages", "requests", "payments", "achievements", "sharecoins"];
+  const notifOnCount = notifPrefs ? allNotifCategories.filter(k => notifPrefs[k]).length : null;
+  const notifSummary = notifOnCount === null
+    ? null
+    : notifOnCount === allNotifCategories.length
+      ? "All on"
+      : notifOnCount === 0
+        ? "All off"
+        : `${notifOnCount} of ${allNotifCategories.length} on`;
+
   // ── deactivated screen (mirrors web) ────────────────────────────────────
   if (isDeactivated) {
     return (
@@ -335,6 +346,11 @@ export default function SettingsScreen() {
           <View style={styles.cardHeader}>
             <Feather name="bell" size={17} color="#0d9488" />
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Notifications</Text>
+            {notifSummary !== null && (
+              <View style={[styles.notifSummaryBadge, { backgroundColor: "#d4f7f1" }]}>
+                <Text style={[styles.notifSummaryText, { color: "#0d9488" }]}>{notifSummary}</Text>
+              </View>
+            )}
           </View>
           <Text style={[styles.fieldHint, { color: colors.mutedForeground, marginTop: -6 }]}>
             Choose which push notifications you receive on this device.
@@ -643,6 +659,8 @@ const styles = StyleSheet.create({
   actionText: { flex: 1, gap: 3 },
   notifRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 4 },
   notifText: { flex: 1, gap: 3 },
+  notifSummaryBadge: { marginLeft: "auto", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  notifSummaryText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   outlineBtn: {
     borderWidth: 1, borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 10,

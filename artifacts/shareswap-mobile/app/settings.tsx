@@ -12,6 +12,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -31,6 +32,16 @@ interface UserProfile {
 
 interface AccountStatus {
   accountStatus?: string;
+}
+
+type NotifCategory = "messages" | "requests" | "payments" | "achievements" | "sharecoins";
+
+interface NotificationPrefs {
+  messages: boolean;
+  requests: boolean;
+  payments: boolean;
+  achievements: boolean;
+  sharecoins: boolean;
 }
 
 export default function SettingsScreen() {
@@ -68,6 +79,27 @@ export default function SettingsScreen() {
   const { data: accountStatus } = useQuery<AccountStatus>({
     queryKey: ["account-status"],
     queryFn: () => apiGet("/api/account/status"),
+  });
+
+  const { data: notifPrefs, isLoading: notifPrefsLoading } = useQuery<NotificationPrefs>({
+    queryKey: ["notification-prefs"],
+    queryFn: () => apiGet("/api/user/notification-prefs"),
+  });
+
+  const updateNotifPrefMutation = useMutation({
+    mutationFn: async (update: Partial<NotificationPrefs>) => {
+      const res = await apiRequest("PATCH", "/api/user/notification-prefs", update);
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || "Could not save preference.");
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-prefs"] });
+    },
+    onError: (error: Error) => {
+      Alert.alert("Failed to save", error.message);
+      queryClient.invalidateQueries({ queryKey: ["notification-prefs"] });
+    },
   });
 
   useEffect(() => {
@@ -296,6 +328,47 @@ export default function SettingsScreen() {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* ── Notifications ── */}
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
+            <Feather name="bell" size={17} color="#0d9488" />
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Notifications</Text>
+          </View>
+          <Text style={[styles.fieldHint, { color: colors.mutedForeground, marginTop: -6 }]}>
+            Choose which push notifications you receive on this device.
+          </Text>
+
+          {(
+            [
+              { key: "messages" as NotifCategory, label: "Messages", hint: "New chat messages from other users" },
+              { key: "requests" as NotifCategory, label: "Requests", hint: "New requests, acceptances, and counter-offers" },
+              { key: "payments" as NotifCategory, label: "Payments", hint: "Payouts, deposits, and payment confirmations" },
+            ] as { key: NotifCategory; label: string; hint: string }[]
+          ).map(({ key, label, hint }, idx, arr) => {
+            const value = notifPrefs ? notifPrefs[key] : true;
+            return (
+              <View key={key}>
+                {idx > 0 && <View style={[styles.sep, { backgroundColor: colors.border }]} />}
+                <View style={styles.notifRow}>
+                  <View style={styles.notifText}>
+                    <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{label}</Text>
+                    <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>{hint}</Text>
+                  </View>
+                  <Switch
+                    value={value}
+                    onValueChange={(newVal) => {
+                      updateNotifPrefMutation.mutate({ [key]: newVal });
+                    }}
+                    trackColor={{ false: colors.border, true: "#0d9488" }}
+                    thumbColor="#fff"
+                    disabled={notifPrefsLoading || updateNotifPrefMutation.isPending}
+                  />
+                </View>
+              </View>
+            );
+          })}
         </View>
 
         {/* ── Account Actions ── */}
@@ -568,6 +641,8 @@ const styles = StyleSheet.create({
 
   actionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   actionText: { flex: 1, gap: 3 },
+  notifRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 4 },
+  notifText: { flex: 1, gap: 3 },
   outlineBtn: {
     borderWidth: 1, borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 10,

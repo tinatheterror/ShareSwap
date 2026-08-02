@@ -838,3 +838,20 @@ export const itemAvailabilitySubscribers = pgTable("item_availability_subscriber
 export type InsertItemAvailabilitySubscriber = typeof itemAvailabilitySubscribers.$inferInsert;
 export type SelectItemAvailabilitySubscriber = typeof itemAvailabilitySubscribers.$inferSelect;
 
+// Notification Preferences — per-category opt-outs for push notifications
+export const userNotificationPrefs = pgTable("user_notification_prefs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  messages: boolean("messages").default(true).notNull(),
+  requests: boolean("requests").default(true).notNull(),
+  payments: boolean("payments").default(true).notNull(),
+  achievements: boolean("achievements").default(true).notNull(),
+  sharecoins: boolean("sharecoins").default(true).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  userUniq: uniqueIndex("user_notification_prefs_user_uniq").on(table.userId),
+}));
+
+export type InsertUserNotificationPrefs = typeof userNotificationPrefs.$inferInsert;
+export type SelectUserNotificationPrefs = typeof userNotificationPrefs.$inferSelect;
+

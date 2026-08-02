@@ -31,6 +31,23 @@ const httpServer = registerRoutes(app);
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS expo_push_token TEXT
     `);
+    // Ensure user_notification_prefs table exists (idempotent migration)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_notification_prefs (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        messages BOOLEAN NOT NULL DEFAULT true,
+        requests BOOLEAN NOT NULL DEFAULT true,
+        payments BOOLEAN NOT NULL DEFAULT true,
+        achievements BOOLEAN NOT NULL DEFAULT true,
+        sharecoins BOOLEAN NOT NULL DEFAULT true,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS user_notification_prefs_user_uniq
+      ON user_notification_prefs(user_id)
+    `);
     await initializeSampleGames();
     await initializeAchievements();
     // @ts-ignore

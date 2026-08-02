@@ -99,8 +99,8 @@ export async function registerPushToken(): Promise<void> {
  * Maps the notification data shape set by the API server to the correct route.
  */
 export function usePushNotificationNavigation() {
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const notificationListener = useRef<NotificationsType.EventSubscription | null>(null);
+  const responseListener = useRef<NotificationsType.EventSubscription | null>(null);
 
   useEffect(() => {
     // Push notification APIs are not available on web

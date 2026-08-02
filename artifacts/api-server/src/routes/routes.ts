@@ -27,7 +27,7 @@ import { sponsoredGames, gameSessions } from "@workspace/db";
 import { communityChallenges, challengeParticipants } from "@workspace/db";
 import { itemRequests, deliveryArrangements, extensionRequests } from "@workspace/db";
 import { reputationActivities, userReviews } from "@workspace/db";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers } from "@workspace/db";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers, userNotificationPrefs } from "@workspace/db";
 import session from "express-session";
 import { sessionSettings, store } from "../auth";
 import { computeActiveStatus, computeActiveStatusFromDb, computeResponseTime } from "../user-stats";
@@ -1612,6 +1612,77 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error saving location:", error);
       res.status(500).json({ error: "Failed to save location" });
+    }
+  });
+
+  // ── Notification Preferences ─────────────────────────────────────────────
+  // GET  /api/user/notification-prefs  — fetch current preferences
+  // PATCH /api/user/notification-prefs — update one or more category flags
+  app.get("/api/user/notification-prefs", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const [row] = await db
+        .select()
+        .from(userNotificationPrefs)
+        .where(eq(userNotificationPrefs.userId, req.user.id))
+        .limit(1);
+      if (!row) {
+        // Return defaults — no row means all opted in
+        return res.json({
+          messages: true,
+          requests: true,
+          payments: true,
+          achievements: true,
+          sharecoins: true,
+        });
+      }
+      res.json({
+        messages: row.messages,
+        requests: row.requests,
+        payments: row.payments,
+        achievements: row.achievements,
+        sharecoins: row.sharecoins,
+      });
+    } catch (err) {
+      console.error("[notification-prefs] GET error:", err);
+      res.status(500).json({ error: "Failed to fetch notification preferences" });
+    }
+  });
+
+  app.patch("/api/user/notification-prefs", async (req: any, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const allowed = ["messages", "requests", "payments", "achievements", "sharecoins"] as const;
+    type PrefKey = typeof allowed[number];
+    const updates: Partial<Record<PrefKey, boolean>> = {};
+    for (const key of allowed) {
+      if (typeof req.body[key] === "boolean") {
+        updates[key] = req.body[key];
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid preference fields provided" });
+    }
+    try {
+      // Native upsert — eliminates any concurrent first-write race
+      await db
+        .insert(userNotificationPrefs)
+        .values({
+          userId: req.user.id,
+          messages: true,
+          requests: true,
+          payments: true,
+          achievements: true,
+          sharecoins: true,
+          ...updates,
+        })
+        .onConflictDoUpdate({
+          target: userNotificationPrefs.userId,
+          set: { ...updates, updatedAt: new Date() },
+        });
+      res.json({ success: true, updated: updates });
+    } catch (err) {
+      console.error("[notification-prefs] PATCH error:", err);
+      res.status(500).json({ error: "Failed to update notification preferences" });
     }
   });
 
@@ -3951,7 +4022,7 @@ Respond with ONLY the category name, nothing else.`
       title: "New Message",
       body: content.length > 120 ? content.slice(0, 120) + "…" : content,
       data: { screen: "chat", chatUserId: req.user.id },
-    }).catch(() => {});
+    }, "messages").catch(() => {});
 
     res.status(201).json(message);
   });
@@ -4971,7 +5042,7 @@ Respond with ONLY the category name, nothing else.`
         title: `New ${requestTypeLabel} Request`,
         body: `${requesterName} wants to ${requestType === "GIFT" ? "claim gift" : requestType.toLowerCase()} "${item.name.length > 22 ? item.name.slice(0, 22) + "…" : item.name}"`,
         data: { screen: "notifications", requestId: request.id, itemId: item.id },
-      }).catch(() => {});
+      }, "requests").catch(() => {});
     }
 
     res.status(201).json(request);
@@ -5441,7 +5512,7 @@ Respond with ONLY the category name, nothing else.`
           title: notifTitle,
           body: notifMessage,
           data: { screen: "notifications", requestId, itemId: request.items.id },
-        }).catch(() => {});
+        }, "requests").catch(() => {});
       } catch (_) {}
     }
 
@@ -5835,7 +5906,7 @@ Respond with ONLY the category name, nothing else.`
         title: termsTitle,
         body: termsBody,
         data: { screen: "notifications", requestId, itemId: request.items.id },
-      }).catch(() => {});
+      }, "requests").catch(() => {});
 
       // For BORROW with in-person deposit, skip the in-app deposit step entirely
       let finalRequest = updated;
@@ -6638,7 +6709,7 @@ Respond with ONLY the category name, nothing else.`
         title: "Payout Sent",
         body: `$${requestedAmount.toFixed(2)} is on its way — arrives in 2–5 business days.`,
         data: { screen: "notifications" },
-      }).catch(() => {});
+      }, "payments").catch(() => {});
 
       res.json({
         success: true,
@@ -10087,7 +10158,7 @@ Respond with ONLY the category name, nothing else.`
                 title,
                 body: message,
                 data: { screen: "notifications", requestId: request.id, itemId: item.id },
-              }).catch((err) =>
+              }, "requests").catch((err) =>
                 console.error("[push] return-reminder push failed:", err)
               );
             }

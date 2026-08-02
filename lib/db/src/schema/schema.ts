@@ -838,6 +838,23 @@ export const itemAvailabilitySubscribers = pgTable("item_availability_subscriber
 export type InsertItemAvailabilitySubscriber = typeof itemAvailabilitySubscribers.$inferInsert;
 export type SelectItemAvailabilitySubscriber = typeof itemAvailabilitySubscribers.$inferSelect;
 
+// Push Tokens — one row per device; allows a single user to receive notifications
+// on multiple devices. Tokens are upserted on registration and deleted when
+// Expo reports DeviceNotRegistered.
+export const userPushTokens = pgTable("user_push_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  tokenUniq: uniqueIndex("user_push_tokens_token_uniq").on(table.token),
+  userIdx: index("user_push_tokens_user_id_idx").on(table.userId),
+}));
+
+export type InsertUserPushToken = typeof userPushTokens.$inferInsert;
+export type SelectUserPushToken = typeof userPushTokens.$inferSelect;
+
 // Notification Preferences — per-category opt-outs for push notifications
 export const userNotificationPrefs = pgTable("user_notification_prefs", {
   id: serial("id").primaryKey(),

@@ -27,7 +27,7 @@ import { sponsoredGames, gameSessions } from "@workspace/db";
 import { communityChallenges, challengeParticipants } from "@workspace/db";
 import { itemRequests, deliveryArrangements, extensionRequests } from "@workspace/db";
 import { reputationActivities, userReviews } from "@workspace/db";
-import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers, userNotificationPrefs } from "@workspace/db";
+import { locationAlerts, swapMatches, swapCooldowns, farmingDetections, rentalReturns, platformCommissions, wishlists, referrals, rentalPayouts, achievements, userAchievements, itemAvailabilitySubscribers, userNotificationPrefs, userPushTokens } from "@workspace/db";
 import session from "express-session";
 import { sessionSettings, store } from "../auth";
 import { computeActiveStatus, computeActiveStatusFromDb, computeResponseTime } from "../user-stats";
@@ -1690,6 +1690,11 @@ export function registerRoutes(app: Express): Server {
   // ── Expo Push Token ─────────────────────────────────────────────────────────
   // The mobile app calls this after login to register its Expo push token so
   // the server can send native push notifications.
+  //
+  // Tokens are stored in user_push_tokens (one row per device) so a user on
+  // multiple devices receives all notifications.  When a device token is
+  // re-assigned (user reinstalls, factory-resets, or switches accounts), the
+  // row is updated so the token belongs to the current authenticated user.
   app.patch("/api/user/push-token", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { token } = req.body;
@@ -1697,10 +1702,17 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).json({ error: "token is required" });
     }
     try {
+      // Upsert on the unique token column.  If the token already exists for
+      // a different user (device transferred / account switched), we reassign
+      // it to the current user.  If it already belongs to this user, we just
+      // touch updated_at so we know the device is still alive.
       await db
-        .update(users)
-        .set({ expoPushToken: token })
-        .where(eq(users.id, req.user.id));
+        .insert(userPushTokens)
+        .values({ userId: req.user.id, token, updatedAt: new Date() })
+        .onConflictDoUpdate({
+          target: userPushTokens.token,
+          set: { userId: req.user.id, updatedAt: new Date() },
+        });
       res.json({ success: true });
     } catch (err) {
       console.error("[push-token] error:", err);

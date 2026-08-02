@@ -2,9 +2,15 @@
  * Expo Push Notification service
  *
  * Sends push notifications via Expo's hosted push service.
- * Tokens are stored in users.expo_push_token — registered by the mobile
- * app after login.  All failures are swallowed so a bad/expired token
- * never breaks the operation that triggered the notification.
+ * Tokens are stored in user_push_tokens — one row per device, registered by
+ * the mobile app after login.  This allows a single user to receive
+ * notifications on multiple devices simultaneously.
+ *
+ * When Expo returns a DeviceNotRegistered error for a token, that token is
+ * automatically removed from the database so it never accumulates stale entries.
+ *
+ * All failures are swallowed so a bad/expired token never breaks the operation
+ * that triggered the notification.
  *
  * Pass an optional `category` to respect per-user notification preferences
  * stored in the `user_notification_prefs` table.  When no category is given,
@@ -12,7 +18,7 @@
  */
 
 import { db } from "@workspace/db";
-import { users, notifications, userNotificationPrefs } from "@workspace/db";
+import { users, notifications, userNotificationPrefs, userPushTokens } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 
 export type NotificationCategory =
@@ -59,20 +65,19 @@ export async function sendPushToUser(
   category?: NotificationCategory,
 ): Promise<void> {
   try {
-    const [row] = await db
-      .select({ expoPushToken: users.expoPushToken })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+    const tokenRows = await db
+      .select({ token: userPushTokens.token })
+      .from(userPushTokens)
+      .where(eq(userPushTokens.userId, userId));
 
-    if (!row?.expoPushToken) return;
+    if (tokenRows.length === 0) return;
 
     const enabled = await isCategoryEnabled(userId, category);
     if (!enabled) return;
 
-    await sendExpoMessages([
-      { to: row.expoPushToken, ...payload },
-    ]);
+    await sendExpoMessages(
+      tokenRows.map(({ token }) => ({ to: token, ...payload })),
+    );
   } catch (err) {
     console.error("[push] sendPushToUser error:", err);
   }
@@ -90,38 +95,36 @@ export async function sendPushToUsers(
 ): Promise<void> {
   if (userIds.length === 0) return;
   try {
-    // Fetch tokens
-    const rows = await db
-      .select({ id: users.id, expoPushToken: users.expoPushToken })
-      .from(users)
-      .where(inArray(users.id, userIds));
+    // Fetch all tokens for these users
+    const tokenRows = await db
+      .select({ userId: userPushTokens.userId, token: userPushTokens.token })
+      .from(userPushTokens)
+      .where(inArray(userPushTokens.userId, userIds));
 
-    const usersWithTokens = rows.filter((r): r is typeof r & { expoPushToken: string } =>
-      !!r.expoPushToken,
-    );
-    if (usersWithTokens.length === 0) return;
+    if (tokenRows.length === 0) return;
 
     // Filter by preference when a category is given
-    let eligible = usersWithTokens;
+    let eligibleRows = tokenRows;
     if (category) {
-      const eligibleIds = usersWithTokens.map((r) => r.id);
+      const uniqueUserIds = [...new Set(tokenRows.map((r) => r.userId))];
       const prefsRows = await db
         .select()
         .from(userNotificationPrefs)
-        .where(inArray(userNotificationPrefs.userId, eligibleIds));
+        .where(inArray(userNotificationPrefs.userId, uniqueUserIds));
 
       const prefsMap = new Map(prefsRows.map((p) => [p.userId, p]));
-      eligible = usersWithTokens.filter((r) => {
-        const p = prefsMap.get(r.id);
+      eligibleRows = tokenRows.filter((r) => {
+        const p = prefsMap.get(r.userId);
         if (!p) return true; // no row → opted in by default
         return p[category] ?? true;
       });
     }
 
-    const tokens = eligible.map((r) => r.expoPushToken);
-    if (tokens.length === 0) return;
+    if (eligibleRows.length === 0) return;
 
-    await sendExpoMessages(tokens.map((to) => ({ to, ...payload })));
+    await sendExpoMessages(
+      eligibleRows.map(({ token }) => ({ to: token, ...payload })),
+    );
   } catch (err) {
     console.error("[push] sendPushToUsers error:", err);
   }
@@ -136,7 +139,17 @@ interface ExpoMessage {
   badge?: number;
 }
 
-/** Low-level call to the Expo Push API (batches up to 100 messages per request). */
+interface ExpoTicket {
+  status: "ok" | "error";
+  id?: string;
+  message?: string;
+  details?: { error?: string };
+}
+
+/**
+ * Low-level call to the Expo Push API (batches up to 100 messages per request).
+ * Handles DeviceNotRegistered receipts by removing the offending token from the DB.
+ */
 async function sendExpoMessages(messages: ExpoMessage[]): Promise<void> {
   // Expo allows up to 100 messages per request
   const BATCH = 100;
@@ -158,6 +171,31 @@ async function sendExpoMessages(messages: ExpoMessage[]): Promise<void> {
     if (!res.ok) {
       const text = await res.text();
       console.error(`[push] Expo API error ${res.status}: ${text}`);
+      continue;
+    }
+
+    // Parse per-message tickets and handle DeviceNotRegistered errors
+    try {
+      const json = (await res.json()) as { data?: ExpoTicket[] };
+      const tickets: ExpoTicket[] = json.data ?? [];
+      for (let j = 0; j < tickets.length; j++) {
+        const ticket = tickets[j];
+        if (
+          ticket.status === "error" &&
+          ticket.details?.error === "DeviceNotRegistered"
+        ) {
+          const staleToken = batch[j]?.to;
+          if (staleToken) {
+            console.log(`[push] Removing stale token: ${staleToken}`);
+            await db
+              .delete(userPushTokens)
+              .where(eq(userPushTokens.token, staleToken));
+          }
+        }
+      }
+    } catch (parseErr) {
+      // Non-fatal — ticket parsing is best-effort
+      console.warn("[push] Failed to parse Expo tickets:", parseErr);
     }
   }
 }

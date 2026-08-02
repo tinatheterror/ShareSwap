@@ -48,6 +48,26 @@ const httpServer = registerRoutes(app);
       CREATE UNIQUE INDEX IF NOT EXISTS user_notification_prefs_user_uniq
       ON user_notification_prefs(user_id)
     `);
+    // Ensure user_push_tokens table exists (idempotent migration).
+    // Stores one row per device token so a single user on multiple devices
+    // receives all notifications.  Replaces the single users.expo_push_token column.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_push_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS user_push_tokens_token_uniq
+      ON user_push_tokens(token)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS user_push_tokens_user_id_idx
+      ON user_push_tokens(user_id)
+    `);
     await initializeSampleGames();
     await initializeAchievements();
     // @ts-ignore

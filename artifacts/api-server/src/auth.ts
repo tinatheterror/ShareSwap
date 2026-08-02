@@ -822,15 +822,113 @@ export function setupAuth(app: Express) {
 
   // ── Reset-password redirect (deep-link shim) ────────────────────────────────
   // GET /api/auth/reset-password-redirect?token=...
-  // The reset email links here. Redirects to the mobile deep-link scheme so the
-  // Expo app opens directly on the reset-password screen with the token pre-filled.
+  // The reset email links here. Serves an HTML page that:
+  //   1. Auto-attempts to open the production app deep link (shareswap://)
+  //   2. Offers a manual "Open in app" button for both prod and Expo Go
+  //   3. Shows the token so the user can paste it into the app manually
+  // This avoids sending a bare custom-scheme redirect (which errors in browsers
+  // that can't handle the scheme) and works for both installed and dev builds.
   app.get("/api/auth/reset-password-redirect", (req, res) => {
-    const token = req.query.token as string;
-    if (!token) return res.redirect("/auth?error=missing_token");
-    // Expo Go / dev: exp+shareswap://reset-password?token=...
-    // Production standalone: shareswap://reset-password?token=...
-    const deepLink = `exp+shareswap://reset-password?token=${encodeURIComponent(token)}`;
-    return res.redirect(deepLink);
+    const rawToken = req.query.token as string;
+
+    // Validate: reset tokens are always 64 lowercase hex chars (randomBytes(32).toString("hex")).
+    // Reject anything that doesn't match to prevent reflected injection attacks.
+    if (!rawToken || !/^[0-9a-f]{64}$/.test(rawToken)) {
+      return res.redirect("/auth?error=invalid_token");
+    }
+
+    // HTML-escape helper — prevents XSS in every HTML context.
+    const escHtml = (s: string) =>
+      s.replace(/&/g, "&amp;")
+       .replace(/</g, "&lt;")
+       .replace(/>/g, "&gt;")
+       .replace(/"/g, "&quot;")
+       .replace(/'/g, "&#x27;");
+
+    // Safe values for each output context.
+    const tokenHtml     = escHtml(rawToken);                       // HTML text / attribute
+    const encodedToken  = encodeURIComponent(rawToken);            // URL component
+    const tokenJson     = JSON.stringify(rawToken);                // JS string literal (quoted + escaped)
+
+    // Production scheme (app.json: scheme = "shareswap")
+    const prodDeepLink = `shareswap://reset-password?token=${encodedToken}`;
+    // Expo Go / development scheme (exp+<slug>)
+    const expoDeepLink = `exp+shareswap-mobile://reset-password?token=${encodedToken}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset your ShareSwap password</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: #f1f5f9; min-height: 100vh; display: flex;
+           align-items: center; justify-content: center; padding: 24px; }
+    .card { background: #fff; border-radius: 20px; padding: 36px 28px;
+            max-width: 420px; width: 100%; text-align: center;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
+    .icon { width: 64px; height: 64px; border-radius: 50%;
+            background: #f0fdf4; display: flex; align-items: center;
+            justify-content: center; margin: 0 auto 20px; font-size: 28px; }
+    h1 { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
+    p  { font-size: 14px; color: #64748b; line-height: 1.6; margin-bottom: 20px; }
+    .btn { display: block; width: 100%; padding: 15px;
+           background: #0D9488; color: #fff; border: none; border-radius: 14px;
+           font-size: 16px; font-weight: 600; cursor: pointer;
+           text-decoration: none; margin-bottom: 12px; }
+    .btn-outline { background: transparent; color: #0D9488;
+                   border: 1.5px solid #0D9488; }
+    .token-box { background: #f8fafc; border: 1px solid #e2e8f0;
+                 border-radius: 10px; padding: 14px 16px; margin: 16px 0;
+                 text-align: left; }
+    .token-label { font-size: 11px; font-weight: 600; color: #94a3b8;
+                   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .token-value { font-size: 13px; font-family: monospace; color: #1e293b;
+                   word-break: break-all; }
+    .divider { height: 1px; background: #e2e8f0; margin: 20px 0; }
+    .note { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🔑</div>
+    <h1>Reset your password</h1>
+    <p>Tap the button below to open the ShareSwap app and set your new password.</p>
+
+    <a class="btn" href="${escHtml(prodDeepLink)}">Open in ShareSwap</a>
+
+    <div class="divider"></div>
+
+    <p>Using Expo Go for development? Use this link instead:</p>
+    <a class="btn btn-outline" href="${escHtml(expoDeepLink)}">Open in Expo Go</a>
+
+    <div class="divider"></div>
+
+    <p>Or open the app manually and enter this token on the &ldquo;Set new password&rdquo; screen:</p>
+    <div class="token-box">
+      <div class="token-label">Reset token</div>
+      <div class="token-value">${tokenHtml}</div>
+    </div>
+
+    <p class="note">This token expires in <strong>1 hour</strong>. If you did not request a password reset, you can safely ignore this page.</p>
+  </div>
+  <script>
+    // Auto-attempt the production deep link on page load — native apps will open;
+    // desktop browsers will silently fail or show a dialog. The buttons above are
+    // the primary CTA; this just saves one tap for mobile users.
+    // tokenJson is a fully JSON-serialized string (no raw interpolation).
+    var token = ${tokenJson};
+    setTimeout(function() {
+      window.location.href = "shareswap://reset-password?token=" + encodeURIComponent(token);
+    }, 300);
+  </script>
+</body>
+</html>`;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.send(html);
   });
 
   app.post("/api/logout", (req, res, next) => {

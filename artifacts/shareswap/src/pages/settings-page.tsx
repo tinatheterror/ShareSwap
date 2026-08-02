@@ -111,7 +111,7 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({ title: "Email updated", description: "Your email address has been changed. Please use your new email to log in." });
+      toast({ title: "Confirmation sent", description: "Check your new inbox and click the link to confirm the change. Your current email stays active until then." });
       setShowChangeEmail(false);
       setNewEmail("");
       setEmailCurrentPassword("");

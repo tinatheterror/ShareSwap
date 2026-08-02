@@ -16,7 +16,7 @@ import {
   type SelectUser,
 } from "@workspace/db";
 import { db, pool } from "@workspace/db";
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, and, ilike, ne } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
@@ -665,20 +665,94 @@ export function setupAuth(app: Express) {
         return res.redirect("/auth?error=token_expired");
       }
 
-      // Mark email as verified
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          emailVerified: true,
-          emailVerificationToken: null,
-          emailVerificationExpires: null,
-        })
-        .where(eq(users.id, user.id))
-        .returning();
+      // Determine whether this is a first-time verification or an email-change confirmation
+      const applyPendingEmail = !!user.pendingEmail;
+      const pendingEmail = user.pendingEmail;
 
-      console.log(
-        `[Auth] Email verified for user ${user.id} (${user.username})`,
-      );
+      let updatedUser: typeof user;
+
+      if (applyPendingEmail && pendingEmail) {
+        // --- Email-change confirmation path ---
+        // Re-check uniqueness at confirmation time to close the race window where
+        // two users could both request the same address and both click their links.
+        // We check both `username` (canonical login field for local accounts) and
+        // `email`, excluding the current user's own row.
+        const [conflictByUsername] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(ilike(users.username, pendingEmail), ne(users.id, user.id)))
+          .limit(1);
+
+        const [conflictByEmail] = !conflictByUsername
+          ? await db
+              .select({ id: users.id })
+              .from(users)
+              .where(and(ilike(users.email, pendingEmail), ne(users.id, user.id)))
+              .limit(1)
+          : [conflictByUsername];
+
+        if (conflictByUsername || conflictByEmail) {
+          // Address was claimed by another account after this request was submitted.
+          // Clear the pending state so the user can try a different address.
+          await db
+            .update(users)
+            .set({ pendingEmail: null, emailVerificationToken: null, emailVerificationExpires: null })
+            .where(eq(users.id, user.id));
+          console.warn(
+            `[Auth] Email-change conflict for user ${user.id}: ${pendingEmail} already taken`,
+          );
+          return res.redirect("/auth?error=email_already_taken");
+        }
+
+        // Apply the change atomically; catch any last-moment unique-constraint race.
+        try {
+          const rows = await db
+            .update(users)
+            .set({
+              email: pendingEmail,
+              username: pendingEmail,
+              emailVerified: true,
+              emailVerificationToken: null,
+              emailVerificationExpires: null,
+              pendingEmail: null,
+            })
+            .where(eq(users.id, user.id))
+            .returning();
+          updatedUser = rows[0];
+        } catch (dbErr: any) {
+          if (dbErr?.code === "23505") {
+            // Another confirmation raced and won — clean up and surface the conflict.
+            await db
+              .update(users)
+              .set({ pendingEmail: null, emailVerificationToken: null, emailVerificationExpires: null })
+              .where(eq(users.id, user.id));
+            console.warn(
+              `[Auth] Unique-constraint race on email-change for user ${user.id}: ${pendingEmail}`,
+            );
+            return res.redirect("/auth?error=email_already_taken");
+          }
+          throw dbErr;
+        }
+        console.log(
+          `[Auth] Email change confirmed for user ${user.id}: ${user.username} → ${pendingEmail}`,
+        );
+      } else {
+        // --- First-time email verification path ---
+        const rows = await db
+          .update(users)
+          .set({
+            emailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationExpires: null,
+            pendingEmail: null,
+          })
+          .where(eq(users.id, user.id))
+          .returning();
+        updatedUser = rows[0];
+        console.log(
+          `[Auth] Email verified for user ${user.id} (${user.username})`,
+        );
+      }
 
       // Refresh the session so the user object reflects the verified state
       if (req.isAuthenticated()) {

@@ -38,7 +38,7 @@ import { addSimplifiedRoutes } from "../simplified-routes";
 import { platformConfig, calculateCommission } from "../platform-config";
 import { AntiFarmingSystem } from "../anti-farming-system";
 import { sendPushToUser, sendPushToUsers } from "../push-notifications";
-import { sendVerificationEmail } from "../sendgrid";
+import { sendVerificationEmail, sendEmailChangeVerificationEmail, sendEmailChangeAlertEmail } from "../sendgrid";
 
 // Notify all availability subscribers that an item is back
 async function notifyAvailabilitySubscribers(itemId: number, itemName: string) {
@@ -13239,13 +13239,33 @@ Respond with ONLY the category name, nothing else.`
 
     const trimmedEmail = newEmail.trim().toLowerCase();
 
-    // Case-insensitive uniqueness check to catch any legacy mixed-case addresses
-    const [existing] = await db
+    // The canonical login address for local accounts is stored in `username`.
+    // `email` may or may not be populated (older accounts may only have username).
+    // Check against both to avoid a same-address change or a duplicate conflict.
+    const currentEmail = (user.email || user.username || "").toLowerCase();
+
+    // Reject if new email is the same as current
+    if (trimmedEmail === currentEmail) {
+      return res.status(400).json({ message: "New email is the same as your current email" });
+    }
+
+    // Case-insensitive uniqueness check across both username and email columns so
+    // legacy accounts (email only in username) and modern accounts (email in both)
+    // are both caught. Exclude the current user's own row.
+    const [existingByUsername] = await db
       .select({ id: users.id })
       .from(users)
-      .where(ilike(users.username, trimmedEmail))
+      .where(and(ilike(users.username, trimmedEmail), ne(users.id, userId)))
       .limit(1);
-    if (existing) {
+    const [existingByEmail] = !existingByUsername
+      ? await db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(ilike(users.email, trimmedEmail), ne(users.id, userId)))
+          .limit(1)
+      : [existingByUsername];
+
+    if (existingByUsername || existingByEmail) {
       return res.status(409).json({ message: "That email address is already in use" });
     }
 
@@ -13253,37 +13273,42 @@ Respond with ONLY the category name, nothing else.`
     const emailVerificationToken = randomBytes(32).toString("hex");
     const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    try {
-      await db
-        .update(users)
-        .set({
-          username: trimmedEmail,
-          email: trimmedEmail,
-          // Reset verification: the new address has not been proven yet
-          emailVerified: false,
-          emailVerificationToken,
-          emailVerificationExpires,
-        })
-        .where(eq(users.id, userId));
-    } catch (err: any) {
-      // Unique constraint violation (race or missed ilike check)
-      if (err?.code === "23505") {
-        return res.status(409).json({ message: "That email address is already in use" });
-      }
-      throw err;
-    }
+    // Store the new email as PENDING — it will only be applied after the user
+    // clicks the confirmation link sent to the new address.
+    // The current email / username remain unchanged until then.
+    await db
+      .update(users)
+      .set({
+        pendingEmail: trimmedEmail,
+        emailVerificationToken,
+        emailVerificationExpires,
+      })
+      .where(eq(users.id, userId));
 
-    // Send verification email to the new address (non-blocking)
-    sendVerificationEmail(
+    const oldEmail = user.email || user.username;
+
+    // Send confirmation link to the NEW address (non-blocking)
+    sendEmailChangeVerificationEmail(
       trimmedEmail,
       emailVerificationToken,
       user.displayName || undefined,
     ).catch((err) => {
-      console.error("[Auth] Failed to send verification email after email change:", err);
+      console.error("[Auth] Failed to send email-change verification email:", err);
     });
 
-    console.log(`[Auth] Email changed for user ${userId} to ${trimmedEmail}; verification required`);
-    res.json({ message: "Email updated. Please check your inbox to verify your new address." });
+    // Send security alert to the OLD address (non-blocking)
+    if (oldEmail) {
+      sendEmailChangeAlertEmail(
+        oldEmail,
+        trimmedEmail,
+        user.displayName || undefined,
+      ).catch((err) => {
+        console.error("[Auth] Failed to send email-change alert to old address:", err);
+      });
+    }
+
+    console.log(`[Auth] Email change requested for user ${userId}: pending ${trimmedEmail}; verification sent`);
+    res.json({ message: "Check your new inbox to confirm the change. Your current email stays active until you confirm." });
   });
 
   app.post("/api/account/deactivate", csrfProtection, async (req, res) => {

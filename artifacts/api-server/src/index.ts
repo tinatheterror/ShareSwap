@@ -68,6 +68,10 @@ const httpServer = registerRoutes(app);
       CREATE INDEX IF NOT EXISTS user_push_tokens_user_id_idx
       ON user_push_tokens(user_id)
     `);
+    // Ensure pending_email column exists (idempotent migration for email-change pending flow)
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email TEXT
+    `);
     await initializeSampleGames();
     await initializeAchievements();
     // @ts-ignore

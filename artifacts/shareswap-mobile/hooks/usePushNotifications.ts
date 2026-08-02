@@ -11,14 +11,18 @@
  */
 
 import { useEffect, useRef } from "react";
-import * as Notifications from "expo-notifications";
+import type * as NotificationsType from "expo-notifications";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Platform } from "react-native";
 import { apiRequest } from "@/lib/api";
 
+// expo-notifications throws on web during module init — load it only on native.
+// We keep `import type` above for TypeScript types, and use require() at runtime.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Notifications = (Platform.OS !== "web" ? require("expo-notifications") : {}) as typeof NotificationsType;
+
 // ── Notification presentation behaviour while the app is in the foreground ──
-// expo-notifications APIs are not available on web
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({

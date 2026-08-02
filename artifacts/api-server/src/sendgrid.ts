@@ -114,3 +114,72 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
     return false;
   }
 }
+
+// Send password reset link
+export async function sendPasswordResetEmail(toEmail: string, resetToken: string, displayName?: string) {
+  try {
+    const { client, fromEmail } = await getUncachableSendGridClient();
+
+    const baseUrl = process.env.NODE_ENV === 'production' && process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : process.env.CUSTOM_DOMAIN
+      ? `https://${process.env.CUSTOM_DOMAIN}`
+      : 'http://localhost:5000';
+
+    // Token is included so the mobile app can deep-link directly to the reset screen
+    const resetLink = `${baseUrl}/api/auth/reset-password-redirect?token=${resetToken}`;
+
+    const msg = {
+      to: toEmail,
+      from: fromEmail,
+      subject: 'Reset your ShareSwap password',
+      text: `Hi ${displayName || 'there'},\n\nWe received a request to reset your ShareSwap password.\n\nYour password reset token is:\n\n${resetToken}\n\nOr click the link below to open the app:\n${resetLink}\n\nThis token expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.\n\nBest,\nThe ShareSwap Team`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #0D9488; margin: 0;">ShareSwap</h1>
+            <p style="color: #64748B; margin-top: 5px;">Share more, own less</p>
+          </div>
+
+          <h2 style="color: #1E293B;">Hi ${displayName || 'there'},</h2>
+
+          <p style="color: #475569; line-height: 1.6;">
+            We received a request to reset your ShareSwap password. Click the button below to set a new password:
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}"
+               style="background-color: #0D9488; color: white; padding: 14px 28px;
+                      text-decoration: none; border-radius: 8px; font-weight: bold;
+                      display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="color: #64748B; font-size: 14px;">
+            This link expires in <strong>1 hour</strong>.
+          </p>
+
+          <p style="color: #64748B; font-size: 14px;">
+            If you didn't request a password reset, you can safely ignore this email — your password will not change.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 30px 0;" />
+
+          <p style="color: #94A3B8; font-size: 12px; text-align: center;">
+            &copy; ${new Date().getFullYear()} ShareSwap. Connect with your neighbours.
+          </p>
+        </div>
+      `
+    };
+
+    await client.send(msg);
+    console.log(`[SendGrid] Password reset email sent to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error('[SendGrid] Error sending password reset email:', error);
+    return false;
+  }
+}

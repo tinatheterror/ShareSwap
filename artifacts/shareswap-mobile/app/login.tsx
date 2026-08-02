@@ -230,6 +230,16 @@ export default function LoginScreen() {
                   <Text style={[styles.signInBtnText, { color: colors.primaryForeground }]}>Sign In</Text>
                 )}
               </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, alignSelf: "center" }]}
+                onPress={() => router.push("/forgot-password" as never)}
+                hitSlop={8}
+              >
+                <Text style={[styles.forgotLink, { color: colors.mutedForeground }]}>
+                  Forgot password?
+                </Text>
+              </Pressable>
             </View>
           )}
 
@@ -421,6 +431,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textDecorationLine: "underline",
+  },
+  forgotLink: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textDecorationLine: "underline",
+    textAlign: "center",
   },
   trustRow: {
     flexDirection: "row",

@@ -18,7 +18,7 @@ import {
 import { db, pool } from "@workspace/db";
 import { eq, or, and } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
-import { sendVerificationEmail } from "./sendgrid";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
 
 // Security: Rate limiter for authentication endpoints
@@ -726,6 +726,111 @@ export function setupAuth(app: Express) {
       console.error("[Auth] Resend verification error:", error);
       res.status(500).json({ message: "Failed to resend verification email" });
     }
+  });
+
+  // ── Forgot password ────────────────────────────────────────────────────────
+  // POST /api/auth/forgot-password
+  // Body: { email }
+  // Generates a 1-hour reset token and emails it. Always returns 200 so
+  // callers cannot enumerate registered addresses.
+  app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, email.trim().toLowerCase()))
+        .limit(1);
+
+      // Always respond 200 — do not reveal whether the email exists
+      if (!user || !user.password) {
+        return res.status(200).json({ message: "If that email is registered you will receive a reset link shortly." });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await db
+        .update(users)
+        .set({ passwordResetToken: token, passwordResetExpires: expires } as any)
+        .where(eq(users.id, user.id));
+
+      sendPasswordResetEmail(user.username, token, user.displayName || undefined).catch((err) => {
+        console.error("[Auth] Failed to send password reset email:", err);
+      });
+
+      return res.status(200).json({ message: "If that email is registered you will receive a reset link shortly." });
+    } catch (error) {
+      console.error("[Auth] Forgot-password error:", error);
+      return res.status(500).json({ message: "An error occurred. Please try again." });
+    }
+  });
+
+  // ── Reset password ──────────────────────────────────────────────────────────
+  // POST /api/auth/reset-password
+  // Body: { token, newPassword }
+  app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ message: "Reset token is required" });
+    }
+    if (!newPassword || typeof newPassword !== "string") {
+      return res.status(400).json({ message: "New password is required" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq((users as any).passwordResetToken, token.trim()))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      const expires = (user as any).passwordResetExpires as Date | null;
+      if (!expires || new Date() > expires) {
+        return res.status(400).json({ message: "Reset token has expired. Please request a new one." });
+      }
+
+      const hashed = await hashPassword(newPassword);
+
+      await db
+        .update(users)
+        .set({
+          password: hashed,
+          passwordResetToken: null,
+          passwordResetExpires: null,
+        } as any)
+        .where(eq(users.id, user.id));
+
+      console.log(`[Auth] Password reset for user ${user.id} (${user.username})`);
+      return res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("[Auth] Reset-password error:", error);
+      return res.status(500).json({ message: "An error occurred. Please try again." });
+    }
+  });
+
+  // ── Reset-password redirect (deep-link shim) ────────────────────────────────
+  // GET /api/auth/reset-password-redirect?token=...
+  // The reset email links here. Redirects to the mobile deep-link scheme so the
+  // Expo app opens directly on the reset-password screen with the token pre-filled.
+  app.get("/api/auth/reset-password-redirect", (req, res) => {
+    const token = req.query.token as string;
+    if (!token) return res.redirect("/auth?error=missing_token");
+    // Expo Go / dev: exp+shareswap://reset-password?token=...
+    // Production standalone: shareswap://reset-password?token=...
+    const deepLink = `exp+shareswap://reset-password?token=${encodeURIComponent(token)}`;
+    return res.redirect(deepLink);
   });
 
   app.post("/api/logout", (req, res, next) => {

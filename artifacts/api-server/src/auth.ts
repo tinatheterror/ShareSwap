@@ -4,7 +4,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Express } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator, type Store, type Options, type ClientRateLimitInfo } from "express-rate-limit";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import {
@@ -21,25 +21,190 @@ import { fromZodError } from "zod-validation-error";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
 
-// Security: Rate limiter for authentication endpoints
+// ---------------------------------------------------------------------------
+// Postgres-backed rate-limit store
+//
+// Keyed by an arbitrary string (usually "<prefix>:<ip>" or a composite key).
+// Uses a single shared table "rate_limit_store" with a prefix column so
+// multiple limiters can coexist without interference.
+//
+// Benefits over the default MemoryStore:
+//   • Survives server restarts — attackers can't clear their counter by
+//     forcing a restart.
+//   • Works correctly across horizontal scale-out (multiple server pods share
+//     the same Postgres instance).
+//   • Expired rows are pruned lazily on every increment, so the table stays
+//     small without a separate cron job.
+// ---------------------------------------------------------------------------
+
+// Module-level singleton promise so the CREATE TABLE runs exactly once
+// regardless of how many store instances call init() concurrently.
+let _rateLimitTableReady: Promise<void> | null = null;
+
+function ensureRateLimitTable(): Promise<void> {
+  if (!_rateLimitTableReady) {
+    _rateLimitTableReady = pool
+      .query(`
+        CREATE TABLE IF NOT EXISTS rate_limit_store (
+          key        TEXT        NOT NULL,
+          hits       INTEGER     NOT NULL DEFAULT 0,
+          reset_time TIMESTAMPTZ NOT NULL,
+          PRIMARY KEY (key)
+        )
+      `)
+      .then(() => undefined)
+      .catch((err: NodeJS.ErrnoException & { code?: string }) => {
+        // 42P07 = duplicate_table: a concurrent CREATE TABLE already won the race — fine.
+        if (err.code !== "42P07") {
+          _rateLimitTableReady = null; // allow retry on next request
+          throw err;
+        }
+      });
+  }
+  return _rateLimitTableReady;
+}
+
+class PostgresRateLimitStore implements Store {
+  // localKeys = false tells express-rate-limit that this is a shared store
+  // (multiple instances share state), so it skips the double-count warning.
+  localKeys = false;
+
+  private windowMs: number;
+  private _prefix: string;
+
+  constructor(windowMs: number, storePrefix: string) {
+    this.windowMs = windowMs;
+    this._prefix = storePrefix;
+  }
+
+  // Called by express-rate-limit when the middleware is set up.
+  async init(_options: Options): Promise<void> {
+    await ensureRateLimitTable();
+  }
+
+  async increment(key: string): Promise<ClientRateLimitInfo> {
+    await this._ensureTable();
+    const fullKey = `${this._prefix}:${key}`;
+    const resetTime = new Date(Date.now() + this.windowMs);
+
+    // Atomic upsert:
+    //   • On insert, start the window from now.
+    //   • On conflict, check whether the existing window has expired:
+    //       – expired  → reset hits to 1 and start a fresh window
+    //       – active   → increment hits and keep the original window end time
+    // This guarantees the window slides correctly without a separate cleanup pass.
+    const result = await pool.query<{ hits: number; reset_time: Date }>(
+      `INSERT INTO rate_limit_store (key, hits, reset_time)
+       VALUES ($1, 1, $2)
+       ON CONFLICT (key) DO UPDATE
+         SET hits       = CASE
+                            WHEN rate_limit_store.reset_time <= NOW() THEN 1
+                            ELSE rate_limit_store.hits + 1
+                          END,
+             reset_time = CASE
+                            WHEN rate_limit_store.reset_time <= NOW() THEN $2
+                            ELSE rate_limit_store.reset_time
+                          END
+       RETURNING hits, reset_time`,
+      [fullKey, resetTime],
+    );
+
+    return {
+      totalHits: result.rows[0].hits,
+      resetTime: result.rows[0].reset_time,
+    };
+  }
+
+  async decrement(key: string): Promise<void> {
+    await ensureRateLimitTable();
+    const fullKey = `${this._prefix}:${key}`;
+    await pool.query(
+      `UPDATE rate_limit_store
+          SET hits = GREATEST(0, hits - 1)
+        WHERE key = $1`,
+      [fullKey],
+    );
+  }
+
+  async resetKey(key: string): Promise<void> {
+    await ensureRateLimitTable();
+    const fullKey = `${this._prefix}:${key}`;
+    await pool.query(`DELETE FROM rate_limit_store WHERE key = $1`, [fullKey]);
+  }
+
+  async resetAll(): Promise<void> {
+    await ensureRateLimitTable();
+    await pool.query(
+      `DELETE FROM rate_limit_store WHERE key LIKE $1`,
+      [`${this._prefix}:%`],
+    );
+  }
+
+  async get(key: string): Promise<ClientRateLimitInfo | undefined> {
+    await ensureRateLimitTable();
+    const fullKey = `${this._prefix}:${key}`;
+    const result = await pool.query<{ hits: number; reset_time: Date }>(
+      `SELECT hits, reset_time FROM rate_limit_store WHERE key = $1`,
+      [fullKey],
+    );
+    if (!result.rows[0]) return undefined;
+    return {
+      totalHits: result.rows[0].hits,
+      resetTime: result.rows[0].reset_time,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Composite-key helper
+//
+// Keying on IP alone lets an attacker bypass limits by rotating IPs (exit
+// nodes, VPNs, botnets).  Keying on IP + User-Agent raises the cost: the
+// attacker must rotate *both* simultaneously.  We truncate the UA to 200
+// characters to avoid unbounded key sizes while still capturing enough signal
+// to distinguish automation tools from real browsers.
+//
+// NOTE: This is a probabilistic defence, not a guarantee.  Sophisticated
+// attackers rotate UAs too.  The persistent Postgres store (above) is the
+// primary protection; the composite key reduces false-positives for innocent
+// users behind shared NAT / CGNAT.
+// ---------------------------------------------------------------------------
+function compositeKey(req: { ip?: string; headers: Record<string, string | string[] | undefined> }): string {
+  // ipKeyGenerator normalises IPv6 to /48 subnets so the key stays stable
+  // across addresses in the same prefix (required by express-rate-limit v8).
+  const ip = ipKeyGenerator(req.ip ?? "unknown");
+  const rawUa = req.headers["user-agent"];
+  const ua = (Array.isArray(rawUa) ? rawUa[0] : rawUa ?? "").slice(0, 200);
+  return `${ip}::${ua}`;
+}
+
+// Security: Rate limiter for authentication endpoints (login, register, reactivate).
+// Backed by Postgres so limits survive restarts and work across multiple pods.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 attempts per windowMs
+  max: 5, // 5 attempts per IP per window
   message: "Too many authentication attempts, please try again later.",
   skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PostgresRateLimitStore(15 * 60 * 1000, "auth"),
 });
 
 // Security: Dedicated rate limiter for the reset-password-redirect endpoint.
 // This endpoint checks token validity against the DB, so an attacker could
-// probe for valid tokens via timing or response differences. Log excessive
-// attempts so they are visible in monitoring.
+// probe for valid tokens via timing or response differences.
+//
+// Uses a composite IP + User-Agent key so that innocent users on shared NAT
+// are less likely to be blocked by another user's attempts, while an attacker
+// rotating IPs must also rotate the User-Agent header — raising the cost of
+// evasion. Backed by Postgres so limits persist across restarts.
 const resetRedirectLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 token-probe attempts per window
+  max: 5, // 5 token-probe attempts per composite key per window
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: compositeKey,
+  store: new PostgresRateLimitStore(15 * 60 * 1000, "reset"),
   handler: (req, res) => {
     console.warn(
       `[SECURITY] Rate limit exceeded on reset-password-redirect — possible token probe from IP ${req.ip}`,

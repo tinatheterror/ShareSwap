@@ -24,6 +24,7 @@ import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost, photoUrl } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
+import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 
 const rentalRateIcon = require("../../assets/icons/rental-rate.png");
 const shareCoinIcon = require("../../assets/icons/sharecoin.png");
@@ -591,6 +592,9 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* ── Email verification banner ── */}
+      <EmailVerificationBanner />
 
       {/* ── Scrollable body ── */}
       <ScrollView

@@ -54,7 +54,7 @@ export default function RegisterScreen() {
         fullName: fullName.trim() || undefined,
         referralCode: referralCode.trim() || undefined,
       });
-      router.replace("/(tabs)");
+      router.replace("/verify-email-prompt");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed. Please try again.";
       Alert.alert("Registration failed", msg);

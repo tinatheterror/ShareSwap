@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { AppState, AppStateStatus } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPost } from "@/lib/api";
 
@@ -30,6 +31,8 @@ interface User {
   defaultCity?: string | null;
   defaultPostalCode?: string | null;
   locationRadius?: number | null;
+  emailVerified?: boolean;
+  authProvider?: string;
 }
 
 interface AuthContextValue {
@@ -41,6 +44,7 @@ interface AuthContextValue {
   register: (opts: { email: string; password: string; fullName?: string; referralCode?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refetchUser: () => Promise<void>;
+  resendVerification: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -52,6 +56,7 @@ const AuthContext = createContext<AuthContextValue>({
   register: async () => {},
   logout: async () => {},
   refetchUser: async () => {},
+  resendVerification: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -143,6 +148,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [fetchUser, getDeviceFingerprint],
   );
 
+  const resendVerification = useCallback(async () => {
+    await apiPost("/api/auth/resend-verification", {});
+  }, []);
+
+  // Refresh user whenever the app comes back to the foreground so that
+  // emailVerified changes (user clicked the link in their email) are picked up.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
+      if (next === "active") fetchUser();
+    });
+    return () => sub.remove();
+  }, [fetchUser]);
+
   const logout = useCallback(async () => {
     await apiPost("/api/logout");
     setUser(null);
@@ -165,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         refetchUser: fetchUser,
+        resendVerification,
       }}
     >
       {children}

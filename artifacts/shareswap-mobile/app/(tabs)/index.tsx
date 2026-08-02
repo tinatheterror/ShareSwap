@@ -553,7 +553,6 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
-          <NotificationBell />
           <Pressable style={styles.walletBadge} onPress={() => router.push("/sharecoin-wallet" as never)}>
             <Text style={styles.walletBadgeLabel}>Total Balance</Text>
             <View style={styles.walletBadgeRow}>
@@ -561,6 +560,7 @@ export default function HomeScreen() {
               <Text style={styles.walletBadgeAmount}>{user ? `${Math.round(Number(user.shareCoins ?? 0))} ShareCoins` : "–"}</Text>
             </View>
           </Pressable>
+          <NotificationBell />
         </View>
         <Text style={styles.headerSub}>
           A trusted collection of items available{locationCity ? ` near ${locationCity}` : " near you"}

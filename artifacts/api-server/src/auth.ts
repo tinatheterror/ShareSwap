@@ -31,6 +31,23 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Security: Dedicated rate limiter for the reset-password-redirect endpoint.
+// This endpoint checks token validity against the DB, so an attacker could
+// probe for valid tokens via timing or response differences. Log excessive
+// attempts so they are visible in monitoring.
+const resetRedirectLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 token-probe attempts per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.warn(
+      `[SECURITY] Rate limit exceeded on reset-password-redirect — possible token probe from IP ${req.ip}`,
+    );
+    res.status(429).send("Too many requests, please try again later.");
+  },
+});
+
 declare global {
   namespace Express {
     interface User extends SelectUser {}
@@ -828,7 +845,7 @@ export function setupAuth(app: Express) {
   //   3. Shows the token so the user can paste it into the app manually
   // This avoids sending a bare custom-scheme redirect (which errors in browsers
   // that can't handle the scheme) and works for both installed and dev builds.
-  app.get("/api/auth/reset-password-redirect", (req, res) => {
+  app.get("/api/auth/reset-password-redirect", resetRedirectLimiter, (req, res) => {
     const rawToken = req.query.token as string;
 
     // Validate: reset tokens are always 64 lowercase hex chars (randomBytes(32).toString("hex")).

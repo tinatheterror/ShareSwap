@@ -553,43 +553,46 @@ export default function HomeScreen() {
       <View style={[styles.header, { paddingTop: topPad + 2, backgroundColor: colors.primary }]}>
         <View style={styles.headerTitleRow}>
           <Text style={[styles.headerTitle, { flex: 1 }]} numberOfLines={2}>Browse the ShareChest</Text>
-          <Pressable style={styles.walletBadge} onPress={() => router.push("/sharecoin-wallet" as never)}>
-            <Text style={styles.walletBadgeLabel}>Total Balance</Text>
-            <View style={styles.walletBadgeRow}>
-              <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
-              <Text style={styles.walletBadgeAmount}>{user ? `${Math.round(Number(user.shareCoins ?? 0))} ShareCoins` : "–"}</Text>
-            </View>
-          </Pressable>
           <NotificationBell />
         </View>
         <Text style={styles.headerSub}>
           A trusted collection of items available{locationCity ? ` near ${locationCity}` : " near you"}
         </Text>
 
-        {/* Search + Location row */}
+        {/* Search + Location stacked, Wallet beside */}
         <View style={styles.searchRow}>
-          <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
-            <Feather name="search" size={13} color="#9ca3af" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search items..."
-              placeholderTextColor="#9ca3af"
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search.length > 0 && (
-              <Pressable onPress={() => setSearch("")} hitSlop={6}>
-                <Feather name="x" size={13} color="#9ca3af" />
-              </Pressable>
-            )}
+          <View style={styles.searchLocationCol}>
+            <View style={[styles.searchBar, { backgroundColor: "#fff" }]}>
+              <Feather name="search" size={13} color="#9ca3af" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search items..."
+                placeholderTextColor="#9ca3af"
+                value={search}
+                onChangeText={setSearch}
+                returnKeyType="search"
+              />
+              {search.length > 0 && (
+                <Pressable onPress={() => setSearch("")} hitSlop={6}>
+                  <Feather name="x" size={13} color="#9ca3af" />
+                </Pressable>
+              )}
+            </View>
+
+            <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]} onPress={() => setLocationModal(true)}>
+              <Feather name="map-pin" size={14} color="#0DCEA1" />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {locationCity || "Nearby"}
+              </Text>
+            </Pressable>
           </View>
 
-          <Pressable style={[styles.locationPill, { backgroundColor: "#fff" }]} onPress={() => setLocationModal(true)}>
-            <Feather name="map-pin" size={14} color="#0DCEA1" />
-            <Text style={styles.locationText} numberOfLines={1}>
-              {locationCity || "Nearby"}
-            </Text>
+          <Pressable style={[styles.walletBadge, { backgroundColor: "rgba(255,255,255,0.95)" }]} onPress={() => router.push("/sharecoin-wallet" as never)}>
+            <Text style={styles.walletBadgeLabel}>Total Balance</Text>
+            <View style={styles.walletBadgeRow}>
+              <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+              <Text style={styles.walletBadgeAmount}>{user ? `${Math.round(Number(user.shareCoins ?? 0))} ShareCoins` : "–"}</Text>
+            </View>
           </Pressable>
         </View>
       </View>
@@ -829,13 +832,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     alignItems: "center",
+    justifyContent: "center",
     gap: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 6,
     elevation: 5,
-    alignSelf: "flex-start",
   },
   walletBadgeLabel: {
     fontSize: 7,
@@ -874,10 +877,13 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     gap: 8,
-    alignItems: "center",
+    alignItems: "stretch",
+  },
+  searchLocationCol: {
+    flex: 1,
+    gap: 6,
   },
   locationPill: {
-    width: 115,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -897,7 +903,6 @@ const styles = StyleSheet.create({
     color: "#374151",
   },
   searchBar: {
-    flex: 2,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

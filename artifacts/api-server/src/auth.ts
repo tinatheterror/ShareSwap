@@ -825,7 +825,11 @@ export function setupAuth(app: Express) {
   app.get("/api/auth/google/callback", authLimiter, (req, res, next) => {
     passport.authenticate("google", {
       failureRedirect: "/auth",
-    })(req, res, (err: any) => {
+      // keepSessionInfo prevents passport 0.6+ from calling
+      // req.session.regenerate(), which would destroy nativeRedirectUri
+      // stored before the OAuth redirect started.
+      keepSessionInfo: true,
+    } as any)(req, res, (err: any) => {
       if (err) return next(err);
       // Resolve native redirect URI — prefer state param (session-independent)
       // then fall back to session (legacy / web-initiated flows).

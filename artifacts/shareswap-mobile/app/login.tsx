@@ -279,16 +279,19 @@ export default function LoginScreen() {
             </View>
           )}
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <Pressable onPress={() => router.push("/register" as never)}>
-            <Text style={[styles.referralLink, { color: colors.mutedForeground, textAlign: "center" }]}>
-              New to ShareSwap?{" "}
-              <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
-                Create an account
-              </Text>
-            </Text>
-          </Pressable>
+          {showEmailForm && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Pressable onPress={() => router.push("/register" as never)}>
+                <Text style={[styles.referralLink, { color: colors.mutedForeground, textAlign: "center" }]}>
+                  New to ShareSwap?{" "}
+                  <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
+                    Create an account
+                  </Text>
+                </Text>
+              </Pressable>
+            </>
+          )}
 
           <View style={styles.trustRow}>
             <Feather name="lock" size={15} color={colors.primary} />

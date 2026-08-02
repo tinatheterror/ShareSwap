@@ -16,7 +16,7 @@ import {
   type SelectUser,
 } from "@workspace/db";
 import { db, pool } from "@workspace/db";
-import { eq, or, and, gt, sql } from "drizzle-orm";
+import { eq, or, and } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 import { sendVerificationEmail, sendPasswordResetEmail } from "./sendgrid";
 import { computeActiveStatus, computeResponseTime } from "./user-stats";
@@ -786,35 +786,33 @@ export function setupAuth(app: Express) {
     }
 
     try {
-      // Hash the password before touching the DB — purely computational, no race risk.
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq((users as any).passwordResetToken, token.trim()))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      const expires = (user as any).passwordResetExpires as Date | null;
+      if (!expires || new Date() > expires) {
+        return res.status(400).json({ message: "Reset token has expired. Please request a new one." });
+      }
+
       const hashed = await hashPassword(newPassword);
 
-      // Atomic single-statement consumption: update only the row whose token still
-      // matches AND whose expiry is still in the future. The WHERE clause is the
-      // authoritative guard — no separate SELECT needed. Only one concurrent request
-      // can win because the UPDATE acquires a row lock; subsequent requests find the
-      // token already cleared and return 0 rows.
-      const updated = await db
+      await db
         .update(users)
         .set({
           password: hashed,
           passwordResetToken: null,
           passwordResetExpires: null,
         } as any)
-        .where(
-          and(
-            eq((users as any).passwordResetToken, token.trim()),
-            gt((users as any).passwordResetExpires, sql`NOW()`),
-          ),
-        )
-        .returning({ id: users.id, username: users.username });
+        .where(eq(users.id, user.id));
 
-      if (updated.length === 0) {
-        // Either the token never existed, was already consumed, or has expired.
-        return res.status(400).json({ message: "Invalid or expired reset token" });
-      }
-
-      console.log(`[Auth] Password reset for user ${updated[0].id} (${updated[0].username})`);
+      console.log(`[Auth] Password reset for user ${user.id} (${user.username})`);
       return res.status(200).json({ message: "Password updated successfully" });
     } catch (error) {
       console.error("[Auth] Reset-password error:", error);
@@ -830,75 +828,13 @@ export function setupAuth(app: Express) {
   //   3. Shows the token so the user can paste it into the app manually
   // This avoids sending a bare custom-scheme redirect (which errors in browsers
   // that can't handle the scheme) and works for both installed and dev builds.
-  app.get("/api/auth/reset-password-redirect", async (req, res) => {
+  app.get("/api/auth/reset-password-redirect", (req, res) => {
     const rawToken = req.query.token as string;
 
     // Validate: reset tokens are always 64 lowercase hex chars (randomBytes(32).toString("hex")).
     // Reject anything that doesn't match to prevent reflected injection attacks.
     if (!rawToken || !/^[0-9a-f]{64}$/.test(rawToken)) {
       return res.redirect("/auth?error=invalid_token");
-    }
-
-    // Check the token is still valid (not consumed and not past its expiry).
-    // This prevents users from clicking a stale email link and landing on the
-    // password-reset screen with a token that will immediately fail.
-    try {
-      const [row] = await db
-        .select({ expires: (users as any).passwordResetExpires })
-        .from(users)
-        .where(eq((users as any).passwordResetToken, rawToken))
-        .limit(1);
-
-      const isExpired =
-        !row ||
-        !(row as any).expires ||
-        new Date() > new Date((row as any).expires);
-
-      if (isExpired) {
-        const expiredHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reset link expired — ShareSwap</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-           background: #f1f5f9; min-height: 100vh; display: flex;
-           align-items: center; justify-content: center; padding: 24px; }
-    .card { background: #fff; border-radius: 20px; padding: 36px 28px;
-            max-width: 420px; width: 100%; text-align: center;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.08); }
-    .icon { width: 64px; height: 64px; border-radius: 50%;
-            background: #fef2f2; display: flex; align-items: center;
-            justify-content: center; margin: 0 auto 20px; font-size: 28px; }
-    h1 { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
-    p  { font-size: 14px; color: #64748b; line-height: 1.6; margin-bottom: 20px; }
-    .btn { display: block; width: 100%; padding: 15px;
-           background: #0D9488; color: #fff; border: none; border-radius: 14px;
-           font-size: 16px; font-weight: 600; cursor: pointer;
-           text-decoration: none; margin-bottom: 12px; }
-    .note { font-size: 12px; color: #94a3b8; line-height: 1.6; margin-top: 8px; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">⏰</div>
-    <h1>This link has expired</h1>
-    <p>Password reset links are only valid for <strong>1 hour</strong> and can only be used once. This one has already expired or been used.</p>
-    <p>Open the ShareSwap app and request a new reset link — it only takes a moment.</p>
-    <a class="btn" href="shareswap://forgot-password">Request a new link</a>
-    <p class="note">If the button above doesn't open the app, open ShareSwap manually and tap <strong>Forgot password</strong> on the sign-in screen.</p>
-  </div>
-</body>
-</html>`;
-        res.setHeader("Content-Type", "text/html; charset=utf-8");
-        return res.status(410).send(expiredHtml);
-      }
-    } catch (err) {
-      // Log the error but don't block the user — the POST will catch any actual
-      // token problem when they submit the new password.
-      console.error("[Auth] reset-password-redirect: DB check failed:", err);
     }
 
     // HTML-escape helper — prevents XSS in every HTML context.

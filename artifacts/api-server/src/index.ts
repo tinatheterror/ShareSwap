@@ -28,10 +28,6 @@ const httpServer = registerRoutes(app);
 // Initialize features
 (async () => {
   try {
-    // Ensure expo_push_token column exists (idempotent migration)
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS expo_push_token TEXT
-    `);
     // Ensure user_notification_prefs table exists (idempotent migration)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_notification_prefs (
@@ -51,7 +47,7 @@ const httpServer = registerRoutes(app);
     `);
     // Ensure user_push_tokens table exists (idempotent migration).
     // Stores one row per device token so a single user on multiple devices
-    // receives all notifications.  Replaces the single users.expo_push_token column.
+    // receives all notifications.
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_push_tokens (
         id SERIAL PRIMARY KEY,

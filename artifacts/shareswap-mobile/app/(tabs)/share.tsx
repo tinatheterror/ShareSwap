@@ -255,17 +255,19 @@ export default function ShareScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View
           style={[
-            cm.fullHeaderRow,
+            styles.header,
             { paddingTop: topPad + 12, borderBottomColor: "transparent", backgroundColor: colors.primary },
           ]}
         >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={[cm.heading, { color: colors.foreground, flex: 1 }]}>How would you like to share?</Text>
+          <View style={styles.headerTitleRow}>
+            <Text style={[styles.title, { color: colors.foreground, flex: 1 }]}>Share</Text>
             <NotificationBell />
           </View>
         </View>
 
         <ScrollView contentContainerStyle={cm.fullScroll} showsVerticalScrollIndicator={false}>
+          <Text style={[cm.sectionLabel, { color: colors.foreground }]}>How would you like to share?</Text>
+
           <Pressable
             style={[cm.option, { backgroundColor: colors.muted }]}
             onPress={() => setChoiceVisible(false)}
@@ -315,6 +317,28 @@ export default function ShareScreen() {
               <Text style={[cm.optTitle, { color: colors.foreground }]}>See what people need</Text>
               <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
                 Fulfill a wishlist and earn ShareCoins
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          </Pressable>
+
+          <Text style={[cm.sectionLabel, { color: colors.foreground, marginTop: 20 }]}>My Share Chest</Text>
+
+          <Pressable
+            style={[cm.option, { backgroundColor: colors.muted }]}
+            onPress={() => router.push("/my-shared-items" as never)}
+          >
+            <View style={[cm.iconWrap, { backgroundColor: "#ccfbf1" }]}>
+              <Image
+                source={require("../../assets/icons/sharechest-chest.png")}
+                style={{ width: 20, height: 20 }}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[cm.optTitle, { color: colors.foreground }]}>Manage your shared items</Text>
+              <Text style={[cm.optSub, { color: colors.mutedForeground }]}>
+                View, edit, or check the status of your items.
               </Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
@@ -859,6 +883,12 @@ const cm = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginTop: 2,
   },
+  sectionLabel: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
 });
 
 const styles = StyleSheet.create({
@@ -868,6 +898,11 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 4,
+  },
+  headerTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   title: {
     fontSize: 24,

@@ -25,6 +25,7 @@ import { apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Item } from "@/components/ItemCard";
 import { VerificationGateModal } from "@/components/VerificationGateModal";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 interface ItemDetail extends Item {
   condition?: string;
@@ -67,7 +68,14 @@ export default function ItemDetailScreen() {
   const [showVerifModal, setShowVerifModal] = useState(false);
   const [verifMissing, setVerifMissing] = useState<{ idVerified?: boolean; paymentVerified?: boolean }>({});
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const { width: screenWidth } = useWindowDimensions();
+
+  function openLightbox(index: number) {
+    setLightboxIndex(index);
+    setLightboxVisible(true);
+  }
 
   const { data: item, isLoading } = useQuery<ItemDetail>({
     queryKey: [`/api/items/${id}`],
@@ -163,6 +171,12 @@ export default function ItemDetailScreen() {
         onClose={() => setShowVerifModal(false)}
         missing={verifMissing}
       />
+      <PhotoLightbox
+        photos={allPhotos}
+        initialIndex={lightboxIndex}
+        visible={lightboxVisible}
+        onClose={() => setLightboxVisible(false)}
+      />
       <ScrollView
         contentContainerStyle={{
           paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 100,
@@ -179,12 +193,21 @@ export default function ItemDetailScreen() {
               scrollEventThrottle={16}
             >
               {allPhotos.map((photo, index) => (
-                <Image
+                <Pressable
                   key={index}
-                  source={{ uri: photoUrl(photo) }}
-                  style={[styles.heroImage, { width: screenWidth }]}
-                  resizeMode="cover"
-                />
+                  onPress={() => openLightbox(index)}
+                  style={{ width: screenWidth }}
+                >
+                  <Image
+                    source={{ uri: photoUrl(photo) }}
+                    style={[styles.heroImage, { width: screenWidth }]}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.zoomHint} pointerEvents="none">
+                    <Feather name="zoom-in" size={14} color="#fff" />
+                    <Text style={styles.zoomHintText}>Tap to zoom</Text>
+                  </View>
+                </Pressable>
               ))}
             </ScrollView>
             {allPhotos.length > 1 && (
@@ -623,5 +646,22 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontFamily: "Inter_600SemiBold",
+  },
+  zoomHint: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0,0,0,0.40)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  zoomHintText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
   },
 });

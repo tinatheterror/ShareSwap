@@ -364,9 +364,9 @@ export default function MySharedItemsScreen() {
       <View style={[s.header, { paddingTop: topPad + 12, backgroundColor: colors.primary }]}>
         <View style={s.headerRow}>
           <Pressable onPress={() => router.back()} hitSlop={8} style={s.backBtn}>
-            <Feather name="chevron-left" size={24} color={colors.foreground} />
+            <Feather name="chevron-left" size={24} color="#fff" />
           </Pressable>
-          <Text style={[s.headerTitle, { color: colors.foreground, flex: 1 }]}>My Shared Items</Text>
+          <Text style={[s.headerTitle, { color: "#fff", flex: 1 }]}>My Shared Items</Text>
           <NotificationBell />
         </View>
       </View>

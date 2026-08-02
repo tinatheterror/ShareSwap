@@ -21,6 +21,7 @@ import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Item } from "@/components/ItemCard";
+import { VerificationGateModal } from "@/components/VerificationGateModal";
 
 interface ItemDetail extends Item {
   condition?: string;
@@ -59,6 +60,8 @@ export default function ItemDetailScreen() {
 
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [showVerifModal, setShowVerifModal] = useState(false);
+  const [verifMissing, setVerifMissing] = useState<{ idVerified?: boolean; paymentVerified?: boolean }>({});
 
   const { data: item, isLoading } = useQuery<ItemDetail>({
     queryKey: [`/api/items/${id}`],
@@ -89,9 +92,20 @@ export default function ItemDetailScreen() {
       );
       qc.invalidateQueries({ queryKey: ["/api/conversations"] });
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to send request.";
-      Alert.alert("Error", msg);
+      const e = err as Error & { code?: string; missing?: { idVerified?: boolean; paymentVerified?: boolean } };
+
+      if (e.code === "FULL_VERIFICATION_REQUIRED") {
+        setVerifMissing(e.missing ?? {});
+        setShowVerifModal(true);
+        return;
+      }
+
+      if (e.code === "EMAIL_NOT_VERIFIED") {
+        router.push("/verify-email-prompt" as never);
+        return;
+      }
+
+      Alert.alert("Error", e.message || "Failed to send request.");
     } finally {
       setSending(false);
     }
@@ -125,6 +139,11 @@ export default function ItemDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <VerificationGateModal
+        visible={showVerifModal}
+        onClose={() => setShowVerifModal(false)}
+        missing={verifMissing}
+      />
       <ScrollView
         contentContainerStyle={{
           paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 100,

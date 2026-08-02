@@ -25,6 +25,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiPost, photoUrl } from "@/lib/api";
 import { NotificationBell } from "@/components/NotificationBell";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
+import { VerificationNudge } from "@/components/VerificationNudge";
 
 const rentalRateIcon = require("../../assets/icons/rental-rate.png");
 const shareCoinIcon = require("../../assets/icons/sharecoin.png");
@@ -595,6 +596,9 @@ export default function HomeScreen() {
 
       {/* ── Email verification banner ── */}
       <EmailVerificationBanner />
+
+      {/* ── Identity verification nudge (one-time, dismissible) ── */}
+      <VerificationNudge />
 
       {/* ── Scrollable body ── */}
       <ScrollView

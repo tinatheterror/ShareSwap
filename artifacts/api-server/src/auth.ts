@@ -99,7 +99,7 @@ export function startRateLimitCleanup(): void {
   }, 60 * 1000); // first run 1 minute after boot
 }
 
-class PostgresRateLimitStore implements Store {
+export class PostgresRateLimitStore implements Store {
   // localKeys = false tells express-rate-limit that this is a shared store
   // (multiple instances share state), so it skips the double-count warning.
   localKeys = false;
@@ -118,7 +118,7 @@ class PostgresRateLimitStore implements Store {
   }
 
   async increment(key: string): Promise<ClientRateLimitInfo> {
-    await this._ensureTable();
+    await ensureRateLimitTable();
     const fullKey = `${this._prefix}:${key}`;
     const resetTime = new Date(Date.now() + this.windowMs);
 

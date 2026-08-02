@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "migrate-push-tokens": "tsx src/scripts/migrate-push-tokens.ts"
+    "migrate-push-tokens": "tsx src/scripts/migrate-push-tokens.ts",
+    "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@replit/object-storage": "^1.0.0",

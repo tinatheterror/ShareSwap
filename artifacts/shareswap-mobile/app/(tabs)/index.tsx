@@ -723,12 +723,27 @@ export default function HomeScreen() {
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
+          ) : categoryGroups.length === 0 && search ? (
+            <View style={styles.searchEmptyCard}>
+              <View style={styles.searchEmptyIconCircle}>
+                <Feather name="heart" size={28} color="#fff" />
+              </View>
+              <Text style={styles.searchEmptyTitle}>No "{search}" found</Text>
+              <Text style={styles.searchEmptyDesc}>
+                This item isn't available yet, but you can add it to your wishlist and we'll notify you when someone shares it!
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.searchEmptyBtn, { opacity: pressed ? 0.85 : 1 }]}
+                onPress={() => router.push({ pathname: "/(tabs)/wishlist", params: { prefill: search, addNew: "1" } } as never)}
+              >
+                <MaterialCommunityIcons name="star-four-points-outline" size={16} color="#fff" />
+                <Text style={styles.searchEmptyBtnText}>Add Your Wishlist</Text>
+              </Pressable>
+            </View>
           ) : categoryGroups.length === 0 ? (
             <View style={styles.centered}>
               <Feather name="package" size={40} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                {search ? `No results for "${search}"` : "No items yet"}
-              </Text>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No items yet</Text>
             </View>
           ) : (
             categoryGroups.map(([cat, items]) => (
@@ -953,6 +968,51 @@ const styles = StyleSheet.create({
   categoryTitle: { fontSize: 16, fontFamily: "Inter_700Bold", marginBottom: 12 },
   centered: { paddingVertical: 40, alignItems: "center", gap: 12 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center" },
+  searchEmptyCard: {
+    margin: 16,
+    borderRadius: 20,
+    backgroundColor: "#d1fae5",
+    padding: 28,
+    alignItems: "center",
+    gap: 12,
+  },
+  searchEmptyIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#0DCEA1",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  searchEmptyTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    color: "#0d9488",
+    textAlign: "center",
+  },
+  searchEmptyDesc: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "#374151",
+    textAlign: "center",
+    lineHeight: 21,
+  },
+  searchEmptyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#0DCEA1",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    marginTop: 4,
+  },
+  searchEmptyBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
   dotsRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5, marginTop: 12 },
   dot: { height: 7, borderRadius: 4 },
 });

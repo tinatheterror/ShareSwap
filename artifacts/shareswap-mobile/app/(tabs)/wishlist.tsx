@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
@@ -76,7 +76,9 @@ export default function WishlistScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  const [tab, setTab] = useState<"mine" | "community">("community");
+  const params = useLocalSearchParams<{ prefill?: string; addNew?: string }>();
+
+  const [tab, setTab] = useState<"mine" | "community">("mine");
   const [showAdd, setShowAdd] = useState(false);
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
@@ -91,6 +93,14 @@ export default function WishlistScreen() {
       setPreferredLocation(user?.neighbourhood || user?.location || user?.defaultCity || "");
     }
   }, [showAdd]);
+
+  // Auto-open the add form when navigated from search empty state
+  React.useEffect(() => {
+    if (params.addNew === "1" && params.prefill) {
+      setItemName(params.prefill);
+      setShowAdd(true);
+    }
+  }, [params.addNew, params.prefill]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerField, setDatePickerField] = useState<"from" | "to">("from");
   const [datePickerContext, setDatePickerContext] = useState<"add" | "edit">("add");

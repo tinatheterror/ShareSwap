@@ -759,8 +759,8 @@ export default function WishlistScreen() {
                   style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                   onPress={() => { if (urgency === "normal") setUrgency("soon"); openDatePicker("from"); }}
                 >
-                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
+                  <Feather name="calendar" size={12} color={urgency !== "normal" ? "#111827" : colors.mutedForeground} />
+                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? "#111827" : colors.mutedForeground }]} numberOfLines={1}>
                     {neededFromDate ? formatNeededDate(neededFromDate) : "Select"}
                   </Text>
                 </Pressable>
@@ -769,8 +769,8 @@ export default function WishlistScreen() {
                   style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                   onPress={() => { if (urgency === "normal") setUrgency("soon"); openDatePicker("to"); }}
                 >
-                  <Feather name="calendar" size={12} color={urgency !== "normal" ? colors.primary : colors.mutedForeground} />
-                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
+                  <Feather name="calendar" size={12} color={urgency !== "normal" ? "#111827" : colors.mutedForeground} />
+                  <Text style={[styles.dateBtnCompactText, { color: urgency !== "normal" ? "#111827" : colors.mutedForeground }]} numberOfLines={1}>
                     {neededToDate ? formatNeededDate(neededToDate) : "Select"}
                   </Text>
                 </Pressable>
@@ -898,8 +898,8 @@ export default function WishlistScreen() {
                     style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                     onPress={() => { if (editUrgency === "normal") setEditUrgency("soon"); openDatePicker("from", "edit"); }}
                   >
-                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primary : colors.mutedForeground} />
-                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
+                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? "#111827" : colors.mutedForeground} />
+                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? "#111827" : colors.mutedForeground }]} numberOfLines={1}>
                       {editNeededFromDate ? formatNeededDate(editNeededFromDate) : "Select"}
                     </Text>
                   </Pressable>
@@ -908,8 +908,8 @@ export default function WishlistScreen() {
                     style={[styles.dateBtnCompact, { backgroundColor: "#fff", borderColor: "transparent" }]}
                     onPress={() => { if (editUrgency === "normal") setEditUrgency("soon"); openDatePicker("to", "edit"); }}
                   >
-                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? colors.primary : colors.mutedForeground} />
-                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
+                    <Feather name="calendar" size={12} color={editUrgency !== "normal" ? "#111827" : colors.mutedForeground} />
+                    <Text style={[styles.dateBtnCompactText, { color: editUrgency !== "normal" ? "#111827" : colors.mutedForeground }]} numberOfLines={1}>
                       {editNeededToDate ? formatNeededDate(editNeededToDate) : "Select"}
                     </Text>
                   </Pressable>

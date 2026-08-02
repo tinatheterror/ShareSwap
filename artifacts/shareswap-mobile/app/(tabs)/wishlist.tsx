@@ -1094,14 +1094,14 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   communityBannerTitle: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 2,
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 4,
   },
   communityBannerSub: {
-    fontSize: 11,
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
-    lineHeight: 15,
+    lineHeight: 20,
   },
   card: {
     borderRadius: 14,

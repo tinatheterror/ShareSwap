@@ -401,20 +401,50 @@ export default function SettingsScreen() {
             Choose which push notifications you receive on this device.
           </Text>
 
+          {/* ── Master mute switch ── */}
+          <View style={[styles.notifMasterRow, { borderColor: colors.border }]}>
+            <View style={styles.notifText}>
+              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>Enable Notifications</Text>
+              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+                Mute or unmute all notification types at once
+              </Text>
+            </View>
+            <Switch
+              value={notifOnCount !== 0}
+              onValueChange={(newVal) => {
+                updateNotifPrefMutation.mutate({
+                  messages: newVal,
+                  requests: newVal,
+                  payments: newVal,
+                  achievements: newVal,
+                  sharecoins: newVal,
+                });
+              }}
+              trackColor={{ false: colors.border, true: "#0d9488" }}
+              thumbColor="#fff"
+              disabled={notifPrefsLoading || updateNotifPrefMutation.isPending || notifOnCount === null}
+            />
+          </View>
+
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+
           {(
             [
               { key: "messages" as NotifCategory, label: "Messages", hint: "New chat messages from other users" },
               { key: "requests" as NotifCategory, label: "Requests", hint: "New requests, acceptances, and counter-offers" },
               { key: "payments" as NotifCategory, label: "Payments", hint: "Payouts, deposits, and payment confirmations" },
+              { key: "achievements" as NotifCategory, label: "Achievements", hint: "Badges and milestones you've earned" },
+              { key: "sharecoins" as NotifCategory, label: "ShareCoins", hint: "ShareCoin balance changes and rewards" },
             ] as { key: NotifCategory; label: string; hint: string }[]
-          ).map(({ key, label, hint }, idx, arr) => {
+          ).map(({ key, label, hint }, idx) => {
             const value = notifPrefs ? notifPrefs[key] : true;
+            const masterOff = notifOnCount === 0;
             return (
               <View key={key}>
                 {idx > 0 && <View style={[styles.sep, { backgroundColor: colors.border }]} />}
-                <View style={styles.notifRow}>
+                <View style={[styles.notifRow, masterOff && styles.notifRowMuted]}>
                   <View style={styles.notifText}>
-                    <Text style={[styles.fieldLabel, { color: colors.foreground }]}>{label}</Text>
+                    <Text style={[styles.fieldLabel, { color: masterOff ? colors.mutedForeground : colors.foreground }]}>{label}</Text>
                     <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>{hint}</Text>
                   </View>
                   <Switch
@@ -424,7 +454,7 @@ export default function SettingsScreen() {
                     }}
                     trackColor={{ false: colors.border, true: "#0d9488" }}
                     thumbColor="#fff"
-                    disabled={notifPrefsLoading || updateNotifPrefMutation.isPending}
+                    disabled={notifPrefsLoading || updateNotifPrefMutation.isPending || masterOff}
                   />
                 </View>
               </View>
@@ -777,7 +807,9 @@ const styles = StyleSheet.create({
 
   actionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   actionText: { flex: 1, gap: 3 },
+  notifMasterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 6, marginTop: 4, borderRadius: 8 },
   notifRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingVertical: 4 },
+  notifRowMuted: { opacity: 0.45 },
   notifText: { flex: 1, gap: 3 },
   notifSummaryBadge: { marginLeft: "auto", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   notifSummaryText: { fontSize: 12, fontFamily: "Inter_500Medium" },

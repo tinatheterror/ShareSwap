@@ -588,10 +588,12 @@ export default function HomeScreen() {
           </View>
 
           <Pressable style={[styles.walletBadge, { backgroundColor: "rgba(255,255,255,0.95)" }]} onPress={() => router.push("/sharecoin-wallet" as never)}>
-            <Text style={styles.walletBadgeLabel}>Total Balance</Text>
-            <View style={styles.walletBadgeRow}>
-              <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
-              <Text style={styles.walletBadgeAmount}>{user ? `${Math.round(Number(user.shareCoins ?? 0))} ShareCoins` : "–"}</Text>
+            <View style={styles.walletBadgeInner}>
+              <Text style={styles.walletBadgeLabel}>Total Balance</Text>
+              <View style={styles.walletBadgeRow}>
+                <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+                <Text style={styles.walletBadgeAmount}>{user ? `${Math.round(Number(user.shareCoins ?? 0))} ShareCoins` : "–"}</Text>
+              </View>
             </View>
           </Pressable>
         </View>
@@ -829,16 +831,23 @@ const styles = StyleSheet.create({
     width: 115,
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
+    padding: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 6,
     elevation: 5,
+  },
+  walletBadgeInner: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: "#0DCEA1",
+    borderRadius: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
   },
   walletBadgeLabel: {
     fontSize: 7,

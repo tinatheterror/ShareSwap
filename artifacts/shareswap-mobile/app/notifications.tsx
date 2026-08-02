@@ -1,4 +1,10 @@
 import { Feather } from "@expo/vector-icons";
+import {
+  AlertCircle, AlertTriangle, ArrowLeftRight, Bell,
+  Clock, Coins, DollarSign, Flag, Gift, Heart,
+  Package, Shield, ShieldAlert, ShieldCheck,
+  Star, TrendingUp, Truck, Unlock, UserCheck, Users,
+} from "lucide-react-native";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -26,19 +32,37 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-// ── Icon per notification type ─────────────────────────────────────────────
-function notifIcon(type: string): { name: React.ComponentProps<typeof Feather>["name"]; color: string } {
-  switch (type) {
-    case "new_request":       return { name: "inbox",         color: "#0DCEA1" };
-    case "request_accepted":  return { name: "check-circle",  color: "#16a34a" };
-    case "request_declined":  return { name: "x-circle",      color: "#ef4444" };
-    case "message":           return { name: "message-circle",color: "#3b82f6" };
-    case "payment_received":  return { name: "dollar-sign",   color: "#f59e0b" };
-    case "return_reminder":   return { name: "clock",         color: "#f97316" };
-    case "wishlist_match":    return { name: "heart",         color: "#ec4899" };
-    case "review":            return { name: "star",          color: "#f59e0b" };
-    default:                  return { name: "bell",          color: "#6b7280" };
-  }
+// ── Icon per notification type — exact match to web app ───────────────────
+type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+function notifIcon(type: string): { Icon: LucideIcon; color: string } {
+  if (type === "return_reminder_overdue")                                      return { Icon: AlertCircle,    color: "#ef4444" };
+  if (type === "return_reminder_today")                                         return { Icon: Clock,          color: "#f97316" };
+  if (type === "return_reminder_tomorrow")                                      return { Icon: Clock,          color: "#fbbf24" };
+  if (type === "wishlist_match")                                                return { Icon: Heart,          color: "#ec4899" };
+  if (type === "swap_match")                                                    return { Icon: ArrowLeftRight, color: "#14b8a6" };
+  if (type === "item_request" || type === "request_accepted")                   return { Icon: Package,        color: "#3b82f6" };
+  if (type === "terms_counter_proposed")                                        return { Icon: AlertTriangle,  color: "#f59e0b" };
+  if (type === "terms_declined")                                                return { Icon: AlertTriangle,  color: "#ef4444" };
+  if (type === "gift_completed" || type === "gift_received" || type === "gift_handoff_pending") return { Icon: Gift, color: "#ec4899" };
+  if (type === "handoff_pending" || type === "handoff_confirmed")               return { Icon: Clock,          color: "#f59e0b" };
+  if (type === "handoff_dispute" || type === "handoff_disputed")                return { Icon: AlertTriangle,  color: "#ef4444" };
+  if (type === "handoff_flagged")                                               return { Icon: Flag,           color: "#f97316" };
+  if (type === "handoff_auto_advanced")                                         return { Icon: Truck,          color: "#14b8a6" };
+  if (type === "dispute_opened")                                                return { Icon: ShieldAlert,    color: "#ef4444" };
+  if (type === "delivery_confirmed")                                            return { Icon: Truck,          color: "#14b8a6" };
+  if (type === "courier_issue")                                                 return { Icon: AlertTriangle,  color: "#f97316" };
+  if (type === "sharecoin_earned")                                              return { Icon: Coins,          color: "#eab308" };
+  if (type === "milestone_achieved")                                            return { Icon: ShieldCheck,    color: "#14b8a6" };
+  if (type === "badge_earned")                                                  return { Icon: Star,           color: "#a855f7" };
+  if (type === "level_up")                                                      return { Icon: TrendingUp,     color: "#22c55e" };
+  if (type === "trust_score_changed")                                           return { Icon: TrendingUp,     color: "#3b82f6" };
+  if (type === "new_review_received")                                           return { Icon: Star,           color: "#eab308" };
+  if (type === "referral_joined")                                               return { Icon: Users,          color: "#14b8a6" };
+  if (type === "security_deposit_released")                                     return { Icon: Unlock,         color: "#22c55e" };
+  if (type === "payment_received")                                              return { Icon: DollarSign,     color: "#22c55e" };
+  if (type === "verification_failed")                                           return { Icon: ShieldAlert,    color: "#ef4444" };
+  if (type === "terms_accepted")                                                return { Icon: UserCheck,      color: "#14b8a6" };
+  return { Icon: Bell, color: "#0DCEA1" };
 }
 
 // ── Single notification row ────────────────────────────────────────────────
@@ -51,7 +75,7 @@ function NotifRow({
   onPress: () => void;
   colors: ReturnType<typeof useColors>;
 }) {
-  const icon = notifIcon(notif.type);
+  const { Icon, color: iconColor } = notifIcon(notif.type);
   return (
     <Pressable
       style={({ pressed }) => [
@@ -64,8 +88,8 @@ function NotifRow({
       ]}
       onPress={onPress}
     >
-      <View style={[styles.iconWrap, { backgroundColor: icon.color + "18" }]}>
-        <Feather name={icon.name} size={18} color={icon.color} />
+      <View style={[styles.iconWrap, { backgroundColor: iconColor + "18" }]}>
+        <Icon size={18} color={iconColor} strokeWidth={1.75} />
       </View>
       <View style={styles.rowBody}>
         {notif.title ? (

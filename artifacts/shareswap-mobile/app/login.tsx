@@ -22,6 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
 import { BASE_URL } from "@/lib/api";
 import { LAST_AUTH_METHOD_KEY } from "@/context/AuthContext";
+import { registerPushToken } from "@/hooks/usePushNotifications";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -80,6 +81,9 @@ export default function LoginScreen() {
         if (result.type === "success") {
           await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "google");
           await refetchUser();
+          // Register push token after Google OAuth — mirrors what login() and
+          // register() do so no auth path is left uncovered.
+          registerPushToken().catch(() => {});
           router.replace("/(tabs)");
         }
       } catch (err: unknown) {

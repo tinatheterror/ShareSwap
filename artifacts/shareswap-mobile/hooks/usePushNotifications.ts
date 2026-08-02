@@ -94,6 +94,35 @@ export async function registerPushToken(): Promise<void> {
   }
 }
 
+// Module-level flag: fire at most once per process lifetime (i.e. per app launch).
+// Using a module variable (not a ref) means it survives component remounts but
+// resets when the OS kills and relaunches the app — exactly the desired behaviour.
+let _registeredThisLaunch = false;
+
+/**
+ * Call once at the root layout level (inside AuthProvider).
+ *
+ * Registers the Expo push token with the server on every app launch when the
+ * user already has an active session.  This catches two cases that
+ * `registerPushToken()` inside `login()` misses:
+ *   1. The user denied notifications on first install, later granted them in
+ *      Settings, then reopened the app without logging in again.
+ *   2. Expo issued a new token after an app update.
+ *
+ * Throttled to fire at most once per process lifetime via `_registeredThisLaunch`
+ * so it never spams the server on re-renders.
+ *
+ * @param isAuthenticated - pass `!!user` from `useAuth()`.
+ */
+export function useRegisterPushToken(isAuthenticated: boolean): void {
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (_registeredThisLaunch) return;
+    _registeredThisLaunch = true;
+    registerPushToken().catch(() => {});
+  }, [isAuthenticated]);
+}
+
 /**
  * Mount this hook at the root layout to handle deep-links from notification taps.
  * Maps the notification data shape set by the API server to the correct route.

@@ -13,9 +13,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { SessionGuard } from "@/components/SessionGuard";
-import { usePushNotificationNavigation } from "@/hooks/usePushNotifications";
+import { usePushNotificationNavigation, useRegisterPushToken } from "@/hooks/usePushNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,6 +35,12 @@ const queryClient = new QueryClient({
 function RootLayoutNav() {
   // Set up deep-link navigation from push notification taps
   usePushNotificationNavigation();
+
+  // Re-register the push token on every app launch when a session already
+  // exists (catches permission grants after the initial install, and token
+  // rotations after app updates).
+  const { user } = useAuth();
+  useRegisterPushToken(!!user);
 
   return (
     <Stack>

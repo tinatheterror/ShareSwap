@@ -406,7 +406,11 @@ export default function WishlistScreen() {
         >
           {tab === "community" && (
             <View style={styles.communitySubtitle}>
-              <Text style={[styles.communityBannerTitle, { color: colors.foreground }]}>
+              <Text
+                style={[styles.communityBannerTitle, { color: colors.foreground }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 Neighbours are looking for these items
               </Text>
               <Text style={[styles.communityBannerSub, { color: colors.mutedForeground }]}>

@@ -64,6 +64,41 @@ function ensureRateLimitTable(): Promise<void> {
   return _rateLimitTableReady;
 }
 
+// ---------------------------------------------------------------------------
+// Periodic cleanup of expired rate-limit rows
+//
+// Rows for keys that never reappear are never touched by the lazy-expiry
+// upsert logic, so they accumulate indefinitely.  This job deletes any row
+// whose reset_time is in the past, keeping the table small and index scans
+// fast.  It runs every 10 minutes and logs the number of rows removed so
+// ops can monitor table health.
+// ---------------------------------------------------------------------------
+export function startRateLimitCleanup(): void {
+  const INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+  const runCleanup = async () => {
+    try {
+      const result = await pool.query<{ count: string }>(
+        `DELETE FROM rate_limit_store
+          WHERE reset_time < NOW()
+          RETURNING 1`,
+      );
+      const deleted = result.rowCount ?? 0;
+      console.log(
+        `[rate-limit-cleanup] Removed ${deleted} expired row(s) from rate_limit_store`,
+      );
+    } catch (err) {
+      console.error("[rate-limit-cleanup] Cleanup failed:", err);
+    }
+  };
+
+  // Run once shortly after startup, then on the regular cadence.
+  setTimeout(() => {
+    runCleanup();
+    setInterval(runCleanup, INTERVAL_MS);
+  }, 60 * 1000); // first run 1 minute after boot
+}
+
 class PostgresRateLimitStore implements Store {
   // localKeys = false tells express-rate-limit that this is a shared store
   // (multiple instances share state), so it skips the double-count warning.

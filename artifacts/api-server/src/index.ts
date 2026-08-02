@@ -5,6 +5,7 @@ import { setupStorageRoutes } from "./storage";
 import { initializeSampleGames } from "./init-games";
 import { initializeAchievements, initializeSubscriptionPlans } from "./init-achievements";
 import { pool } from "@workspace/db";
+import { startRateLimitCleanup } from "./auth";
 
 const rawPort = process.env["PORT"];
 
@@ -83,6 +84,7 @@ const httpServer = registerRoutes(app);
 
 httpServer.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening");
+  startRateLimitCleanup();
 });
 
 httpServer.on("error", (err: NodeJS.ErrnoException) => {

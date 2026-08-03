@@ -46,6 +46,8 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refetchUser: () => Promise<void>;
   resendVerification: () => Promise<void>;
+  /** Set user state directly from a response payload (e.g. after OAuth token exchange) */
+  setUserData: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -58,6 +60,7 @@ const AuthContext = createContext<AuthContextValue>({
   logout: async () => {},
   refetchUser: async () => {},
   resendVerification: async () => {},
+  setUserData: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -177,6 +180,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     queryClient.clear();
   }, [queryClient]);
 
+  const setUserData = useCallback((data: User) => {
+    setUser(data);
+    hadSession.current = true;
+    setSessionExpired(false);
+    AsyncStorage.setItem(HAS_SESSION_KEY, "1").catch(() => {});
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -189,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         refetchUser: fetchUser,
         resendVerification,
+        setUserData,
       }}
     >
       {children}

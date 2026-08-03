@@ -28,7 +28,7 @@ export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { login, refetchUser } = useAuth();
+  const { login, refetchUser, clearSessionExpired, setUserData } = useAuth();
   const params = useLocalSearchParams<{ session_expired?: string }>();
 
   const sessionExpired = params.session_expired === "1";
@@ -87,13 +87,20 @@ export default function LoginScreen() {
           const url = result.url;
           const tokenMatch = url.match(/[?&]token=([^&]+)/);
           if (tokenMatch?.[1]) {
-            await apiRequest("POST", "/api/auth/exchange-token", {
+            // Exchange the one-time token for a session cookie via a regular
+            // native fetch call. The response body is the user object — we set
+            // it directly so the app knows the user is logged in before
+            // navigating (avoids a race where refetchUser sees 401 while the
+            // cookie is still propagating through the native cookie jar).
+            const resp = await apiRequest("POST", "/api/auth/exchange-token", {
               token: tokenMatch[1],
             });
+            const userData = await resp.json();
+            if (userData?.id) {
+              setUserData(userData);
+            }
           }
           await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "google");
-          setSessionExpired(false);
-          await refetchUser();
           // Register push token after Google OAuth — mirrors what login() and
           // register() do so no auth path is left uncovered.
           registerPushToken().catch(() => {});

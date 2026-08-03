@@ -58,6 +58,8 @@ export default function WishlistsPage() {
   );
   const [wishlistToEdit, setWishlistToEdit] = useState<Wishlist | null>(null);
   const [editNeedTypes, setEditNeedTypes] = useState<string[]>([]);
+  const [addWhenever, setAddWhenever] = useState(false);
+  const [editWhenever, setEditWhenever] = useState(false);
   const [formData, setFormData] = useState({
     itemName: "",
     description: "",
@@ -95,6 +97,7 @@ export default function WishlistsPage() {
     setWishlistToEdit(wishlist);
     const types = wishlist.needType ? wishlist.needType.split(",") : ["borrow"];
     setEditNeedTypes(types);
+    setEditWhenever(!wishlist.neededDate);
   };
 
   const isUrgent = (neededDate?: string) => {
@@ -205,8 +208,8 @@ export default function WishlistsPage() {
     addWishlistMutation.mutate({
       ...formData,
       needType: formData.needTypes.join(","),
-      neededDate: formData.neededFromDate,
-      returnDate: formData.neededToDate,
+      neededDate: addWhenever ? undefined : (formData.neededFromDate || undefined),
+      returnDate: addWhenever ? undefined : (formData.neededToDate || undefined),
     });
   };
 
@@ -346,20 +349,21 @@ export default function WishlistsPage() {
                     )}
                   </div>
 
-                  {/* Date Needed */}
-                  {item.neededDate && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-sm text-muted-foreground">
-                        Needed:
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(item.neededDate).toLocaleDateString()}
-                        {item.returnDate &&
-                          ` - ${new Date(item.returnDate).toLocaleDateString()}`}
-                      </Badge>
-                    </div>
-                  )}
+                  {/* Needed by */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-muted-foreground">
+                      Needed by:
+                    </span>
+                    <Badge variant="outline" className="text-xs">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {item.neededDate
+                        ? new Date(item.neededDate).toLocaleDateString() +
+                          (item.returnDate
+                            ? ` - ${new Date(item.returnDate).toLocaleDateString()}`
+                            : "")
+                        : "Whenever"}
+                    </Badge>
+                  </div>
 
                   {/* Location */}
                   {item.preferredLocation && (
@@ -527,46 +531,41 @@ export default function WishlistsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Date Needed
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      From
-                    </label>
-                    <Input
-                      type="date"
-                      value={formData.neededFromDate}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          neededFromDate: e.target.value,
-                        })
-                      }
-                      min={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      To
-                    </label>
-                    <Input
-                      type="date"
-                      value={formData.neededToDate}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          neededToDate: e.target.value,
-                        })
-                      }
-                      min={
-                        formData.neededFromDate ||
-                        new Date().toISOString().split("T")[0]
-                      }
-                    />
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium">Needed by</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddWhenever(!addWhenever);
+                      if (!addWhenever) setFormData({ ...formData, neededFromDate: "", neededToDate: "" });
+                    }}
+                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${addWhenever ? "bg-teal-100 text-teal-700 border-teal-300" : "bg-white text-slate-500 border-slate-300"}`}
+                  >
+                    Whenever
+                  </button>
                 </div>
+                {!addWhenever && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">From</label>
+                      <Input
+                        type="date"
+                        value={formData.neededFromDate}
+                        onChange={(e) => setFormData({ ...formData, neededFromDate: e.target.value })}
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">To</label>
+                      <Input
+                        type="date"
+                        value={formData.neededToDate}
+                        onChange={(e) => setFormData({ ...formData, neededToDate: e.target.value })}
+                        min={formData.neededFromDate || new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -686,8 +685,8 @@ export default function WishlistsPage() {
                     description: formData.get("description"),
                     needType: editNeedTypes.join(","),
                     preferredLocation: formData.get("preferredLocation"),
-                    neededDate: formData.get("neededDate") || null,
-                    returnDate: formData.get("returnDate") || null,
+                    neededDate: editWhenever ? null : (formData.get("neededDate") || null),
+                    returnDate: editWhenever ? null : (formData.get("returnDate") || null),
                   },
                 });
               }}
@@ -766,43 +765,36 @@ export default function WishlistsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Date Needed
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      From
-                    </label>
-                    <Input
-                      type="date"
-                      name="neededDate"
-                      defaultValue={
-                        wishlistToEdit?.neededDate
-                          ? new Date(wishlistToEdit.neededDate)
-                              .toISOString()
-                              .split("T")[0]
-                          : ""
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">
-                      To
-                    </label>
-                    <Input
-                      type="date"
-                      name="returnDate"
-                      defaultValue={
-                        wishlistToEdit?.returnDate
-                          ? new Date(wishlistToEdit.returnDate)
-                              .toISOString()
-                              .split("T")[0]
-                          : ""
-                      }
-                    />
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium">Needed by</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditWhenever(!editWhenever)}
+                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${editWhenever ? "bg-teal-100 text-teal-700 border-teal-300" : "bg-white text-slate-500 border-slate-300"}`}
+                  >
+                    Whenever
+                  </button>
                 </div>
+                {!editWhenever && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">From</label>
+                      <Input
+                        type="date"
+                        name="neededDate"
+                        defaultValue={wishlistToEdit?.neededDate ? new Date(wishlistToEdit.neededDate).toISOString().split("T")[0] : ""}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">To</label>
+                      <Input
+                        type="date"
+                        name="returnDate"
+                        defaultValue={wishlistToEdit?.returnDate ? new Date(wishlistToEdit.returnDate).toISOString().split("T")[0] : ""}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

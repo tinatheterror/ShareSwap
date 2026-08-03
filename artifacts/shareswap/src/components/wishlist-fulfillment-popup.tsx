@@ -180,34 +180,32 @@ export function WishlistFulfillmentPopup({
                         </div>
                       )}
 
-                      {wishlist.neededDate && (
-                        <div className="flex items-start gap-2 md:gap-3">
-                          <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                            <Calendar className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-slate-500 font-medium text-[10px] md:text-xs leading-none">
-                              Needed
-                            </span>
-                            <span className="text-slate-700 font-semibold text-xs md:text-base">
-                              {new Date(wishlist.neededDate).toLocaleDateString()}
-                            </span>
-                            {wishlist.returnDate &&
-                              wishlist.needType === "borrow" && (
-                                <>
-                                  <span className="text-slate-500 font-medium text-[10px] md:text-xs leading-none mt-1">
-                                    Return
-                                  </span>
-                                  <span className="text-slate-700 font-semibold text-xs md:text-sm">
-                                    {new Date(
-                                      wishlist.returnDate,
-                                    ).toLocaleDateString()}
-                                  </span>
-                                </>
-                              )}
-                          </div>
+                      <div className="flex items-start gap-2 md:gap-3">
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                          <Calendar className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                         </div>
-                      )}
+                        <div className="flex flex-col">
+                          <span className="text-slate-500 font-medium text-[10px] md:text-xs leading-none">
+                            Needed by
+                          </span>
+                          <span className="text-slate-700 font-semibold text-xs md:text-base">
+                            {wishlist.neededDate
+                              ? new Date(wishlist.neededDate).toLocaleDateString()
+                              : "Whenever"}
+                          </span>
+                          {wishlist.neededDate && wishlist.returnDate &&
+                            wishlist.needType === "borrow" && (
+                              <>
+                                <span className="text-slate-500 font-medium text-[10px] md:text-xs leading-none mt-1">
+                                  Return
+                                </span>
+                                <span className="text-slate-700 font-semibold text-xs md:text-sm">
+                                  {new Date(wishlist.returnDate).toLocaleDateString()}
+                                </span>
+                              </>
+                            )}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Earn ShareCoins */}

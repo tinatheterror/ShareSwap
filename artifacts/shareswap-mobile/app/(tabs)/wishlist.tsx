@@ -553,23 +553,21 @@ export default function WishlistScreen() {
                       </View>
                     ) : null}
 
-                    {item.neededDate ? (
-                      <View style={styles.commInfoRow}>
-                        <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
-                          <Feather name="calendar" size={13} color={colors.accentForeground} />
-                        </View>
-                        <View>
-                          <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
-                            Needed: {new Date(item.neededDate).toLocaleDateString()}
-                          </Text>
-                          {item.returnDate && item.needType === "borrow" ? (
-                            <Text style={[styles.commInfoText, { color: colors.mutedForeground, fontSize: 11 }]}>
-                              Return: {new Date(item.returnDate).toLocaleDateString()}
-                            </Text>
-                          ) : null}
-                        </View>
+                    <View style={styles.commInfoRow}>
+                      <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
+                        <Feather name="calendar" size={13} color={colors.accentForeground} />
                       </View>
-                    ) : null}
+                      <View>
+                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                          Needed by: {item.neededDate ? new Date(item.neededDate).toLocaleDateString() : "Whenever"}
+                        </Text>
+                        {item.neededDate && item.returnDate && item.needType === "borrow" ? (
+                          <Text style={[styles.commInfoText, { color: colors.mutedForeground, fontSize: 11 }]}>
+                            Return: {new Date(item.returnDate).toLocaleDateString()}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
                   </View>
 
                   <Pressable
@@ -627,26 +625,24 @@ export default function WishlistScreen() {
                     );
                   })}
                 </View>
-                {(item.neededDate || item.preferredLocation) ? (
-                  <View style={{ gap: 3 }}>
-                    {item.neededDate ? (
-                      <View style={styles.commInfoRow}>
-                        <Feather name="calendar" size={12} color={colors.mutedForeground} />
-                        <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                          {formatNeededDate(item.neededDate)}{item.returnDate ? ` – ${formatNeededDate(item.returnDate)}` : ""}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {item.preferredLocation ? (
-                      <View style={styles.commInfoRow}>
-                        <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-                        <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
-                          {item.preferredLocation}
-                        </Text>
-                      </View>
-                    ) : null}
+                <View style={{ gap: 3 }}>
+                  <View style={styles.commInfoRow}>
+                    <Feather name="calendar" size={12} color={colors.mutedForeground} />
+                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                      Needed by: {item.neededDate
+                        ? formatNeededDate(item.neededDate) + (item.returnDate ? ` – ${formatNeededDate(item.returnDate)}` : "")
+                        : "Whenever"}
+                    </Text>
                   </View>
-                ) : null}
+                  {item.preferredLocation ? (
+                    <View style={styles.commInfoRow}>
+                      <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+                      <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
+                        {item.preferredLocation}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <View style={[styles.cardMeta, { marginTop: 2 }]}>
                   <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                     {timeAgo(item.createdAt)}

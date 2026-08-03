@@ -25,6 +25,7 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  const [whenever, setWhenever] = useState(false);
   const [formData, setFormData] = useState({
     itemName: initialItemName,
     description: "",
@@ -37,6 +38,7 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
 
   useEffect(() => {
     if (isOpen) {
+      setWhenever(false);
       setFormData({
         itemName: initialItemName,
         description: "",
@@ -96,8 +98,8 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
     addWishlistMutation.mutate({
       ...formData,
       needType: formData.needTypes.join(","),
-      neededDate: formData.neededFromDate,
-      returnDate: formData.neededToDate,
+      neededDate: whenever ? undefined : (formData.neededFromDate || undefined),
+      returnDate: whenever ? undefined : (formData.neededToDate || undefined),
       isPrivate: formData.isPrivate,
     });
   };
@@ -226,42 +228,42 @@ export function WishlistFormDialog({ isOpen, onClose, initialItemName }: Props) 
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
-              <Calendar className="h-4 w-4 inline mr-1" />
-              When do you need it?
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">
-                  From
-                </label>
-                <Input
-                  type="date"
-                  value={formData.neededFromDate}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      neededFromDate: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-muted-foreground mb-1">
-                  To
-                </label>
-                <Input
-                  type="date"
-                  value={formData.neededToDate}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      neededToDate: e.target.value,
-                    })
-                  }
-                />
-              </div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium">
+                <Calendar className="h-4 w-4 inline mr-1" />
+                Needed by
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setWhenever(!whenever);
+                  if (!whenever) setFormData({ ...formData, neededFromDate: "", neededToDate: "" });
+                }}
+                className={`text-xs px-2 py-1 rounded-full border transition-colors ${whenever ? "bg-teal-100 text-teal-700 border-teal-300" : "bg-white text-slate-500 border-slate-300"}`}
+              >
+                Whenever
+              </button>
             </div>
+            {!whenever && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">From</label>
+                  <Input
+                    type="date"
+                    value={formData.neededFromDate}
+                    onChange={(e) => setFormData({ ...formData, neededFromDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">To</label>
+                  <Input
+                    type="date"
+                    value={formData.neededToDate}
+                    onChange={(e) => setFormData({ ...formData, neededToDate: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

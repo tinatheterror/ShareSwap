@@ -339,7 +339,7 @@ export default function WishlistsPage() {
                           key={type}
                           variant="outline"
                           className="text-xs border-0"
-                          style={type === "gift" ? { backgroundColor: "#fce7f3", color: "#be185d" } : { backgroundColor: "#e0fdf8", color: "#0DCEA1" }}
+                          style={type === "gift" ? { backgroundColor: "#fce7f3", color: "#be185d" } : { backgroundColor: "#0DCEA1", color: "#ffffff" }}
                         >
                           {type === "borrow" && <HandHeart className="h-3 w-3 mr-1" />}
                           {type === "rent" && <ArrowRightLeft className="h-3 w-3 mr-1" />}

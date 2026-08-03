@@ -140,7 +140,7 @@ export default function CommunityWishlistsPage() {
                             key={type}
                             variant="secondary"
                             className="px-1.5 py-0.5 md:px-3 md:py-1 font-medium text-[10px] md:text-xs shrink-0 border-0"
-                            style={type === "gift" ? { backgroundColor: "#fce7f3", color: "#be185d" } : { backgroundColor: "#e0fdf8", color: "#0DCEA1" }}
+                            style={type === "gift" ? { backgroundColor: "#fce7f3", color: "#be185d" } : { backgroundColor: "#0DCEA1", color: "#ffffff" }}
                           >
                             {getNeedTypeIcon(type)}
                             <span className="ml-0.5 md:ml-1">

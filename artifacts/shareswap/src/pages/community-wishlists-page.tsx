@@ -135,16 +135,28 @@ export default function CommunityWishlistsPage() {
                             URGENT
                           </Badge>
                         )}
-                        <Badge
-                          variant="secondary"
-                          className="bg-teal-50 text-teal-700 border-teal-200 px-1.5 py-0.5 md:px-3 md:py-1 font-medium text-[10px] md:text-xs shrink-0"
-                        >
-                          {getNeedTypeIcon(wishlist.needType)}
-                          <span className="ml-0.5 md:ml-1">
-                            {wishlist.needType.charAt(0).toUpperCase() +
-                              wishlist.needType.slice(1)}
-                          </span>
-                        </Badge>
+                        {(wishlist.needType ? wishlist.needType.split(",") : [])
+                          .sort((a, b) =>
+                            a.trim() === "gift" ? 1 : b.trim() === "gift" ? -1 : 0,
+                          )
+                          .map((type) => {
+                            const t = type.trim();
+                            const isGift = t === "gift";
+                            return (
+                              <Badge
+                                key={t}
+                                variant="secondary"
+                                className={`${isGift ? "bg-pink-50 text-pink-700 border-pink-200" : "bg-teal-50 text-teal-700 border-teal-200"} px-1.5 py-0.5 md:px-2 md:py-0.5 font-medium text-[10px] md:text-xs shrink-0`}
+                              >
+                                {getNeedTypeIcon(t)}
+                                <span className="ml-0.5 md:ml-1">
+                                  {t === "gift"
+                                    ? "Be Gifted"
+                                    : t.charAt(0).toUpperCase() + t.slice(1) + " It"}
+                                </span>
+                              </Badge>
+                            );
+                          })}
                       </div>
                     </div>
                   </div>

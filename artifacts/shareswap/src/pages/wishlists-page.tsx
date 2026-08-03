@@ -331,22 +331,29 @@ export default function WishlistsPage() {
 
                   {/* Need Types */}
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {(item.needType ? item.needType.split(",") : []).map(
-                      (type: string) => (
-                        <Badge key={type} variant="outline" className="text-xs">
-                          {type === "borrow" && (
-                            <HandHeart className="h-3 w-3 mr-1" />
-                          )}
-                          {type === "rent" && (
-                            <ArrowRightLeft className="h-3 w-3 mr-1" />
-                          )}
-                          {type === "swap" && (
-                            <Repeat className="h-3 w-3 mr-1" />
-                          )}
-                          {type.charAt(0).toUpperCase() + type.slice(1)} It
-                        </Badge>
-                      ),
-                    )}
+                    {(item.needType ? item.needType.split(",") : [])
+                      .sort((a: string, b: string) =>
+                        a.trim() === "gift" ? 1 : b.trim() === "gift" ? -1 : 0,
+                      )
+                      .map((type: string) => {
+                        const t = type.trim();
+                        const isGift = t === "gift";
+                        return (
+                          <Badge
+                            key={t}
+                            variant="outline"
+                            className={`text-xs ${isGift ? "bg-pink-50 text-pink-700 border-pink-200" : "bg-teal-50 text-teal-700 border-teal-200"}`}
+                          >
+                            {t === "borrow" && <HandHeart className="h-3 w-3 mr-1" />}
+                            {t === "rent" && <ArrowRightLeft className="h-3 w-3 mr-1" />}
+                            {t === "swap" && <Repeat className="h-3 w-3 mr-1" />}
+                            {t === "gift" && <Gift className="h-3 w-3 mr-1" />}
+                            {t === "gift"
+                              ? "Be Gifted"
+                              : t.charAt(0).toUpperCase() + t.slice(1) + " It"}
+                          </Badge>
+                        );
+                      })}
                   </div>
 
                   {/* Needed by */}

@@ -482,8 +482,8 @@ export default function WishlistScreen() {
                     {(item.needType ?? "").split(",").map(k => k.trim()).filter(Boolean).sort((a, b) => a === "gift" ? 1 : b === "gift" ? -1 : 0).map((key) => {
                       const match = NEED_TYPE_OPTIONS.find((n) => n.key === key);
                       const isGift = key === "gift";
-                      const pillBg = isGift ? "#fce7f3" : "#0DCEA1";
-                      const pillFg = isGift ? "#be185d" : "#ffffff";
+                      const pillBg = isGift ? "#fce7f3" : "#e0fdf8";
+                      const pillFg = isGift ? "#be185d" : "#0DCEA1";
                       return (
                         <View key={key} style={[styles.needPill, { backgroundColor: pillBg }]}>
                           {match?.mci ? (
@@ -596,8 +596,8 @@ export default function WishlistScreen() {
                   {(item.needType ?? "").split(",").map(k => k.trim()).filter(Boolean).sort((a, b) => a === "gift" ? 1 : b === "gift" ? -1 : 0).map((key) => {
                     const match = NEED_TYPE_OPTIONS.find((n) => n.key === key);
                     const isGift = key === "gift";
-                    const pillBg = isGift ? "#fce7f3" : "#0DCEA1";
-                    const pillFg = isGift ? "#be185d" : "#ffffff";
+                    const pillBg = isGift ? "#fce7f3" : "#e0fdf8";
+                    const pillFg = isGift ? "#be185d" : "#0DCEA1";
                     return (
                       <View key={key} style={[styles.needPill, { backgroundColor: pillBg }]}>
                         {match?.mci ? (

@@ -534,8 +534,8 @@ export default function WishlistScreen() {
 
                     {item.preferredLocation ? (
                       <View style={styles.commInfoRow}>
-                        <View style={styles.commTealCircle}>
-                          <Feather name="map-pin" size={12} color="#0DCEA1" />
+                        <View style={styles.commIconPlain}>
+                          <Feather name="map-pin" size={14} color="#0DCEA1" />
                         </View>
                         <Text style={[styles.commInfoText, { color: colors.foreground }]}>
                           {item.preferredLocation}
@@ -544,8 +544,8 @@ export default function WishlistScreen() {
                     ) : null}
 
                     <View style={styles.commInfoRow}>
-                      <View style={styles.commTealCircle}>
-                        <Feather name="calendar" size={12} color="#0DCEA1" />
+                      <View style={styles.commIconPlain}>
+                        <Feather name="calendar" size={14} color="#0DCEA1" />
                       </View>
                       <View>
                         <Text style={[styles.commInfoText, { color: colors.foreground }]}>
@@ -1241,6 +1241,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_700Bold",
     color: "#0DCEA1",
+  },
+  commIconPlain: {
+    width: 22,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
   commInfoText: {
     fontSize: 13,

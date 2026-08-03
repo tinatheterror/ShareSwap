@@ -835,6 +835,59 @@ export default function WishlistScreen() {
               )}
             </Pressable>
             </ScrollView>
+
+            {/* Inline calendar — avoids stacking two Modals which breaks touches on iOS */}
+            {showDatePicker && datePickerContext === "add" && (
+              <Pressable style={styles.inlineDatePickerOverlay} onPress={() => setShowDatePicker(false)}>
+                <Pressable style={[styles.datePickerCard, { backgroundColor: colors.card }]} onPress={() => {}}>
+                  <View style={styles.datePickerHeader}>
+                    <Pressable onPress={() => setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+                      <Feather name="chevron-left" size={20} color={colors.foreground} />
+                    </Pressable>
+                    <View style={{ alignItems: "center" }}>
+                      <Text style={[styles.datePickerSubtitle, { color: colors.mutedForeground }]}>
+                        {datePickerField === "from" ? "Select start date" : "Select end date"}
+                      </Text>
+                      <Text style={[styles.datePickerTitle, { color: colors.foreground }]}>
+                        {pickerMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+                      <Feather name="chevron-right" size={20} color={colors.foreground} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.datePickerWeekRow}>
+                    {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                      <Text key={i} style={[styles.datePickerWeekDay, { color: colors.mutedForeground }]}>{d}</Text>
+                    ))}
+                  </View>
+                  <View style={styles.datePickerGrid}>
+                    {(() => {
+                      const year = pickerMonth.getFullYear();
+                      const month = pickerMonth.getMonth();
+                      const firstDayOfWeek = new Date(year, month, 1).getDay();
+                      const daysInMonth = new Date(year, month + 1, 0).getDate();
+                      const today = new Date(); today.setHours(0, 0, 0, 0);
+                      const cells: (number | null)[] = [...Array(firstDayOfWeek).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+                      return cells.map((day, idx) => {
+                        if (day === null) return <View key={idx} style={styles.datePickerCell} />;
+                        const cellDate = new Date(year, month, day);
+                        const isPast = cellDate < today;
+                        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const isBeforeFrom = datePickerField === "to" && !!neededFromDate && dateStr < neededFromDate;
+                        const isDisabled = isPast || isBeforeFrom;
+                        const isSelected = datePickerField === "from" ? neededFromDate === dateStr : neededToDate === dateStr;
+                        return (
+                          <Pressable key={idx} style={[styles.datePickerCell, isSelected ? { backgroundColor: colors.primary, borderRadius: 8 } : null]} disabled={isDisabled} onPress={() => pickDate(day)}>
+                            <Text style={[styles.datePickerDayText, { color: isSelected ? colors.primaryForeground : isDisabled ? colors.border : colors.foreground }]}>{day}</Text>
+                          </Pressable>
+                        );
+                      });
+                    })()}
+                  </View>
+                </Pressable>
+              </Pressable>
+            )}
           </View>
         </View>
       </Modal>
@@ -947,100 +1000,61 @@ export default function WishlistScreen() {
                 )}
               </Pressable>
             </ScrollView>
+
+            {/* Inline calendar — avoids stacking two Modals which breaks touches on iOS */}
+            {showDatePicker && datePickerContext === "edit" && (
+              <Pressable style={styles.inlineDatePickerOverlay} onPress={() => setShowDatePicker(false)}>
+                <Pressable style={[styles.datePickerCard, { backgroundColor: colors.card }]} onPress={() => {}}>
+                  <View style={styles.datePickerHeader}>
+                    <Pressable onPress={() => setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+                      <Feather name="chevron-left" size={20} color={colors.foreground} />
+                    </Pressable>
+                    <View style={{ alignItems: "center" }}>
+                      <Text style={[styles.datePickerSubtitle, { color: colors.mutedForeground }]}>
+                        {datePickerField === "from" ? "Select start date" : "Select end date"}
+                      </Text>
+                      <Text style={[styles.datePickerTitle, { color: colors.foreground }]}>
+                        {pickerMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+                      <Feather name="chevron-right" size={20} color={colors.foreground} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.datePickerWeekRow}>
+                    {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                      <Text key={i} style={[styles.datePickerWeekDay, { color: colors.mutedForeground }]}>{d}</Text>
+                    ))}
+                  </View>
+                  <View style={styles.datePickerGrid}>
+                    {(() => {
+                      const year = pickerMonth.getFullYear();
+                      const month = pickerMonth.getMonth();
+                      const firstDayOfWeek = new Date(year, month, 1).getDay();
+                      const daysInMonth = new Date(year, month + 1, 0).getDate();
+                      const today = new Date(); today.setHours(0, 0, 0, 0);
+                      const cells: (number | null)[] = [...Array(firstDayOfWeek).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+                      return cells.map((day, idx) => {
+                        if (day === null) return <View key={idx} style={styles.datePickerCell} />;
+                        const cellDate = new Date(year, month, day);
+                        const isPast = cellDate < today;
+                        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const isBeforeFrom = datePickerField === "to" && !!editNeededFromDate && dateStr < editNeededFromDate;
+                        const isDisabled = isPast || isBeforeFrom;
+                        const isSelected = datePickerField === "from" ? editNeededFromDate === dateStr : editNeededToDate === dateStr;
+                        return (
+                          <Pressable key={idx} style={[styles.datePickerCell, isSelected ? { backgroundColor: colors.primary, borderRadius: 8 } : null]} disabled={isDisabled} onPress={() => pickDate(day)}>
+                            <Text style={[styles.datePickerDayText, { color: isSelected ? colors.primaryForeground : isDisabled ? colors.border : colors.foreground }]}>{day}</Text>
+                          </Pressable>
+                        );
+                      });
+                    })()}
+                  </View>
+                </Pressable>
+              </Pressable>
+            )}
           </View>
         </View>
-      </Modal>
-
-      <Modal visible={showDatePicker} transparent animationType="fade" onRequestClose={() => setShowDatePicker(false)}>
-        <Pressable style={styles.datePickerOverlay} onPress={() => setShowDatePicker(false)}>
-          <Pressable style={[styles.datePickerCard, { backgroundColor: colors.card }]} onPress={() => {}}>
-            <View style={styles.datePickerHeader}>
-              <Pressable
-                onPress={() =>
-                  setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
-                }
-              >
-                <Feather name="chevron-left" size={20} color={colors.foreground} />
-              </Pressable>
-              <View style={{ alignItems: "center" }}>
-                <Text style={[styles.datePickerSubtitle, { color: colors.mutedForeground }]}>
-                  {datePickerField === "from" ? "Select start date" : "Select end date"}
-                </Text>
-                <Text style={[styles.datePickerTitle, { color: colors.foreground }]}>
-                  {pickerMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() =>
-                  setPickerMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
-                }
-              >
-                <Feather name="chevron-right" size={20} color={colors.foreground} />
-              </Pressable>
-            </View>
-
-            <View style={styles.datePickerWeekRow}>
-              {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                <Text key={i} style={[styles.datePickerWeekDay, { color: colors.mutedForeground }]}>
-                  {d}
-                </Text>
-              ))}
-            </View>
-
-            <View style={styles.datePickerGrid}>
-              {(() => {
-                const year = pickerMonth.getFullYear();
-                const month = pickerMonth.getMonth();
-                const firstDayOfWeek = new Date(year, month, 1).getDay();
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const cells: (number | null)[] = [
-                  ...Array(firstDayOfWeek).fill(null),
-                  ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-                ];
-                return cells.map((day, idx) => {
-                  if (day === null) {
-                    return <View key={idx} style={styles.datePickerCell} />;
-                  }
-                  const cellDate = new Date(year, month, day);
-                  const isPast = cellDate < today;
-                  const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                  const isBeforeFrom = datePickerField === "to" && !!neededFromDate && dateStr < neededFromDate;
-                  const isDisabled = isPast || isBeforeFrom;
-                  const isSelected =
-                    datePickerField === "from" ? neededFromDate === dateStr : neededToDate === dateStr;
-                  return (
-                    <Pressable
-                      key={idx}
-                      style={[
-                        styles.datePickerCell,
-                        isSelected ? { backgroundColor: colors.primary, borderRadius: 8 } : null,
-                      ]}
-                      disabled={isDisabled}
-                      onPress={() => pickDate(day)}
-                    >
-                      <Text
-                        style={[
-                          styles.datePickerDayText,
-                          {
-                            color: isSelected
-                              ? colors.primaryForeground
-                              : isDisabled
-                                ? colors.border
-                                : colors.foreground,
-                          },
-                        ]}
-                      >
-                        {day}
-                      </Text>
-                    </Pressable>
-                  );
-                });
-              })()}
-            </View>
-          </Pressable>
-        </Pressable>
       </Modal>
     </View>
   );
@@ -1444,12 +1458,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     flexShrink: 1,
   },
-  datePickerOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+  inlineDatePickerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
+    borderRadius: 16,
+    zIndex: 20,
   },
   datePickerCard: {
     width: "100%",

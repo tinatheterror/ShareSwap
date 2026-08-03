@@ -331,22 +331,22 @@ export default function WishlistsPage() {
 
                   {/* Need Types */}
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {(item.needType ? item.needType.split(",") : [])
-                      .map((t: string) => t.trim()).filter(Boolean)
-                      .sort((a: string, b: string) => a === "gift" ? 1 : b === "gift" ? -1 : 0)
-                      .map((type: string) => (
-                        <Badge
-                          key={type}
-                          variant="outline"
-                          className="text-xs border-0"
-                          style={type === "gift" ? { backgroundColor: "#fce7f3", color: "#be185d" } : { backgroundColor: "#0DCEA1", color: "#ffffff" }}
-                        >
-                          {type === "borrow" && <HandHeart className="h-3 w-3 mr-1" />}
-                          {type === "rent" && <ArrowRightLeft className="h-3 w-3 mr-1" />}
-                          {type === "swap" && <Repeat className="h-3 w-3 mr-1" />}
-                          {type === "gift" ? "Be Gifted" : `${type.charAt(0).toUpperCase() + type.slice(1)} It`}
+                    {(item.needType ? item.needType.split(",") : []).map(
+                      (type: string) => (
+                        <Badge key={type} variant="outline" className="text-xs">
+                          {type === "borrow" && (
+                            <HandHeart className="h-3 w-3 mr-1" />
+                          )}
+                          {type === "rent" && (
+                            <ArrowRightLeft className="h-3 w-3 mr-1" />
+                          )}
+                          {type === "swap" && (
+                            <Repeat className="h-3 w-3 mr-1" />
+                          )}
+                          {type.charAt(0).toUpperCase() + type.slice(1)} It
                         </Badge>
-                      ))}
+                      ),
+                    )}
                   </div>
 
                   {/* Needed by */}

@@ -479,19 +479,32 @@ export default function WishlistScreen() {
                     </View>
                   ) : null}
                   <View style={styles.commBadgeRow}>
-                    {(item.needType ?? "").split(",").map(k => k.trim()).filter(Boolean).sort((a, b) => a === "gift" ? 1 : b === "gift" ? -1 : 0).map((key) => {
-                      const match = NEED_TYPE_OPTIONS.find((n) => n.key === key);
-                      const isGift = key === "gift";
-                      const pillBg = isGift ? "#fce7f3" : "#0DCEA1";
-                      const pillFg = isGift ? "#be185d" : "#ffffff";
+                    {(item.needType ?? "").split(",").map((key) => {
+                      const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
+                      const isGift = key.trim() === "gift";
+                      const pillBg = isGift ? "#fce7f3" : "#ccfbf1";
+                      const pillFg = isGift ? "#be185d" : "#0f766e";
                       return (
-                        <View key={key} style={[styles.needPill, { backgroundColor: pillBg }]}>
+                        <View
+                          key={key}
+                          style={[styles.needPill, { backgroundColor: pillBg }]}
+                        >
                           {match?.mci ? (
-                            <MaterialCommunityIcons name={match.icon as any} size={9} color={pillFg} />
+                            <MaterialCommunityIcons
+                              name={match.icon as any}
+                              size={9}
+                              color={pillFg}
+                            />
                           ) : (
-                            <Feather name={(match?.icon ?? "tag") as any} size={9} color={pillFg} />
+                            <Feather
+                              name={(match?.icon ?? "tag") as any}
+                              size={9}
+                              color={pillFg}
+                            />
                           )}
-                          <Text style={[styles.needText, { color: pillFg }]}>{match?.label ?? key}</Text>
+                          <Text style={[styles.needText, { color: pillFg }]}>
+                            {match?.label ?? key.trim()}
+                          </Text>
                         </View>
                       );
                     })}
@@ -593,11 +606,11 @@ export default function WishlistScreen() {
                   </Text>
                 ) : null}
                 <View style={styles.commBadgeRow}>
-                  {(item.needType ?? "").split(",").map(k => k.trim()).filter(Boolean).sort((a, b) => a === "gift" ? 1 : b === "gift" ? -1 : 0).map((key) => {
-                    const match = NEED_TYPE_OPTIONS.find((n) => n.key === key);
-                    const isGift = key === "gift";
-                    const pillBg = isGift ? "#fce7f3" : "#0DCEA1";
-                    const pillFg = isGift ? "#be185d" : "#ffffff";
+                  {(item.needType ?? "").split(",").map((key) => {
+                    const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
+                    const isGift = key.trim() === "gift";
+                    const pillBg = isGift ? "#fce7f3" : "#ccfbf1";
+                    const pillFg = isGift ? "#be185d" : "#0f766e";
                     return (
                       <View key={key} style={[styles.needPill, { backgroundColor: pillBg }]}>
                         {match?.mci ? (
@@ -605,7 +618,9 @@ export default function WishlistScreen() {
                         ) : (
                           <Feather name={(match?.icon ?? "tag") as any} size={9} color={pillFg} />
                         )}
-                        <Text style={[styles.needText, { color: pillFg }]}>{match?.label ?? key}</Text>
+                        <Text style={[styles.needText, { color: pillFg }]}>
+                          {match?.label ?? key.trim()}
+                        </Text>
                       </View>
                     );
                   })}

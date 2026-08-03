@@ -135,19 +135,16 @@ export default function CommunityWishlistsPage() {
                             URGENT
                           </Badge>
                         )}
-                        {(wishlist.needType ?? "").split(",").map(t => t.trim()).filter(Boolean).sort((a, b) => a === "gift" ? 1 : b === "gift" ? -1 : 0).map((type) => (
-                          <Badge
-                            key={type}
-                            variant="secondary"
-                            className="px-1.5 py-0.5 md:px-3 md:py-1 font-medium text-[10px] md:text-xs shrink-0 border-0"
-                            style={type === "gift" ? { backgroundColor: "#fce7f3", color: "#be185d" } : { backgroundColor: "#0DCEA1", color: "#ffffff" }}
-                          >
-                            {getNeedTypeIcon(type)}
-                            <span className="ml-0.5 md:ml-1">
-                              {type === "gift" ? "Be Gifted" : type.charAt(0).toUpperCase() + type.slice(1) + " It"}
-                            </span>
-                          </Badge>
-                        ))}
+                        <Badge
+                          variant="secondary"
+                          className="bg-teal-50 text-teal-700 border-teal-200 px-1.5 py-0.5 md:px-3 md:py-1 font-medium text-[10px] md:text-xs shrink-0"
+                        >
+                          {getNeedTypeIcon(wishlist.needType)}
+                          <span className="ml-0.5 md:ml-1">
+                            {wishlist.needType.charAt(0).toUpperCase() +
+                              wishlist.needType.slice(1)}
+                          </span>
+                        </Badge>
                       </div>
                     </div>
                   </div>

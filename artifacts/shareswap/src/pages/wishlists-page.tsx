@@ -21,6 +21,7 @@ import {
   MapPin,
   Clock,
   ArrowRightLeft,
+  DollarSign,
   Repeat,
   Calendar,
   Trash2,
@@ -345,8 +346,8 @@ export default function WishlistsPage() {
                             className={`text-xs ${isGift ? "bg-pink-50 text-pink-700 border-pink-200" : "bg-teal-50 text-teal-700 border-teal-200"}`}
                           >
                             {t === "borrow" && <HandHeart className="h-3 w-3 mr-1" />}
-                            {t === "rent" && <ArrowRightLeft className="h-3 w-3 mr-1" />}
-                            {t === "swap" && <Repeat className="h-3 w-3 mr-1" />}
+                            {t === "rent" && <DollarSign className="h-3 w-3 mr-1" />}
+                            {t === "swap" && <ArrowRightLeft className="h-3 w-3 mr-1" />}
                             {t === "gift" && <Gift className="h-3 w-3 mr-1" />}
                             {t === "gift"
                               ? "Be Gifted"

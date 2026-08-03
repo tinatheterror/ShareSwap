@@ -9,6 +9,7 @@ import {
   MapPin,
   Clock,
   ArrowRightLeft,
+  DollarSign,
   ShoppingCart,
   Repeat,
   HandHeart,
@@ -58,9 +59,9 @@ export default function CommunityWishlistsPage() {
       case "borrow":
         return <HandHeart className="h-4 w-4" />;
       case "rent":
-        return <ArrowRightLeft className="h-4 w-4" />;
+        return <DollarSign className="h-4 w-4" />;
       case "swap":
-        return <Repeat className="h-4 w-4" />;
+        return <ArrowRightLeft className="h-4 w-4" />;
       case "gift":
         return <Gift className="h-4 w-4" />;
       default:

@@ -36,12 +36,10 @@ interface WishlistItem {
   isExpired?: boolean;
   isPrivate?: boolean;
   createdAt: string;
-  user?: {
-    id: number;
-    username: string;
-    displayName?: string;
-    isVerified?: boolean;
-  };
+  // flat user fields returned by /api/all-wishlists (community tab)
+  username?: string;
+  displayName?: string;
+  isVerified?: boolean;
 }
 
 const NEED_TYPES = [
@@ -226,8 +224,8 @@ export default function WishlistScreen() {
   const { data: communityWishlists, isLoading: loadingCommunity } = useQuery<
     WishlistItem[]
   >({
-    queryKey: ["/api/wishlists"],
-    queryFn: () => apiGet<WishlistItem[]>("/api/wishlists"),
+    queryKey: ["/api/all-wishlists"],
+    queryFn: () => apiGet<WishlistItem[]>("/api/all-wishlists"),
     enabled: !!user && tab === "community",
   });
 
@@ -529,15 +527,15 @@ export default function WishlistScreen() {
                           Private request
                         </Text>
                       </View>
-                    ) : item.user ? (
+                    ) : (item.displayName || item.username) ? (
                       <View style={styles.commInfoRow}>
                         <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
                           <Text style={[styles.commAvatarText, { color: colors.accentForeground }]}>
-                            {(item.user.displayName || item.user.username || "?").charAt(0).toUpperCase()}
+                            {(item.displayName || item.username || "?").charAt(0).toUpperCase()}
                           </Text>
                         </View>
                         <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
-                          {item.user.displayName || item.user.username}
+                          {item.displayName || item.username}
                         </Text>
                       </View>
                     ) : null}
@@ -553,21 +551,23 @@ export default function WishlistScreen() {
                       </View>
                     ) : null}
 
-                    <View style={styles.commInfoRow}>
-                      <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
-                        <Feather name="calendar" size={13} color={colors.accentForeground} />
+                    {item.neededDate ? (
+                      <View style={styles.commInfoRow}>
+                        <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
+                          <Feather name="calendar" size={13} color={colors.accentForeground} />
+                        </View>
+                        <View>
+                          <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                            Needed: {new Date(item.neededDate).toLocaleDateString()}
+                          </Text>
+                          {item.returnDate && item.needType === "borrow" ? (
+                            <Text style={[styles.commInfoText, { color: colors.mutedForeground, fontSize: 11 }]}>
+                              Return: {new Date(item.returnDate).toLocaleDateString()}
+                            </Text>
+                          ) : null}
+                        </View>
                       </View>
-                      <View>
-                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
-                          Needed:{" "}
-                          {item.neededDate
-                            ? item.returnDate
-                              ? `${new Date(item.neededDate).toLocaleDateString()} - ${new Date(item.returnDate).toLocaleDateString()}`
-                              : new Date(item.neededDate).toLocaleDateString()
-                            : "Whenever"}
-                        </Text>
-                      </View>
-                    </View>
+                    ) : null}
                   </View>
 
                   <Pressable

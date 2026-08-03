@@ -1,8 +1,8 @@
 // Simple API routes for new features that work with current database structure
 import type { Express } from "express";
 import { db } from "@workspace/db";
-import { users, achievements, userAchievements } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { users, achievements, userAchievements, wishlists } from "@workspace/db";
+import { eq, and, ne, desc } from "drizzle-orm";
 
 const BADGE_TITLE_MAP: Record<string, string> = {
   five_transactions: "Community Sharer",
@@ -215,105 +215,56 @@ export function addSimplifiedRoutes(app: Express) {
     }
 
     try {
-      // Generate dates relative to today for realistic mock data
+      const allWishlists = await db
+        .select({
+          id: wishlists.id,
+          userId: wishlists.userId,
+          itemName: wishlists.itemName,
+          description: wishlists.description,
+          category: wishlists.category,
+          needType: wishlists.needType,
+          maxShareCoinPrice: wishlists.maxShareCoinPrice,
+          maxDollarPrice: wishlists.maxDollarPrice,
+          preferredLocation: wishlists.preferredLocation,
+          neededDate: wishlists.neededDate,
+          returnDate: wishlists.returnDate,
+          urgency: wishlists.urgency,
+          isActive: wishlists.isActive,
+          isPrivate: wishlists.isPrivate,
+          createdAt: wishlists.createdAt,
+          username: users.username,
+          displayName: users.displayName,
+          isVerified: users.isVerified,
+        })
+        .from(wishlists)
+        .innerJoin(users, eq(users.id, wishlists.userId))
+        .where(and(eq(wishlists.isActive, true), ne(wishlists.userId, (req.user as any).id)))
+        .orderBy(desc(wishlists.createdAt));
+
       const today = new Date();
-      const threeDaysLater = new Date(today);
-      threeDaysLater.setDate(today.getDate() + 3);
-      const fiveDaysLater = new Date(today);
-      fiveDaysLater.setDate(today.getDate() + 5);
-      const tenDaysLater = new Date(today);
-      tenDaysLater.setDate(today.getDate() + 10);
-      const fifteenDaysLater = new Date(today);
-      fifteenDaysLater.setDate(today.getDate() + 15);
+      today.setHours(0, 0, 0, 0);
 
-      // Mock sample wishlists from other users (no urgency field - calculated by frontend)
-      const sampleWishlists = [
-        {
-          id: 1,
-          userId: 2,
-          itemName: "Power Drill",
-          description: "Need a power drill for a quick home repair project",
-          category: "tools",
-          needType: "borrow",
-          preferredLocation: "Downtown area",
-          neededDate: fiveDaysLater.toISOString().split('T')[0],
-          returnDate: new Date(fiveDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isActive: true,
-          isPrivate: false,
-          createdAt: new Date().toISOString(),
-          username: "sarah_m",
-          displayName: "Sarah M.",
-          distance: "0.8 miles away"
-        },
-        {
-          id: 2,
-          userId: 3,
-          itemName: "Camping Tent",
-          description: "Looking for a 4-person tent for weekend camping trip",
-          category: "outdoor",
-          needType: "rent",
-          preferredLocation: "North side",
-          neededDate: threeDaysLater.toISOString().split('T')[0],
-          isActive: true,
-          isPrivate: true,
-          createdAt: new Date().toISOString(),
-          username: "mike_r",
-          displayName: "Mike R.",
-          distance: "1.2 miles away"
-        },
-        {
-          id: 3,
-          userId: 4,
-          itemName: "Stand Mixer",
-          description: "Baking for a family event, need mixer for the weekend",
-          category: "kitchen",
-          needType: "borrow",
-          preferredLocation: "Central area",
-          neededDate: fiveDaysLater.toISOString().split('T')[0],
-          returnDate: new Date(fiveDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isActive: true,
-          isPrivate: false,
-          createdAt: new Date().toISOString(),
-          username: "emma_l",
-          displayName: "Emma L.",
-          distance: "0.5 miles away"
-        },
-        {
-          id: 4,
-          userId: 5,
-          itemName: "Lawn Mower",
-          description: "Spring cleaning - need to mow overgrown yard",
-          category: "garden",
-          needType: "gift",
-          preferredLocation: "Suburban area",
-          neededDate: fifteenDaysLater.toISOString().split('T')[0],
-          returnDate: new Date(fifteenDaysLater.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isActive: true,
-          isPrivate: false,
-          createdAt: new Date().toISOString(),
-          username: "david_k",
-          displayName: "David K.",
-          distance: "2.1 miles away"
-        }
-      ];
-
-      // Filter out current user's own wishlists
-      const otherUsersWishlists = sampleWishlists.filter(w => w.userId !== req.user.id);
-
-      // Add isExpired field to each wishlist (reuse today var, normalize to midnight)
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      const wishlistsWithExpiry = otherUsersWishlists.map(w => {
+      const result = allWishlists.map(w => {
         let isExpired = false;
         if (w.returnDate) {
-          isExpired = new Date(w.returnDate) < todayMidnight;
+          isExpired = new Date(w.returnDate) < today;
         } else if (w.neededDate) {
-          isExpired = new Date(w.neededDate) < todayMidnight;
+          isExpired = new Date(w.neededDate) < today;
         }
         return { ...w, isExpired };
       });
 
-      res.json(wishlistsWithExpiry);
+      // Sort: urgent first (by urgency field), then verified, then date
+      const urgencyOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+      result.sort((a, b) => {
+        const aU = urgencyOrder[a.urgency ?? 'normal'] ?? 2;
+        const bU = urgencyOrder[b.urgency ?? 'normal'] ?? 2;
+        if (aU !== bU) return aU - bU;
+        if (a.isVerified !== b.isVerified) return a.isVerified ? -1 : 1;
+        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+      });
+
+      res.json(result);
     } catch (error) {
       console.error("Error fetching all wishlists:", error);
       res.status(500).json({ error: "Failed to fetch wishlists" });

@@ -110,16 +110,18 @@ export function WishlistFulfillmentPopup({
                     {/* Title + badges */}
                     <div className="flex items-start justify-between mb-2 md:mb-4">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-sm md:text-xl text-slate-800 mb-1 truncate">
-                          {wishlist.itemName}
-                        </h4>
-                        <div className="flex items-center gap-1 md:gap-2 flex-nowrap overflow-hidden">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <h4 className="font-bold text-sm md:text-xl text-slate-800 truncate">
+                            {wishlist.itemName}
+                          </h4>
                           {isUrgent(wishlist.neededDate) && (
-                            <Badge className="bg-[#EFE4B0] text-amber-900 border-amber-200 font-medium px-1.5 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs shrink-0">
+                            <Badge className="bg-[#EFE4B0] text-amber-900 border-amber-200 font-medium px-1.5 py-0.5 md:px-2 md:py-0.5 text-[10px] md:text-xs shrink-0">
                               <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
                               URGENT
                             </Badge>
                           )}
+                        </div>
+                        <div className="flex items-center gap-1 md:gap-2 flex-nowrap overflow-hidden">
                           <Badge
                             variant="secondary"
                             className="bg-teal-50 text-teal-700 border-teal-200 px-1.5 py-0.5 md:px-3 md:py-1 font-medium text-[10px] md:text-xs shrink-0"

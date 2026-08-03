@@ -125,18 +125,16 @@ export default function CommunityWishlistsPage() {
                 <CardContent className="p-3 md:p-6 flex flex-col flex-1">
                   <div className="flex items-start justify-between mb-2 md:mb-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1 md:mb-1 flex-wrap">
-                        <h4 className="font-bold text-sm md:text-xl text-slate-800 truncate">
-                          {wishlist.itemName}
-                        </h4>
+                      <h4 className="font-bold text-sm md:text-xl text-slate-800 mb-1 md:mb-1 truncate">
+                        {wishlist.itemName}
+                      </h4>
+                      <div className="flex items-center gap-1 md:gap-2 flex-nowrap overflow-hidden">
                         {isUrgent(wishlist.neededDate) && (
-                          <Badge className="bg-[#EFE4B0] text-amber-900 border-amber-200 font-medium px-1.5 py-0.5 md:px-2 md:py-0.5 text-[10px] md:text-xs shrink-0">
+                          <Badge className="bg-[#EFE4B0] text-amber-900 border-amber-200 font-medium px-1.5 py-0.5 md:px-3 md:py-1 text-[10px] md:text-xs shrink-0">
                             <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 mr-0.5 md:mr-1" />
                             URGENT
                           </Badge>
                         )}
-                      </div>
-                      <div className="flex items-center gap-1 md:gap-2 flex-nowrap overflow-hidden">
                         {(wishlist.needType ?? "").split(",").map(t => t.trim()).filter(Boolean).sort((a, b) => a === "gift" ? 1 : b === "gift" ? -1 : 0).map((type) => (
                           <Badge
                             key={type}
@@ -165,8 +163,8 @@ export default function CommunityWishlistsPage() {
                   <div className="space-y-1.5 md:space-y-3 mb-3 md:mb-6">
                     {wishlist.isPrivate ? (
                       <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-50 border border-teal-200 rounded-full flex items-center justify-center shrink-0">
-                          <EyeOff className="h-3 w-3 md:h-4 md:w-4 text-teal-500" />
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                          <EyeOff className="h-3 w-3 md:h-4 md:w-4 text-slate-500" />
                         </div>
                         <span className="text-slate-500 font-medium text-xs md:text-base italic">
                           Private request
@@ -174,14 +172,14 @@ export default function CommunityWishlistsPage() {
                       </div>
                     ) : wishlist.displayName || wishlist.username ? (
                       <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-50 border border-teal-200 rounded-full flex items-center justify-center shrink-0">
-                          <span className="text-teal-600 font-bold text-xs md:text-sm">
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                          <span className="text-teal-700 font-bold text-xs md:text-sm">
                             {(wishlist.displayName || wishlist.username || "?")
                               .charAt(0)
                               .toUpperCase()}
                           </span>
                         </div>
-                        <span className="text-slate-700 font-medium text-xs md:text-base">
+                        <span className="text-slate-600 font-medium text-xs md:text-base">
                           {wishlist.displayName || wishlist.username}
                         </span>
                       </div>
@@ -189,31 +187,32 @@ export default function CommunityWishlistsPage() {
 
                     {wishlist.preferredLocation && (
                       <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-50 border border-teal-200 rounded-full flex items-center justify-center shrink-0">
-                          <MapPin className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
+                        <div className="w-6 h-6 md:w-8 md:h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                          <MapPin className="h-3 w-3 md:h-4 md:w-4 text-slate-600" />
                         </div>
-                        <span className="text-slate-700 font-medium text-xs md:text-base">
+                        <span className="text-slate-600 font-medium text-xs md:text-base">
                           {wishlist.preferredLocation}
                         </span>
                       </div>
                     )}
 
-                    <div className="flex items-start gap-2 md:gap-3">
-                      <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-50 border border-teal-200 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="flex items-center gap-2 md:gap-3">
+                      <div className="w-6 h-6 md:w-8 md:h-8 bg-teal-100 rounded-full flex items-center justify-center">
                         <Calendar className="h-3 w-3 md:h-4 md:w-4 text-teal-600" />
                       </div>
-                      <div className="flex flex-col justify-center">
-                        <span className="text-slate-700 font-medium text-xs md:text-base">
-                          Needed:{" "}
+                      <div>
+                        <span className="text-slate-600 font-medium text-xs md:text-base">
+                          Needed by:{" "}
                           {wishlist.neededDate
                             ? new Date(wishlist.neededDate).toLocaleDateString()
                             : "Whenever"}
                         </span>
                         {wishlist.neededDate && wishlist.returnDate &&
                           wishlist.needType === "borrow" && (
-                            <span className="text-[10px] md:text-sm text-slate-500">
-                              Return: {new Date(wishlist.returnDate).toLocaleDateString()}
-                            </span>
+                            <div className="text-[10px] md:text-xs text-slate-500">
+                              Return:{" "}
+                              {new Date(wishlist.returnDate).toLocaleDateString()}
+                            </div>
                           )}
                       </div>
                     </div>

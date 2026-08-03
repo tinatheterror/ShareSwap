@@ -864,6 +864,7 @@ export const userNotificationPrefs = pgTable("user_notification_prefs", {
   payments: boolean("payments").default(true).notNull(),
   achievements: boolean("achievements").default(true).notNull(),
   sharecoins: boolean("sharecoins").default(true).notNull(),
+  returnDeadlines: boolean("return_deadlines").default(true).notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   userUniq: uniqueIndex("user_notification_prefs_user_uniq").on(table.userId),

@@ -34,7 +34,7 @@ interface AccountStatus {
   accountStatus?: string;
 }
 
-type NotifCategory = "messages" | "requests" | "payments" | "achievements" | "sharecoins";
+type NotifCategory = "messages" | "requests" | "payments" | "achievements" | "sharecoins" | "return_deadlines";
 
 interface NotificationPrefs {
   messages: boolean;
@@ -234,7 +234,7 @@ export default function SettingsScreen() {
   const isOAuthUser = !!(profile?.authProvider && profile.authProvider !== "local");
 
   // ── notification summary ──────────────────────────────────────────────────
-  const allNotifCategories: NotifCategory[] = ["messages", "requests", "payments", "achievements", "sharecoins"];
+  const allNotifCategories: NotifCategory[] = ["messages", "requests", "payments", "achievements", "sharecoins", "return_deadlines"];
   const notifOnCount = notifPrefs ? allNotifCategories.filter(k => notifPrefs[k]).length : null;
   const notifSummary = notifOnCount === null
     ? null
@@ -435,6 +435,7 @@ export default function SettingsScreen() {
               { key: "payments" as NotifCategory, label: "Payments", hint: "Payouts, deposits, and payment confirmations" },
               { key: "achievements" as NotifCategory, label: "Achievements", hint: "Badges and milestones you've earned" },
               { key: "sharecoins" as NotifCategory, label: "ShareCoins", hint: "ShareCoin balance changes and rewards" },
+              { key: "return_deadlines" as NotifCategory, label: "Return Deadlines", hint: "Reminders when borrowed items are due back" },
             ] as { key: NotifCategory; label: string; hint: string }[]
           ).map(({ key, label, hint }, idx) => {
             const value = notifPrefs ? notifPrefs[key] : true;

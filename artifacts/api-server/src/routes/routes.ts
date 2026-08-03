@@ -1635,6 +1635,7 @@ export function registerRoutes(app: Express): Server {
           payments: true,
           achievements: true,
           sharecoins: true,
+          return_deadlines: true,
         });
       }
       res.json({
@@ -1643,6 +1644,7 @@ export function registerRoutes(app: Express): Server {
         payments: row.payments,
         achievements: row.achievements,
         sharecoins: row.sharecoins,
+        return_deadlines: row.returnDeadlines,
       });
     } catch (err) {
       console.error("[notification-prefs] GET error:", err);
@@ -1652,12 +1654,14 @@ export function registerRoutes(app: Express): Server {
 
   app.patch("/api/user/notification-prefs", async (req: any, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const allowed = ["messages", "requests", "payments", "achievements", "sharecoins"] as const;
+    const allowed = ["messages", "requests", "payments", "achievements", "sharecoins", "return_deadlines"] as const;
     type PrefKey = typeof allowed[number];
-    const updates: Partial<Record<PrefKey, boolean>> = {};
+    const updates: Partial<Record<string, boolean>> = {};
     for (const key of allowed) {
       if (typeof req.body[key] === "boolean") {
-        updates[key] = req.body[key];
+        // Map snake_case API key to camelCase DB column
+        const dbKey = key === "return_deadlines" ? "returnDeadlines" : key;
+        updates[dbKey] = req.body[key];
       }
     }
     if (Object.keys(updates).length === 0) {
@@ -1674,6 +1678,7 @@ export function registerRoutes(app: Express): Server {
           payments: true,
           achievements: true,
           sharecoins: true,
+          returnDeadlines: true,
           ...updates,
         })
         .onConflictDoUpdate({

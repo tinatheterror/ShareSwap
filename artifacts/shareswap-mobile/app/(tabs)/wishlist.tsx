@@ -465,78 +465,68 @@ export default function WishlistScreen() {
               >
                 <View style={[styles.commAccent, { backgroundColor: colors.primary }]} />
                 <View style={styles.commBody}>
-                  <View style={styles.cardTop}>
-                    <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+                  {/* Item name + URGENT badge inline */}
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={[styles.itemName, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
                       {item.itemName}
                     </Text>
-                  </View>
-                  {isUrgent(item.neededDate) ? (
-                    <View style={styles.commBadgeRow}>
+                    {isUrgent(item.neededDate) ? (
                       <View style={[styles.urgentPill, { backgroundColor: "#EFE4B0" }]}>
                         <Feather name="clock" size={11} color="#78350f" />
                         <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
                       </View>
-                    </View>
-                  ) : null}
+                    ) : null}
+                  </View>
+
+                  {/* Need type badges — gift always last */}
                   <View style={styles.commBadgeRow}>
-                    {(item.needType ?? "").split(",").map((key) => {
-                      const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
-                      const isGift = key.trim() === "gift";
-                      const pillBg = isGift ? "#fce7f3" : "#ccfbf1";
-                      const pillFg = isGift ? "#be185d" : "#0f766e";
-                      return (
-                        <View
-                          key={key}
-                          style={[styles.needPill, { backgroundColor: pillBg }]}
-                        >
-                          {match?.mci ? (
-                            <MaterialCommunityIcons
-                              name={match.icon as any}
-                              size={9}
-                              color={pillFg}
-                            />
-                          ) : (
-                            <Feather
-                              name={(match?.icon ?? "tag") as any}
-                              size={9}
-                              color={pillFg}
-                            />
-                          )}
-                          <Text style={[styles.needText, { color: pillFg }]}>
-                            {match?.label ?? key.trim()}
-                          </Text>
-                        </View>
-                      );
-                    })}
+                    {[...(item.needType ?? "").split(",")]
+                      .sort((a, b) => (a.trim() === "gift" ? 1 : b.trim() === "gift" ? -1 : 0))
+                      .map((key) => {
+                        const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
+                        const isGift = key.trim() === "gift";
+                        const pillBg = isGift ? "#fce7f3" : "#ccfbf1";
+                        const pillFg = isGift ? "#be185d" : "#0f766e";
+                        return (
+                          <View key={key} style={[styles.needPill, { backgroundColor: pillBg }]}>
+                            {match?.mci ? (
+                              <MaterialCommunityIcons name={match.icon as any} size={9} color={pillFg} />
+                            ) : (
+                              <Feather name={(match?.icon ?? "tag") as any} size={9} color={pillFg} />
+                            )}
+                            <Text style={[styles.needText, { color: pillFg }]}>
+                              {match?.label ?? key.trim()}
+                            </Text>
+                          </View>
+                        );
+                      })}
                   </View>
 
                   {item.description ? (
-                    <Text
-                      style={[styles.itemDesc, { color: colors.mutedForeground }]}
-                      numberOfLines={2}
-                    >
+                    <Text style={[styles.itemDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
                       {item.description}
                     </Text>
                   ) : null}
 
+                  {/* Info rows — teal icon circles, dark readable text */}
                   <View style={styles.commInfoList}>
                     {item.isPrivate ? (
                       <View style={styles.commInfoRow}>
-                        <View style={[styles.commIconCircle, { backgroundColor: colors.muted }]}>
-                          <Feather name="eye-off" size={13} color={colors.mutedForeground} />
+                        <View style={styles.commTealCircle}>
+                          <Feather name="eye-off" size={12} color="#0DCEA1" />
                         </View>
-                        <Text style={[styles.commInfoText, { color: colors.mutedForeground, fontStyle: "italic" }]}>
+                        <Text style={[styles.commInfoText, { color: colors.foreground, fontStyle: "italic" }]}>
                           Private request
                         </Text>
                       </View>
                     ) : (item.displayName || item.username) ? (
                       <View style={styles.commInfoRow}>
-                        <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
-                          <Text style={[styles.commAvatarText, { color: colors.accentForeground }]}>
+                        <View style={styles.commTealCircle}>
+                          <Text style={styles.commTealInitial}>
                             {(item.displayName || item.username || "?").charAt(0).toUpperCase()}
                           </Text>
                         </View>
-                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                        <Text style={[styles.commInfoText, { color: colors.foreground }]}>
                           {item.displayName || item.username}
                         </Text>
                       </View>
@@ -544,21 +534,21 @@ export default function WishlistScreen() {
 
                     {item.preferredLocation ? (
                       <View style={styles.commInfoRow}>
-                        <View style={[styles.commIconCircle, { backgroundColor: colors.muted }]}>
-                          <Feather name="map-pin" size={13} color={colors.mutedForeground} />
+                        <View style={styles.commTealCircle}>
+                          <Feather name="map-pin" size={12} color="#0DCEA1" />
                         </View>
-                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                        <Text style={[styles.commInfoText, { color: colors.foreground }]}>
                           {item.preferredLocation}
                         </Text>
                       </View>
                     ) : null}
 
                     <View style={styles.commInfoRow}>
-                      <View style={[styles.commAvatarCircle, { backgroundColor: colors.accent }]}>
-                        <Feather name="calendar" size={13} color={colors.accentForeground} />
+                      <View style={styles.commTealCircle}>
+                        <Feather name="calendar" size={12} color="#0DCEA1" />
                       </View>
                       <View>
-                        <Text style={[styles.commInfoText, { color: colors.mutedForeground }]}>
+                        <Text style={[styles.commInfoText, { color: colors.foreground }]}>
                           Needed by: {item.neededDate ? new Date(item.neededDate).toLocaleDateString() : "Whenever"}
                         </Text>
                         {item.neededDate && item.returnDate && item.needType === "borrow" ? (
@@ -1238,6 +1228,19 @@ const styles = StyleSheet.create({
   commAvatarText: {
     fontSize: 13,
     fontFamily: "Inter_700Bold",
+  },
+  commTealCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(13, 206, 161, 0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commTealInitial: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: "#0DCEA1",
   },
   commInfoText: {
     fontSize: 13,

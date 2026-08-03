@@ -466,18 +466,16 @@ export default function WishlistScreen() {
                 <View style={[styles.commAccent, { backgroundColor: colors.primary }]} />
                 <View style={styles.commBody}>
                   <View style={styles.cardTop}>
-                    <Text style={[styles.itemName, { color: colors.foreground }]} numberOfLines={1}>
+                    <Text style={[styles.itemName, { color: colors.foreground, flex: 1 }]} numberOfLines={1}>
                       {item.itemName}
                     </Text>
-                  </View>
-                  {isUrgent(item.neededDate) ? (
-                    <View style={styles.commBadgeRow}>
+                    {isUrgent(item.neededDate) ? (
                       <View style={[styles.urgentPill, { backgroundColor: "#EFE4B0" }]}>
                         <Feather name="clock" size={11} color="#78350f" />
                         <Text style={[styles.urgentText, { color: "#78350f" }]}>URGENT</Text>
                       </View>
-                    </View>
-                  ) : null}
+                    ) : null}
+                  </View>
                   <View style={styles.commBadgeRow}>
                     {(item.needType ?? "").split(",").map(k => k.trim()).filter(Boolean).sort((a, b) => a === "gift" ? 1 : b === "gift" ? -1 : 0).map((key) => {
                       const match = NEED_TYPE_OPTIONS.find((n) => n.key === key);

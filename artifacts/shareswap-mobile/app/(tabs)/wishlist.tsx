@@ -482,25 +482,27 @@ export default function WishlistScreen() {
                     {(item.needType ?? "").split(",").map((key) => {
                       const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
                       const isGift = key.trim() === "gift";
+                      const pillBg = isGift ? "#fce7f3" : "#ccfbf1";
+                      const pillFg = isGift ? "#be185d" : "#0f766e";
                       return (
                         <View
                           key={key}
-                          style={[styles.needPill, { backgroundColor: isGift ? "#fce7f3" : colors.accent }]}
+                          style={[styles.needPill, { backgroundColor: pillBg }]}
                         >
                           {match?.mci ? (
                             <MaterialCommunityIcons
                               name={match.icon as any}
                               size={9}
-                              color={isGift ? "#be185d" : colors.accentForeground}
+                              color={pillFg}
                             />
                           ) : (
                             <Feather
                               name={(match?.icon ?? "tag") as any}
                               size={9}
-                              color={isGift ? "#be185d" : colors.accentForeground}
+                              color={pillFg}
                             />
                           )}
-                          <Text style={[styles.needText, { color: isGift ? "#be185d" : colors.accentForeground }]}>
+                          <Text style={[styles.needText, { color: pillFg }]}>
                             {match?.label ?? key.trim()}
                           </Text>
                         </View>
@@ -609,14 +611,16 @@ export default function WishlistScreen() {
                   {(item.needType ?? "").split(",").map((key) => {
                     const match = NEED_TYPE_OPTIONS.find((n) => n.key === key.trim());
                     const isGift = key.trim() === "gift";
+                    const pillBg = isGift ? "#fce7f3" : "#ccfbf1";
+                    const pillFg = isGift ? "#be185d" : "#0f766e";
                     return (
-                      <View key={key} style={[styles.needPill, { backgroundColor: isGift ? "#fce7f3" : colors.accent }]}>
+                      <View key={key} style={[styles.needPill, { backgroundColor: pillBg }]}>
                         {match?.mci ? (
-                          <MaterialCommunityIcons name={match.icon as any} size={9} color={isGift ? "#be185d" : colors.accentForeground} />
+                          <MaterialCommunityIcons name={match.icon as any} size={9} color={pillFg} />
                         ) : (
-                          <Feather name={(match?.icon ?? "tag") as any} size={9} color={isGift ? "#be185d" : colors.accentForeground} />
+                          <Feather name={(match?.icon ?? "tag") as any} size={9} color={pillFg} />
                         )}
-                        <Text style={[styles.needText, { color: isGift ? "#be185d" : colors.accentForeground }]}>
+                        <Text style={[styles.needText, { color: pillFg }]}>
                           {match?.label ?? key.trim()}
                         </Text>
                       </View>

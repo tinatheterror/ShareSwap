@@ -3354,12 +3354,22 @@ Respond with ONLY the category name, nothing else.`
         } else if (w.neededDate) {
           isExpired = new Date(w.neededDate) < today;
         }
+
+        const { username, handle, displayName, isVerified, reputationLevel, ...rest } = w;
         
         return {
-          ...w,
+          ...rest,
           isExpired,
           // Verified users are highlighted in urgent wishlists
           highlightVerified: (w.urgency === 'urgent' || w.urgency === 'high') && w.isVerified,
+          user: {
+            id: w.userId,
+            username,
+            handle,
+            displayName,
+            isVerified,
+            reputationLevel,
+          },
         };
       });
 

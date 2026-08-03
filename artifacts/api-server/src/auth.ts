@@ -254,6 +254,67 @@ declare global {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Native OAuth token store — Postgres-backed
+//
+// After a successful Google OAuth flow initiated from the native mobile app,
+// the server redirects to the Expo deep-link with a short-lived one-time
+// token.  The app then POSTs that token to /api/auth/exchange-token, which
+// logs the user in via a regular fetch request (so the session cookie is set
+// in the native cookie jar, not the in-app browser's isolated jar).
+//
+// Tokens are stored in Postgres so they survive restarts and work across
+// both the dev server and the production server (which share the same DB).
+// Tokens expire after 5 minutes and are deleted on first use.
+// ---------------------------------------------------------------------------
+
+let _nativeTokenTableReady: Promise<void> | null = null;
+
+function ensureNativeTokenTable(): Promise<void> {
+  if (!_nativeTokenTableReady) {
+    _nativeTokenTableReady = pool
+      .query(`
+        CREATE TABLE IF NOT EXISTS native_oauth_tokens (
+          token      TEXT        PRIMARY KEY,
+          user_id    INTEGER     NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL
+        )
+      `)
+      .then(() => undefined)
+      .catch((err: NodeJS.ErrnoException & { code?: string }) => {
+        if (err.code !== "42P07") {
+          _nativeTokenTableReady = null;
+          throw err;
+        }
+      });
+  }
+  return _nativeTokenTableReady;
+}
+
+async function storeNativeToken(userId: number): Promise<string> {
+  await ensureNativeTokenTable();
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+  await pool.query(
+    `INSERT INTO native_oauth_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)`,
+    [token, userId, expiresAt],
+  );
+  // Prune expired tokens lazily
+  pool.query(`DELETE FROM native_oauth_tokens WHERE expires_at < NOW()`).catch(() => {});
+  return token;
+}
+
+async function consumeNativeToken(token: string): Promise<number | null> {
+  await ensureNativeTokenTable();
+  const result = await pool.query<{ user_id: number }>(
+    `DELETE FROM native_oauth_tokens
+      WHERE token = $1 AND expires_at > NOW()
+      RETURNING user_id`,
+    [token],
+  );
+  return result.rows[0]?.user_id ?? null;
+}
+
 const scryptAsync = promisify(scrypt);
 const PostgresStore = connectPgSimple(session);
 
@@ -829,7 +890,7 @@ export function setupAuth(app: Express) {
       // req.session.regenerate(), which would destroy nativeRedirectUri
       // stored before the OAuth redirect started.
       keepSessionInfo: true,
-    } as any)(req, res, (err: any) => {
+    } as any)(req, res, async (err: any) => {
       if (err) return next(err);
       // Resolve native redirect URI — prefer state param (session-independent)
       // then fall back to session (legacy / web-initiated flows).
@@ -852,7 +913,19 @@ export function setupAuth(app: Express) {
         delete (req.session as any).nativeRedirectUri;
       }
       if (nativeRedirectUri) {
-        return res.redirect(nativeRedirectUri);
+        // Issue a short-lived one-time token so the native app can exchange
+        // it for a session cookie via a regular fetch call.  We cannot rely
+        // on the OAuth session cookie because the in-app browser runs with
+        // its own isolated cookie jar — it never reaches the native app's
+        // fetch credential store.
+        try {
+          const token = await storeNativeToken((req.user as any).id);
+          const separator = nativeRedirectUri.includes("?") ? "&" : "?";
+          return res.redirect(`${nativeRedirectUri}${separator}token=${token}`);
+        } catch (tokenErr) {
+          console.error("[Google OAuth] Failed to store native token:", tokenErr);
+          return next(tokenErr);
+        }
       }
       // Check if referral was applied during this OAuth flow
       const referralApplied = (req.session as any)?.referralApplied;
@@ -863,6 +936,38 @@ export function setupAuth(app: Express) {
         res.redirect("/");
       }
     });
+  });
+
+  // Native OAuth token exchange
+  // The mobile app calls this after openAuthSessionAsync succeeds, passing
+  // the one-time token from the deep-link URL.  We validate the token, log
+  // the user in (which sets the session cookie on *this* response — a regular
+  // fetch request from the native cookie jar), and return the user object.
+  app.post("/api/auth/exchange-token", async (req, res, next) => {
+    const token = (req.body?.token as string) || (req.query.token as string);
+    if (!token) {
+      return res.status(400).json({ message: "Token required" });
+    }
+    const userId = await consumeNativeToken(token);
+    if (!userId) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.json(user);
+      });
+    } catch (err) {
+      next(err);
+    }
   });
 
   // Email verification endpoint

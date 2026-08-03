@@ -20,7 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import { BASE_URL } from "@/lib/api";
+import { BASE_URL, apiRequest } from "@/lib/api";
 import { LAST_AUTH_METHOD_KEY } from "@/context/AuthContext";
 import { registerPushToken } from "@/hooks/usePushNotifications";
 
@@ -79,7 +79,20 @@ export default function LoginScreen() {
       try {
         const result = await WebBrowser.openAuthSessionAsync(googleUrl, redirectUri);
         if (result.type === "success") {
+          // The server encodes a one-time token in the deep-link URL because
+          // the OAuth session cookie lives in the in-app browser's isolated
+          // cookie jar and never reaches the native app's fetch credential
+          // store.  We extract the token and exchange it via a normal fetch
+          // call so the session cookie is set in the right jar.
+          const url = result.url;
+          const tokenMatch = url.match(/[?&]token=([^&]+)/);
+          if (tokenMatch?.[1]) {
+            await apiRequest("POST", "/api/auth/exchange-token", {
+              token: tokenMatch[1],
+            });
+          }
           await AsyncStorage.setItem(LAST_AUTH_METHOD_KEY, "google");
+          setSessionExpired(false);
           await refetchUser();
           // Register push token after Google OAuth — mirrors what login() and
           // register() do so no auth path is left uncovered.

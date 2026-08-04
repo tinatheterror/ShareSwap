@@ -84,6 +84,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
   const [selectedOwnerItemIds, setSelectedOwnerItemIds] = useState<number[]>([]);
   const [showAllOwner, setShowAllOwner] = useState(false);
   const [message, setMessage] = useState("");
+  const [conditionConfirmed, setConditionConfirmed] = useState(false);
   const [sending, setSending] = useState(false);
 
   // Reset every time the sheet opens
@@ -94,6 +95,7 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
       setSelectedOwnerItemIds([]);
       setShowAllOwner(false);
       setMessage("");
+      setConditionConfirmed(false);
       setSending(false);
     }
   }, [isOpen]);
@@ -561,85 +563,190 @@ export function SwapInventorySelector({ targetItem, isOpen, onClose, onConfirm }
           </>
         )}
 
-        {/* ════════════════ STEP 2 — Message ════════════════ */}
-        {step === "message" && (
-          <>
-            <View style={s.msgHeader}>
-              <Pressable
-                style={s.backBtn}
-                onPress={() => setStep("select")}
-              >
-                <Feather name="arrow-left" size={16} color={colors.mutedForeground} />
-                <Text style={[s.backLabel, { color: colors.mutedForeground }]}>
-                  Back to item selection
+        {/* ════════════════ STEP 2 — Confirm & send ════════════════ */}
+        {step === "message" && (() => {
+          const offerItems = swappableItems.filter(i => selectedItemIds.includes(i.id));
+          const extraOwnerItems = ownerExtraItems.filter(i => selectedOwnerItemIds.includes(i.id));
+          const theirItems = [targetItem as SwapItem, ...extraOwnerItems];
+          const offerSC = offerItems.reduce((s, i) => s + getTierSC(i.tier), 0);
+          const theirSC2 = theirItems.reduce((s, i) => s + getTierSC(i.tier), 0);
+          const v2 = calcSwap(offerSC, theirSC2);
+          const multiItem = offerItems.length > 1;
+
+          return (
+            <>
+              {/* Back row + title */}
+              <View style={s.msgHeader}>
+                <Pressable style={s.backBtn} onPress={() => setStep("select")}>
+                  <Feather name="arrow-left" size={16} color={colors.mutedForeground} />
+                  <Text style={[s.backLabel, { color: colors.mutedForeground }]}>
+                    Back to item selection
+                  </Text>
+                </Pressable>
+                <Text style={[s.msgTitle, { color: colors.foreground }]} numberOfLines={2}>
+                  Request to swap {targetName}
                 </Text>
-              </Pressable>
-              <Text style={[s.msgTitle, { color: colors.foreground }]}>
-                Request to Swap
-              </Text>
-              <Text style={[s.msgSubtitle, { color: colors.mutedForeground }]}>
-                Offering {selectedItemIds.length} item
-                {selectedItemIds.length !== 1 ? "s" : ""} · write a note to the owner
-                (optional)
-              </Text>
-            </View>
+              </View>
 
-            <View style={{ paddingHorizontal: H_PAD, flex: 1 }}>
-              <TextInput
-                style={[
-                  s.msgInput,
-                  {
-                    backgroundColor: colors.muted,
-                    borderColor: colors.border,
-                    color: colors.foreground,
-                  },
-                ]}
-                placeholder="Hi! I'd love to swap for this..."
-                placeholderTextColor={colors.mutedForeground}
-                value={message}
-                onChangeText={setMessage}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={[s.footer, { borderTopColor: colors.border }]}>
-              <Pressable
-                style={[
-                  s.footerBtn,
-                  { borderColor: colors.border, backgroundColor: colors.background },
-                ]}
-                onPress={() => setStep("select")}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingHorizontal: H_PAD, paddingBottom: 12, gap: 14 }}
+                showsVerticalScrollIndicator={false}
               >
-                <Text style={[s.footerBtnLabel, { color: colors.foreground }]}>Back</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  s.footerBtn,
-                  {
+                {/* ── Swap Summary card ── */}
+                <View style={s.summaryCard}>
+                  <View style={s.summaryHeader}>
+                    <ArrowLeftRight size={16} color="#0BB88C" strokeWidth={2} />
+                    <Text style={s.summaryTitle}>Swap Summary</Text>
+                  </View>
+
+                  <View style={s.summaryCols}>
+                    {/* Your side */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={s.summaryColLabel}>You're offering:</Text>
+                      {offerItems.map(oi => {
+                        const uri = itemPhoto(oi);
+                        return (
+                          <View key={oi.id} style={s.summaryItem}>
+                            <View style={s.summaryThumb}>
+                              {uri
+                                ? <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                : <Camera size={10} color="#9ca3af" strokeWidth={1.5} />}
+                            </View>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={[s.summaryItemName, { color: colors.foreground }]} numberOfLines={1}>
+                                {oi.name ?? oi.title}
+                              </Text>
+                              <View style={s.summaryScRow}>
+                                <Coins size={10} color="#0BB88C" strokeWidth={2} />
+                                <Text style={s.summaryScText}>{getTierSC(oi.tier)}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+
+                    <ArrowLeftRight size={18} color={`${PRIMARY}99`} strokeWidth={2} style={{ marginTop: 20, flexShrink: 0 }} />
+
+                    {/* Their side */}
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={s.summaryColLabel}>For their:</Text>
+                      {theirItems.map(ti => {
+                        const uri = itemPhoto(ti as SwapItem);
+                        return (
+                          <View key={ti.id} style={s.summaryItem}>
+                            <View style={s.summaryThumb}>
+                              {uri
+                                ? <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                                : <Camera size={10} color="#9ca3af" strokeWidth={1.5} />}
+                            </View>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <Text style={[s.summaryItemName, { color: colors.foreground }]} numberOfLines={1}>
+                                {(ti as any).name ?? (ti as any).title}
+                              </Text>
+                              <View style={s.summaryScRow}>
+                                <Coins size={10} color="#0BB88C" strokeWidth={2} />
+                                <Text style={s.summaryScText}>{getTierSC(ti.tier)}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* Offset line */}
+                  {!v2.isFair && (
+                    <View style={s.summaryOffset}>
+                      <Coins size={14} color={v2.offsetDirection === "you_pay" ? "#b45309" : "#16a34a"} strokeWidth={2} />
+                      <Text style={[s.summaryOffsetText, {
+                        color: v2.offsetDirection === "you_pay" ? "#b45309" : "#16a34a",
+                      }]}>
+                        {v2.offsetDirection === "you_pay"
+                          ? `You pay ${v2.offset} ShareCoins to balance the swap`
+                          : `You receive ${v2.offset} ShareCoins`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* ── Condition checkbox ── */}
+                <Pressable
+                  style={[s.checkboxRow, { borderColor: colors.border }]}
+                  onPress={() => setConditionConfirmed(v => !v)}
+                >
+                  <View style={[s.checkbox, {
+                    borderColor: conditionConfirmed ? PRIMARY : colors.border,
+                    backgroundColor: conditionConfirmed ? PRIMARY : "transparent",
+                  }]}>
+                    {conditionConfirmed && <Feather name="check" size={11} color="#fff" />}
+                  </View>
+                  <Text style={[s.checkboxLabel, { color: colors.foreground }]}>
+                    I confirm {multiItem ? "these items match" : "this item matches"} the condition stated.
+                  </Text>
+                </Pressable>
+
+                {/* ── Note to owner ── */}
+                <View style={{ gap: 6 }}>
+                  <View style={s.noteLabelRow}>
+                    <Text style={[s.noteLabel, { color: colors.foreground }]}>
+                      Note to owner{" "}
+                      <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>(optional)</Text>
+                    </Text>
+                    <Text style={[s.noteCounter, {
+                      color: message.length > 120 ? "#f97316" : colors.mutedForeground,
+                    }]}>
+                      {message.length}/140
+                    </Text>
+                  </View>
+                  <TextInput
+                    style={[s.msgInput, {
+                      backgroundColor: colors.muted,
+                      borderColor: colors.border,
+                      color: colors.foreground,
+                    }]}
+                    placeholder="Anything the owner should know?"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={message}
+                    onChangeText={setMessage}
+                    maxLength={140}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </ScrollView>
+
+              <View style={[s.footer, { borderTopColor: colors.border }]}>
+                <Pressable
+                  style={[s.footerBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+                  onPress={() => setStep("select")}
+                >
+                  <Text style={[s.footerBtnLabel, { color: colors.foreground }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.footerBtn, {
                     backgroundColor: PRIMARY,
                     borderColor: "transparent",
                     opacity: sending ? 0.7 : 1,
-                  },
-                ]}
-                onPress={handleSend}
-                disabled={sending}
-              >
-                {sending ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <Feather name="send" size={14} color="#fff" />
-                    <Text style={[s.footerBtnLabel, { color: "#fff" }]}>
-                      Send Request
-                    </Text>
-                  </>
-                )}
-              </Pressable>
-            </View>
-          </>
-        )}
+                  }]}
+                  onPress={handleSend}
+                  disabled={sending}
+                >
+                  {sending ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Feather name="send" size={14} color="#fff" />
+                      <Text style={[s.footerBtnLabel, { color: "#fff" }]}>Send Request</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            </>
+          );
+        })()}
       </View>
     </Modal>
   );
@@ -813,14 +920,119 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   backLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
-  msgTitle: { fontSize: 18, fontFamily: "Inter_700Bold", marginBottom: 4 },
-  msgSubtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 16 },
+  msgTitle: { fontSize: 17, fontFamily: "Inter_700Bold", marginBottom: 4, lineHeight: 22 },
   msgInput: {
     borderRadius: 10,
     borderWidth: 1,
     padding: 12,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    minHeight: 100,
+    minHeight: 80,
   },
+  // Swap Summary card
+  summaryCard: {
+    backgroundColor: "#E6FBF5",
+    borderWidth: 1,
+    borderColor: "rgba(13,206,161,0.3)",
+    borderRadius: 10,
+    padding: 14,
+    gap: 12,
+  },
+  summaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#0BB88C",
+  },
+  summaryCols: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  summaryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  summaryThumb: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: "#e5e7eb",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  summaryColLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#0DCEA1",
+    marginBottom: 8,
+  },
+  summaryItemName: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 14,
+  },
+  summaryScRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: 1,
+  },
+  summaryScText: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    color: "#0BB88C",
+  },
+  summaryOffset: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingTop: 4,
+  },
+  summaryOffsetText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+  // Condition checkbox
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  checkboxLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+    lineHeight: 18,
+  },
+  // Note to owner
+  noteLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  noteLabel: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  noteCounter: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });

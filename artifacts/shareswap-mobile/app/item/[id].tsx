@@ -719,7 +719,7 @@ export default function ItemDetailScreen() {
               </View>
               {conditionLabel ? (
                 <View style={[styles.metaChip, { alignSelf: "flex-start", backgroundColor: colors.muted, borderColor: colors.border }]}>
-                  <Text style={[styles.metaText, { color: colors.mutedForeground, fontFamily: "Inter_700Bold" }]}>
+                  <Text style={[styles.metaText, { color: colors.foreground, fontFamily: "Inter_700Bold" }]}>
                     {item.conditionRating != null ? `Condition: ${conditionLabel}` : conditionLabel}
                   </Text>
                 </View>

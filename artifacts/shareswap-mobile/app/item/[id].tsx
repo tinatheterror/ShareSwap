@@ -602,7 +602,7 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingSwap
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Request Swap", <ArrowLeftRight size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("SWAP"), colors.primary, hasAnyPending)
+              : renderActionBtn("Request to Swap", <ArrowLeftRight size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("SWAP"), colors.primary, hasAnyPending)
           )}
         </View>,
       );

@@ -715,37 +715,22 @@ export default function ItemDetailScreen() {
             </View>
           ) : null}
 
-          {/* Owner card */}
+          {/* Shared by */}
           {item.owner ? (
-            <Pressable
-              style={[styles.ownerCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.push(`/profile/${item.owner!.id}`)}
-            >
-              <View style={[styles.ownerAvatar, { backgroundColor: colors.primary + "30" }]}>
-                <Text style={[styles.ownerAvatarText, { color: colors.primary }]}>
-                  {(item.owner.displayName ?? item.owner.username ?? "?").charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <View style={styles.ownerInfo}>
-                <Text style={[styles.ownerName, { color: colors.foreground }]}>
+            <View style={styles.sharedByRow}>
+              <Text style={[styles.sharedByLabel, { color: colors.mutedForeground }]}>Shared by</Text>
+              <Pressable
+                style={styles.sharedByName}
+                onPress={() => router.push(`/profile/${item.owner!.id}`)}
+              >
+                <Text style={[styles.sharedByNameText, { color: colors.primary }]}>
                   {item.owner.displayName ?? item.owner.username}
                 </Text>
-                {(item.owner as any).trustScore ? (
-                  <View style={styles.trustRow}>
-                    <Feather name="shield" size={12} color={colors.primary} />
-                    <Text style={[styles.trustText, { color: colors.primary }]}>
-                      Trust score {(item.owner as any).trustScore}
-                    </Text>
-                    {(item.owner as any).trustLevel ? (
-                      <Text style={[styles.levelText, { color: colors.mutedForeground }]}>
-                        · {(item.owner as any).trustLevel}
-                      </Text>
-                    ) : null}
-                  </View>
+                {(item.owner as any).isVerified ? (
+                  <Feather name="check-circle" size={15} color={colors.primary} />
                 ) : null}
-              </View>
-              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </Pressable>
+              </Pressable>
+            </View>
           ) : null}
 
           {/* Action section */}
@@ -777,17 +762,10 @@ const styles = StyleSheet.create({
   rulesBox: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 6 },
   rulesTitle: { fontSize: 13, fontFamily: "Inter_700Bold", textTransform: "uppercase", letterSpacing: 0.5 },
   rulesText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  ownerCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    borderRadius: 14, borderWidth: 1, padding: 14,
-  },
-  ownerAvatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  ownerAvatarText: { fontSize: 18, fontFamily: "Inter_700Bold" },
-  ownerInfo: { flex: 1, gap: 4 },
-  ownerName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  trustRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  trustText: { fontSize: 12, fontFamily: "Inter_500Medium" },
-  levelText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  sharedByRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  sharedByLabel: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  sharedByName: { flexDirection: "row", alignItems: "center", gap: 5 },
+  sharedByNameText: { fontSize: 14, fontFamily: "Inter_700Bold" },
   actionSection: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
 
   // Type rows (borrow/rent/swap/gift)

@@ -719,8 +719,7 @@ export default function ItemDetailScreen() {
               </View>
               {conditionLabel ? (
                 <View style={[styles.metaChip, { alignSelf: "flex-start", backgroundColor: colors.muted, borderColor: colors.border }]}>
-                  <Feather name="star" size={12} color={colors.mutedForeground} />
-                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                  <Text style={[styles.metaText, { color: colors.mutedForeground, fontFamily: "Inter_700Bold" }]}>
                     {item.conditionRating != null ? `Condition: ${conditionLabel}` : conditionLabel}
                   </Text>
                 </View>

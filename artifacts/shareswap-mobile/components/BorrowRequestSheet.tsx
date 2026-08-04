@@ -176,7 +176,8 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   );
   const hasDeposit = hasValidReplacementValue(targetItem.replacementValue);
   const processingFee = (depositCalc.finalDeposit * 0.03).toFixed(2);
-  const canSubmit = !hasDeposit || replacementValueAcknowledged;
+  const datesSelected = startDateObj !== null && endDateObj !== null;
+  const canSubmit = datesSelected && (!hasDeposit || replacementValueAcknowledged);
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
   // ── Submit ─────────────────────────────────────────────────────────────────

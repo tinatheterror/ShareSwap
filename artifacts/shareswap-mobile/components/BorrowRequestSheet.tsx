@@ -3,13 +3,14 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Feather } from "@expo/vector-icons";
 import { Calendar, Coins, Shield, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,17 +61,18 @@ function hasValidReplacementValue(val: any): boolean {
   return val !== null && val !== undefined && Number(val) > 0;
 }
 
-function todayStr(): string {
-  const d = new Date();
+function toApiStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function calcBorrowDays(start: string, end: string): number {
-  if (!start || !end || start.length < 10 || end.length < 10) return 0;
-  const s = new Date(start + "T00:00:00");
-  const e = new Date(end + "T00:00:00");
-  if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
-  return Math.max(0, Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)));
+function toDisplayStr(d: Date): string {
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function calcBorrowDaysFromDates(start: Date | null, end: Date | null): number {
+  if (!start || !end) return 0;
+  const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diff);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -108,8 +110,10 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDateObj, setStartDateObj] = useState<Date | null>(null);
+  const [endDateObj, setEndDateObj] = useState<Date | null>(null);
+  // "start" | "end" = picker open on iOS (shown inline); null = closed
+  const [activePicker, setActivePicker] = useState<"start" | "end" | null>(null);
   const [depositMethod, setDepositMethod] = useState<"in_app" | "in_person">("in_app");
   const [replacementValueAcknowledged, setReplacementValueAcknowledged] = useState(false);
   const [message, setMessage] = useState("");
@@ -117,8 +121,9 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
 
   useEffect(() => {
     if (isOpen) {
-      setStartDate("");
-      setEndDate("");
+      setStartDateObj(null);
+      setEndDateObj(null);
+      setActivePicker(null);
       setDepositMethod("in_app");
       setReplacementValueAcknowledged(false);
       setMessage("");
@@ -126,8 +131,37 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
     }
   }, [isOpen]);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  function onDateChange(event: DateTimePickerEvent, selected?: Date) {
+    if (Platform.OS === "android") {
+      // Android: picker dismisses itself after any interaction
+      if (event.type === "set" && selected) {
+        if (activePicker === "start") {
+          setStartDateObj(selected);
+          // Auto-clear end if it's now before start
+          if (endDateObj && endDateObj <= selected) setEndDateObj(null);
+        } else if (activePicker === "end") {
+          setEndDateObj(selected);
+        }
+      }
+      setActivePicker(null);
+    } else {
+      // iOS: picker is always visible while open; update on every scroll
+      if (selected) {
+        if (activePicker === "start") {
+          setStartDateObj(selected);
+          if (endDateObj && endDateObj <= selected) setEndDateObj(null);
+        } else if (activePicker === "end") {
+          setEndDateObj(selected);
+        }
+      }
+    }
+  }
+
   // ── Computed values ────────────────────────────────────────────────────────
-  const borrowDays = calcBorrowDays(startDate, endDate);
+  const borrowDays = calcBorrowDaysFromDates(startDateObj, endDateObj);
   const weeklyPrice = parseFloat(String(targetItem.shareCoinPrice ?? 0)) || 5;
   const proratedCost = borrowDays > 0
     ? Math.max(1, Math.ceil((weeklyPrice / 7) * borrowDays))
@@ -157,7 +191,13 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
     }
     setSending(true);
     try {
-      await onConfirm({ startDate, endDate, depositMethod, replacementValueAcknowledged, message: message.trim() });
+      await onConfirm({
+        startDate: startDateObj ? toApiStr(startDateObj) : "",
+        endDate: endDateObj ? toApiStr(endDateObj) : "",
+        depositMethod,
+        replacementValueAcknowledged,
+        message: message.trim(),
+      });
     } catch {
       // Parent handles specific error alerts / navigation
     } finally {
@@ -195,33 +235,77 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
               <Text style={[s.dateLabelText, { color: colors.foreground }]}>Return Date</Text>
             </View>
             <View style={s.dateRow}>
-              <TextInput
-                style={[s.dateInput, {
-                  borderColor: colors.border,
-                  color: colors.foreground,
+              {/* Start date button */}
+              <Pressable
+                style={[s.datePressable, {
+                  borderColor: activePicker === "start" ? PRIMARY : colors.border,
                   backgroundColor: colors.background,
                 }]}
-                placeholder={todayStr()}
-                placeholderTextColor={colors.mutedForeground}
-                value={startDate}
-                onChangeText={setStartDate}
-                keyboardType="numbers-and-punctuation"
-                maxLength={10}
-              />
-              <TextInput
-                style={[s.dateInput, {
-                  borderColor: colors.border,
-                  color: colors.foreground,
+                onPress={() => setActivePicker(activePicker === "start" ? null : "start")}
+              >
+                <Calendar size={13} color={activePicker === "start" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                <Text style={[s.datePressableText, {
+                  color: startDateObj ? colors.foreground : colors.mutedForeground,
+                }]}>
+                  {startDateObj ? toDisplayStr(startDateObj) : "Select date"}
+                </Text>
+              </Pressable>
+
+              {/* Return date button */}
+              <Pressable
+                style={[s.datePressable, {
+                  borderColor: activePicker === "end" ? PRIMARY : colors.border,
                   backgroundColor: colors.background,
                 }]}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.mutedForeground}
-                value={endDate}
-                onChangeText={setEndDate}
-                keyboardType="numbers-and-punctuation"
-                maxLength={10}
-              />
+                onPress={() => setActivePicker(activePicker === "end" ? null : "end")}
+              >
+                <Calendar size={13} color={activePicker === "end" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                <Text style={[s.datePressableText, {
+                  color: endDateObj ? colors.foreground : colors.mutedForeground,
+                }]}>
+                  {endDateObj ? toDisplayStr(endDateObj) : "Select date"}
+                </Text>
+              </Pressable>
             </View>
+
+            {/* Android: DateTimePicker renders as a native dialog when activePicker is set */}
+            {Platform.OS === "android" && activePicker !== null && (
+              <DateTimePicker
+                value={
+                  activePicker === "start"
+                    ? (startDateObj ?? today)
+                    : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today))
+                }
+                mode="date"
+                minimumDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
+                onChange={onDateChange}
+              />
+            )}
+
+            {/* iOS: inline date picker shown below buttons */}
+            {Platform.OS === "ios" && activePicker !== null && (
+              <View style={[s.iosPickerWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                <DateTimePicker
+                  value={
+                    activePicker === "start"
+                      ? (startDateObj ?? today)
+                      : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today))
+                  }
+                  mode="date"
+                  display="spinner"
+                  minimumDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
+                  onChange={onDateChange}
+                  style={{ height: 140 }}
+                  textColor={colors.foreground}
+                />
+                <Pressable
+                  style={[s.iosPickerDone, { backgroundColor: PRIMARY }]}
+                  onPress={() => setActivePicker(null)}
+                >
+                  <Text style={s.iosPickerDoneText}>Done</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
 
           {/* ── Cost Breakdown ── */}
@@ -487,10 +571,20 @@ const s = StyleSheet.create({
   dateLabelLeft: { flexDirection: "row", alignItems: "center", gap: 4 },
   dateLabelText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   dateRow: { flexDirection: "row", gap: 10 },
-  dateInput: {
-    flex: 1, borderWidth: 1, borderRadius: 10,
-    paddingHorizontal: 12, paddingVertical: 12,
-    fontSize: 13, fontFamily: "Inter_400Regular",
+  datePressable: {
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 6,
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 11, paddingVertical: 12,
+  },
+  datePressableText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
+  iosPickerWrap: {
+    marginTop: 8, borderWidth: 1, borderRadius: 12, overflow: "hidden",
+  },
+  iosPickerDone: {
+    alignItems: "center", paddingVertical: 10,
+  },
+  iosPickerDoneText: {
+    color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold",
   },
   // Cards
   grayCard: { borderWidth: 1, borderRadius: 10, padding: 12 },

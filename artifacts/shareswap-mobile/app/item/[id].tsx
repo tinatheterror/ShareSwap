@@ -673,7 +673,7 @@ export default function ItemDetailScreen() {
 
         <View style={styles.content}>
           {/* Title */}
-          <Text style={[styles.title, { color: colors.foreground }]}>{item.title}</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>{item.name ?? item.title}</Text>
 
           {/* Meta chips */}
           <View style={styles.metaRow}>

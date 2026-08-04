@@ -31,7 +31,7 @@ import { UserBadges } from "@/components/user-badges";
 import { getSwapTierLabel, getTierShareCoins } from "@/lib/swap-calculator";
 
 const TIER_SUBTITLES: Record<number, string> = {
-  1: "Budget Friendly",
+  1: "Budget Friendly Item",
   2: "Everyday Item",
   3: "Premium Item",
   4: "High Value Item",
@@ -330,6 +330,7 @@ export default function ItemDetailsPage() {
           <div>
             <p className="font-medium">Swap</p>
             <div className="flex items-center gap-1 mb-1">
+              <span className="text-sm text-muted-foreground">Swap Value:</span>
               <ArrowLeftRight className="h-4 w-4 text-teal-700" />
               <TooltipProvider delayDuration={0}>
                 <Tooltip>

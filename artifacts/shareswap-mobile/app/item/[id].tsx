@@ -28,6 +28,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Item } from "@/components/ItemCard";
 import { VerificationGateModal } from "@/components/VerificationGateModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { SwapInventorySelector } from "@/components/SwapInventorySelector";
 
 type RequestType = "BORROW" | "RENT" | "SWAP" | "GIFT";
 
@@ -90,6 +91,7 @@ export default function ItemDetailScreen() {
   const isWeb = Platform.OS === "web";
 
   const [activeRequestType, setActiveRequestType] = useState<RequestType | null>(null);
+  const [showSwapSelector, setShowSwapSelector] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [showVerifModal, setShowVerifModal] = useState(false);
@@ -170,7 +172,10 @@ export default function ItemDetailScreen() {
     },
   });
 
-  async function handleSendRequest(type: RequestType) {
+  async function handleSendRequest(
+    type: RequestType,
+    swapData?: { offeredItemIds: number[]; requestedOwnerItemIds: number[]; message: string },
+  ) {
     if (!user) {
       Alert.alert("Sign in required", "Please sign in to request this item.", [
         { text: "Cancel" },
@@ -178,7 +183,8 @@ export default function ItemDetailScreen() {
       ]);
       return;
     }
-    if (type !== "GIFT" && !message.trim()) {
+    const msgToSend = swapData?.message ?? message.trim();
+    if (type !== "GIFT" && type !== "SWAP" && !msgToSend) {
       Alert.alert("Add a message", "Please write a short message to the owner.");
       return;
     }
@@ -186,10 +192,17 @@ export default function ItemDetailScreen() {
     try {
       await apiPost(`/api/items/${id}/request`, {
         requestType: type,
-        message: message.trim(),
+        message: msgToSend,
+        ...(type === "SWAP" && swapData
+          ? {
+              swapOfferedItemIds: swapData.offeredItemIds,
+              swapRequestedItemIds: swapData.requestedOwnerItemIds,
+            }
+          : {}),
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setActiveRequestType(null);
+      setShowSwapSelector(false);
       setMessage("");
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/conversations"] });
@@ -602,7 +615,16 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingSwap
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Request to Swap", <ArrowLeftRight size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("SWAP"), colors.primary, hasAnyPending)
+              : renderActionBtn("Request to Swap", <ArrowLeftRight size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => {
+                  if (!user) {
+                    Alert.alert("Sign in required", "Please sign in to request this item.", [
+                      { text: "Cancel" },
+                      { text: "Sign In", onPress: () => router.push("/login") },
+                    ]);
+                    return;
+                  }
+                  setShowSwapSelector(true);
+                }, colors.primary, hasAnyPending)
           )}
         </View>,
       );
@@ -644,6 +666,21 @@ export default function ItemDetailScreen() {
         onClose={() => setLightboxVisible(false)}
       />
       {renderRequestModal()}
+      <SwapInventorySelector
+        targetItem={{
+          id: item.id,
+          name: item.name ?? item.title,
+          photos: item.photos,
+          imageUrl: item.imageUrl,
+          tier: item.tier,
+          ownerId: item.ownerId ?? item.owner?.id,
+        }}
+        isOpen={showSwapSelector}
+        onClose={() => setShowSwapSelector(false)}
+        onConfirm={async (offeredItemIds, requestedOwnerItemIds, msg) => {
+          await handleSendRequest("SWAP", { offeredItemIds, requestedOwnerItemIds, message: msg });
+        }}
+      />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + (isWeb ? 34 : 0) + 100 }}

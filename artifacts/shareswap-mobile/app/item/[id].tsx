@@ -97,6 +97,7 @@ export default function ItemDetailScreen() {
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [showSwapTooltip, setShowSwapTooltip] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
 
   function openLightbox(index: number) {
@@ -260,7 +261,9 @@ export default function ItemDetailScreen() {
   const rentPerWeek = Number(item.dollarsPrice || 0).toFixed(0);
   const deposit = Number(item.securityDeposit || 0).toFixed(0);
   const TIER_LABELS: Record<number, string> = { 1: "Budget Friendly Item", 2: "Everyday Household Item", 3: "Premium Item", 4: "High Value Item" };
+  const TIER_COINS: Record<number, number> = { 1: 5, 2: 10, 3: 20, 4: 40 };
   const tierLabel = item.tier ? (TIER_LABELS[item.tier] ?? `Tier ${item.tier}`) : null;
+  const tierCoins = item.tier ? (TIER_COINS[item.tier] ?? 5) : null;
 
   // ─── Request modal ───────────────────────────────────────────────────────────
   function renderRequestModal() {
@@ -569,23 +572,30 @@ export default function ItemDetailScreen() {
           <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Swap</Text>
           {tierLabel ? (
             <View style={styles.swapValueRow}>
-              <ArrowLeftRight size={14} color={colors.mutedForeground} strokeWidth={2} />
               <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>Swap Value:</Text>
-              <View style={[styles.swapValueChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <ArrowLeftRight size={13} color={colors.mutedForeground} strokeWidth={2} />
+              <Pressable
+                style={[styles.swapValueChip, { backgroundColor: colors.muted, borderColor: colors.border }]}
+                onPress={() => setShowSwapTooltip(v => !v)}
+              >
                 <Coins size={12} color={colors.primary} strokeWidth={2} />
-                <Text style={[styles.swapValueChipText, { color: colors.foreground }]}>{tierLabel}</Text>
-              </View>
+                <Text style={[styles.swapValueChipText, { color: colors.foreground }]}>
+                  {tierLabel}: {tierCoins}
+                </Text>
+                <Feather name="info" size={11} color={colors.mutedForeground} />
+              </Pressable>
             </View>
+          ) : null}
+          {showSwapTooltip ? (
+            <Text style={[styles.swapTooltip, { color: colors.mutedForeground, backgroundColor: colors.muted }]}>
+              Any item combination is allowed — ShareCoins cover the difference in value.
+            </Text>
           ) : null}
           {item.swapDesiredItem ? (
             <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
               Looking for: {item.swapDesiredItem}
             </Text>
-          ) : (
-            <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-              Offer something in exchange
-            </Text>
-          )}
+          ) : null}
           {!ownerView && (
             hasPendingSwap
               ? renderPendingBtn("Request Pending")
@@ -789,6 +799,7 @@ const styles = StyleSheet.create({
   swapValueRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   swapValueChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
   swapValueChipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  swapTooltip: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17, padding: 8, borderRadius: 8 },
 
   // Buttons
   actionBtn: {

@@ -672,8 +672,13 @@ export default function ItemDetailScreen() {
         )}
 
         <View style={styles.content}>
-          {/* Title */}
-          <Text style={[styles.title, { color: colors.foreground }]}>{item.name ?? item.title}</Text>
+          {/* Title + Description */}
+          <View style={{ gap: 4 }}>
+            <Text style={[styles.title, { color: colors.foreground }]}>{item.name ?? item.title}</Text>
+            {item.description ? (
+              <Text style={[styles.description, { color: colors.foreground }]}>{item.description}</Text>
+            ) : null}
+          </View>
 
           {/* Meta chips — location only */}
           {(item.neighbourhood ?? item.location) ? (
@@ -685,11 +690,6 @@ export default function ItemDetailScreen() {
                 </Text>
               </View>
             </View>
-          ) : null}
-
-          {/* Description */}
-          {item.description ? (
-            <Text style={[styles.description, { color: colors.foreground }]}>{item.description}</Text>
           ) : null}
 
           {/* Rules */}

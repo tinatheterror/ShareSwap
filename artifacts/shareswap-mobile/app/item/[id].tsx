@@ -578,9 +578,12 @@ export default function ItemDetailScreen() {
                 style={[styles.swapValueChip, { backgroundColor: colors.muted, borderColor: colors.border }]}
                 onPress={() => setShowSwapTooltip(v => !v)}
               >
+                <Text style={[styles.swapValueChipText, { color: colors.foreground }]}>
+                  {tierLabel}:{" "}
+                </Text>
                 <Coins size={12} color={colors.primary} strokeWidth={2} />
                 <Text style={[styles.swapValueChipText, { color: colors.foreground }]}>
-                  {tierLabel}: {tierCoins}
+                  {" "}{tierCoins}
                 </Text>
                 <Feather name="info" size={11} color={colors.mutedForeground} />
               </Pressable>

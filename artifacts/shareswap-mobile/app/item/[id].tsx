@@ -29,6 +29,7 @@ import { Item } from "@/components/ItemCard";
 import { VerificationGateModal } from "@/components/VerificationGateModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { SwapInventorySelector } from "@/components/SwapInventorySelector";
+import { BorrowRequestSheet, BorrowRequestData } from "@/components/BorrowRequestSheet";
 
 type RequestType = "BORROW" | "RENT" | "SWAP" | "GIFT";
 
@@ -92,6 +93,7 @@ export default function ItemDetailScreen() {
 
   const [activeRequestType, setActiveRequestType] = useState<RequestType | null>(null);
   const [showSwapSelector, setShowSwapSelector] = useState(false);
+  const [showBorrowSheet, setShowBorrowSheet] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [showVerifModal, setShowVerifModal] = useState(false);
@@ -175,6 +177,7 @@ export default function ItemDetailScreen() {
   async function handleSendRequest(
     type: RequestType,
     swapData?: { offeredItemIds: number[]; requestedOwnerItemIds: number[]; message: string },
+    borrowData?: BorrowRequestData,
   ) {
     if (!user) {
       Alert.alert("Sign in required", "Please sign in to request this item.", [
@@ -183,8 +186,8 @@ export default function ItemDetailScreen() {
       ]);
       return;
     }
-    const msgToSend = swapData?.message ?? message.trim();
-    if (type !== "GIFT" && type !== "SWAP" && !msgToSend) {
+    const msgToSend = swapData?.message ?? borrowData?.message ?? message.trim();
+    if (type !== "GIFT" && type !== "SWAP" && type !== "BORROW" && !msgToSend) {
       Alert.alert("Add a message", "Please write a short message to the owner.");
       return;
     }
@@ -199,10 +202,20 @@ export default function ItemDetailScreen() {
               swapRequestedItemIds: swapData.requestedOwnerItemIds,
             }
           : {}),
+        ...(type === "BORROW" && borrowData
+          ? {
+              startDate: borrowData.startDate || undefined,
+              endDate: borrowData.endDate || undefined,
+              depositMethod: borrowData.depositMethod,
+              replacementValueAcknowledged: borrowData.replacementValueAcknowledged,
+              deliveryMethod: "in_person",
+            }
+          : {}),
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setActiveRequestType(null);
       setShowSwapSelector(false);
+      setShowBorrowSheet(false);
       setMessage("");
       qc.invalidateQueries({ queryKey: ["/api/requests"] });
       qc.invalidateQueries({ queryKey: ["/api/conversations"] });
@@ -554,7 +567,22 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingBorrow
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Request to Borrow", <HandHeart size={15} color={hasAnyPending || !item.replacementValue ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("BORROW"), colors.primary, hasAnyPending || !item.replacementValue)
+              : renderActionBtn(
+                  "Request to Borrow",
+                  <HandHeart size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />,
+                  () => {
+                    if (!user) {
+                      Alert.alert("Sign in required", "Please sign in to borrow this item.", [
+                        { text: "Cancel" },
+                        { text: "Sign In", onPress: () => router.push("/login") },
+                      ]);
+                      return;
+                    }
+                    setShowBorrowSheet(true);
+                  },
+                  colors.primary,
+                  hasAnyPending,
+                )
           )}
         </View>,
       );
@@ -679,6 +707,21 @@ export default function ItemDetailScreen() {
         onClose={() => setShowSwapSelector(false)}
         onConfirm={async (offeredItemIds, requestedOwnerItemIds, msg) => {
           await handleSendRequest("SWAP", { offeredItemIds, requestedOwnerItemIds, message: msg });
+        }}
+      />
+      <BorrowRequestSheet
+        targetItem={{
+          id: item.id,
+          name: item.name ?? item.title,
+          shareCoinPrice: (item as any).shareCoinPrice,
+          replacementValue: item.replacementValue,
+          tier: item.tier,
+          originalValue: (item as any).originalValue,
+        }}
+        isOpen={showBorrowSheet}
+        onClose={() => setShowBorrowSheet(false)}
+        onConfirm={async (borrowData) => {
+          await handleSendRequest("BORROW", undefined, borrowData);
         }}
       />
 

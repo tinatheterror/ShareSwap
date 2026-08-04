@@ -501,7 +501,7 @@ export default function ItemDetailScreen() {
                 onPress={() => wishlistMutation.mutate()}
                 disabled={wishlistMutation.isPending}
               >
-                <Feather name="bookmark-plus" size={15} color={colors.primary} />
+                <Feather name="bookmark" size={15} color={colors.primary} />
                 <Text style={[styles.wishlistBtnText, { color: colors.primary }]}>Add to Wishlist</Text>
               </Pressable>
               <Text style={[styles.notifyHint, { color: colors.mutedForeground }]}>

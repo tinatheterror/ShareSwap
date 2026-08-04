@@ -5,10 +5,13 @@ import * as Haptics from "expo-haptics";
 import React, { useState, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
+  Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,10 +19,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { Shield, Coins, Calendar } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
-import { apiGet, apiPost, photoUrl } from "@/lib/api";
+import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
   id: number;
   content: string;
@@ -40,6 +45,47 @@ interface PublicProfile {
   responseTime: string | null;
 }
 
+interface RequestItem {
+  id: number;
+  name: string | null;
+  photos: string[] | null;
+  ownerId: number | null;
+  shareCoinPrice: number | null;
+  tier: number | null;
+  replacementValue: number | null;
+  originalValue: string | null;
+}
+
+interface ItemRequest {
+  id: number;
+  requestType: string;
+  status: string;
+  requesterId: number;
+  startDate: string | null;
+  endDate: string | null;
+  depositMethod: string | null;
+  deliveryMethod: string | null;
+  message: string | null;
+  negotiationStatus: string | null;
+  counterProposedBy: number | null;
+  counterStartDate: string | null;
+  counterEndDate: string | null;
+  counterDepositMethod: string | null;
+  trustDepositAmount: number | null;
+  trustDepositBaseAmount: number | null;
+  trustDiscountPercentage: number | null;
+  shareCoinAmount: number | null;
+  depositStatus: string | null;
+  item: RequestItem | null;
+}
+
+interface PinData {
+  pin: string | null;
+  expired: boolean;
+  pinUsed: boolean;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function getActiveStatus(lastActiveAt: string | null): { label: string; isNow: boolean } | null {
   if (!lastActiveAt) return null;
   const diff = Date.now() - new Date(lastActiveAt).getTime();
@@ -55,12 +101,7 @@ function getActiveStatus(lastActiveAt: string | null): { label: string; isNow: b
 
 function getInitials(displayName: string | null, username: string): string {
   const name = displayName || username;
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
+  return name.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
 function timeAgo(dateStr: string): string {
@@ -70,27 +111,53 @@ function timeAgo(dateStr: string): string {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return new Date(dateStr).toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-  });
+  return new Date(dateStr).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return "–";
+  return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+type StatusInfo = { label: string; color: string; bg: string };
+function getStatusInfo(status: string): StatusInfo {
+  switch (status) {
+    case "PENDING":              return { label: "Pending",           color: "#92400e", bg: "#fef3c7" };
+    case "ACCEPTED":             return { label: "Accepted",          color: "#1d4ed8", bg: "#dbeafe" };
+    case "DEPOSIT_CONFIRMED":    return { label: "Ready to hand off", color: "#0369a1", bg: "#e0f2fe" };
+    case "AWAITING_HANDOFF_CONFIRM": return { label: "Awaiting handoff", color: "#0369a1", bg: "#e0f2fe" };
+    case "IN_PROGRESS":          return { label: "In progress",       color: "#0f766e", bg: "#ccfbf1" };
+    case "RETURN_REQUESTED":     return { label: "Return requested",  color: "#7e22ce", bg: "#f3e8ff" };
+    case "COMPLETED":
+    case "COMPLETED_EARLY":      return { label: "Completed ✓",      color: "#15803d", bg: "#dcfce7" };
+    case "DECLINED":             return { label: "Declined",          color: "#991b1b", bg: "#fee2e2" };
+    case "CANCELLED":            return { label: "Cancelled",         color: "#6b7280", bg: "#f3f4f6" };
+    case "DISPUTED":             return { label: "Disputed ⚠️",      color: "#c2410c", bg: "#ffedd5" };
+    default:                     return { label: status.replace(/_/g, " "), color: "#374151", bg: "#f3f4f6" };
+  }
+}
+
+const PRIMARY = "#0DCEA1";
+const TERMINAL = ["COMPLETED", "COMPLETED_EARLY", "DECLINED", "CANCELLED", "DISPUTED"];
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function ChatScreen() {
-  const { id, requestId } = useLocalSearchParams<{
-    id: string;
-    requestId?: string;
-  }>();
+  const { id, requestId } = useLocalSearchParams<{ id: string; requestId?: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const qc = useQueryClient();
   const router = useRouter();
   const isWeb = Platform.OS === "web";
-
-  const [text, setText] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
+  const [text, setText] = useState("");
+  const [showPinEntry, setShowPinEntry] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [ownerPin, setOwnerPin] = useState<PinData | null>(null);
+  const [pinFetching, setPinFetching] = useState(false);
+
+  // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: partner } = useQuery<PublicProfile>({
     queryKey: [`/api/users/${id}/public-profile`],
     queryFn: () => apiGet<PublicProfile>(`/api/users/${id}/public-profile`),
@@ -108,36 +175,488 @@ export default function ChatScreen() {
     refetchInterval: 5000,
   });
 
-  const sendMutation = useMutation({
-    mutationFn: (content: string) =>
-      apiPost(`/api/messages`, {
-        receiverId: parseInt(id ?? "0"),
-        content,
-        ...(requestId ? { requestId: parseInt(requestId) } : {}),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: [`/api/messages/${id}`, requestId ?? null],
-      });
-      qc.invalidateQueries({ queryKey: ["/api/inbox"] });
-      setText("");
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    },
+  const { data: allRequests } = useQuery<ItemRequest[]>({
+    queryKey: ["/api/requests"],
+    queryFn: () => apiGet<ItemRequest[]>("/api/requests"),
+    enabled: !!requestId,
+    refetchInterval: 8000,
   });
 
-  async function handleSend() {
-    const trimmed = text.trim();
-    if (!trimmed || sendMutation.isPending) return;
-    sendMutation.mutate(trimmed);
+  const reqId = requestId ? parseInt(requestId) : null;
+  const request = reqId ? (allRequests?.find((r) => r.id === reqId) ?? null) : null;
+  const isOwner = !!(request && request.item?.ownerId === user?.id);
+  const isBorrower = !!(request && request.requesterId === user?.id);
+  // Counter proposed to ME (I must respond)
+  const hasPendingCounter =
+    request?.negotiationStatus === "counter_proposed" &&
+    request.counterProposedBy !== null &&
+    request.counterProposedBy !== user?.id;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ["/api/requests"] });
+    qc.invalidateQueries({ queryKey: [`/api/messages/${id}`, requestId ?? null] });
+    qc.invalidateQueries({ queryKey: ["/api/inbox"] });
   }
 
+  async function loadOwnerPin() {
+    if (!requestId) return;
+    setPinFetching(true);
+    try {
+      const data = await apiGet<PinData>(`/api/requests/${requestId}/handoff-pin`);
+      setOwnerPin(data);
+    } catch (e: unknown) {
+      Alert.alert("Error", (e as Error).message ?? "Could not load PIN");
+    } finally {
+      setPinFetching(false);
+    }
+  }
+
+  // ── Mutations ─────────────────────────────────────────────────────────────────
+  const acceptMutation = useMutation({
+    mutationFn: () => apiPatch(`/api/requests/${requestId}`, { status: "ACCEPTED" }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidateAll();
+    },
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const declineMutation = useMutation({
+    mutationFn: () => apiPatch(`/api/requests/${requestId}`, { status: "DECLINED" }),
+    onSuccess: () => invalidateAll(),
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => apiPost(`/api/requests/${requestId}/cancel`),
+    onSuccess: () => invalidateAll(),
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const acceptCounterMutation = useMutation({
+    mutationFn: () => apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidateAll();
+    },
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const declineCounterMutation = useMutation({
+    mutationFn: () => apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: false }),
+    onSuccess: () => invalidateAll(),
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const verifyPinMutation = useMutation({
+    mutationFn: (pin: string) =>
+      apiPost(`/api/requests/${requestId}/verify-pin`, { pin }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowPinEntry(false);
+      setPinInput("");
+      invalidateAll();
+    },
+    onError: (e: Error) => Alert.alert("Incorrect PIN", e.message),
+  });
+
+  const returnMutation = useMutation({
+    mutationFn: () => apiPost(`/api/requests/${requestId}/return`),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidateAll();
+    },
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const confirmReturnMutation = useMutation({
+    mutationFn: () =>
+      apiPost(`/api/requests/${requestId}/confirm-return`, { sameCondition: true }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidateAll();
+    },
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  function handleReturnPress() {
+    Alert.alert(
+      "Return item?",
+      "This will notify the owner that you've returned the item. Confirm?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, return it",
+          onPress: () => returnMutation.mutate(),
+        },
+      ],
+    );
+  }
+
+  function handleConfirmReturn() {
+    Alert.alert(
+      "Confirm item returned?",
+      "Did you receive the item back in good condition? The borrower's deposit will be released.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: () => confirmReturnMutation.mutate(),
+        },
+      ],
+    );
+  }
+
+  // ── Request card ─────────────────────────────────────────────────────────────
+  function renderRequestCard() {
+    if (!request) return null;
+
+    const { status } = request;
+    const statusInfo = getStatusInfo(status);
+    const itemName = request.item?.name ?? "Item";
+    const itemPhoto = request.item?.photos?.[0] ?? null;
+    const isBorrowType = request.requestType === "BORROW";
+    const isTerminal = TERMINAL.includes(status);
+
+    const depositAmt = request.trustDepositAmount;
+    const depositBase = request.trustDepositBaseAmount;
+    const depositDiscount = request.trustDiscountPercentage;
+    const coinAmt = request.shareCoinAmount;
+    const depositMethodLabel = request.depositMethod === "in_app" ? "In-app" : "In-person";
+
+    const handoffStatuses = ["DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM", "ACCEPTED"];
+    const showHandoffForOwner =
+      isOwner &&
+      (handoffStatuses.includes(status)) &&
+      request.depositMethod !== "in_app";
+    const showHandoffForOwnerInApp =
+      isOwner && status === "DEPOSIT_CONFIRMED";
+    const canShowOwnerPin = showHandoffForOwner || showHandoffForOwnerInApp;
+
+    const showPinEntryForBorrower =
+      isBorrower &&
+      (status === "DEPOSIT_CONFIRMED" || status === "AWAITING_HANDOFF_CONFIRM" ||
+        (status === "ACCEPTED" && request.depositMethod !== "in_app"));
+
+    const showDepositNeeded =
+      isBorrower && status === "ACCEPTED" && request.depositMethod === "in_app";
+
+    const anyMutating =
+      acceptMutation.isPending || declineMutation.isPending ||
+      cancelMutation.isPending || returnMutation.isPending ||
+      confirmReturnMutation.isPending || acceptCounterMutation.isPending ||
+      declineCounterMutation.isPending;
+
+    return (
+      <View style={[card.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* Item row */}
+        <View style={card.itemRow}>
+          <View style={[card.thumb, { backgroundColor: colors.muted }]}>
+            {itemPhoto ? (
+              <Image
+                source={{ uri: photoUrl(itemPhoto) }}
+                style={card.thumbImg}
+                resizeMode="cover"
+              />
+            ) : (
+              <Feather name="box" size={20} color={colors.mutedForeground} />
+            )}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[card.itemName, { color: colors.foreground }]} numberOfLines={1}>
+              {itemName}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <View style={[card.typeBadge, { backgroundColor: colors.muted }]}>
+                <Text style={[card.typeBadgeText, { color: colors.mutedForeground }]}>
+                  {request.requestType}
+                </Text>
+              </View>
+              <View style={[card.statusBadge, { backgroundColor: statusInfo.bg }]}>
+                <Text style={[card.statusBadgeText, { color: statusInfo.color }]}>
+                  {statusInfo.label}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Borrow details */}
+        {isBorrowType && (request.startDate || request.endDate || coinAmt || depositAmt) && (
+          <View style={[card.detailsWrap, { borderTopColor: colors.border }]}>
+            {(request.startDate || request.endDate) && (
+              <View style={card.detailRow}>
+                <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
+                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                  {fmtDate(request.startDate)} → {fmtDate(request.endDate)}
+                </Text>
+              </View>
+            )}
+            {coinAmt != null && (
+              <View style={card.detailRow}>
+                <Coins size={13} color={PRIMARY} strokeWidth={2} />
+                <Text style={[card.detailText, { color: colors.foreground }]}>
+                  <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold" }}>{coinAmt}</Text>
+                  {" ShareCoins"}
+                </Text>
+              </View>
+            )}
+            {depositAmt != null && (
+              <View style={card.detailRow}>
+                <Shield size={13} color={colors.mutedForeground} strokeWidth={2} />
+                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                  {"Trust deposit: "}
+                  {depositBase && depositDiscount && depositDiscount > 0 && depositBase > depositAmt ? (
+                    <>
+                      <Text style={{ textDecorationLine: "line-through" }}>${depositBase}</Text>
+                      {"  "}
+                      <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold" }}>${depositAmt}</Text>
+                      {` (${depositDiscount}% off)`}
+                    </>
+                  ) : (
+                    <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>${depositAmt}</Text>
+                  )}
+                  {"  · "}{depositMethodLabel}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ── Actions ── */}
+        {!isTerminal && (
+          <View style={[card.actionsWrap, { borderTopColor: colors.border }]}>
+
+            {/* Counter-proposal received: Accept or Decline counter */}
+            {hasPendingCounter && (
+              <>
+                <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
+                  <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>Counter-proposal received</Text>
+                  {request.counterStartDate && (
+                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>
+                      📅 {fmtDate(request.counterStartDate)} → {fmtDate(request.counterEndDate)}
+                    </Text>
+                  )}
+                  {request.counterDepositMethod && (
+                    <Text style={[card.counterBannerText, { color: "#78350f" }]}>
+                      🛡 Deposit: {request.counterDepositMethod === "in_app" ? "In-app" : "In-person"}
+                    </Text>
+                  )}
+                </View>
+                <View style={card.btnRow}>
+                  <Pressable
+                    style={[card.btn, { borderColor: colors.border, flex: 1 }]}
+                    onPress={() => declineCounterMutation.mutate()}
+                    disabled={anyMutating}
+                  >
+                    <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
+                    onPress={() => acceptCounterMutation.mutate()}
+                    disabled={anyMutating}
+                  >
+                    {acceptCounterMutation.isPending
+                      ? <ActivityIndicator size="small" color="#fff" />
+                      : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept counter</Text>
+                    }
+                  </Pressable>
+                </View>
+              </>
+            )}
+
+            {/* PENDING: no counter active */}
+            {status === "PENDING" && !hasPendingCounter && (
+              <View style={card.btnRow}>
+                {isOwner && (
+                  <>
+                    <Pressable
+                      style={[card.btn, { borderColor: "#fca5a5", backgroundColor: "#fee2e2", flex: 1 }]}
+                      onPress={() =>
+                        Alert.alert("Decline request?", "The borrower will be notified.", [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Decline", style: "destructive", onPress: () => declineMutation.mutate() },
+                        ])
+                      }
+                      disabled={anyMutating}
+                    >
+                      {declineMutation.isPending
+                        ? <ActivityIndicator size="small" color="#991b1b" />
+                        : <Text style={[card.btnLabel, { color: "#991b1b" }]}>Decline</Text>
+                      }
+                    </Pressable>
+                    <Pressable
+                      style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
+                      onPress={() => acceptMutation.mutate()}
+                      disabled={anyMutating}
+                    >
+                      {acceptMutation.isPending
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
+                      }
+                    </Pressable>
+                  </>
+                )}
+                {isBorrower && (
+                  <Pressable
+                    style={[card.btn, { borderColor: colors.border, flex: 1 }]}
+                    onPress={() =>
+                      Alert.alert("Cancel request?", "This will withdraw your request.", [
+                        { text: "Keep it", style: "cancel" },
+                        { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
+                      ])
+                    }
+                    disabled={anyMutating}
+                  >
+                    {cancelMutation.isPending
+                      ? <ActivityIndicator size="small" color={colors.foreground} />
+                      : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel request</Text>
+                    }
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            {/* ACCEPTED + in_app deposit: borrower needs to pay */}
+            {showDepositNeeded && (
+              <View style={[card.infoBanner, { backgroundColor: "#eff6ff", borderColor: "#bfdbfe" }]}>
+                <Text style={[card.infoBannerTitle, { color: "#1e40af" }]}>
+                  In-app deposit required
+                </Text>
+                <Text style={[card.infoBannerText, { color: "#1d4ed8" }]}>
+                  A trust deposit of{" "}
+                  <Text style={{ fontFamily: "Inter_600SemiBold" }}>
+                    ${depositAmt ?? "–"}
+                  </Text>{" "}
+                  is required to confirm this borrow. Please complete payment on the ShareSwap web app to continue.
+                </Text>
+              </View>
+            )}
+
+            {/* ACCEPTED + in_app deposit: owner waits */}
+            {isOwner && status === "ACCEPTED" && request.depositMethod === "in_app" && (
+              <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
+                  Waiting for the borrower to confirm their in-app deposit.
+                </Text>
+              </View>
+            )}
+
+            {/* Handoff PIN — owner shows it, borrower enters it */}
+            {canShowOwnerPin && (
+              <View style={{ gap: 8 }}>
+                {ownerPin ? (
+                  <View style={[card.pinDisplay, { backgroundColor: "#eef2ff", borderColor: "#c7d2fe" }]}>
+                    {ownerPin.expired || !ownerPin.pin ? (
+                      <Text style={[card.pinExpiredText, { color: "#6b7280" }]}>
+                        PIN expired. Refresh to get a new one.
+                      </Text>
+                    ) : ownerPin.pinUsed ? (
+                      <Text style={[card.pinExpiredText, { color: "#16a34a" }]}>
+                        ✓ PIN used — handoff confirmed
+                      </Text>
+                    ) : (
+                      <>
+                        <Text style={[card.pinLabel, { color: "#4338ca" }]}>Your handoff code</Text>
+                        <Text style={[card.pinCode, { color: "#312e81" }]}>{ownerPin.pin}</Text>
+                        <Text style={[card.pinHint, { color: "#6366f1" }]}>
+                          Share this with the borrower to confirm the handoff
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                ) : null}
+                <Pressable
+                  style={[card.btn, { backgroundColor: "#4f46e5", borderColor: "#4f46e5" }]}
+                  onPress={loadOwnerPin}
+                  disabled={pinFetching}
+                >
+                  {pinFetching
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={[card.btnLabel, { color: "#fff" }]}>
+                        {ownerPin ? "Refresh handoff code" : "Show handoff code"}
+                      </Text>
+                  }
+                </Pressable>
+              </View>
+            )}
+
+            {showPinEntryForBorrower && !hasPendingCounter && (
+              <Pressable
+                style={[card.btn, { backgroundColor: "#4f46e5", borderColor: "#4f46e5" }]}
+                onPress={() => setShowPinEntry(true)}
+              >
+                <Text style={[card.btnLabel, { color: "#fff" }]}>Enter handoff code</Text>
+              </Pressable>
+            )}
+
+            {/* IN_PROGRESS */}
+            {status === "IN_PROGRESS" && isBorrower && (
+              <Pressable
+                style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY }]}
+                onPress={handleReturnPress}
+                disabled={returnMutation.isPending}
+              >
+                {returnMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <>
+                      <Feather name="rotate-ccw" size={14} color="#fff" />
+                      <Text style={[card.btnLabel, { color: "#fff" }]}>Return item</Text>
+                    </>
+                }
+              </Pressable>
+            )}
+            {status === "IN_PROGRESS" && isOwner && (
+              <View style={[card.infoBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Text style={[card.infoBannerText, { color: colors.mutedForeground }]}>
+                  The item is with the borrower. You'll be notified when they initiate a return.
+                </Text>
+              </View>
+            )}
+
+            {/* RETURN_REQUESTED */}
+            {status === "RETURN_REQUESTED" && isOwner && (
+              <Pressable
+                style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY }]}
+                onPress={handleConfirmReturn}
+                disabled={confirmReturnMutation.isPending}
+              >
+                {confirmReturnMutation.isPending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <>
+                      <Feather name="check-circle" size={14} color="#fff" />
+                      <Text style={[card.btnLabel, { color: "#fff" }]}>Confirm return</Text>
+                    </>
+                }
+              </Pressable>
+            )}
+            {status === "RETURN_REQUESTED" && isBorrower && (
+              <View style={[card.infoBanner, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
+                <Text style={[card.infoBannerText, { color: "#15803d" }]}>
+                  Return initiated — waiting for the owner to confirm receipt.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Terminal state */}
+        {isTerminal && (
+          <View style={[card.detailsWrap, { borderTopColor: colors.border }]}>
+            <Text style={[card.detailText, { color: statusInfo.color, fontFamily: "Inter_500Medium" }]}>
+              This {request.requestType.toLowerCase()} request is {statusInfo.label.toLowerCase()}.
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────────
   const activeStatus = getActiveStatus(partner?.lastActiveAt ?? null);
-  const partnerName = partner
-    ? partner.displayName || partner.username
-    : "";
-  const initials = partner
-    ? getInitials(partner.displayName, partner.username)
-    : "?";
+  const partnerName = partner ? partner.displayName || partner.username : "";
+  const initials = partner ? getInitials(partner.displayName, partner.username) : "?";
   const reversed = messages ? [...messages].reverse() : [];
   const topPad = isWeb ? 67 : insets.top;
   const hasRating = partner && (partner.reviewCount ?? 0) > 0;
@@ -149,59 +668,30 @@ export default function ChatScreen() {
       behavior="padding"
       keyboardVerticalOffset={0}
     >
-      {/* Custom header — replaces Expo stack header */}
+      {/* Header */}
       <View
         style={[
           styles.header,
-          {
-            paddingTop: topPad + 8,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
+          { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border },
         ]}
       >
-        {/* Back */}
-        <Pressable
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          hitSlop={10}
-        >
+        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
           <Feather name="chevron-left" size={26} color={colors.foreground} />
         </Pressable>
 
-        {/* Avatar + active dot */}
         <View style={styles.avatarWrap}>
-          <View
-            style={[
-              styles.avatar,
-              { backgroundColor: colors.primary + "25" },
-            ]}
-          >
+          <View style={[styles.avatar, { backgroundColor: colors.primary + "25" }]}>
             {partner?.profilePhoto ? (
-              <Image
-                source={{ uri: photoUrl(partner.profilePhoto) }}
-                style={styles.avatarImg}
-              />
+              <Image source={{ uri: photoUrl(partner.profilePhoto) }} style={styles.avatarImg} />
             ) : (
-              <Text style={[styles.avatarText, { color: colors.primary }]}>
-                {initials}
-              </Text>
+              <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
             )}
           </View>
-          {activeStatus?.isNow ? (
-            <View
-              style={[
-                styles.activeDot,
-                {
-                  backgroundColor: "#22c55e",
-                  borderColor: colors.background,
-                },
-              ]}
-            />
-          ) : null}
+          {activeStatus?.isNow && (
+            <View style={[styles.activeDot, { backgroundColor: "#22c55e", borderColor: colors.background }]} />
+          )}
         </View>
 
-        {/* Name + meta */}
         <View style={styles.headerMeta}>
           <Pressable
             style={styles.nameRow}
@@ -211,90 +701,62 @@ export default function ChatScreen() {
             {({ hovered }: { hovered?: boolean }) => (
               <>
                 <Text
-                  style={[
-                    styles.partnerName,
-                    { color: colors.foreground },
-                    hovered ? { textDecorationLine: "underline" } : null,
-                  ]}
+                  style={[styles.partnerName, { color: colors.foreground }, hovered ? { textDecorationLine: "underline" } : null]}
                   numberOfLines={1}
                 >
                   {partnerName || "Loading…"}
                 </Text>
-                {partner?.isVerified ? (
+                {partner?.isVerified && (
                   <MaterialCommunityIcons name="check-decagram" size={18} color={colors.primary} />
-                ) : null}
+                )}
               </>
             )}
           </Pressable>
 
-          {hasSubtext ? (
+          {hasSubtext && (
             <View style={styles.metaRow}>
-              {hasRating ? (
+              {hasRating && (
                 <>
                   <Feather name="star" size={11} color="#f59e0b" />
-                  <Text
-                    style={[styles.metaText, { color: colors.foreground }]}
-                  >
+                  <Text style={[styles.metaText, { color: colors.foreground }]}>
                     {Number(partner!.averageRating).toFixed(1)}
                   </Text>
-                  <Text
-                    style={[
-                      styles.metaText,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                     ({partner!.reviewCount})
                   </Text>
                 </>
-              ) : null}
-
-              {hasRating && (activeStatus || partner?.responseTime) ? (
-                <Text
-                  style={[styles.metaSep, { color: colors.mutedForeground }]}
-                >
-                  ·
-                </Text>
-              ) : null}
-
-              {activeStatus ? (
-                <Text
-                  style={[
-                    styles.metaText,
-                    {
-                      color: activeStatus.isNow
-                        ? "#16a34a"
-                        : colors.mutedForeground,
-                    },
-                  ]}
-                >
+              )}
+              {hasRating && (activeStatus || partner?.responseTime) && (
+                <Text style={[styles.metaSep, { color: colors.mutedForeground }]}>·</Text>
+              )}
+              {activeStatus && (
+                <Text style={[styles.metaText, { color: activeStatus.isNow ? "#16a34a" : colors.mutedForeground }]}>
                   {activeStatus.label}
                 </Text>
-              ) : null}
-
-              {activeStatus && partner?.responseTime ? (
-                <Text
-                  style={[styles.metaSep, { color: colors.mutedForeground }]}
-                >
-                  ·
-                </Text>
-              ) : null}
-
-              {!activeStatus && partner?.responseTime ? (
-                <Text
-                  style={[
-                    styles.metaText,
-                    { color: colors.mutedForeground },
-                  ]}
-                  numberOfLines={1}
-                >
+              )}
+              {activeStatus && partner?.responseTime && (
+                <Text style={[styles.metaSep, { color: colors.mutedForeground }]}>·</Text>
+              )}
+              {!activeStatus && partner?.responseTime && (
+                <Text style={[styles.metaText, { color: colors.mutedForeground }]} numberOfLines={1}>
                   {partner.responseTime}
                 </Text>
-              ) : null}
+              )}
             </View>
-          ) : null}
+          )}
         </View>
-
       </View>
+
+      {/* Request card (fixed between header and messages) */}
+      {request && (
+        <ScrollView
+          style={[styles.cardScroll, { borderBottomColor: colors.border }]}
+          contentContainerStyle={{ padding: 12 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderRequestCard()}
+        </ScrollView>
+      )}
 
       {/* Messages */}
       {isLoading ? (
@@ -315,34 +777,13 @@ export default function ChatScreen() {
                 style={[
                   styles.bubble,
                   isMe ? styles.bubbleMe : styles.bubbleThem,
-                  {
-                    backgroundColor: isMe ? colors.primary : colors.card,
-                    borderColor: isMe ? colors.primary : colors.border,
-                  },
+                  { backgroundColor: isMe ? colors.primary : colors.card, borderColor: isMe ? colors.primary : colors.border },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    {
-                      color: isMe
-                        ? colors.primaryForeground
-                        : colors.foreground,
-                    },
-                  ]}
-                >
+                <Text style={[styles.bubbleText, { color: isMe ? colors.primaryForeground : colors.foreground }]}>
                   {item.content}
                 </Text>
-                <Text
-                  style={[
-                    styles.bubbleTime,
-                    {
-                      color: isMe
-                        ? "rgba(255,255,255,0.7)"
-                        : colors.mutedForeground,
-                    },
-                  ]}
-                >
+                <Text style={[styles.bubbleTime, { color: isMe ? "rgba(255,255,255,0.7)" : colors.mutedForeground }]}>
                   {timeAgo(item.createdAt)}
                 </Text>
               </View>
@@ -350,14 +791,8 @@ export default function ChatScreen() {
           }}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Feather
-                name="message-circle"
-                size={40}
-                color={colors.mutedForeground}
-              />
-              <Text
-                style={[styles.emptyText, { color: colors.mutedForeground }]}
-              >
+              <Feather name="message-circle" size={40} color={colors.mutedForeground} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
                 Send the first message
               </Text>
             </View>
@@ -372,22 +807,11 @@ export default function ChatScreen() {
       <View
         style={[
           styles.inputBar,
-          {
-            backgroundColor: colors.card,
-            borderTopColor: colors.border,
-            paddingBottom: insets.bottom + (isWeb ? 34 : 8),
-          },
+          { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: insets.bottom + (isWeb ? 34 : 8) },
         ]}
       >
         <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.muted,
-              borderColor: colors.border,
-              color: colors.foreground,
-            },
-          ]}
+          style={[styles.input, { backgroundColor: colors.muted, borderColor: colors.border, color: colors.foreground }]}
           placeholder="Type a message..."
           placeholderTextColor={colors.mutedForeground}
           value={text}
@@ -398,37 +822,166 @@ export default function ChatScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.sendBtn,
-            {
-              backgroundColor:
-                text.trim().length > 0 ? colors.primary : colors.muted,
-              opacity: pressed ? 0.8 : 1,
-            },
+            { backgroundColor: text.trim().length > 0 ? colors.primary : colors.muted, opacity: pressed ? 0.8 : 1 },
           ]}
-          onPress={handleSend}
-          disabled={sendMutation.isPending || !text.trim()}
+          onPress={async () => {
+            const trimmed = text.trim();
+            if (!trimmed) return;
+            try {
+              await apiPost(`/api/messages`, {
+                receiverId: parseInt(id ?? "0"),
+                content: trimmed,
+                ...(requestId ? { requestId: parseInt(requestId) } : {}),
+              });
+              qc.invalidateQueries({ queryKey: [`/api/messages/${id}`, requestId ?? null] });
+              qc.invalidateQueries({ queryKey: ["/api/inbox"] });
+              setText("");
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            } catch {}
+          }}
+          disabled={!text.trim()}
         >
-          {sendMutation.isPending ? (
-            <ActivityIndicator size="small" color={colors.primaryForeground} />
-          ) : (
-            <Feather
-              name="send"
-              size={18}
-              color={
-                text.trim().length > 0
-                  ? colors.primaryForeground
-                  : colors.mutedForeground
-              }
-            />
-          )}
+          <Feather
+            name="send"
+            size={18}
+            color={text.trim().length > 0 ? colors.primaryForeground : colors.mutedForeground}
+          />
         </Pressable>
       </View>
+
+      {/* PIN entry modal (borrower enters owner's code) */}
+      <Modal visible={showPinEntry} transparent animationType="slide" onRequestClose={() => setShowPinEntry(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowPinEntry(false)} />
+        <View style={[styles.pinSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+          <View style={[styles.pinHandle, { backgroundColor: colors.border }]} />
+          <Text style={[styles.pinTitle, { color: colors.foreground }]}>Enter handoff code</Text>
+          <Text style={[styles.pinSub, { color: colors.mutedForeground }]}>
+            Ask the owner for their 4-digit code and enter it below to confirm the handoff.
+          </Text>
+          <TextInput
+            style={[styles.pinInput, { borderColor: colors.border, backgroundColor: colors.muted, color: colors.foreground }]}
+            placeholder="••••"
+            placeholderTextColor={colors.mutedForeground}
+            value={pinInput}
+            onChangeText={setPinInput}
+            keyboardType="number-pad"
+            maxLength={4}
+            textAlign="center"
+          />
+          <Pressable
+            style={[
+              styles.pinSubmit,
+              { backgroundColor: pinInput.length === 4 ? PRIMARY : colors.muted },
+            ]}
+            onPress={() => {
+              if (pinInput.length === 4) verifyPinMutation.mutate(pinInput);
+            }}
+            disabled={pinInput.length < 4 || verifyPinMutation.isPending}
+          >
+            {verifyPinMutation.isPending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={[styles.pinSubmitText, { color: pinInput.length === 4 ? "#fff" : colors.mutedForeground }]}>
+                Confirm handoff
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
+
+// ── Card styles ───────────────────────────────────────────────────────────────
+const card = StyleSheet.create({
+  wrap: {
+    borderWidth: 1,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
+  itemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+  },
+  thumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    flexShrink: 0,
+  },
+  thumbImg: { width: 44, height: 44 },
+  itemName: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 4 },
+  typeBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  typeBadgeText: { fontSize: 10, fontFamily: "Inter_500Medium", textTransform: "uppercase" },
+  statusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  statusBadgeText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  detailsWrap: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 5,
+  },
+  detailRow: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
+  detailText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 17 },
+  actionsWrap: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    padding: 12,
+    gap: 10,
+  },
+  btnRow: { flexDirection: "row", gap: 10 },
+  btn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  btnLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  counterBanner: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    gap: 2,
+  },
+  counterBannerTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  counterBannerText: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  infoBanner: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    gap: 4,
+  },
+  infoBannerTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  infoBannerText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 17 },
+  pinDisplay: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    alignItems: "center",
+    gap: 4,
+  },
+  pinLabel: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  pinCode: {
+    fontSize: 36,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 10,
+  },
+  pinHint: { fontSize: 10, fontFamily: "Inter_400Regular", textAlign: "center" },
+  pinExpiredText: { fontSize: 12, fontFamily: "Inter_400Regular" },
+});
+
+// ── Screen styles ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -440,108 +993,65 @@ const styles = StyleSheet.create({
   backBtn: { padding: 2 },
   avatarWrap: { position: "relative", flexShrink: 0 },
   avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: "center", justifyContent: "center", overflow: "hidden",
   },
   avatarImg: { width: 38, height: 38, borderRadius: 19 },
   avatarText: { fontSize: 15, fontFamily: "Inter_700Bold" },
   activeDot: {
-    position: "absolute",
-    bottom: 1,
-    right: 1,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
+    position: "absolute", bottom: 1, right: 1,
+    width: 10, height: 10, borderRadius: 5, borderWidth: 2,
   },
   headerMeta: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  partnerName: {
-    fontSize: 15,
-    fontFamily: "Inter_700Bold",
-    flexShrink: 1,
-  },
-  verifiedBadge: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    marginTop: 1,
-    flexWrap: "nowrap",
-  },
+  partnerName: { fontSize: 15, fontFamily: "Inter_700Bold", flexShrink: 1 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1, flexWrap: "nowrap" },
   metaText: { fontSize: 10, fontFamily: "Inter_400Regular" },
   metaSep: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  profileBtn: { padding: 4, flexShrink: 0 },
-
+  cardScroll: { maxHeight: 320, borderBottomWidth: StyleSheet.hairlineWidth },
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  messageList: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    gap: 8,
-  },
+  messageList: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 8 },
   bubble: {
-    maxWidth: "80%",
-    borderRadius: 18,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 3,
+    maxWidth: "80%", borderRadius: 18, borderWidth: 1,
+    paddingHorizontal: 14, paddingVertical: 10, gap: 3,
   },
   bubbleMe: { alignSelf: "flex-end", borderBottomRightRadius: 4 },
   bubbleThem: { alignSelf: "flex-start", borderBottomLeftRadius: 4 },
-  bubbleText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 20,
-  },
-  bubbleTime: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    alignSelf: "flex-end",
-  },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 80,
-    gap: 12,
-  },
+  bubbleText: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  bubbleTime: { fontSize: 10, fontFamily: "Inter_400Regular", alignSelf: "flex-end" },
+  empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80, gap: 12 },
   emptyText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   inputBar: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row", alignItems: "flex-end", gap: 10,
+    paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth,
   },
   input: {
-    flex: 1,
-    borderRadius: 22,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    maxHeight: 120,
+    flex: 1, borderRadius: 22, borderWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 10,
+    fontSize: 15, fontFamily: "Inter_400Regular", maxHeight: 120,
   },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: "center", justifyContent: "center",
   },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" },
+  pinSheet: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 24, gap: 12,
+  },
+  pinHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 4 },
+  pinTitle: { fontSize: 17, fontFamily: "Inter_700Bold", textAlign: "center" },
+  pinSub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 18 },
+  pinInput: {
+    borderWidth: 1, borderRadius: 12,
+    fontSize: 28, fontFamily: "Inter_700Bold",
+    letterSpacing: 12, paddingVertical: 14,
+    paddingHorizontal: 20, textAlign: "center",
+  },
+  pinSubmit: {
+    borderRadius: 12, paddingVertical: 14,
+    alignItems: "center", justifyContent: "center",
+  },
+  pinSubmitText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
 });

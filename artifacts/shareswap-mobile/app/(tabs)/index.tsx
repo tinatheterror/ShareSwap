@@ -28,7 +28,6 @@ import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { VerificationNudge } from "@/components/VerificationNudge";
 
 const rentalRateIcon = require("../../assets/icons/rental-rate.png");
-const shareCoinIcon = require("../../assets/icons/sharecoin.png");
 
 const SCREEN_W = Dimensions.get("window").width;
 const GRID_GAP = 10;
@@ -598,7 +597,7 @@ export default function HomeScreen() {
             <View style={styles.walletBadgeInner}>
               <Text style={styles.walletBadgeLabel}>Total Balance</Text>
               <View style={styles.walletBadgeRow}>
-                <Image source={shareCoinIcon} style={styles.walletBadgeCoin} resizeMode="contain" />
+                <Coins size={12} color="#0DCEA1" strokeWidth={2} />
                 <Text style={styles.walletBadgeAmount}>{user ? `${Math.round(Number(user.shareCoins ?? 0))} ShareCoins` : "–"}</Text>
               </View>
             </View>

@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Coins } from "lucide-react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -303,7 +304,7 @@ export default function MySharedItemsScreen() {
           {/* Tier / ShareCoins */}
           {item.tier ? (
             <View style={[s.tierRow, { backgroundColor: colors.muted }]}>
-              <Image source={require("../assets/icons/sharecoin.png")} style={s.coinIcon} resizeMode="contain" />
+              <Coins size={14} color="#0DCEA1" strokeWidth={2} />
               <Text style={[s.tierCoins, { color: colors.foreground }]}>{TIER_SHARECOINS[item.tier] ?? 5}</Text>
               <Text style={[s.tierLabel, { color: colors.mutedForeground }]}> ShareCoins/week</Text>
               <View style={s.aiBadge}>

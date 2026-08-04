@@ -294,6 +294,21 @@ function SuggestedCard({ item, colors, router }: { item: BrowseItem; colors: any
           ) : null}
         </View>
         <ActionButtons item={item} colors={colors} router={router} />
+        {item.owner && (
+          <View style={scard.sharedRow}>
+            <Text style={[scard.sharedLabel, { color: colors.mutedForeground }]}>Shared by{"  "}</Text>
+            <Pressable onPress={() => router.push(`/profile/${item.owner!.id}` as never)}>
+              <Text style={[scard.sharedName, { color: colors.primary }]}>
+                {item.owner.displayName || item.owner.username}
+              </Text>
+            </Pressable>
+            {item.owner.isVerified && (
+              <View style={[scard.verifiedDot, { backgroundColor: colors.primary }]}>
+                <Feather name="check" size={8} color="#fff" />
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -333,6 +348,10 @@ const scard = StyleSheet.create({
   coinsRate: { fontSize: 13, fontFamily: "Inter_400Regular" },
   meta: { fontSize: 13, fontFamily: "Inter_400Regular" },
   coins: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  sharedRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 6, flexWrap: "wrap" },
+  sharedLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  sharedName: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  verifiedDot: { width: 14, height: 14, borderRadius: 7, alignItems: "center", justifyContent: "center", marginLeft: 2 },
 });
 
 // ─── Category carousel (All Items, grouped) ────────────────────────────────
@@ -428,6 +447,21 @@ function GiftCard({ item, colors, router }: { item: BrowseItem; colors: any; rou
             </Text>
           </View>
         </Pressable>
+        {item.owner && (
+          <View style={gcard.sharedRow}>
+            <Text style={gcard.sharedLabel}>Shared by{"  "}</Text>
+            <Pressable onPress={() => router.push(`/profile/${item.owner!.id}` as never)}>
+              <Text style={gcard.sharedName}>
+                {item.owner.displayName || item.owner.username}
+              </Text>
+            </Pressable>
+            {item.owner.isVerified && (
+              <View style={gcard.verifiedDot}>
+                <Feather name="check" size={8} color="#fff" />
+              </View>
+            )}
+          </View>
+        )}
       </View>
     </Pressable>
   );
@@ -446,6 +480,10 @@ const gcard = StyleSheet.create({
   verifiedPill: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#0DCEA130", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
   verifiedText: { fontSize: 9, color: "#0DCEA1", fontFamily: "Inter_600SemiBold" },
   btn: { backgroundColor: "#ec4899", borderRadius: 8, paddingVertical: 8, alignItems: "center", marginTop: 4 },
+  sharedRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 6, flexWrap: "wrap" },
+  sharedLabel: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#6b7280" },
+  sharedName: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#0DCEA1" },
+  verifiedDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: "#0DCEA1", alignItems: "center", justifyContent: "center", marginLeft: 2 },
 });
 
 // ─── Main screen ───────────────────────────────────────────────────────────

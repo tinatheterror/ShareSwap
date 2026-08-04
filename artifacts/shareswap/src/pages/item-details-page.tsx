@@ -375,7 +375,7 @@ export default function ItemDetailsPage() {
               disabled={hasAnyPending}
             >
               <ArrowLeftRight className="h-4 w-4 mr-1" />
-              Request Swap
+              Request to Swap
             </Button>
           ))}
         </div>

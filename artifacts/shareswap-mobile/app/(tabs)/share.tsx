@@ -1,4 +1,31 @@
 import { Feather } from "@expo/vector-icons";
+
+// ── Image upload helpers ──────────────────────────────────────────────────────
+const ALLOWED_MIME = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+
+function getImageMimeType(asset: import("expo-image-picker").ImagePickerAsset): string {
+  // Prefer the mimeType Expo reports (most reliable)
+  const reported = asset.mimeType?.toLowerCase();
+  if (reported && ALLOWED_MIME.includes(reported as any)) return reported;
+  // HEIC/HEIF from iPhone — server doesn't accept them; tell multer it's JPEG
+  // (Expo already decoded the pixel data; we're just labelling the upload)
+  if (reported === "image/heic" || reported === "image/heif") return "image/jpeg";
+
+  // Fall back to URI extension — strip query params and lowercase first
+  const cleanUri = asset.uri.split("?")[0];
+  const ext = (cleanUri.split(".").pop() ?? "jpg").toLowerCase();
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png")  return "image/png";
+  if (ext === "gif")  return "image/gif";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg"; // safe default
+}
+
+function getImageFilename(asset: import("expo-image-picker").ImagePickerAsset, index: number, prefix = "photo"): string {
+  const mime = getImageMimeType(asset);
+  const ext = mime.split("/")[1] === "jpeg" ? "jpg" : mime.split("/")[1];
+  return `${prefix}-${index}.${ext}`;
+}
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -159,12 +186,10 @@ export default function ShareScreen() {
     mutationFn: async (assets: ImagePicker.ImagePickerAsset[]) => {
       const formData = new FormData();
       assets.forEach((asset, i) => {
-        const uriParts = asset.uri.split(".");
-        const fileExt = uriParts[uriParts.length - 1] || "jpg";
         formData.append("photos", {
           uri: asset.uri,
-          name: `screenshot-${i}.${fileExt}`,
-          type: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
+          name: getImageFilename(asset, i, "screenshot"),
+          type: getImageMimeType(asset),
         } as any);
       });
       const res = await apiRequest("POST", "/api/smartscan/analyze", formData);
@@ -228,12 +253,10 @@ export default function ShareScreen() {
       });
 
       photos.forEach((p, i) => {
-        const uriParts = p.uri.split(".");
-        const fileExt = uriParts[uriParts.length - 1] || "jpg";
         formData.append("photos", {
           uri: p.uri,
-          name: `photo-${i}.${fileExt}`,
-          type: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
+          name: getImageFilename(p, i, "photo"),
+          type: getImageMimeType(p),
         } as any);
       });
 

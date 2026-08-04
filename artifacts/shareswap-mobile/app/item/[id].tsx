@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
     flexDirection: "column", gap: 4,
     paddingVertical: 12, borderBottomWidth: 1,
   },
-  typeRowLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  typeRowLabel: { fontSize: 18, fontFamily: "Inter_700Bold" },
   typeRowPrice: { flexDirection: "row", alignItems: "center", gap: 4 },
   typeRowPriceText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   typeRowSub: { fontSize: 12, fontFamily: "Inter_400Regular" },

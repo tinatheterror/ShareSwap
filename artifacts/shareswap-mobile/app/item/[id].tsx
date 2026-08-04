@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { BadgeCheck } from "lucide-react-native";
+import { BadgeCheck, Coins } from "lucide-react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { photoUrl } from "@/lib/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -521,13 +521,13 @@ export default function ItemDetailScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Borrow</Text>
             <View style={styles.typeRowPrice}>
-              <MaterialCommunityIcons name="bitcoin" size={16} color={colors.primary} />
+              <Coins size={18} color={colors.primary} strokeWidth={2} />
               <Text style={[styles.typeRowPriceText, { color: colors.primary }]}>
                 {shareCoinCost} ShareCoins
               </Text>
             </View>
             <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-              Security Deposit: ${deposit}
+              Trust-Deposit: ${deposit}
             </Text>
             {item.replacementValue ? (
               <Text style={[styles.typeRowMicro, { color: colors.mutedForeground }]}>
@@ -553,7 +553,7 @@ export default function ItemDetailScreen() {
               ${rentPerWeek}/week
             </Text>
             <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-              Security Deposit: ${deposit}
+              Trust-Deposit: ${deposit}
             </Text>
           </View>
           {!ownerView && (

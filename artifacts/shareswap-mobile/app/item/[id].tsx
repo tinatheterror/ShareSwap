@@ -1,5 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { BadgeCheck, Coins } from "lucide-react-native";
+import { BadgeCheck, Coins, HandHeart, DollarSign, ArrowLeftRight, Gift } from "lucide-react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { photoUrl } from "@/lib/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -346,7 +346,7 @@ export default function ItemDetailScreen() {
 
   function renderActionBtn(
     label: string,
-    icon: string,
+    iconNode: React.ReactNode,
     onPress: () => void,
     bgColor?: string,
     disabled?: boolean,
@@ -363,7 +363,7 @@ export default function ItemDetailScreen() {
         onPress={onPress}
         disabled={disabled}
       >
-        <Feather name={icon as any} size={15} color={disabled ? colors.mutedForeground : "#fff"} />
+        {iconNode}
         <Text style={[styles.actionBtnText, { color: disabled ? colors.mutedForeground : "#fff" }]}>
           {label}
         </Text>
@@ -536,7 +536,7 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingBorrow
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Request to Borrow", "heart", () => setActiveRequestType("BORROW"), colors.primary, hasAnyPending || !item.replacementValue)
+              : renderActionBtn("Request to Borrow", <HandHeart size={15} color={hasAnyPending || !item.replacementValue ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("BORROW"), colors.primary, hasAnyPending || !item.replacementValue)
           )}
         </View>,
       );
@@ -555,7 +555,7 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingRent
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Request to Rent", "dollar-sign", () => setActiveRequestType("RENT"), colors.primary, hasAnyPending)
+              : renderActionBtn("Request to Rent", <DollarSign size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("RENT"), colors.primary, hasAnyPending)
           )}
         </View>,
       );
@@ -577,7 +577,7 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingSwap
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Request Swap", "repeat", () => setActiveRequestType("SWAP"), colors.primary, hasAnyPending)
+              : renderActionBtn("Request Swap", <ArrowLeftRight size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("SWAP"), colors.primary, hasAnyPending)
           )}
         </View>,
       );
@@ -596,7 +596,7 @@ export default function ItemDetailScreen() {
           {!ownerView && (
             hasPendingGift
               ? renderPendingBtn("Request Pending")
-              : renderActionBtn("Send Gift Request", "gift", () => setActiveRequestType("GIFT"), "#ec4899", hasAnyPending)
+              : renderActionBtn("Send Gift Request", <Gift size={15} color={hasAnyPending ? colors.mutedForeground : "#fff"} strokeWidth={2} />, () => setActiveRequestType("GIFT"), "#ec4899", hasAnyPending)
           )}
         </View>,
       );

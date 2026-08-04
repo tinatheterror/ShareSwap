@@ -675,25 +675,17 @@ export default function ItemDetailScreen() {
           {/* Title */}
           <Text style={[styles.title, { color: colors.foreground }]}>{item.name ?? item.title}</Text>
 
-          {/* Meta chips */}
-          <View style={styles.metaRow}>
-            {conditionLabel ? (
-              <View style={[styles.metaChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                <Feather name="star" size={12} color={colors.mutedForeground} />
-                <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                  {item.conditionRating != null ? `Condition: ${conditionLabel}` : conditionLabel}
-                </Text>
-              </View>
-            ) : null}
-            {item.neighbourhood ?? item.location ? (
+          {/* Meta chips — location only */}
+          {(item.neighbourhood ?? item.location) ? (
+            <View style={styles.metaRow}>
               <View style={[styles.metaChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 <Feather name="map-pin" size={12} color={colors.mutedForeground} />
                 <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                   {item.neighbourhood ?? item.location}
                 </Text>
               </View>
-            ) : null}
-          </View>
+            </View>
+          ) : null}
 
           {/* Description */}
           {item.description ? (
@@ -710,19 +702,29 @@ export default function ItemDetailScreen() {
 
           {/* Shared by */}
           {item.owner ? (
-            <View style={styles.sharedByRow}>
-              <Text style={[styles.sharedByLabel, { color: colors.mutedForeground }]}>Shared by</Text>
-              <Pressable
-                style={styles.sharedByName}
-                onPress={() => router.push(`/profile/${item.owner!.id}`)}
-              >
-                <Text style={[styles.sharedByNameText, { color: colors.primary }]}>
-                  {item.owner.displayName ?? item.owner.username}
-                </Text>
-                {(item.owner as any).isVerified ? (
-                  <BadgeCheck size={16} fill="#0DCEA1" color="white" strokeWidth={1.5} />
-                ) : null}
-              </Pressable>
+            <View style={{ gap: 6 }}>
+              <View style={styles.sharedByRow}>
+                <Text style={[styles.sharedByLabel, { color: colors.mutedForeground }]}>Shared by</Text>
+                <Pressable
+                  style={styles.sharedByName}
+                  onPress={() => router.push(`/profile/${item.owner!.id}`)}
+                >
+                  <Text style={[styles.sharedByNameText, { color: colors.primary }]}>
+                    {item.owner.displayName ?? item.owner.username}
+                  </Text>
+                  {(item.owner as any).isVerified ? (
+                    <BadgeCheck size={16} fill="#0DCEA1" color="white" strokeWidth={1.5} />
+                  ) : null}
+                </Pressable>
+              </View>
+              {conditionLabel ? (
+                <View style={[styles.metaChip, { alignSelf: "flex-start", backgroundColor: colors.muted, borderColor: colors.border }]}>
+                  <Feather name="star" size={12} color={colors.mutedForeground} />
+                  <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+                    {item.conditionRating != null ? `Condition: ${conditionLabel}` : conditionLabel}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
 

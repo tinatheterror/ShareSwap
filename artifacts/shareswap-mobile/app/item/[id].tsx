@@ -259,6 +259,8 @@ export default function ItemDetailScreen() {
   const shareCoinCost = Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5));
   const rentPerWeek = Number(item.dollarsPrice || 0).toFixed(0);
   const deposit = Number(item.securityDeposit || 0).toFixed(0);
+  const TIER_LABELS: Record<number, string> = { 1: "Budget Friendly Item", 2: "Everyday Item", 3: "Premium Item" };
+  const tierLabel = item.tier ? (TIER_LABELS[item.tier] ?? `Tier ${item.tier}`) : null;
 
   // ─── Request modal ───────────────────────────────────────────────────────────
   function renderRequestModal() {
@@ -565,6 +567,16 @@ export default function ItemDetailScreen() {
       rows.push(
         <View key="swap" style={[styles.typeRow, { borderColor: colors.border }]}>
           <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Swap</Text>
+          {tierLabel ? (
+            <View style={styles.swapValueRow}>
+              <ArrowLeftRight size={14} color={colors.mutedForeground} strokeWidth={2} />
+              <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>Swap Value:</Text>
+              <View style={[styles.swapValueChip, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                <Coins size={12} color={colors.primary} strokeWidth={2} />
+                <Text style={[styles.swapValueChipText, { color: colors.foreground }]}>{tierLabel}</Text>
+              </View>
+            </View>
+          ) : null}
           {item.swapDesiredItem ? (
             <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
               Looking for: {item.swapDesiredItem}
@@ -774,6 +786,9 @@ const styles = StyleSheet.create({
   typeRowPriceText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   typeRowSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
   typeRowMicro: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  swapValueRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  swapValueChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, borderWidth: 1 },
+  swapValueChipText: { fontSize: 12, fontFamily: "Inter_500Medium" },
 
   // Buttons
   actionBtn: {

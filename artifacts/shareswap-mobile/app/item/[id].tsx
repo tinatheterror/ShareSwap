@@ -582,7 +582,7 @@ export default function ItemDetailScreen() {
                   {tierLabel}:{" "}
                 </Text>
                 <Coins size={12} color={colors.primary} strokeWidth={2} />
-                <Text style={[styles.swapValueChipText, { color: colors.foreground }]}>
+                <Text style={[styles.swapValueChipText, { color: colors.primary }]}>
                   {" "}{tierCoins}
                 </Text>
                 <Feather name="info" size={11} color={colors.mutedForeground} />

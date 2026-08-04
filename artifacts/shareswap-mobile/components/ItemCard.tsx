@@ -222,20 +222,27 @@ export function ItemCard({ item, compact = false }: ItemCardProps) {
           ))}
         </View>
 
-        {/* Shared by row */}
-        {item.owner ? (
+        {/* Owner row */}
+        {item.owner && !compact ? (
           <View style={[styles.ownerRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.sharedByLabel, { color: colors.mutedForeground }]}>
-              Shared by{"  "}
+            <View style={[styles.avatar, { backgroundColor: colors.primary + "25" }]}>
+              {item.owner.avatarUrl ? (
+                <Image source={{ uri: item.owner.avatarUrl }} style={styles.avatarImg} />
+              ) : (
+                <Text style={[styles.avatarLetter, { color: colors.primary }]}>
+                  {(item.owner.displayName || item.owner.username || "?").charAt(0).toUpperCase()}
+                </Text>
+              )}
+            </View>
+            <Text style={[styles.ownerName, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {item.owner.displayName || item.owner.username}
             </Text>
-            <Pressable onPress={() => router.push(`/profile/${item.owner!.id}` as never)}>
-              <Text style={[styles.sharedByName, { color: colors.primary }]} numberOfLines={1}>
-                {item.owner.displayName || item.owner.username}
-              </Text>
-            </Pressable>
-            {item.owner.isVerified ? (
-              <View style={[styles.verifiedDot, { backgroundColor: colors.primary }]}>
-                <Feather name="check" size={8} color="#fff" />
+            {item.owner.trustScore ? (
+              <View style={styles.trustRow}>
+                <Feather name="shield" size={11} color={colors.primary} />
+                <Text style={[styles.trustText, { color: colors.primary }]}>
+                  {item.owner.trustScore}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -371,27 +378,40 @@ const styles = StyleSheet.create({
   ownerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 6,
     marginTop: 2,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    flexWrap: "wrap",
   },
-  sharedByLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  sharedByName: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-  },
-  verifiedDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+  avatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 2,
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: 22,
+    height: 22,
+  },
+  avatarLetter: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+  },
+  ownerName: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
+  trustRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  trustText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
   },
 });
 

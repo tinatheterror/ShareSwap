@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { BadgeCheck } from "lucide-react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { photoUrl } from "@/lib/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -727,7 +728,7 @@ export default function ItemDetailScreen() {
                   {item.owner.displayName ?? item.owner.username}
                 </Text>
                 {(item.owner as any).isVerified ? (
-                  <Feather name="check-circle" size={15} color={colors.primary} />
+                  <BadgeCheck size={16} fill="#0DCEA1" color="white" strokeWidth={1.5} />
                 ) : null}
               </Pressable>
             </View>

@@ -518,23 +518,21 @@ export default function ItemDetailScreen() {
     if (item.isLendable) {
       rows.push(
         <View key="borrow" style={[styles.typeRow, { borderColor: colors.border }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Borrow</Text>
-            <View style={styles.typeRowPrice}>
-              <Coins size={18} color={colors.primary} strokeWidth={2} />
-              <Text style={[styles.typeRowPriceText, { color: colors.primary }]}>
-                {shareCoinCost} ShareCoins
-              </Text>
-            </View>
-            <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-              Trust-Deposit: ${deposit}
+          <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Borrow</Text>
+          <View style={styles.typeRowPrice}>
+            <Coins size={18} color={colors.primary} strokeWidth={2} />
+            <Text style={[styles.typeRowPriceText, { color: colors.primary }]}>
+              {shareCoinCost} ShareCoins
             </Text>
-            {item.replacementValue ? (
-              <Text style={[styles.typeRowMicro, { color: colors.mutedForeground }]}>
-                Max charge if not returned: ${item.replacementValue}
-              </Text>
-            ) : null}
           </View>
+          <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
+            Trust-Deposit: ${deposit}
+          </Text>
+          {item.replacementValue ? (
+            <Text style={[styles.typeRowMicro, { color: colors.mutedForeground }]}>
+              Max charge if not returned: ${item.replacementValue}
+            </Text>
+          ) : null}
           {!ownerView && (
             hasPendingBorrow
               ? renderPendingBtn("Request Pending")
@@ -547,15 +545,13 @@ export default function ItemDetailScreen() {
     if (item.isRentable) {
       rows.push(
         <View key="rent" style={[styles.typeRow, { borderColor: colors.border }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Rent</Text>
-            <Text style={[styles.typeRowPriceText, { color: colors.primary, fontSize: 18, fontFamily: "Inter_700Bold" }]}>
-              ${rentPerWeek}/week
-            </Text>
-            <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-              Trust-Deposit: ${deposit}
-            </Text>
-          </View>
+          <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Rent</Text>
+          <Text style={[styles.typeRowPriceText, { color: colors.primary, fontSize: 18, fontFamily: "Inter_700Bold" }]}>
+            ${rentPerWeek}/week
+          </Text>
+          <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
+            Trust-Deposit: ${deposit}
+          </Text>
           {!ownerView && (
             hasPendingRent
               ? renderPendingBtn("Request Pending")
@@ -568,18 +564,16 @@ export default function ItemDetailScreen() {
     if (item.isSwappable) {
       rows.push(
         <View key="swap" style={[styles.typeRow, { borderColor: colors.border }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Swap</Text>
-            {item.swapDesiredItem ? (
-              <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-                Looking for: {item.swapDesiredItem}
-              </Text>
-            ) : (
-              <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-                Offer something in exchange
-              </Text>
-            )}
-          </View>
+          <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Swap</Text>
+          {item.swapDesiredItem ? (
+            <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
+              Looking for: {item.swapDesiredItem}
+            </Text>
+          ) : (
+            <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
+              Offer something in exchange
+            </Text>
+          )}
           {!ownerView && (
             hasPendingSwap
               ? renderPendingBtn("Request Pending")
@@ -592,15 +586,13 @@ export default function ItemDetailScreen() {
     if (item.isGift) {
       rows.push(
         <View key="gift" style={[styles.typeRow, { borderColor: colors.border }]}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Gift</Text>
-            <Text style={[styles.typeRowPriceText, { color: "#ec4899", fontSize: 18, fontFamily: "Inter_700Bold" }]}>
-              Free to claim
-            </Text>
-            <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
-              This item is being given away
-            </Text>
-          </View>
+          <Text style={[styles.typeRowLabel, { color: colors.foreground }]}>Gift</Text>
+          <Text style={[styles.typeRowPriceText, { color: "#ec4899", fontSize: 18, fontFamily: "Inter_700Bold" }]}>
+            Free to claim
+          </Text>
+          <Text style={[styles.typeRowSub, { color: colors.mutedForeground }]}>
+            This item is being given away
+          </Text>
           {!ownerView && (
             hasPendingGift
               ? renderPendingBtn("Request Pending")
@@ -771,28 +763,28 @@ const styles = StyleSheet.create({
 
   // Type rows (borrow/rent/swap/gift)
   typeRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
+    flexDirection: "column", gap: 4,
     paddingVertical: 12, borderBottomWidth: 1,
   },
-  typeRowLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
-  typeRowPrice: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 2 },
+  typeRowLabel: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  typeRowPrice: { flexDirection: "row", alignItems: "center", gap: 4 },
   typeRowPriceText: { fontSize: 18, fontFamily: "Inter_700Bold" },
   typeRowSub: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  typeRowMicro: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  typeRowMicro: { fontSize: 11, fontFamily: "Inter_400Regular" },
 
   // Buttons
   actionBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14,
-    minWidth: 140,
+    gap: 6, borderRadius: 10, paddingVertical: 12,
+    marginTop: 6,
   },
-  actionBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  actionBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   pendingBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14,
-    borderWidth: 1, minWidth: 140,
+    gap: 6, borderRadius: 10, paddingVertical: 12,
+    borderWidth: 1, marginTop: 6,
   },
-  pendingBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  pendingBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
   editBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 6, borderRadius: 10, paddingVertical: 10, borderWidth: 1,

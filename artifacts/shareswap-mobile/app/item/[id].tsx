@@ -259,7 +259,7 @@ export default function ItemDetailScreen() {
   const shareCoinCost = Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 5));
   const rentPerWeek = Number(item.dollarsPrice || 0).toFixed(0);
   const deposit = Number(item.securityDeposit || 0).toFixed(0);
-  const TIER_LABELS: Record<number, string> = { 1: "Budget Friendly Item", 2: "Everyday Item", 3: "Premium Item" };
+  const TIER_LABELS: Record<number, string> = { 1: "Budget Friendly Item", 2: "Everyday Household Item", 3: "Premium Item", 4: "High Value Item" };
   const tierLabel = item.tier ? (TIER_LABELS[item.tier] ?? `Tier ${item.tier}`) : null;
 
   // ─── Request modal ───────────────────────────────────────────────────────────

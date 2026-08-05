@@ -11,7 +11,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Feather } from "@expo/vector-icons";
 import { Calendar, Coins, Shield, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -105,6 +104,115 @@ interface Props {
 const PRIMARY = "#0DCEA1";
 const H_PAD = 20;
 
+// ── Inline calendar (pure JS — no native date picker) ────────────────────────
+const CAL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const CAL_DAYS   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+function MiniCalendar({
+  value, minDate, onSelect, colors, primaryColor,
+}: {
+  value: Date | null;
+  minDate: Date;
+  onSelect: (d: Date) => void;
+  colors: ReturnType<typeof useColors>;
+  primaryColor: string;
+}) {
+  const seed = value ?? minDate;
+  const [viewYear,  setViewYear]  = React.useState(seed.getFullYear());
+  const [viewMonth, setViewMonth] = React.useState(seed.getMonth());
+
+  const firstDow    = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(firstDow).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  }
+
+  const todayMs = (() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+
+  function cellDisabled(day: number) {
+    return new Date(viewYear, viewMonth, day).getTime() < minDate.getTime();
+  }
+  function cellSelected(day: number) {
+    return !!value && value.getFullYear() === viewYear && value.getMonth() === viewMonth && value.getDate() === day;
+  }
+  function cellIsToday(day: number) {
+    return new Date(viewYear, viewMonth, day).getTime() === todayMs;
+  }
+
+  return (
+    <View style={{ gap: 8 }}>
+      {/* Month header */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <Pressable onPress={prevMonth} hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}>
+          <Feather name="chevron-left" size={16} color={colors.foreground} />
+        </Pressable>
+        <Text style={{ fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground }}>
+          {CAL_MONTHS[viewMonth]} {viewYear}
+        </Text>
+        <Pressable onPress={nextMonth} hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}>
+          <Feather name="chevron-right" size={16} color={colors.foreground} />
+        </Pressable>
+      </View>
+      {/* Day-of-week headers */}
+      <View style={{ flexDirection: "row" }}>
+        {CAL_DAYS.map(d => (
+          <Text key={d} style={{ flex: 1, textAlign: "center", fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>
+            {d}
+          </Text>
+        ))}
+      </View>
+      {/* Day grid */}
+      {rows.map((row, ri) => (
+        <View key={ri} style={{ flexDirection: "row" }}>
+          {row.map((day, ci) => {
+            if (!day) return <View key={ci} style={{ flex: 1 }} />;
+            const disabled = cellDisabled(day);
+            const selected = cellSelected(day);
+            const isToday  = cellIsToday(day);
+            return (
+              <Pressable
+                key={ci}
+                style={{ flex: 1, alignItems: "center", paddingVertical: 2 }}
+                onPress={() => !disabled && onSelect(new Date(viewYear, viewMonth, day))}
+                disabled={disabled}
+              >
+                <View style={{
+                  width: 30, height: 30, borderRadius: 15,
+                  alignItems: "center", justifyContent: "center",
+                  backgroundColor: selected ? primaryColor : "transparent",
+                  borderWidth: isToday && !selected ? 1.5 : 0,
+                  borderColor: primaryColor,
+                }}>
+                  <Text style={{
+                    fontSize: 13,
+                    fontFamily: selected ? "Inter_600SemiBold" : "Inter_400Regular",
+                    color: selected ? "#fff" : disabled ? colors.border : colors.foreground,
+                  }}>
+                    {day}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: Props) {
   const colors = useColors();
@@ -113,30 +221,21 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
 
   const [startDateObj, setStartDateObj] = useState<Date | null>(null);
   const [endDateObj, setEndDateObj] = useState<Date | null>(null);
-  // Android only: which picker dialog is open
+  // which inline calendar is open; null = both closed
   const [activePicker, setActivePicker] = useState<"start" | "end" | null>(null);
-  // iOS compact picker: track explicit user selection (compact always shows a date)
-  const [startConfirmed, setStartConfirmed] = useState(false);
-  const [endConfirmed, setEndConfirmed] = useState(false);
   const [depositMethod, setDepositMethod] = useState<"in_app" | "in_person">("in_app");
   const [replacementValueAcknowledged, setReplacementValueAcknowledged] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
-  // Stable today/tomorrow refs
   const today = React.useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
-  }, []);
-  const tomorrow = React.useMemo(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return d;
   }, []);
 
   useEffect(() => {
     if (isOpen) {
       setStartDateObj(null);
       setEndDateObj(null);
-      setStartConfirmed(false);
-      setEndConfirmed(false);
       setActivePicker(null);
       setDepositMethod("in_app");
       setReplacementValueAcknowledged(false);
@@ -145,33 +244,16 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
     }
   }, [isOpen]);
 
-  // iOS compact handlers — fire on every calendar interaction
-  function onStartChange(_e: DateTimePickerEvent, selected?: Date) {
-    if (selected) {
-      setStartDateObj(selected);
-      setStartConfirmed(true);
-      if (endDateObj && endDateObj <= selected) {
-        const next = new Date(selected.getTime() + 86400000);
-        setEndDateObj(next);
-        setEndConfirmed(false);
-      }
+  function handleDaySelect(day: Date) {
+    if (activePicker === "start") {
+      setStartDateObj(day);
+      // Auto-clear end date if it's no longer valid
+      if (endDateObj && endDateObj <= day) setEndDateObj(null);
+      setActivePicker("end");   // jump straight to return-date picker
+    } else if (activePicker === "end") {
+      setEndDateObj(day);
+      setActivePicker(null);
     }
-  }
-  function onEndChange(_e: DateTimePickerEvent, selected?: Date) {
-    if (selected) { setEndDateObj(selected); setEndConfirmed(true); }
-  }
-
-  // Android dialog handler
-  function onDateChange(event: DateTimePickerEvent, selected?: Date) {
-    if (event.type === "set" && selected) {
-      if (activePicker === "start") {
-        setStartDateObj(selected);
-        if (endDateObj && endDateObj <= selected) setEndDateObj(null);
-      } else if (activePicker === "end") {
-        setEndDateObj(selected);
-      }
-    }
-    setActivePicker(null);
   }
 
   // ── Computed values ────────────────────────────────────────────────────────
@@ -190,10 +272,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   );
   const hasDeposit = hasValidReplacementValue(targetItem.replacementValue);
   const processingFee = (depositCalc.finalDeposit * 0.03).toFixed(2);
-  // iOS compact picker initialises with a default date — only count it once user explicitly picks
-  const datesSelected = Platform.OS === "ios"
-    ? (startConfirmed && endConfirmed)
-    : (startDateObj !== null && endDateObj !== null);
+  const datesSelected = startDateObj !== null && endDateObj !== null;
   const canSubmit = datesSelected && (!hasDeposit || replacementValueAcknowledged);
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
@@ -253,109 +332,45 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
               <Text style={[s.dateLabelText, { color: colors.foreground }]}>Return Date</Text>
             </View>
 
-            {Platform.OS === "ios" ? (
-              /* iOS: compact native pickers — UIKit manages the calendar popover */
-              <View style={s.dateRow}>
-                {/* Start date — placeholder until tapped, then compact picker */}
-                {startDateObj === null ? (
-                  <Pressable
-                    style={[s.datePressable, { borderColor: colors.border, backgroundColor: colors.background }]}
-                    onPress={() => { setStartDateObj(today); setStartConfirmed(false); }}
-                  >
-                    <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
-                    <Text style={[s.datePressableText, { color: colors.mutedForeground }]}>Select date</Text>
-                  </Pressable>
-                ) : (
-                  <View style={[s.datePressable, {
-                    borderColor: startConfirmed ? PRIMARY : colors.border,
-                    backgroundColor: colors.background,
-                  }]}>
-                    <Calendar size={13} color={startConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                    <DateTimePicker
-                      value={startDateObj}
-                      mode="date"
-                      display="compact"
-                      minimumDate={today}
-                      onChange={onStartChange}
-                      accentColor={PRIMARY}
-                      style={s.compactPicker}
-                    />
-                  </View>
-                )}
+            {/* Date buttons — same on iOS and Android */}
+            <View style={s.dateRow}>
+              <Pressable
+                style={[s.datePressable, {
+                  borderColor: activePicker === "start" ? PRIMARY : (startDateObj ? PRIMARY : colors.border),
+                  backgroundColor: colors.background,
+                }]}
+                onPress={() => setActivePicker(activePicker === "start" ? null : "start")}
+              >
+                <Calendar size={13} color={activePicker === "start" || startDateObj ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                <Text style={[s.datePressableText, { color: startDateObj ? colors.foreground : colors.mutedForeground }]}>
+                  {startDateObj ? toDisplayStr(startDateObj) : "Select date"}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[s.datePressable, {
+                  borderColor: activePicker === "end" ? PRIMARY : (endDateObj ? PRIMARY : colors.border),
+                  backgroundColor: colors.background,
+                }]}
+                onPress={() => setActivePicker(activePicker === "end" ? null : "end")}
+              >
+                <Calendar size={13} color={activePicker === "end" || endDateObj ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                <Text style={[s.datePressableText, { color: endDateObj ? colors.foreground : colors.mutedForeground }]}>
+                  {endDateObj ? toDisplayStr(endDateObj) : "Select date"}
+                </Text>
+              </Pressable>
+            </View>
 
-                {/* Return date — placeholder until tapped, then compact picker */}
-                {endDateObj === null ? (
-                  <Pressable
-                    style={[s.datePressable, { borderColor: colors.border, backgroundColor: colors.background }]}
-                    onPress={() => {
-                      const base = startDateObj ?? today;
-                      setEndDateObj(new Date(base.getTime() + 86400000));
-                      setEndConfirmed(false);
-                    }}
-                  >
-                    <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
-                    <Text style={[s.datePressableText, { color: colors.mutedForeground }]}>Select date</Text>
-                  </Pressable>
-                ) : (
-                  <View style={[s.datePressable, {
-                    borderColor: endConfirmed ? PRIMARY : colors.border,
-                    backgroundColor: colors.background,
-                  }]}>
-                    <Calendar size={13} color={endConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                    <DateTimePicker
-                      value={endDateObj}
-                      mode="date"
-                      display="compact"
-                      minimumDate={startDateObj ? new Date(startDateObj.getTime() + 86400000) : tomorrow}
-                      onChange={onEndChange}
-                      accentColor={PRIMARY}
-                      style={s.compactPicker}
-                    />
-                  </View>
-                )}
+            {/* Inline JS calendar — no native picker, works in any container */}
+            {activePicker !== null && (
+              <View style={[s.calendarWrap, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <MiniCalendar
+                  value={activePicker === "start" ? startDateObj : endDateObj}
+                  minDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
+                  onSelect={handleDaySelect}
+                  colors={colors}
+                  primaryColor={PRIMARY}
+                />
               </View>
-            ) : (
-              /* Android: custom buttons open a native dialog */
-              <>
-                <View style={s.dateRow}>
-                  <Pressable
-                    style={[s.datePressable, {
-                      borderColor: activePicker === "start" ? PRIMARY : colors.border,
-                      backgroundColor: colors.background,
-                    }]}
-                    onPress={() => setActivePicker(activePicker === "start" ? null : "start")}
-                  >
-                    <Calendar size={13} color={activePicker === "start" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                    <Text style={[s.datePressableText, { color: startDateObj ? colors.foreground : colors.mutedForeground }]}>
-                      {startDateObj ? toDisplayStr(startDateObj) : "Select date"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[s.datePressable, {
-                      borderColor: activePicker === "end" ? PRIMARY : colors.border,
-                      backgroundColor: colors.background,
-                    }]}
-                    onPress={() => setActivePicker(activePicker === "end" ? null : "end")}
-                  >
-                    <Calendar size={13} color={activePicker === "end" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                    <Text style={[s.datePressableText, { color: endDateObj ? colors.foreground : colors.mutedForeground }]}>
-                      {endDateObj ? toDisplayStr(endDateObj) : "Select date"}
-                    </Text>
-                  </Pressable>
-                </View>
-                {activePicker !== null && (
-                  <DateTimePicker
-                    value={
-                      activePicker === "start"
-                        ? (startDateObj ?? today)
-                        : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today))
-                    }
-                    mode="date"
-                    minimumDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
-                    onChange={onDateChange}
-                  />
-                )}
-              </>
             )}
           </View>
 
@@ -629,8 +644,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 11, paddingVertical: 12,
   },
   datePressableText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
-  // iOS compact picker sits inline in the date cell
-  compactPicker: { flex: 1 },
+  // Inline JS calendar
+  calendarWrap: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 4 },
   // Cards
   grayCard: { borderWidth: 1, borderRadius: 10, padding: 12 },
   cardTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

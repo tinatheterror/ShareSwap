@@ -261,7 +261,11 @@ export default function ChatScreen() {
 
   const cancelMutation = useMutation({
     mutationFn: () => apiPost(`/api/requests/${requestId}/cancel`),
-    onSuccess: () => invalidateAll(),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ["/api/items"] });
+    },
     onError: (e: Error) => Alert.alert("Error", e.message),
   });
 
@@ -617,15 +621,13 @@ export default function ChatScreen() {
                     </Pressable>
                   </>
                 )}
-                {isBorrower && (
+                {/* Borrower: PENDING = free cancel, no confirmation needed (mirrors web) */}
+                {isBorrower &&
+                  !iSentCounter &&
+                  request.negotiationStatus !== "terms_accepted" && (
                   <Pressable
                     style={[card.btn, { borderColor: colors.border, flex: 1 }]}
-                    onPress={() =>
-                      Alert.alert("Cancel request?", "This will withdraw your request.", [
-                        { text: "Keep it", style: "cancel" },
-                        { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
-                      ])
-                    }
+                    onPress={() => cancelMutation.mutate()}
                     disabled={anyMutating}
                   >
                     {cancelMutation.isPending
@@ -642,8 +644,8 @@ export default function ChatScreen() {
               <Pressable
                 style={[card.btn, { borderColor: colors.border }]}
                 onPress={() =>
-                  Alert.alert("Cancel request?", "This will withdraw your accepted request.", [
-                    { text: "Keep it", style: "cancel" },
+                  Alert.alert("Cancel request?", "The owner has already accepted your request.", [
+                    { text: "Keep booking", style: "cancel" },
                     { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
                   ])
                 }
@@ -652,6 +654,44 @@ export default function ChatScreen() {
                 {cancelMutation.isPending
                   ? <ActivityIndicator size="small" color={colors.foreground} />
                   : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel request</Text>
+                }
+              </Pressable>
+            )}
+
+            {/* DEPOSIT_CONFIRMED: borrower can still cancel (deposit will be refunded) */}
+            {status === "DEPOSIT_CONFIRMED" && isBorrower && (
+              <Pressable
+                style={[card.btn, { borderColor: colors.border }]}
+                onPress={() =>
+                  Alert.alert("Cancel this booking?", "Your deposit will be refunded automatically.", [
+                    { text: "Keep booking", style: "cancel" },
+                    { text: "Cancel booking", style: "destructive", onPress: () => cancelMutation.mutate() },
+                  ])
+                }
+                disabled={anyMutating}
+              >
+                {cancelMutation.isPending
+                  ? <ActivityIndicator size="small" color={colors.foreground} />
+                  : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel request</Text>
+                }
+              </Pressable>
+            )}
+
+            {/* GIFT owner: cancel an accepted gift (e.g. receiver never showed up) */}
+            {isOwner && request.requestType === "GIFT" && status === "ACCEPTED" && (
+              <Pressable
+                style={[card.btn, { borderColor: colors.border }]}
+                onPress={() =>
+                  Alert.alert("Cancel this gift?", "The requester will be notified.", [
+                    { text: "Keep it", style: "cancel" },
+                    { text: "Cancel gift", style: "destructive", onPress: () => cancelMutation.mutate() },
+                  ])
+                }
+                disabled={anyMutating}
+              >
+                {cancelMutation.isPending
+                  ? <ActivityIndicator size="small" color={colors.foreground} />
+                  : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel gift</Text>
                 }
               </Pressable>
             )}

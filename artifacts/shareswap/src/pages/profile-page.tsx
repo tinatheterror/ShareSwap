@@ -1807,12 +1807,18 @@ export default function ProfilePage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* My Balance + Account Settings — Desktop Sidebar */}
+            {/* My Balance + Subscription + Account Settings — Desktop Sidebar */}
             <div className="hidden lg:flex flex-col gap-2">
               <Link href="/my-balance" className="w-full">
                 <Button variant="outline" size="sm" className="w-full justify-start">
                   <Wallet className="h-4 w-4 mr-2" />
                   My Balance
+                </Button>
+              </Link>
+              <Link href="/subscription" className="w-full">
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Crown className="h-4 w-4 mr-2" />
+                  Subscription
                 </Button>
               </Link>
               <Link href="/settings" className="w-full">

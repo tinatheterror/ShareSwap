@@ -50,6 +50,7 @@ import DiscoverNeighboursPage from "@/pages/discover-neighbours-page";
 import SettingsPage from "@/pages/settings-page";
 import PaymentMethodsPage from "@/pages/payment-methods-page";
 import MyBalancePage from "@/pages/my-balance-page";
+import SubscriptionPage from "@/pages/subscription-page";
 import ResetPasswordPage from "@/pages/reset-password-page";
 import { VerificationNudge } from "@/components/verification-nudge";
 import { BackgroundPolling } from "@/components/background-polling";
@@ -105,6 +106,7 @@ function Router() {
       <ProtectedRoute path="/activity" component={ActivityPage} />
       <ProtectedRoute path="/transactions/:id" component={TransactionDetailPage} />
       <ProtectedRoute path="/discover-neighbours" component={DiscoverNeighboursPage} />
+      <ProtectedRoute path="/subscription" component={SubscriptionPage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
       <ProtectedRoute path="/payment-methods" component={PaymentMethodsPage} />
       <ProtectedRoute path="/my-balance" component={MyBalancePage} />

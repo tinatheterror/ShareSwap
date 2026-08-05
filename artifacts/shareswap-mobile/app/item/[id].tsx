@@ -31,6 +31,7 @@ import { VerificationGateModal } from "@/components/VerificationGateModal";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { SwapInventorySelector } from "@/components/SwapInventorySelector";
 import { BorrowRequestSheet, BorrowRequestData } from "@/components/BorrowRequestSheet";
+import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 
 type RequestType = "BORROW" | "RENT" | "SWAP" | "GIFT";
 
@@ -103,6 +104,9 @@ export default function ItemDetailScreen() {
   const [lightboxVisible, setLightboxVisible] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [showSwapTooltip, setShowSwapTooltip] = useState(false);
+  const [showEarnModal, setShowEarnModal] = useState(false);
+  const [earnRequired, setEarnRequired] = useState(0);
+  const [earnContext, setEarnContext] = useState<"borrow" | "swap">("borrow");
   const { width: screenWidth } = useWindowDimensions();
 
   function openLightbox(index: number) {
@@ -224,7 +228,7 @@ export default function ItemDetailScreen() {
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: unknown) {
-      const e = err as Error & { code?: string; missing?: { idVerified?: boolean; paymentVerified?: boolean } };
+      const e = err as Error & { code?: string; required?: number; missing?: { idVerified?: boolean; paymentVerified?: boolean } };
       if (e.code === "FULL_VERIFICATION_REQUIRED") {
         setVerifMissing(e.missing ?? {});
         setShowVerifModal(true);
@@ -237,6 +241,13 @@ export default function ItemDetailScreen() {
       }
       if (e.code === "BORROW_LIMIT_REACHED") {
         Alert.alert("Monthly limit reached", e.message || "Upgrade to Member for unlimited borrows.");
+        return;
+      }
+      if (e.code === "INSUFFICIENT_SHARECOINS") {
+        const required = e.required ?? 0;
+        setEarnRequired(required);
+        setEarnContext(type === "SWAP" ? "swap" : "borrow");
+        setShowEarnModal(true);
         return;
       }
       Alert.alert("Error", e.message || "Failed to send request.");
@@ -841,6 +852,14 @@ export default function ItemDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <InsufficientShareCoinsModal
+        isOpen={showEarnModal}
+        onClose={() => setShowEarnModal(false)}
+        currentBalance={Number((user as any)?.shareCoins ?? 0)}
+        required={earnRequired}
+        context={earnContext}
+      />
     </View>
   );
 }

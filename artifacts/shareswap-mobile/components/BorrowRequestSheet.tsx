@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Platform,
   Pressable,
@@ -16,6 +15,7 @@ import { Calendar, Coins, Shield, MapPin } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
+import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 
 // ── Deposit calculator (mirrors web lib) ─────────────────────────────────────
 const TIER_DEPOSIT_PCT: Record<number, number> = {
@@ -277,13 +277,12 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
+  const [showEarnModal, setShowEarnModal] = useState(false);
+  const balance = Number((user as any)?.shareCoins ?? 0);
+
   async function handleSend() {
-    const balance = Number((user as any)?.shareCoins ?? 0);
     if (balance < proratedCost) {
-      Alert.alert(
-        "Insufficient ShareCoins",
-        `This borrow requires ${proratedCost} ShareCoins, but you only have ${balance}. Earn more by completing swaps and borrows.`,
-      );
+      setShowEarnModal(true);
       return;
     }
     setSending(true);
@@ -304,6 +303,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
+    <>
     <Modal visible={isOpen} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
       <View style={[s.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 16 }]}>
@@ -595,6 +595,14 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
       </View>
 
     </Modal>
+    <InsufficientShareCoinsModal
+      isOpen={showEarnModal}
+      onClose={() => setShowEarnModal(false)}
+      currentBalance={balance}
+      required={proratedCost}
+      context="borrow"
+    />
+    </>
   );
 }
 

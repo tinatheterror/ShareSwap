@@ -24,6 +24,7 @@ import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
 import { fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
+import { InsufficientShareCoinsModal } from "@/components/InsufficientShareCoinsModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Message {
@@ -158,6 +159,9 @@ export default function ChatScreen() {
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [ownerPin, setOwnerPin] = useState<PinData | null>(null);
+  const [showEarnModal, setShowEarnModal] = useState(false);
+  const [earnRequired, setEarnRequired] = useState(0);
+  const [earnContext, setEarnContext] = useState<"borrow" | "swap">("borrow");
   const [pinFetching, setPinFetching] = useState(false);
 
   // Counter-proposal sheet
@@ -230,7 +234,23 @@ export default function ChatScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
     },
-    onError: (e: Error) => Alert.alert("Error", e.message),
+    onError: (e: any) => {
+      if (e?.code === "INSUFFICIENT_SHARECOINS") {
+        const required = e.required ?? 0;
+        if (e.payerIsRequester) {
+          Alert.alert(
+            "Not Enough ShareCoins",
+            `This swap can't proceed — the requester needs ${required} ShareCoins to cover the value difference but doesn't have enough.`,
+          );
+        } else {
+          setEarnRequired(required);
+          setEarnContext("swap");
+          setShowEarnModal(true);
+        }
+      } else {
+        Alert.alert("Error", e.message || "Failed to accept request");
+      }
+    },
   });
 
   const declineMutation = useMutation({
@@ -246,12 +266,41 @@ export default function ChatScreen() {
   });
 
   const acceptCounterMutation = useMutation({
-    mutationFn: () => apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true }),
+    mutationFn: () => {
+      // Preflight: check ShareCoin balance for BORROW counter acceptance
+      if (request?.requestType === "BORROW") {
+        const weeklyPrice = parseFloat(String(request.item?.shareCoinPrice ?? 0)) || 5;
+        const startD = request.counterStartDate || request.startDate;
+        const endD = request.counterEndDate || request.endDate;
+        let days = 0;
+        if (startD && endD) {
+          days = Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000));
+        }
+        const cost = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+        const balance = Number((user as any)?.shareCoins ?? 0);
+        if (balance < cost) {
+          const err: any = new Error("Insufficient ShareCoins");
+          err.code = "PREFLIGHT_INSUFFICIENT";
+          err.required = cost;
+          err.context = "borrow";
+          throw err;
+        }
+      }
+      return apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: true });
+    },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
     },
-    onError: (e: Error) => Alert.alert("Error", e.message),
+    onError: (e: any) => {
+      if (e?.code === "PREFLIGHT_INSUFFICIENT" || e?.code === "INSUFFICIENT_SHARECOINS") {
+        setEarnRequired(e.required ?? 0);
+        setEarnContext(e.context ?? "swap");
+        setShowEarnModal(true);
+      } else {
+        Alert.alert("Error", e.message || "Failed to accept counter");
+      }
+    },
   });
 
   const declineCounterMutation = useMutation({
@@ -1158,6 +1207,14 @@ export default function ChatScreen() {
           </Pressable>
         </View>
       </Modal>
+
+      <InsufficientShareCoinsModal
+        isOpen={showEarnModal}
+        onClose={() => setShowEarnModal(false)}
+        currentBalance={Number((user as any)?.shareCoins ?? 0)}
+        required={earnRequired}
+        context={earnContext}
+      />
     </KeyboardAvoidingView>
   );
 }

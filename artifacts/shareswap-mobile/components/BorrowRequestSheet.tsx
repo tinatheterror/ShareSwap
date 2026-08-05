@@ -226,7 +226,6 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
       : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : pickerToday);
 
   return (
-    <>
     <Modal visible={isOpen} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
       <View style={[s.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 16 }]}>
@@ -539,46 +538,39 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
           </Pressable>
         </View>
       </View>
-    </Modal>
 
-    {/* iOS date picker — rendered in its own Modal to avoid transparent-Modal clipping */}
-    {Platform.OS === "ios" && (
-      <Modal
-        visible={isOpen && activePicker !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setActivePicker(null)}
-      >
-        <Pressable
-          style={s.iosOverlayBackdrop}
-          onPress={() => setActivePicker(null)}
-        />
-        <View style={[s.iosOverlayCard, { backgroundColor: colors.card }]}>
-          {/* Header row */}
-          <View style={[s.iosOverlayHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[s.iosOverlayLabel, { color: colors.mutedForeground }]}>
-              {activePicker === "start" ? "Start Date" : "Return Date"}
-            </Text>
-            <Pressable
-              onPress={() => setActivePicker(null)}
-              hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
-            >
-              <Text style={[s.iosOverlayDone, { color: PRIMARY }]}>Done</Text>
-            </Pressable>
-          </View>
-          {/* Native spinner picker */}
-          <DateTimePicker
-            value={pickerValue}
-            mode="date"
-            display="spinner"
-            minimumDate={pickerMin}
-            onChange={onDateChange}
-            style={s.iosPickerSelf}
+      {/* iOS date picker — absolute overlay inside this Modal but OUTSIDE the
+          overflow:hidden sheet so the native UIDatePicker isn't clipped */}
+      {Platform.OS === "ios" && activePicker !== null && (
+        <View style={s.iosOverlayWrap} pointerEvents="box-none">
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setActivePicker(null)}
           />
+          <View style={[s.iosOverlayCard, { backgroundColor: colors.card, paddingBottom: insets.bottom + 8 }]}>
+            <View style={[s.iosOverlayHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[s.iosOverlayLabel, { color: colors.mutedForeground }]}>
+                {activePicker === "start" ? "Start Date" : "Return Date"}
+              </Text>
+              <Pressable
+                onPress={() => setActivePicker(null)}
+                hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
+              >
+                <Text style={[s.iosOverlayDone, { color: PRIMARY }]}>Done</Text>
+              </Pressable>
+            </View>
+            <DateTimePicker
+              value={pickerValue}
+              mode="date"
+              display="spinner"
+              minimumDate={pickerMin}
+              onChange={onDateChange}
+              style={s.iosPickerSelf}
+            />
+          </View>
         </View>
-      </Modal>
-    )}
-    </>
+      )}
+    </Modal>
   );
 }
 
@@ -611,15 +603,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 11, paddingVertical: 12,
   },
   datePressableText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
-  // iOS date-picker overlay (separate Modal to avoid transparent-Modal clipping)
-  iosOverlayBackdrop: {
+  // iOS date-picker — absolute overlay inside the sheet Modal, outside overflow:hidden
+  iosOverlayWrap: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
   },
   iosOverlayCard: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingBottom: 30,
   },
   iosOverlayHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",

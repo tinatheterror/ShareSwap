@@ -418,12 +418,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
                         {depositCalc.discountPercentage}% discount from your trust score
                       </Text>
                     )}
-                    <Text style={[s.micro, { color: colors.mutedForeground }]}>
-                      Authorization hold only
-                    </Text>
-                    <Text style={[s.micro, { color: colors.mutedForeground }]}>
-                      Processing fee: ${processingFee}
-                    </Text>
+
                   </View>
                 )}
               </View>

@@ -374,95 +374,84 @@ export default function ChatScreen() {
 
     return (
       <View style={[card.wrap, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {/* Item row */}
+        {/* Header: photo + name + inline details + status badge top-right */}
         <View style={card.itemRow}>
           <View style={[card.thumb, { backgroundColor: colors.muted }]}>
             {itemPhoto ? (
-              <Image
-                source={{ uri: photoUrl(itemPhoto) }}
-                style={card.thumbImg}
-                resizeMode="cover"
-              />
+              <Image source={{ uri: photoUrl(itemPhoto) }} style={card.thumbImg} resizeMode="cover" />
             ) : (
               <Feather name="box" size={20} color={colors.mutedForeground} />
             )}
           </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[card.itemName, { color: colors.foreground }]} numberOfLines={1}>
-              {itemName}
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-              <View style={[card.typeBadge, { backgroundColor: colors.muted }]}>
-                <Text style={[card.typeBadgeText, { color: colors.mutedForeground }]}>
-                  {request.requestType}
-                </Text>
-              </View>
-              <View style={[card.statusBadge, { backgroundColor: statusInfo.bg }]}>
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            {/* Name row with status badge pushed to top-right */}
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+              <Text style={[card.itemName, { color: colors.foreground, flex: 1 }]} numberOfLines={2}>
+                {itemName}
+              </Text>
+              <View style={[card.statusBadge, { backgroundColor: statusInfo.bg, flexShrink: 0 }]}>
                 <Text style={[card.statusBadgeText, { color: statusInfo.color }]}>
                   {statusInfo.label}
                 </Text>
               </View>
             </View>
-          </View>
-        </View>
 
-        {/* Borrow details */}
-        {isBorrowType && (request.startDate || request.endDate || coinAmt || depositAmt) && (
-          <View style={[card.detailsWrap, { borderTopColor: colors.border }]}>
+            {/* Requester name — visible to owner only */}
+            {isOwner && partner && (
+              <View style={card.detailRow}>
+                <Feather name="user" size={12} color={colors.mutedForeground} />
+                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                  {partner.displayName || partner.username} wants to borrow
+                </Text>
+              </View>
+            )}
+
+            {/* Dates */}
             {(request.startDate || request.endDate) && (
-              <View style={{ gap: 2 }}>
+              <View style={{ gap: 1 }}>
                 <View style={card.detailRow}>
-                  <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
+                  <Feather name="clock" size={12} color={colors.mutedForeground} />
                   <Text style={[card.detailText, { color: colors.mutedForeground }]}>
                     {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED") ? "Booked: " : ""}
                     {fmtDate(request.startDate)} – {fmtDate(request.endDate)}
                   </Text>
                 </View>
                 {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED") && request.actualHandoffAt && (
-                  <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 19 }]}>
+                  <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 17 }]}>
                     Handoff completed: {fmtDate(request.actualHandoffAt)}
                   </Text>
                 )}
               </View>
             )}
+
+            {/* Deposit method — always shown for BORROW */}
+            {isBorrowType && request.depositMethod && (
+              <View style={card.detailRow}>
+                <Shield size={12} color={colors.mutedForeground} strokeWidth={2} />
+                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                  {"Deposit "}
+                  {request.depositMethod === "in_app" ? "in-app" : "in-person"}
+                  {depositAmt != null ? (
+                    depositBase && depositDiscount && depositDiscount > 0 && depositBase > depositAmt
+                      ? ` · $${depositAmt} (${depositDiscount}% off)`
+                      : ` · $${depositAmt}`
+                  ) : ""}
+                </Text>
+              </View>
+            )}
+
+            {/* ShareCoins */}
             {coinAmt != null && (
               <View style={card.detailRow}>
-                <Coins size={13} color={PRIMARY} strokeWidth={2} />
-                <Text style={[card.detailText, { color: colors.foreground }]}>
+                <Coins size={12} color={PRIMARY} strokeWidth={2} />
+                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
                   <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold" }}>{coinAmt}</Text>
                   {" ShareCoins"}
                 </Text>
               </View>
             )}
-            {depositAmt != null && (
-              <View style={card.detailRow}>
-                <Shield size={13} color={colors.mutedForeground} strokeWidth={2} />
-                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
-                  {"Trust deposit: "}
-                  {depositBase && depositDiscount && depositDiscount > 0 && depositBase > depositAmt ? (
-                    <>
-                      <Text style={{ textDecorationLine: "line-through" }}>${depositBase}</Text>
-                      {"  "}
-                      <Text style={{ color: PRIMARY, fontFamily: "Inter_600SemiBold" }}>${depositAmt}</Text>
-                      {` (${depositDiscount}% off)`}
-                    </>
-                  ) : (
-                    <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>${depositAmt}</Text>
-                  )}
-                </Text>
-              </View>
-            )}
-            {/* Deposit method — always shown for BORROW */}
-            {request.depositMethod && (
-              <View style={card.detailRow}>
-                <Shield size={13} color="transparent" strokeWidth={2} />
-                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
-                  Deposit: {request.depositMethod === "in_app" ? "Handle In-app" : "Exchange In Person"}
-                </Text>
-              </View>
-            )}
           </View>
-        )}
+        </View>
 
         {/* ── Actions ── */}
         {!isTerminal && (
@@ -486,13 +475,6 @@ export default function ChatScreen() {
                 </View>
                 <View style={card.btnRow}>
                   <Pressable
-                    style={[card.btn, { borderColor: colors.border, flex: 1 }]}
-                    onPress={() => declineCounterMutation.mutate()}
-                    disabled={anyMutating}
-                  >
-                    <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
-                  </Pressable>
-                  <Pressable
                     style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
                     onPress={() => acceptCounterMutation.mutate()}
                     disabled={anyMutating}
@@ -501,6 +483,13 @@ export default function ChatScreen() {
                       ? <ActivityIndicator size="small" color="#fff" />
                       : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept counter</Text>
                     }
+                  </Pressable>
+                  <Pressable
+                    style={[card.btn, { borderColor: colors.border, flex: 1 }]}
+                    onPress={() => declineCounterMutation.mutate()}
+                    disabled={anyMutating}
+                  >
+                    <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
                   </Pressable>
                 </View>
               </>
@@ -540,18 +529,13 @@ export default function ChatScreen() {
                 {isOwner && (
                   <>
                     <Pressable
-                      style={[card.btn, { borderColor: "#fca5a5", backgroundColor: "#fee2e2", flex: 1 }]}
-                      onPress={() =>
-                        Alert.alert("Decline request?", "The borrower will be notified.", [
-                          { text: "Cancel", style: "cancel" },
-                          { text: "Decline", style: "destructive", onPress: () => declineMutation.mutate() },
-                        ])
-                      }
+                      style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
+                      onPress={() => acceptMutation.mutate()}
                       disabled={anyMutating}
                     >
-                      {declineMutation.isPending
-                        ? <ActivityIndicator size="small" color="#991b1b" />
-                        : <Text style={[card.btnLabel, { color: "#991b1b" }]}>Decline</Text>
+                      {acceptMutation.isPending
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
                       }
                     </Pressable>
                     <Pressable
@@ -565,13 +549,18 @@ export default function ChatScreen() {
                       <Text style={[card.btnLabel, { color: "#b45309" }]}>Counter</Text>
                     </Pressable>
                     <Pressable
-                      style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
-                      onPress={() => acceptMutation.mutate()}
+                      style={[card.btn, { borderColor: colors.border, flex: 1 }]}
+                      onPress={() =>
+                        Alert.alert("Decline request?", "The borrower will be notified.", [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Decline", style: "destructive", onPress: () => declineMutation.mutate() },
+                        ])
+                      }
                       disabled={anyMutating}
                     >
-                      {acceptMutation.isPending
-                        ? <ActivityIndicator size="small" color="#fff" />
-                        : <Text style={[card.btnLabel, { color: "#fff" }]}>Accept</Text>
+                      {declineMutation.isPending
+                        ? <ActivityIndicator size="small" color={colors.foreground} />
+                        : <Text style={[card.btnLabel, { color: colors.foreground }]}>Decline</Text>
                       }
                     </Pressable>
                   </>

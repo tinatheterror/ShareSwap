@@ -208,7 +208,25 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  // Stable "today" reference so minimumDate doesn't thrash on every render
+  const pickerToday = React.useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const pickerValue =
+    activePicker === "start"
+      ? (startDateObj ?? pickerToday)
+      : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : pickerToday));
+
+  const pickerMin =
+    activePicker === "start"
+      ? pickerToday
+      : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : pickerToday);
+
   return (
+    <>
     <Modal visible={isOpen} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
       <View style={[s.sheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 16 }]}>
@@ -282,31 +300,6 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
                 minimumDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
                 onChange={onDateChange}
               />
-            )}
-
-            {/* iOS: inline date picker shown below buttons */}
-            {Platform.OS === "ios" && activePicker !== null && (
-              <View style={[s.iosPickerWrap, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-                <DateTimePicker
-                  value={
-                    activePicker === "start"
-                      ? (startDateObj ?? today)
-                      : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today))
-                  }
-                  mode="date"
-                  display="spinner"
-                  minimumDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
-                  onChange={onDateChange}
-                  style={{ height: 140 }}
-                  textColor={colors.foreground}
-                />
-                <Pressable
-                  style={[s.iosPickerDone, { backgroundColor: PRIMARY }]}
-                  onPress={() => setActivePicker(null)}
-                >
-                  <Text style={s.iosPickerDoneText}>Done</Text>
-                </Pressable>
-              </View>
             )}
           </View>
 
@@ -547,6 +540,45 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
         </View>
       </View>
     </Modal>
+
+    {/* iOS date picker — rendered in its own Modal to avoid transparent-Modal clipping */}
+    {Platform.OS === "ios" && (
+      <Modal
+        visible={isOpen && activePicker !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActivePicker(null)}
+      >
+        <Pressable
+          style={s.iosOverlayBackdrop}
+          onPress={() => setActivePicker(null)}
+        />
+        <View style={[s.iosOverlayCard, { backgroundColor: colors.card }]}>
+          {/* Header row */}
+          <View style={[s.iosOverlayHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[s.iosOverlayLabel, { color: colors.mutedForeground }]}>
+              {activePicker === "start" ? "Start Date" : "Return Date"}
+            </Text>
+            <Pressable
+              onPress={() => setActivePicker(null)}
+              hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
+            >
+              <Text style={[s.iosOverlayDone, { color: PRIMARY }]}>Done</Text>
+            </Pressable>
+          </View>
+          {/* Native spinner picker */}
+          <DateTimePicker
+            value={pickerValue}
+            mode="date"
+            display="spinner"
+            minimumDate={pickerMin}
+            onChange={onDateChange}
+            style={s.iosPickerSelf}
+          />
+        </View>
+      </Modal>
+    )}
+    </>
   );
 }
 
@@ -579,15 +611,23 @@ const s = StyleSheet.create({
     paddingHorizontal: 11, paddingVertical: 12,
   },
   datePressableText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
-  iosPickerWrap: {
-    marginTop: 8, borderWidth: 1, borderRadius: 12, overflow: "hidden",
+  // iOS date-picker overlay (separate Modal to avoid transparent-Modal clipping)
+  iosOverlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
   },
-  iosPickerDone: {
-    alignItems: "center", paddingVertical: 10,
+  iosOverlayCard: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingBottom: 30,
   },
-  iosPickerDoneText: {
-    color: "#fff", fontSize: 14, fontFamily: "Inter_600SemiBold",
+  iosOverlayHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1,
   },
+  iosOverlayLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  iosOverlayDone: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  iosPickerSelf: { width: "100%" },
   // Cards
   grayCard: { borderWidth: 1, borderRadius: 10, padding: 12 },
   cardTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

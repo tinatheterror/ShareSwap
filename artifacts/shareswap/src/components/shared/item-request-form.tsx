@@ -76,7 +76,7 @@ type Props = {
   onClose: () => void;
   swapOfferItem?: SelectItem[] | null;
   swapRequestedExtraItems?: SelectItem[] | null;
-  onInsufficientCoins?: (required: number) => void;
+  onInsufficientCoins?: (required: number, context?: "borrow" | "swap") => void;
   prefill?: Prefill | null;
 };
 
@@ -439,8 +439,27 @@ export function ItemRequestForm({
                   const balance = Number((user as any)?.shareCoins || 0);
                   if (balance < proratedCost) {
                     onClose();
-                    onInsufficientCoins(proratedCost);
+                    onInsufficientCoins(proratedCost, "borrow");
                     return;
+                  }
+                }
+                if (requestType === "SWAP" && onInsufficientCoins && swapOfferItem?.length) {
+                  const yourSC = swapOfferItem.reduce(
+                    (s, i) => s + getTierShareCoins((i as any).tier || 2),
+                    0,
+                  );
+                  const theirSC = [item, ...(swapRequestedExtraItems ?? [])].reduce(
+                    (s, i) => s + getTierShareCoins((i as any).tier || 2),
+                    0,
+                  );
+                  const swapResult = calculateMultiSwap(yourSC, theirSC);
+                  if (swapResult.offsetDirection === "you_pay") {
+                    const balance = Number((user as any)?.shareCoins || 0);
+                    if (balance < swapResult.offset) {
+                      onClose();
+                      onInsufficientCoins(swapResult.offset, "swap");
+                      return;
+                    }
                   }
                 }
                 if (requestType === "SWAP" || requestType === "GIFT") {

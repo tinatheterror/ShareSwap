@@ -555,14 +555,18 @@ export function ChatWidget() {
     onError: (error: any) => {
       if (error?.code === "INSUFFICIENT_SHARECOINS") {
         const required = error.required ?? 0;
-        const isRequesterPayer = error.payerIsRequester;
-        toast({
-          title: "Not Enough ShareCoins",
-          description: isRequesterPayer
-            ? `This swap can't proceed — the requester needs ${required} SC to cover the value difference but doesn't have enough.`
-            : `You need ${required} SC to complete this swap but don't have enough. Earn more ShareCoins first.`,
-          variant: "destructive",
-        });
+        if (error.payerIsRequester) {
+          // Requester is short — owner can only be informed
+          toast({
+            title: "Not Enough ShareCoins",
+            description: `This swap can't proceed — the requester needs ${required} ShareCoins to cover the value difference but doesn't have enough.`,
+            variant: "destructive",
+          });
+        } else {
+          // Owner (current user) is short — show earn modal
+          setInsufficientCoinsRequired(required);
+          setShowInsufficientCoinsModal(true);
+        }
       } else {
         toast({
           title: "Error",
@@ -1258,7 +1262,26 @@ export function ChatWidget() {
               <Button
                 size="sm"
                 className="flex-1 h-9 text-sm font-semibold bg-green-600 hover:bg-green-700"
-                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
+                onClick={() => {
+                  // Preflight: check if requester can afford BORROW counter terms
+                  if (request.requestType === "BORROW") {
+                    const weeklyPrice = parseFloat((request.item as any)?.shareCoinPrice || "0") || 5;
+                    const startD = request.counterStartDate || request.startDate;
+                    const endD = request.counterEndDate || request.endDate;
+                    let days = 0;
+                    if (startD && endD) {
+                      days = Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000));
+                    }
+                    const cost = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+                    const balance = Number((user as any)?.shareCoins ?? 0);
+                    if (balance < cost) {
+                      setInsufficientCoinsRequired(cost);
+                      setShowInsufficientCoinsModal(true);
+                      return;
+                    }
+                  }
+                  respondToCounterMutation.mutate({ requestId: request.id, accept: true });
+                }}
                 disabled={respondToCounterMutation.isPending}
               >
                 Accept

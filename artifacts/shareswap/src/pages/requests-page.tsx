@@ -197,6 +197,7 @@ export default function RequestsPage() {
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   const [renewRequest, setRenewRequest] = useState<ItemRequest | null>(null);
   const [showInsufficientCoins, setShowInsufficientCoins] = useState(false);
+  const [counterInsufficientCoins, setCounterInsufficientCoins] = useState<{ required: number; context: "borrow" | "swap" } | null>(null);
 
   // Late-handoff date adjustment state
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
@@ -302,14 +303,17 @@ export default function RequestsPage() {
       setAcceptingGiftRequest(null);
       if (error?.code === "INSUFFICIENT_SHARECOINS") {
         const required = error.required ?? 0;
-        const isRequesterPayer = error.payerIsRequester;
-        toast({
-          title: "Not Enough ShareCoins",
-          description: isRequesterPayer
-            ? `This swap can't proceed — the requester needs ${required} SC to cover the value difference but doesn't have enough.`
-            : `You need ${required} SC to complete this swap but don't have enough. Earn more ShareCoins first.`,
-          variant: "destructive",
-        });
+        if (error.payerIsRequester) {
+          // Requester is short — we can only inform the owner
+          toast({
+            title: "Not Enough ShareCoins",
+            description: `This swap can't proceed — the requester needs ${required} ShareCoins to cover the value difference but doesn't have enough.`,
+            variant: "destructive",
+          });
+        } else {
+          // Owner is short — show earn modal
+          setCounterInsufficientCoins({ required, context: "swap" });
+        }
       } else {
         toast({
           title: "Error",
@@ -383,11 +387,16 @@ export default function RequestsPage() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to respond",
-        variant: "destructive",
-      });
+      if (error?.code === "INSUFFICIENT_SHARECOINS") {
+        const required = error.required ?? 0;
+        setCounterInsufficientCoins({ required, context: "swap" });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to respond",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -840,7 +849,25 @@ export default function RequestsPage() {
                             <div className="flex flex-wrap gap-2">
                               <Button
                                 size="sm"
-                                onClick={() => respondToCounterMutation.mutate({ requestId: request.id, accept: true })}
+                                onClick={() => {
+                                  // Preflight: check if requester can afford BORROW counter terms
+                                  if (request.requestType === "BORROW") {
+                                    const weeklyPrice = parseFloat(request.item.shareCoinPrice || "0") || 5;
+                                    const startD = request.counterStartDate || request.startDate;
+                                    const endD = request.counterEndDate || request.endDate;
+                                    let days = 0;
+                                    if (startD && endD) {
+                                      days = Math.max(1, Math.ceil((new Date(endD).getTime() - new Date(startD).getTime()) / 86400000));
+                                    }
+                                    const cost = days > 0 ? Math.max(1, Math.ceil((weeklyPrice / 7) * days)) : weeklyPrice;
+                                    const balance = Number((user as any)?.shareCoins ?? 0);
+                                    if (balance < cost) {
+                                      setCounterInsufficientCoins({ required: cost, context: "borrow" });
+                                      return;
+                                    }
+                                  }
+                                  respondToCounterMutation.mutate({ requestId: request.id, accept: true });
+                                }}
                                 disabled={respondToCounterMutation.isPending}
                                 className="bg-green-600 hover:bg-green-700"
                               >
@@ -1658,6 +1685,15 @@ export default function RequestsPage() {
         currentBalance={(user as any)?.shareCoins ?? 0}
         required={parseFloat(renewRequest?.item?.shareCoinPrice || "5")}
         context="borrow"
+      />
+
+      {/* Insufficient ShareCoins Modal (counter-accept / swap accept) */}
+      <InsufficientShareCoinsModal
+        isOpen={counterInsufficientCoins !== null}
+        onClose={() => setCounterInsufficientCoins(null)}
+        currentBalance={Number((user as any)?.shareCoins ?? 0)}
+        required={counterInsufficientCoins?.required ?? 0}
+        context={counterInsufficientCoins?.context ?? "borrow"}
       />
 
       {/* Counter-Proposal Modal (owner OR requester) */}

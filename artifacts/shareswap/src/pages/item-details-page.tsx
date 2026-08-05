@@ -667,8 +667,8 @@ export default function ItemDetailsPage() {
 
         {requestType && (
           <ItemRequestForm
-            onInsufficientCoins={(required) =>
-              setInsufficientCoinsModal({ required, context: "borrow" })
+            onInsufficientCoins={(required, context) =>
+              setInsufficientCoinsModal({ required, context: context ?? "borrow" })
             }
             item={item}
             requestType={requestType}

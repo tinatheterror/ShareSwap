@@ -562,7 +562,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
             <DateTimePicker
               value={pickerValue}
               mode="date"
-              display="spinner"
+              display="inline"
               minimumDate={pickerMin}
               onChange={onDateChange}
               style={s.iosPickerSelf}

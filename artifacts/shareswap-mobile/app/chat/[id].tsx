@@ -260,7 +260,7 @@ export default function ChatScreen() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: () => apiPost(`/api/requests/${requestId}/cancel`),
+    mutationFn: () => apiPost(`/api/requests/${requestId}/cancel`, {}),
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
@@ -935,14 +935,9 @@ export default function ChatScreen() {
 
       {/* Request card (fixed between header and messages) */}
       {request && (
-        <ScrollView
-          style={[styles.cardScroll, { borderBottomColor: colors.border }]}
-          contentContainerStyle={{ padding: 12 }}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={false}
-        >
+        <View style={[styles.cardScroll, { borderBottomColor: colors.border, padding: 12 }]}>
           {renderRequestCard()}
-        </ScrollView>
+        </View>
       )}
 
       {/* Messages */}

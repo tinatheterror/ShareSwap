@@ -77,6 +77,14 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           Please reload the app to continue.
         </Text>
 
+        {__DEV__ ? (
+          <View style={[styles.inlineError, { backgroundColor: colors.card, borderColor: "#ef4444" }]}>
+            <Text style={[styles.inlineErrorTitle, { color: "#ef4444" }]}>
+              {error.message}
+            </Text>
+          </View>
+        ) : null}
+
         <Pressable
           onPress={handleRestart}
           style={({ pressed }) => [
@@ -197,6 +205,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+  },
+  inlineError: {
+    width: "100%",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+  },
+  inlineErrorTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+    textAlign: "left",
   },
   topButton: {
     position: "absolute",

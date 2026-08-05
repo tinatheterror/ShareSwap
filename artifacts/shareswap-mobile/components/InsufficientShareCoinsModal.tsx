@@ -16,6 +16,8 @@ interface Props {
   currentBalance: number;
   required: number;
   context?: "borrow" | "swap";
+  /** Called when an earn route is tapped, before navigation — use to close parent sheets/modals */
+  onBeforeNavigate?: () => void;
 }
 
 export function InsufficientShareCoinsModal({
@@ -24,29 +26,38 @@ export function InsufficientShareCoinsModal({
   currentBalance,
   required,
   context = "borrow",
+  onBeforeNavigate,
 }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const shortfall = Math.max(0, required - currentBalance);
+
+  function navigate(target: () => void) {
+    // Close this modal and any parent sheet first, then wait for
+    // all modal animations to finish before pushing the new route.
+    onClose();
+    onBeforeNavigate?.();
+    setTimeout(target, 350);
+  }
 
   const earnRoutes = [
     {
       Icon: Users,
       label: "Invite friends",
       sub: "Get coins instantly when they join",
-      onPress: () => { onClose(); router.push("/referrals" as never); },
+      onPress: () => navigate(() => router.push("/referrals" as never)),
     },
     {
       Icon: Gamepad2,
       label: "Play games",
       sub: "Earn coins in minutes",
-      onPress: () => { onClose(); router.push("/(tabs)/games" as never); },
+      onPress: () => navigate(() => router.push("/(tabs)/games" as never)),
     },
     {
       Icon: HeartHandshake,
       label: "Help neighbours",
       sub: "Lend items to earn coins",
-      onPress: () => { onClose(); router.push({ pathname: "/(tabs)/wishlist", params: { tab: "community" } } as never); },
+      onPress: () => navigate(() => router.push({ pathname: "/(tabs)/wishlist", params: { tab: "community" } } as never)),
     },
   ];
 

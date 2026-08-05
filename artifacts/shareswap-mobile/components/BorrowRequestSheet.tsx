@@ -598,6 +598,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
     <InsufficientShareCoinsModal
       isOpen={showEarnModal}
       onClose={() => setShowEarnModal(false)}
+      onBeforeNavigate={onClose}
       currentBalance={balance}
       required={proratedCost}
       context="borrow"

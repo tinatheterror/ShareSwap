@@ -79,7 +79,7 @@ export default function WishlistScreen() {
   const params = useLocalSearchParams<{ prefill?: string; addNew?: string; tab?: string }>();
 
   const [tab, setTab] = useState<"mine" | "community">(() =>
-    params.tab === "community" ? "community" : "mine"
+    params.tab === "mine" ? "mine" : "community"
   );
   const [showAdd, setShowAdd] = useState(false);
   const [itemName, setItemName] = useState("");

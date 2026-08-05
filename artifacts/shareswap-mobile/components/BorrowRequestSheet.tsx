@@ -444,7 +444,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
               <Pressable
                 style={[s.depositCard, {
                   flex: 1,
-                  backgroundColor: depositMethod === "in_app" ? PRIMARY : colors.background,
+                  backgroundColor: depositMethod === "in_app" ? "#f0fdf4" : colors.background,
                   borderColor: depositMethod === "in_app" ? PRIMARY : colors.border,
                 }]}
                 onPress={() => setDepositMethod("in_app")}
@@ -452,26 +452,20 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
                 <View style={s.depositCardTop}>
                   <Shield
                     size={15}
-                    color={depositMethod === "in_app" ? "#fff" : colors.mutedForeground}
+                    color={depositMethod === "in_app" ? PRIMARY : colors.mutedForeground}
                     strokeWidth={2}
                   />
-                  <Text style={[s.depositCardTitle, {
-                    color: depositMethod === "in_app" ? "#fff" : colors.foreground,
-                  }]}>Handle In-app</Text>
+                  <Text style={[s.depositCardTitle, { color: colors.foreground }]}>Handle In-app</Text>
                 </View>
-                <Text style={[s.depositCardSub, {
-                  color: depositMethod === "in_app" ? "rgba(255,255,255,0.9)" : PRIMARY,
-                }]}>Recommended</Text>
-                <Text style={[s.depositCardFee, {
-                  color: depositMethod === "in_app" ? "rgba(255,255,255,0.8)" : colors.mutedForeground,
-                }]}>Processing fee: ${processingFee}</Text>
+                <Text style={[s.depositCardSub, { color: PRIMARY }]}>Recommended</Text>
+                <Text style={[s.depositCardFee, { color: colors.mutedForeground }]}>Processing fee: ${processingFee}</Text>
               </Pressable>
 
               {/* Exchange In Person */}
               <Pressable
                 style={[s.depositCard, {
                   flex: 1,
-                  backgroundColor: depositMethod === "in_person" ? PRIMARY : colors.background,
+                  backgroundColor: depositMethod === "in_person" ? "#f0fdf4" : colors.background,
                   borderColor: depositMethod === "in_person" ? PRIMARY : colors.border,
                 }]}
                 onPress={() => setDepositMethod("in_person")}
@@ -479,19 +473,13 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
                 <View style={s.depositCardTop}>
                   <MapPin
                     size={15}
-                    color={depositMethod === "in_person" ? "#fff" : colors.mutedForeground}
+                    color={depositMethod === "in_person" ? PRIMARY : colors.mutedForeground}
                     strokeWidth={2}
                   />
-                  <Text style={[s.depositCardTitle, {
-                    color: depositMethod === "in_person" ? "#fff" : colors.foreground,
-                  }]}>Exchange In Person</Text>
+                  <Text style={[s.depositCardTitle, { color: colors.foreground }]}>Exchange In Person</Text>
                 </View>
-                <Text style={[s.depositCardSub, {
-                  color: depositMethod === "in_person" ? "rgba(255,255,255,0.9)" : colors.mutedForeground,
-                }]}>Do it yourself</Text>
-                <Text style={[s.depositCardFee, {
-                  color: depositMethod === "in_person" ? "rgba(255,255,255,0.8)" : colors.mutedForeground,
-                }]}>No processing fee</Text>
+                <Text style={[s.depositCardSub, { color: colors.mutedForeground }]}>Do it yourself</Text>
+                <Text style={[s.depositCardFee, { color: colors.mutedForeground }]}>No processing fee</Text>
               </Pressable>
             </View>
 

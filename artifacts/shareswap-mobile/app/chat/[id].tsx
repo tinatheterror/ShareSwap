@@ -939,6 +939,7 @@ export default function ChatScreen() {
           style={[styles.cardScroll, { borderBottomColor: colors.border }]}
           contentContainerStyle={{ padding: 12 }}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
         >
           {renderRequestCard()}
         </ScrollView>

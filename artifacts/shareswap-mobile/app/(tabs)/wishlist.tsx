@@ -76,9 +76,11 @@ export default function WishlistScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
 
-  const params = useLocalSearchParams<{ prefill?: string; addNew?: string }>();
+  const params = useLocalSearchParams<{ prefill?: string; addNew?: string; tab?: string }>();
 
-  const [tab, setTab] = useState<"mine" | "community">("mine");
+  const [tab, setTab] = useState<"mine" | "community">(() =>
+    params.tab === "community" ? "community" : "mine"
+  );
   const [showAdd, setShowAdd] = useState(false);
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");

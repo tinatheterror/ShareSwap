@@ -34,7 +34,7 @@ export function InsufficientShareCoinsModal({
       Icon: Users,
       label: "Invite friends",
       sub: "Get coins instantly when they join",
-      onPress: () => { onClose(); router.push("/(tabs)/profile" as never); },
+      onPress: () => { onClose(); router.push("/referrals" as never); },
     },
     {
       Icon: Gamepad2,
@@ -46,7 +46,7 @@ export function InsufficientShareCoinsModal({
       Icon: HeartHandshake,
       label: "Help neighbours",
       sub: "Lend items to earn coins",
-      onPress: () => { onClose(); router.push("/(tabs)/wishlist" as never); },
+      onPress: () => { onClose(); router.push({ pathname: "/(tabs)/wishlist", params: { tab: "community" } } as never); },
     },
   ];
 

@@ -22,3 +22,20 @@ export function fmtDate(
   if (isNaN(parsed.getTime())) return "–";
   return parsed.toLocaleDateString("en-US", options);
 }
+
+/**
+ * Format a timestamp string for inbox/activity feed display.
+ * Shows time (HH:MM) if the date is today, otherwise shows "Mon DD".
+ * Returns "–" for null/undefined/invalid inputs.
+ */
+export function formatTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "–";
+  const d = safeDate(dateStr);
+  if (isNaN(d.getTime())) return "–";
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  if (isToday) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}

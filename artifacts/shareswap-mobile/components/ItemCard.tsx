@@ -11,6 +11,15 @@ import {
 } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { photoUrl } from "@/lib/api";
+import {
+  iname,
+  iphotoRaw,
+  coinsCount,
+  weeklyPrice,
+  getActionBtns,
+  isGiftItem,
+  type ActionBtn,
+} from "@/lib/itemUtils";
 
 export interface Item {
   id: number;
@@ -57,43 +66,8 @@ interface ItemCardProps {
   compact?: boolean;
 }
 
-function iname(item: Item) {
-  return item.name || item.title || "Untitled";
-}
-
 function iphoto(item: Item): string | undefined {
-  const raw =
-    item.photos && item.photos.length > 0 ? item.photos[0] : item.imageUrl;
-  return photoUrl(raw) ?? undefined;
-}
-
-function coinsCount(item: Item) {
-  return Math.round(Number(item.shareCoinPrice || item.shareCoinsReward || 0));
-}
-
-function weeklyPrice(item: Item): string | null {
-  if (item.dollarsPrice && Number(item.dollarsPrice) > 0)
-    return `$${Number(item.dollarsPrice).toFixed(0)}/wk`;
-  if (item.pricePerDay && Number(item.pricePerDay) > 0)
-    return `$${(Number(item.pricePerDay) * 7).toFixed(0)}/wk`;
-  return null;
-}
-
-type ActionBtn = { label: string; icon: string; family: "feather" | "hand-heart" | "arrow-lr"; bg: string };
-
-function getActionBtns(item: Item, primary: string): ActionBtn[] {
-  const btns: ActionBtn[] = [];
-  if (item.isGift)      btns.push({ label: "Claim Gift", icon: "gift",         family: "feather",     bg: "#ec4899" });
-  if (item.isLendable)  btns.push({ label: "Borrow It",  icon: "",             family: "hand-heart",  bg: primary });
-  if (item.isRentable)  btns.push({ label: "Rent It",    icon: "dollar-sign",  family: "feather",     bg: primary });
-  if (item.isSwappable) btns.push({ label: "Swap It",    icon: "",             family: "arrow-lr",    bg: primary });
-  if (btns.length > 0) return btns;
-  // Fallback to shareType
-  const st = (item.shareType || "borrow").toLowerCase();
-  if (st === "gift")  return [{ label: "Claim Gift", icon: "gift",         family: "feather",    bg: "#ec4899" }];
-  if (st === "rent")  return [{ label: "Rent It",    icon: "dollar-sign",  family: "feather",    bg: primary }];
-  if (st === "swap")  return [{ label: "Swap It",    icon: "",             family: "arrow-lr",   bg: primary }];
-  return               [{ label: "Borrow It",   icon: "",             family: "hand-heart", bg: primary }];
+  return photoUrl(iphotoRaw(item)) ?? undefined;
 }
 
 export function ItemCard({ item, compact = false }: ItemCardProps) {
@@ -102,7 +76,7 @@ export function ItemCard({ item, compact = false }: ItemCardProps) {
   const photo = iphoto(item);
   const c = coinsCount(item);
   const wkPrice = weeklyPrice(item);
-  const isGift = !!(item.isGift || (item.shareType || "").toLowerCase() === "gift");
+  const isGift = isGiftItem(item);
   const actionBtns = getActionBtns(item, colors.primary);
   const condLabel = item.conditionRating != null ? `${item.conditionRating}/10` : null;
 

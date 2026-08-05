@@ -18,11 +18,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiRequest } from "@/lib/api";
-import { safeDate } from "@/lib/dateUtils";
+import { formatTime } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
-interface InboxItem {
+export interface InboxItem {
   requestId: number;
   partnerId: number;
   partnerUsername: string;
@@ -57,18 +57,8 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "archived", label: "Archive" },
 ];
 
-function formatTime(dateStr: string): string {
-  const d = safeDate(dateStr);
-  if (isNaN(d.getTime())) return "–";
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  if (isToday) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
 
-function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => void }) {
+export function InboxRow({ item, onPress }: { item: InboxItem; onPress: () => void }) {
   const colors = useColors();
   const partnerName = item.partnerDisplayName || item.partnerUsername;
   const initials = partnerName.charAt(0).toUpperCase();

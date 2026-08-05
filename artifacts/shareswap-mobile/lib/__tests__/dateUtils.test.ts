@@ -1,4 +1,4 @@
-import { safeDate, fmtDate } from "../dateUtils";
+import { safeDate, fmtDate, formatTime } from "../dateUtils";
 
 describe("safeDate", () => {
   it("parses a bare YYYY-MM-DD string without returning Invalid Date", () => {
@@ -65,5 +65,69 @@ describe("fmtDate", () => {
     });
     expect(result).not.toBe("–");
     expect(result).not.toBe("Invalid Date");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatTime — activity feed timestamp formatter
+// ---------------------------------------------------------------------------
+describe("formatTime", () => {
+  it("returns a non-empty string for a valid ISO timestamp", () => {
+    const result = formatTime("2025-06-15T10:30:00.000Z");
+    expect(result).not.toBe("–");
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it("returns a non-empty string for a bare YYYY-MM-DD date", () => {
+    const result = formatTime("2025-06-15");
+    expect(result).not.toBe("–");
+    expect(typeof result).toBe("string");
+  });
+
+  it("returns '–' for null", () => {
+    expect(formatTime(null)).toBe("–");
+  });
+
+  it("returns '–' for undefined", () => {
+    expect(formatTime(undefined)).toBe("–");
+  });
+
+  it("returns '–' for an empty string", () => {
+    expect(formatTime("")).toBe("–");
+  });
+
+  it("returns '–' for a malformed date string", () => {
+    expect(formatTime("not-a-date")).toBe("–");
+  });
+
+  it("returns '–' for a partial date string that produces Invalid Date", () => {
+    expect(formatTime("2025-99-99")).toBe("–");
+  });
+
+  it("returns a time string (HH:MM) for a timestamp from today", () => {
+    // Construct a timestamp for earlier today in local time so isToday is true
+    const now = new Date();
+    const todayAt9am = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      9,
+      5,
+      0,
+    );
+    const result = formatTime(todayAt9am.toISOString());
+    expect(result).not.toBe("–");
+    // Should contain a colon separator characteristic of time strings
+    expect(result).toMatch(/:/);
+  });
+
+  it("returns a date string (e.g. 'Jun 15') for a past date", () => {
+    const result = formatTime("2020-01-10T08:00:00.000Z");
+    expect(result).not.toBe("–");
+    // Should NOT contain a colon (it's a date, not a time)
+    // We only assert it is non-empty and not a dash; exact format is locale-dependent
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
   });
 });

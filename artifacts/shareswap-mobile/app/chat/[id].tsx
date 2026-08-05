@@ -262,7 +262,7 @@ export default function ChatScreen() {
 
   const counterMutation = useMutation({
     mutationFn: (depositMethod: string) =>
-      apiPatch(`/api/requests/${requestId}`, {
+      apiPost(`/api/requests/${requestId}/counter-proposal`, {
         depositMethod,
         deliveryMethod: request?.deliveryMethod ?? "meetup",
         startDate: request?.startDate ?? undefined,

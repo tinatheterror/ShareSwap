@@ -157,6 +157,10 @@ export default function ChatScreen() {
   const [ownerPin, setOwnerPin] = useState<PinData | null>(null);
   const [pinFetching, setPinFetching] = useState(false);
 
+  // Counter-proposal sheet
+  const [showCounterSheet, setShowCounterSheet] = useState(false);
+  const [counterDepMethod, setCounterDepMethod] = useState<"in_app" | "in_person">("in_app");
+
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: partner } = useQuery<PublicProfile>({
     queryKey: [`/api/users/${id}/public-profile`],
@@ -250,6 +254,22 @@ export default function ChatScreen() {
   const declineCounterMutation = useMutation({
     mutationFn: () => apiPost(`/api/requests/${requestId}/respond-to-counter`, { accept: false }),
     onSuccess: () => invalidateAll(),
+    onError: (e: Error) => Alert.alert("Error", e.message),
+  });
+
+  const counterMutation = useMutation({
+    mutationFn: (depositMethod: string) =>
+      apiPatch(`/api/requests/${requestId}`, {
+        depositMethod,
+        deliveryMethod: request?.deliveryMethod ?? "meetup",
+        startDate: request?.startDate ?? undefined,
+        endDate: request?.endDate ?? undefined,
+      }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowCounterSheet(false);
+      invalidateAll();
+    },
     onError: (e: Error) => Alert.alert("Error", e.message),
   });
 
@@ -429,7 +449,15 @@ export default function ChatScreen() {
                   ) : (
                     <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground }}>${depositAmt}</Text>
                   )}
-                  {"  · "}{depositMethodLabel}
+                </Text>
+              </View>
+            )}
+            {/* Deposit method — always shown for BORROW */}
+            {request.depositMethod && (
+              <View style={card.detailRow}>
+                <Shield size={13} color="transparent" strokeWidth={2} />
+                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                  Deposit: {request.depositMethod === "in_app" ? "Handle In-app" : "Exchange In Person"}
                 </Text>
               </View>
             )}
@@ -527,6 +555,16 @@ export default function ChatScreen() {
                       }
                     </Pressable>
                     <Pressable
+                      style={[card.btn, { borderColor: "#f59e0b", backgroundColor: "#fffbeb", flex: 1 }]}
+                      onPress={() => {
+                        setCounterDepMethod((request.depositMethod as "in_app" | "in_person") ?? "in_app");
+                        setShowCounterSheet(true);
+                      }}
+                      disabled={anyMutating}
+                    >
+                      <Text style={[card.btnLabel, { color: "#b45309" }]}>Counter</Text>
+                    </Pressable>
+                    <Pressable
                       style={[card.btn, { backgroundColor: PRIMARY, borderColor: PRIMARY, flex: 1 }]}
                       onPress={() => acceptMutation.mutate()}
                       disabled={anyMutating}
@@ -556,6 +594,25 @@ export default function ChatScreen() {
                   </Pressable>
                 )}
               </View>
+            )}
+
+            {/* ACCEPTED: borrower can still cancel before deposit is confirmed */}
+            {status === "ACCEPTED" && isBorrower && !showDepositNeeded && (
+              <Pressable
+                style={[card.btn, { borderColor: colors.border }]}
+                onPress={() =>
+                  Alert.alert("Cancel request?", "This will withdraw your accepted request.", [
+                    { text: "Keep it", style: "cancel" },
+                    { text: "Cancel request", style: "destructive", onPress: () => cancelMutation.mutate() },
+                  ])
+                }
+                disabled={anyMutating}
+              >
+                {cancelMutation.isPending
+                  ? <ActivityIndicator size="small" color={colors.foreground} />
+                  : <Text style={[card.btnLabel, { color: colors.foreground }]}>Cancel request</Text>
+                }
+              </Pressable>
             )}
 
             {/* ACCEPTED + in_app deposit: borrower needs to pay */}
@@ -928,6 +985,54 @@ export default function ChatScreen() {
           </Pressable>
         </View>
       </Modal>
+
+      {/* Counter-proposal sheet (owner proposes modified terms) */}
+      <Modal visible={showCounterSheet} transparent animationType="slide" onRequestClose={() => setShowCounterSheet(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowCounterSheet(false)} />
+        <View style={[styles.pinSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+          <View style={[styles.pinHandle, { backgroundColor: colors.border }]} />
+          <Text style={[styles.pinTitle, { color: colors.foreground }]}>Propose counter terms</Text>
+          <Text style={[styles.pinSub, { color: colors.mutedForeground }]}>
+            Choose how you'd prefer to handle the deposit. The borrower can accept or decline your counter.
+          </Text>
+
+          {/* Deposit method cards */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {(["in_app", "in_person"] as const).map((method) => {
+              const active = counterDepMethod === method;
+              return (
+                <Pressable
+                  key={method}
+                  style={[styles.counterCard, {
+                    flex: 1,
+                    borderColor: active ? PRIMARY : colors.border,
+                    backgroundColor: active ? "#f0fdf4" : colors.background,
+                  }]}
+                  onPress={() => setCounterDepMethod(method)}
+                >
+                  <Text style={[styles.counterCardTitle, { color: colors.foreground }]}>
+                    {method === "in_app" ? "Handle In-app" : "Exchange In Person"}
+                  </Text>
+                  <Text style={[styles.counterCardSub, { color: colors.mutedForeground }]}>
+                    {method === "in_app" ? "Authorization hold" : "No processing fee"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable
+            style={[styles.pinSubmit, { backgroundColor: PRIMARY }]}
+            onPress={() => counterMutation.mutate(counterDepMethod)}
+            disabled={counterMutation.isPending}
+          >
+            {counterMutation.isPending
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={[styles.pinSubmitText, { color: "#fff" }]}>Send counter</Text>
+            }
+          </Pressable>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -1094,4 +1199,9 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   pinSubmitText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  counterCard: {
+    borderWidth: 1, borderRadius: 12, padding: 14, gap: 4,
+  },
+  counterCardTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  counterCardSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });

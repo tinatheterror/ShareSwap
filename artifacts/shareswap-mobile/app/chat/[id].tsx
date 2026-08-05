@@ -116,7 +116,10 @@ function timeAgo(dateStr: string): string {
 
 function fmtDate(d: string | null | undefined): string {
   if (!d) return "–";
-  return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const normalized = d.includes("T") ? d : d + "T00:00:00";
+  const parsed = new Date(normalized);
+  if (isNaN(parsed.getTime())) return "–";
+  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 type StatusInfo = { label: string; color: string; bg: string };

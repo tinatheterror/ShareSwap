@@ -133,16 +133,10 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
 
   useEffect(() => {
     if (isOpen) {
-      // iOS compact picker needs a real Date value — initialise to today/tomorrow
-      if (Platform.OS === "ios") {
-        setStartDateObj(today);
-        setEndDateObj(tomorrow);
-        setStartConfirmed(false);
-        setEndConfirmed(false);
-      } else {
-        setStartDateObj(null);
-        setEndDateObj(null);
-      }
+      setStartDateObj(null);
+      setEndDateObj(null);
+      setStartConfirmed(false);
+      setEndConfirmed(false);
       setActivePicker(null);
       setDepositMethod("in_app");
       setReplacementValueAcknowledged(false);
@@ -262,36 +256,63 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
             {Platform.OS === "ios" ? (
               /* iOS: compact native pickers — UIKit manages the calendar popover */
               <View style={s.dateRow}>
-                <View style={[s.datePressable, {
-                  borderColor: startConfirmed ? PRIMARY : colors.border,
-                  backgroundColor: colors.background,
-                }]}>
-                  <Calendar size={13} color={startConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                  <DateTimePicker
-                    value={startDateObj ?? today}
-                    mode="date"
-                    display="compact"
-                    minimumDate={today}
-                    onChange={onStartChange}
-                    accentColor={PRIMARY}
-                    style={s.compactPicker}
-                  />
-                </View>
-                <View style={[s.datePressable, {
-                  borderColor: endConfirmed ? PRIMARY : colors.border,
-                  backgroundColor: colors.background,
-                }]}>
-                  <Calendar size={13} color={endConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                  <DateTimePicker
-                    value={endDateObj ?? tomorrow}
-                    mode="date"
-                    display="compact"
-                    minimumDate={startDateObj ? new Date(startDateObj.getTime() + 86400000) : tomorrow}
-                    onChange={onEndChange}
-                    accentColor={PRIMARY}
-                    style={s.compactPicker}
-                  />
-                </View>
+                {/* Start date — placeholder until tapped, then compact picker */}
+                {startDateObj === null ? (
+                  <Pressable
+                    style={[s.datePressable, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={() => { setStartDateObj(today); setStartConfirmed(false); }}
+                  >
+                    <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
+                    <Text style={[s.datePressableText, { color: colors.mutedForeground }]}>Select date</Text>
+                  </Pressable>
+                ) : (
+                  <View style={[s.datePressable, {
+                    borderColor: startConfirmed ? PRIMARY : colors.border,
+                    backgroundColor: colors.background,
+                  }]}>
+                    <Calendar size={13} color={startConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                    <DateTimePicker
+                      value={startDateObj}
+                      mode="date"
+                      display="compact"
+                      minimumDate={today}
+                      onChange={onStartChange}
+                      accentColor={PRIMARY}
+                      style={s.compactPicker}
+                    />
+                  </View>
+                )}
+
+                {/* Return date — placeholder until tapped, then compact picker */}
+                {endDateObj === null ? (
+                  <Pressable
+                    style={[s.datePressable, { borderColor: colors.border, backgroundColor: colors.background }]}
+                    onPress={() => {
+                      const base = startDateObj ?? today;
+                      setEndDateObj(new Date(base.getTime() + 86400000));
+                      setEndConfirmed(false);
+                    }}
+                  >
+                    <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
+                    <Text style={[s.datePressableText, { color: colors.mutedForeground }]}>Select date</Text>
+                  </Pressable>
+                ) : (
+                  <View style={[s.datePressable, {
+                    borderColor: endConfirmed ? PRIMARY : colors.border,
+                    backgroundColor: colors.background,
+                  }]}>
+                    <Calendar size={13} color={endConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                    <DateTimePicker
+                      value={endDateObj}
+                      mode="date"
+                      display="compact"
+                      minimumDate={startDateObj ? new Date(startDateObj.getTime() + 86400000) : tomorrow}
+                      onChange={onEndChange}
+                      accentColor={PRIMARY}
+                      style={s.compactPicker}
+                    />
+                  </View>
+                )}
               </View>
             ) : (
               /* Android: custom buttons open a native dialog */

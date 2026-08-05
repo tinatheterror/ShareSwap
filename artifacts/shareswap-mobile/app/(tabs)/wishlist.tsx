@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { fmtDate, safeDate } from "@/lib/dateUtils";
 import { NotificationBell } from "@/components/NotificationBell";
 
 interface WishlistItem {
@@ -58,7 +59,8 @@ const NEED_TYPE_OPTIONS = [
 
 
 function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const normalized = dateStr.includes("T") ? dateStr : `${dateStr}T00:00:00`;
+  const diff = Date.now() - new Date(normalized).getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   if (days <= 0) return "today";
   if (days === 1) return "1 day ago";
@@ -121,7 +123,7 @@ export default function WishlistScreen() {
   function isUrgent(neededDate?: string) {
     if (!neededDate) return false;
     const today = new Date();
-    const needed = new Date(neededDate);
+    const needed = safeDate(neededDate);
     const daysUntilNeeded = Math.ceil((needed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     return daysUntilNeeded <= 7 && daysUntilNeeded >= 0;
   }
@@ -129,8 +131,8 @@ export default function WishlistScreen() {
   function checkExpired(item: WishlistItem): boolean {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (item.returnDate) return new Date(item.returnDate) < today;
-    if (item.neededDate) return new Date(item.neededDate) < today;
+    if (item.returnDate) return safeDate(item.returnDate) < today;
+    if (item.neededDate) return safeDate(item.neededDate) < today;
     return false;
   }
 
@@ -549,11 +551,11 @@ export default function WishlistScreen() {
                       </View>
                       <View>
                         <Text style={[styles.commInfoText, { color: colors.foreground }]}>
-                          Needed by: {item.neededDate ? new Date(item.neededDate).toLocaleDateString() : "Whenever"}
+                          Needed by: {item.neededDate ? fmtDate(item.neededDate, { month: "short", day: "numeric", year: "numeric" }) : "Whenever"}
                         </Text>
                         {item.neededDate && item.returnDate && item.needType === "borrow" ? (
                           <Text style={[styles.commInfoText, { color: colors.mutedForeground, fontSize: 11 }]}>
-                            Return: {new Date(item.returnDate).toLocaleDateString()}
+                            Return: {fmtDate(item.returnDate, { month: "short", day: "numeric", year: "numeric" })}
                           </Text>
                         ) : null}
                       </View>

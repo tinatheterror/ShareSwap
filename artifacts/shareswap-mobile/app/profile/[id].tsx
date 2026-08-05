@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, photoUrl } from "@/lib/api";
+import { fmtDate } from "@/lib/dateUtils";
 
 const SCREEN_W = Dimensions.get("window").width;
 const CARD_W = SCREEN_W - 48;
@@ -83,10 +84,7 @@ type Colors = ReturnType<typeof useColors>;
 
 function memberSince(createdAt?: string): string {
   if (!createdAt) return "";
-  return new Date(createdAt).toLocaleDateString("en-US", {
-    month: "short",
-    year: "numeric",
-  });
+  return fmtDate(createdAt, { month: "short", year: "numeric" });
 }
 
 function PaginationDots({

@@ -22,6 +22,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Shield, Coins, Calendar } from "lucide-react-native";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiPatch, photoUrl } from "@/lib/api";
+import { fmtDate as fmtDateUtil, safeDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -89,7 +90,7 @@ interface PinData {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getActiveStatus(lastActiveAt: string | null): { label: string; isNow: boolean } | null {
   if (!lastActiveAt) return null;
-  const diff = Date.now() - new Date(lastActiveAt).getTime();
+  const diff = Date.now() - safeDate(lastActiveAt).getTime();
   const min = diff / 60_000;
   const hrs = diff / 3_600_000;
   const days = diff / 86_400_000;
@@ -106,23 +107,18 @@ function getInitials(displayName: string | null, username: string): string {
 }
 
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const parsed = safeDate(dateStr);
+  if (isNaN(parsed.getTime())) return "–";
+  const diff = Date.now() - parsed.getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return new Date(dateStr).toLocaleDateString([], { month: "short", day: "numeric" });
-}
-
-function fmtDate(d: string | null | undefined): string {
-  if (!d) return "–";
-  const normalized = d.includes("T") ? d : d + "T00:00:00";
-  const parsed = new Date(normalized);
-  if (isNaN(parsed.getTime())) return "–";
   return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+const fmtDate = fmtDateUtil;
 type StatusInfo = { label: string; color: string; bg: string };
 function getStatusInfo(status: string): StatusInfo {
   switch (status) {

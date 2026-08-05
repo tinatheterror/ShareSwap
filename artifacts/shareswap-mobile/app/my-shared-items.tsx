@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import { apiGet, apiRequest, photoUrl } from "@/lib/api";
+import { fmtDate, safeDate } from "@/lib/dateUtils";
 import { NotificationBell } from "@/components/NotificationBell";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ interface MyItem {
 const ACTIVE_STATUSES = ["IN_PROGRESS", "HANDOFF_CONFIRMED", "DEPOSIT_CONFIRMED", "AWAITING_HANDOFF_CONFIRM"];
 
 function isListingExpired(item: MyItem): boolean {
-  return !!item.listingExpiresAt && new Date(item.listingExpiresAt) <= new Date();
+  return !!item.listingExpiresAt && safeDate(item.listingExpiresAt) <= new Date();
 }
 
 function getInventoryStatus(item: MyItem): InventoryStatus {
@@ -325,7 +326,7 @@ export default function MySharedItemsScreen() {
                   <>
                     <Text style={s.relistTitle}>Listing expired</Text>
                     <Text style={s.relistSub}>
-                      {new Date(item.listingExpiresAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {fmtDate(item.listingExpiresAt, { month: "short", day: "numeric", year: "numeric" })}
                     </Text>
                   </>
                 ) : (

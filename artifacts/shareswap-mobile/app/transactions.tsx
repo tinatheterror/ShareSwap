@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet } from "@/lib/api";
+import { fmtDate } from "@/lib/dateUtils";
 
 interface Transaction {
   id: number;
@@ -23,11 +24,7 @@ interface Transaction {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString([], {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return fmtDate(dateStr, { year: "numeric", month: "short", day: "numeric" });
 }
 
 export default function TransactionsScreen() {

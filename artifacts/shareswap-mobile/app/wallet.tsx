@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost } from "@/lib/api";
+import { fmtDate } from "@/lib/dateUtils";
 
 interface BalanceData {
   balance: { available: number; pending: number; total: number };
@@ -49,7 +50,7 @@ interface ConnectStatus {
 
 function formatDate(dateStr?: string | null) {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return fmtDate(dateStr, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function getStatusLabel(status: string, disputeStatus?: string) {

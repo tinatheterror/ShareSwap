@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiRequest, BASE_URL } from "@/lib/api";
+import { fmtDate } from "@/lib/dateUtils";
 
 type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
 
@@ -182,7 +183,7 @@ export default function VerificationScreen() {
                   <View>
                     <Text style={[styles.statusTitle, { color: colors.foreground }]}>Identity Verified</Text>
                     <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
-                      Verified on {verification?.verifiedAt ? new Date(verification.verifiedAt).toLocaleDateString() : "N/A"}
+                      Verified on {verification?.verifiedAt ? fmtDate(verification.verifiedAt, { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
                     </Text>
                   </View>
                 </View>
@@ -237,7 +238,7 @@ export default function VerificationScreen() {
                   <View>
                     <Text style={[styles.statusTitle, { color: colors.foreground }]}>Under Review</Text>
                     <Text style={[styles.statusSub, { color: colors.mutedForeground }]}>
-                      Submitted on {verification?.submittedAt ? new Date(verification.submittedAt).toLocaleDateString() : "N/A"}
+                      Submitted on {verification?.submittedAt ? fmtDate(verification.submittedAt, { month: "short", day: "numeric", year: "numeric" }) : "N/A"}
                     </Text>
                   </View>
                 </View>

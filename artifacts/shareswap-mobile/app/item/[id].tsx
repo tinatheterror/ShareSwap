@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { fmtDate } from "@/lib/dateUtils";
 import { useAuth } from "@/context/AuthContext";
 import { Item } from "@/components/ItemCard";
 import { VerificationGateModal } from "@/components/VerificationGateModal";
@@ -120,7 +121,7 @@ export default function ItemDetailScreen() {
   const cooldownExpiresAt = item?.cooldownExpiresAt ?? null;
   const activeRequestEndDate = item?.activeRequestEndDate ?? null;
   const expectedAvailability = activeRequestEndDate
-    ? new Date(activeRequestEndDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    ? fmtDate(activeRequestEndDate, { month: "short", day: "numeric" })
     : null;
 
   // Pending requests — check per type
@@ -453,7 +454,7 @@ export default function ItemDetailScreen() {
               <Text style={[styles.bannerTitle, { color: "#475569" }]}>Request declined</Text>
               <Text style={[styles.bannerBody, { color: "#64748b" }]}>
                 {cooldownExpiresAt
-                  ? `You can request again after ${new Date(cooldownExpiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}, or when the owner updates the listing.`
+                  ? `You can request again after ${fmtDate(cooldownExpiresAt, { month: "short", day: "numeric" })}, or when the owner updates the listing.`
                   : "You can request again once the owner updates the listing."}
               </Text>
             </View>

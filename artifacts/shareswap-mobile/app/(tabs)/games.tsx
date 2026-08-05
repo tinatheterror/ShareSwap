@@ -58,7 +58,8 @@ export default function GamesScreen() {
       ?.filter((s) => {
         if (!s.completedAt) return false;
         const today = new Date().toDateString();
-        return new Date(s.completedAt).toDateString() === today;
+        const d = s.completedAt.includes("T") ? s.completedAt : `${s.completedAt}T00:00:00`;
+        return new Date(d).toDateString() === today;
       })
       .reduce((a, s) => a + (s.rewardEarned ?? 0), 0) ?? 0;
 
@@ -67,7 +68,8 @@ export default function GamesScreen() {
       ?.filter((s) => {
         if (!s.completedAt) return false;
         const now = new Date();
-        const d = new Date(s.completedAt);
+        const raw = s.completedAt.includes("T") ? s.completedAt : `${s.completedAt}T00:00:00`;
+        const d = new Date(raw);
         return (
           d.getFullYear() === now.getFullYear() &&
           d.getMonth() === now.getMonth()

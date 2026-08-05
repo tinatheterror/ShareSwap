@@ -391,7 +391,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
                     {proratedCost} ShareCoins
                   </Text>
                 </View>
-                <Text style={[s.micro, { color: colors.mutedForeground }]}>
+                <Text style={[s.micro, { color: colors.mutedForeground, opacity: 0.55 }]}>
                   {weeklyPrice} ShareCoins/week × {borrowDays} {borrowDays === 1 ? "day" : "days"} ÷ 7
                 </Text>
 

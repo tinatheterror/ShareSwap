@@ -77,13 +77,6 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           Please reload the app to continue.
         </Text>
 
-        {__DEV__ ? (
-          <View style={[styles.inlineError, { backgroundColor: colors.card, borderColor: "#ef4444" }]}>
-            <Text style={[styles.inlineErrorTitle, { color: "#ef4444" }]}>
-              {error.message}
-            </Text>
-          </View>
-        ) : null}
 
         <Pressable
           onPress={handleRestart}

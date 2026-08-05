@@ -76,6 +76,7 @@ interface ItemRequest {
   trustDiscountPercentage: number | null;
   shareCoinAmount: number | null;
   depositStatus: string | null;
+  actualHandoffAt: string | null;
   item: RequestItem | null;
 }
 
@@ -194,6 +195,10 @@ export default function ChatScreen() {
     request?.negotiationStatus === "counter_proposed" &&
     request.counterProposedBy !== null &&
     request.counterProposedBy !== user?.id;
+  // Counter proposed BY ME (waiting for other side to respond)
+  const iSentCounter =
+    request?.negotiationStatus === "counter_proposed" &&
+    request.counterProposedBy === user?.id;
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function invalidateAll() {
@@ -389,11 +394,19 @@ export default function ChatScreen() {
         {isBorrowType && (request.startDate || request.endDate || coinAmt || depositAmt) && (
           <View style={[card.detailsWrap, { borderTopColor: colors.border }]}>
             {(request.startDate || request.endDate) && (
-              <View style={card.detailRow}>
-                <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
-                <Text style={[card.detailText, { color: colors.mutedForeground }]}>
-                  {fmtDate(request.startDate)} – {fmtDate(request.endDate)}
-                </Text>
+              <View style={{ gap: 2 }}>
+                <View style={card.detailRow}>
+                  <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
+                  <Text style={[card.detailText, { color: colors.mutedForeground }]}>
+                    {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED") ? "Booked: " : ""}
+                    {fmtDate(request.startDate)} – {fmtDate(request.endDate)}
+                  </Text>
+                </View>
+                {(status === "IN_PROGRESS" || status === "RETURN_REQUESTED") && request.actualHandoffAt && (
+                  <Text style={[card.detailText, { color: colors.mutedForeground, paddingLeft: 19 }]}>
+                    Handoff completed: {fmtDate(request.actualHandoffAt)}
+                  </Text>
+                )}
               </View>
             )}
             {coinAmt != null && (
@@ -438,7 +451,7 @@ export default function ChatScreen() {
                   <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>Counter-proposal received</Text>
                   {request.counterStartDate && (
                     <Text style={[card.counterBannerText, { color: "#78350f" }]}>
-                      📅 {fmtDate(request.counterStartDate)} → {fmtDate(request.counterEndDate)}
+                      📅 {fmtDate(request.counterStartDate)} – {fmtDate(request.counterEndDate)}
                     </Text>
                   )}
                   {request.counterDepositMethod && (
@@ -467,6 +480,34 @@ export default function ChatScreen() {
                   </Pressable>
                 </View>
               </>
+            )}
+
+            {/* I sent a counter — waiting for the other side to respond */}
+            {iSentCounter && (
+              <View style={[card.counterBanner, { backgroundColor: "#fffbeb", borderColor: "#fcd34d" }]}>
+                <Text style={[card.counterBannerTitle, { color: "#92400e" }]}>
+                  ⏳ Waiting for the other party to respond to your proposed terms
+                </Text>
+                {request.counterStartDate && (
+                  <Text style={[card.counterBannerText, { color: "#78350f" }]}>
+                    📅 {fmtDate(request.counterStartDate)} – {fmtDate(request.counterEndDate)}
+                  </Text>
+                )}
+                {request.counterDepositMethod && (
+                  <Text style={[card.counterBannerText, { color: "#78350f" }]}>
+                    🛡 Deposit: {request.counterDepositMethod === "in_app" ? "Handle Deposit In-app" : "Exchange Deposit In Person"}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* Terms accepted — owner can now accept */}
+            {request.negotiationStatus === "terms_accepted" && isOwner && (
+              <View style={[card.counterBanner, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
+                <Text style={[card.counterBannerTitle, { color: "#15803d" }]}>
+                  ✓ Requester accepted your proposed terms. You can now accept the request.
+                </Text>
+              </View>
             )}
 
             {/* PENDING: no counter active */}

@@ -392,7 +392,7 @@ export default function ChatScreen() {
               <View style={card.detailRow}>
                 <Calendar size={13} color={colors.mutedForeground} strokeWidth={2} />
                 <Text style={[card.detailText, { color: colors.mutedForeground }]}>
-                  {fmtDate(request.startDate)} → {fmtDate(request.endDate)}
+                  {fmtDate(request.startDate)} – {fmtDate(request.endDate)}
                 </Text>
               </View>
             )}

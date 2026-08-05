@@ -606,7 +606,7 @@ export function ItemRequestForm({
                               </span>
                             </div>
                             <p className="text-[10px] text-gray-400 mt-0.5">
-                              Held securely, auto-refunded on return
+                              Authorization hold only
                             </p>
                           </div>
                         </div>
@@ -732,7 +732,7 @@ export function ItemRequestForm({
                                 </p>
                               )}
                               <p className="text-[10px] text-gray-400 mt-0.5">
-                                Held securely, auto-refunded on return
+                                Authorization hold only
                               </p>
                               <p className="text-[10px] text-muted-foreground mt-0.5">
                                 Processing fee: $
@@ -868,7 +868,7 @@ export function ItemRequestForm({
                         <span className="text-gray-600">
                           <span className="font-medium">Trust Deposit</span>{" "}
                           <span className="italic">
-                            — authorization hold, lifted after a safe return
+                            — Authorization hold only. Released after the item is safely returned.
                           </span>
                         </span>
                       </div>
@@ -877,7 +877,7 @@ export function ItemRequestForm({
                         <span className="text-gray-600">
                           <span className="font-medium">Non-Return Charge</span>{" "}
                           <span className="italic">
-                            — only applied if item is not returned
+                            — Charged only if the item is not returned.
                           </span>
                         </span>
                       </div>
@@ -930,7 +930,7 @@ export function ItemRequestForm({
                         <span className="text-green-500">🟢</span>
                         <span className="text-gray-600">
                           <span className="font-medium">Security Deposit</span>{" "}
-                          — authorization hold, lifted after a safe return
+                          — Authorization hold only. Released after the item is safely returned.
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -938,7 +938,7 @@ export function ItemRequestForm({
                         <span className="text-gray-600">
                           <span className="font-medium">Non-Return Charge</span>{" "}
                           <span className="italic">
-                            — only applied if the item is not returned
+                            — Charged only if the item is not returned.
                           </span>
                         </span>
                       </div>

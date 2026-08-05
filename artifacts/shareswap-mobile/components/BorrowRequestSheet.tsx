@@ -383,7 +383,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
                       </Text>
                     )}
                     <Text style={[s.micro, { color: colors.mutedForeground }]}>
-                      Held securely, auto-refunded on return
+                      Authorization hold only
                     </Text>
                     <Text style={[s.micro, { color: colors.mutedForeground }]}>
                       Processing fee: ${processingFee}
@@ -480,14 +480,14 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
                   <Text style={s.chargeEmoji}>🟢</Text>
                   <Text style={[s.chargeText, { color: colors.mutedForeground }]}>
                     <Text style={{ fontFamily: "Inter_600SemiBold" }}>Trust Deposit</Text>
-                    {" "}— authorization hold, lifted after a safe return
+                    {" "}— Authorization hold only. Released after the item is safely returned.
                   </Text>
                 </View>
                 <View style={s.chargeRow}>
                   <Text style={s.chargeEmoji}>🟠</Text>
                   <Text style={[s.chargeText, { color: colors.mutedForeground }]}>
                     <Text style={{ fontFamily: "Inter_600SemiBold" }}>Non-Return Charge</Text>
-                    {" "}— only applied if item is not returned
+                    {" "}— Charged only if the item is not returned.
                   </Text>
                 </View>
               </View>

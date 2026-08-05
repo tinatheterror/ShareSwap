@@ -498,7 +498,7 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
               >
                 <View style={[s.checkbox, {
                   borderColor: replacementValueAcknowledged ? PRIMARY : colors.border,
-                  backgroundColor: replacementValueAcknowledged ? PRIMARY : "transparent",
+                  backgroundColor: replacementValueAcknowledged ? PRIMARY : "#fff",
                 }]}>
                   {replacementValueAcknowledged && (
                     <Feather name="check" size={10} color="#fff" />

@@ -113,17 +113,36 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
 
   const [startDateObj, setStartDateObj] = useState<Date | null>(null);
   const [endDateObj, setEndDateObj] = useState<Date | null>(null);
-  // "start" | "end" = picker open on iOS (shown inline); null = closed
+  // Android only: which picker dialog is open
   const [activePicker, setActivePicker] = useState<"start" | "end" | null>(null);
+  // iOS compact picker: track explicit user selection (compact always shows a date)
+  const [startConfirmed, setStartConfirmed] = useState(false);
+  const [endConfirmed, setEndConfirmed] = useState(false);
   const [depositMethod, setDepositMethod] = useState<"in_app" | "in_person">("in_app");
   const [replacementValueAcknowledged, setReplacementValueAcknowledged] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
+  // Stable today/tomorrow refs
+  const today = React.useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+  }, []);
+  const tomorrow = React.useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 1); return d;
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
-      setStartDateObj(null);
-      setEndDateObj(null);
+      // iOS compact picker needs a real Date value — initialise to today/tomorrow
+      if (Platform.OS === "ios") {
+        setStartDateObj(today);
+        setEndDateObj(tomorrow);
+        setStartConfirmed(false);
+        setEndConfirmed(false);
+      } else {
+        setStartDateObj(null);
+        setEndDateObj(null);
+      }
       setActivePicker(null);
       setDepositMethod("in_app");
       setReplacementValueAcknowledged(false);
@@ -132,33 +151,33 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
     }
   }, [isOpen]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  function onDateChange(event: DateTimePickerEvent, selected?: Date) {
-    if (Platform.OS === "android") {
-      // Android: picker dismisses itself after any interaction
-      if (event.type === "set" && selected) {
-        if (activePicker === "start") {
-          setStartDateObj(selected);
-          // Auto-clear end if it's now before start
-          if (endDateObj && endDateObj <= selected) setEndDateObj(null);
-        } else if (activePicker === "end") {
-          setEndDateObj(selected);
-        }
-      }
-      setActivePicker(null);
-    } else {
-      // iOS: picker is always visible while open; update on every scroll
-      if (selected) {
-        if (activePicker === "start") {
-          setStartDateObj(selected);
-          if (endDateObj && endDateObj <= selected) setEndDateObj(null);
-        } else if (activePicker === "end") {
-          setEndDateObj(selected);
-        }
+  // iOS compact handlers — fire on every calendar interaction
+  function onStartChange(_e: DateTimePickerEvent, selected?: Date) {
+    if (selected) {
+      setStartDateObj(selected);
+      setStartConfirmed(true);
+      if (endDateObj && endDateObj <= selected) {
+        const next = new Date(selected.getTime() + 86400000);
+        setEndDateObj(next);
+        setEndConfirmed(false);
       }
     }
+  }
+  function onEndChange(_e: DateTimePickerEvent, selected?: Date) {
+    if (selected) { setEndDateObj(selected); setEndConfirmed(true); }
+  }
+
+  // Android dialog handler
+  function onDateChange(event: DateTimePickerEvent, selected?: Date) {
+    if (event.type === "set" && selected) {
+      if (activePicker === "start") {
+        setStartDateObj(selected);
+        if (endDateObj && endDateObj <= selected) setEndDateObj(null);
+      } else if (activePicker === "end") {
+        setEndDateObj(selected);
+      }
+    }
+    setActivePicker(null);
   }
 
   // ── Computed values ────────────────────────────────────────────────────────
@@ -177,7 +196,10 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   );
   const hasDeposit = hasValidReplacementValue(targetItem.replacementValue);
   const processingFee = (depositCalc.finalDeposit * 0.03).toFixed(2);
-  const datesSelected = startDateObj !== null && endDateObj !== null;
+  // iOS compact picker initialises with a default date — only count it once user explicitly picks
+  const datesSelected = Platform.OS === "ios"
+    ? (startConfirmed && endConfirmed)
+    : (startDateObj !== null && endDateObj !== null);
   const canSubmit = datesSelected && (!hasDeposit || replacementValueAcknowledged);
   const targetName = targetItem.name ?? (targetItem as any).title ?? "Item";
 
@@ -208,23 +230,6 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  // Stable "today" reference so minimumDate doesn't thrash on every render
-  const pickerToday = React.useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
-  const pickerValue =
-    activePicker === "start"
-      ? (startDateObj ?? pickerToday)
-      : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : pickerToday));
-
-  const pickerMin =
-    activePicker === "start"
-      ? pickerToday
-      : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : pickerToday);
-
   return (
     <Modal visible={isOpen} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
@@ -253,52 +258,83 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
               </View>
               <Text style={[s.dateLabelText, { color: colors.foreground }]}>Return Date</Text>
             </View>
-            <View style={s.dateRow}>
-              {/* Start date button */}
-              <Pressable
-                style={[s.datePressable, {
-                  borderColor: activePicker === "start" ? PRIMARY : colors.border,
-                  backgroundColor: colors.background,
-                }]}
-                onPress={() => setActivePicker(activePicker === "start" ? null : "start")}
-              >
-                <Calendar size={13} color={activePicker === "start" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                <Text style={[s.datePressableText, {
-                  color: startDateObj ? colors.foreground : colors.mutedForeground,
-                }]}>
-                  {startDateObj ? toDisplayStr(startDateObj) : "Select date"}
-                </Text>
-              </Pressable>
 
-              {/* Return date button */}
-              <Pressable
-                style={[s.datePressable, {
-                  borderColor: activePicker === "end" ? PRIMARY : colors.border,
+            {Platform.OS === "ios" ? (
+              /* iOS: compact native pickers — UIKit manages the calendar popover */
+              <View style={s.dateRow}>
+                <View style={[s.datePressable, {
+                  borderColor: startConfirmed ? PRIMARY : colors.border,
                   backgroundColor: colors.background,
-                }]}
-                onPress={() => setActivePicker(activePicker === "end" ? null : "end")}
-              >
-                <Calendar size={13} color={activePicker === "end" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
-                <Text style={[s.datePressableText, {
-                  color: endDateObj ? colors.foreground : colors.mutedForeground,
                 }]}>
-                  {endDateObj ? toDisplayStr(endDateObj) : "Select date"}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Android: DateTimePicker renders as a native dialog when activePicker is set */}
-            {Platform.OS === "android" && activePicker !== null && (
-              <DateTimePicker
-                value={
-                  activePicker === "start"
-                    ? (startDateObj ?? today)
-                    : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today))
-                }
-                mode="date"
-                minimumDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
-                onChange={onDateChange}
-              />
+                  <Calendar size={13} color={startConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                  <DateTimePicker
+                    value={startDateObj ?? today}
+                    mode="date"
+                    display="compact"
+                    minimumDate={today}
+                    onChange={onStartChange}
+                    accentColor={PRIMARY}
+                    style={s.compactPicker}
+                  />
+                </View>
+                <View style={[s.datePressable, {
+                  borderColor: endConfirmed ? PRIMARY : colors.border,
+                  backgroundColor: colors.background,
+                }]}>
+                  <Calendar size={13} color={endConfirmed ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                  <DateTimePicker
+                    value={endDateObj ?? tomorrow}
+                    mode="date"
+                    display="compact"
+                    minimumDate={startDateObj ? new Date(startDateObj.getTime() + 86400000) : tomorrow}
+                    onChange={onEndChange}
+                    accentColor={PRIMARY}
+                    style={s.compactPicker}
+                  />
+                </View>
+              </View>
+            ) : (
+              /* Android: custom buttons open a native dialog */
+              <>
+                <View style={s.dateRow}>
+                  <Pressable
+                    style={[s.datePressable, {
+                      borderColor: activePicker === "start" ? PRIMARY : colors.border,
+                      backgroundColor: colors.background,
+                    }]}
+                    onPress={() => setActivePicker(activePicker === "start" ? null : "start")}
+                  >
+                    <Calendar size={13} color={activePicker === "start" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                    <Text style={[s.datePressableText, { color: startDateObj ? colors.foreground : colors.mutedForeground }]}>
+                      {startDateObj ? toDisplayStr(startDateObj) : "Select date"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[s.datePressable, {
+                      borderColor: activePicker === "end" ? PRIMARY : colors.border,
+                      backgroundColor: colors.background,
+                    }]}
+                    onPress={() => setActivePicker(activePicker === "end" ? null : "end")}
+                  >
+                    <Calendar size={13} color={activePicker === "end" ? PRIMARY : colors.mutedForeground} strokeWidth={2} />
+                    <Text style={[s.datePressableText, { color: endDateObj ? colors.foreground : colors.mutedForeground }]}>
+                      {endDateObj ? toDisplayStr(endDateObj) : "Select date"}
+                    </Text>
+                  </Pressable>
+                </View>
+                {activePicker !== null && (
+                  <DateTimePicker
+                    value={
+                      activePicker === "start"
+                        ? (startDateObj ?? today)
+                        : (endDateObj ?? (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today))
+                    }
+                    mode="date"
+                    minimumDate={activePicker === "start" ? today : (startDateObj ? new Date(startDateObj.getTime() + 86400000) : today)}
+                    onChange={onDateChange}
+                  />
+                )}
+              </>
             )}
           </View>
 
@@ -539,37 +575,6 @@ export function BorrowRequestSheet({ targetItem, isOpen, onClose, onConfirm }: P
         </View>
       </View>
 
-      {/* iOS date picker — absolute overlay inside this Modal but OUTSIDE the
-          overflow:hidden sheet so the native UIDatePicker isn't clipped */}
-      {Platform.OS === "ios" && activePicker !== null && (
-        <View style={s.iosOverlayWrap} pointerEvents="box-none">
-          <Pressable
-            style={StyleSheet.absoluteFillObject}
-            onPress={() => setActivePicker(null)}
-          />
-          <View style={[s.iosOverlayCard, { backgroundColor: colors.card, paddingBottom: insets.bottom + 8 }]}>
-            <View style={[s.iosOverlayHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[s.iosOverlayLabel, { color: colors.mutedForeground }]}>
-                {activePicker === "start" ? "Start Date" : "Return Date"}
-              </Text>
-              <Pressable
-                onPress={() => setActivePicker(null)}
-                hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}
-              >
-                <Text style={[s.iosOverlayDone, { color: PRIMARY }]}>Done</Text>
-              </Pressable>
-            </View>
-            <DateTimePicker
-              value={pickerValue}
-              mode="date"
-              display="inline"
-              minimumDate={pickerMin}
-              onChange={onDateChange}
-              style={s.iosPickerSelf}
-            />
-          </View>
-        </View>
-      )}
     </Modal>
   );
 }
@@ -603,21 +608,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 11, paddingVertical: 12,
   },
   datePressableText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
-  // iOS date-picker — absolute overlay inside the sheet Modal, outside overflow:hidden
-  iosOverlayWrap: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
-  },
-  iosOverlayCard: {
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-  },
-  iosOverlayHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1,
-  },
-  iosOverlayLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  iosOverlayDone: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  iosPickerSelf: { width: "100%" },
+  // iOS compact picker sits inline in the date cell
+  compactPicker: { flex: 1 },
   // Cards
   grayCard: { borderWidth: 1, borderRadius: 10, padding: 12 },
   cardTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },

@@ -29,8 +29,11 @@ import { useAuth } from "@/context/AuthContext";
 interface Message {
   id: number;
   content: string;
-  senderId: number;
+  senderId: number | null;
   createdAt: string;
+  messageType?: string;
+  requestId?: number | null;
+  metadata?: Record<string, unknown>;
 }
 
 interface PublicProfile {
@@ -743,7 +746,15 @@ export default function ChatScreen() {
   const activeStatus = getActiveStatus(partner?.lastActiveAt ?? null);
   const partnerName = partner ? partner.displayName || partner.username : "";
   const initials = partner ? getInitials(partner.displayName, partner.username) : "?";
-  const reversed = messages ? [...messages].reverse() : [];
+  const reversed = messages
+  ? [...messages].reverse().filter((msg) => {
+      if (msg.messageType === "system") {
+        const visibleTo = msg.metadata?.visibleToUserId as number | undefined;
+        if (visibleTo && visibleTo !== user?.id) return false;
+      }
+      return true;
+    })
+  : [];
   const topPad = isWeb ? 67 : insets.top;
   const hasRating = partner && (partner.reviewCount ?? 0) > 0;
   const hasSubtext = hasRating || activeStatus || partner?.responseTime;
@@ -856,8 +867,133 @@ export default function ChatScreen() {
           keyExtractor={(m) => m.id.toString()}
           inverted
           contentContainerStyle={styles.messageList}
-          renderItem={({ item }) => {
-            const isMe = item.senderId === user?.id;
+          renderItem={({ item: msg }) => {
+            const isMe = msg.senderId === user?.id;
+
+            // ── Event messages (request_accepted, counter_proposed, etc.) ──────
+            if (msg.messageType === "event") {
+              const et = msg.metadata?.eventType as string | undefined;
+              const relatedReq = msg.requestId
+                ? allRequests?.find((r) => r.id === msg.requestId) ?? null
+                : null;
+
+              const iActor = msg.senderId === user?.id;
+              const actorName = partner?.displayName || partner?.username || "";
+              const actor = iActor ? "You" : actorName;
+
+              const eventLabel =
+                et === "request_accepted" ? `✅ ${actor} accepted the request` :
+                et === "request_declined" ? `❌ ${actor} declined the request` :
+                et === "request_cancelled" ? `🚫 ${actor} cancelled the request` :
+                et === "terms_accepted" ? `✅ ${actor} accepted the new terms` :
+                et === "terms_declined" ? `❌ ${actor} declined the new terms` :
+                et === "handoff_confirmed" ? "🤝 Handoff confirmed" :
+                et === "deposit_confirmed" ? "🔒 Deposit secured" :
+                et === "counter_proposed" ? null :
+                msg.content;
+
+              // Counter-proposed card: show Previous → Proposed columns
+              const counterCard = et === "counter_proposed" && msg.metadata
+                ? (() => {
+                    const mStart = msg.metadata.startDate as string | undefined;
+                    const mEnd = msg.metadata.endDate as string | undefined;
+                    const origStartRaw = (msg.metadata.origStartDate as string | undefined) ?? relatedReq?.startDate ?? undefined;
+                    const origEndRaw = (msg.metadata.origEndDate as string | undefined) ?? relatedReq?.endDate ?? undefined;
+                    const origStart = origStartRaw ? fmtDate(origStartRaw) : null;
+                    const origEnd = origEndRaw ? fmtDate(origEndRaw) : null;
+                    const newStart = mStart ? fmtDate(mStart) : null;
+                    const newEnd = mEnd ? fmtDate(mEnd) : null;
+                    const dateChanged = (newStart && newStart !== origStart) || (newEnd && newEnd !== origEnd);
+                    const origDeposit = msg.metadata.origDepositMethod as string | undefined;
+                    const newDeposit = msg.metadata.depositMethod as string | undefined;
+                    const depositChanged = origDeposit !== newDeposit;
+                    const depLabel = (m?: string | null) => m === "in_person" ? "In-person" : "In-app";
+
+                    return (
+                      <View style={[styles.counterTermsCard, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+                        {/* Previous column */}
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <Text style={[styles.counterTermsColLabel, { color: "#9ca3af" }]}>Previous</Text>
+                          {origStart && origEnd && (
+                            <View style={styles.counterTermsRow}>
+                              <Feather name="clock" size={11} color={colors.mutedForeground} />
+                              <Text style={[styles.counterTermsText, { color: colors.mutedForeground }]}>
+                                {origStart} – {origEnd}
+                              </Text>
+                            </View>
+                          )}
+                          {origDeposit != null && (
+                            <View style={styles.counterTermsRow}>
+                              <Shield size={11} color={colors.mutedForeground} strokeWidth={2} />
+                              <Text style={[styles.counterTermsText, { color: colors.mutedForeground }]}>
+                                {depLabel(origDeposit)}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        {/* Divider arrow */}
+                        <Text style={{ color: "#9ca3af", fontFamily: "Inter_600SemiBold", paddingHorizontal: 6, paddingTop: 20 }}>→</Text>
+                        {/* Proposed column */}
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <Text style={[styles.counterTermsColLabel, { color: "#f59e0b" }]}>Proposed</Text>
+                          {newStart && newEnd && (
+                            <View style={styles.counterTermsRow}>
+                              <Feather name="clock" size={11} color={dateChanged ? "#d97706" : colors.mutedForeground} />
+                              <Text style={[styles.counterTermsText, {
+                                color: dateChanged ? "#d97706" : colors.mutedForeground,
+                                fontFamily: dateChanged ? "Inter_600SemiBold" : "Inter_400Regular",
+                              }]}>
+                                {newStart} – {newEnd}
+                              </Text>
+                            </View>
+                          )}
+                          {newDeposit != null && (
+                            <View style={styles.counterTermsRow}>
+                              <Shield size={11} color={depositChanged ? "#d97706" : colors.mutedForeground} strokeWidth={2} />
+                              <Text style={[styles.counterTermsText, {
+                                color: depositChanged ? "#d97706" : colors.mutedForeground,
+                                fontFamily: depositChanged ? "Inter_600SemiBold" : "Inter_400Regular",
+                              }]}>
+                                {depLabel(newDeposit)}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })()
+                : null;
+
+              return (
+                <View style={styles.eventWrap}>
+                  <Text style={[styles.eventLabel, { color: colors.mutedForeground }]}>
+                    {et === "counter_proposed" ? `🔄 ${actor} proposed new terms` : eventLabel}
+                  </Text>
+                  {counterCard}
+                </View>
+              );
+            }
+
+            // ── System messages ───────────────────────────────────────────────
+            if (msg.messageType === "system") {
+              const myName = (user as any)?.displayName || (user as any)?.username || "";
+              const personalizedContent = msg.content.replace(
+                new RegExp(`^${myName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s)`),
+                "You"
+              );
+              return (
+                <View style={styles.systemWrap}>
+                  <Text style={[styles.systemText, { color: colors.mutedForeground }]}>
+                    {personalizedContent}
+                  </Text>
+                  <Text style={[styles.systemTime, { color: colors.mutedForeground }]}>
+                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                </View>
+              );
+            }
+
+            // ── Regular text message ──────────────────────────────────────────
             return (
               <View
                 style={[
@@ -867,10 +1003,10 @@ export default function ChatScreen() {
                 ]}
               >
                 <Text style={[styles.bubbleText, { color: isMe ? colors.primaryForeground : colors.foreground }]}>
-                  {item.content}
+                  {msg.content}
                 </Text>
                 <Text style={[styles.bubbleTime, { color: isMe ? "rgba(255,255,255,0.7)" : colors.mutedForeground }]}>
-                  {timeAgo(item.createdAt)}
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </Text>
               </View>
             );
@@ -1193,4 +1329,39 @@ const styles = StyleSheet.create({
   },
   counterCardTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   counterCardSub: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  // Event messages (request_accepted, counter_proposed, etc.)
+  eventWrap: {
+    alignItems: "center", alignSelf: "center",
+    marginVertical: 4, maxWidth: "90%", gap: 6,
+  },
+  eventLabel: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
+  // Counter-proposal terms card (Previous → Proposed)
+  counterTermsCard: {
+    flexDirection: "row", alignItems: "flex-start",
+    borderWidth: 1, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 8,
+    gap: 2, width: 260,
+  },
+  counterTermsColLabel: {
+    fontSize: 9, fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2,
+  },
+  counterTermsRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  counterTermsText: { fontSize: 11, fontFamily: "Inter_400Regular", flexShrink: 1 },
+  // System messages
+  systemWrap: {
+    alignItems: "center", alignSelf: "center",
+    marginVertical: 4, maxWidth: "80%", gap: 1,
+  },
+  systemText: {
+    fontSize: 12, fontFamily: "Inter_600SemiBold",
+    textAlign: "center", lineHeight: 16,
+  },
+  systemTime: {
+    fontSize: 10, fontFamily: "Inter_400Regular",
+    textAlign: "center", opacity: 0.6,
+  },
 });

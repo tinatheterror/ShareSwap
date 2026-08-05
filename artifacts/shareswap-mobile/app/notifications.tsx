@@ -127,11 +127,27 @@ export default function NotificationsScreen() {
     setTimeout(() => setRefreshing(false), 800);
   }
 
-  function handleNotifPress(notif: Notification) {
+  async function handleNotifPress(notif: Notification) {
     if (!notif.isRead) markRead(notif.id);
-    // Navigate to the related content — same logic as web
+
     if (notif.requestId) {
-      router.push(`/chat/${notif.requestId}` as never);
+      try {
+        // Need the partner's userId — fetch requests to resolve it
+        const requests = await apiGet<any[]>("/api/requests");
+        const req = requests.find((r: any) => r.id === notif.requestId);
+        if (req && user) {
+          const partnerId =
+            req.requesterId === user.id
+              ? req.item?.ownerId
+              : req.requesterId;
+          if (partnerId) {
+            router.push(`/chat/${partnerId}?requestId=${notif.requestId}` as never);
+            return;
+          }
+        }
+      } catch {}
+      // Fallback: open inbox so user can find the conversation
+      router.push("/(tabs)/inbox" as never);
     } else if (notif.itemId) {
       router.push(`/item/${notif.itemId}` as never);
     }

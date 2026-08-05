@@ -302,6 +302,7 @@ export function ChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const scrollToCounterRef = useRef(false);
+  const pendingChatRequestId = useRef<number | null>(null);
 
   // Request handling state
   const [selectedRequestId, setSelectedRequestId] = useState<number | null>(
@@ -810,13 +811,26 @@ export function ChatWidget() {
       if (found) {
         setSelectedConversation(found.partnerId);
         setActiveConversationRequestId(requestId);
+        pendingChatRequestId.current = null;
       } else {
-        // Inbox may not have loaded yet — show the list so the user can find it
+        // Inbox hasn't loaded yet — store the requestId and resolve when inbox arrives
+        pendingChatRequestId.current = requestId;
         setSelectedConversation(null);
       }
     };
     window.addEventListener("open-chat-request", handleOpenChatRequest);
     return () => window.removeEventListener("open-chat-request", handleOpenChatRequest);
+  }, [inboxItems]);
+
+  // Resolve a pending notification-click once inboxItems finishes loading
+  useEffect(() => {
+    if (!pendingChatRequestId.current || inboxItems.length === 0) return;
+    const found = inboxItems.find((item) => item.requestId === pendingChatRequestId.current);
+    if (found) {
+      setSelectedConversation(found.partnerId);
+      setActiveConversationRequestId(found.requestId);
+      pendingChatRequestId.current = null;
+    }
   }, [inboxItems]);
 
   // Scroll to bottom when messages load or conversation switches.

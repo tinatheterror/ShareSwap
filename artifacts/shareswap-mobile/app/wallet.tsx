@@ -196,7 +196,7 @@ export default function MyBalanceScreen() {
       <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
           <Feather name="arrow-left" size={20} color={colors.foreground} />
-          <Text style={[styles.backText, { color: colors.foreground }]}>Back to Profile</Text>
+          <Text style={[styles.backText, { color: colors.foreground }]}>Profile</Text>
         </Pressable>
       </View>
 

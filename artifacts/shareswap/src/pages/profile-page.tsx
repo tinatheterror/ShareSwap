@@ -744,7 +744,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Reviews + shares — full-width, centered in the banner */}
-              <div className="flex items-center justify-center gap-6 mt-5 mb-5 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center gap-6 mt-3 mb-3 text-sm text-muted-foreground">
                 <div className="flex items-start gap-1.5">
                   <Star className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-px" />
                   <span>
@@ -767,7 +767,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Trust stats — full-width row below avatar+info, left-aligned */}
-              <div className="mt-5 space-y-1 text-xxs text-slate-500">
+              <div className="mt-2 space-y-0.5 text-xxs text-slate-500">
                 {(publicProfile as any).onTimeReturnRate != null && (
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-teal-500 flex-shrink-0" />
@@ -784,7 +784,7 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 )}
-                <div className="mt-2 space-y-0.5 text-[10px] text-slate-400">
+                <div className="mt-1 space-y-0.5 text-[10px] text-slate-400">
                   <div className="flex items-center gap-1">
                     <AlertTriangle
                       className={`h-3 w-3 flex-shrink-0 ${((publicProfile as any).issuesCount ?? 0) === 0 ? "text-green-400" : "text-amber-400"}`}

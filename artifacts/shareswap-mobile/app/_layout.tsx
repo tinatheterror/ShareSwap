@@ -130,6 +130,13 @@ function RootLayoutNav() {
         }}
       />
       <Stack.Screen
+        name="subscription"
+        options={{
+          title: "Subscription",
+          headerBackTitle: "Profile",
+        }}
+      />
+      <Stack.Screen
         name="verification"
         options={{
           title: "Identity Verification",

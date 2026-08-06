@@ -189,12 +189,6 @@ export default function SubscriptionScreen() {
       >
         {/* Page header */}
         <View style={s.pageHeader}>
-          <Pressable
-            style={({ pressed }) => [s.backBtn, { opacity: pressed ? 0.6 : 1 }]}
-            onPress={() => router.back()}
-          >
-            <Feather name="arrow-left" size={18} color={colors.mutedForeground} />
-          </Pressable>
           <View style={[s.headerIconWrap, { backgroundColor: "#D4F7F1" }]}>
             <Feather name="award" size={22} color="#0d9488" />
           </View>

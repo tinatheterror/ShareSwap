@@ -163,15 +163,6 @@ export default function SubscriptionPage() {
     <>
       <Navbar />
       <div className="max-w-lg mx-auto px-4 py-8">
-        {/* Back */}
-        <button
-          onClick={() => navigate("/profile")}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to profile
-        </button>
-
         <h1 className="text-2xl font-bold text-slate-900 mb-1">Subscription</h1>
         <p className="text-sm text-slate-500 mb-6">Manage your plan and billing</p>
 

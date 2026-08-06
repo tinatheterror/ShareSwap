@@ -1494,6 +1494,9 @@ export default function ProfilePage() {
                         </Button>
                       </Link>
                     )}
+                    <Link href="/subscription" className="text-sm text-slate-500 hover:text-slate-700 underline underline-offset-2 decoration-slate-300 hover:decoration-slate-500 transition-colors text-center">
+                      Manage subscription
+                    </Link>
                     <Button variant="outline" className="w-full gap-2" onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending}>
                       {portalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                       Manage billing

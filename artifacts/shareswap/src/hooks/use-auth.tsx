@@ -95,21 +95,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/logout");
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Logout failed");
-      }
-    },
-    onSuccess: () => {
+      // Clear local state immediately so the button always works,
+      // even if the server request fails (CSRF, network, etc.).
       queryClient.setQueryData(["/api/user"], null);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Logout failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      queryClient.clear();
+      // Best-effort server-side session teardown.
+      apiRequest("POST", "/api/logout").catch(() => {});
     },
   });
 

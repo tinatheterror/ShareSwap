@@ -170,14 +170,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
-    await apiPost("/api/logout");
+    // Always clear local state first so the user is signed out immediately
+    // even if the server request fails (network error, expired CSRF, etc.).
     setUser(null);
     setSessionExpired(false);
     hadSession.current = false;
     await AsyncStorage.multiRemove([HAS_SESSION_KEY, LAST_AUTH_METHOD_KEY]);
-    // Mirror web: clear the entire React Query cache so stale data
-    // from the previous session never bleeds into the next login.
     queryClient.clear();
+    // Best-effort server-side session teardown.
+    apiPost("/api/logout").catch(() => {});
   }, [queryClient]);
 
   const setUserData = useCallback((data: User) => {

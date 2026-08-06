@@ -457,7 +457,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* CTA */}
-          {hasActivePaidSub ? (
+          {subTier !== "free" ? (
             <Pressable
               style={({ pressed }) => [styles.subManageBtn, { borderColor: colors.border, opacity: pressed || subMutating ? 0.7 : 1 }]}
               onPress={() => portalMutation.mutate()}

@@ -1485,7 +1485,7 @@ export default function ProfilePage() {
                   </ul>
 
                   {/* CTA */}
-                  {hasActivePaidSub ? (
+                  {currentTier !== "free" ? (
                     <Button variant="outline" className="w-full gap-2" onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending}>
                       {portalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                       Manage billing

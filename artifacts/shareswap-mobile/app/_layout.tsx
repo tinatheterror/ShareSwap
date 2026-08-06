@@ -110,10 +110,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="settings"
-        options={{
-          title: "Settings",
-          headerBackTitle: "Profile",
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="edit-profile"
@@ -131,10 +128,7 @@ function RootLayoutNav() {
       />
       <Stack.Screen
         name="subscription"
-        options={{
-          title: "Subscription",
-          headerBackTitle: "Profile",
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="verification"

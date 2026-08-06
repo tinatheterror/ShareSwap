@@ -188,6 +188,13 @@ export default function SubscriptionScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Page header */}
+        <Pressable
+          style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 8, opacity: pressed ? 0.6 : 1, alignSelf: "flex-start" })}
+          onPress={() => router.back()}
+        >
+          <Feather name="arrow-left" size={16} color={colors.mutedForeground} />
+          <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Profile</Text>
+        </Pressable>
         <View style={s.pageHeader}>
           <View style={[s.headerIconWrap, { backgroundColor: "#D4F7F1" }]}>
             <Feather name="award" size={22} color="#0d9488" />

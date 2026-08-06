@@ -288,7 +288,7 @@ export default function SubscriptionPage() {
         {!isLoading && (
           <>
             <div className="flex flex-col gap-0">
-              {(["free", "member", "pro"] as Tier[]).filter((t) => t !== currentTier).map((tier) => {
+              {(["member", "pro"] as Tier[]).filter((t) => t !== currentTier).map((tier) => {
                 const p = PLANS[tier];
                 const { Icon: TierIcon } = p;
                 const isCurrent = currentTier === tier;

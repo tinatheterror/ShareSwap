@@ -176,7 +176,7 @@ export default function SubscriptionScreen() {
   const borrowUsed = subStatus?.monthlyBorrowCount ?? 0;
   const borrowPct = Math.min((borrowUsed / 3) * 100, 100);
 
-  const otherTiers = (["free", "member", "pro"] as Tier[]).filter((t) => t !== currentTier);
+  const otherTiers = (["member", "pro"] as Tier[]).filter((t) => t !== currentTier);
 
   return (
     <View style={[s.container, { backgroundColor: colors.muted ?? "#f5f6f8" }]}>

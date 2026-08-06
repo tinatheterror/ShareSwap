@@ -1394,7 +1394,15 @@ export default function ProfilePage() {
                 : currentTier === "pro" ? "border-amber-400"
                 : "border-teal-400"
               }`}>
-                <CardContent className="p-5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-teal-600 flex-shrink-0" />
+                      <span>Subscription</span>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 pt-0">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">

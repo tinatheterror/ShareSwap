@@ -373,7 +373,17 @@ export default function ProfileScreen() {
 
         {/* Current Plan card */}
         <View style={[styles.subCard, { backgroundColor: colors.card, borderColor: subPlan.borderColor }]}>
-          {/* Header */}
+          {/* Section title */}
+          <View style={styles.sectionCardHeader}>
+            <View style={styles.sectionCardTitleRow}>
+              <Feather name="award" size={18} color="#0d9488" />
+              <Text style={[styles.sectionCardTitle, { color: colors.foreground }]}>
+                Subscription
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.subDivider, { backgroundColor: colors.border, marginTop: 0 }]} />
+          {/* Plan row */}
           <View style={styles.subHeaderRow}>
             <View style={styles.subHeaderLeft}>
               <View style={[styles.subIconWrap, { backgroundColor: subPlan.iconBg }]}>

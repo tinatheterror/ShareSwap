@@ -347,12 +347,13 @@ export default function SubscriptionScreen() {
 
         {/* ── Plans & Pricing ── */}
         {!isLoading && (
-          <View style={s.otherSection}>
-            <View style={s.plansSectionHeader}>
+          <View style={s.pricingSection}>
+            {/* Centered header */}
+            <View style={s.pricingHeader}>
               <Feather name="award" size={16} color="#0d9488" />
-              <Text style={[s.plansSectionTitle, { color: colors.foreground }]}>Plans &amp; Pricing</Text>
+              <Text style={[s.pricingTitle, { color: colors.foreground }]}>Plans &amp; Pricing</Text>
             </View>
-            <Text style={[s.plansSectionSub, { color: colors.mutedForeground }]}>
+            <Text style={[s.pricingSub, { color: colors.mutedForeground }]}>
               Share more, own less. Upgrade to Member for unlimited borrows.
             </Text>
 
@@ -360,9 +361,20 @@ export default function SubscriptionScreen() {
               const p = PLAN_META[tier];
               const isCurrent = currentTier === tier;
               const isCheckingOut = checkoutMutation.isPending && checkoutMutation.variables === tier;
-              const borderColor = tier === "free" ? "#e2e8f0" : tier === "member" ? "#2dd4bf" : "#fbbf24";
+
+              // Current free plan gets teal border like paid plans
+              const borderColor =
+                isCurrent && tier === "free"
+                  ? "#2dd4bf"
+                  : tier === "member"
+                  ? "#2dd4bf"
+                  : tier === "pro"
+                  ? "#fbbf24"
+                  : "#e2e8f0";
+
               const btnBg = tier === "member" ? "#0d9488" : "#f59e0b";
               const btnBgPressed = tier === "member" ? "#0f766e" : "#d97706";
+
               const features: { text: string; included: boolean }[] =
                 tier === "free"
                   ? [
@@ -385,109 +397,128 @@ export default function SubscriptionScreen() {
                     ];
 
               return (
-                <View
-                  key={tier}
-                  style={[
-                    s.fullPlanCard,
-                    { backgroundColor: colors.card, borderColor },
-                    isCurrent && s.fullPlanCardActive,
-                    isCurrent && { borderColor },
-                  ]}
-                >
+                <React.Fragment key={tier}>
+                  {/* Badge sits in the gap between Free and Member */}
                   {tier === "member" && (
-                    <View style={s.popularBadge}>
-                      <Text style={s.popularBadgeText}>Most Popular</Text>
-                    </View>
-                  )}
-                  {isCurrent && (
-                    <View style={[s.planCurrentBanner, { borderBottomColor: borderColor + "40" }]}>
-                      <Text style={s.planCurrentLabel}>Current Plan</Text>
-                      {tier === "free" ? (
-                        <Text style={[s.planBorrowCount, { color: colors.mutedForeground }]}>
-                          {borrowUsed} / 3 borrows used this month
-                        </Text>
-                      ) : (
-                        <View style={[s.activePill, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
-                          <Text style={{ color: "#15803d", fontSize: 11, fontFamily: "Inter_600SemiBold" }}>Active</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                  <View style={[s.planRow, { marginTop: tier === "member" && !isCurrent ? 12 : 0 }]}>
-                    <View style={[s.planSmIconWrap, { backgroundColor: p.iconBg }]}>
-                      <Feather name={p.icon as any} size={16} color={p.iconColor} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.planCardName, { color: colors.foreground }]}>{p.name}</Text>
-                      <Text style={[s.planBillingNote, { color: colors.mutedForeground }]}>{p.price}</Text>
-                    </View>
-                    <Text style={[s.planCardPrice, { color: tier === "free" ? "#475569" : colors.foreground }]}>
-                      {tier === "free" ? "$0" : tier === "member" ? "$4.99" : "$9.99"}
-                      {tier !== "free" && <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}> /mo</Text>}
-                    </Text>
-                  </View>
-                  <View style={s.planFeatures}>
-                    {features.map(({ text, included }) => (
-                      <View key={text} style={s.planFeatureRow}>
-                        {included
-                          ? <Feather name="check" size={13} color="#14b8a6" />
-                          : <View style={s.planDot} />}
-                        <Text style={[s.planFeatureText, { color: included ? "#475569" : "#94a3b8" }]}>{text}</Text>
+                    <View style={s.badgeRow}>
+                      <View style={s.popularBadge}>
+                        <Text style={s.popularBadgeText}>Most Popular</Text>
                       </View>
-                    ))}
-                  </View>
-                  {/* Action button */}
-                  {tier === "free" ? (
-                    <View style={[s.planBtn, { borderColor: "#e2e8f0", backgroundColor: "transparent" }]}>
-                      <Text style={{ color: "#94a3b8", fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" }}>
-                        {isCurrent ? "Your Current Plan" : "Free Plan"}
+                    </View>
+                  )}
+                  {tier === "pro" && (
+                    <View style={[s.badgeRow, { backgroundColor: "transparent" }]} />
+                  )}
+
+                  <View style={[s.planCard, { backgroundColor: colors.card, borderColor }]}>
+                    {/* Current-plan banner */}
+                    {isCurrent && (
+                      <View style={[s.currentBanner, { borderBottomColor: colors.border }]}>
+                        <Text style={s.currentLabel}>Current Plan</Text>
+                        {tier === "free" ? (
+                          <Text style={[s.currentSub, { color: colors.mutedForeground }]}>
+                            {borrowUsed} / 3 borrows used this month
+                          </Text>
+                        ) : (
+                          <View style={s.activePill}>
+                            <Text style={s.activePillText}>Active</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Icon + name + price row */}
+                    <View style={s.tierRow}>
+                      <View style={[s.tierIcon, { backgroundColor: p.iconBg }]}>
+                        <Feather name={p.icon as any} size={15} color={p.iconColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.tierName, { color: colors.foreground }]}>{p.name}</Text>
+                        <Text style={[s.tierNote, { color: colors.mutedForeground }]}>
+                          {tier === "free" ? "Free forever" : tier === "member" ? "$4.99 / month" : "$9.99 / month"}
+                        </Text>
+                      </View>
+                      <Text style={[s.tierPrice, { color: tier === "free" ? "#475569" : colors.foreground }]}>
+                        {tier === "free" ? "$0" : tier === "member" ? "$4.99" : "$9.99"}
+                        {tier !== "free" && (
+                          <Text style={[s.tierPriceSuffix, { color: colors.mutedForeground }]}> /mo</Text>
+                        )}
                       </Text>
                     </View>
-                  ) : isCurrent ? (
-                    <View style={{ gap: 8 }}>
-                      <View style={[s.planBtn, { borderColor: tier === "member" ? "#99f6e4" : "#fde68a", backgroundColor: "transparent" }]}>
-                        <Text style={{ color: tier === "member" ? "#0d9488" : "#d97706", fontSize: 13, fontFamily: "Inter_500Medium", textAlign: "center" }}>✓ Current Plan</Text>
+
+                    {/* Feature list */}
+                    <View style={s.featureList}>
+                      {features.map(({ text, included }) => (
+                        <View key={text} style={s.featureItem}>
+                          {included ? (
+                            <Feather name="check" size={13} color="#14b8a6" style={{ marginTop: 1 }} />
+                          ) : (
+                            <View style={s.featureDotSm} />
+                          )}
+                          <Text style={[s.featureItemText, { color: included ? "#475569" : "#94a3b8" }]}>
+                            {text}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* CTA button */}
+                    {tier === "free" ? (
+                      <View style={[s.ghostBtn, { borderColor: "#e2e8f0" }]}>
+                        <Text style={s.ghostBtnText}>
+                          {isCurrent ? "Your Current Plan" : "Free Plan"}
+                        </Text>
                       </View>
+                    ) : isCurrent ? (
+                      <View style={{ gap: 8 }}>
+                        <View style={[s.ghostBtn, {
+                          borderColor: tier === "member" ? "#99f6e4" : "#fde68a",
+                        }]}>
+                          <Text style={[s.ghostBtnText, {
+                            color: tier === "member" ? "#0d9488" : "#d97706",
+                          }]}>✓ Current Plan</Text>
+                        </View>
+                        <Pressable
+                          style={({ pressed }) => [s.manageRow, { opacity: pressed ? 0.7 : 1 }]}
+                          onPress={() => portalMutation.mutate()}
+                          disabled={anyMutating}
+                        >
+                          <Feather name="settings" size={13} color="#64748b" />
+                          <Text style={s.manageRowText}>
+                            {portalMutation.isPending ? "Opening…" : "Manage Subscription"}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    ) : (
                       <Pressable
-                        style={({ pressed }) => [s.planBtnGhost, { opacity: pressed ? 0.7 : 1 }]}
-                        onPress={() => portalMutation.mutate()}
+                        style={({ pressed }) => [
+                          s.solidBtn,
+                          { backgroundColor: pressed ? btnBgPressed : btnBg, opacity: anyMutating ? 0.7 : 1 },
+                        ]}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          hasActivePaidSub ? portalMutation.mutate() : checkoutMutation.mutate(tier);
+                        }}
                         disabled={anyMutating}
                       >
-                        <Feather name="settings" size={13} color="#64748b" />
-                        <Text style={{ color: "#64748b", fontSize: 13, fontFamily: "Inter_400Regular" }}>
-                          {portalMutation.isPending ? "Opening…" : "Manage Subscription"}
-                        </Text>
+                        {isCheckingOut ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={s.solidBtnText}>
+                            {hasActivePaidSub
+                              ? tier === "pro" ? "Upgrade to Pro" : "Switch to Member"
+                              : tier === "member" ? "Subscribe — $4.99/mo" : "Subscribe — $9.99/mo"}
+                          </Text>
+                        )}
                       </Pressable>
-                    </View>
-                  ) : (
-                    <Pressable
-                      style={({ pressed }) => [
-                        s.planBtnFilled,
-                        { backgroundColor: pressed ? btnBgPressed : btnBg, opacity: anyMutating ? 0.7 : 1 },
-                      ]}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        hasActivePaidSub ? portalMutation.mutate() : checkoutMutation.mutate(tier);
-                      }}
-                      disabled={anyMutating}
-                    >
-                      {isCheckingOut ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <Text style={{ color: "#fff", fontSize: 13, fontFamily: "Inter_600SemiBold" }}>
-                          {hasActivePaidSub
-                            ? tier === "pro" ? "Upgrade to Pro" : "Switch to Member"
-                            : tier === "member" ? "Subscribe — $4.99/mo" : "Subscribe — $9.99/mo"}
-                        </Text>
-                      )}
-                    </Pressable>
-                  )}
-                </View>
+                    )}
+                  </View>
+                </React.Fragment>
               );
             })}
 
-            <Text style={[s.plansFooter, { color: colors.mutedForeground }]}>
-              Subscriptions renew monthly · Cancel anytime via Manage Subscription · Service fee includes Stripe payment processing
+            <Text style={[s.pricingFooter, { color: colors.mutedForeground }]}>
+              Subscriptions renew monthly · Cancel anytime · Service fee includes Stripe processing
             </Text>
           </View>
         )}
@@ -610,106 +641,153 @@ const s = StyleSheet.create({
     color: "#fff",
   },
 
-  otherSection: { marginBottom: 0 },
+  // ── Plans & Pricing section ──────────────────────────────────────────────────
+  pricingSection: { marginBottom: 0 },
 
-  // ── Plans & Pricing comparison grid ──────────────────────────────────────────
-  plansSectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  plansSectionTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  plansSectionSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 12 },
-  plansFooter: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    marginTop: 12,
-    lineHeight: 14,
-  },
-  fullPlanCard: {
-    borderRadius: 12,
-    borderWidth: 2,
-    padding: 14,
-    marginBottom: 12,
-    overflow: "hidden",
-  },
-  fullPlanCardActive: { borderWidth: 2 },
-  popularBadge: {
-    position: "absolute",
-    top: -10,
-    alignSelf: "center",
-    backgroundColor: "#0d9488",
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 3,
-    zIndex: 1,
-  },
-  popularBadgeText: { color: "#fff", fontSize: 10, fontFamily: "Inter_600SemiBold" },
-  planCurrentBanner: {
-    marginBottom: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  planCurrentLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_500Medium",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    color: "#94a3b8",
-    marginBottom: 4,
-  },
-  planBorrowCount: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  planRow: {
+  pricingHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    justifyContent: "center",
+    gap: 7,
+    marginBottom: 6,
   },
-  planSmIconWrap: {
+  pricingTitle: { fontSize: 17, fontFamily: "Inter_700Bold" },
+  pricingSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+
+  // Plan card
+  planCard: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
+    marginBottom: 0,
+  },
+
+  // "Most Popular" badge row (sits between cards)
+  badgeRow: {
+    alignItems: "center",
+    marginVertical: 8,
+  },
+  popularBadge: {
+    backgroundColor: "#0d9488",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  popularBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+
+  // Current-plan banner inside card
+  currentBanner: {
+    marginBottom: 12,
+    paddingBottom: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  currentLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "#94a3b8",
+    marginBottom: 2,
+  },
+  currentSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+
+  // Icon + name + price row
+  tierRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+    marginBottom: 14,
+  },
+  tierIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
-  planCardName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  planBillingNote: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
-  planCardPrice: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  planFeatures: { gap: 8, marginBottom: 12 },
-  planFeatureRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  planDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+  tierName: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  tierNote: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 1 },
+  tierPrice: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  tierPriceSuffix: { fontSize: 13, fontFamily: "Inter_400Regular" },
+
+  // Feature list
+  featureList: { gap: 10, marginBottom: 16 },
+  featureItem: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  featureDotSm: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
     backgroundColor: "#cbd5e1",
+    marginTop: 5,
     marginLeft: 4,
   },
-  planFeatureText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
-  planBtn: {
+  featureItemText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
+
+  // Ghost / outlined button (Free or current paid plan)
+  ghostBtn: {
     borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingVertical: 11,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "transparent",
   },
-  planBtnGhost: {
+  ghostBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "#94a3b8",
+    textAlign: "center",
+  },
+
+  // Manage subscription ghost row
+  manageRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     paddingVertical: 8,
   },
-  planBtnFilled: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
+  manageRowText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "#64748b",
   },
 
-  footer: {
+  // Solid CTA button (Subscribe / Switch / Upgrade)
+  solidBtn: {
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  solidBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
+  },
+
+  // Footer note
+  pricingFooter: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
-    lineHeight: 16,
-    marginTop: 4,
+    marginTop: 16,
+    lineHeight: 15,
+    paddingHorizontal: 8,
   },
 });

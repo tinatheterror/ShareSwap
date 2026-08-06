@@ -203,31 +203,6 @@ export default function ProfilePage() {
     enabled: !!user && isPro,
   });
 
-  const checkoutMutation = useMutation({
-    mutationFn: async (tier: string) => {
-      const res = await apiRequest("POST", "/api/subscription/checkout", { tier });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      if (data.url) window.location.href = data.url;
-    },
-    onError: (error: any) => {
-      toast({ title: "Checkout failed", description: error.message || "Failed to start checkout.", variant: "destructive" });
-    },
-  });
-
-  const portalMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/subscription/portal", {});
-      return res.json();
-    },
-    onSuccess: (data) => {
-      if (data.url) window.location.href = data.url;
-    },
-    onError: (error: any) => {
-      toast({ title: "Failed to open subscription portal", description: error.message || "Please try again.", variant: "destructive" });
-    },
-  });
 
   // Handle Stripe redirect back to profile after checkout
   useEffect(() => {
@@ -1388,201 +1363,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Plans & Pricing */}
-            <div className="mt-6">
-              <div className="text-center mb-3 md:mb-4">
-                <h2 className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 text-base md:text-xl font-bold">
-                  <Crown className="h-4 w-4 md:h-6 md:w-6 text-teal-600" />
-                  <span>Plans &amp; Pricing</span>
-                </h2>
-                <p className="text-xs md:text-sm text-gray-500 mt-1">
-                  Share more, own less. Upgrade to Member for unlimited borrows.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                {/* Free */}
-                <div className={`relative bg-white rounded-xl border-2 border-slate-200 p-4 flex flex-col shadow-sm ${currentTier === "free" ? "ring-2 ring-teal-400 ring-offset-1" : ""}`}>
-                  {currentTier === "free" && (
-                    <div className="mb-3 pb-3 border-b border-slate-100">
-                      <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
-                      <p className="text-xs text-slate-500">
-                        {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used this month
-                      </p>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <div className="p-1.5 rounded-lg bg-slate-100">
-                      <Zap className="w-4 h-4 text-slate-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-sm leading-tight">Free</h3>
-                      <p className="text-xs text-slate-400">Free forever</p>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <span className="text-2xl font-bold text-slate-600">$0</span>
-                  </div>
-                  <ul className="space-y-2 mb-4 flex-1 text-xs">
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />3 borrows per month
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-400">
-                      <div className="w-3.5 h-3.5 shrink-0 mt-1 flex items-center justify-center">
-                        <div className="w-1 h-1 rounded-full bg-slate-300" />
-                      </div>
-                      5% service fee on rentals
-                    </li>
-                  </ul>
-                  <Button variant="outline" className="w-full rounded-lg text-slate-400 text-xs h-8" disabled>
-                    {currentTier === "free" ? "Your Current Plan" : "Free Plan"}
-                  </Button>
-                </div>
-
-                {/* Member */}
-                <div className={`relative bg-white rounded-xl border-2 border-teal-400 p-4 flex flex-col shadow-sm shadow-teal-100 ${currentTier === "member" ? "ring-2 ring-teal-500 ring-offset-1" : ""}`}>
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-teal-600 text-white text-[10px] px-2.5">Most Popular</Badge>
-                  </div>
-                  {currentTier === "member" && (
-                    <div className="mb-3 pb-3 border-b border-teal-100 pt-1">
-                      <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
-                      <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px]">Active</Badge>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2.5 mb-3 pt-1">
-                    <div className="p-1.5 rounded-lg bg-teal-50">
-                      <Star className="w-4 h-4 text-teal-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-sm leading-tight">Member</h3>
-                      <p className="text-xs text-slate-400">$4.99 / month</p>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <span className="text-2xl font-bold text-slate-800">$4.99<span className="text-xs font-normal text-slate-400"> /mo</span></span>
-                  </div>
-                  <ul className="space-y-2 mb-4 flex-1 text-xs">
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited borrows
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-400">
-                      <div className="w-3.5 h-3.5 shrink-0 mt-1 flex items-center justify-center">
-                        <div className="w-1 h-1 rounded-full bg-slate-300" />
-                      </div>
-                      5% service fee on rentals
-                    </li>
-                  </ul>
-                  {currentTier === "member" ? (
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" className="w-full rounded-lg border-teal-200 text-teal-600 text-xs h-8" disabled>
-                        ✓ Current Plan
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => portalMutation.mutate()}
-                        disabled={portalMutation.isPending}
-                        className="w-full flex items-center justify-center gap-1.5 text-slate-500 text-xs h-7"
-                      >
-                        {portalMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
-                        Manage Subscription
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => checkoutMutation.mutate("member")}
-                      disabled={checkoutMutation.isPending}
-                      className="w-full rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs h-8 font-semibold"
-                    >
-                      {checkoutMutation.isPending && (checkoutMutation.variables as string) === "member"
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : "Subscribe — $4.99/mo"}
-                    </Button>
-                  )}
-                </div>
-
-                {/* Pro */}
-                <div className={`relative bg-white rounded-xl border-2 border-amber-400 p-4 flex flex-col shadow-sm ${currentTier === "pro" ? "ring-2 ring-amber-400 ring-offset-1" : ""}`}>
-                  {currentTier === "pro" && (
-                    <div className="mb-3 pb-3 border-b border-amber-100">
-                      <p className="text-[10px] text-slate-400 mb-0.5">Current Plan</p>
-                      <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px]">Active</Badge>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <div className="p-1.5 rounded-lg bg-amber-50">
-                      <Crown className="w-4 h-4 text-amber-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-sm leading-tight">Pro</h3>
-                      <p className="text-xs text-slate-400">$9.99 / month</p>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <span className="text-2xl font-bold text-slate-800">$9.99<span className="text-xs font-normal text-slate-400"> /mo</span></span>
-                  </div>
-                  <ul className="space-y-2 mb-4 flex-1 text-xs">
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited borrows
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Unlimited swaps &amp; gifts
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Reduced 4% service fee on rentals
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <Check className="w-3.5 h-3.5 text-teal-500 shrink-0 mt-0.5" />Activity &amp; Insights dashboard
-                    </li>
-                    <li className="flex items-start gap-1.5 text-slate-600">
-                      <div className="flex flex-col">
-                        <span className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />$1.50 courier convenience fee waived (5 deliveries/month)</span>
-                        <span className="text-[10px] text-slate-400 ml-5">Neither party sees the other's address</span>
-                      </div>
-                    </li>
-                  </ul>
-                  {currentTier === "pro" ? (
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" className="w-full rounded-lg border-amber-200 text-amber-600 text-xs h-8" disabled>
-                        ✓ Current Plan
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => portalMutation.mutate()}
-                        disabled={portalMutation.isPending}
-                        className="w-full flex items-center justify-center gap-1.5 text-slate-500 text-xs h-7"
-                      >
-                        {portalMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Settings className="w-3 h-3" />}
-                        Manage Subscription
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => checkoutMutation.mutate("pro")}
-                      disabled={checkoutMutation.isPending}
-                      className="w-full rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 font-semibold"
-                    >
-                      {checkoutMutation.isPending && (checkoutMutation.variables as string) === "pro"
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : "Subscribe — $9.99/mo"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-[10px] md:text-xs text-center text-gray-400 mt-3">
-                Subscriptions renew monthly · Cancel anytime via Manage Subscription · Service fee includes Stripe payment processing
-              </p>
-            </div>
-
             {/* Activity & Insights Dashboard */}
             <div className="mt-6">
               <div className="text-center mb-3 md:mb-4">
@@ -1726,13 +1506,11 @@ export default function ProfilePage() {
                       </div>
                       <p className="text-sm font-semibold text-slate-800 mb-1">Pro feature</p>
                       <p className="text-xs text-slate-500 mb-4">Unlock your Activity &amp; Insights dashboard — track earnings, ShareCoin flow, and your most requested items.</p>
-                      <Button
-                        onClick={() => checkoutMutation.mutate("pro")}
-                        disabled={checkoutMutation.isPending}
-                        className="w-full rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 font-semibold"
-                      >
-                        {checkoutMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Upgrade to Pro — $9.99/mo"}
-                      </Button>
+                      <Link href="/subscription">
+                        <Button className="w-full rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs h-8 font-semibold">
+                          Upgrade to Pro — $9.99/mo
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </div>

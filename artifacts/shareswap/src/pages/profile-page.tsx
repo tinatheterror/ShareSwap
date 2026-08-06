@@ -1388,18 +1388,49 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Plans & Pricing */}
+            {/* Subscription summary */}
             <div className="mt-6">
-              <div className="text-center mb-3 md:mb-4">
-                <h2 className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 text-base md:text-xl font-bold">
-                  <Crown className="h-4 w-4 md:h-6 md:w-6 text-teal-600" />
-                  <span>Plans &amp; Pricing</span>
-                </h2>
-                <p className="text-xs md:text-sm text-gray-500 mt-1">
-                  Share more, own less. Upgrade to Member for unlimited borrows.
-                </p>
-              </div>
+              <Card className="border border-slate-200">
+                <CardContent className="p-4">
+                  <p className="text-[11px] text-slate-400 uppercase tracking-wide font-medium mb-2">
+                    Subscription
+                  </p>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {currentTier === "pro" ? (
+                      <Crown className="h-4 w-4 text-amber-500" />
+                    ) : currentTier === "member" ? (
+                      <Star className="h-4 w-4 text-teal-600" />
+                    ) : (
+                      <Zap className="h-4 w-4 text-slate-400" />
+                    )}
+                    <p className="text-base font-bold text-slate-900">
+                      {currentTier === "pro" ? "Pro" : currentTier === "member" ? "Member" : "Free"}
+                    </p>
+                  </div>
+                  {currentTier === "free" ? (
+                    <>
+                      <p className="text-sm text-slate-500 mb-0.5">
+                        {subStatus?.monthlyBorrowCount ?? 0} / 3 borrows used
+                      </p>
+                      <p className="text-sm text-slate-400 mb-3">
+                        Upgrade for unlimited borrows
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-teal-600 mb-3">Unlimited borrows</p>
+                  )}
+                  <Link href="/subscription" className="block">
+                    <Button variant="outline" size="sm" className="w-full gap-1.5">
+                      <Settings className="h-3.5 w-3.5" />
+                      Manage Subscription
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
 
+            {/* REMOVED Plans & Pricing — now lives at /subscription */}
+            <div className="mt-6 hidden">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 {/* Free */}
                 <div className={`relative bg-white rounded-xl border-2 border-slate-200 p-4 flex flex-col shadow-sm ${currentTier === "free" ? "ring-2 ring-teal-400 ring-offset-1" : ""}`}>
@@ -1581,6 +1612,7 @@ export default function ProfilePage() {
               <p className="text-[10px] md:text-xs text-center text-gray-400 mt-3">
                 Subscriptions renew monthly · Cancel anytime via Manage Subscription · Service fee includes Stripe payment processing
               </p>
+            </div>
             </div>
 
             {/* Activity & Insights Dashboard */}
@@ -1818,7 +1850,7 @@ export default function ProfilePage() {
               <Link href="/subscription" className="w-full">
                 <Button variant="outline" size="sm" className="w-full justify-start">
                   <Crown className="h-4 w-4 mr-2" />
-                  Subscription
+                  Manage Subscription
                 </Button>
               </Link>
               <Link href="/settings" className="w-full">

@@ -1483,12 +1483,12 @@ export default function ProfilePage() {
                       Manage billing
                     </Button>
                   ) : (
-                    <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2" onClick={() => checkoutMutation.mutate("member")} disabled={checkoutMutation.isPending}>
-                      {checkoutMutation.isPending && (checkoutMutation.variables as string) === "member"
-                        ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : <Star className="h-4 w-4" />}
-                      Upgrade to Member — $4.99/mo
-                    </Button>
+                    <Link href="/subscription" className="block w-full">
+                      <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2">
+                        <Star className="h-4 w-4" />
+                        Upgrade to Member — $4.99/mo
+                      </Button>
+                    </Link>
                   )}
                 </CardContent>
               </Card>

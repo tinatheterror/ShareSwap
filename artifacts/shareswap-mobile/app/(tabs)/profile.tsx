@@ -462,13 +462,10 @@ export default function ProfileScreen() {
             </Pressable>
           ) : (
             <Pressable
-              style={({ pressed }) => [styles.subUpgradeBtn, { backgroundColor: pressed ? "#0f766e" : "#0d9488", opacity: subMutating ? 0.7 : 1 }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); checkoutMutation.mutate("member"); }}
-              disabled={subMutating}
+              style={({ pressed }) => [styles.subUpgradeBtn, { backgroundColor: pressed ? "#0f766e" : "#0d9488" }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/subscription" as any); }}
             >
-              {checkoutMutation.isPending && checkoutMutation.variables === "member"
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Feather name="star" size={15} color="#fff" />}
+              <Feather name="star" size={15} color="#fff" />
               <Text style={styles.subUpgradeBtnText}>Upgrade to Member — $4.99/mo</Text>
             </Pressable>
           )}

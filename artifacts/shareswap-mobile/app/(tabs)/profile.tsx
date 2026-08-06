@@ -468,16 +468,11 @@ export default function ProfileScreen() {
               </Pressable>
             )}
             <Pressable
-              style={({ pressed }) => [styles.subManageBtn, { borderColor: colors.border, opacity: pressed || subMutating ? 0.7 : 1 }]}
-              onPress={() => portalMutation.mutate()}
-              disabled={subMutating}
+              style={({ pressed }) => [styles.subManageBtn, { borderColor: "transparent", opacity: pressed ? 0.7 : 1 }]}
+              onPress={() => router.push("/subscription" as any)}
             >
-              {portalMutation.isPending
-                ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-                : <Feather name="credit-card" size={16} color={colors.mutedForeground} />}
-              <Text style={[styles.subManageBtnText, { color: colors.foreground }]}>
-                {portalMutation.isPending ? "Opening…" : "Manage billing"}
-              </Text>
+              <Feather name="award" size={16} color={colors.mutedForeground} />
+              <Text style={[styles.subManageBtnText, { color: colors.foreground }]}>Manage subscription</Text>
             </Pressable>
           </View>
         </View>

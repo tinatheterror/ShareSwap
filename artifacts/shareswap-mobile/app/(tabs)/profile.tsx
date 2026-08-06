@@ -468,11 +468,12 @@ export default function ProfileScreen() {
               </Pressable>
             )}
             <Pressable
-              style={({ pressed }) => [styles.subManageBtn, { borderColor: "transparent", opacity: pressed ? 0.7 : 1 }]}
+              style={({ pressed }) => ({ alignSelf: "center", opacity: pressed ? 0.6 : 1 })}
               onPress={() => router.push("/subscription" as any)}
             >
-              <Feather name="award" size={16} color={colors.mutedForeground} />
-              <Text style={[styles.subManageBtnText, { color: colors.foreground }]}>Manage subscription</Text>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground, textDecorationLine: "underline" }}>
+                Manage subscription
+              </Text>
             </Pressable>
           </View>
         </View>

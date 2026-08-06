@@ -87,9 +87,9 @@ export default function ProfileScreen() {
   const hasOpenedStripe = React.useRef(false);
 
   const SUB_PLAN: Record<"free" | "member" | "pro", { name: string; price: string; icon: string; iconBg: string; iconColor: string; borderColor: string; features: string[]; limitations: string[] }> = {
-    free:   { name: "Free",   price: "$0",       icon: "zap",   iconBg: "#f1f5f9", iconColor: "#64748b", borderColor: "#2dd4bf", features: ["3 borrows per month","Unlimited swaps & gifts"], limitations: ["5% service fee on rentals"] },
-    member: { name: "Member", price: "$4.99/mo", icon: "star",  iconBg: "#f0fdfa", iconColor: "#0d9488", borderColor: "#2dd4bf", features: ["Unlimited borrows","Unlimited swaps & gifts","5% service fee on rentals"], limitations: [] },
-    pro:    { name: "Pro",    price: "$9.99/mo", icon: "award", iconBg: "#fffbeb", iconColor: "#f59e0b", borderColor: "#fbbf24", features: ["Unlimited borrows","Unlimited swaps & gifts","Reduced 4% service fee on rentals","Activity & Insights dashboard","$1.50 courier fee waived (5/mo)"], limitations: [] },
+    free:   { name: "Free",   price: "$0",       icon: "zap",   iconBg: "#f1f5f9", iconColor: "#64748b", borderColor: "#2dd4bf", features: ["3 borrows per month","Unlimited swaps & gifts & rentals"], limitations: ["5% service fee on rentals"] },
+    member: { name: "Member", price: "$4.99/mo", icon: "star",  iconBg: "#f0fdfa", iconColor: "#0d9488", borderColor: "#2dd4bf", features: ["Unlimited borrows","Unlimited swaps & gifts & rentals","5% service fee on rentals"], limitations: [] },
+    pro:    { name: "Pro",    price: "$9.99/mo", icon: "award", iconBg: "#fffbeb", iconColor: "#f59e0b", borderColor: "#fbbf24", features: ["Unlimited borrows","Unlimited swaps & gifts & rentals","Reduced 4% service fee on rentals","Activity & Insights dashboard","$1.50 courier fee waived (5/mo)"], limitations: [] },
   };
   const subPlan = SUB_PLAN[subTier];
 

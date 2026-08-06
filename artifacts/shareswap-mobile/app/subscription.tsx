@@ -53,7 +53,7 @@ const PLAN_META: Record<
     iconColor: "#64748b",
     borderColor: "#e2e8f0",
     accentColor: "#64748b",
-    features: ["3 borrows per month", "Unlimited swaps & gifts"],
+    features: ["3 borrows per month", "Unlimited swaps & gifts & rentals"],
     limitations: ["5% service fee on rentals"],
   },
   member: {
@@ -65,7 +65,7 @@ const PLAN_META: Record<
     iconColor: "#0d9488",
     borderColor: "#2dd4bf",
     accentColor: "#0d9488",
-    features: ["Unlimited borrows", "Unlimited swaps & gifts", "5% service fee on rentals"],
+    features: ["Unlimited borrows", "Unlimited swaps & gifts & rentals", "5% service fee on rentals"],
     limitations: [],
   },
   pro: {
@@ -79,7 +79,7 @@ const PLAN_META: Record<
     accentColor: "#f59e0b",
     features: [
       "Unlimited borrows",
-      "Unlimited swaps & gifts",
+      "Unlimited swaps & gifts & rentals",
       "Reduced 4% service fee on rentals",
       "Activity & Insights dashboard",
       "$1.50 courier fee waived (5/mo)",
@@ -343,18 +343,18 @@ export default function SubscriptionScreen() {
                 tier === "free"
                   ? [
                       { text: "3 borrows per month", included: true },
-                      { text: "Unlimited swaps & gifts", included: true },
+                      { text: "Unlimited swaps & gifts & rentals", included: true },
                       { text: "5% service fee on rentals", included: false },
                     ]
                   : tier === "member"
                   ? [
                       { text: "Unlimited borrows", included: true },
-                      { text: "Unlimited swaps & gifts", included: true },
+                      { text: "Unlimited swaps & gifts & rentals", included: true },
                       { text: "5% service fee on rentals", included: true },
                     ]
                   : [
                       { text: "Unlimited borrows", included: true },
-                      { text: "Unlimited swaps & gifts", included: true },
+                      { text: "Unlimited swaps & gifts & rentals", included: true },
                       { text: "Reduced 4% service fee on rentals", included: true },
                       { text: "Activity & Insights dashboard", included: true },
                       { text: "$1.50 courier fee waived (5/mo)", included: true },

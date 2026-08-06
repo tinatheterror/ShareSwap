@@ -1465,10 +1465,10 @@ export default function ProfilePage() {
                   {/* Features */}
                   <ul className="space-y-2 mb-5">
                     {(currentTier === "free"
-                      ? ["3 borrows per month", "Unlimited swaps & gifts"]
+                      ? ["3 borrows per month", "Unlimited swaps & gifts & rentals"]
                       : currentTier === "member"
-                      ? ["Unlimited borrows", "Unlimited swaps & gifts", "5% service fee on rentals"]
-                      : ["Unlimited borrows", "Unlimited swaps & gifts", "Reduced 4% service fee on rentals", "Activity & Insights dashboard", "$1.50 courier fee waived (5/mo)"]
+                      ? ["Unlimited borrows", "Unlimited swaps & gifts & rentals", "5% service fee on rentals"]
+                      : ["Unlimited borrows", "Unlimited swaps & gifts & rentals", "Reduced 4% service fee on rentals", "Activity & Insights dashboard", "$1.50 courier fee waived (5/mo)"]
                     ).map((f) => (
                       <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
                         <Check className="h-3.5 w-3.5 text-teal-500 shrink-0" />{f}

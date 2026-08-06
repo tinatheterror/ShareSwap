@@ -483,7 +483,7 @@ export default function ProfileScreen() {
                 ? `${Number(userProfile.averageRating).toFixed(1)} ★ · ${userProfile.reviewCount ?? 0} reviews`
                 : `— · ${userProfile?.reviewCount ?? 0} reviews`,
             },
-            { label: "Trust Score", icon: "shield", value: String(user.trustScore ?? 0) },
+            { label: "Trust Score", icon: "shield", value: String(userProfile?.trustScore ?? 0) },
             {
               label: "On-time Returns",
               icon: "clock",

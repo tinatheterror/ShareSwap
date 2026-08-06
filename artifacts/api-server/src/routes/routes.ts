@@ -10695,6 +10695,7 @@ Respond with ONLY the category name, nothing else.`
         issuesResult,
         activeStatus,
         responseTime,
+        reviewStats,
       ] = await Promise.all([
         db.select({ count: sql<number>`count(*)` })
           .from(itemRequests).innerJoin(items, eq(itemRequests.itemId, items.id))
@@ -10720,6 +10721,9 @@ Respond with ONLY the category name, nothing else.`
           )),
         Promise.resolve(computeActiveStatus(user.lastActiveAt ?? null)),
         computeResponseTime(uid),
+        db.select({ avg: sql<number>`avg(${userReviews.rating})`, cnt: sql<number>`count(*)` })
+          .from(userReviews)
+          .where(eq(userReviews.reviewedUserId, uid)),
       ]);
 
       const completedShares = Number(completedSharesResult[0]?.count ?? 0);
@@ -10735,6 +10739,11 @@ Respond with ONLY the category name, nothing else.`
       const issuesCount = Number(issuesResult[0]?.count ?? 0);
       const trustScore = Math.min(100, user.reputationScore ?? 0);
 
+      const reviewCount = Number(reviewStats[0]?.cnt ?? 0);
+      const averageRating = reviewCount > 0 && reviewStats[0]?.avg != null
+        ? Math.round(Number(reviewStats[0].avg) * 10) / 10
+        : null;
+
       res.json({
         ...user,
         isVerified,
@@ -10748,6 +10757,8 @@ Respond with ONLY the category name, nothing else.`
         trustScore,
         activeStatus,
         responseTime,
+        averageRating,
+        reviewCount,
       });
     } catch (error) {
       console.error("Error fetching user profile:", error);

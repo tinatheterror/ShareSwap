@@ -176,17 +176,6 @@ export default function SubscriptionPage() {
         {/* ── Plans & Pricing ── */}
         {!isLoading && (
           <>
-            {/* Centered header */}
-            <div className="flex flex-col items-center gap-1 mb-4 mt-2">
-              <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-teal-600" />
-                <h2 className="text-base font-bold text-slate-900">Plans &amp; Pricing</h2>
-              </div>
-              <p className="text-xs text-slate-500 text-center">
-                Share more, own less. Upgrade to Member for unlimited borrows.
-              </p>
-            </div>
-
             <div className="flex flex-col gap-0">
               {(["free", "member", "pro"] as Tier[]).map((tier) => {
                 const p = PLANS[tier];

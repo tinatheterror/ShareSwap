@@ -209,15 +209,6 @@ export default function SubscriptionScreen() {
         {/* ── Plans & Pricing ── */}
         {!isLoading && (
           <View style={s.pricingSection}>
-            {/* Centered header */}
-            <View style={s.pricingHeader}>
-              <Feather name="award" size={16} color="#0d9488" />
-              <Text style={[s.pricingTitle, { color: colors.foreground }]}>Plans &amp; Pricing</Text>
-            </View>
-            <Text style={[s.pricingSub, { color: colors.mutedForeground }]}>
-              Share more, own less. Upgrade to Member for unlimited borrows.
-            </Text>
-
             {(["free", "member", "pro"] as Tier[]).map((tier) => {
               const p = PLAN_META[tier];
               const isCurrent = currentTier === tier;

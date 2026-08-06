@@ -195,6 +195,9 @@ export default function SubscriptionScreen() {
           >
             <Feather name="arrow-left" size={18} color={colors.mutedForeground} />
           </Pressable>
+          <View style={[s.headerIconWrap, { backgroundColor: "#D4F7F1" }]}>
+            <Feather name="award" size={22} color="#0d9488" />
+          </View>
           <View>
             <Text style={[s.pageTitle, { color: colors.foreground }]}>Subscription</Text>
             <Text style={[s.pageSubtitle, { color: colors.mutedForeground }]}>

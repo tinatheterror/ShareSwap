@@ -243,22 +243,42 @@ export default function SubscriptionPage() {
                 )}
               </div>
 
-              {/* Manage billing — paid users only */}
-              {hasActivePaidSub && (
-                <>
-                  <Separator className="mb-4" />
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() => portalMutation.mutate()}
-                    disabled={portalMutation.isPending}
-                  >
-                    {portalMutation.isPending
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <CreditCard className="h-4 w-4" />}
-                    Manage billing
-                  </Button>
-                </>
+              {/* Features */}
+              <Separator className="my-4" />
+              <ul className="space-y-2 mb-4">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
+                    <Check className="h-3.5 w-3.5 text-teal-500 shrink-0" />{f}
+                  </li>
+                ))}
+                {plan.limitations.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm text-slate-400">
+                    <div className="h-3.5 w-3.5 flex items-center justify-center shrink-0">
+                      <div className="w-1 h-1 rounded-full bg-slate-300" />
+                    </div>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              {/* CTA */}
+              {hasActivePaidSub ? (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => portalMutation.mutate()}
+                  disabled={portalMutation.isPending}
+                >
+                  {portalMutation.isPending
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <CreditCard className="h-4 w-4" />}
+                  Manage billing
+                </Button>
+              ) : (
+                <Button variant="outline" className="w-full gap-2" disabled>
+                  <Check className="h-4 w-4 text-teal-500" />
+                  Your Current Plan
+                </Button>
               )}
             </CardContent>
           </Card>

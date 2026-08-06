@@ -274,26 +274,46 @@ export default function SubscriptionScreen() {
               )}
             </View>
 
-            {/* Manage billing — paid users only */}
-            {hasActivePaidSub && (
-              <>
-                <View style={[s.divider, { backgroundColor: colors.border }]} />
-                <Pressable
-                  style={({ pressed }) => [
-                    s.manageBillingBtn,
-                    { borderColor: colors.border, opacity: pressed || anyMutating ? 0.7 : 1 },
-                  ]}
-                  onPress={() => portalMutation.mutate()}
-                  disabled={anyMutating}
-                >
-                  {portalMutation.isPending
-                    ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-                    : <Feather name="credit-card" size={16} color={colors.mutedForeground} />}
-                  <Text style={[s.manageBillingBtnText, { color: colors.foreground }]}>
-                    {portalMutation.isPending ? "Opening…" : "Manage billing"}
-                  </Text>
-                </Pressable>
-              </>
+            {/* Features */}
+            <View style={[s.divider, { backgroundColor: colors.border }]} />
+            <View style={s.featureList}>
+              {plan.features.map((f) => (
+                <View key={f} style={s.featureRow}>
+                  <Feather name="check" size={13} color="#14b8a6" />
+                  <Text style={[s.featureText, { color: colors.foreground }]}>{f}</Text>
+                </View>
+              ))}
+              {plan.limitations.map((f) => (
+                <View key={f} style={s.featureRow}>
+                  <View style={s.featureDot} />
+                  <Text style={[s.featureText, { color: colors.mutedForeground }]}>{f}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* CTA */}
+            <View style={[s.divider, { backgroundColor: colors.border }]} />
+            {hasActivePaidSub ? (
+              <Pressable
+                style={({ pressed }) => [
+                  s.manageBillingBtn,
+                  { borderColor: colors.border, opacity: pressed || anyMutating ? 0.7 : 1 },
+                ]}
+                onPress={() => portalMutation.mutate()}
+                disabled={anyMutating}
+              >
+                {portalMutation.isPending
+                  ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                  : <Feather name="credit-card" size={16} color={colors.mutedForeground} />}
+                <Text style={[s.manageBillingBtnText, { color: colors.foreground }]}>
+                  {portalMutation.isPending ? "Opening…" : "Manage billing"}
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={[s.manageBillingBtn, { borderColor: "#14b8a6", backgroundColor: "transparent" }]}>
+                <Feather name="check" size={15} color="#14b8a6" />
+                <Text style={[s.manageBillingBtnText, { color: "#0d9488" }]}>Your Current Plan</Text>
+              </View>
             )}
           </View>
         )}

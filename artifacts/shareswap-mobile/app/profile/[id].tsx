@@ -385,7 +385,10 @@ function ReviewsCarousel({
                       {reviewerName}
                     </Text>
                     {review.reviewer.isVerified ? (
-                      <MaterialCommunityIcons name="check-decagram" size={16} color={colors.primary} />
+                      <View style={{ width: 16, height: 16 }}>
+                        <MaterialCommunityIcons name="check-decagram" size={20} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
+                        <MaterialCommunityIcons name="check-decagram" size={16} color="#0DCEA1" style={{ position: "absolute" }} />
+                      </View>
                     ) : null}
                   </View>
                   <View style={styles.reviewStarsRow}>
@@ -540,7 +543,10 @@ export default function PublicProfileScreen() {
                   {displayName}
                 </Text>
                 {profile.isVerified ? (
-                  <MaterialCommunityIcons name="check-decagram" size={20} color={colors.primary} />
+                  <View style={{ width: 20, height: 20 }}>
+                    <MaterialCommunityIcons name="check-decagram" size={24} color="white" style={{ position: "absolute", top: -2, left: -2 }} />
+                    <MaterialCommunityIcons name="check-decagram" size={20} color="#0DCEA1" style={{ position: "absolute" }} />
+                  </View>
                 ) : null}
               </View>
               <Text style={[styles.handle, { color: colors.mutedForeground }]}>

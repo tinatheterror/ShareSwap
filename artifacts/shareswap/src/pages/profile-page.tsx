@@ -187,6 +187,30 @@ export default function ProfilePage() {
   const hasActivePaidSub = currentTier !== "free" && subStatus?.stripeSubscriptionStatus === "active";
   const isPro = currentTier === "pro";
 
+  const checkoutMutation = useMutation({
+    mutationFn: async (tier: string) => {
+      const res = await apiRequest("POST", "/api/subscription/checkout", { tier });
+      return res.json();
+    },
+    onSuccess: (data) => { if (data.url) window.location.href = data.url; },
+    onError: (error: any) => toast({ title: "Checkout failed", description: error.message || "Failed to start checkout.", variant: "destructive" }),
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/subscription/portal", {});
+      return res.json();
+    },
+    onSuccess: (data) => { if (data.url) window.location.href = data.url; },
+    onError: (error: any) => toast({ title: "Failed to open billing portal", description: error.message || "Please try again.", variant: "destructive" }),
+  });
+
+  const billingDate = subStatus?.monthlyBorrowResetAt
+    ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })
+    : null;
+  const borrowUsed = subStatus?.monthlyBorrowCount ?? 0;
+  const borrowPct = Math.min((borrowUsed / 3) * 100, 100);
+
   const { data: analyticsData, isLoading: analyticsLoading } = useQuery<{
     monthLabels: string[];
     activityByMonth: number[];
@@ -1362,6 +1386,113 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Current Plan card */}
+            {!subStatusLoading && (
+              <Card className={`mt-4 lg:hidden border-2 ${
+                currentTier === "member" ? "border-teal-400"
+                : currentTier === "pro" ? "border-amber-400"
+                : "border-teal-400"
+              }`}>
+                <CardContent className="p-5">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        currentTier === "member" ? "bg-teal-50"
+                        : currentTier === "pro" ? "bg-amber-50"
+                        : "bg-slate-100"
+                      }`}>
+                        {currentTier === "member" ? <Star className="h-5 w-5 text-teal-600" />
+                        : currentTier === "pro" ? <Crown className="h-5 w-5 text-amber-500" />
+                        : <Zap className="h-5 w-5 text-slate-500" />}
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wide font-medium">Current plan</p>
+                        <p className="text-xl font-bold text-slate-900">
+                          {currentTier === "member" ? "Member" : currentTier === "pro" ? "Pro" : "Free"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                      {hasActivePaidSub
+                        ? <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">Active</Badge>
+                        : <Badge variant="secondary" className="text-xs">Free</Badge>}
+                      <span className="text-sm font-semibold text-slate-700">
+                        {currentTier === "member" ? "$4.99/mo" : currentTier === "pro" ? "$9.99/mo" : "$0"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 my-4" />
+
+                  {/* Billing & usage */}
+                  <div className="space-y-3 mb-4">
+                    {billingDate && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">{hasActivePaidSub ? "Next billing" : "Usage resets"}</span>
+                        <span className="font-medium text-slate-700">{billingDate}</span>
+                      </div>
+                    )}
+                    {currentTier === "free" ? (
+                      <div>
+                        <div className="flex items-center justify-between text-sm mb-1.5">
+                          <span className="text-slate-500">Borrows this month</span>
+                          <span className="font-medium text-slate-700">{borrowUsed} / 3</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-teal-500 rounded-full transition-all" style={{ width: `${borrowPct}%` }} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Borrows this month</span>
+                        <span className="font-medium text-teal-600">Unlimited</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 my-4" />
+
+                  {/* Features */}
+                  <ul className="space-y-2 mb-5">
+                    {(currentTier === "free"
+                      ? ["3 borrows per month", "Unlimited swaps & gifts"]
+                      : currentTier === "member"
+                      ? ["Unlimited borrows", "Unlimited swaps & gifts", "5% service fee on rentals"]
+                      : ["Unlimited borrows", "Unlimited swaps & gifts", "Reduced 4% service fee on rentals", "Activity & Insights dashboard", "$1.50 courier fee waived (5/mo)"]
+                    ).map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
+                        <Check className="h-3.5 w-3.5 text-teal-500 shrink-0" />{f}
+                      </li>
+                    ))}
+                    {currentTier === "free" && (
+                      <li className="flex items-center gap-2 text-sm text-slate-400">
+                        <div className="h-3.5 w-3.5 flex items-center justify-center shrink-0">
+                          <div className="w-1 h-1 rounded-full bg-slate-300" />
+                        </div>
+                        5% service fee on rentals
+                      </li>
+                    )}
+                  </ul>
+
+                  {/* CTA */}
+                  {hasActivePaidSub ? (
+                    <Button variant="outline" className="w-full gap-2" onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending}>
+                      {portalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                      Manage billing
+                    </Button>
+                  ) : (
+                    <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2" onClick={() => checkoutMutation.mutate("member")} disabled={checkoutMutation.isPending}>
+                      {checkoutMutation.isPending && (checkoutMutation.variables as string) === "member"
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Star className="h-4 w-4" />}
+                      Upgrade to Member — $4.99/mo
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Activity & Insights Dashboard */}
             <div className="mt-6">

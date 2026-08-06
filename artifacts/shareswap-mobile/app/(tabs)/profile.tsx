@@ -16,7 +16,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { apiGet, photoUrl } from "@/lib/api";
+import { apiGet, apiPost, photoUrl } from "@/lib/api";
+import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useAuth } from "@/context/AuthContext";
 import { ItemCard, Item } from "@/components/ItemCard";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -68,6 +70,55 @@ export default function ProfileScreen() {
     enabled: !!user,
   });
 
+  interface SubStatus {
+    subscriptionTier: string;
+    stripeSubscriptionId: string | null;
+    stripeSubscriptionStatus: string | null;
+    monthlyBorrowCount: number;
+    monthlyBorrowResetAt: string | null;
+  }
+  const { data: subStatus } = useQuery<SubStatus>({
+    queryKey: ["/api/subscription/status"],
+    queryFn: () => apiGet<SubStatus>("/api/subscription/status"),
+    enabled: !!user,
+  });
+  const subTier = (subStatus?.subscriptionTier ?? "free") as "free" | "member" | "pro";
+  const hasActivePaidSub = subTier !== "free" && subStatus?.stripeSubscriptionStatus === "active";
+  const hasOpenedStripe = React.useRef(false);
+
+  const SUB_PLAN: Record<"free" | "member" | "pro", { name: string; price: string; icon: string; iconBg: string; iconColor: string; borderColor: string; features: string[]; limitations: string[] }> = {
+    free:   { name: "Free",   price: "$0",       icon: "zap",   iconBg: "#f1f5f9", iconColor: "#64748b", borderColor: "#2dd4bf", features: ["3 borrows per month","Unlimited swaps & gifts"], limitations: ["5% service fee on rentals"] },
+    member: { name: "Member", price: "$4.99/mo", icon: "star",  iconBg: "#f0fdfa", iconColor: "#0d9488", borderColor: "#2dd4bf", features: ["Unlimited borrows","Unlimited swaps & gifts","5% service fee on rentals"], limitations: [] },
+    pro:    { name: "Pro",    price: "$9.99/mo", icon: "award", iconBg: "#fffbeb", iconColor: "#f59e0b", borderColor: "#fbbf24", features: ["Unlimited borrows","Unlimited swaps & gifts","Reduced 4% service fee on rentals","Activity & Insights dashboard","$1.50 courier fee waived (5/mo)"], limitations: [] },
+  };
+  const subPlan = SUB_PLAN[subTier];
+
+  const subBillingDate = subStatus?.monthlyBorrowResetAt
+    ? new Date(subStatus.monthlyBorrowResetAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })
+    : null;
+  const subBorrowUsed = subStatus?.monthlyBorrowCount ?? 0;
+  const subBorrowPct = Math.min((subBorrowUsed / 3) * 100, 100);
+
+  const checkoutMutation = useMutation({
+    mutationFn: (tier: string) => {
+      const successUrl = Linking.createURL("/subscription?sub_success=true");
+      const cancelUrl  = Linking.createURL("/subscription?sub_canceled=true");
+      return apiPost<{ url: string }>("/api/subscription/checkout", { tier, successUrl, cancelUrl });
+    },
+    onSuccess: (data) => { if (data.url) { hasOpenedStripe.current = true; Linking.openURL(data.url); } },
+    onError: () => Alert.alert("Checkout failed", "Please try again."),
+  });
+
+  const portalMutation = useMutation({
+    mutationFn: () => {
+      const returnUrl = Linking.createURL("/subscription");
+      return apiPost<{ url: string }>("/api/subscription/portal", { returnUrl });
+    },
+    onSuccess: (data) => { if (data.url) { hasOpenedStripe.current = true; Linking.openURL(data.url); } },
+    onError: () => Alert.alert("Error", "Could not open subscription portal."),
+  });
+
+  const subMutating = checkoutMutation.isPending || portalMutation.isPending;
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -318,6 +369,109 @@ export default function ProfileScreen() {
             <Feather name="shield" size={15} color={colors.mutedForeground} />
             <Text style={[styles.verifyRowText, { color: colors.foreground }]}>Identity Verification</Text>
           </Pressable>
+        </View>
+
+        {/* Current Plan card */}
+        <View style={[styles.subCard, { backgroundColor: colors.card, borderColor: subPlan.borderColor }]}>
+          {/* Header */}
+          <View style={styles.subHeaderRow}>
+            <View style={styles.subHeaderLeft}>
+              <View style={[styles.subIconWrap, { backgroundColor: subPlan.iconBg }]}>
+                <Feather name={subPlan.icon as any} size={20} color={subPlan.iconColor} />
+              </View>
+              <View>
+                <Text style={[styles.subCurrentLabel, { color: colors.mutedForeground }]}>Current plan</Text>
+                <Text style={[styles.subPlanName, { color: colors.foreground }]}>{subPlan.name}</Text>
+              </View>
+            </View>
+            <View style={styles.subHeaderRight}>
+              {hasActivePaidSub ? (
+                <View style={styles.subActivePill}>
+                  <Text style={styles.subActivePillText}>Active</Text>
+                </View>
+              ) : (
+                <View style={[styles.subActivePill, { backgroundColor: "#f1f5f9", borderColor: "#e2e8f0" }]}>
+                  <Text style={[styles.subActivePillText, { color: "#64748b" }]}>Free</Text>
+                </View>
+              )}
+              <Text style={[styles.subPrice, { color: colors.foreground }]}>{subPlan.price}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.subDivider, { backgroundColor: colors.border }]} />
+
+          {/* Billing & usage */}
+          <View style={styles.subInfoSection}>
+            {subBillingDate && (
+              <View style={styles.subInfoRow}>
+                <Text style={[styles.subInfoLabel, { color: colors.mutedForeground }]}>
+                  {hasActivePaidSub ? "Next billing" : "Usage resets"}
+                </Text>
+                <Text style={[styles.subInfoValue, { color: colors.foreground }]}>{subBillingDate}</Text>
+              </View>
+            )}
+            {subTier === "free" ? (
+              <View>
+                <View style={[styles.subInfoRow, { marginBottom: 6 }]}>
+                  <Text style={[styles.subInfoLabel, { color: colors.mutedForeground }]}>Borrows this month</Text>
+                  <Text style={[styles.subInfoValue, { color: colors.foreground }]}>{subBorrowUsed} / 3</Text>
+                </View>
+                <View style={[styles.subProgressBg, { backgroundColor: colors.muted }]}>
+                  <View style={[styles.subProgressFill, { width: `${subBorrowPct}%` as any, backgroundColor: "#14b8a6" }]} />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.subInfoRow}>
+                <Text style={[styles.subInfoLabel, { color: colors.mutedForeground }]}>Borrows this month</Text>
+                <Text style={[styles.subInfoValue, { color: "#0d9488", fontFamily: "Inter_600SemiBold" }]}>Unlimited</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.subDivider, { backgroundColor: colors.border }]} />
+
+          {/* Features */}
+          <View style={styles.subFeatureList}>
+            {subPlan.features.map((f) => (
+              <View key={f} style={styles.subFeatureRow}>
+                <Feather name="check" size={13} color="#14b8a6" />
+                <Text style={[styles.subFeatureText, { color: colors.foreground }]}>{f}</Text>
+              </View>
+            ))}
+            {subPlan.limitations.map((f) => (
+              <View key={f} style={styles.subFeatureRow}>
+                <View style={styles.subFeatureDot} />
+                <Text style={[styles.subFeatureText, { color: colors.mutedForeground }]}>{f}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* CTA */}
+          {hasActivePaidSub ? (
+            <Pressable
+              style={({ pressed }) => [styles.subManageBtn, { borderColor: colors.border, opacity: pressed || subMutating ? 0.7 : 1 }]}
+              onPress={() => portalMutation.mutate()}
+              disabled={subMutating}
+            >
+              {portalMutation.isPending
+                ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                : <Feather name="credit-card" size={16} color={colors.mutedForeground} />}
+              <Text style={[styles.subManageBtnText, { color: colors.foreground }]}>
+                {portalMutation.isPending ? "Opening…" : "Manage billing"}
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [styles.subUpgradeBtn, { backgroundColor: pressed ? "#0f766e" : "#0d9488", opacity: subMutating ? 0.7 : 1 }]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); checkoutMutation.mutate("member"); }}
+              disabled={subMutating}
+            >
+              {checkoutMutation.isPending && checkoutMutation.variables === "member"
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Feather name="star" size={15} color="#fff" />}
+              <Text style={styles.subUpgradeBtnText}>Upgrade to Member — $4.99/mo</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Account Statistics card */}
@@ -783,5 +937,92 @@ const styles = StyleSheet.create({
   statRowValue: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+  },
+
+  // ── Current Plan card ──────────────────────────────────────────────
+  subCard: {
+    borderRadius: 14,
+    padding: 20,
+    borderWidth: 2,
+  },
+  subHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  subHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  subHeaderRight: { alignItems: "flex-end", gap: 6 },
+  subIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  subCurrentLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  subPlanName: { fontSize: 22, fontFamily: "Inter_700Bold", marginTop: 1 },
+  subActivePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
+    backgroundColor: "#f0fdf4",
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+  },
+  subActivePillText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    color: "#15803d",
+  },
+  subPrice: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  subDivider: { height: 1, marginVertical: 14 },
+  subInfoSection: { gap: 10, marginBottom: 0 },
+  subInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  subInfoLabel: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  subInfoValue: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  subProgressBg: { height: 6, borderRadius: 3, overflow: "hidden" },
+  subProgressFill: { height: "100%" as any, borderRadius: 3 },
+  subFeatureList: { gap: 8, marginBottom: 16 },
+  subFeatureRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  subFeatureDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#cbd5e1",
+    marginLeft: 4,
+  },
+  subFeatureText: { fontSize: 13, fontFamily: "Inter_400Regular", flex: 1 },
+  subManageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  subManageBtnText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  subUpgradeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 10,
+  },
+  subUpgradeBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
   },
 });

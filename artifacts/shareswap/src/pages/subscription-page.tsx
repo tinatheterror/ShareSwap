@@ -264,8 +264,7 @@ export default function SubscriptionPage() {
               {/* CTA */}
               <div className="flex flex-col gap-2">
                 {currentTier === "free" && (
-                  <Button variant="outline" className="w-full gap-2" disabled>
-                    <Check className="h-4 w-4 text-teal-500" />
+                  <Button variant="outline" className="w-full opacity-50 cursor-not-allowed text-slate-400 border-slate-200" disabled>
                     Your Current Plan
                   </Button>
                 )}

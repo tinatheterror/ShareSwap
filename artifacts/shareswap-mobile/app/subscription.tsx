@@ -295,9 +295,8 @@ export default function SubscriptionScreen() {
             <View style={[s.divider, { backgroundColor: colors.border }]} />
             <View style={{ gap: 8 }}>
               {currentTier === "free" && (
-                <View style={[s.manageBillingBtn, { borderColor: "#14b8a6", backgroundColor: "transparent" }]}>
-                  <Feather name="check" size={15} color="#14b8a6" />
-                  <Text style={[s.manageBillingBtnText, { color: "#0d9488" }]}>Your Current Plan</Text>
+                <View style={[s.manageBillingBtn, { borderColor: "#e2e8f0", backgroundColor: "transparent", opacity: 0.5 }]}>
+                  <Text style={[s.manageBillingBtnText, { color: "#94a3b8" }]}>Your Current Plan</Text>
                 </View>
               )}
               <Pressable

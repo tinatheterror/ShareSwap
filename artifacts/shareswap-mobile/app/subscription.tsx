@@ -321,7 +321,7 @@ export default function SubscriptionScreen() {
         {/* ── Plans & Pricing ── */}
         {!isLoading && (
           <View style={s.pricingSection}>
-            {(["free", "member", "pro"] as Tier[]).map((tier) => {
+            {otherTiers.map((tier) => {
               const p = PLAN_META[tier];
               const isCurrent = currentTier === tier;
               const isCheckingOut = checkoutMutation.isPending && checkoutMutation.variables === tier;

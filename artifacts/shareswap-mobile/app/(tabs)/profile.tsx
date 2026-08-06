@@ -457,7 +457,16 @@ export default function ProfileScreen() {
           </View>
 
           {/* CTA */}
-          {subTier !== "free" ? (
+          <View style={{ gap: 8 }}>
+            {subTier === "free" && (
+              <Pressable
+                style={({ pressed }) => [styles.subUpgradeBtn, { backgroundColor: pressed ? "#0f766e" : "#0d9488" }]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/subscription" as any); }}
+              >
+                <Feather name="star" size={15} color="#fff" />
+                <Text style={styles.subUpgradeBtnText}>Upgrade to Member — $4.99/mo</Text>
+              </Pressable>
+            )}
             <Pressable
               style={({ pressed }) => [styles.subManageBtn, { borderColor: colors.border, opacity: pressed || subMutating ? 0.7 : 1 }]}
               onPress={() => portalMutation.mutate()}
@@ -470,15 +479,7 @@ export default function ProfileScreen() {
                 {portalMutation.isPending ? "Opening…" : "Manage billing"}
               </Text>
             </Pressable>
-          ) : (
-            <Pressable
-              style={({ pressed }) => [styles.subUpgradeBtn, { backgroundColor: pressed ? "#0f766e" : "#0d9488" }]}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/subscription" as any); }}
-            >
-              <Feather name="star" size={15} color="#fff" />
-              <Text style={styles.subUpgradeBtnText}>Upgrade to Member — $4.99/mo</Text>
-            </Pressable>
-          )}
+          </View>
         </View>
 
         {/* Account Statistics card */}

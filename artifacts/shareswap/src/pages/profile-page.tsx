@@ -1485,19 +1485,20 @@ export default function ProfilePage() {
                   </ul>
 
                   {/* CTA */}
-                  {currentTier !== "free" ? (
+                  <div className="flex flex-col gap-2">
+                    {currentTier === "free" && (
+                      <Link href="/subscription" className="block w-full">
+                        <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2">
+                          <Star className="h-4 w-4" />
+                          Upgrade to Member — $4.99/mo
+                        </Button>
+                      </Link>
+                    )}
                     <Button variant="outline" className="w-full gap-2" onClick={() => portalMutation.mutate()} disabled={portalMutation.isPending}>
                       {portalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                       Manage billing
                     </Button>
-                  ) : (
-                    <Link href="/subscription" className="block w-full">
-                      <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2">
-                        <Star className="h-4 w-4" />
-                        Upgrade to Member — $4.99/mo
-                      </Button>
-                    </Link>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
             )}

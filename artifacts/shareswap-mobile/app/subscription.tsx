@@ -293,7 +293,13 @@ export default function SubscriptionScreen() {
 
             {/* CTA */}
             <View style={[s.divider, { backgroundColor: colors.border }]} />
-            {currentTier !== "free" ? (
+            <View style={{ gap: 8 }}>
+              {currentTier === "free" && (
+                <View style={[s.manageBillingBtn, { borderColor: "#14b8a6", backgroundColor: "transparent" }]}>
+                  <Feather name="check" size={15} color="#14b8a6" />
+                  <Text style={[s.manageBillingBtnText, { color: "#0d9488" }]}>Your Current Plan</Text>
+                </View>
+              )}
               <Pressable
                 style={({ pressed }) => [
                   s.manageBillingBtn,
@@ -309,12 +315,7 @@ export default function SubscriptionScreen() {
                   {portalMutation.isPending ? "Opening…" : "Manage billing"}
                 </Text>
               </Pressable>
-            ) : (
-              <View style={[s.manageBillingBtn, { borderColor: "#14b8a6", backgroundColor: "transparent" }]}>
-                <Feather name="check" size={15} color="#14b8a6" />
-                <Text style={[s.manageBillingBtnText, { color: "#0d9488" }]}>Your Current Plan</Text>
-              </View>
-            )}
+            </View>
           </View>
         )}
 

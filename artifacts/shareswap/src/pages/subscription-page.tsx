@@ -262,7 +262,13 @@ export default function SubscriptionPage() {
               </ul>
 
               {/* CTA */}
-              {currentTier !== "free" ? (
+              <div className="flex flex-col gap-2">
+                {currentTier === "free" && (
+                  <Button variant="outline" className="w-full gap-2" disabled>
+                    <Check className="h-4 w-4 text-teal-500" />
+                    Your Current Plan
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="w-full gap-2"
@@ -274,12 +280,7 @@ export default function SubscriptionPage() {
                     : <CreditCard className="h-4 w-4" />}
                   Manage billing
                 </Button>
-              ) : (
-                <Button variant="outline" className="w-full gap-2" disabled>
-                  <Check className="h-4 w-4 text-teal-500" />
-                  Your Current Plan
-                </Button>
-              )}
+              </div>
             </CardContent>
           </Card>
         )}

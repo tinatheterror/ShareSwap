@@ -112,7 +112,7 @@ function RootLayoutNav() {
         name="settings"
         options={{
           title: "Settings",
-          headerBackTitle: "Back",
+          headerBackTitle: "Profile",
         }}
       />
       <Stack.Screen

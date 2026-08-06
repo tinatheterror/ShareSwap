@@ -262,7 +262,7 @@ export default function SubscriptionPage() {
               </ul>
 
               {/* CTA */}
-              {hasActivePaidSub ? (
+              {currentTier !== "free" ? (
                 <Button
                   variant="outline"
                   className="w-full gap-2"

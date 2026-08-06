@@ -293,7 +293,7 @@ export default function SubscriptionScreen() {
 
             {/* CTA */}
             <View style={[s.divider, { backgroundColor: colors.border }]} />
-            {hasActivePaidSub ? (
+            {currentTier !== "free" ? (
               <Pressable
                 style={({ pressed }) => [
                   s.manageBillingBtn,

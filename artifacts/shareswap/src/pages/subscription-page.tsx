@@ -236,7 +236,7 @@ export default function SubscriptionPage() {
 
               {/* Features */}
               <Separator className="my-4" />
-              <ul className="space-y-2 mb-4">
+              <ul className="space-y-2 mb-0">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-slate-600">
                     <Check className="h-3.5 w-3.5 text-teal-500 shrink-0" />{f}

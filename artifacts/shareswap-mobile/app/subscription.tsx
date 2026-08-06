@@ -293,7 +293,6 @@ export default function SubscriptionScreen() {
             </View>
 
             {/* CTA */}
-            <View style={[s.divider, { backgroundColor: colors.border }]} />
             <View style={{ gap: 8 }}>
               {currentTier === "free" && (
                 <View style={[s.manageBillingBtn, { borderColor: "#e2e8f0", backgroundColor: "transparent", opacity: 0.5 }]}>
